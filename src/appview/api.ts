@@ -10,7 +10,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import {
   Database,
-  ObservationRow,
+  OccurrenceRow,
   IdentificationRow,
 } from "../ingester/database.js";
 import { getIdentityResolver, Profile } from "../auth/identity.js";
@@ -24,7 +24,7 @@ interface AppViewConfig {
   corsOrigins: string[];
 }
 
-interface ObservationResponse {
+interface OccurrenceResponse {
   uri: string;
   cid: string;
   observer: {
@@ -33,7 +33,9 @@ interface ObservationResponse {
     displayName?: string;
     avatar?: string;
   };
-  scientificName: string;
+  // Darwin Core fields
+  basisOfRecord: string;
+  scientificName?: string;
   communityId?: string;
   eventDate: string;
   location: {
@@ -42,11 +44,20 @@ interface ObservationResponse {
     uncertaintyMeters?: number;
   };
   verbatimLocality?: string;
-  notes?: string;
+  habitat?: string;
+  occurrenceStatus: string;
+  occurrenceRemarks?: string;
+  individualCount?: number;
+  sex?: string;
+  lifeStage?: string;
+  behavior?: string;
   images: string[];
   createdAt: string;
   identificationCount?: number;
 }
+
+// Legacy alias
+type ObservationResponse = OccurrenceResponse;
 
 export class AppViewServer {
   private app: express.Application;
@@ -96,8 +107,8 @@ export class AppViewServer {
     // OAuth routes
     this.oauth.setupRoutes(this.app);
 
-    // Observations API
-    this.setupObservationRoutes();
+    // Occurrences API
+    this.setupOccurrenceRoutes();
 
     // Identifications API
     this.setupIdentificationRoutes();
@@ -106,9 +117,9 @@ export class AppViewServer {
     this.setupTaxonomyRoutes();
   }
 
-  private setupObservationRoutes(): void {
-    // Get observations nearby
-    this.app.get("/api/observations/nearby", async (req, res) => {
+  private setupOccurrenceRoutes(): void {
+    // Get occurrences nearby
+    this.app.get("/api/occurrences/nearby", async (req, res) => {
       try {
         const lat = parseFloat(req.query.lat as string);
         const lng = parseFloat(req.query.lng as string);
@@ -126,7 +137,7 @@ export class AppViewServer {
           return;
         }
 
-        const rows = await this.db.getObservationsNearby(
+        const rows = await this.db.getOccurrencesNearby(
           lat,
           lng,
           radius,
@@ -134,27 +145,27 @@ export class AppViewServer {
           offset,
         );
 
-        const observations = await this.enrichObservations(rows);
+        const occurrences = await this.enrichOccurrences(rows);
 
         res.json({
-          observations,
+          occurrences,
           meta: {
             lat,
             lng,
             radius,
             limit,
             offset,
-            count: observations.length,
+            count: occurrences.length,
           },
         });
       } catch (error) {
-        console.error("Error fetching nearby observations:", error);
+        console.error("Error fetching nearby occurrences:", error);
         res.status(500).json({ error: "Internal server error" });
       }
     });
 
-    // Get observations in bounding box
-    this.app.get("/api/observations/bbox", async (req, res) => {
+    // Get occurrences in bounding box
+    this.app.get("/api/occurrences/bbox", async (req, res) => {
       try {
         const minLat = parseFloat(req.query.minLat as string);
         const minLng = parseFloat(req.query.minLng as string);
@@ -169,7 +180,7 @@ export class AppViewServer {
           return;
         }
 
-        const rows = await this.db.getObservationsByBoundingBox(
+        const rows = await this.db.getOccurrencesByBoundingBox(
           minLat,
           minLng,
           maxLat,
@@ -177,48 +188,48 @@ export class AppViewServer {
           limit,
         );
 
-        const observations = await this.enrichObservations(rows);
+        const occurrences = await this.enrichOccurrences(rows);
 
         res.json({
-          observations,
+          occurrences,
           meta: {
             bounds: { minLat, minLng, maxLat, maxLng },
-            count: observations.length,
+            count: occurrences.length,
           },
         });
       } catch (error) {
-        console.error("Error fetching bbox observations:", error);
+        console.error("Error fetching bbox occurrences:", error);
         res.status(500).json({ error: "Internal server error" });
       }
     });
 
-    // Get single observation
-    this.app.get("/api/observations/:uri(*)", async (req, res) => {
+    // Get single occurrence
+    this.app.get("/api/occurrences/:uri(*)", async (req, res) => {
       try {
         const uri = req.params.uri;
-        const row = await this.db.getObservation(uri);
+        const row = await this.db.getOccurrence(uri);
 
         if (!row) {
-          res.status(404).json({ error: "Observation not found" });
+          res.status(404).json({ error: "Occurrence not found" });
           return;
         }
 
-        const [observation] = await this.enrichObservations([row]);
+        const [occurrence] = await this.enrichOccurrences([row]);
         const identifications =
-          await this.db.getIdentificationsForObservation(uri);
+          await this.db.getIdentificationsForOccurrence(uri);
 
         res.json({
-          observation,
+          occurrence,
           identifications: await this.enrichIdentifications(identifications),
         });
       } catch (error) {
-        console.error("Error fetching observation:", error);
+        console.error("Error fetching occurrence:", error);
         res.status(500).json({ error: "Internal server error" });
       }
     });
 
     // Get GeoJSON for map clustering
-    this.app.get("/api/observations/geojson", async (req, res) => {
+    this.app.get("/api/occurrences/geojson", async (req, res) => {
       try {
         const minLat = parseFloat(req.query.minLat as string);
         const minLng = parseFloat(req.query.minLng as string);
@@ -230,7 +241,7 @@ export class AppViewServer {
           return;
         }
 
-        const rows = await this.db.getObservationsByBoundingBox(
+        const rows = await this.db.getOccurrencesByBoundingBox(
           minLat,
           minLng,
           maxLat,
@@ -247,6 +258,7 @@ export class AppViewServer {
           properties: {
             uri: row.uri,
             scientificName: row.scientific_name,
+            basisOfRecord: row.basis_of_record,
             eventDate: row.event_date.toISOString(),
           },
         }));
@@ -263,30 +275,26 @@ export class AppViewServer {
   }
 
   private setupIdentificationRoutes(): void {
-    // Get identifications for an observation
-    this.app.get(
-      "/api/identifications/:observationUri(*)",
-      async (req, res) => {
-        try {
-          const observationUri = req.params.observationUri;
-          const rows =
-            await this.db.getIdentificationsForObservation(observationUri);
-          const identifications = await this.enrichIdentifications(rows);
+    // Get identifications for an occurrence
+    this.app.get("/api/identifications/:occurrenceUri(*)", async (req, res) => {
+      try {
+        const occurrenceUri = req.params.occurrenceUri;
+        const rows =
+          await this.db.getIdentificationsForOccurrence(occurrenceUri);
+        const identifications = await this.enrichIdentifications(rows);
 
-          // Calculate community ID
-          const communityTaxon =
-            await this.communityId.calculate(observationUri);
+        // Calculate community ID
+        const communityTaxon = await this.communityId.calculate(occurrenceUri);
 
-          res.json({
-            identifications,
-            communityId: communityTaxon,
-          });
-        } catch (error) {
-          console.error("Error fetching identifications:", error);
-          res.status(500).json({ error: "Internal server error" });
-        }
-      },
-    );
+        res.json({
+          identifications,
+          communityId: communityTaxon,
+        });
+      } catch (error) {
+        console.error("Error fetching identifications:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
   }
 
   private setupTaxonomyRoutes(): void {
@@ -327,9 +335,9 @@ export class AppViewServer {
     });
   }
 
-  private async enrichObservations(
-    rows: ObservationRow[],
-  ): Promise<ObservationResponse[]> {
+  private async enrichOccurrences(
+    rows: OccurrenceRow[],
+  ): Promise<OccurrenceResponse[]> {
     if (rows.length === 0) return [];
 
     // Fetch profiles for all observers
@@ -351,7 +359,9 @@ export class AppViewServer {
             displayName: profile?.displayName,
             avatar: profile?.avatar,
           },
-          scientificName: row.scientific_name,
+          // Darwin Core fields
+          basisOfRecord: row.basis_of_record,
+          scientificName: row.scientific_name || undefined,
           communityId: communityId || undefined,
           eventDate: row.event_date.toISOString(),
           location: {
@@ -360,10 +370,16 @@ export class AppViewServer {
             uncertaintyMeters: row.coordinate_uncertainty_meters || undefined,
           },
           verbatimLocality: row.verbatim_locality || undefined,
-          notes: row.notes || undefined,
-          images: (row.blobs as Array<{ image: { ref: string } }>).map(
-            (b) => `/media/blob/${row.did}/${b.image?.ref || ""}`,
-          ),
+          habitat: row.habitat || undefined,
+          occurrenceStatus: row.occurrence_status,
+          occurrenceRemarks: row.occurrence_remarks || undefined,
+          individualCount: row.individual_count || undefined,
+          sex: row.sex || undefined,
+          lifeStage: row.life_stage || undefined,
+          behavior: row.behavior || undefined,
+          images: (
+            row.associated_media as Array<{ image: { ref: string } }>
+          ).map((b) => `/media/blob/${row.did}/${b.image?.ref || ""}`),
           createdAt: row.created_at.toISOString(),
         };
       }),

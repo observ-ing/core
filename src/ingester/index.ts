@@ -7,7 +7,7 @@
 
 import {
   FirehoseSubscription,
-  ObservationEvent,
+  OccurrenceEvent,
   IdentificationEvent,
 } from "./firehose.js";
 import { Database } from "./database.js";
@@ -50,7 +50,7 @@ export class Ingester {
     this.firehose = new FirehoseSubscription({
       relay: this.config.relay,
       cursor,
-      onObservation: (event) => this.handleObservation(event),
+      onOccurrence: (event) => this.handleOccurrence(event),
       onIdentification: (event) => this.handleIdentification(event),
     });
 
@@ -83,15 +83,15 @@ export class Ingester {
     await this.db.disconnect();
   }
 
-  private async handleObservation(event: ObservationEvent): Promise<void> {
+  private async handleOccurrence(event: OccurrenceEvent): Promise<void> {
     try {
       if (event.action === "create" || event.action === "update") {
-        await this.db.upsertObservation(event);
+        await this.db.upsertOccurrence(event);
       } else if (event.action === "delete") {
-        await this.db.deleteObservation(event.uri);
+        await this.db.deleteOccurrence(event.uri);
       }
     } catch (error) {
-      console.error("Error handling observation:", error);
+      console.error("Error handling occurrence:", error);
     }
   }
 

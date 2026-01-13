@@ -4,48 +4,77 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.",
+      "description": "A taxonomic determination (identification) for an occurrence. Follows Darwin Core Identification class (dwc:Identification).",
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "taxonName", "createdAt"],
+        "required": ["subject", "scientificName", "dateIdentified"],
         "properties": {
           "subject": {
             "type": "ref",
             "ref": "com.atproto.repo.strongRef",
-            "description": "A strong reference (CID + URI) to the observation being identified."
+            "description": "A strong reference (CID + URI) to the occurrence record being identified."
           },
-          "taxonName": {
+          "scientificName": {
             "type": "string",
-            "description": "The scientific name being proposed for the observation.",
+            "description": "The full scientific name being proposed for the occurrence (Darwin Core dwc:scientificName).",
             "maxLength": 256
           },
           "taxonRank": {
             "type": "string",
-            "description": "The taxonomic rank of the identification (e.g., species, genus, family).",
-            "enum": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety"],
-            "default": "species"
+            "description": "The taxonomic rank of the most specific name in scientificName (Darwin Core dwc:taxonRank).",
+            "knownValues": [
+              "kingdom",
+              "phylum",
+              "class",
+              "order",
+              "family",
+              "subfamily",
+              "tribe",
+              "genus",
+              "subgenus",
+              "species",
+              "subspecies",
+              "variety",
+              "form"
+            ],
+            "maxLength": 64
           },
-          "comment": {
+          "identificationQualifier": {
             "type": "string",
-            "description": "Explanation or reasoning for this identification.",
+            "description": "A brief phrase or term qualifying the identification, such as 'cf.' or 'aff.' (Darwin Core dwc:identificationQualifier).",
+            "maxLength": 64
+          },
+          "taxonID": {
+            "type": "string",
+            "description": "An identifier for the set of taxon information. May be a URI to GBIF, iNaturalist, or other taxonomic authority (Darwin Core dwc:taxonID).",
+            "maxLength": 512
+          },
+          "identificationRemarks": {
+            "type": "string",
+            "description": "Comments or notes about the identification (Darwin Core dwc:identificationRemarks).",
             "maxLength": 3000
+          },
+          "identificationVerificationStatus": {
+            "type": "string",
+            "description": "A categorical indicator of the extent to which the taxonomic identification has been verified (Darwin Core dwc:identificationVerificationStatus).",
+            "knownValues": ["verified", "unverified", "questionable"],
+            "maxLength": 64
+          },
+          "typeStatus": {
+            "type": "string",
+            "description": "A nomenclatural type designation for the specimen (Darwin Core dwc:typeStatus).",
+            "maxLength": 256
           },
           "isAgreement": {
             "type": "boolean",
-            "description": "If true, this identification agrees with the current community ID rather than proposing a new one.",
+            "description": "If true, this identification agrees with the current leading identification rather than proposing a different one. Not a Darwin Core term but useful for community consensus.",
             "default": false
           },
-          "confidence": {
-            "type": "string",
-            "description": "The identifier's confidence level in this identification.",
-            "enum": ["low", "medium", "high"],
-            "default": "medium"
-          },
-          "createdAt": {
+          "dateIdentified": {
             "type": "string",
             "format": "datetime",
-            "description": "Timestamp when this identification was created."
+            "description": "The date on which the identification was made (Darwin Core dwc:dateIdentified). ISO 8601 format."
           }
         }
       }

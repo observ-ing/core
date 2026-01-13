@@ -32,7 +32,7 @@ export interface CommitOp {
   record?: unknown;
 }
 
-export interface ObservationEvent {
+export interface OccurrenceEvent {
   did: string;
   uri: string;
   cid: string;
@@ -41,6 +41,9 @@ export interface ObservationEvent {
   seq: number;
   time: string;
 }
+
+// Legacy alias
+export type ObservationEvent = OccurrenceEvent;
 
 export interface IdentificationEvent {
   did: string;
@@ -55,8 +58,10 @@ export interface IdentificationEvent {
 interface FirehoseOptions {
   relay?: string;
   cursor?: number;
-  onObservation?: (event: ObservationEvent) => void | Promise<void>;
+  onOccurrence?: (event: OccurrenceEvent) => void | Promise<void>;
   onIdentification?: (event: IdentificationEvent) => void | Promise<void>;
+  /** @deprecated Use onOccurrence instead */
+  onObservation?: (event: OccurrenceEvent) => void | Promise<void>;
 }
 
 export class FirehoseSubscription extends EventEmitter {
@@ -73,8 +78,11 @@ export class FirehoseSubscription extends EventEmitter {
     this.relay = options.relay || DEFAULT_RELAY;
     this.cursor = options.cursor;
 
-    if (options.onObservation) {
-      this.on("observation", options.onObservation);
+    if (options.onOccurrence) {
+      this.on("occurrence", options.onOccurrence);
+    } else if (options.onObservation) {
+      // Legacy support
+      this.on("occurrence", options.onObservation);
     }
     if (options.onIdentification) {
       this.on("identification", options.onIdentification);
@@ -243,8 +251,8 @@ export class FirehoseSubscription extends EventEmitter {
       const [collection, rkey] = op.path.split("/");
 
       // Filter for our collections
-      if (collection === "net.inat.observation") {
-        this.handleObservationOp(commit, op, rkey);
+      if (collection === "net.inat.occurrence") {
+        this.handleOccurrenceOp(commit, op, rkey);
       } else if (collection === "net.inat.identification") {
         this.handleIdentificationOp(commit, op, rkey);
       }
@@ -254,14 +262,14 @@ export class FirehoseSubscription extends EventEmitter {
     this.cursor = commit.seq;
   }
 
-  private handleObservationOp(
+  private handleOccurrenceOp(
     commit: { repo: string; blocks?: Buffer; seq: number; time: string },
     op: { action: string; path: string; cid?: { toString(): string } },
     rkey: string,
   ): void {
-    const event: ObservationEvent = {
+    const event: OccurrenceEvent = {
       did: commit.repo,
-      uri: `at://${commit.repo}/net.inat.observation/${rkey}`,
+      uri: `at://${commit.repo}/net.inat.occurrence/${rkey}`,
       cid: op.cid?.toString() || "",
       action: op.action as "create" | "update" | "delete",
       record: this.extractRecord(commit.blocks, op.cid),
@@ -269,8 +277,8 @@ export class FirehoseSubscription extends EventEmitter {
       time: commit.time,
     };
 
-    console.log(`[Observation] ${event.action}: ${event.uri}`);
-    this.emit("observation", event);
+    console.log(`[Occurrence] ${event.action}: ${event.uri}`);
+    this.emit("occurrence", event);
   }
 
   private handleIdentificationOp(

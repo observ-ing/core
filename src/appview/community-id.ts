@@ -1,7 +1,7 @@
 /**
  * Community ID Calculation
  *
- * Implements logic to determine the consensus taxon for an observation
+ * Implements logic to determine the consensus taxon for an occurrence
  * based on multiple net.inat.identification records.
  *
  * The algorithm follows iNaturalist's approach:
@@ -13,7 +13,7 @@
 import { Database, IdentificationRow } from "../ingester/database.js";
 
 interface CommunityIdResult {
-  taxonName: string;
+  scientificName: string;
   taxonRank?: string;
   identificationCount: number;
   agreementCount: number;
@@ -22,7 +22,7 @@ interface CommunityIdResult {
 }
 
 interface TaxonCount {
-  taxonName: string;
+  scientificName: string;
   taxonRank?: string;
   count: number;
   agreementCount: number;
@@ -38,11 +38,11 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Calculate the community ID for an observation
+   * Calculate the community ID for an occurrence
    */
-  async calculate(observationUri: string): Promise<CommunityIdResult | null> {
+  async calculate(occurrenceUri: string): Promise<CommunityIdResult | null> {
     const identifications =
-      await this.db.getIdentificationsForObservation(observationUri);
+      await this.db.getIdentificationsForOccurrence(occurrenceUri);
 
     if (identifications.length === 0) {
       return null;
@@ -64,7 +64,7 @@ export class CommunityIdCalculator {
       confidence >= this.RESEARCH_GRADE_THRESHOLD;
 
     return {
-      taxonName: winner.taxonName,
+      scientificName: winner.scientificName,
       taxonRank: winner.taxonRank,
       identificationCount: identifications.length,
       agreementCount: winner.count,
@@ -74,13 +74,13 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Group identifications by taxon name
+   * Group identifications by scientific name
    */
   private groupByTaxon(identifications: IdentificationRow[]): TaxonCount[] {
     const counts = new Map<string, TaxonCount>();
 
     for (const id of identifications) {
-      const key = id.taxon_name.toLowerCase();
+      const key = id.scientific_name.toLowerCase();
       const existing = counts.get(key);
 
       if (existing) {
@@ -90,7 +90,7 @@ export class CommunityIdCalculator {
         }
       } else {
         counts.set(key, {
-          taxonName: id.taxon_name,
+          scientificName: id.scientific_name,
           taxonRank: id.taxon_rank || undefined,
           count: 1,
           agreementCount: id.is_agreement ? 1 : 0,
@@ -106,7 +106,7 @@ export class CommunityIdCalculator {
    */
   private findWinner(
     taxonCounts: TaxonCount[],
-    totalIds: number
+    totalIds: number,
   ): TaxonCount | null {
     if (taxonCounts.length === 0) {
       return null;
@@ -129,16 +129,16 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Calculate community ID for multiple observations (batch)
+   * Calculate community ID for multiple occurrences (batch)
    */
   async calculateBatch(
-    observationUris: string[]
+    occurrenceUris: string[],
   ): Promise<Map<string, CommunityIdResult | null>> {
     const results = new Map<string, CommunityIdResult | null>();
 
     // For efficiency, we could do this with a single SQL query
     // For now, calculate individually
-    for (const uri of observationUris) {
+    for (const uri of occurrenceUris) {
       const result = await this.calculate(uri);
       results.set(uri, result);
     }
@@ -147,7 +147,7 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Determine if an observation qualifies for "Research Grade" status
+   * Determine if an occurrence qualifies for "Research Grade" status
    *
    * Criteria:
    * - Has at least 2 identifications
@@ -155,18 +155,18 @@ export class CommunityIdCalculator {
    * - Has date and location data (checked elsewhere)
    * - Has at least one photo (checked elsewhere)
    */
-  async isResearchGrade(observationUri: string): Promise<boolean> {
-    const result = await this.calculate(observationUri);
+  async isResearchGrade(occurrenceUri: string): Promise<boolean> {
+    const result = await this.calculate(occurrenceUri);
     return result?.isResearchGrade || false;
   }
 
   /**
-   * Get quality grade for an observation
+   * Get quality grade for an occurrence
    */
   async getQualityGrade(
-    observationUri: string
+    occurrenceUri: string,
   ): Promise<"research" | "needs_id" | "casual"> {
-    const result = await this.calculate(observationUri);
+    const result = await this.calculate(occurrenceUri);
 
     if (!result) {
       return "casual"; // No identifications
@@ -189,11 +189,11 @@ export class CommunityIdCalculator {
    * - Species-specific expertise
    */
   async calculateWeighted(
-    _observationUri: string
+    _occurrenceUri: string,
   ): Promise<CommunityIdResult | null> {
     // Future implementation with weighted voting
     // For now, delegate to simple calculation
-    return this.calculate(_observationUri);
+    return this.calculate(_occurrenceUri);
   }
 }
 
@@ -233,19 +233,14 @@ export class TaxonomicHierarchy {
    * Check if a taxon name could be an ancestor of another
    * This is a simple heuristic - real implementation would use taxonomy DB
    */
-  static couldBeAncestor(
-    possibleAncestor: string,
-    taxonName: string
-  ): boolean {
+  static couldBeAncestor(possibleAncestor: string, taxonName: string): boolean {
     // Simple genus check for species names
     const ancestorParts = possibleAncestor.split(" ");
     const taxonParts = taxonName.split(" ");
 
     if (ancestorParts.length === 1 && taxonParts.length >= 2) {
       // possibleAncestor might be a genus
-      return (
-        taxonParts[0].toLowerCase() === ancestorParts[0].toLowerCase()
-      );
+      return taxonParts[0].toLowerCase() === ancestorParts[0].toLowerCase();
     }
 
     return false;

@@ -6,7 +6,7 @@
 import { BlobRef } from "@atproto/api";
 
 // ============================================
-// net.inat.observation types
+// net.inat.occurrence types (Darwin Core Occurrence class)
 // ============================================
 
 export interface Location {
@@ -18,6 +18,24 @@ export interface Location {
   coordinateUncertaintyInMeters?: number;
   /** Geodetic datum (defaults to WGS84), Darwin Core dwc:geodeticDatum */
   geodeticDatum?: string;
+  /** ISO 3166-1-alpha-2 country code, Darwin Core dwc:countryCode */
+  countryCode?: string;
+  /** State/Province name, Darwin Core dwc:stateProvince */
+  stateProvince?: string;
+  /** County name, Darwin Core dwc:county */
+  county?: string;
+  /** Municipality name, Darwin Core dwc:municipality */
+  municipality?: string;
+  /** Water body name, Darwin Core dwc:waterBody */
+  waterBody?: string;
+  /** Minimum elevation in meters, Darwin Core dwc:minimumElevationInMeters */
+  minimumElevationInMeters?: number;
+  /** Maximum elevation in meters, Darwin Core dwc:maximumElevationInMeters */
+  maximumElevationInMeters?: number;
+  /** Minimum depth in meters, Darwin Core dwc:minimumDepthInMeters */
+  minimumDepthInMeters?: number;
+  /** Maximum depth in meters, Darwin Core dwc:maximumDepthInMeters */
+  maximumDepthInMeters?: number;
 }
 
 export interface AspectRatio {
@@ -34,30 +52,78 @@ export interface ImageEmbed {
   aspectRatio?: AspectRatio;
 }
 
-export interface Observation {
+/** Darwin Core dwc:basisOfRecord values */
+export type BasisOfRecord =
+  | "HumanObservation"
+  | "MachineObservation"
+  | "MaterialSample"
+  | "PreservedSpecimen"
+  | "LivingSpecimen"
+  | "FossilSpecimen";
+
+/** Darwin Core dwc:occurrenceStatus values */
+export type OccurrenceStatus = "present" | "absent";
+
+/** Darwin Core dwc:sex values */
+export type Sex = "male" | "female" | "hermaphrodite" | "unknown";
+
+/** Darwin Core dwc:establishmentMeans values */
+export type EstablishmentMeans =
+  | "native"
+  | "nativeReintroduced"
+  | "introduced"
+  | "introducedAssistedColonisation"
+  | "vagrant"
+  | "uncertain";
+
+export interface Occurrence {
   /** Collection identifier */
-  $type: "net.inat.observation";
+  $type: "net.inat.occurrence";
+  /** The specific nature of the data record, Darwin Core dwc:basisOfRecord */
+  basisOfRecord: BasisOfRecord;
   /** Scientific name of the observed organism, Darwin Core dwc:scientificName */
-  scientificName: string;
-  /** Date-time of observation in ISO 8601, Darwin Core dwc:eventDate */
+  scientificName?: string;
+  /** Date-time of occurrence in ISO 8601, Darwin Core dwc:eventDate */
   eventDate: string;
-  /** Geographic location of the observation */
+  /** Geographic location of the occurrence */
   location: Location;
   /** Original textual description of the place, Darwin Core dwc:verbatimLocality */
   verbatimLocality?: string;
-  /** Array of image references */
-  blobs?: ImageEmbed[];
-  /** Additional notes about the observation */
-  notes?: string;
+  /** Habitat description, Darwin Core dwc:habitat */
+  habitat?: string;
+  /** Presence or absence, Darwin Core dwc:occurrenceStatus */
+  occurrenceStatus?: OccurrenceStatus;
+  /** Notes about the occurrence, Darwin Core dwc:occurrenceRemarks */
+  occurrenceRemarks?: string;
+  /** Number of individuals, Darwin Core dwc:individualCount */
+  individualCount?: number;
+  /** Sex of the organism, Darwin Core dwc:sex */
+  sex?: Sex;
+  /** Life stage of the organism, Darwin Core dwc:lifeStage */
+  lifeStage?: string;
+  /** Reproductive condition, Darwin Core dwc:reproductiveCondition */
+  reproductiveCondition?: string;
+  /** Observed behavior, Darwin Core dwc:behavior */
+  behavior?: string;
+  /** How the organism came to be in the location, Darwin Core dwc:establishmentMeans */
+  establishmentMeans?: EstablishmentMeans;
+  /** Array of image references, Darwin Core dwc:associatedMedia */
+  associatedMedia?: ImageEmbed[];
+  /** Person/group who recorded the occurrence, Darwin Core dwc:recordedBy */
+  recordedBy?: string;
   /** Timestamp when record was created */
   createdAt: string;
 }
 
-// Input type for creating observations (without $type, handled by API)
-export type ObservationInput = Omit<Observation, "$type">;
+// Input type for creating occurrences (without $type, handled by API)
+export type OccurrenceInput = Omit<Occurrence, "$type">;
+
+// Legacy alias for backwards compatibility
+export type Observation = Occurrence;
+export type ObservationInput = OccurrenceInput;
 
 // ============================================
-// net.inat.identification types
+// net.inat.identification types (Darwin Core Identification class)
 // ============================================
 
 export interface StrongRef {
@@ -67,36 +133,51 @@ export interface StrongRef {
   cid: string;
 }
 
+/** Darwin Core dwc:taxonRank values */
 export type TaxonRank =
   | "kingdom"
   | "phylum"
   | "class"
   | "order"
   | "family"
+  | "subfamily"
+  | "tribe"
   | "genus"
+  | "subgenus"
   | "species"
   | "subspecies"
-  | "variety";
+  | "variety"
+  | "form";
 
-export type ConfidenceLevel = "low" | "medium" | "high";
+/** Darwin Core dwc:identificationVerificationStatus values */
+export type IdentificationVerificationStatus =
+  | "verified"
+  | "unverified"
+  | "questionable";
 
 export interface Identification {
   /** Collection identifier */
   $type: "net.inat.identification";
-  /** Strong reference to the observation being identified */
+  /** Strong reference to the occurrence being identified */
   subject: StrongRef;
-  /** The scientific name being proposed */
-  taxonName: string;
-  /** The taxonomic rank of the identification */
+  /** The scientific name being proposed, Darwin Core dwc:scientificName */
+  scientificName: string;
+  /** The taxonomic rank, Darwin Core dwc:taxonRank */
   taxonRank?: TaxonRank;
-  /** Explanation for this identification */
-  comment?: string;
-  /** Whether this agrees with the current community ID */
+  /** Qualification phrase like 'cf.' or 'aff.', Darwin Core dwc:identificationQualifier */
+  identificationQualifier?: string;
+  /** URI to taxonomic authority (GBIF, iNaturalist), Darwin Core dwc:taxonID */
+  taxonID?: string;
+  /** Notes about the identification, Darwin Core dwc:identificationRemarks */
+  identificationRemarks?: string;
+  /** Verification status, Darwin Core dwc:identificationVerificationStatus */
+  identificationVerificationStatus?: IdentificationVerificationStatus;
+  /** Nomenclatural type designation, Darwin Core dwc:typeStatus */
+  typeStatus?: string;
+  /** Whether this agrees with the current leading ID (not a Darwin Core term) */
   isAgreement?: boolean;
-  /** Confidence level */
-  confidence?: ConfidenceLevel;
-  /** Timestamp when identification was created */
-  createdAt: string;
+  /** Date identification was made, Darwin Core dwc:dateIdentified */
+  dateIdentified: string;
 }
 
 // Input type for creating identifications (without $type)
@@ -106,10 +187,10 @@ export type IdentificationInput = Omit<Identification, "$type">;
 // Record types for API responses
 // ============================================
 
-export interface ObservationRecord {
+export interface OccurrenceRecord {
   uri: string;
   cid: string;
-  value: Observation;
+  value: Occurrence;
 }
 
 export interface IdentificationRecord {
@@ -117,6 +198,9 @@ export interface IdentificationRecord {
   cid: string;
   value: Identification;
 }
+
+// Legacy alias
+export type ObservationRecord = OccurrenceRecord;
 
 // ============================================
 // Validation helpers
@@ -137,27 +221,30 @@ export function isValidLocation(location: Location): boolean {
   );
 }
 
-export function validateObservation(obs: ObservationInput): string[] {
+export function validateOccurrence(occ: OccurrenceInput): string[] {
   const errors: string[] = [];
 
-  if (!obs.scientificName || obs.scientificName.trim().length === 0) {
-    errors.push("scientificName is required");
+  if (!occ.basisOfRecord) {
+    errors.push("basisOfRecord is required");
   }
 
-  if (!obs.eventDate) {
+  if (!occ.eventDate) {
     errors.push("eventDate is required");
   } else {
-    const date = new Date(obs.eventDate);
+    const date = new Date(occ.eventDate);
     if (isNaN(date.getTime())) {
       errors.push("eventDate must be a valid ISO 8601 date");
     }
   }
 
-  if (!obs.location) {
+  if (!occ.location) {
     errors.push("location is required");
-  } else if (!isValidLocation(obs.location)) {
+  } else if (!isValidLocation(occ.location)) {
     errors.push("location must have valid coordinates");
   }
 
   return errors;
 }
+
+// Legacy alias
+export const validateObservation = validateOccurrence;

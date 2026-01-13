@@ -21,10 +21,10 @@ A decentralized biodiversity observation platform built on the AT Protocol (atpr
 
 ### Lexicons (`lexicons/`)
 
-Darwin Core compliant schemas for biodiversity data:
+Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
 
-- `net.inat.observation` - Observation records with location, date, species, and photos
-- `net.inat.identification` - Community identifications for observations
+- `net.inat.occurrence` - Occurrence records following the [Darwin Core Occurrence class](https://dwc.tdwg.org/terms/#occurrence)
+- `net.inat.identification` - Taxonomic determinations following the [Darwin Core Identification class](https://dwc.tdwg.org/terms/#identification)
 
 ### Ingester (`src/ingester/`)
 
@@ -36,7 +36,7 @@ Darwin Core compliant schemas for biodiversity data:
 
 - **REST API** - Geospatial queries, taxonomy search, community ID calculation
 - **Taxonomy Resolver** - Integrates GBIF and iNaturalist APIs
-- **Community ID** - Consensus algorithm for species identification
+- **Community ID** - Consensus algorithm for species identification (2/3 majority)
 
 ### Auth (`src/auth/`)
 
@@ -45,8 +45,8 @@ Darwin Core compliant schemas for biodiversity data:
 
 ### Frontend (`src/frontend/`)
 
-- **Map** - MapLibre GL map with clustered observation markers
-- **Uploader** - Photo capture, EXIF extraction, observation submission
+- **Map** - MapLibre GL map with clustered occurrence markers
+- **Uploader** - Photo capture, EXIF extraction, occurrence submission
 - **Identification** - Agree/Suggest ID interface
 
 ## Getting Started
@@ -66,20 +66,23 @@ npm install
 ### Database Setup
 
 ```bash
+# Using Docker with PostGIS
+docker run --name biosky-postgres \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -p 5432:5432 \
+  -d postgis/postgis
+
 # Create database
-createdb biosky
+docker exec -it biosky-postgres createdb -U postgres biosky
 
-# Enable PostGIS
-psql biosky -c "CREATE EXTENSION postgis;"
-
-# Run migrations (handled automatically on first run)
+# Enable PostGIS (handled automatically by migrations)
 ```
 
 ### Configuration
 
 ```bash
 # Environment variables
-export DATABASE_URL="postgresql://localhost:5432/biosky"
+export DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/biosky"
 export RELAY_URL="wss://bsky.network"
 export PORT=3000
 ```
@@ -93,9 +96,6 @@ npm run ingester
 # Start the AppView API server
 npm run appview
 
-# Start the media proxy
-npm run media-proxy
-
 # Start the frontend dev server
 npm run frontend:dev
 ```
@@ -103,68 +103,115 @@ npm run frontend:dev
 ### Testing Record Publishing
 
 ```bash
-# Publish a test observation to a PDS
-PDS_URL=http://localhost:2583 \
-HANDLE=test.local \
-PASSWORD=password \
-npm run test:publish
+# Publish a test occurrence to a PDS
+PDS_URL=https://bsky.social \
+HANDLE=yourhandle.bsky.social \
+PASSWORD=your-app-password \
+npx tsx scripts/publish-occurrence.ts
 ```
 
-## Lexicon Schemas
+## Darwin Core Lexicon Schemas
 
-### net.inat.observation
+BioSky uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability.
+
+### net.inat.occurrence
+
+An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence).
 
 ```json
 {
+  "basisOfRecord": "HumanObservation",
   "scientificName": "Eschscholzia californica",
   "eventDate": "2024-01-15T10:30:00Z",
   "location": {
     "decimalLatitude": 37.7749,
     "decimalLongitude": -122.4194,
     "coordinateUncertaintyInMeters": 10,
-    "geodeticDatum": "WGS84"
+    "geodeticDatum": "WGS84",
+    "countryCode": "US",
+    "stateProvince": "California"
   },
   "verbatimLocality": "Golden Gate Park, San Francisco",
-  "blobs": [
+  "habitat": "Grassland along hiking trail",
+  "occurrenceStatus": "present",
+  "occurrenceRemarks": "Multiple individuals blooming along the trail",
+  "individualCount": 5,
+  "lifeStage": "flowering",
+  "associatedMedia": [
     {
-      "image": { "$type": "blob", ... },
+      "image": { "$type": "blob", "ref": "...", "mimeType": "image/jpeg" },
       "alt": "Orange California Poppy flower"
     }
   ],
-  "notes": "Multiple individuals blooming along the trail",
   "createdAt": "2024-01-15T10:35:00Z"
 }
 ```
 
+#### Darwin Core Fields
+
+| Field | Darwin Core Term | Description |
+|-------|------------------|-------------|
+| `basisOfRecord` | dwc:basisOfRecord | The nature of the record (HumanObservation, MachineObservation, etc.) |
+| `scientificName` | dwc:scientificName | Full scientific name with authorship if known |
+| `eventDate` | dwc:eventDate | Date-time of the occurrence (ISO 8601) |
+| `decimalLatitude` | dwc:decimalLatitude | Geographic latitude in decimal degrees |
+| `decimalLongitude` | dwc:decimalLongitude | Geographic longitude in decimal degrees |
+| `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
+| `verbatimLocality` | dwc:verbatimLocality | Original textual description of the place |
+| `habitat` | dwc:habitat | Habitat description |
+| `occurrenceStatus` | dwc:occurrenceStatus | Presence or absence (present/absent) |
+| `occurrenceRemarks` | dwc:occurrenceRemarks | Notes about the occurrence |
+| `individualCount` | dwc:individualCount | Number of individuals |
+| `sex` | dwc:sex | Sex of the organism |
+| `lifeStage` | dwc:lifeStage | Age class or life stage |
+| `behavior` | dwc:behavior | Observed behavior |
+| `establishmentMeans` | dwc:establishmentMeans | How organism came to be there (native/introduced) |
+
 ### net.inat.identification
+
+A taxonomic determination (dwc:Identification) for an occurrence.
 
 ```json
 {
   "subject": {
-    "uri": "at://did:plc:abc.../net.inat.observation/123",
+    "uri": "at://did:plc:abc.../net.inat.occurrence/123",
     "cid": "bafyrei..."
   },
-  "taxonName": "Eschscholzia californica",
+  "scientificName": "Eschscholzia californica",
   "taxonRank": "species",
-  "comment": "Distinctive orange petals and feathery leaves",
+  "identificationQualifier": "cf.",
+  "taxonID": "https://www.gbif.org/species/3084923",
+  "identificationRemarks": "Distinctive orange petals and feathery leaves",
+  "identificationVerificationStatus": "verified",
   "isAgreement": false,
-  "confidence": "high",
-  "createdAt": "2024-01-15T11:00:00Z"
+  "dateIdentified": "2024-01-15T11:00:00Z"
 }
 ```
 
+#### Darwin Core Fields
+
+| Field | Darwin Core Term | Description |
+|-------|------------------|-------------|
+| `scientificName` | dwc:scientificName | The scientific name being proposed |
+| `taxonRank` | dwc:taxonRank | Taxonomic rank (species, genus, family, etc.) |
+| `identificationQualifier` | dwc:identificationQualifier | Qualifier like "cf." or "aff." |
+| `taxonID` | dwc:taxonID | URI to taxonomic authority (GBIF, iNaturalist) |
+| `identificationRemarks` | dwc:identificationRemarks | Notes about the identification |
+| `identificationVerificationStatus` | dwc:identificationVerificationStatus | Verification status |
+| `dateIdentified` | dwc:dateIdentified | Date the identification was made |
+
 ## API Endpoints
 
-### Observations
+### Occurrences
 
-- `GET /api/observations/nearby?lat=37.77&lng=-122.41&radius=10000`
-- `GET /api/observations/bbox?minLat=...&minLng=...&maxLat=...&maxLng=...`
-- `GET /api/observations/geojson?minLat=...` (for map clustering)
-- `GET /api/observations/:uri`
+- `GET /api/occurrences/nearby?lat=37.77&lng=-122.41&radius=10000`
+- `GET /api/occurrences/bbox?minLat=...&minLng=...&maxLat=...&maxLng=...`
+- `GET /api/occurrences/geojson?minLat=...` (for map clustering)
+- `GET /api/occurrences/:uri`
 
 ### Identifications
 
-- `GET /api/identifications/:observationUri`
+- `GET /api/identifications/:occurrenceUri`
 
 ### Taxonomy
 
@@ -177,6 +224,25 @@ npm run test:publish
 - `GET /oauth/callback`
 - `POST /oauth/logout`
 - `GET /oauth/me`
+
+## Community Identification
+
+BioSky implements a community consensus algorithm similar to iNaturalist:
+
+- **Research Grade**: 2+ identifications with 2/3 majority agreeing on species
+- **Needs ID**: Has identifications but no consensus
+- **Casual**: No identifications yet
+
+The community ID is calculated in real-time and stored in a materialized view for performance.
+
+## Data Ownership
+
+Unlike centralized platforms, BioSky data is stored on users' Personal Data Servers (PDS):
+
+- **Your data, your server**: Observations are AT Protocol records you control
+- **Portable**: Move your data between PDS providers anytime
+- **Interoperable**: Data follows Darwin Core standards for scientific use
+- **Federated**: No single point of failure or control
 
 ## License
 
