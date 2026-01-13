@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BioSky - Decentralized Biodiversity</title>
+    <link
+      href="https://unpkg.com/maplibre-gl@4.1.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, sans-serif;
+        background: #0a0a0a;
+        color: #fafafa;
+      }
+
+      #app {
+        width: 100vw;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem 1rem;
+        background: #1a1a1a;
+        border-bottom: 1px solid #333;
+        z-index: 100;
+      }
+
+      .logo {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #22c55e;
+      }
+
+      .user-menu {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+
+      .btn {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        border: none;
+        cursor: pointer;
+        font-size: 0.875rem;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: #22c55e;
+        color: #0a0a0a;
+      }
+
+      .btn-primary:hover {
+        background: #16a34a;
+      }
+
+      .btn-secondary {
+        background: #333;
+        color: #fafafa;
+      }
+
+      .btn-secondary:hover {
+        background: #444;
+      }
+
+      #map-container {
+        flex: 1;
+        position: relative;
+      }
+
+      #map {
+        width: 100%;
+        height: 100%;
+      }
+
+      .controls {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        z-index: 10;
+      }
+
+      .control-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 0.5rem;
+        background: #1a1a1a;
+        border: 1px solid #333;
+        color: #fafafa;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+      }
+
+      .control-btn:hover {
+        background: #333;
+      }
+
+      /* Observation popup */
+      .maplibregl-popup-content {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 0.75rem;
+        padding: 0;
+        color: #fafafa;
+        min-width: 280px;
+      }
+
+      .maplibregl-popup-tip {
+        border-top-color: #1a1a1a;
+      }
+
+      .observation-popup {
+        padding: 1rem;
+      }
+
+      .observation-popup img {
+        width: 100%;
+        height: 160px;
+        object-fit: cover;
+        border-radius: 0.5rem;
+        margin-bottom: 0.75rem;
+      }
+
+      .observation-popup h3 {
+        font-size: 1rem;
+        font-style: italic;
+        color: #22c55e;
+        margin-bottom: 0.25rem;
+      }
+
+      .observation-popup .observer {
+        font-size: 0.875rem;
+        color: #999;
+        margin-bottom: 0.5rem;
+      }
+
+      .observation-popup .meta {
+        font-size: 0.75rem;
+        color: #666;
+      }
+
+      /* Upload modal */
+      .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      }
+
+      .modal {
+        background: #1a1a1a;
+        border: 1px solid #333;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 500px;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .modal h2 {
+        margin-bottom: 1rem;
+        font-size: 1.25rem;
+      }
+
+      .form-group {
+        margin-bottom: 1rem;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-size: 0.875rem;
+        color: #999;
+      }
+
+      .form-group input,
+      .form-group textarea {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid #333;
+        background: #0a0a0a;
+        color: #fafafa;
+        font-size: 1rem;
+      }
+
+      .form-group input:focus,
+      .form-group textarea:focus {
+        outline: none;
+        border-color: #22c55e;
+      }
+
+      .hidden {
+        display: none !important;
+      }
+
+      /* Cluster markers */
+      .cluster-marker {
+        background: #22c55e;
+        color: #0a0a0a;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.875rem;
+        border: 2px solid #0a0a0a;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div class="logo">BioSky</div>
+        <div class="user-menu">
+          <span id="user-handle"></span>
+          <button id="login-btn" class="btn btn-secondary">Log in</button>
+          <button id="logout-btn" class="btn btn-secondary hidden">
+            Log out
+          </button>
+        </div>
+      </header>
+
+      <div id="map-container">
+        <div id="map"></div>
+        <div class="controls">
+          <button id="locate-btn" class="control-btn" title="My location">
+            +
+          </button>
+          <button
+            id="upload-btn"
+            class="control-btn"
+            title="New observation"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      <!-- Upload Modal -->
+      <div id="upload-modal" class="modal-overlay hidden">
+        <div class="modal">
+          <h2>New Observation</h2>
+          <form id="observation-form">
+            <div class="form-group">
+              <label for="photo-input">Photo</label>
+              <input
+                type="file"
+                id="photo-input"
+                accept="image/*"
+                capture="environment"
+              />
+            </div>
+            <div class="form-group">
+              <label for="species-input">Species (scientific name)</label>
+              <input
+                type="text"
+                id="species-input"
+                placeholder="e.g. Eschscholzia californica"
+                autocomplete="off"
+              />
+              <div id="species-suggestions"></div>
+            </div>
+            <div class="form-group">
+              <label for="notes-input">Notes</label>
+              <textarea
+                id="notes-input"
+                rows="3"
+                placeholder="Describe what you observed..."
+              ></textarea>
+            </div>
+            <div class="form-group">
+              <label>Location</label>
+              <input type="text" id="location-display" readonly />
+              <input type="hidden" id="lat-input" />
+              <input type="hidden" id="lng-input" />
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end">
+              <button type="button" id="cancel-upload" class="btn btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Submit</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

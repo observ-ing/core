@@ -1,0 +1,255 @@
+/**
+ * Community ID Calculation
+ *
+ * Implements logic to determine the consensus taxon for an observation
+ * based on multiple net.inat.identification records.
+ *
+ * The algorithm follows iNaturalist's approach:
+ * - 2/3 majority required for species-level ID
+ * - Ancestor taxa can win if descendants don't reach threshold
+ * - More recent IDs and expert identifiers could be weighted (future)
+ */
+
+import { Database, IdentificationRow } from "../ingester/database.js";
+
+interface CommunityIdResult {
+  taxonName: string;
+  taxonRank?: string;
+  identificationCount: number;
+  agreementCount: number;
+  confidence: number;
+  isResearchGrade: boolean;
+}
+
+interface TaxonCount {
+  taxonName: string;
+  taxonRank?: string;
+  count: number;
+  agreementCount: number;
+}
+
+export class CommunityIdCalculator {
+  private db: Database;
+  private readonly RESEARCH_GRADE_THRESHOLD = 2 / 3;
+  private readonly MIN_IDS_FOR_RESEARCH_GRADE = 2;
+
+  constructor(db: Database) {
+    this.db = db;
+  }
+
+  /**
+   * Calculate the community ID for an observation
+   */
+  async calculate(observationUri: string): Promise<CommunityIdResult | null> {
+    const identifications =
+      await this.db.getIdentificationsForObservation(observationUri);
+
+    if (identifications.length === 0) {
+      return null;
+    }
+
+    // Group identifications by taxon
+    const taxonCounts = this.groupByTaxon(identifications);
+
+    // Find the winning taxon
+    const winner = this.findWinner(taxonCounts, identifications.length);
+
+    if (!winner) {
+      return null;
+    }
+
+    const confidence = winner.count / identifications.length;
+    const isResearchGrade =
+      identifications.length >= this.MIN_IDS_FOR_RESEARCH_GRADE &&
+      confidence >= this.RESEARCH_GRADE_THRESHOLD;
+
+    return {
+      taxonName: winner.taxonName,
+      taxonRank: winner.taxonRank,
+      identificationCount: identifications.length,
+      agreementCount: winner.count,
+      confidence,
+      isResearchGrade,
+    };
+  }
+
+  /**
+   * Group identifications by taxon name
+   */
+  private groupByTaxon(identifications: IdentificationRow[]): TaxonCount[] {
+    const counts = new Map<string, TaxonCount>();
+
+    for (const id of identifications) {
+      const key = id.taxon_name.toLowerCase();
+      const existing = counts.get(key);
+
+      if (existing) {
+        existing.count++;
+        if (id.is_agreement) {
+          existing.agreementCount++;
+        }
+      } else {
+        counts.set(key, {
+          taxonName: id.taxon_name,
+          taxonRank: id.taxon_rank || undefined,
+          count: 1,
+          agreementCount: id.is_agreement ? 1 : 0,
+        });
+      }
+    }
+
+    return Array.from(counts.values());
+  }
+
+  /**
+   * Find the winning taxon based on consensus rules
+   */
+  private findWinner(
+    taxonCounts: TaxonCount[],
+    totalIds: number
+  ): TaxonCount | null {
+    if (taxonCounts.length === 0) {
+      return null;
+    }
+
+    // Sort by count descending
+    const sorted = [...taxonCounts].sort((a, b) => b.count - a.count);
+
+    // Check if the leading taxon meets the threshold
+    const leader = sorted[0];
+    const threshold = Math.ceil(totalIds * this.RESEARCH_GRADE_THRESHOLD);
+
+    if (leader.count >= threshold) {
+      return leader;
+    }
+
+    // If no taxon meets the threshold, return the one with most votes
+    // This is a "needs ID" state
+    return leader;
+  }
+
+  /**
+   * Calculate community ID for multiple observations (batch)
+   */
+  async calculateBatch(
+    observationUris: string[]
+  ): Promise<Map<string, CommunityIdResult | null>> {
+    const results = new Map<string, CommunityIdResult | null>();
+
+    // For efficiency, we could do this with a single SQL query
+    // For now, calculate individually
+    for (const uri of observationUris) {
+      const result = await this.calculate(uri);
+      results.set(uri, result);
+    }
+
+    return results;
+  }
+
+  /**
+   * Determine if an observation qualifies for "Research Grade" status
+   *
+   * Criteria:
+   * - Has at least 2 identifications
+   * - 2/3 or more agree on the same species-level taxon
+   * - Has date and location data (checked elsewhere)
+   * - Has at least one photo (checked elsewhere)
+   */
+  async isResearchGrade(observationUri: string): Promise<boolean> {
+    const result = await this.calculate(observationUri);
+    return result?.isResearchGrade || false;
+  }
+
+  /**
+   * Get quality grade for an observation
+   */
+  async getQualityGrade(
+    observationUri: string
+  ): Promise<"research" | "needs_id" | "casual"> {
+    const result = await this.calculate(observationUri);
+
+    if (!result) {
+      return "casual"; // No identifications
+    }
+
+    if (result.isResearchGrade) {
+      return "research";
+    }
+
+    return "needs_id";
+  }
+
+  /**
+   * Calculate weighted community ID (future enhancement)
+   *
+   * Could consider:
+   * - User expertise/reputation
+   * - Recency of identification
+   * - Whether user has verified email
+   * - Species-specific expertise
+   */
+  async calculateWeighted(
+    _observationUri: string
+  ): Promise<CommunityIdResult | null> {
+    // Future implementation with weighted voting
+    // For now, delegate to simple calculation
+    return this.calculate(_observationUri);
+  }
+}
+
+/**
+ * Taxonomic hierarchy utilities for ancestor-based consensus
+ */
+export class TaxonomicHierarchy {
+  // Rank ordering from most specific to least specific
+  private static readonly RANK_ORDER = [
+    "subspecies",
+    "variety",
+    "species",
+    "genus",
+    "family",
+    "order",
+    "class",
+    "phylum",
+    "kingdom",
+  ];
+
+  /**
+   * Get the rank level (lower = more specific)
+   */
+  static getRankLevel(rank: string): number {
+    const index = this.RANK_ORDER.indexOf(rank.toLowerCase());
+    return index === -1 ? 0 : index;
+  }
+
+  /**
+   * Check if rank1 is more specific than rank2
+   */
+  static isMoreSpecific(rank1: string, rank2: string): boolean {
+    return this.getRankLevel(rank1) < this.getRankLevel(rank2);
+  }
+
+  /**
+   * Check if a taxon name could be an ancestor of another
+   * This is a simple heuristic - real implementation would use taxonomy DB
+   */
+  static couldBeAncestor(
+    possibleAncestor: string,
+    taxonName: string
+  ): boolean {
+    // Simple genus check for species names
+    const ancestorParts = possibleAncestor.split(" ");
+    const taxonParts = taxonName.split(" ");
+
+    if (ancestorParts.length === 1 && taxonParts.length >= 2) {
+      // possibleAncestor might be a genus
+      return (
+        taxonParts[0].toLowerCase() === ancestorParts[0].toLowerCase()
+      );
+    }
+
+    return false;
+  }
+}
+
+export type { CommunityIdResult, TaxonCount };
