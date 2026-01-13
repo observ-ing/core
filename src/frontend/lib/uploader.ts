@@ -1,23 +1,24 @@
 /**
- * Observation Uploader
+ * Occurrence Uploader
  *
- * Handles the complete flow for uploading observations:
+ * Handles the complete flow for uploading occurrences:
  * 1. Capture/select photo
  * 2. Extract EXIF data (date/location)
  * 3. Upload blob to PDS
- * 4. Write net.inat.observation record to the user's repo
+ * 4. Write org.rwell.test.occurrence record to the user's repo
  */
 
 import { AtpAgent, BlobRef } from "@atproto/api";
 
-const OBSERVATION_COLLECTION = "net.inat.observation";
+const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
 
 interface UploadConfig {
   pdsUrl: string;
 }
 
-interface ObservationData {
-  scientificName: string;
+interface OccurrenceData {
+  basisOfRecord?: string;
+  scientificName?: string;
   eventDate: string;
   location: {
     decimalLatitude: number;
@@ -26,7 +27,8 @@ interface ObservationData {
     geodeticDatum?: string;
   };
   verbatimLocality?: string;
-  notes?: string;
+  habitat?: string;
+  occurrenceRemarks?: string;
   images: File[];
 }
 
@@ -41,7 +43,7 @@ interface ExifData {
   longitude?: number;
 }
 
-export class ObservationUploader {
+export class OccurrenceUploader {
   private agent: AtpAgent;
   private config: UploadConfig;
 
@@ -53,18 +55,19 @@ export class ObservationUploader {
   }
 
   /**
-   * Upload a complete observation
+   * Upload a complete occurrence
    */
-  async upload(data: ObservationData): Promise<UploadResult> {
+  async upload(data: OccurrenceData): Promise<UploadResult> {
     // Validate data
-    this.validateObservation(data);
+    this.validateOccurrence(data);
 
     // Upload images as blobs
     const blobRefs = await this.uploadImages(data.images);
 
-    // Create the observation record
+    // Create the occurrence record
     const record = {
-      $type: OBSERVATION_COLLECTION,
+      $type: OCCURRENCE_COLLECTION,
+      basisOfRecord: data.basisOfRecord || "HumanObservation",
       scientificName: data.scientificName,
       eventDate: data.eventDate,
       location: {
@@ -75,10 +78,11 @@ export class ObservationUploader {
         geodeticDatum: data.location.geodeticDatum || "WGS84",
       },
       verbatimLocality: data.verbatimLocality,
-      notes: data.notes,
-      blobs: blobRefs.map((ref, i) => ({
+      habitat: data.habitat,
+      occurrenceRemarks: data.occurrenceRemarks,
+      associatedMedia: blobRefs.map((ref, i) => ({
         image: ref,
-        alt: `Photo ${i + 1} of ${data.scientificName}`,
+        alt: `Photo ${i + 1}${data.scientificName ? ` of ${data.scientificName}` : ""}`,
       })),
       createdAt: new Date().toISOString(),
     };
@@ -86,7 +90,7 @@ export class ObservationUploader {
     // Write to repo
     const response = await this.agent.com.atproto.repo.createRecord({
       repo: this.agent.session!.did,
-      collection: OBSERVATION_COLLECTION,
+      collection: OCCURRENCE_COLLECTION,
       record,
     });
 
@@ -117,13 +121,9 @@ export class ObservationUploader {
   }
 
   /**
-   * Validate observation data before upload
+   * Validate occurrence data before upload
    */
-  private validateObservation(data: ObservationData): void {
-    if (!data.scientificName || data.scientificName.trim().length === 0) {
-      throw new Error("Scientific name is required");
-    }
-
+  private validateOccurrence(data: OccurrenceData): void {
     if (!data.eventDate) {
       throw new Error("Event date is required");
     }
@@ -197,11 +197,11 @@ export class ObservationUploader {
               dataView.getUint8(exifOffset),
               dataView.getUint8(exifOffset + 1),
               dataView.getUint8(exifOffset + 2),
-              dataView.getUint8(exifOffset + 3)
+              dataView.getUint8(exifOffset + 3),
             ) +
             String.fromCharCode(
               dataView.getUint8(exifOffset + 4),
-              dataView.getUint8(exifOffset + 5)
+              dataView.getUint8(exifOffset + 5),
             );
 
           if (exifHeader === "Exif\0\0") {
@@ -233,7 +233,7 @@ export class ObservationUploader {
   async compressImage(
     file: File,
     maxWidth = 2048,
-    quality = 0.85
+    quality = 0.85,
   ): Promise<File> {
     return new Promise((resolve, reject) => {
       const img = new Image();
@@ -262,7 +262,7 @@ export class ObservationUploader {
             }
           },
           "image/jpeg",
-          quality
+          quality,
         );
       };
 
@@ -272,4 +272,4 @@ export class ObservationUploader {
   }
 }
 
-export type { ObservationData, UploadResult, ExifData };
+export type { OccurrenceData, UploadResult, ExifData };

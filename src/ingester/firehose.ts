@@ -2,7 +2,7 @@
  * Firehose Subscription Service
  *
  * Connects to an AT Protocol relay (e.g., bsky.network) and filters
- * for net.inat.* collection records.
+ * for org.rwell.test.* collection records.
  */
 
 import WebSocket from "ws";
@@ -251,9 +251,9 @@ export class FirehoseSubscription extends EventEmitter {
       const [collection, rkey] = op.path.split("/");
 
       // Filter for our collections
-      if (collection === "net.inat.occurrence") {
+      if (collection === "org.rwell.test.occurrence") {
         this.handleOccurrenceOp(commit, op, rkey);
-      } else if (collection === "net.inat.identification") {
+      } else if (collection === "org.rwell.test.identification") {
         this.handleIdentificationOp(commit, op, rkey);
       }
     }
@@ -269,7 +269,7 @@ export class FirehoseSubscription extends EventEmitter {
   ): void {
     const event: OccurrenceEvent = {
       did: commit.repo,
-      uri: `at://${commit.repo}/net.inat.occurrence/${rkey}`,
+      uri: `at://${commit.repo}/org.rwell.test.occurrence/${rkey}`,
       cid: op.cid?.toString() || "",
       action: op.action as "create" | "update" | "delete",
       record: this.extractRecord(commit.blocks, op.cid),
@@ -288,7 +288,7 @@ export class FirehoseSubscription extends EventEmitter {
   ): void {
     const event: IdentificationEvent = {
       did: commit.repo,
-      uri: `at://${commit.repo}/net.inat.identification/${rkey}`,
+      uri: `at://${commit.repo}/org.rwell.test.identification/${rkey}`,
       cid: op.cid?.toString() || "",
       action: op.action as "create" | "update" | "delete",
       record: this.extractRecord(commit.blocks, op.cid),

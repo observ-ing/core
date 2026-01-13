@@ -2,7 +2,7 @@
  * Community ID Calculation
  *
  * Implements logic to determine the consensus taxon for an occurrence
- * based on multiple net.inat.identification records.
+ * based on multiple org.rwell.test.identification records.
  *
  * The algorithm follows iNaturalist's approach:
  * - 2/3 majority required for species-level ID

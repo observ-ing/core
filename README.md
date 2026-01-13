@@ -23,8 +23,8 @@ A decentralized biodiversity observation platform built on the AT Protocol.
 
 Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
 
-- `net.inat.occurrence` - Occurrence records following the [Darwin Core Occurrence class](https://dwc.tdwg.org/terms/#occurrence)
-- `net.inat.identification` - Taxonomic determinations following the [Darwin Core Identification class](https://dwc.tdwg.org/terms/#identification)
+- `org.rwell.test.occurrence` - Occurrence records following the [Darwin Core Occurrence class](https://dwc.tdwg.org/terms/#occurrence)
+- `org.rwell.test.identification` - Taxonomic determinations following the [Darwin Core Identification class](https://dwc.tdwg.org/terms/#identification)
 
 ### Ingester (`src/ingester/`)
 
@@ -114,7 +114,7 @@ npx tsx scripts/publish-occurrence.ts
 
 BioSky uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability.
 
-### net.inat.occurrence
+### org.rwell.test.occurrence
 
 An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence).
 
@@ -167,14 +167,14 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `behavior` | dwc:behavior | Observed behavior |
 | `establishmentMeans` | dwc:establishmentMeans | How organism came to be there (native/introduced) |
 
-### net.inat.identification
+### org.rwell.test.identification
 
 A taxonomic determination (dwc:Identification) for an occurrence.
 
 ```json
 {
   "subject": {
-    "uri": "at://did:plc:abc.../net.inat.occurrence/123",
+    "uri": "at://did:plc:abc.../org.rwell.test.occurrence/123",
     "cid": "bafyrei..."
   },
   "scientificName": "Eschscholzia californica",

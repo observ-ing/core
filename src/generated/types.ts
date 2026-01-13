@@ -1,12 +1,12 @@
 /**
- * Generated types from net.inat.* Lexicons
+ * Generated types from org.rwell.test.* Lexicons
  * These types follow Darwin Core standards for biodiversity data
  */
 
 import { BlobRef } from "@atproto/api";
 
 // ============================================
-// net.inat.occurrence types (Darwin Core Occurrence class)
+// org.rwell.test.occurrence types (Darwin Core Occurrence class)
 // ============================================
 
 export interface Location {
@@ -78,7 +78,7 @@ export type EstablishmentMeans =
 
 export interface Occurrence {
   /** Collection identifier */
-  $type: "net.inat.occurrence";
+  $type: "org.rwell.test.occurrence";
   /** The specific nature of the data record, Darwin Core dwc:basisOfRecord */
   basisOfRecord: BasisOfRecord;
   /** Scientific name of the observed organism, Darwin Core dwc:scientificName */
@@ -123,7 +123,7 @@ export type Observation = Occurrence;
 export type ObservationInput = OccurrenceInput;
 
 // ============================================
-// net.inat.identification types (Darwin Core Identification class)
+// org.rwell.test.identification types (Darwin Core Identification class)
 // ============================================
 
 export interface StrongRef {
@@ -157,7 +157,7 @@ export type IdentificationVerificationStatus =
 
 export interface Identification {
   /** Collection identifier */
-  $type: "net.inat.identification";
+  $type: "org.rwell.test.identification";
   /** Strong reference to the occurrence being identified */
   subject: StrongRef;
   /** The scientific name being proposed, Darwin Core dwc:scientificName */
