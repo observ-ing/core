@@ -8,7 +8,7 @@
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
-    "generate-types": "lex gen-api ./lexicons --outdir ./src/generated",
+    "generate-types": "lex gen-api ./src/generated ./lexicons",
     "test:publish": "tsx scripts/publish-observation.ts",
     "ingester": "tsx src/ingester/index.ts",
     "appview": "tsx src/appview/api.ts",
