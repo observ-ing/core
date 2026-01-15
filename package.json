@@ -14,7 +14,7 @@
     "appview": "tsx src/appview/api.ts",
     "media-proxy": "tsx src/ingester/media-proxy.ts",
     "frontend:dev": "vite src/frontend",
-    "frontend:build": "vite build src/frontend"
+    "frontend:build": "vite build src/frontend --config vite.config.ts"
   },
   "dependencies": {
     "@atproto/api": "^0.13.0",
@@ -47,6 +47,6 @@
     "vite": "^5.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.19.0"
   }
 }
