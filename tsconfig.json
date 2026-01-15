@@ -10,14 +10,12 @@
     "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
     "noEmit": false,
-    "allowSyntheticDefaultImports": true,
     "baseUrl": ".",
     "paths": {
       "@/*": [
