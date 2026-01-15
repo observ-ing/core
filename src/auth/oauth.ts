@@ -10,6 +10,7 @@ import {
   type NodeOAuthClientOptions,
 } from "@atproto/oauth-client-node";
 import { JoseKey } from "@atproto/jwk-jose";
+import { AtpAgent } from "@atproto/api";
 import express from "express";
 import { randomBytes } from "crypto";
 
@@ -236,9 +237,19 @@ export class OAuthService {
 
     const { session } = await this.client.callback(new URLSearchParams(params));
 
+    // Resolve handle from DID using the public AT Protocol API
+    let handle = "";
+    try {
+      const agent = new AtpAgent({ service: "https://public.api.bsky.app" });
+      const profile = await agent.getProfile({ actor: session.did });
+      handle = profile.data.handle;
+    } catch (error) {
+      console.error("Failed to resolve handle:", error);
+    }
+
     const sessionData: SessionData = {
       did: session.did,
-      handle: (session as any).handle || "",
+      handle,
       accessToken: "",
       expiresAt: Date.now() + 3600000,
     };
