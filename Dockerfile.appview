@@ -6,13 +6,11 @@ COPY package*.json ./
 COPY packages/biosky-shared/package.json ./packages/biosky-shared/
 COPY packages/biosky-appview/package.json ./packages/biosky-appview/
 COPY packages/biosky-frontend/package.json ./packages/biosky-frontend/
-COPY packages/biosky-ingester/package.json ./packages/biosky-ingester/
-COPY packages/biosky-media-proxy/package.json ./packages/biosky-media-proxy/
 
 RUN npm ci
 
 COPY . .
-RUN npm run build
+RUN npm run build -w biosky-shared && npm run build -w biosky-appview -w biosky-frontend
 
 FROM node:22-alpine
 
@@ -21,9 +19,6 @@ WORKDIR /app
 COPY package*.json ./
 COPY packages/biosky-shared/package.json ./packages/biosky-shared/
 COPY packages/biosky-appview/package.json ./packages/biosky-appview/
-COPY packages/biosky-frontend/package.json ./packages/biosky-frontend/
-COPY packages/biosky-ingester/package.json ./packages/biosky-ingester/
-COPY packages/biosky-media-proxy/package.json ./packages/biosky-media-proxy/
 
 RUN npm ci --omit=dev
 

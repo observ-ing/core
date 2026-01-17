@@ -1,26 +1,86 @@
 steps:
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/biosky-web', '.']
+  # Build all images in parallel
+  - id: 'build-appview'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.appview', '-t', 'gcr.io/$PROJECT_ID/biosky-appview', '.']
+    waitFor: ['-']
 
-  - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/biosky-web']
+  - id: 'build-ingester'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.ingester', '-t', 'gcr.io/$PROJECT_ID/biosky-ingester', '.']
+    waitFor: ['-']
 
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - id: 'build-media-proxy'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'Dockerfile.media-proxy', '-t', 'gcr.io/$PROJECT_ID/biosky-media-proxy', '.']
+    waitFor: ['-']
+
+  # Push all images in parallel
+  - id: 'push-appview'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/biosky-appview']
+    waitFor: ['build-appview']
+
+  - id: 'push-ingester'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/biosky-ingester']
+    waitFor: ['build-ingester']
+
+  - id: 'push-media-proxy'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/biosky-media-proxy']
+    waitFor: ['build-media-proxy']
+
+  # Deploy all services in parallel
+  - id: 'deploy-appview'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
       - 'run'
       - 'deploy'
-      - 'biosky-web'
-      - '--image=gcr.io/$PROJECT_ID/biosky-web'
+      - 'biosky-appview'
+      - '--image=gcr.io/$PROJECT_ID/biosky-appview'
       - '--region=$_REGION'
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances=$PROJECT_ID:$_REGION:biosky-db'
       - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,PUBLIC_URL=$_PUBLIC_URL'
       - '--set-secrets=DB_PASSWORD=biosky-db-password:latest'
+    waitFor: ['push-appview']
+
+  - id: 'deploy-ingester'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'biosky-ingester'
+      - '--image=gcr.io/$PROJECT_ID/biosky-ingester'
+      - '--region=$_REGION'
+      - '--no-allow-unauthenticated'
+      - '--add-cloudsql-instances=$PROJECT_ID:$_REGION:biosky-db'
+      - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,RELAY_URL=wss://bsky.network'
+      - '--set-secrets=DB_PASSWORD=biosky-db-password:latest'
+      - '--min-instances=1'
+      - '--max-instances=1'
+    waitFor: ['push-ingester']
+
+  - id: 'deploy-media-proxy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'biosky-media-proxy'
+      - '--image=gcr.io/$PROJECT_ID/biosky-media-proxy'
+      - '--region=$_REGION'
+      - '--allow-unauthenticated'
+    waitFor: ['push-media-proxy']
 
 images:
-  - 'gcr.io/$PROJECT_ID/biosky-web'
+  - 'gcr.io/$PROJECT_ID/biosky-appview'
+  - 'gcr.io/$PROJECT_ID/biosky-ingester'
+  - 'gcr.io/$PROJECT_ID/biosky-media-proxy'
 
 substitutions:
   _REGION: us-central1
-  _PUBLIC_URL: https://biosky-web-378013734384.us-central1.run.app
+  _PUBLIC_URL: https://biosky-appview-378013734384.us-central1.run.app

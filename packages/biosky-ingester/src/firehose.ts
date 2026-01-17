@@ -313,6 +313,10 @@ export class FirehoseSubscription extends EventEmitter {
   getCursor(): number | undefined {
     return this.cursor;
   }
+
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+  }
 }
 
 export function createFirehoseSubscription(
