@@ -161,12 +161,10 @@ export class Database {
       CREATE INDEX IF NOT EXISTS oauth_state_expires_idx ON oauth_state(expires_at);
 
       -- OAuth sessions (for logged-in users)
+      -- Stores AT Protocol OAuth client session data as JSON
       CREATE TABLE IF NOT EXISTS oauth_sessions (
-        did TEXT PRIMARY KEY,
-        handle TEXT,
-        access_token TEXT,
-        refresh_token TEXT,
-        expires_at TIMESTAMPTZ NOT NULL,
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
@@ -488,56 +486,26 @@ export class Database {
     await this.pool.query("DELETE FROM oauth_state WHERE expires_at < NOW()");
   }
 
-  // OAuth session methods
-  async getOAuthSession(did: string): Promise<{
-    did: string;
-    handle: string;
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt: number;
-  } | undefined> {
+  // OAuth session methods (stores AT Protocol client session as JSON)
+  async getOAuthSession(key: string): Promise<string | undefined> {
     const result = await this.pool.query(
-      "SELECT did, handle, access_token, refresh_token, expires_at FROM oauth_sessions WHERE did = $1",
-      [did],
+      "SELECT value FROM oauth_sessions WHERE key = $1",
+      [key],
     );
-    if (result.rows.length === 0) return undefined;
-    const row = result.rows[0];
-    return {
-      did: row.did,
-      handle: row.handle,
-      accessToken: row.access_token,
-      refreshToken: row.refresh_token || undefined,
-      expiresAt: new Date(row.expires_at).getTime(),
-    };
+    return result.rows[0]?.value;
   }
 
-  async setOAuthSession(session: {
-    did: string;
-    handle: string;
-    accessToken: string;
-    refreshToken?: string;
-    expiresAt: number;
-  }): Promise<void> {
+  async setOAuthSession(key: string, value: string): Promise<void> {
     await this.pool.query(
-      `INSERT INTO oauth_sessions (did, handle, access_token, refresh_token, expires_at)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (did) DO UPDATE SET
-         handle = $2,
-         access_token = $3,
-         refresh_token = $4,
-         expires_at = $5`,
-      [
-        session.did,
-        session.handle,
-        session.accessToken,
-        session.refreshToken || null,
-        new Date(session.expiresAt),
-      ],
+      `INSERT INTO oauth_sessions (key, value)
+       VALUES ($1, $2)
+       ON CONFLICT (key) DO UPDATE SET value = $2`,
+      [key, value],
     );
   }
 
-  async deleteOAuthSession(did: string): Promise<void> {
-    await this.pool.query("DELETE FROM oauth_sessions WHERE did = $1", [did]);
+  async deleteOAuthSession(key: string): Promise<void> {
+    await this.pool.query("DELETE FROM oauth_sessions WHERE key = $1", [key]);
   }
 }
 

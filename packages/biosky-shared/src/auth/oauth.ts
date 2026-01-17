@@ -85,9 +85,9 @@ interface DatabaseLike {
   getOAuthState(key: string): Promise<string | undefined>;
   setOAuthState(key: string, value: string, ttlMs?: number): Promise<void>;
   deleteOAuthState(key: string): Promise<void>;
-  getOAuthSession(did: string): Promise<SessionData | undefined>;
-  setOAuthSession(session: SessionData): Promise<void>;
-  deleteOAuthSession(did: string): Promise<void>;
+  getOAuthSession(key: string): Promise<string | undefined>;
+  setOAuthSession(key: string, value: string): Promise<void>;
+  deleteOAuthSession(key: string): Promise<void>;
 }
 
 class DatabaseStateStore implements StateStore {
@@ -106,15 +106,17 @@ class DatabaseStateStore implements StateStore {
   }
 }
 
+// Stores AT Protocol session data as JSON string
 class DatabaseSessionStore implements SessionStore {
   constructor(private db: DatabaseLike) {}
 
   async get(key: string): Promise<SessionData | undefined> {
-    return this.db.getOAuthSession(key);
+    const value = await this.db.getOAuthSession(key);
+    return value ? JSON.parse(value) : undefined;
   }
 
   async set(key: string, value: SessionData): Promise<void> {
-    await this.db.setOAuthSession(value);
+    await this.db.setOAuthSession(key, JSON.stringify(value));
   }
 
   async del(key: string): Promise<void> {
