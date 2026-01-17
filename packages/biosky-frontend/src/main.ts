@@ -318,7 +318,7 @@ class BioSkyApp {
     });
 
     try {
-      const response = await fetch(`${API_BASE}/api/observations/geojson?${params}`);
+      const response = await fetch(`${API_BASE}/api/occurrences/geojson?${params}`);
       if (!response.ok) return;
 
       const geojson = await response.json();
@@ -332,7 +332,7 @@ class BioSkyApp {
   private async fetchObservation(uri: string): Promise<Observation | null> {
     try {
       const response = await fetch(
-        `${API_BASE}/api/observations/${encodeURIComponent(uri)}`
+        `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`
       );
       if (!response.ok) return null;
       const data = await response.json();
