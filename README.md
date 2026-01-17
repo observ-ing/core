@@ -9,12 +9,42 @@ A decentralized biodiversity observation platform built on the AT Protocol.
 │   Frontend      │────▶│    AppView      │────▶│   PostgreSQL    │
 │  (MapLibre GL)  │     │   (REST API)    │     │   + PostGIS     │
 └─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                         ▲
-                                                         │
-┌─────────────────┐     ┌─────────────────┐              │
-│   User's PDS    │────▶│    Ingester     │──────────────┘
+                              │                         ▲
+                              ▼                         │
+                        ┌─────────────────┐             │
+                        │  Media Proxy    │             │
+                        │ (Image Cache)   │             │
+                        └─────────────────┘             │
+                                                        │
+┌─────────────────┐     ┌─────────────────┐             │
+│   User's PDS    │────▶│    Ingester     │─────────────┘
 │ (bsky.social)   │     │  (Firehose)     │
 └─────────────────┘     └─────────────────┘
+```
+
+## Project Structure
+
+This is an npm workspaces monorepo with 5 packages:
+
+```
+packages/
+├── biosky-shared/      # Shared types, lexicons, database, auth utilities
+├── biosky-appview/     # REST API server (Express)
+├── biosky-ingester/    # AT Protocol firehose consumer
+├── biosky-media-proxy/ # Image caching proxy
+└── biosky-frontend/    # Web UI (Vite + MapLibre GL)
+```
+
+### Package Dependencies
+
+```
+biosky-shared (no internal deps)
+    ↑
+    ├── biosky-appview
+    ├── biosky-ingester
+    └── biosky-frontend
+
+biosky-media-proxy (standalone, no internal deps)
 ```
 
 ## Components
@@ -26,24 +56,30 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 - `org.rwell.test.occurrence` - Occurrence records following the [Darwin Core Occurrence class](https://dwc.tdwg.org/terms/#occurrence)
 - `org.rwell.test.identification` - Taxonomic determinations following the [Darwin Core Identification class](https://dwc.tdwg.org/terms/#identification)
 
-### Ingester (`src/ingester/`)
+### Shared (`packages/biosky-shared/`)
+
+- **Database** - Prisma client with PostgreSQL + PostGIS for spatial queries
+- **Auth** - AT Protocol OAuth 2.0 client, handle/DID resolution
+- **Generated Types** - TypeScript types generated from lexicon schemas
+
+### Ingester (`packages/biosky-ingester/`)
 
 - **Firehose** - WebSocket client that subscribes to the AT Protocol relay
-- **Database** - PostgreSQL with PostGIS for spatial queries
-- **Media Proxy** - Caches and proxies image blobs from PDS servers
+- **Event Processing** - Handles occurrence and identification records from the network
 
-### AppView (`src/appview/`)
+### AppView (`packages/biosky-appview/`)
 
 - **REST API** - Geospatial queries, taxonomy search, community ID calculation
 - **Taxonomy Resolver** - Integrates GBIF and iNaturalist APIs
 - **Community ID** - Consensus algorithm for species identification (2/3 majority)
+- **Static Files** - Serves the built frontend
 
-### Auth (`src/auth/`)
+### Media Proxy (`packages/biosky-media-proxy/`)
 
-- **OAuth** - AT Protocol OAuth 2.0 client
-- **Identity** - Handle/DID resolution and profile fetching
+- **Image Cache** - Caches and proxies image blobs from PDS servers
+- **Stateless** - No database dependency, just filesystem cache
 
-### Frontend (`src/frontend/`)
+### Frontend (`packages/biosky-frontend/`)
 
 - **Map** - MapLibre GL map with clustered occurrence markers
 - **Uploader** - Photo capture, EXIF extraction, occurrence submission
@@ -53,7 +89,7 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 20+
 - PostgreSQL with PostGIS extension
 - A local PDS for testing (optional)
 
@@ -87,6 +123,16 @@ export RELAY_URL="wss://bsky.network"
 export PORT=3000
 ```
 
+### Building
+
+```bash
+# Build all packages (shared must build first)
+npm run build
+
+# Generate lexicon types (if lexicons change)
+npm run generate-types
+```
+
 ### Running
 
 ```bash
@@ -96,6 +142,9 @@ npm run ingester
 # Start the AppView API server
 npm run appview
 
+# Start the media proxy
+npm run media-proxy
+
 # Start the frontend dev server
 npm run frontend:dev
 ```
@@ -103,12 +152,26 @@ npm run frontend:dev
 ### Testing Record Publishing
 
 ```bash
-# Publish a test occurrence to a PDS
-PDS_URL=https://bsky.social \
-HANDLE=yourhandle.bsky.social \
-PASSWORD=your-app-password \
-npx tsx scripts/publish-occurrence.ts
+# Publish a test observation to a PDS
+npm run test:publish
 ```
+
+## Deployment
+
+Three Cloud Run services deployed via `cloudbuild.yaml`:
+
+| Service | Dockerfile | Public | Cloud SQL | Notes |
+|---------|------------|--------|-----------|-------|
+| biosky-appview | Dockerfile.appview | Yes | Yes | Main API + serves frontend |
+| biosky-ingester | Dockerfile.ingester | No | Yes | min-instances=1 (always running) |
+| biosky-media-proxy | Dockerfile.media-proxy | Yes | No | Stateless image cache |
+
+Deploy manually:
+```bash
+gcloud builds submit --config cloudbuild.yaml
+```
+
+Automatic deployment runs on push to `main` after CI checks pass (see `.github/workflows/deploy.yml`).
 
 ## Darwin Core Lexicon Schemas
 
