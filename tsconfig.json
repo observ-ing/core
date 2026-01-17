@@ -19,6 +19,6 @@
     { "path": "./packages/biosky-appview" },
     { "path": "./packages/biosky-media-proxy" }
   ],
-  "include": ["scripts/**/*"],
+  "include": ["scripts/**/*", "prisma.config.ts"],
   "exclude": ["node_modules", "dist", "packages"]
 }

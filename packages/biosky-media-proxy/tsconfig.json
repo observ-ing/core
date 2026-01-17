@@ -13,7 +13,8 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "noEmit": false
+    "noEmit": false,
+    "composite": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

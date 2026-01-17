@@ -14,7 +14,8 @@
     "declarationMap": true,
     "sourceMap": true,
     "noEmit": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "composite": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
