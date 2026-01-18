@@ -408,6 +408,36 @@ export class Database {
     return result.rows;
   }
 
+  async getOccurrencesFeed(
+    limit = 20,
+    cursor?: string,
+  ): Promise<OccurrenceRow[]> {
+    const params: (number | string)[] = [limit];
+    let cursorCondition = "";
+
+    if (cursor) {
+      cursorCondition = "WHERE created_at < $2";
+      params.push(cursor);
+    }
+
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did, basis_of_record, scientific_name, event_date,
+        ST_Y(location::geometry) as latitude,
+        ST_X(location::geometry) as longitude,
+        coordinate_uncertainty_meters, verbatim_locality, habitat,
+        occurrence_status, occurrence_remarks, individual_count, sex,
+        life_stage, reproductive_condition, behavior, establishment_means,
+        associated_media, recorded_by, created_at
+      FROM occurrences
+      ${cursorCondition}
+      ORDER BY created_at DESC
+      LIMIT $1`,
+      params,
+    );
+    return result.rows;
+  }
+
   async getOccurrence(uri: string): Promise<OccurrenceRow | null> {
     const result = await this.pool.query(
       `SELECT

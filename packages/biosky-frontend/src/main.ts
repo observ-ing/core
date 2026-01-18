@@ -1,7 +1,7 @@
 /**
  * BioSky Frontend
  *
- * Map-based interface for exploring and contributing biodiversity observations.
+ * Feed-based interface for exploring and contributing biodiversity observations.
  */
 
 import maplibregl from "maplibre-gl";
@@ -17,7 +17,7 @@ interface Observation {
     displayName?: string;
     avatar?: string;
   };
-  scientificName: string;
+  scientificName?: string;
   communityId?: string;
   eventDate: string;
   location: {
@@ -26,7 +26,7 @@ interface Observation {
     uncertaintyMeters?: number;
   };
   verbatimLocality?: string;
-  notes?: string;
+  occurrenceRemarks?: string;
   images: string[];
   createdAt: string;
 }
@@ -36,16 +36,23 @@ interface User {
   handle: string;
 }
 
+type ViewMode = "feed" | "map";
+type FeedTab = "home" | "explore";
+
 class BioSkyApp {
   private map: maplibregl.Map | null = null;
   private currentUser: User | null = null;
   private currentLocation: { lat: number; lng: number } | null = null;
+  private currentView: ViewMode = "feed";
+  private currentTab: FeedTab = "home";
+  private feedCursor: string | undefined = undefined;
+  private isLoadingFeed = false;
+  private mapInitialized = false;
 
   async init(): Promise<void> {
-    await this.initMap();
     this.setupEventListeners();
     await this.checkAuth();
-    this.loadObservationsInView();
+    await this.loadFeed();
   }
 
   private async initMap(): Promise<void> {
@@ -222,13 +229,24 @@ class BioSkyApp {
       this.updateAuthUI();
     });
 
-    // Locate button
-    document.getElementById("locate-btn")?.addEventListener("click", () => {
-      this.locateUser();
+    // Bottom navigation
+    document.querySelectorAll(".nav-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const view = btn.getAttribute("data-view") as ViewMode;
+        if (view) this.switchView(view);
+      });
     });
 
-    // Upload button
-    document.getElementById("upload-btn")?.addEventListener("click", () => {
+    // Feed tabs
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const tab = btn.getAttribute("data-tab") as FeedTab;
+        if (tab) this.switchTab(tab);
+      });
+    });
+
+    // FAB upload button
+    document.getElementById("fab-upload")?.addEventListener("click", () => {
       this.showUploadModal();
     });
 
@@ -270,6 +288,157 @@ class BioSkyApp {
         }
       });
     });
+
+    // Infinite scroll for feed
+    document.getElementById("feed-content")?.addEventListener("scroll", (e) => {
+      const target = e.target as HTMLElement;
+      if (target.scrollTop + target.clientHeight >= target.scrollHeight - 200) {
+        this.loadMoreFeed();
+      }
+    });
+  }
+
+  private async switchView(view: ViewMode): Promise<void> {
+    if (view === this.currentView) return;
+
+    this.currentView = view;
+
+    // Update nav button states
+    document.querySelectorAll(".nav-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-view") === view);
+    });
+
+    // Toggle containers
+    const feedContainer = document.getElementById("feed-container");
+    const mapContainer = document.getElementById("map-container");
+
+    if (view === "feed") {
+      feedContainer?.classList.remove("hidden");
+      mapContainer?.classList.add("hidden");
+    } else {
+      feedContainer?.classList.add("hidden");
+      mapContainer?.classList.remove("hidden");
+
+      // Initialize map on first switch
+      if (!this.mapInitialized) {
+        await this.initMap();
+        this.mapInitialized = true;
+        this.loadObservationsInView();
+      }
+    }
+  }
+
+  private async switchTab(tab: FeedTab): Promise<void> {
+    if (tab === this.currentTab) return;
+
+    this.currentTab = tab;
+
+    // Update tab button states
+    document.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.getAttribute("data-tab") === tab);
+    });
+
+    // Reset feed and reload
+    this.feedCursor = undefined;
+    const feedList = document.getElementById("feed-list");
+    if (feedList) feedList.innerHTML = "";
+
+    await this.loadFeed();
+  }
+
+  private async loadFeed(): Promise<void> {
+    if (this.isLoadingFeed) return;
+    this.isLoadingFeed = true;
+
+    const loading = document.getElementById("feed-loading");
+    const empty = document.getElementById("feed-empty");
+    const feedList = document.getElementById("feed-list");
+
+    loading?.classList.remove("hidden");
+    empty?.classList.add("hidden");
+
+    try {
+      const params = new URLSearchParams({ limit: "20" });
+      if (this.feedCursor) {
+        params.set("cursor", this.feedCursor);
+      }
+
+      const response = await fetch(`${API_BASE}/api/occurrences/feed?${params}`);
+      if (!response.ok) throw new Error("Failed to load feed");
+
+      const { occurrences, cursor } = await response.json();
+      this.feedCursor = cursor;
+
+      if (occurrences.length === 0 && !this.feedCursor) {
+        empty?.classList.remove("hidden");
+      } else {
+        this.renderFeedItems(occurrences);
+      }
+    } catch (error) {
+      console.error("Failed to load feed:", error);
+    } finally {
+      loading?.classList.add("hidden");
+      this.isLoadingFeed = false;
+    }
+  }
+
+  private async loadMoreFeed(): Promise<void> {
+    if (!this.feedCursor || this.isLoadingFeed) return;
+    await this.loadFeed();
+  }
+
+  private renderFeedItems(observations: Observation[]): void {
+    const feedList = document.getElementById("feed-list");
+    if (!feedList) return;
+
+    for (const obs of observations) {
+      const item = document.createElement("div");
+      item.className = "feed-item";
+      item.innerHTML = this.renderFeedItem(obs);
+      feedList.appendChild(item);
+    }
+  }
+
+  private renderFeedItem(obs: Observation): string {
+    const displayName = obs.observer.displayName || obs.observer.handle || obs.observer.did.slice(0, 20);
+    const handle = obs.observer.handle ? `@${obs.observer.handle}` : "";
+    const timeAgo = this.formatTimeAgo(new Date(obs.createdAt));
+    const species = obs.communityId || obs.scientificName || "Unknown species";
+    const imageUrl = obs.images[0] ? `${API_BASE}${obs.images[0]}` : "";
+
+    return `
+      <div class="feed-avatar">
+        ${obs.observer.avatar ? `<img src="${obs.observer.avatar}" alt="${displayName}" />` : ""}
+      </div>
+      <div class="feed-body">
+        <div class="feed-header">
+          <span class="feed-name">${this.escapeHtml(displayName)}</span>
+          ${handle ? `<span class="feed-handle">${this.escapeHtml(handle)}</span>` : ""}
+          <span class="feed-time">${timeAgo}</span>
+        </div>
+        <div class="feed-species">${this.escapeHtml(species)}</div>
+        ${obs.occurrenceRemarks ? `<div class="feed-notes">${this.escapeHtml(obs.occurrenceRemarks)}</div>` : ""}
+        ${obs.verbatimLocality ? `<div class="feed-location">${this.escapeHtml(obs.verbatimLocality)}</div>` : ""}
+        ${imageUrl ? `<div class="feed-image"><img src="${imageUrl}" alt="${species}" loading="lazy" /></div>` : ""}
+      </div>
+    `;
+  }
+
+  private formatTimeAgo(date: Date): string {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+
+    if (seconds < 60) return "now";
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
+
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
+
+  private escapeHtml(text: string): string {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   private async checkAuth(): Promise<void> {
@@ -408,16 +577,38 @@ class BioSkyApp {
       }
     }
 
-    // Get current map center as default location
-    const center = this.map?.getCenter();
-    if (center) {
-      const latInput = document.getElementById("lat-input") as HTMLInputElement;
-      const lngInput = document.getElementById("lng-input") as HTMLInputElement;
-      const locationDisplay = document.getElementById("location-display") as HTMLInputElement;
+    const latInput = document.getElementById("lat-input") as HTMLInputElement;
+    const lngInput = document.getElementById("lng-input") as HTMLInputElement;
+    const locationDisplay = document.getElementById("location-display") as HTMLInputElement;
 
+    // Try to get location from map center or geolocation
+    if (this.map) {
+      const center = this.map.getCenter();
       latInput.value = center.lat.toFixed(6);
       lngInput.value = center.lng.toFixed(6);
       locationDisplay.value = `${center.lat.toFixed(4)}, ${center.lng.toFixed(4)}`;
+    } else if (this.currentLocation) {
+      latInput.value = this.currentLocation.lat.toFixed(6);
+      lngInput.value = this.currentLocation.lng.toFixed(6);
+      locationDisplay.value = `${this.currentLocation.lat.toFixed(4)}, ${this.currentLocation.lng.toFixed(4)}`;
+    } else {
+      // Try to get user's location
+      locationDisplay.value = "Getting location...";
+      navigator.geolocation?.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          this.currentLocation = { lat: latitude, lng: longitude };
+          latInput.value = latitude.toFixed(6);
+          lngInput.value = longitude.toFixed(6);
+          locationDisplay.value = `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+        },
+        () => {
+          // Default to San Francisco if geolocation fails
+          latInput.value = "37.7749";
+          lngInput.value = "-122.4194";
+          locationDisplay.value = "37.7749, -122.4194 (default)";
+        }
+      );
     }
 
     document.getElementById("upload-modal")?.classList.remove("hidden");
@@ -513,7 +704,17 @@ class BioSkyApp {
       // Show success feedback
       this.showSuccessMessage("Observation submitted successfully!");
       this.hideUploadModal();
-      this.loadObservationsInView();
+
+      // Refresh the current view
+      if (this.currentView === "feed") {
+        // Reset and reload feed to show new observation
+        this.feedCursor = undefined;
+        const feedList = document.getElementById("feed-list");
+        if (feedList) feedList.innerHTML = "";
+        await this.loadFeed();
+      } else if (this.map) {
+        this.loadObservationsInView();
+      }
     } catch (error) {
       console.error("Failed to submit observation:", error);
       alert(`Failed to submit: ${error instanceof Error ? error.message : "Unknown error"}`);

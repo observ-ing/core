@@ -290,6 +290,31 @@ export class AppViewServer {
       }
     });
 
+    // Get occurrences feed (chronological)
+    this.app.get("/api/occurrences/feed", async (req, res) => {
+      try {
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const cursor = req.query.cursor as string | undefined;
+
+        const rows = await this.db.getOccurrencesFeed(limit, cursor);
+        const occurrences = await this.enrichOccurrences(rows);
+
+        // Create cursor for next page
+        const nextCursor =
+          rows.length === limit
+            ? rows[rows.length - 1].created_at.toISOString()
+            : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+        });
+      } catch (error) {
+        console.error("Error fetching feed:", error);
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
     // Get occurrences in bounding box
     this.app.get("/api/occurrences/bbox", async (req, res) => {
       try {
