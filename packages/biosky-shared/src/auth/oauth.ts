@@ -222,14 +222,17 @@ export class OAuthService {
       },
       sessionStore: {
         get: async (key: string) => {
-          const session = await this.sessionStore.get(key);
-          return session as unknown as undefined;
+          // The OAuth client stores its own internal session format (with tokens)
+          // Use a prefix to avoid conflicts with our SessionData storage
+          const value = await this.stateStore.get(`atproto_session:${key}`);
+          return value ? JSON.parse(value) : undefined;
         },
         set: async (key: string, value: unknown) => {
-          await this.sessionStore.set(key, value as SessionData);
+          // Store OAuth client's internal session data with 30-day TTL
+          await this.stateStore.set(`atproto_session:${key}`, JSON.stringify(value), 30 * 24 * 60 * 60 * 1000);
         },
         del: async (key: string) => {
-          await this.sessionStore.del(key);
+          await this.stateStore.del(`atproto_session:${key}`);
         },
       },
     };
