@@ -91,8 +91,10 @@ export class AppViewServer {
     this.db = new Database(this.config.databaseUrl);
 
     // Use database-backed stores for OAuth to persist sessions across deploys
+    // Request write access to occurrence and identification collections
     this.oauth = new OAuthService({
       publicUrl: this.config.publicUrl,
+      scope: "atproto transition:generic",
       stateStore: new DatabaseStateStore(this.db),
       sessionStore: new DatabaseSessionStore(this.db),
     });
