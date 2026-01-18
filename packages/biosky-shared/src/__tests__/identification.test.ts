@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isMain, validateMain } from "./identification.js";
+import { isMain, validateMain } from "../generated/types/org/rwell/test/identification.js";
 
 describe("org.rwell.test.identification", () => {
   // ============================================================================

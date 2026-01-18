@@ -8,7 +8,7 @@ import {
   validateImageEmbed,
   isAspectRatio,
   validateAspectRatio,
-} from "./occurrence.js";
+} from "../generated/types/org/rwell/test/occurrence.js";
 
 describe("org.rwell.test.occurrence", () => {
   // ============================================================================
