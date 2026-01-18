@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { schemaDict, schemas, lexicons, validate, ids } from './lexicons.js'
+import { schemaDict, schemas, lexicons, validate, ids } from '../generated/lexicons.js'
 
 describe('lexicons', () => {
   // ============================================================================

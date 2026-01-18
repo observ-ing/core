@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { is$typed, maybe$typed, asPredicate, type $Typed, type Un$Typed, type $Type } from './util.js'
+import { is$typed, maybe$typed, asPredicate, type $Typed, type Un$Typed, type $Type } from '../generated/util.js'
 
 describe('util', () => {
   // ============================================================================
