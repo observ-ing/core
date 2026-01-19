@@ -11,12 +11,18 @@ use chrono::{DateTime, Utc};
 use ciborium::Value as CborValue;
 use futures_util::StreamExt;
 use std::io::Cursor;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
 use tracing::{debug, error, info, warn};
 
 const TIMING_UPDATE_INTERVAL: Duration = Duration::from_secs(5);
+const STATS_LOG_INTERVAL: Duration = Duration::from_secs(10);
+
+/// Diagnostic counters for throughput monitoring
+static MESSAGES_RECEIVED: AtomicU64 = AtomicU64::new(0);
+static COMMITS_PROCESSED: AtomicU64 = AtomicU64::new(0);
 
 const DEFAULT_RELAY: &str = "wss://bsky.network";
 const MAX_RECONNECT_ATTEMPTS: u32 = 10;
@@ -112,9 +118,28 @@ impl FirehoseSubscription {
         let _ = self.event_tx.send(FirehoseEvent::Connected).await;
         info!("Firehose connection established");
 
+        // Reset diagnostic counters
+        MESSAGES_RECEIVED.store(0, Ordering::Relaxed);
+        COMMITS_PROCESSED.store(0, Ordering::Relaxed);
+        let mut last_stats_log = Instant::now();
+
         while let Some(msg) = read.next().await {
+            // Log throughput stats periodically
+            if last_stats_log.elapsed() >= STATS_LOG_INTERVAL {
+                let msgs = MESSAGES_RECEIVED.swap(0, Ordering::Relaxed);
+                let commits = COMMITS_PROCESSED.swap(0, Ordering::Relaxed);
+                let elapsed = last_stats_log.elapsed().as_secs_f64();
+                info!(
+                    "Throughput: {:.1} msgs/sec, {:.1} commits/sec",
+                    msgs as f64 / elapsed,
+                    commits as f64 / elapsed
+                );
+                last_stats_log = Instant::now();
+            }
+
             match msg {
                 Ok(Message::Binary(data)) => {
+                    MESSAGES_RECEIVED.fetch_add(1, Ordering::Relaxed);
                     if let Err(e) = self.handle_message(&data).await {
                         debug!("Error processing message: {}", e);
                     }
@@ -164,6 +189,8 @@ impl FirehoseSubscription {
     }
 
     async fn handle_commit(&mut self, body: CborValue) -> Result<()> {
+        COMMITS_PROCESSED.fetch_add(1, Ordering::Relaxed);
+
         let repo = get_cbor_string(&body, "repo").unwrap_or_default();
         let seq = get_cbor_int(&body, "seq").unwrap_or(0);
         let time_str = get_cbor_string(&body, "time").unwrap_or_default();
