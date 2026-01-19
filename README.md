@@ -64,6 +64,8 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 
 ### Ingester (`packages/biosky-ingester/`) - Rust
 
+See [packages/biosky-ingester/README.md](packages/biosky-ingester/README.md) for detailed documentation.
+
 - **Firehose** - High-performance WebSocket client that subscribes to the AT Protocol relay
 - **Event Processing** - Handles occurrence and identification records from the network
 - **Built with** - Tokio async runtime, Axum, SQLx
