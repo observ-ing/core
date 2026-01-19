@@ -81,7 +81,7 @@ export class Ingester {
       onOccurrence: (event) => this.handleOccurrence(event),
       onIdentification: (event) => this.handleIdentification(event),
       onCommit: (info) => {
-        this.lastProcessed = { time: info.time, seq: info.seq };
+        this.lastProcessed = { time: info.time, seq: Number(info.seq) };
       },
     });
 

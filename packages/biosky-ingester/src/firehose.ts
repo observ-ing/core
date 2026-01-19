@@ -233,7 +233,9 @@ export class FirehoseSubscription extends EventEmitter {
     };
 
     // Emit timing info for all commits (for lag tracking)
-    this.emit("commit", { seq: commit.seq, time: commit.time });
+    if (commit.seq !== undefined && commit.time) {
+      this.emit("commit", { seq: commit.seq, time: commit.time });
+    }
 
     if (!commit.ops) return;
 

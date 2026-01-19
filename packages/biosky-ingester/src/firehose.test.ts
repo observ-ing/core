@@ -398,6 +398,83 @@ describe('FirehoseSubscription', () => {
       expect(sub.getCursor()).toBe(54321)
     })
 
+    it('emits commit event with timing info', () => {
+      const onCommit = vi.fn()
+      const sub = new FirehoseSubscription({ onCommit })
+      const testTime = '2024-01-15T10:00:00Z'
+
+      ;(sub as any).handleCommit({
+        repo: 'did:plc:test',
+        seq: 12345,
+        time: testTime,
+        ops: []
+      })
+
+      expect(onCommit).toHaveBeenCalledWith({ seq: 12345, time: testTime })
+    })
+
+    it('emits commit event even for unrelated collections', () => {
+      const onCommit = vi.fn()
+      const onOccurrence = vi.fn()
+      const sub = new FirehoseSubscription({ onCommit, onOccurrence })
+
+      ;(sub as any).handleCommit({
+        repo: 'did:plc:test',
+        seq: 99999,
+        time: '2024-01-15T12:00:00Z',
+        ops: [{ action: 'create', path: 'app.bsky.feed.post/abc123' }]
+      })
+
+      expect(onCommit).toHaveBeenCalledWith({ seq: 99999, time: '2024-01-15T12:00:00Z' })
+      expect(onOccurrence).not.toHaveBeenCalled()
+    })
+
+    it('handles BigInt seq values for JSON serialization', () => {
+      const onCommit = vi.fn()
+      const sub = new FirehoseSubscription({ onCommit })
+
+      // Simulate BigInt seq from firehose (the actual firehose returns BigInt)
+      ;(sub as any).handleCommit({
+        repo: 'did:plc:test',
+        seq: BigInt(17259895663),
+        time: '2024-01-15T10:00:00Z',
+        ops: []
+      })
+
+      expect(onCommit).toHaveBeenCalled()
+      const callArg = onCommit.mock.calls[0][0]
+
+      // The consumer should convert to Number before JSON.stringify
+      // This test verifies the event is emitted (consumer handles conversion)
+      expect(callArg.seq).toBeDefined()
+      expect(callArg.time).toBe('2024-01-15T10:00:00Z')
+
+      // Verify that converting to Number works for JSON serialization
+      const serializable = { seq: Number(callArg.seq), time: callArg.time }
+      expect(() => JSON.stringify(serializable)).not.toThrow()
+    })
+
+    it('does not emit commit event when seq or time is missing', () => {
+      const onCommit = vi.fn()
+      const sub = new FirehoseSubscription({ onCommit })
+
+      // Missing time
+      ;(sub as any).handleCommit({
+        repo: 'did:plc:test',
+        seq: 12345,
+        ops: []
+      })
+
+      // Missing seq
+      ;(sub as any).handleCommit({
+        repo: 'did:plc:test',
+        time: '2024-01-15T10:00:00Z',
+        ops: []
+      })
+
+      expect(onCommit).not.toHaveBeenCalled()
+    })
+
     it('ignores unrelated collections', () => {
       const onOccurrence = vi.fn()
       const onIdentification = vi.fn()
