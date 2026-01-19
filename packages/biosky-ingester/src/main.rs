@@ -19,16 +19,23 @@ use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::interval;
 use tracing::{error, info, warn};
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{prelude::*, EnvFilter};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::from_default_env().add_directive("biosky_ingester=info".parse()?),
-        )
-        .init();
+    let env_filter =
+        EnvFilter::from_default_env().add_directive("biosky_ingester=info".parse()?);
+
+    // Use JSON format for GCP Cloud Logging when LOG_FORMAT=json
+    if std::env::var("LOG_FORMAT").map(|v| v == "json").unwrap_or(false) {
+        tracing_subscriber::registry()
+            .with(env_filter)
+            .with(tracing_stackdriver::layer())
+            .init();
+    } else {
+        tracing_subscriber::fmt().with_env_filter(env_filter).init();
+    };
 
     info!("Starting BioSky Ingester (Rust)...");
 
