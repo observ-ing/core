@@ -91,21 +91,93 @@ impl Database {
     /// Upsert an occurrence record
     pub async fn upsert_occurrence(&self, event: &OccurrenceEvent) -> Result<()> {
         debug!("Upserting occurrence: {}", event.uri);
+
+        // Extract fields from record JSON to match existing Darwin Core schema
+        let record = event.record.as_ref();
+        let scientific_name = record
+            .and_then(|r| r.get("scientificName"))
+            .and_then(|v| v.as_str());
+        let event_date = record
+            .and_then(|r| r.get("eventDate"))
+            .and_then(|v| v.as_str());
+        let created_at = record
+            .and_then(|r| r.get("createdAt"))
+            .and_then(|v| v.as_str());
+        let verbatim_locality = record
+            .and_then(|r| r.get("verbatimLocality"))
+            .and_then(|v| v.as_str());
+        let notes = record
+            .and_then(|r| r.get("notes"))
+            .and_then(|v| v.as_str());
+        let blobs = record.and_then(|r| r.get("blobs"));
+
+        // Extract location
+        let location = record.and_then(|r| r.get("location"));
+        let lat = location
+            .and_then(|l| l.get("decimalLatitude"))
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<f64>().ok());
+        let lng = location
+            .and_then(|l| l.get("decimalLongitude"))
+            .and_then(|v| v.as_str())
+            .and_then(|s| s.parse::<f64>().ok());
+        let coord_uncertainty = location
+            .and_then(|l| l.get("coordinateUncertaintyInMeters"))
+            .and_then(|v| v.as_i64())
+            .map(|v| v as i32);
+
+        // Require lat/lng and event_date
+        let (lat, lng) = match (lat, lng) {
+            (Some(lat), Some(lng)) => (lat, lng),
+            _ => {
+                debug!("Skipping occurrence without valid coordinates: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let event_date = match event_date {
+            Some(d) => d,
+            None => {
+                debug!("Skipping occurrence without eventDate: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let created_at = created_at.unwrap_or(event_date);
+
         sqlx::query(
             r#"
-            INSERT INTO occurrences (uri, did, cid, record, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
+            INSERT INTO occurrences (
+                uri, did, cid, scientific_name, event_date, location,
+                coordinate_uncertainty_meters, verbatim_locality, occurrence_remarks,
+                associated_media, created_at, indexed_at
+            )
+            VALUES (
+                $1, $2, $3, $4, $5::timestamptz, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
+                $8, $9, $10, $11, $12::timestamptz, NOW()
+            )
             ON CONFLICT (uri) DO UPDATE SET
                 cid = EXCLUDED.cid,
-                record = EXCLUDED.record,
-                updated_at = NOW()
+                scientific_name = EXCLUDED.scientific_name,
+                event_date = EXCLUDED.event_date,
+                location = EXCLUDED.location,
+                coordinate_uncertainty_meters = EXCLUDED.coordinate_uncertainty_meters,
+                verbatim_locality = EXCLUDED.verbatim_locality,
+                occurrence_remarks = EXCLUDED.occurrence_remarks,
+                associated_media = EXCLUDED.associated_media,
+                indexed_at = NOW()
             "#,
         )
         .bind(&event.uri)
         .bind(&event.did)
         .bind(&event.cid)
-        .bind(&event.record)
-        .bind(&event.time)
+        .bind(scientific_name)
+        .bind(event_date)
+        .bind(lng) // ST_MakePoint takes (x, y) = (lng, lat)
+        .bind(lat)
+        .bind(coord_uncertainty)
+        .bind(verbatim_locality)
+        .bind(notes)
+        .bind(blobs)
+        .bind(created_at)
         .execute(&self.pool)
         .await?;
         Ok(())
@@ -124,21 +196,81 @@ impl Database {
     /// Upsert an identification record
     pub async fn upsert_identification(&self, event: &IdentificationEvent) -> Result<()> {
         debug!("Upserting identification: {}", event.uri);
+
+        // Extract fields from record JSON to match existing schema
+        let record = event.record.as_ref();
+        let subject = record.and_then(|r| r.get("subject"));
+        let subject_uri = subject
+            .and_then(|s| s.get("uri"))
+            .and_then(|v| v.as_str());
+        let subject_cid = subject
+            .and_then(|s| s.get("cid"))
+            .and_then(|v| v.as_str());
+        let taxon_name = record
+            .and_then(|r| r.get("taxonName"))
+            .and_then(|v| v.as_str());
+        let taxon_rank = record
+            .and_then(|r| r.get("taxonRank"))
+            .and_then(|v| v.as_str());
+        let comment = record
+            .and_then(|r| r.get("comment"))
+            .and_then(|v| v.as_str());
+        let is_agreement = record
+            .and_then(|r| r.get("isAgreement"))
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
+        let created_at = record
+            .and_then(|r| r.get("createdAt"))
+            .and_then(|v| v.as_str());
+
+        // Require subject and taxon_name
+        let subject_uri = match subject_uri {
+            Some(uri) => uri,
+            None => {
+                debug!("Skipping identification without subject uri: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let subject_cid = subject_cid.unwrap_or("");
+        let taxon_name = match taxon_name {
+            Some(name) => name,
+            None => {
+                debug!("Skipping identification without taxonName: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let fallback_date = event.time.to_rfc3339();
+        let date_identified = created_at.unwrap_or(&fallback_date);
+
         sqlx::query(
             r#"
-            INSERT INTO identifications (uri, did, cid, record, created_at, updated_at)
-            VALUES ($1, $2, $3, $4, $5, NOW())
+            INSERT INTO identifications (
+                uri, did, cid, subject_uri, subject_cid, scientific_name,
+                taxon_rank, identification_remarks, is_agreement, date_identified, indexed_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::timestamptz, NOW())
             ON CONFLICT (uri) DO UPDATE SET
                 cid = EXCLUDED.cid,
-                record = EXCLUDED.record,
-                updated_at = NOW()
+                subject_uri = EXCLUDED.subject_uri,
+                subject_cid = EXCLUDED.subject_cid,
+                scientific_name = EXCLUDED.scientific_name,
+                taxon_rank = EXCLUDED.taxon_rank,
+                identification_remarks = EXCLUDED.identification_remarks,
+                is_agreement = EXCLUDED.is_agreement,
+                date_identified = EXCLUDED.date_identified,
+                indexed_at = NOW()
             "#,
         )
         .bind(&event.uri)
         .bind(&event.did)
         .bind(&event.cid)
-        .bind(&event.record)
-        .bind(&event.time)
+        .bind(subject_uri)
+        .bind(subject_cid)
+        .bind(taxon_name)
+        .bind(taxon_rank)
+        .bind(comment)
+        .bind(is_agreement)
+        .bind(date_identified)
         .execute(&self.pool)
         .await?;
         Ok(())
