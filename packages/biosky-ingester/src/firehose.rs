@@ -4,9 +4,11 @@
 
 use crate::error::{IngesterError, Result};
 use crate::types::{
-    CommitTimingInfo, IdentificationEvent, OccurrenceEvent, OpAction,
-    IDENTIFICATION_COLLECTION, OCCURRENCE_COLLECTION,
+    CommitTimingInfo, IdentificationEvent, OccurrenceEvent, IDENTIFICATION_COLLECTION,
+    OCCURRENCE_COLLECTION,
 };
+use atrium_api::com::atproto::sync::subscribe_repos::Commit;
+use atrium_repo::blockstore::{AsyncBlockStoreRead, CarStore};
 use chrono::{DateTime, Utc};
 use ciborium::Value as CborValue;
 use futures_util::StreamExt;
@@ -175,52 +177,47 @@ impl FirehoseSubscription {
     }
 
     async fn handle_message(&mut self, data: &[u8]) -> Result<()> {
-        let (header, body) = decode_frame(data)?;
+        let (header, body_bytes) = decode_frame(data)?;
 
         // Check if this is a commit message
         let op = get_cbor_int(&header, "op").unwrap_or(0);
         let t = get_cbor_string(&header, "t").unwrap_or_default();
 
         if op == 1 && t == "#commit" {
-            self.handle_commit(body).await?;
+            // Deserialize body into atrium Commit type
+            let commit: Commit = serde_ipld_dagcbor::from_slice(&body_bytes)
+                .map_err(|e| IngesterError::CborDecode(e.to_string()))?;
+            self.handle_commit(commit).await?;
         }
 
         Ok(())
     }
 
-    async fn handle_commit(&mut self, body: CborValue) -> Result<()> {
+    async fn handle_commit(&mut self, commit: Commit) -> Result<()> {
         COMMITS_PROCESSED.fetch_add(1, Ordering::Relaxed);
 
-        let seq = get_cbor_int(&body, "seq").unwrap_or(0);
-        let time_str = get_cbor_string(&body, "time").unwrap_or_default();
-
-        let time = DateTime::parse_from_rfc3339(&time_str)
-            .map(|dt| dt.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now());
+        let seq = commit.seq;
+        let time = parse_datetime(&commit.time);
 
         // Store timing info locally, only send periodically to reduce overhead
         self.last_timing = Some(CommitTimingInfo { seq, time });
         if self.last_timing_sent.elapsed() >= TIMING_UPDATE_INTERVAL {
             if let Some(ref timing) = self.last_timing {
-                let _ = self.event_tx.send(FirehoseEvent::Commit(timing.clone())).await;
+                let _ = self
+                    .event_tx
+                    .send(FirehoseEvent::Commit(timing.clone()))
+                    .await;
             }
             self.last_timing_sent = Instant::now();
         }
 
-        // Parse operations - check collection BEFORE extracting expensive blocks
-        let ops = get_cbor_array(&body, "ops").unwrap_or_default();
-
         // First pass: check if any ops match our collections
-        let mut has_matching_ops = false;
-        for op_value in &ops {
-            let path = get_cbor_string(op_value, "path").unwrap_or_default();
-            if let Some(collection) = path.split('/').next() {
-                if collection == OCCURRENCE_COLLECTION || collection == IDENTIFICATION_COLLECTION {
-                    has_matching_ops = true;
-                    break;
-                }
-            }
-        }
+        let has_matching_ops = commit.ops.iter().any(|op| {
+            op.path
+                .split('/')
+                .next()
+                .is_some_and(|c| c == OCCURRENCE_COLLECTION || c == IDENTIFICATION_COLLECTION)
+        });
 
         // Early exit if no matching collections - skip expensive blocks extraction
         if !has_matching_ops {
@@ -228,51 +225,45 @@ impl FirehoseSubscription {
             return Ok(());
         }
 
-        // Only extract blocks and repo if we have matching ops
-        let repo = get_cbor_string(&body, "repo").unwrap_or_default();
-        let blocks = get_cbor_bytes(&body, "blocks");
+        let repo = commit.repo.as_str();
 
-        for op_value in ops {
-            let action_str = get_cbor_string(&op_value, "action").unwrap_or_default();
-            let path = get_cbor_string(&op_value, "path").unwrap_or_default();
-            let cid = get_cbor_cid(&op_value, "cid");
+        // Open CAR store for block lookups
+        let mut car_store = CarStore::open(Cursor::new(&commit.blocks)).await.ok();
 
-            let action = match action_str.as_str() {
-                "create" => OpAction::Create,
-                "update" => OpAction::Update,
-                "delete" => OpAction::Delete,
-                _ => continue,
-            };
-
+        for op in &commit.ops {
             // Split path into collection and rkey
-            let parts: Vec<&str> = path.splitn(2, '/').collect();
+            let parts: Vec<&str> = op.path.splitn(2, '/').collect();
             if parts.len() != 2 {
                 continue;
             }
             let collection = parts[0];
             let rkey = parts[1];
 
+            let cid_str = op.cid.as_ref().map(|c| c.0.to_string()).unwrap_or_default();
+
             if collection == OCCURRENCE_COLLECTION {
+                let record = extract_record_from_car(&mut car_store, &op.cid).await;
                 let event = OccurrenceEvent {
-                    did: repo.clone(),
+                    did: repo.to_string(),
                     uri: format!("at://{}/{}/{}", repo, collection, rkey),
-                    cid: cid.clone().unwrap_or_default(),
-                    action: action.as_str().to_string(),
+                    cid: cid_str.clone(),
+                    action: op.action.clone(),
                     seq,
                     time,
-                    record: extract_record(&blocks, &cid),
+                    record,
                 };
                 debug!("[Occurrence] {}: {}", event.action, event.uri);
                 let _ = self.event_tx.send(FirehoseEvent::Occurrence(event)).await;
             } else if collection == IDENTIFICATION_COLLECTION {
+                let record = extract_record_from_car(&mut car_store, &op.cid).await;
                 let event = IdentificationEvent {
-                    did: repo.clone(),
+                    did: repo.to_string(),
                     uri: format!("at://{}/{}/{}", repo, collection, rkey),
-                    cid: cid.clone().unwrap_or_default(),
-                    action: action.as_str().to_string(),
+                    cid: cid_str,
+                    action: op.action.clone(),
                     seq,
                     time,
-                    record: extract_record(&blocks, &cid),
+                    record,
                 };
                 debug!("[Identification] {}: {}", event.action, event.uri);
                 let _ = self
@@ -294,17 +285,70 @@ impl FirehoseSubscription {
     }
 }
 
+/// Parse an atrium Datetime to chrono DateTime<Utc>
+fn parse_datetime(dt: &atrium_api::types::string::Datetime) -> DateTime<Utc> {
+    DateTime::parse_from_rfc3339(dt.as_str())
+        .map(|d| d.with_timezone(&Utc))
+        .unwrap_or_else(|_| Utc::now())
+}
+
+/// Extract a record from CAR blocks using atrium-repo
+async fn extract_record_from_car(
+    car_store: &mut Option<CarStore<Cursor<&Vec<u8>>>>,
+    cid: &Option<atrium_api::types::CidLink>,
+) -> Option<serde_json::Value> {
+    let store = car_store.as_mut()?;
+    let cid = cid.as_ref()?;
+
+    // Read the block by CID
+    let block_data = store.read_block(cid.0).await.ok()?;
+
+    // Decode the CBOR block to IPLD then to JSON
+    let ipld: ipld_core::ipld::Ipld = serde_ipld_dagcbor::from_slice(&block_data).ok()?;
+    ipld_to_json(&ipld)
+}
+
+/// Convert IPLD to JSON
+fn ipld_to_json(ipld: &ipld_core::ipld::Ipld) -> Option<serde_json::Value> {
+    use ipld_core::ipld::Ipld;
+
+    match ipld {
+        Ipld::Null => Some(serde_json::Value::Null),
+        Ipld::Bool(b) => Some(serde_json::Value::Bool(*b)),
+        Ipld::Integer(i) => Some(serde_json::Value::Number((*i as i64).into())),
+        Ipld::Float(f) => serde_json::Number::from_f64(*f).map(serde_json::Value::Number),
+        Ipld::String(s) => Some(serde_json::Value::String(s.clone())),
+        Ipld::Bytes(b) => Some(serde_json::Value::String(base64_encode(b))),
+        Ipld::List(arr) => {
+            let json_arr: Vec<_> = arr.iter().filter_map(ipld_to_json).collect();
+            Some(serde_json::Value::Array(json_arr))
+        }
+        Ipld::Map(map) => {
+            let mut obj = serde_json::Map::new();
+            for (k, v) in map {
+                if let Some(val) = ipld_to_json(v) {
+                    obj.insert(k.to_string(), val);
+                }
+            }
+            Some(serde_json::Value::Object(obj))
+        }
+        Ipld::Link(cid) => Some(serde_json::Value::String(cid.to_string())),
+    }
+}
+
 /// Decode an AT Protocol firehose frame (header + body as sequential CBOR values)
-fn decode_frame(data: &[u8]) -> Result<(CborValue, CborValue)> {
+/// Returns the header as CborValue and the raw body bytes for typed deserialization
+fn decode_frame(data: &[u8]) -> Result<(CborValue, Vec<u8>)> {
     let mut cursor = Cursor::new(data);
 
     let header: CborValue =
         ciborium::from_reader(&mut cursor).map_err(|e| IngesterError::CborDecode(e.to_string()))?;
 
-    let body: CborValue =
-        ciborium::from_reader(&mut cursor).map_err(|e| IngesterError::CborDecode(e.to_string()))?;
+    // Return remaining bytes as body for typed deserialization
+    let pos = cursor.position() as usize;
+    let body_bytes = data[pos..].to_vec();
 
-    Ok((header, body))
+    Ok((header, body_bytes))
 }
 
 /// Extract a string value from a CBOR map
@@ -342,152 +386,6 @@ fn get_cbor_int(value: &CborValue, key: &str) -> Option<i64> {
             }
             None
         }
-        _ => None,
-    }
-}
-
-/// Extract a bytes value from a CBOR map
-fn get_cbor_bytes(value: &CborValue, key: &str) -> Option<Vec<u8>> {
-    match value {
-        CborValue::Map(map) => {
-            for (k, v) in map {
-                if let CborValue::Text(k_str) = k {
-                    if k_str == key {
-                        if let CborValue::Bytes(b) = v {
-                            return Some(b.clone());
-                        }
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// Extract an array value from a CBOR map
-fn get_cbor_array(value: &CborValue, key: &str) -> Option<Vec<CborValue>> {
-    match value {
-        CborValue::Map(map) => {
-            for (k, v) in map {
-                if let CborValue::Text(k_str) = k {
-                    if k_str == key {
-                        if let CborValue::Array(arr) = v {
-                            return Some(arr.clone());
-                        }
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// Extract a CID from a CBOR map (CIDs are encoded as tagged byte strings)
-fn get_cbor_cid(value: &CborValue, key: &str) -> Option<String> {
-    match value {
-        CborValue::Map(map) => {
-            for (k, v) in map {
-                if let CborValue::Text(k_str) = k {
-                    if k_str == key {
-                        // CID is typically a tagged value (tag 42) containing bytes
-                        if let CborValue::Tag(42, inner) = v {
-                            if let CborValue::Bytes(bytes) = inner.as_ref() {
-                                // Skip the multibase prefix byte and encode as base32
-                                if bytes.len() > 1 {
-                                    return Some(base32_encode(&bytes[1..]));
-                                }
-                            }
-                        }
-                        // Sometimes it might just be bytes
-                        if let CborValue::Bytes(bytes) = v {
-                            if bytes.len() > 1 {
-                                return Some(base32_encode(&bytes[1..]));
-                            }
-                        }
-                    }
-                }
-            }
-            None
-        }
-        _ => None,
-    }
-}
-
-/// Simple base32 encoding for CIDs (lowercase, no padding)
-fn base32_encode(data: &[u8]) -> String {
-    const ALPHABET: &[u8] = b"abcdefghijklmnopqrstuvwxyz234567";
-    let mut result = String::with_capacity((data.len() * 8).div_ceil(5));
-
-    let mut bits: u64 = 0;
-    let mut num_bits = 0;
-
-    for &byte in data {
-        bits = (bits << 8) | (byte as u64);
-        num_bits += 8;
-
-        while num_bits >= 5 {
-            num_bits -= 5;
-            let idx = ((bits >> num_bits) & 0x1f) as usize;
-            result.push(ALPHABET[idx] as char);
-        }
-    }
-
-    if num_bits > 0 {
-        let idx = ((bits << (5 - num_bits)) & 0x1f) as usize;
-        result.push(ALPHABET[idx] as char);
-    }
-
-    // Add CIDv1 prefix
-    format!("b{}", result)
-}
-
-/// Extract a record from the CAR blocks (simplified - just decode what we can)
-fn extract_record(blocks: &Option<Vec<u8>>, _cid: &Option<String>) -> Option<serde_json::Value> {
-    // In a full implementation, we'd parse the CAR format and look up by CID
-    // For now, attempt to decode the blocks as CBOR and convert to JSON
-    let blocks = blocks.as_ref()?;
-
-    // Skip CAR header (first CBOR value) and try to decode the block
-    let mut cursor = Cursor::new(blocks);
-
-    // Skip header
-    let _: CborValue = ciborium::from_reader(&mut cursor).ok()?;
-
-    // Try to decode next value as the record
-    let record: CborValue = ciborium::from_reader(&mut cursor).ok()?;
-    cbor_to_json(&record)
-}
-
-/// Convert CBOR value to JSON (best effort)
-fn cbor_to_json(value: &CborValue) -> Option<serde_json::Value> {
-    match value {
-        CborValue::Null => Some(serde_json::Value::Null),
-        CborValue::Bool(b) => Some(serde_json::Value::Bool(*b)),
-        CborValue::Integer(i) => {
-            let n: i64 = (*i).try_into().ok()?;
-            Some(serde_json::Value::Number(n.into()))
-        }
-        CborValue::Float(f) => serde_json::Number::from_f64(*f).map(serde_json::Value::Number),
-        CborValue::Text(s) => Some(serde_json::Value::String(s.clone())),
-        CborValue::Bytes(b) => Some(serde_json::Value::String(base64_encode(b))),
-        CborValue::Array(arr) => {
-            let json_arr: Vec<_> = arr.iter().filter_map(cbor_to_json).collect();
-            Some(serde_json::Value::Array(json_arr))
-        }
-        CborValue::Map(map) => {
-            let mut obj = serde_json::Map::new();
-            for (k, v) in map {
-                if let CborValue::Text(key) = k {
-                    if let Some(val) = cbor_to_json(v) {
-                        obj.insert(key.clone(), val);
-                    }
-                }
-            }
-            Some(serde_json::Value::Object(obj))
-        }
-        CborValue::Tag(_, inner) => cbor_to_json(inner),
         _ => None,
     }
 }
@@ -585,26 +483,6 @@ mod tests {
     }
 
     #[test]
-    fn test_base32_encode() {
-        // Simple test
-        let encoded = base32_encode(&[0x01, 0x71]);
-        assert!(encoded.starts_with('b'));
-    }
-
-    #[test]
-    fn test_base32_encode_empty() {
-        let encoded = base32_encode(&[]);
-        assert_eq!(encoded, "b");
-    }
-
-    #[test]
-    fn test_base32_encode_single_byte() {
-        let encoded = base32_encode(&[0xff]);
-        assert!(encoded.starts_with('b'));
-        assert!(encoded.len() > 1);
-    }
-
-    #[test]
     fn test_base64_encode() {
         assert_eq!(base64_encode(b"hello"), "aGVsbG8=");
         assert_eq!(base64_encode(b"a"), "YQ==");
@@ -624,14 +502,22 @@ mod tests {
         let encoded = base64_encode(&data);
         assert!(!encoded.is_empty());
         // Should only contain valid base64 characters
-        assert!(encoded.chars().all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '='));
+        assert!(encoded
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '/' || c == '='));
     }
 
     #[test]
     fn test_get_cbor_string_from_map() {
         let map = CborValue::Map(vec![
-            (CborValue::Text("key1".to_string()), CborValue::Text("value1".to_string())),
-            (CborValue::Text("key2".to_string()), CborValue::Text("value2".to_string())),
+            (
+                CborValue::Text("key1".to_string()),
+                CborValue::Text("value1".to_string()),
+            ),
+            (
+                CborValue::Text("key2".to_string()),
+                CborValue::Text("value2".to_string()),
+            ),
         ]);
 
         assert_eq!(get_cbor_string(&map, "key1"), Some("value1".to_string()));
@@ -641,9 +527,10 @@ mod tests {
 
     #[test]
     fn test_get_cbor_string_wrong_type() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("number".to_string()), CborValue::Integer(42.into())),
-        ]);
+        let map = CborValue::Map(vec![(
+            CborValue::Text("number".to_string()),
+            CborValue::Integer(42.into()),
+        )]);
 
         assert_eq!(get_cbor_string(&map, "number"), None);
     }
@@ -660,8 +547,14 @@ mod tests {
     #[test]
     fn test_get_cbor_int_from_map() {
         let map = CborValue::Map(vec![
-            (CborValue::Text("seq".to_string()), CborValue::Integer(12345.into())),
-            (CborValue::Text("negative".to_string()), CborValue::Integer((-100).into())),
+            (
+                CborValue::Text("seq".to_string()),
+                CborValue::Integer(12345.into()),
+            ),
+            (
+                CborValue::Text("negative".to_string()),
+                CborValue::Integer((-100).into()),
+            ),
         ]);
 
         assert_eq!(get_cbor_int(&map, "seq"), Some(12345));
@@ -671,9 +564,10 @@ mod tests {
 
     #[test]
     fn test_get_cbor_int_wrong_type() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("string".to_string()), CborValue::Text("not a number".to_string())),
-        ]);
+        let map = CborValue::Map(vec![(
+            CborValue::Text("string".to_string()),
+            CborValue::Text("not a number".to_string()),
+        )]);
 
         assert_eq!(get_cbor_int(&map, "string"), None);
     }
@@ -685,160 +579,52 @@ mod tests {
     }
 
     #[test]
-    fn test_get_cbor_bytes_from_map() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("data".to_string()), CborValue::Bytes(vec![1, 2, 3, 4])),
-        ]);
-
-        assert_eq!(get_cbor_bytes(&map, "data"), Some(vec![1, 2, 3, 4]));
-        assert_eq!(get_cbor_bytes(&map, "nonexistent"), None);
-    }
-
-    #[test]
-    fn test_get_cbor_bytes_wrong_type() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("text".to_string()), CborValue::Text("not bytes".to_string())),
-        ]);
-
-        assert_eq!(get_cbor_bytes(&map, "text"), None);
-    }
-
-    #[test]
-    fn test_get_cbor_array_from_map() {
-        let inner_array = vec![
-            CborValue::Text("item1".to_string()),
-            CborValue::Text("item2".to_string()),
-        ];
-        let map = CborValue::Map(vec![
-            (CborValue::Text("ops".to_string()), CborValue::Array(inner_array.clone())),
-        ]);
-
-        let result = get_cbor_array(&map, "ops");
-        assert!(result.is_some());
-        assert_eq!(result.unwrap().len(), 2);
-        assert_eq!(get_cbor_array(&map, "nonexistent"), None);
-    }
-
-    #[test]
-    fn test_get_cbor_array_wrong_type() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("text".to_string()), CborValue::Text("not an array".to_string())),
-        ]);
-
-        assert_eq!(get_cbor_array(&map, "text"), None);
-    }
-
-    #[test]
-    fn test_cbor_to_json_null() {
-        let result = cbor_to_json(&CborValue::Null);
-        assert_eq!(result, Some(serde_json::Value::Null));
-    }
-
-    #[test]
-    fn test_cbor_to_json_bool() {
-        assert_eq!(cbor_to_json(&CborValue::Bool(true)), Some(serde_json::json!(true)));
-        assert_eq!(cbor_to_json(&CborValue::Bool(false)), Some(serde_json::json!(false)));
-    }
-
-    #[test]
-    fn test_cbor_to_json_integer() {
-        assert_eq!(cbor_to_json(&CborValue::Integer(42.into())), Some(serde_json::json!(42)));
-        assert_eq!(cbor_to_json(&CborValue::Integer((-100).into())), Some(serde_json::json!(-100)));
-    }
-
-    #[test]
-    fn test_cbor_to_json_float() {
-        let result = cbor_to_json(&CborValue::Float(1.5));
-        assert!(result.is_some());
-        let val = result.unwrap();
-        assert!(val.is_f64());
-    }
-
-    #[test]
-    fn test_cbor_to_json_text() {
-        let result = cbor_to_json(&CborValue::Text("hello".to_string()));
-        assert_eq!(result, Some(serde_json::json!("hello")));
-    }
-
-    #[test]
-    fn test_cbor_to_json_bytes() {
-        let result = cbor_to_json(&CborValue::Bytes(vec![1, 2, 3]));
-        assert!(result.is_some());
-        // Bytes should be base64 encoded
-        assert!(result.unwrap().is_string());
-    }
-
-    #[test]
-    fn test_cbor_to_json_array() {
-        let cbor_array = CborValue::Array(vec![
-            CborValue::Integer(1.into()),
-            CborValue::Integer(2.into()),
-            CborValue::Integer(3.into()),
-        ]);
-        let result = cbor_to_json(&cbor_array);
-        assert_eq!(result, Some(serde_json::json!([1, 2, 3])));
-    }
-
-    #[test]
-    fn test_cbor_to_json_map() {
-        let cbor_map = CborValue::Map(vec![
-            (CborValue::Text("name".to_string()), CborValue::Text("test".to_string())),
-            (CborValue::Text("count".to_string()), CborValue::Integer(5.into())),
-        ]);
-        let result = cbor_to_json(&cbor_map);
-        assert!(result.is_some());
-        let json = result.unwrap();
-        assert_eq!(json["name"], "test");
-        assert_eq!(json["count"], 5);
-    }
-
-    #[test]
-    fn test_cbor_to_json_nested() {
-        let nested = CborValue::Map(vec![
-            (CborValue::Text("outer".to_string()), CborValue::Map(vec![
-                (CborValue::Text("inner".to_string()), CborValue::Text("value".to_string())),
-            ])),
-        ]);
-        let result = cbor_to_json(&nested);
-        assert!(result.is_some());
-        let json = result.unwrap();
-        assert_eq!(json["outer"]["inner"], "value");
-    }
-
-    #[test]
-    fn test_cbor_to_json_tagged() {
-        // Tagged values should unwrap to their inner value
-        let tagged = CborValue::Tag(42, Box::new(CborValue::Text("tagged content".to_string())));
-        let result = cbor_to_json(&tagged);
-        assert_eq!(result, Some(serde_json::json!("tagged content")));
-    }
-
-    #[test]
     fn test_decode_frame_valid() {
         // Create a simple valid frame with header and body
         let mut frame_data = Vec::new();
 
         // Encode header as CBOR map
         let header = CborValue::Map(vec![
-            (CborValue::Text("op".to_string()), CborValue::Integer(1.into())),
-            (CborValue::Text("t".to_string()), CborValue::Text("#commit".to_string())),
+            (
+                CborValue::Text("op".to_string()),
+                CborValue::Integer(1.into()),
+            ),
+            (
+                CborValue::Text("t".to_string()),
+                CborValue::Text("#commit".to_string()),
+            ),
         ]);
         ciborium::into_writer(&header, &mut frame_data).unwrap();
 
         // Encode body as CBOR map
         let body = CborValue::Map(vec![
-            (CborValue::Text("repo".to_string()), CborValue::Text("did:plc:test".to_string())),
-            (CborValue::Text("seq".to_string()), CborValue::Integer(100.into())),
+            (
+                CborValue::Text("repo".to_string()),
+                CborValue::Text("did:plc:test".to_string()),
+            ),
+            (
+                CborValue::Text("seq".to_string()),
+                CborValue::Integer(100.into()),
+            ),
         ]);
         ciborium::into_writer(&body, &mut frame_data).unwrap();
 
         let result = decode_frame(&frame_data);
         assert!(result.is_ok());
 
-        let (decoded_header, decoded_body) = result.unwrap();
+        let (decoded_header, body_bytes) = result.unwrap();
         assert_eq!(get_cbor_int(&decoded_header, "op"), Some(1));
-        assert_eq!(get_cbor_string(&decoded_header, "t"), Some("#commit".to_string()));
-        assert_eq!(get_cbor_string(&decoded_body, "repo"), Some("did:plc:test".to_string()));
+        assert_eq!(
+            get_cbor_string(&decoded_header, "t"),
+            Some("#commit".to_string())
+        );
+
+        // Verify body bytes can be decoded
+        let decoded_body: CborValue = ciborium::from_reader(&body_bytes[..]).unwrap();
+        assert_eq!(
+            get_cbor_string(&decoded_body, "repo"),
+            Some("did:plc:test".to_string())
+        );
         assert_eq!(get_cbor_int(&decoded_body, "seq"), Some(100));
     }
 
@@ -854,50 +640,5 @@ mod tests {
     fn test_decode_frame_empty() {
         let result = decode_frame(&[]);
         assert!(result.is_err());
-    }
-
-    #[test]
-    fn test_get_cbor_cid_tagged() {
-        // CID with tag 42 and bytes (skipping first byte for multibase prefix)
-        let cid_bytes = vec![0x00, 0x01, 0x71, 0x12, 0x20]; // multibase prefix + some CID bytes
-        let map = CborValue::Map(vec![
-            (CborValue::Text("cid".to_string()), CborValue::Tag(42, Box::new(CborValue::Bytes(cid_bytes)))),
-        ]);
-
-        let result = get_cbor_cid(&map, "cid");
-        assert!(result.is_some());
-        assert!(result.unwrap().starts_with('b')); // base32 CID prefix
-    }
-
-    #[test]
-    fn test_get_cbor_cid_raw_bytes() {
-        // CID as raw bytes (no tag)
-        let cid_bytes = vec![0x00, 0x01, 0x71, 0x12, 0x20];
-        let map = CborValue::Map(vec![
-            (CborValue::Text("cid".to_string()), CborValue::Bytes(cid_bytes)),
-        ]);
-
-        let result = get_cbor_cid(&map, "cid");
-        assert!(result.is_some());
-    }
-
-    #[test]
-    fn test_get_cbor_cid_missing() {
-        let map = CborValue::Map(vec![
-            (CborValue::Text("other".to_string()), CborValue::Text("value".to_string())),
-        ]);
-
-        assert_eq!(get_cbor_cid(&map, "cid"), None);
-    }
-
-    #[test]
-    fn test_get_cbor_cid_too_short() {
-        // CID bytes too short (only 1 byte)
-        let cid_bytes = vec![0x00];
-        let map = CborValue::Map(vec![
-            (CborValue::Text("cid".to_string()), CborValue::Tag(42, Box::new(CborValue::Bytes(cid_bytes)))),
-        ]);
-
-        assert_eq!(get_cbor_cid(&map, "cid"), None);
     }
 }

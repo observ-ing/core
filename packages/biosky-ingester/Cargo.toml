@@ -15,6 +15,12 @@ futures-util = "0.3"
 
 # CBOR parsing
 ciborium = "0.2"
+serde_ipld_dagcbor = "0.6"
+ipld-core = "0.4"
+
+# AT Protocol types
+atrium-api = { version = "0.25", default-features = false }
+atrium-repo = "0.1"
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }

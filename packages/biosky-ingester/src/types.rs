@@ -5,24 +5,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-/// The type of operation
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OpAction {
-    Create,
-    Update,
-    Delete,
-}
-
-impl OpAction {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            OpAction::Create => "create",
-            OpAction::Update => "update",
-            OpAction::Delete => "delete",
-        }
-    }
-}
-
 /// An occurrence event (biodiversity observation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OccurrenceEvent {
@@ -101,20 +83,6 @@ pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_op_action_as_str() {
-        assert_eq!(OpAction::Create.as_str(), "create");
-        assert_eq!(OpAction::Update.as_str(), "update");
-        assert_eq!(OpAction::Delete.as_str(), "delete");
-    }
-
-    #[test]
-    fn test_op_action_equality() {
-        assert_eq!(OpAction::Create, OpAction::Create);
-        assert_ne!(OpAction::Create, OpAction::Update);
-        assert_ne!(OpAction::Update, OpAction::Delete);
-    }
 
     #[test]
     fn test_default_config() {
