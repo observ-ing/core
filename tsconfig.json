@@ -15,7 +15,6 @@
   },
   "references": [
     { "path": "./packages/biosky-shared" },
-    { "path": "./packages/biosky-ingester" },
     { "path": "./packages/biosky-appview" },
     { "path": "./packages/biosky-media-proxy" }
   ],

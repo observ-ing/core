@@ -37,9 +37,23 @@ jobs:
       - name: Run tests
         run: npm run test:run
 
+  check-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Rust
+        uses: dtolnay/rust-action@stable
+
+      - name: Check Rust ingester
+        run: cargo check --manifest-path packages/biosky-ingester-rs/Cargo.toml
+
+      - name: Run Rust tests
+        run: cargo test --manifest-path packages/biosky-ingester-rs/Cargo.toml
+
   deploy:
     runs-on: ubuntu-latest
-    needs: [check]
+    needs: [check, check-rust]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4

@@ -1,0 +1,42 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/biosky-ingester-rs', '.']
+
+  # Push the container image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/biosky-ingester-rs']
+
+  # Deploy container image to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'biosky-ingester-rs'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/biosky-ingester-rs'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--cpu'
+      - '4'
+      - '--memory'
+      - '2Gi'
+      - '--min-instances'
+      - '1'
+      - '--max-instances'
+      - '1'
+      - '--timeout'
+      - '3600'
+      - '--add-cloudsql-instances'
+      - 'frewsxcv:us-central1:biosky-db'
+      - '--set-env-vars'
+      - 'RUST_LOG=biosky_ingester=info,DB_HOST=/cloudsql/frewsxcv:us-central1:biosky-db,DB_NAME=biosky,DB_USER=postgres,RELAY_URL=wss://bsky.network'
+      - '--set-secrets'
+      - 'DB_PASSWORD=biosky-db-password:latest'
+      - '--allow-unauthenticated'
+
+images:
+  - 'gcr.io/$PROJECT_ID/biosky-ingester-rs'

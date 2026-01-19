@@ -1,0 +1,74 @@
+# BioSky Ingester (Rust)
+
+High-performance AT Protocol firehose ingester for BioSky, rewritten in Rust for better performance.
+
+## Building
+
+```bash
+cargo build --release
+```
+
+## Running Locally
+
+```bash
+DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/biosky" \
+RELAY_URL="wss://bsky.network" \
+PORT=8080 \
+cargo run --release
+```
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `RELAY_URL` | No | `wss://bsky.network` | AT Protocol relay WebSocket URL |
+| `CURSOR` | No | - | Starting cursor position |
+| `PORT` | No | `8080` | HTTP server port |
+| `RUST_LOG` | No | `biosky_ingester=info` | Log level |
+
+## Endpoints
+
+- `GET /` - Dashboard UI
+- `GET /health` - Health check (for Cloud Run)
+- `GET /api/stats` - JSON stats endpoint
+
+## Deploying to Cloud Run
+
+### Using gcloud directly
+
+```bash
+# Build and push to GCR
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/biosky-ingester-rs
+
+# Deploy to Cloud Run
+gcloud run deploy biosky-ingester-rs \
+  --image gcr.io/YOUR_PROJECT_ID/biosky-ingester-rs \
+  --region us-central1 \
+  --cpu 4 \
+  --memory 2Gi \
+  --min-instances 1 \
+  --max-instances 1 \
+  --timeout 3600 \
+  --set-env-vars "DATABASE_URL=your-db-url,RUST_LOG=biosky_ingester=info" \
+  --allow-unauthenticated
+```
+
+### Using Cloud Build
+
+```bash
+gcloud builds submit --config cloudbuild.yaml
+```
+
+## Docker
+
+```bash
+# Build
+docker build -t biosky-ingester-rs .
+
+# Run
+docker run -p 8080:8080 \
+  -e DATABASE_URL="postgresql://..." \
+  -e RELAY_URL="wss://bsky.network" \
+  biosky-ingester-rs
+```
