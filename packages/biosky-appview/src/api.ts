@@ -598,8 +598,11 @@ if (isMainModule) {
     process.exit(0);
   });
 
-  server.start().catch((error) => {
-    console.error("Fatal error:", error);
+  server.start().catch((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    process.stderr.write(`Fatal error: ${message}\n`);
+    if (stack) process.stderr.write(`${stack}\n`);
     process.exit(1);
   });
 }
