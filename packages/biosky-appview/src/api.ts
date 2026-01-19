@@ -10,8 +10,26 @@ import { fileURLToPath } from "url";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import pino from "pino";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Configure pino for GCP Cloud Logging
+const logger = pino({
+  formatters: {
+    level(label) {
+      const severityMap: Record<string, string> = {
+        trace: "DEBUG",
+        debug: "DEBUG",
+        info: "INFO",
+        warn: "WARNING",
+        error: "ERROR",
+        fatal: "CRITICAL",
+      };
+      return { severity: severityMap[label] || "DEFAULT" };
+    },
+  },
+});
 import {
   Database,
   getDatabaseUrl,
@@ -192,7 +210,7 @@ export class AppViewServer {
             record,
           });
 
-          console.log("Created AT Protocol record:", result.data.uri);
+          logger.info({ uri: result.data.uri }, "Created AT Protocol record");
 
           res.status(201).json({
             success: true,
@@ -239,7 +257,7 @@ export class AppViewServer {
           });
         }
       } catch (error) {
-        console.error("Error creating occurrence:", error);
+        logger.error({ err: error }, "Error creating occurrence");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -285,7 +303,7 @@ export class AppViewServer {
           },
         });
       } catch (error) {
-        console.error("Error fetching nearby occurrences:", error);
+        logger.error({ err: error }, "Error fetching nearby occurrences");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -310,7 +328,7 @@ export class AppViewServer {
           cursor: nextCursor,
         });
       } catch (error) {
-        console.error("Error fetching feed:", error);
+        logger.error({ err: error }, "Error fetching feed");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -349,7 +367,7 @@ export class AppViewServer {
           },
         });
       } catch (error) {
-        console.error("Error fetching bbox occurrences:", error);
+        logger.error({ err: error }, "Error fetching bbox occurrences");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -394,7 +412,7 @@ export class AppViewServer {
           features,
         });
       } catch (error) {
-        console.error("Error generating GeoJSON:", error);
+        logger.error({ err: error }, "Error generating GeoJSON");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -419,7 +437,7 @@ export class AppViewServer {
           identifications: await this.enrichIdentifications(identifications),
         });
       } catch (error) {
-        console.error("Error fetching occurrence:", error);
+        logger.error({ err: error }, "Error fetching occurrence");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -442,7 +460,7 @@ export class AppViewServer {
           communityId: communityTaxon,
         });
       } catch (error) {
-        console.error("Error fetching identifications:", error);
+        logger.error({ err: error }, "Error fetching identifications");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -463,7 +481,7 @@ export class AppViewServer {
         const results = await this.taxonomy.search(query);
         res.json({ results });
       } catch (error) {
-        console.error("Error searching taxa:", error);
+        logger.error({ err: error }, "Error searching taxa");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -480,7 +498,7 @@ export class AppViewServer {
         const result = await this.taxonomy.validate(name);
         res.json(result);
       } catch (error) {
-        console.error("Error validating taxon:", error);
+        logger.error({ err: error }, "Error validating taxon");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -568,7 +586,7 @@ export class AppViewServer {
 
     return new Promise((resolve) => {
       this.app.listen(this.config.port, () => {
-        console.log(`AppView server listening on port ${this.config.port}`);
+        logger.info({ port: this.config.port }, "AppView server listening");
         resolve();
       });
     });
@@ -593,16 +611,13 @@ if (isMainModule) {
   });
 
   process.on("SIGINT", async () => {
-    console.log("\nShutting down...");
+    logger.info("Shutting down...");
     await server.stop();
     process.exit(0);
   });
 
   server.start().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    const stack = error instanceof Error ? error.stack : undefined;
-    process.stderr.write(`Fatal error: ${message}\n`);
-    if (stack) process.stderr.write(`${stack}\n`);
+    logger.fatal({ err: error }, "Fatal error");
     process.exit(1);
   });
 }
