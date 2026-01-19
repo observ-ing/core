@@ -3,7 +3,7 @@ name = "biosky-ingester"
 version = "0.1.0"
 edition = "2021"
 description = "High-performance AT Protocol firehose ingester for BioSky"
-license = "MIT"
+license = "AGPL-3.0-only"
 
 [dependencies]
 # Async runtime
