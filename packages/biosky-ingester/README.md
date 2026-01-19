@@ -21,11 +21,21 @@ cargo run --release
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DATABASE_URL` | Yes | - | PostgreSQL connection string |
+| `DATABASE_URL` | Yes* | - | PostgreSQL connection string |
 | `RELAY_URL` | No | `wss://bsky.network` | AT Protocol relay WebSocket URL |
 | `CURSOR` | No | - | Starting cursor position |
 | `PORT` | No | `8080` | HTTP server port |
 | `RUST_LOG` | No | `biosky_ingester=info` | Log level |
+
+*Either `DATABASE_URL` or Cloud SQL environment variables are required:
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DB_HOST` | Yes* | - | Database host or Cloud SQL socket path (e.g., `/cloudsql/project:region:instance`) |
+| `DB_NAME` | No | `biosky` | Database name |
+| `DB_USER` | No | `postgres` | Database user |
+| `DB_PASSWORD` | No | - | Database password |
+| `DB_PORT` | No | `5432` | Database port (ignored for Cloud SQL sockets) |
 
 ## Endpoints
 

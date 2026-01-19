@@ -24,13 +24,13 @@ A decentralized biodiversity observation platform built on the AT Protocol.
 
 ## Project Structure
 
-This is an npm workspaces monorepo with 5 packages:
+This is a monorepo with 4 npm packages and 1 Rust package:
 
 ```
 packages/
 ├── biosky-shared/      # Shared types, lexicons, database, auth utilities
 ├── biosky-appview/     # REST API server (Express)
-├── biosky-ingester/    # AT Protocol firehose consumer
+├── biosky-ingester/    # AT Protocol firehose consumer (Rust)
 ├── biosky-media-proxy/ # Image caching proxy
 └── biosky-frontend/    # Web UI (Vite + MapLibre GL)
 ```
@@ -41,10 +41,10 @@ packages/
 biosky-shared (no internal deps)
     ↑
     ├── biosky-appview
-    ├── biosky-ingester
     └── biosky-frontend
 
 biosky-media-proxy (standalone, no internal deps)
+biosky-ingester (standalone Rust binary)
 ```
 
 ## Components
@@ -62,10 +62,11 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 - **Auth** - AT Protocol OAuth 2.0 client, handle/DID resolution
 - **Generated Types** - TypeScript types generated from lexicon schemas
 
-### Ingester (`packages/biosky-ingester/`)
+### Ingester (`packages/biosky-ingester/`) - Rust
 
-- **Firehose** - WebSocket client that subscribes to the AT Protocol relay
+- **Firehose** - High-performance WebSocket client that subscribes to the AT Protocol relay
 - **Event Processing** - Handles occurrence and identification records from the network
+- **Built with** - Tokio async runtime, Axum, SQLx
 
 ### AppView (`packages/biosky-appview/`)
 
@@ -136,8 +137,9 @@ npm run generate-types
 ### Running
 
 ```bash
-# Start the ingester (monitors firehose)
-npm run ingester
+# Start the ingester (monitors firehose) - Rust
+cd packages/biosky-ingester
+DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/biosky" cargo run
 
 # Start the AppView API server
 npm run appview
@@ -163,7 +165,7 @@ Three Cloud Run services deployed via `cloudbuild.yaml`:
 | Service | Dockerfile | Public | Cloud SQL | Notes |
 |---------|------------|--------|-----------|-------|
 | biosky-appview | Dockerfile.appview | Yes | Yes | Main API + serves frontend |
-| biosky-ingester | Dockerfile.ingester | No | Yes | min-instances=1 (always running) |
+| biosky-ingester | packages/biosky-ingester/Dockerfile | No | Yes | min-instances=1 (always running) |
 | biosky-media-proxy | Dockerfile.media-proxy | Yes | No | Stateless image cache |
 
 Deploy manually:
