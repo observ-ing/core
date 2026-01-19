@@ -28,6 +28,11 @@ interface RecentEvent {
   time: string;
 }
 
+interface LastProcessedInfo {
+  time: string; // ISO timestamp from the firehose event
+  seq: number;
+}
+
 export class Ingester {
   private firehose!: FirehoseSubscription;
   private db: Database;
@@ -38,6 +43,7 @@ export class Ingester {
   private stats = { occurrences: 0, identifications: 0, errors: 0 };
   private recentEvents: RecentEvent[] = [];
   private readonly maxRecentEvents = 10;
+  private lastProcessed: LastProcessedInfo | null = null;
 
   constructor(config: IngesterConfig) {
     this.db = new Database(config.databaseUrl);
@@ -121,6 +127,7 @@ export class Ingester {
               ),
               stats: this.stats,
               recentEvents: this.recentEvents,
+              lastProcessed: this.lastProcessed,
             }),
           );
         } else if (req.url === "/") {
@@ -240,6 +247,10 @@ export class Ingester {
         <span class="label">Uptime</span>
         <span class="value" id="uptime">-</span>
       </div>
+      <div class="status-row">
+        <span class="label">Lag</span>
+        <span class="value" id="lag">-</span>
+      </div>
     </div>
 
     <div class="card">
@@ -269,13 +280,23 @@ export class Ingester {
   </div>
 
   <script>
-    function formatUptime(seconds) {
+    function formatDuration(seconds) {
       const h = Math.floor(seconds / 3600);
       const m = Math.floor((seconds % 3600) / 60);
       const s = seconds % 60;
       if (h > 0) return h + 'h ' + m + 'm ' + s + 's';
       if (m > 0) return m + 'm ' + s + 's';
       return s + 's';
+    }
+
+    function formatLag(lastProcessed) {
+      if (!lastProcessed || !lastProcessed.time) return '-';
+      const eventTime = new Date(lastProcessed.time).getTime();
+      const now = Date.now();
+      const lagMs = now - eventTime;
+      if (lagMs < 0) return '0s';
+      const lagSeconds = Math.floor(lagMs / 1000);
+      return formatDuration(lagSeconds);
     }
 
     function formatTime(iso) {
@@ -291,7 +312,8 @@ export class Ingester {
           '<span class="status-dot ' + (data.connected ? 'connected' : 'disconnected') + '"></span>' +
           (data.connected ? 'Connected' : 'Disconnected');
         document.getElementById('cursor').textContent = data.cursor?.toLocaleString() || '-';
-        document.getElementById('uptime').textContent = formatUptime(data.uptime);
+        document.getElementById('uptime').textContent = formatDuration(data.uptime);
+        document.getElementById('lag').textContent = formatLag(data.lastProcessed);
         document.getElementById('occurrences').textContent = data.stats.occurrences.toLocaleString();
         document.getElementById('identifications').textContent = data.stats.identifications.toLocaleString();
         document.getElementById('errors').textContent = data.stats.errors.toLocaleString();
@@ -341,6 +363,7 @@ export class Ingester {
         await this.db.deleteOccurrence(event.uri);
       }
       this.stats.occurrences++;
+      this.lastProcessed = { time: event.time, seq: event.seq };
       this.addRecentEvent({
         type: "occurrence",
         action: event.action,
@@ -363,6 +386,7 @@ export class Ingester {
         await this.db.deleteIdentification(event.uri);
       }
       this.stats.identifications++;
+      this.lastProcessed = { time: event.time, seq: event.seq };
       this.addRecentEvent({
         type: "identification",
         action: event.action,
