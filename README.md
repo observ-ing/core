@@ -122,7 +122,6 @@ docker exec -it biosky-postgres createdb -U postgres biosky
 ```bash
 # Environment variables
 export DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/biosky"
-export RELAY_URL="wss://jetstream2.us-east.bsky.network/subscribe"
 export PORT=3000
 ```
 

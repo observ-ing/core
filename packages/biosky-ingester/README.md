@@ -12,8 +12,6 @@ cargo build --release
 
 ```bash
 DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/biosky" \
-RELAY_URL="wss://jetstream2.us-east.bsky.network/subscribe" \
-PORT=8080 \
 cargo run --release
 ```
 
@@ -22,7 +20,6 @@ cargo run --release
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DATABASE_URL` | Yes* | - | PostgreSQL connection string |
-| `RELAY_URL` | No | `wss://jetstream2.us-east.bsky.network/subscribe` | AT Protocol Jetstream WebSocket URL |
 | `CURSOR` | No | - | Starting cursor position |
 | `PORT` | No | `8080` | HTTP server port |
 | `RUST_LOG` | No | `biosky_ingester=info` | Log level |
@@ -79,6 +76,5 @@ docker build -t biosky-ingester .
 # Run
 docker run -p 8080:8080 \
   -e DATABASE_URL="postgresql://..." \
-  -e RELAY_URL="wss://jetstream2.us-east.bsky.network/subscribe" \
   biosky-ingester
 ```

@@ -199,7 +199,7 @@ fn load_config() -> Result<IngesterConfig> {
     };
 
     let relay_url =
-        std::env::var("RELAY_URL").unwrap_or_else(|_| "wss://jetstream2.us-east.bsky.network/subscribe".to_string());
+        std::env::var("JETSTREAM_URL").unwrap_or_else(|_| "wss://jetstream2.us-east.bsky.network/subscribe".to_string());
 
     let cursor = std::env::var("CURSOR")
         .ok()
