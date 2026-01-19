@@ -211,9 +211,29 @@ class BioSkyApp {
   }
 
   private setupEventListeners(): void {
-    // Login button
+    // Login button - show modal
     document.getElementById("login-btn")?.addEventListener("click", () => {
-      const handle = prompt("Enter your handle (e.g., user.bsky.social):");
+      document.getElementById("login-modal")?.classList.remove("hidden");
+      document.getElementById("handle-input")?.focus();
+    });
+
+    // Cancel login
+    document.getElementById("cancel-login")?.addEventListener("click", () => {
+      document.getElementById("login-modal")?.classList.add("hidden");
+    });
+
+    // Close login modal on overlay click
+    document.getElementById("login-modal")?.addEventListener("click", (e) => {
+      if (e.target === e.currentTarget) {
+        document.getElementById("login-modal")?.classList.add("hidden");
+      }
+    });
+
+    // Login form submission
+    document.getElementById("login-form")?.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const handleInput = document.getElementById("handle-input") as HTMLInputElement;
+      const handle = handleInput.value.trim();
       if (handle) {
         window.location.href = `${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`;
       }

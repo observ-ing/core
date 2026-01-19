@@ -674,6 +674,33 @@
         </button>
       </nav>
 
+      <!-- Login Modal -->
+      <div id="login-modal" class="modal-overlay hidden">
+        <div class="modal" style="max-width: 400px">
+          <h2>Log in with Bluesky</h2>
+          <form id="login-form">
+            <div class="form-group">
+              <label for="handle-input">Handle</label>
+              <input
+                type="text"
+                id="handle-input"
+                placeholder="e.g., alice.bsky.social"
+                autocomplete="username"
+                autocapitalize="none"
+                autocorrect="off"
+                spellcheck="false"
+              />
+            </div>
+            <div style="display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem">
+              <button type="button" id="cancel-login" class="btn btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Log in</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
       <!-- Upload Modal -->
       <div id="upload-modal" class="modal-overlay hidden">
         <div class="modal">
