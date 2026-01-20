@@ -350,13 +350,13 @@ describe('OAuthService', () => {
       process.env.PUBLIC_URL = originalEnv
     })
 
-    it('defaults to localhost when no config', () => {
+    it('defaults to loopback IP when no config', () => {
       const originalEnv = process.env.PUBLIC_URL
       delete process.env.PUBLIC_URL
 
       const defaultService = new OAuthService({})
 
-      expect(defaultService.clientId).toBe('http://localhost:3000/client-metadata.json')
+      expect(defaultService.clientId).toBe('http://127.0.0.1:3000/client-metadata.json')
 
       process.env.PUBLIC_URL = originalEnv
     })
