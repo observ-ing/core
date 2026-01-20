@@ -140,7 +140,7 @@ export class OAuthService {
       publicUrl:
         config.publicUrl ||
         process.env.PUBLIC_URL ||
-        "http://localhost:3000",
+        "http://127.0.0.1:3000",
       scope: config.scope || "atproto",
       stateStore: this.stateStore,
       sessionStore: this.sessionStore,
