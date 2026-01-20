@@ -14,7 +14,8 @@ export async function checkAuth(): Promise<User | null> {
       credentials: "include",
     });
     if (response.ok) {
-      return await response.json();
+      const data = await response.json();
+      return data.user ?? null;
     }
     return null;
   } catch {

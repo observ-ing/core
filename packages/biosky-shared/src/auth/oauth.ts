@@ -415,19 +415,21 @@ export class OAuthService {
       try {
         const did = req.cookies?.session_did;
         if (!did) {
-          res.status(401).json({ error: "Not authenticated" });
+          res.json({ user: null });
           return;
         }
 
         const session = await this.getSession(did);
         if (!session) {
-          res.status(401).json({ error: "Session expired" });
+          res.json({ user: null });
           return;
         }
 
         res.json({
-          did: session.did,
-          handle: session.handle,
+          user: {
+            did: session.did,
+            handle: session.handle,
+          },
         });
       } catch (error) {
         console.error("Get user error:", error);

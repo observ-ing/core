@@ -498,7 +498,7 @@ describe('OAuthService', () => {
       expect(mockRes.status).toHaveBeenCalledWith(500)
     })
 
-    it('/oauth/me returns 401 when no session cookie', async () => {
+    it('/oauth/me returns null user when no session cookie', async () => {
       const mockRes = {
         status: vi.fn().mockReturnThis(),
         json: vi.fn()
@@ -520,8 +520,7 @@ describe('OAuthService', () => {
       service.setupRoutes(mockApp)
       await meHandler!(mockReq, mockRes)
 
-      expect(mockRes.status).toHaveBeenCalledWith(401)
-      expect(mockRes.json).toHaveBeenCalledWith({ error: 'Not authenticated' })
+      expect(mockRes.json).toHaveBeenCalledWith({ user: null })
     })
 
     it('/oauth/me returns session when found', async () => {
@@ -562,7 +561,7 @@ describe('OAuthService', () => {
       serviceWithStore.setupRoutes(mockApp)
       await meHandler!(mockReq, mockRes)
 
-      expect(mockRes.json).toHaveBeenCalledWith({ did: mockSession.did, handle: mockSession.handle })
+      expect(mockRes.json).toHaveBeenCalledWith({ user: { did: mockSession.did, handle: mockSession.handle } })
     })
 
     it('/oauth/logout clears cookie and session', async () => {
