@@ -21,7 +21,9 @@ export function Header() {
       <div className={styles.userMenu}>
         {user ? (
           <>
-            <span className={styles.userHandle}>@{user.handle}</span>
+            <span className={styles.userHandle}>
+              {user.handle ? `@${user.handle}` : user.did}
+            </span>
             <button className="btn btn-secondary" onClick={handleLogout}>
               Log out
             </button>

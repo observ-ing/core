@@ -115,7 +115,7 @@ export function UploadModal() {
     <ModalOverlay isOpen={isOpen} onClose={handleClose}>
       <div className={user ? styles.authBanner : styles.demoBanner}>
         {user
-          ? `Posting as @${user.handle}`
+          ? `Posting as ${user.handle ? `@${user.handle}` : user.did}`
           : "Demo Mode - Login to post to AT Protocol"}
       </div>
       <h2>New Occurrence</h2>
