@@ -44,7 +44,13 @@ export function FeedItem({ occurrence }: FeedItemProps) {
       </div>
       <div className={styles.body}>
         <div className={styles.header}>
-          <span className={styles.name}>{displayName}</span>
+          <Link
+            to={`/profile/${encodeURIComponent(occurrence.observer.did)}`}
+            className={styles.name}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {displayName}
+          </Link>
           {handle && <span className={styles.handle}>{handle}</span>}
           <span className={styles.time}>{timeAgo}</span>
         </div>

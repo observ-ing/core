@@ -5,7 +5,7 @@
  * for displaying observer names alongside observations.
  */
 
-import { AtpAgent } from "@atproto/api";
+import { AtpAgent, Agent } from "@atproto/api";
 
 interface DidDocument {
   id: string;
@@ -47,7 +47,12 @@ const identityCache = new Map<
   { result: ResolveResult; timestamp: number }
 >();
 const profileCache = new Map<string, { profile: Profile; timestamp: number }>();
+const followsCache = new Map<
+  string,
+  { follows: string[]; timestamp: number }
+>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const FOLLOWS_CACHE_TTL = 60 * 1000; // 1 minute for follows
 
 export class IdentityResolver {
   private agent: AtpAgent;
@@ -264,11 +269,54 @@ export class IdentityResolver {
   }
 
   /**
+   * Get a user's follows (DIDs they follow)
+   * Uses a shorter cache TTL since follows can change frequently
+   */
+  async getFollows(
+    actor: string,
+    authenticatedAgent?: AtpAgent | Agent,
+  ): Promise<string[]> {
+    // Check cache
+    const cached = followsCache.get(actor);
+    if (cached && Date.now() - cached.timestamp < FOLLOWS_CACHE_TTL) {
+      return cached.follows;
+    }
+
+    try {
+      // Use provided authenticated agent or fall back to public API
+      const api = (authenticatedAgent || this.agent) as AtpAgent;
+      const follows: string[] = [];
+      let cursor: string | undefined;
+
+      // Paginate through all follows (cap at 1000 for safety)
+      do {
+        const response = await api.getFollows({
+          actor,
+          limit: 100,
+          cursor,
+        });
+
+        follows.push(...response.data.follows.map((f) => f.did));
+        cursor = response.data.cursor;
+      } while (cursor && follows.length < 1000);
+
+      // Cache result
+      followsCache.set(actor, { follows, timestamp: Date.now() });
+
+      return follows;
+    } catch (error) {
+      console.error(`Failed to fetch follows for ${actor}:`, error);
+      return [];
+    }
+  }
+
+  /**
    * Clear caches
    */
   clearCache(): void {
     identityCache.clear();
     profileCache.clear();
+    followsCache.clear();
   }
 }
 

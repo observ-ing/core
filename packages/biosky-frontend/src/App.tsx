@@ -8,6 +8,7 @@ import { BottomNav } from "./components/layout/BottomNav";
 import { FeedView } from "./components/feed/FeedView";
 import { MapView } from "./components/map/MapView";
 import { OccurrenceDetail } from "./components/occurrence/OccurrenceDetail";
+import { ProfileView } from "./components/profile/ProfileView";
 import { LoginModal } from "./components/modals/LoginModal";
 import { UploadModal } from "./components/modals/UploadModal";
 import { FAB } from "./components/common/FAB";
@@ -30,6 +31,7 @@ function AppContent() {
           <Route path="/" element={<FeedView />} />
           <Route path="/map" element={<MapView />} />
           <Route path="/occurrence/:uri" element={<OccurrenceDetail />} />
+          <Route path="/profile/:did" element={<ProfileView />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>

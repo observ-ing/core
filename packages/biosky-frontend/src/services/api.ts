@@ -4,6 +4,10 @@ import type {
   Occurrence,
   TaxaResult,
   GeoJSONFeatureCollection,
+  FeedFilters,
+  ExploreFeedResponse,
+  HomeFeedResponse,
+  ProfileFeedResponse,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -43,6 +47,71 @@ export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
   const response = await fetch(`${API_BASE}/api/occurrences/feed?${params}`);
   if (!response.ok) {
     throw new Error("Failed to load feed");
+  }
+
+  return response.json();
+}
+
+export async function fetchExploreFeed(
+  cursor?: string,
+  filters?: FeedFilters
+): Promise<ExploreFeedResponse> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  if (filters?.taxon) params.set("taxon", filters.taxon);
+  if (filters?.lat !== undefined) params.set("lat", filters.lat.toString());
+  if (filters?.lng !== undefined) params.set("lng", filters.lng.toString());
+  if (filters?.radius) params.set("radius", filters.radius.toString());
+
+  const response = await fetch(`${API_BASE}/api/feeds/explore?${params}`);
+  if (!response.ok) {
+    throw new Error("Failed to load explore feed");
+  }
+
+  return response.json();
+}
+
+export async function fetchHomeFeed(
+  cursor?: string,
+  location?: { lat: number; lng: number; nearbyRadius?: number }
+): Promise<HomeFeedResponse> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  if (location) {
+    params.set("lat", location.lat.toString());
+    params.set("lng", location.lng.toString());
+    if (location.nearbyRadius) {
+      params.set("nearbyRadius", location.nearbyRadius.toString());
+    }
+  }
+
+  const response = await fetch(`${API_BASE}/api/feeds/home?${params}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Authentication required");
+    }
+    throw new Error("Failed to load home feed");
+  }
+
+  return response.json();
+}
+
+export async function fetchProfileFeed(
+  did: string,
+  cursor?: string,
+  type?: "observations" | "identifications" | "all"
+): Promise<ProfileFeedResponse> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+  if (type) params.set("type", type);
+
+  const response = await fetch(
+    `${API_BASE}/api/profiles/${encodeURIComponent(did)}/feed?${params}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to load profile feed");
   }
 
   return response.json();

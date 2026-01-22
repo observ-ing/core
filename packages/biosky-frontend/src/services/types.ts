@@ -61,6 +61,64 @@ export interface FeedResponse {
   cursor?: string;
 }
 
+export interface FeedFilters {
+  taxon?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+}
+
+export interface ExploreFeedResponse extends FeedResponse {
+  meta?: {
+    filters?: FeedFilters;
+  };
+}
+
+export interface HomeFeedResponse extends FeedResponse {
+  meta?: {
+    followedCount: number;
+    nearbyCount: number;
+    totalFollows: number;
+  };
+}
+
+export interface Identification {
+  uri: string;
+  cid: string;
+  did: string;
+  subject_uri: string;
+  scientific_name: string;
+  taxon_rank?: string;
+  identification_remarks?: string;
+  is_agreement: boolean;
+  date_identified: string;
+  identifier?: {
+    did: string;
+    handle?: string;
+    displayName?: string;
+    avatar?: string;
+  };
+}
+
+export interface ProfileData {
+  did: string;
+  handle?: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+export interface ProfileFeedResponse {
+  profile: ProfileData;
+  counts: {
+    observations: number;
+    identifications: number;
+    species: number;
+  };
+  occurrences: Occurrence[];
+  identifications: Identification[];
+  cursor?: string;
+}
+
 export interface GeoJSONFeatureCollection {
   type: "FeatureCollection";
   features: Array<{

@@ -438,6 +438,260 @@ export class Database {
     return result.rows;
   }
 
+  async getExploreFeed(options: {
+    limit?: number;
+    cursor?: string;
+    taxon?: string;
+    lat?: number;
+    lng?: number;
+    radius?: number;
+  }): Promise<OccurrenceRow[]> {
+    const conditions: string[] = [];
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
+
+    if (options.taxon) {
+      conditions.push(`scientific_name ILIKE $${paramIndex++}`);
+      params.push(`${options.taxon}%`);
+    }
+
+    if (options.lat !== undefined && options.lng !== undefined) {
+      const radius = options.radius || 10000;
+      conditions.push(`ST_DWithin(
+        location,
+        ST_SetSRID(ST_MakePoint($${paramIndex++}, $${paramIndex++}), 4326)::geography,
+        $${paramIndex++}
+      )`);
+      params.push(options.lng, options.lat, radius);
+    }
+
+    if (options.cursor) {
+      conditions.push(`created_at < $${paramIndex++}`);
+      params.push(options.cursor);
+    }
+
+    const whereClause =
+      conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+
+    const limit = options.limit || 20;
+    params.push(limit);
+
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did, basis_of_record, scientific_name, event_date,
+        ST_Y(location::geometry) as latitude,
+        ST_X(location::geometry) as longitude,
+        coordinate_uncertainty_meters, verbatim_locality, habitat,
+        occurrence_status, occurrence_remarks, individual_count, sex,
+        life_stage, reproductive_condition, behavior, establishment_means,
+        associated_media, recorded_by, created_at
+      FROM occurrences
+      ${whereClause}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex}`,
+      params,
+    );
+    return result.rows;
+  }
+
+  async getProfileFeed(
+    did: string,
+    options: {
+      limit?: number;
+      cursor?: string;
+      type?: "observations" | "identifications" | "all";
+    },
+  ): Promise<{
+    occurrences: OccurrenceRow[];
+    identifications: IdentificationRow[];
+    counts: { observations: number; identifications: number; species: number };
+  }> {
+    const limit = options.limit || 20;
+    const type = options.type || "all";
+
+    // Get counts
+    const countsResult = await this.pool.query(
+      `SELECT
+        (SELECT COUNT(*) FROM occurrences WHERE did = $1) as observation_count,
+        (SELECT COUNT(*) FROM identifications WHERE did = $1) as identification_count,
+        (SELECT COUNT(DISTINCT scientific_name) FROM occurrences WHERE did = $1 AND scientific_name IS NOT NULL) as species_count`,
+      [did],
+    );
+
+    let occurrences: OccurrenceRow[] = [];
+    let identifications: IdentificationRow[] = [];
+
+    if (type === "observations" || type === "all") {
+      const occParams: (string | number)[] = [did, limit];
+      let occCursor = "";
+      if (options.cursor) {
+        occCursor = "AND created_at < $3";
+        occParams.push(options.cursor);
+      }
+
+      const occResult = await this.pool.query(
+        `SELECT
+          uri, cid, did, basis_of_record, scientific_name, event_date,
+          ST_Y(location::geometry) as latitude,
+          ST_X(location::geometry) as longitude,
+          coordinate_uncertainty_meters, verbatim_locality, habitat,
+          occurrence_status, occurrence_remarks, individual_count, sex,
+          life_stage, reproductive_condition, behavior, establishment_means,
+          associated_media, recorded_by, created_at
+        FROM occurrences
+        WHERE did = $1 ${occCursor}
+        ORDER BY created_at DESC
+        LIMIT $2`,
+        occParams,
+      );
+      occurrences = occResult.rows;
+    }
+
+    if (type === "identifications" || type === "all") {
+      const idParams: (string | number)[] = [did, limit];
+      let idCursor = "";
+      if (options.cursor) {
+        idCursor = "AND date_identified < $3";
+        idParams.push(options.cursor);
+      }
+
+      const idResult = await this.pool.query(
+        `SELECT
+          uri, cid, did, subject_uri, subject_cid, scientific_name,
+          taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+          identification_verification_status, type_status, is_agreement, date_identified
+        FROM identifications
+        WHERE did = $1 ${idCursor}
+        ORDER BY date_identified DESC
+        LIMIT $2`,
+        idParams,
+      );
+      identifications = idResult.rows;
+    }
+
+    return {
+      occurrences,
+      identifications,
+      counts: {
+        observations: parseInt(countsResult.rows[0].observation_count),
+        identifications: parseInt(countsResult.rows[0].identification_count),
+        species: parseInt(countsResult.rows[0].species_count),
+      },
+    };
+  }
+
+  async getHomeFeed(
+    followedDids: string[],
+    options: {
+      limit?: number;
+      cursor?: string;
+      lat?: number;
+      lng?: number;
+      nearbyRadius?: number;
+    },
+  ): Promise<{
+    rows: OccurrenceRow[];
+    followedCount: number;
+    nearbyCount: number;
+  }> {
+    const limit = options.limit || 20;
+    const nearbyRadius = options.nearbyRadius || 50000;
+
+    // If no follows and no location, return empty
+    if (followedDids.length === 0 && (options.lat === undefined || options.lng === undefined)) {
+      return { rows: [], followedCount: 0, nearbyCount: 0 };
+    }
+
+    const hasFollows = followedDids.length > 0;
+    const hasLocation = options.lat !== undefined && options.lng !== undefined;
+
+    let paramIndex = 1;
+    const params: (string | number | string[])[] = [];
+
+    // Build the query using CTEs for follows and nearby
+    let query = "WITH ";
+    const ctes: string[] = [];
+
+    if (hasFollows) {
+      params.push(followedDids);
+      const cursorCondition = options.cursor
+        ? `AND created_at < $${++paramIndex}`
+        : "";
+      if (options.cursor) params.push(options.cursor);
+
+      ctes.push(`follows_feed AS (
+        SELECT *, 'follows' as source
+        FROM occurrences
+        WHERE did = ANY($1) ${cursorCondition}
+      )`);
+    }
+
+    if (hasLocation) {
+      const lngIdx = ++paramIndex;
+      const latIdx = ++paramIndex;
+      const radiusIdx = ++paramIndex;
+      params.push(options.lng!, options.lat!, nearbyRadius);
+
+      const cursorCondition =
+        options.cursor && !hasFollows
+          ? `AND created_at < $${++paramIndex}`
+          : options.cursor && hasFollows
+            ? `AND created_at < $2`
+            : "";
+      if (options.cursor && !hasFollows) params.push(options.cursor);
+
+      ctes.push(`nearby_feed AS (
+        SELECT *, 'nearby' as source
+        FROM occurrences
+        WHERE ST_DWithin(
+          location,
+          ST_SetSRID(ST_MakePoint($${lngIdx}, $${latIdx}), 4326)::geography,
+          $${radiusIdx}
+        ) ${cursorCondition}
+      )`);
+    }
+
+    query += ctes.join(", ");
+
+    // Combine feeds
+    const unionParts: string[] = [];
+    if (hasFollows) unionParts.push("SELECT * FROM follows_feed");
+    if (hasLocation) unionParts.push("SELECT * FROM nearby_feed");
+
+    const limitIdx = ++paramIndex;
+    params.push(limit);
+
+    query += `, combined AS (
+      SELECT DISTINCT ON (uri) * FROM (
+        ${unionParts.join(" UNION ALL ")}
+      ) sub
+      ORDER BY uri, created_at DESC
+    )
+    SELECT
+      uri, cid, did, basis_of_record, scientific_name, event_date,
+      ST_Y(location::geometry) as latitude,
+      ST_X(location::geometry) as longitude,
+      coordinate_uncertainty_meters, verbatim_locality, habitat,
+      occurrence_status, occurrence_remarks, individual_count, sex,
+      life_stage, reproductive_condition, behavior, establishment_means,
+      associated_media, recorded_by, created_at, source
+    FROM combined
+    ORDER BY created_at DESC
+    LIMIT $${limitIdx}`;
+
+    const result = await this.pool.query(query, params);
+
+    // Count sources
+    let followedCount = 0;
+    let nearbyCount = 0;
+    for (const row of result.rows) {
+      if (row.source === "follows") followedCount++;
+      else if (row.source === "nearby") nearbyCount++;
+    }
+
+    return { rows: result.rows, followedCount, nearbyCount };
+  }
+
   async getOccurrence(uri: string): Promise<OccurrenceRow | null> {
     const result = await this.pool.query(
       `SELECT

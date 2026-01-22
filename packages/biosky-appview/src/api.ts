@@ -147,6 +147,12 @@ export class AppViewServer {
     // Occurrences API
     this.setupOccurrenceRoutes();
 
+    // Feeds API
+    this.setupFeedRoutes();
+
+    // Profiles API
+    this.setupProfileRoutes();
+
     // Identifications API
     this.setupIdentificationRoutes();
 
@@ -438,6 +444,176 @@ export class AppViewServer {
         });
       } catch (error) {
         logger.error({ err: error }, "Error fetching occurrence");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  }
+
+  private setupFeedRoutes(): void {
+    // Explore feed - public, with optional filters
+    this.app.get("/api/feeds/explore", async (req, res) => {
+      try {
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const cursor = req.query.cursor as string | undefined;
+        const taxon = req.query.taxon as string | undefined;
+        const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+        const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+        const radius = req.query.radius
+          ? parseFloat(req.query.radius as string)
+          : undefined;
+
+        const rows = await this.db.getExploreFeed({
+          limit,
+          cursor,
+          taxon,
+          lat,
+          lng,
+          radius,
+        });
+
+        const occurrences = await this.enrichOccurrences(rows);
+
+        const nextCursor =
+          rows.length === limit
+            ? rows[rows.length - 1].created_at.toISOString()
+            : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+          meta: {
+            filters: {
+              taxon,
+              location:
+                lat !== undefined && lng !== undefined
+                  ? { lat, lng, radius: radius || 10000 }
+                  : undefined,
+            },
+          },
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching explore feed");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Home feed - requires authentication, returns follows + nearby
+    this.app.get("/api/feeds/home", async (req, res) => {
+      try {
+        const sessionDid = req.cookies?.session_did;
+        if (!sessionDid) {
+          res.status(401).json({ error: "Authentication required" });
+          return;
+        }
+
+        const agent = await this.oauth.getAgent(sessionDid);
+        if (!agent) {
+          res.status(401).json({ error: "Invalid session" });
+          return;
+        }
+
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const cursor = req.query.cursor as string | undefined;
+        const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
+        const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
+        const nearbyRadius = req.query.nearbyRadius
+          ? parseFloat(req.query.nearbyRadius as string)
+          : undefined;
+
+        // Fetch user's follows
+        const resolver = getIdentityResolver();
+        const followedDids = await resolver.getFollows(sessionDid, agent);
+
+        const { rows, followedCount, nearbyCount } = await this.db.getHomeFeed(
+          followedDids,
+          { limit, cursor, lat, lng, nearbyRadius },
+        );
+
+        const occurrences = await this.enrichOccurrences(rows);
+
+        const nextCursor =
+          rows.length === limit
+            ? rows[rows.length - 1].created_at.toISOString()
+            : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+          meta: {
+            followedCount,
+            nearbyCount,
+            totalFollows: followedDids.length,
+          },
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching home feed");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  }
+
+  private setupProfileRoutes(): void {
+    // Get profile feed - use regex to capture DID with colons
+    this.app.get(/^\/api\/profiles\/(.+)\/feed$/, async (req, res) => {
+      try {
+        const did = decodeURIComponent(req.params[0]);
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const cursor = req.query.cursor as string | undefined;
+        const type = (req.query.type as "observations" | "identifications" | "all") || "all";
+
+        const { occurrences, identifications, counts } = await this.db.getProfileFeed(
+          did,
+          { limit, cursor, type },
+        );
+
+        // Enrich occurrences
+        const enrichedOccurrences = await this.enrichOccurrences(occurrences);
+
+        // Enrich identifications
+        const enrichedIdentifications = await this.enrichIdentifications(identifications);
+
+        // Get profile info
+        const resolver = getIdentityResolver();
+        const profile = await resolver.getProfile(did);
+
+        // Determine next cursor based on what was returned
+        let nextCursor: string | undefined;
+        if (type === "observations" && occurrences.length === limit) {
+          nextCursor = occurrences[occurrences.length - 1].created_at.toISOString();
+        } else if (type === "identifications" && identifications.length === limit) {
+          nextCursor = identifications[identifications.length - 1].date_identified.toISOString();
+        } else if (type === "all") {
+          // For "all", use the oldest timestamp between the two
+          const lastOcc = occurrences[occurrences.length - 1];
+          const lastId = identifications[identifications.length - 1];
+          if (lastOcc && lastId) {
+            nextCursor =
+              lastOcc.created_at < lastId.date_identified
+                ? lastOcc.created_at.toISOString()
+                : lastId.date_identified.toISOString();
+          } else if (lastOcc) {
+            nextCursor = lastOcc.created_at.toISOString();
+          } else if (lastId) {
+            nextCursor = lastId.date_identified.toISOString();
+          }
+        }
+
+        res.json({
+          profile: profile
+            ? {
+                did: profile.did,
+                handle: profile.handle,
+                displayName: profile.displayName,
+                avatar: profile.avatar,
+              }
+            : { did },
+          counts,
+          occurrences: enrichedOccurrences,
+          identifications: enrichedIdentifications,
+          cursor: nextCursor,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching profile feed");
         res.status(500).json({ error: "Internal server error" });
       }
     });
