@@ -173,16 +173,22 @@ describe('TaxonomyResolver', () => {
   // ============================================================================
   describe('validate', () => {
     it('returns valid=true for exact GBIF match', async () => {
-      const gbifMatch = {
-        usageKey: 12345,
-        scientificName: 'Quercus alba validate',
-        matchType: 'EXACT',
-        rank: 'SPECIES'
+      const gbifV2Match = {
+        synonym: false,
+        usage: {
+          key: 12345,
+          name: 'Quercus alba validate',
+          canonicalName: 'Quercus alba validate',
+          rank: 'SPECIES'
+        },
+        diagnostics: {
+          matchType: 'EXACT'
+        }
       }
 
       global.fetch = vi.fn().mockResolvedValueOnce({
         ok: true,
-        json: () => Promise.resolve(gbifMatch)
+        json: () => Promise.resolve(gbifV2Match)
       })
 
       const result = await resolver.validate('Quercus alba validate')
@@ -193,16 +199,23 @@ describe('TaxonomyResolver', () => {
     })
 
     it('returns valid=false with suggestions for fuzzy GBIF match', async () => {
-      const gbifMatch = {
-        usageKey: 12345,
-        scientificName: 'Quercus alba suggest',
-        matchType: 'FUZZY'
+      const gbifV2Match = {
+        synonym: false,
+        usage: {
+          key: 12345,
+          name: 'Quercus alba suggest',
+          canonicalName: 'Quercus alba suggest',
+          rank: 'SPECIES'
+        },
+        diagnostics: {
+          matchType: 'FUZZY'
+        }
       }
 
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(gbifMatch)
+          json: () => Promise.resolve(gbifV2Match)
         })
 
       const result = await resolver.validate('Quercus alb suggest') // typo
@@ -213,14 +226,18 @@ describe('TaxonomyResolver', () => {
     })
 
     it('returns NONE match as invalid', async () => {
-      const gbifMatch = {
-        matchType: 'NONE'
+      const gbifV2Match = {
+        synonym: false,
+        // no usage means no match
+        diagnostics: {
+          matchType: 'NONE'
+        }
       }
 
       global.fetch = vi.fn()
         .mockResolvedValueOnce({
           ok: true,
-          json: () => Promise.resolve(gbifMatch)
+          json: () => Promise.resolve(gbifV2Match)
         })
 
       const result = await resolver.validate('Nonexistent species xyz')
