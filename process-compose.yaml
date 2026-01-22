@@ -1,6 +1,12 @@
 version: "0.5"
 
 processes:
+  shared:
+    command: npm run build -w biosky-shared && npm run dev -w biosky-shared
+    readiness_probe:
+      exec:
+        command: test -f packages/biosky-shared/dist/index.js
+
   cloud-sql-proxy:
     command: cloud-sql-proxy --port 5432 frewsxcv:us-central1:biosky-db
     readiness_probe:
@@ -17,6 +23,8 @@ processes:
         port: 3000
         path: /health
     depends_on:
+      shared:
+        condition: process_healthy
       cloud-sql-proxy:
         condition: process_healthy
 
