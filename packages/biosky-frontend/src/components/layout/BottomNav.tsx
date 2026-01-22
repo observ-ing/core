@@ -10,6 +10,7 @@ export function BottomNav() {
           `${styles.navBtn} ${isActive ? styles.active : ""}`
         }
         title="Feed"
+        aria-label="Feed"
       >
         <svg
           width="24"
@@ -29,6 +30,7 @@ export function BottomNav() {
           `${styles.navBtn} ${isActive ? styles.active : ""}`
         }
         title="Map"
+        aria-label="Map"
       >
         <svg
           width="24"
