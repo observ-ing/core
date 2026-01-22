@@ -1,0 +1,39 @@
+version: "0.5"
+
+processes:
+  cloud-sql-proxy:
+    command: cloud-sql-proxy --port 5432 frewsxcv:us-central1:biosky-db
+    readiness_probe:
+      exec:
+        command: pg_isready -h localhost -p 5432
+
+  appview:
+    command: npm run appview
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/biosky}
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 3000
+        path: /health
+    depends_on:
+      cloud-sql-proxy:
+        condition: process_healthy
+
+  frontend:
+    command: npm run frontend:dev
+    depends_on:
+      appview:
+        condition: process_healthy
+
+  media-proxy:
+    command: npm run media-proxy
+
+  ingester:
+    command: cargo run
+    working_dir: packages/biosky-ingester
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/biosky}
+    depends_on:
+      cloud-sql-proxy:
+        condition: process_healthy
