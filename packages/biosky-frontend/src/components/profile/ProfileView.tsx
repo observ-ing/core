@@ -124,6 +124,16 @@ export function ProfileView() {
         </div>
       )}
 
+      {/* AT Protocol Link */}
+      <a
+        href={`https://pdsls.dev/at://${did}/org.rwell.test.occurrence`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={styles.atprotoLink}
+      >
+        View records on AT Protocol ↗
+      </a>
+
       {/* Tabs */}
       <div className={styles.tabs}>
         <button

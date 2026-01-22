@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
 import type { Occurrence } from "../../services/types";
+import type { RootState } from "../../store";
 import { getImageUrl } from "../../services/api";
 import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
   occurrence: Occurrence;
+  onEdit?: (occurrence: Occurrence) => void;
 }
 
 function getPdslsUrl(atUri: string): string {
@@ -23,9 +26,11 @@ function formatTimeAgo(date: Date): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export function FeedItem({ occurrence }: FeedItemProps) {
+export function FeedItem({ occurrence, onEdit }: FeedItemProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const isOwnPost = currentUser?.did === occurrence.observer.did;
 
   const displayName =
     occurrence.observer.displayName ||
@@ -89,6 +94,19 @@ export function FeedItem({ occurrence }: FeedItemProps) {
             </button>
             {menuOpen && (
               <div className={styles.dropdown}>
+                {isOwnPost && onEdit && (
+                  <button
+                    className={styles.dropdownItem}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      onEdit(occurrence);
+                    }}
+                  >
+                    Edit
+                  </button>
+                )}
                 <a
                   href={pdslsUrl}
                   target="_blank"

@@ -268,6 +268,90 @@ export class AppViewServer {
       }
     });
 
+    // Update an existing occurrence
+    this.app.put("/api/occurrences", async (req, res) => {
+      try {
+        const {
+          uri,
+          scientificName,
+          latitude,
+          longitude,
+          notes,
+          eventDate,
+        } = req.body;
+
+        if (!uri) {
+          res.status(400).json({ error: "uri is required" });
+          return;
+        }
+
+        if (!latitude || !longitude) {
+          res.status(400).json({ error: "latitude and longitude are required" });
+          return;
+        }
+
+        // Parse the AT URI to extract DID and rkey
+        // Format: at://did:plc:xxx/org.rwell.test.occurrence/rkey
+        const uriMatch = uri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
+        if (!uriMatch) {
+          res.status(400).json({ error: "Invalid AT URI format" });
+          return;
+        }
+
+        const [, recordDid, collection, rkey] = uriMatch;
+
+        // Verify user is authenticated
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to edit observations" });
+          return;
+        }
+
+        // Verify user owns this record
+        if (sessionDid !== recordDid) {
+          res.status(403).json({ error: "You can only edit your own observations" });
+          return;
+        }
+
+        // Build the updated record
+        const record = {
+          $type: "org.rwell.test.occurrence",
+          scientificName: scientificName || undefined,
+          eventDate: eventDate || new Date().toISOString(),
+          location: {
+            decimalLatitude: String(latitude),
+            decimalLongitude: String(longitude),
+            coordinateUncertaintyInMeters: 50,
+            geodeticDatum: "WGS84",
+          },
+          notes: notes || undefined,
+          createdAt: new Date().toISOString(),
+        };
+
+        // Update the record on the user's PDS using putRecord
+        const result = await agent.com.atproto.repo.putRecord({
+          repo: sessionDid,
+          collection,
+          rkey,
+          record,
+        });
+
+        logger.info({ uri: result.data.uri }, "Updated AT Protocol record");
+
+        res.json({
+          success: true,
+          uri: result.data.uri,
+          cid: result.data.cid,
+          message: "Observation updated",
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error updating occurrence");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
     // Get occurrences nearby
     this.app.get("/api/occurrences/nearby", async (req, res) => {
       try {

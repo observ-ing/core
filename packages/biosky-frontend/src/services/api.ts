@@ -191,6 +191,31 @@ export async function submitOccurrence(data: {
   return response.json();
 }
 
+export async function updateOccurrence(data: {
+  uri: string;
+  scientificName: string;
+  latitude: number;
+  longitude: number;
+  notes?: string;
+  eventDate: string;
+}): Promise<{ uri: string; cid: string }> {
+  const response = await fetch(`${API_BASE}/api/occurrences`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to update");
+  }
+
+  return response.json();
+}
+
 export function getImageUrl(path: string): string {
   return `${API_BASE}${path}`;
 }

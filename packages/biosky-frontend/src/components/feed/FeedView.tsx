@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
-import type { FeedTab } from "../../services/types";
+import { openEditModal } from "../../store/uiSlice";
+import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
 import styles from "./FeedView.module.css";
 
@@ -31,6 +32,10 @@ export function FeedView() {
     }
   };
 
+  const handleEdit = useCallback((occurrence: Occurrence) => {
+    dispatch(openEditModal(occurrence));
+  }, [dispatch]);
+
   return (
     <div className={styles.container}>
       <nav className={styles.tabs}>
@@ -50,7 +55,7 @@ export function FeedView() {
       <div className={styles.content} ref={contentRef} onScroll={handleScroll}>
         <div className={styles.list}>
           {occurrences.map((occ) => (
-            <FeedItem key={occ.uri} occurrence={occ} />
+            <FeedItem key={occ.uri} occurrence={occ} onEdit={handleEdit} />
           ))}
         </div>
         {isLoading && <div className={styles.loading}>Loading...</div>}

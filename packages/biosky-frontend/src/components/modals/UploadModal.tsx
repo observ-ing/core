@@ -2,7 +2,7 @@ import { useState, useEffect, FormEvent, useCallback } from "react";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
 import { resetFeed, loadInitialFeed } from "../../store/feedSlice";
-import { submitOccurrence, searchTaxa } from "../../services/api";
+import { submitOccurrence, updateOccurrence, searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConservationStatus } from "../common/ConservationStatus";
@@ -18,8 +18,11 @@ const QUICK_SPECIES = [
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
+  const editingOccurrence = useAppSelector((state) => state.ui.editingOccurrence);
   const user = useAppSelector((state) => state.auth.user);
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
+
+  const isEditMode = !!editingOccurrence;
 
   const [species, setSpecies] = useState("");
   const [notes, setNotes] = useState("");
@@ -30,7 +33,15 @@ export function UploadModal() {
 
   useEffect(() => {
     if (isOpen) {
-      if (currentLocation) {
+      if (editingOccurrence) {
+        // Pre-fill form with existing values when editing
+        setSpecies(editingOccurrence.scientificName || "");
+        setNotes(editingOccurrence.occurrenceRemarks || "");
+        if (editingOccurrence.location) {
+          setLat(editingOccurrence.location.lat.toFixed(6));
+          setLng(editingOccurrence.location.lng.toFixed(6));
+        }
+      } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
         setLng(currentLocation.lng.toFixed(6));
       } else {
@@ -46,7 +57,7 @@ export function UploadModal() {
         );
       }
     }
-  }, [isOpen, currentLocation]);
+  }, [isOpen, currentLocation, editingOccurrence]);
 
   const handleClose = () => {
     dispatch(closeUploadModal());
@@ -86,22 +97,36 @@ export function UploadModal() {
     setIsSubmitting(true);
 
     try {
-      await submitOccurrence({
-        scientificName: species || "Unknown species",
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lng),
-        notes: notes || undefined,
-        eventDate: new Date().toISOString(),
-      });
+      if (isEditMode && editingOccurrence) {
+        // Update existing occurrence
+        await updateOccurrence({
+          uri: editingOccurrence.uri,
+          scientificName: species || "Unknown species",
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+          notes: notes || undefined,
+          eventDate: editingOccurrence.eventDate || new Date().toISOString(),
+        });
+        dispatch(addToast({ message: "Occurrence updated successfully!", type: "success" }));
+      } else {
+        // Create new occurrence
+        await submitOccurrence({
+          scientificName: species || "Unknown species",
+          latitude: parseFloat(lat),
+          longitude: parseFloat(lng),
+          notes: notes || undefined,
+          eventDate: new Date().toISOString(),
+        });
+        dispatch(addToast({ message: "Occurrence submitted successfully!", type: "success" }));
+      }
 
-      dispatch(addToast({ message: "Occurrence submitted successfully!", type: "success" }));
       handleClose();
       dispatch(resetFeed());
       dispatch(loadInitialFeed());
     } catch (error) {
       dispatch(
         addToast({
-          message: `Failed to submit: ${error instanceof Error ? error.message : "Unknown error"}`,
+          message: `Failed to ${isEditMode ? "update" : "submit"}: ${error instanceof Error ? error.message : "Unknown error"}`,
           type: "error",
         })
       );
@@ -119,7 +144,7 @@ export function UploadModal() {
           ? `Posting as ${user.handle ? `@${user.handle}` : user.did}`
           : "Demo Mode - Login to post to AT Protocol"}
       </div>
-      <h2>New Occurrence</h2>
+      <h2>{isEditMode ? "Edit Occurrence" : "New Occurrence"}</h2>
       <form onSubmit={handleSubmit}>
         <div className="form-group">
           <label htmlFor="species-input">Species</label>
@@ -204,7 +229,9 @@ export function UploadModal() {
             className="btn btn-primary"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Submitting..." : "Submit"}
+            {isSubmitting
+              ? isEditMode ? "Saving..." : "Submitting..."
+              : isEditMode ? "Save Changes" : "Submit"}
           </button>
         </div>
       </form>
