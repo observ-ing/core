@@ -14,7 +14,6 @@ processes:
         command: pg_isready -h localhost -p 5432
 
   appview:
-    command: npm run appview
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/biosky}
     readiness_probe:

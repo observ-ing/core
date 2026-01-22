@@ -350,13 +350,15 @@ describe('OAuthService', () => {
       process.env.PUBLIC_URL = originalEnv
     })
 
-    it('defaults to loopback IP when no config', () => {
+    it('defaults to loopback mode when no config', () => {
       const originalEnv = process.env.PUBLIC_URL
       delete process.env.PUBLIC_URL
 
       const defaultService = new OAuthService({})
 
-      expect(defaultService.clientId).toBe('http://127.0.0.1:3000/client-metadata.json')
+      // In loopback mode, client_id uses the http://localhost?... format
+      expect(defaultService.clientId).toBe('http://localhost?redirect_uri=http%3A%2F%2F127.0.0.1%3A3000%2Foauth%2Fcallback&scope=atproto')
+      expect(defaultService.redirectUri).toBe('http://127.0.0.1:3000/oauth/callback')
 
       process.env.PUBLIC_URL = originalEnv
     })

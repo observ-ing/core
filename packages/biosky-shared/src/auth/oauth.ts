@@ -9,6 +9,9 @@ import {
   NodeOAuthClient,
   type NodeOAuthClientOptions,
 } from "@atproto/oauth-client-node";
+import {
+  buildAtprotoLoopbackClientMetadata,
+} from "@atproto/oauth-types";
 import { JoseKey } from "@atproto/jwk-jose";
 import { Agent, AtpAgent } from "@atproto/api";
 import express from "express";
@@ -131,27 +134,54 @@ export class OAuthService {
   private sessionStore: SessionStore;
   private privateKey: JoseKey | null = null;
   private publicJwk: Record<string, unknown> | null = null;
+  private isLoopbackMode: boolean;
 
   constructor(config: Partial<OAuthConfig> = {}) {
     this.stateStore = config.stateStore || new MemoryStateStore();
     this.sessionStore = config.sessionStore || new MemorySessionStore();
 
+    const publicUrl = config.publicUrl || process.env.PUBLIC_URL || "http://127.0.0.1:3000";
+
+    // Detect if we're in loopback mode (local development)
+    // Loopback mode uses http://localhost client_id format per AT Protocol spec
+    this.isLoopbackMode = this.isLoopbackUrl(publicUrl);
+
     this.config = {
-      publicUrl:
-        config.publicUrl ||
-        process.env.PUBLIC_URL ||
-        "http://127.0.0.1:3000",
+      publicUrl,
       scope: config.scope || "atproto",
       stateStore: this.stateStore,
       sessionStore: this.sessionStore,
     };
   }
 
+  private isLoopbackUrl(url: string): boolean {
+    try {
+      const parsed = new URL(url);
+      return parsed.hostname === "localhost" ||
+             parsed.hostname === "127.0.0.1" ||
+             parsed.hostname === "[::1]";
+    } catch {
+      return false;
+    }
+  }
+
   get clientId(): string {
+    if (this.isLoopbackMode) {
+      // Loopback client ID format: http://localhost?redirect_uri=...&scope=...
+      const params = new URLSearchParams();
+      params.set("redirect_uri", this.redirectUri);
+      params.set("scope", this.config.scope);
+      return `http://localhost?${params.toString()}`;
+    }
     return `${this.config.publicUrl}/client-metadata.json`;
   }
 
   get redirectUri(): string {
+    if (this.isLoopbackMode) {
+      // For loopback mode, use 127.0.0.1 (not localhost) per RFC 8252
+      const parsed = new URL(this.config.publicUrl);
+      return `http://127.0.0.1:${parsed.port}/oauth/callback`;
+    }
     return `${this.config.publicUrl}/oauth/callback`;
   }
 
@@ -199,18 +229,35 @@ export class OAuthService {
     const keyWithAlg = await JoseKey.fromJWK(keysetJwk);
     console.log("Keyset key jwk:", JSON.stringify(keyWithAlg.jwk, null, 2));
 
-    const options: NodeOAuthClientOptions = {
-      clientMetadata: {
+    // Build client metadata based on mode
+    let clientMetadata;
+    if (this.isLoopbackMode) {
+      // Use loopback client metadata for local development
+      // This uses the special http://localhost?... client_id format
+      console.log("Using loopback mode for local development");
+      clientMetadata = buildAtprotoLoopbackClientMetadata({
+        scope: this.config.scope,
+        redirect_uris: [this.redirectUri as `http://127.0.0.1${string}`],
+      });
+    } else {
+      // Production mode: use discoverable client_id pointing to client-metadata.json
+      clientMetadata = {
         client_id: this.clientId,
         client_name: "BioSky",
-        client_uri: this.config.publicUrl,
-        redirect_uris: [this.redirectUri],
-        grant_types: ["authorization_code", "refresh_token"],
-        response_types: ["code"],
+        client_uri: this.config.publicUrl as `https://${string}`,
+        redirect_uris: [this.redirectUri as `https://${string}`] as [`https://${string}`],
+        grant_types: ["authorization_code", "refresh_token"] as ["authorization_code", "refresh_token"],
+        response_types: ["code"] as ["code"],
         scope: this.config.scope,
-        token_endpoint_auth_method: "none",
+        token_endpoint_auth_method: "none" as const,
         dpop_bound_access_tokens: true,
-      },
+      };
+    }
+
+    const options: NodeOAuthClientOptions = {
+      clientMetadata,
+      // Allow HTTP connections in loopback mode (local development)
+      allowHttp: this.isLoopbackMode,
       stateStore: {
         get: async (key: string) => {
           const value = await this.stateStore.get(key);
@@ -241,9 +288,12 @@ export class OAuthService {
     };
 
     console.log("Creating NodeOAuthClient with options...");
+    console.log("Client ID:", this.clientId);
+    console.log("Redirect URI:", this.redirectUri);
+    console.log("Loopback mode:", this.isLoopbackMode);
     try {
       this.client = new NodeOAuthClient(options);
-      console.log("OAuth client created successfully with client_id:", this.clientId);
+      console.log("OAuth client created successfully");
     } catch (e) {
       console.error("NodeOAuthClient constructor failed:", String((e as Error)?.message || e));
       throw e;
@@ -251,6 +301,13 @@ export class OAuthService {
   }
 
   getClientMetadata(): object {
+    if (this.isLoopbackMode) {
+      // Return loopback client metadata
+      return buildAtprotoLoopbackClientMetadata({
+        scope: this.config.scope,
+        redirect_uris: [this.redirectUri as `http://127.0.0.1${string}`],
+      });
+    }
     return {
       client_id: this.clientId,
       client_name: "BioSky",
