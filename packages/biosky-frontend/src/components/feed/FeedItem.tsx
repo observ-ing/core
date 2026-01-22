@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
@@ -5,6 +6,10 @@ import styles from "./FeedItem.module.css";
 
 interface FeedItemProps {
   occurrence: Occurrence;
+}
+
+function getPdslsUrl(atUri: string): string {
+  return `https://pdsls.dev/${atUri}`;
 }
 
 function formatTimeAgo(date: Date): string {
@@ -19,6 +24,9 @@ function formatTimeAgo(date: Date): string {
 }
 
 export function FeedItem({ occurrence }: FeedItemProps) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
   const displayName =
     occurrence.observer.displayName ||
     occurrence.observer.handle ||
@@ -34,6 +42,20 @@ export function FeedItem({ occurrence }: FeedItemProps) {
     : "";
 
   const occurrenceUrl = `/occurrence/${encodeURIComponent(occurrence.uri)}`;
+  const pdslsUrl = getPdslsUrl(occurrence.uri);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    if (menuOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [menuOpen]);
 
   return (
     <Link to={occurrenceUrl} className={styles.item}>
@@ -53,6 +75,32 @@ export function FeedItem({ occurrence }: FeedItemProps) {
           </Link>
           {handle && <span className={styles.handle}>{handle}</span>}
           <span className={styles.time}>{timeAgo}</span>
+          <div className={styles.menuWrapper} ref={menuRef}>
+            <button
+              className={styles.menuButton}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              aria-label="More options"
+            >
+              ⋮
+            </button>
+            {menuOpen && (
+              <div className={styles.dropdown}>
+                <a
+                  href={pdslsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.dropdownItem}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  View on AT Protocol
+                </a>
+              </div>
+            )}
+          </div>
         </div>
         <div className={styles.species}>{species}</div>
         {occurrence.occurrenceRemarks && (
