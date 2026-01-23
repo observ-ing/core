@@ -35,7 +35,15 @@ processes:
         condition: process_healthy
 
   media-proxy:
-    command: npm run media-proxy
+    command: cargo run -p biosky-media-proxy
+    environment:
+      - PORT=3001
+      - CACHE_DIR=./cache/media
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 3001
+        path: /health
 
   ingester:
     command: cargo run

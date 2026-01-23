@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w biosky-shared && npm run build -w biosky-appview -w biosky-media-proxy -w biosky-frontend",
+    "build": "npm run build -w biosky-shared && npm run build -w biosky-appview -w biosky-frontend",
     "dev": "npm run dev --workspace=biosky-appview",
     "generate-types": "node scripts/generate-types.js",
     "test": "vitest",
@@ -17,7 +17,6 @@
     "test:coverage": "vitest run --coverage",
     "test:publish": "tsx scripts/publish-observation.ts",
     "appview": "npm run start --workspace=biosky-appview",
-    "media-proxy": "npm run start --workspace=biosky-media-proxy",
     "frontend:dev": "npm run dev --workspace=biosky-frontend",
     "frontend:build": "npm run build --workspace=biosky-frontend"
   },

@@ -1,34 +1,59 @@
-FROM node:24-alpine AS builder
+# Build stage
+FROM rust:1.92-slim-bookworm as builder
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-COPY package*.json ./
-COPY packages/biosky-media-proxy/package.json ./packages/biosky-media-proxy/
+# Copy workspace manifests
+COPY Cargo.toml Cargo.lock ./
 
-RUN npm ci
+# Copy package manifests
+COPY packages/biosky-ingester/Cargo.toml packages/biosky-ingester/
+COPY packages/biosky-media-proxy-rs/Cargo.toml packages/biosky-media-proxy-rs/
 
-COPY . .
-RUN npm run build -w biosky-media-proxy
+# Create dummy sources to cache dependencies
+RUN mkdir -p packages/biosky-ingester/src packages/biosky-media-proxy-rs/src && \
+    echo "fn main() {}" > packages/biosky-ingester/src/main.rs && \
+    echo "" > packages/biosky-ingester/src/lib.rs && \
+    echo "fn main() {}" > packages/biosky-media-proxy-rs/src/main.rs && \
+    echo "" > packages/biosky-media-proxy-rs/src/lib.rs
 
-FROM node:24-alpine
+# Build dependencies only (this layer will be cached)
+RUN cargo build --release -p biosky-media-proxy && rm -rf packages/biosky-media-proxy-rs/src
+
+# Copy real source code for media proxy
+COPY packages/biosky-media-proxy-rs/src packages/biosky-media-proxy-rs/src
+
+# Build for release (touch to invalidate cache for main.rs)
+RUN touch packages/biosky-media-proxy-rs/src/main.rs && cargo build --release -p biosky-media-proxy
+
+# Runtime stage
+FROM debian:bookworm-slim
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-
-COPY package*.json ./
-COPY packages/biosky-media-proxy/package.json ./packages/biosky-media-proxy/
-
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/packages/biosky-media-proxy/dist ./packages/biosky-media-proxy/dist
 
 # Create cache directory
 RUN mkdir -p /app/cache/media
 
-ENV NODE_ENV=production
-ENV PORT=8080
-ENV MEDIA_PROXY_PORT=8080
+# Copy the binary from builder
+COPY --from=builder /app/target/release/biosky-media-proxy /app/biosky-media-proxy
+
+# Set environment defaults
+ENV RUST_LOG=biosky_media_proxy=info
+ENV PORT=3001
 ENV CACHE_DIR=/app/cache/media
 
-EXPOSE 8080
+EXPOSE 3001
 
-CMD ["node", "packages/biosky-media-proxy/dist/index.js"]
+CMD ["/app/biosky-media-proxy"]

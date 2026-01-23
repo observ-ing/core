@@ -1,0 +1,49 @@
+[package]
+name = "biosky-media-proxy"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance media caching proxy for BioSky"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP server
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-stackdriver = "0.10"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Hashing for cache keys
+sha2 = "0.10"
+hex = "0.4"
+
+# URL parsing
+url = "2"
+urlencoding = "2"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tower = { version = "0.5", features = ["util"] }
+tempfile = "3"
+
+[[bin]]
+name = "biosky-media-proxy"
+path = "src/main.rs"
+
+[profile.release]
+debug = true
