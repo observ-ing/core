@@ -38,11 +38,19 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Calculate the community ID for an occurrence
+   * Calculate the community ID for an occurrence (or a specific subject within it)
+   * @param occurrenceUri - The occurrence URI
+   * @param subjectIndex - Optional subject index (default 0 for single-subject occurrences)
    */
-  async calculate(occurrenceUri: string): Promise<CommunityIdResult | null> {
+  async calculate(
+    occurrenceUri: string,
+    subjectIndex?: number,
+  ): Promise<CommunityIdResult | null> {
+    // If subjectIndex is specified, get identifications for that subject only
     const identifications =
-      await this.db.getIdentificationsForOccurrence(occurrenceUri);
+      subjectIndex !== undefined
+        ? await this.db.getIdentificationsForSubject(occurrenceUri, subjectIndex)
+        : await this.db.getIdentificationsForOccurrence(occurrenceUri);
 
     if (identifications.length === 0) {
       return null;
@@ -71,6 +79,28 @@ export class CommunityIdCalculator {
       confidence,
       isResearchGrade,
     };
+  }
+
+  /**
+   * Calculate community ID for all subjects in an occurrence
+   */
+  async calculateAllSubjects(
+    occurrenceUri: string,
+  ): Promise<Map<number, CommunityIdResult | null>> {
+    const subjects = await this.db.getSubjectsForOccurrence(occurrenceUri);
+    const results = new Map<number, CommunityIdResult | null>();
+
+    for (const subject of subjects) {
+      const result = await this.calculate(occurrenceUri, subject.subjectIndex);
+      results.set(subject.subjectIndex, result);
+    }
+
+    // Ensure subject 0 is always included
+    if (!results.has(0)) {
+      results.set(0, null);
+    }
+
+    return results;
   }
 
   /**
@@ -147,7 +177,7 @@ export class CommunityIdCalculator {
   }
 
   /**
-   * Determine if an occurrence qualifies for "Research Grade" status
+   * Determine if an occurrence (or subject) qualifies for "Research Grade" status
    *
    * Criteria:
    * - Has at least 2 identifications
@@ -155,18 +185,22 @@ export class CommunityIdCalculator {
    * - Has date and location data (checked elsewhere)
    * - Has at least one photo (checked elsewhere)
    */
-  async isResearchGrade(occurrenceUri: string): Promise<boolean> {
-    const result = await this.calculate(occurrenceUri);
+  async isResearchGrade(
+    occurrenceUri: string,
+    subjectIndex?: number,
+  ): Promise<boolean> {
+    const result = await this.calculate(occurrenceUri, subjectIndex);
     return result?.isResearchGrade || false;
   }
 
   /**
-   * Get quality grade for an occurrence
+   * Get quality grade for an occurrence (or subject)
    */
   async getQualityGrade(
     occurrenceUri: string,
+    subjectIndex?: number,
   ): Promise<"research" | "needs_id" | "casual"> {
-    const result = await this.calculate(occurrenceUri);
+    const result = await this.calculate(occurrenceUri, subjectIndex);
 
     if (!result) {
       return "casual"; // No identifications
@@ -189,11 +223,12 @@ export class CommunityIdCalculator {
    * - Species-specific expertise
    */
   async calculateWeighted(
-    _occurrenceUri: string,
+    occurrenceUri: string,
+    subjectIndex?: number,
   ): Promise<CommunityIdResult | null> {
     // Future implementation with weighted voting
     // For now, delegate to simple calculation
-    return this.calculate(_occurrenceUri);
+    return this.calculate(occurrenceUri, subjectIndex);
   }
 }
 

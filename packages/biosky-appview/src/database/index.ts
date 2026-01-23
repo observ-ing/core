@@ -125,6 +125,7 @@ export class Database {
         did TEXT NOT NULL,
         subject_uri TEXT NOT NULL REFERENCES occurrences(uri) ON DELETE CASCADE,
         subject_cid TEXT NOT NULL,
+        subject_index INTEGER NOT NULL DEFAULT 0,
         -- Darwin Core terms
         scientific_name TEXT NOT NULL,
         taxon_rank TEXT,
@@ -138,9 +139,24 @@ export class Database {
         indexed_at TIMESTAMPTZ DEFAULT NOW()
       );
 
+      -- Add subject_index column if it doesn't exist (migration for existing tables)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'subject_index'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN subject_index INTEGER NOT NULL DEFAULT 0;
+        END IF;
+      END $$;
+
       -- Index for looking up identifications by occurrence
       CREATE INDEX IF NOT EXISTS identifications_subject_uri_idx
         ON identifications(subject_uri);
+
+      -- Composite index for per-subject queries
+      CREATE INDEX IF NOT EXISTS identifications_subject_idx
+        ON identifications(subject_uri, subject_index);
 
       -- Index for user's identifications
       CREATE INDEX IF NOT EXISTS identifications_did_idx
@@ -169,19 +185,22 @@ export class Database {
       );
 
       -- Community ID materialized view (refreshed periodically)
-      CREATE MATERIALIZED VIEW IF NOT EXISTS community_ids AS
+      -- Groups by subject_index to support multiple subjects per occurrence
+      DROP MATERIALIZED VIEW IF EXISTS community_ids;
+      CREATE MATERIALIZED VIEW community_ids AS
       SELECT
         o.uri as occurrence_uri,
+        i.subject_index,
         i.scientific_name,
         COUNT(*) as id_count,
         COUNT(*) FILTER (WHERE i.is_agreement) as agreement_count
       FROM occurrences o
       JOIN identifications i ON i.subject_uri = o.uri
-      GROUP BY o.uri, i.scientific_name
-      ORDER BY o.uri, id_count DESC;
+      GROUP BY o.uri, i.subject_index, i.scientific_name
+      ORDER BY o.uri, i.subject_index, id_count DESC;
 
-      CREATE UNIQUE INDEX IF NOT EXISTS community_ids_uri_taxon_idx
-        ON community_ids(occurrence_uri, scientific_name);
+      CREATE UNIQUE INDEX IF NOT EXISTS community_ids_uri_subject_taxon_idx
+        ON community_ids(occurrence_uri, subject_index, scientific_name);
     `);
 
     console.log("Database migrations completed");
@@ -312,22 +331,25 @@ export class Database {
       return;
     }
 
+    const subjectIndex = record.subjectIndex ?? 0;
+
     await this.pool.query(
       `INSERT INTO identifications (
-        uri, cid, did, subject_uri, subject_cid, scientific_name,
+        uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
         taxon_rank, identification_qualifier, taxon_id, identification_remarks,
         identification_verification_status, type_status, is_agreement, date_identified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       ON CONFLICT (uri) DO UPDATE SET
         cid = $2,
-        scientific_name = $6,
-        taxon_rank = $7,
-        identification_qualifier = $8,
-        taxon_id = $9,
-        identification_remarks = $10,
-        identification_verification_status = $11,
-        type_status = $12,
-        is_agreement = $13,
+        subject_index = $6,
+        scientific_name = $7,
+        taxon_rank = $8,
+        identification_qualifier = $9,
+        taxon_id = $10,
+        identification_remarks = $11,
+        identification_verification_status = $12,
+        type_status = $13,
+        is_agreement = $14,
         indexed_at = NOW()`,
       [
         event.uri,
@@ -335,6 +357,7 @@ export class Database {
         event.did,
         record.subject.uri,
         record.subject.cid,
+        subjectIndex,
         record.taxonName,
         record.taxonRank || null,
         null, // identificationQualifier
@@ -557,7 +580,7 @@ export class Database {
 
       const idResult = await this.pool.query(
         `SELECT
-          uri, cid, did, subject_uri, subject_cid, scientific_name,
+          uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
           taxon_rank, identification_qualifier, taxon_id, identification_remarks,
           identification_verification_status, type_status, is_agreement, date_identified
         FROM identifications
@@ -714,25 +737,68 @@ export class Database {
   ): Promise<IdentificationRow[]> {
     const result = await this.pool.query(
       `SELECT
-        uri, cid, did, subject_uri, subject_cid, scientific_name,
+        uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
         taxon_rank, identification_qualifier, taxon_id, identification_remarks,
         identification_verification_status, type_status, is_agreement, date_identified
       FROM identifications
       WHERE subject_uri = $1
-      ORDER BY date_identified DESC`,
+      ORDER BY subject_index, date_identified DESC`,
       [occurrenceUri],
     );
     return result.rows;
   }
 
-  async getCommunityId(occurrenceUri: string): Promise<string | null> {
+  async getIdentificationsForSubject(
+    occurrenceUri: string,
+    subjectIndex: number,
+  ): Promise<IdentificationRow[]> {
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+        taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+        identification_verification_status, type_status, is_agreement, date_identified
+      FROM identifications
+      WHERE subject_uri = $1 AND subject_index = $2
+      ORDER BY date_identified DESC`,
+      [occurrenceUri, subjectIndex],
+    );
+    return result.rows;
+  }
+
+  async getSubjectsForOccurrence(occurrenceUri: string): Promise<Array<{
+    subjectIndex: number;
+    identificationCount: number;
+    latestIdentification: Date | null;
+  }>> {
+    const result = await this.pool.query(
+      `SELECT
+        subject_index,
+        COUNT(*) as identification_count,
+        MAX(date_identified) as latest_identification
+      FROM identifications
+      WHERE subject_uri = $1
+      GROUP BY subject_index
+      ORDER BY subject_index`,
+      [occurrenceUri],
+    );
+    return result.rows.map((row: { subject_index: number; identification_count: string; latest_identification: Date | null }) => ({
+      subjectIndex: row.subject_index,
+      identificationCount: parseInt(row.identification_count),
+      latestIdentification: row.latest_identification,
+    }));
+  }
+
+  async getCommunityId(
+    occurrenceUri: string,
+    subjectIndex: number = 0,
+  ): Promise<string | null> {
     const result = await this.pool.query(
       `SELECT scientific_name, id_count
        FROM community_ids
-       WHERE occurrence_uri = $1
+       WHERE occurrence_uri = $1 AND subject_index = $2
        ORDER BY id_count DESC
        LIMIT 1`,
-      [occurrenceUri],
+      [occurrenceUri, subjectIndex],
     );
     return result.rows[0]?.scientific_name || null;
   }

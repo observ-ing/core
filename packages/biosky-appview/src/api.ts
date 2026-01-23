@@ -66,6 +66,12 @@ interface AppViewConfig {
   publicUrl: string;
 }
 
+interface SubjectResponse {
+  index: number;
+  communityId?: string;
+  identificationCount: number;
+}
+
 interface OccurrenceResponse {
   uri: string;
   cid: string;
@@ -78,7 +84,8 @@ interface OccurrenceResponse {
   // Darwin Core fields
   basisOfRecord: string;
   scientificName?: string;
-  communityId?: string;
+  communityId?: string; // Keep for backward compat (refers to subject 0)
+  subjects: SubjectResponse[]; // All subjects with their community IDs
   eventDate: string;
   location: {
     latitude: number;
@@ -798,7 +805,36 @@ export class AppViewServer {
     return Promise.all(
       rows.map(async (row) => {
         const profile = profiles.get(row.did);
-        const communityId = await this.db.getCommunityId(row.uri);
+
+        // Get all subjects for this occurrence
+        const subjectData = await this.db.getSubjectsForOccurrence(row.uri);
+
+        // Build subjects array with community IDs
+        const subjects: SubjectResponse[] = [];
+
+        // Always include subject 0
+        if (!subjectData.some((s) => s.subjectIndex === 0)) {
+          subjectData.unshift({
+            subjectIndex: 0,
+            identificationCount: 0,
+            latestIdentification: null,
+          });
+        }
+
+        for (const subject of subjectData) {
+          const subjectCommunityId = await this.db.getCommunityId(
+            row.uri,
+            subject.subjectIndex,
+          );
+          subjects.push({
+            index: subject.subjectIndex,
+            communityId: subjectCommunityId || undefined,
+            identificationCount: subject.identificationCount,
+          });
+        }
+
+        // Get community ID for subject 0 (backward compat)
+        const communityId = await this.db.getCommunityId(row.uri, 0);
 
         return {
           uri: row.uri,
@@ -813,6 +849,7 @@ export class AppViewServer {
           basisOfRecord: row.basis_of_record,
           scientificName: row.scientific_name || undefined,
           communityId: communityId || undefined,
+          subjects,
           eventDate: row.event_date.toISOString(),
           location: {
             latitude: row.latitude,
@@ -903,6 +940,7 @@ export class AppViewServer {
 
   async start(): Promise<void> {
     await this.db.connect();
+    await this.db.migrate();
     await this.oauth.initialize();
 
     return new Promise((resolve) => {

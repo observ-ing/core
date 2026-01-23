@@ -1,3 +1,9 @@
+export interface Subject {
+  index: number;
+  communityId?: string;
+  identificationCount: number;
+}
+
 export interface Occurrence {
   uri: string;
   cid: string;
@@ -8,7 +14,8 @@ export interface Occurrence {
     avatar?: string;
   };
   scientificName?: string;
-  communityId?: string;
+  communityId?: string; // Backward compat: refers to subject 0
+  subjects: Subject[]; // All subjects with their community IDs
   eventDate: string;
   location: {
     latitude: number;
@@ -87,6 +94,7 @@ export interface Identification {
   cid: string;
   did: string;
   subject_uri: string;
+  subject_index: number;
   scientific_name: string;
   taxon_rank?: string;
   identification_remarks?: string;

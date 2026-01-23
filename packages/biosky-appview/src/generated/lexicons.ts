@@ -29,6 +29,14 @@ export const schemaDict = {
               description:
                 'A strong reference (CID + URI) to the observation being identified.',
             },
+            subjectIndex: {
+              type: 'integer',
+              description:
+                'Index of the subject within the occurrence being identified. When multiple organisms are photographed together (e.g., butterfly on a flower), each gets a unique index starting from 0. Creating an identification with a new subjectIndex implicitly creates that subject.',
+              minimum: 0,
+              maximum: 99,
+              default: 0,
+            },
             taxonName: {
               type: 'string',
               description:

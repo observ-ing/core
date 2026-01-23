@@ -26,12 +26,14 @@ interface IdentificationPanelProps {
     scientificName?: string;
     communityId?: string;
   };
+  subjectIndex?: number;
   agent: AtpAgent;
   onSuccess?: () => void;
 }
 
 export function IdentificationPanel({
   occurrence,
+  subjectIndex = 0,
   agent,
   onSuccess,
 }: IdentificationPanelProps) {
@@ -48,7 +50,7 @@ export function IdentificationPanel({
   const handleAgree = async () => {
     setIsSubmitting(true);
     try {
-      await service.agree(occurrence.uri, occurrence.cid, currentId);
+      await service.agree(occurrence.uri, occurrence.cid, currentId, subjectIndex);
       alert("Your agreement has been recorded!");
       onSuccess?.();
     } catch (error) {
@@ -73,6 +75,7 @@ export function IdentificationPanel({
         occurrence.cid,
         taxonName.trim(),
         {
+          subjectIndex,
           comment: comment.trim() || undefined,
           confidence,
         }

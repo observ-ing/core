@@ -11,6 +11,7 @@ const createMockDatabase = () => ({
   getOccurrence: vi.fn().mockResolvedValue(null),
   upsertOccurrence: vi.fn().mockResolvedValue(undefined),
   getIdentificationsForOccurrence: vi.fn().mockResolvedValue([]),
+  getSubjectsForOccurrence: vi.fn().mockResolvedValue([]),
   getCommunityId: vi.fn().mockResolvedValue(null),
 });
 

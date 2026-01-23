@@ -14,6 +14,8 @@ interface IdentificationInput {
   occurrenceUri: string;
   /** CID of the occurrence being identified */
   occurrenceCid: string;
+  /** Index of the subject within the occurrence (for multi-subject observations) */
+  subjectIndex?: number;
   /** The proposed scientific name */
   taxonName: string;
   /** Taxonomic rank */
@@ -68,6 +70,7 @@ export class IdentificationService {
         uri: input.occurrenceUri,
         cid: input.occurrenceCid,
       },
+      subjectIndex: input.subjectIndex ?? 0,
       taxonName: input.taxonName,
       taxonRank: input.taxonRank || "species",
       comment: input.comment,
@@ -94,11 +97,13 @@ export class IdentificationService {
   async agree(
     occurrenceUri: string,
     occurrenceCid: string,
-    currentTaxonName: string
+    currentTaxonName: string,
+    subjectIndex: number = 0
   ): Promise<IdentificationResult> {
     return this.identify({
       occurrenceUri,
       occurrenceCid,
+      subjectIndex,
       taxonName: currentTaxonName,
       isAgreement: true,
       confidence: "high",
@@ -113,6 +118,7 @@ export class IdentificationService {
     occurrenceCid: string,
     taxonName: string,
     options: {
+      subjectIndex?: number;
       taxonRank?: TaxonRank;
       comment?: string;
       confidence?: ConfidenceLevel;
@@ -121,6 +127,7 @@ export class IdentificationService {
     return this.identify({
       occurrenceUri,
       occurrenceCid,
+      subjectIndex: options.subjectIndex ?? 0,
       taxonName,
       taxonRank: options.taxonRank,
       comment: options.comment,

@@ -66,6 +66,7 @@ export interface IdentificationRow {
   did: string;
   subject_uri: string;
   subject_cid: string;
+  subject_index: number;
   scientific_name: string;
   taxon_rank: string | null;
   identification_qualifier: string | null;

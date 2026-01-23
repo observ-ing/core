@@ -10,6 +10,9 @@ import {
   Stack,
   Paper,
   IconButton,
+  Tabs,
+  Tab,
+  Chip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { fetchOccurrence, getImageUrl } from "../../services/api";
@@ -37,6 +40,7 @@ export function OccurrenceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [agent, setAgent] = useState<AtpAgent | null>(null);
+  const [selectedSubject, setSelectedSubject] = useState(0);
 
   useEffect(() => {
     if (!uri) {
@@ -111,8 +115,17 @@ export function OccurrenceDetail() {
   const handle = occurrence.observer.handle
     ? `@${occurrence.observer.handle}`
     : "";
+
+  // Find the current subject's data
+  const currentSubject = occurrence.subjects?.find((s) => s.index === selectedSubject);
   const species =
-    occurrence.communityId || occurrence.scientificName || "Unknown species";
+    currentSubject?.communityId ||
+    occurrence.communityId ||
+    occurrence.scientificName ||
+    "Unknown species";
+
+  // Check if there are multiple subjects
+  const hasMultipleSubjects = occurrence.subjects && occurrence.subjects.length > 1;
 
   return (
     <Container
@@ -193,6 +206,39 @@ export function OccurrenceDetail() {
 
       {/* Content */}
       <Box sx={{ p: 3 }}>
+        {/* Subject Tabs - only show if multiple subjects */}
+        {hasMultipleSubjects && (
+          <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
+            <Tabs
+              value={selectedSubject}
+              onChange={(_, newValue) => setSelectedSubject(newValue)}
+              variant="scrollable"
+              scrollButtons="auto"
+            >
+              {occurrence.subjects.map((subject) => (
+                <Tab
+                  key={subject.index}
+                  value={subject.index}
+                  label={
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <Typography variant="body2">
+                        Subject {subject.index + 1}
+                      </Typography>
+                      {subject.communityId && (
+                        <Chip
+                          label={subject.communityId}
+                          size="small"
+                          sx={{ fontStyle: "italic", maxWidth: 120 }}
+                        />
+                      )}
+                    </Stack>
+                  }
+                />
+              ))}
+            </Tabs>
+          </Box>
+        )}
+
         <Typography
           variant="h5"
           sx={{ fontStyle: "italic", color: "primary.main", fontWeight: 600 }}
@@ -293,8 +339,9 @@ export function OccurrenceDetail() {
               uri: occurrence.uri,
               cid: occurrence.cid,
               scientificName: occurrence.scientificName,
-              communityId: occurrence.communityId,
+              communityId: currentSubject?.communityId || occurrence.communityId,
             }}
+            subjectIndex={selectedSubject}
             agent={agent}
             onSuccess={handleIdentificationSuccess}
           />

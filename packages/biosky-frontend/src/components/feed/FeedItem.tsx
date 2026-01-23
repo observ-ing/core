@@ -153,16 +153,40 @@ export function FeedItem({ occurrence, onEdit }: FeedItemProps) {
           </Box>
         </Stack>
 
-        <Typography
-          sx={{
-            fontStyle: "italic",
-            color: "primary.main",
-            my: 0.5,
-            fontSize: "1.1rem",
-          }}
-        >
-          {species}
-        </Typography>
+        {/* Species display - show multiple if multi-subject */}
+        {occurrence.subjects && occurrence.subjects.length > 1 ? (
+          <Stack spacing={0.25} sx={{ my: 0.5 }}>
+            {occurrence.subjects.slice(0, 3).map((subject, idx) => (
+              <Typography
+                key={subject.index}
+                sx={{
+                  fontStyle: "italic",
+                  color: "primary.main",
+                  fontSize: idx === 0 ? "1.1rem" : "0.9rem",
+                  opacity: idx === 0 ? 1 : 0.8,
+                }}
+              >
+                {subject.communityId || "Unknown"}
+              </Typography>
+            ))}
+            {occurrence.subjects.length > 3 && (
+              <Typography variant="caption" color="text.disabled">
+                +{occurrence.subjects.length - 3} more
+              </Typography>
+            )}
+          </Stack>
+        ) : (
+          <Typography
+            sx={{
+              fontStyle: "italic",
+              color: "primary.main",
+              my: 0.5,
+              fontSize: "1.1rem",
+            }}
+          >
+            {species}
+          </Typography>
+        )}
 
         {occurrence.occurrenceRemarks && (
           <Typography

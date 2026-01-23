@@ -206,6 +206,10 @@ impl Database {
         let subject_cid = subject
             .and_then(|s| s.get("cid"))
             .and_then(|v| v.as_str());
+        let subject_index = record
+            .and_then(|r| r.get("subjectIndex"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32;
         let taxon_name = record
             .and_then(|r| r.get("taxonName"))
             .and_then(|v| v.as_str());
@@ -245,14 +249,15 @@ impl Database {
         sqlx::query(
             r#"
             INSERT INTO identifications (
-                uri, did, cid, subject_uri, subject_cid, scientific_name,
+                uri, did, cid, subject_uri, subject_cid, subject_index, scientific_name,
                 taxon_rank, identification_remarks, is_agreement, date_identified, indexed_at
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::timestamptz, NOW())
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::timestamptz, NOW())
             ON CONFLICT (uri) DO UPDATE SET
                 cid = EXCLUDED.cid,
                 subject_uri = EXCLUDED.subject_uri,
                 subject_cid = EXCLUDED.subject_cid,
+                subject_index = EXCLUDED.subject_index,
                 scientific_name = EXCLUDED.scientific_name,
                 taxon_rank = EXCLUDED.taxon_rank,
                 identification_remarks = EXCLUDED.identification_remarks,
@@ -266,6 +271,7 @@ impl Database {
         .bind(&event.cid)
         .bind(subject_uri)
         .bind(subject_cid)
+        .bind(subject_index)
         .bind(taxon_name)
         .bind(taxon_rank)
         .bind(comment)

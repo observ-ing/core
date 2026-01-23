@@ -21,6 +21,8 @@ const id = 'org.rwell.test.identification'
 export interface Main {
   $type: 'org.rwell.test.identification'
   subject: StrongRef
+  /** Index of the subject within the occurrence being identified. When multiple organisms are photographed together (e.g., butterfly on a flower), each gets a unique index starting from 0. Creating an identification with a new subjectIndex implicitly creates that subject. */
+  subjectIndex: number
   /** The scientific name being proposed for the observation. */
   taxonName: string
   /** The taxonomic rank of the identification (e.g., species, genus, family). */
