@@ -109,7 +109,7 @@ impl Database {
         let notes = record
             .and_then(|r| r.get("notes"))
             .and_then(|v| v.as_str());
-        let blobs = record.and_then(|r| r.get("blobs"));
+        let associated_media = record.and_then(|r| r.get("associatedMedia"));
 
         // Extract location
         let location = record.and_then(|r| r.get("location"));
@@ -176,7 +176,7 @@ impl Database {
         .bind(coord_uncertainty)
         .bind(verbatim_locality)
         .bind(notes)
-        .bind(blobs)
+        .bind(associated_media)
         .bind(created_at)
         .execute(&self.pool)
         .await?;
