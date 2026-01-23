@@ -13,11 +13,9 @@ import {
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
-import {
-  IdentificationService,
-  type ConfidenceLevel,
-} from "../../lib/identification";
-import type { AtpAgent } from "@atproto/api";
+import { submitIdentification } from "../../services/api";
+
+type ConfidenceLevel = "low" | "medium" | "high";
 
 interface IdentificationPanelProps {
   occurrence: {
@@ -27,14 +25,12 @@ interface IdentificationPanelProps {
     communityId?: string;
   };
   subjectIndex?: number;
-  agent: AtpAgent;
   onSuccess?: () => void;
 }
 
 export function IdentificationPanel({
   occurrence,
   subjectIndex = 0,
-  agent,
   onSuccess,
 }: IdentificationPanelProps) {
   const [showSuggestForm, setShowSuggestForm] = useState(false);
@@ -43,14 +39,20 @@ export function IdentificationPanel({
   const [confidence, setConfidence] = useState<ConfidenceLevel>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const service = new IdentificationService(agent);
   const currentId =
     occurrence.communityId || occurrence.scientificName || "Unknown";
 
   const handleAgree = async () => {
     setIsSubmitting(true);
     try {
-      await service.agree(occurrence.uri, occurrence.cid, currentId, subjectIndex);
+      await submitIdentification({
+        occurrenceUri: occurrence.uri,
+        occurrenceCid: occurrence.cid,
+        subjectIndex,
+        taxonName: currentId,
+        isAgreement: true,
+        confidence: "high",
+      });
       alert("Your agreement has been recorded!");
       onSuccess?.();
     } catch (error) {
@@ -70,16 +72,15 @@ export function IdentificationPanel({
 
     setIsSubmitting(true);
     try {
-      await service.suggestId(
-        occurrence.uri,
-        occurrence.cid,
-        taxonName.trim(),
-        {
-          subjectIndex,
-          comment: comment.trim() || undefined,
-          confidence,
-        }
-      );
+      await submitIdentification({
+        occurrenceUri: occurrence.uri,
+        occurrenceCid: occurrence.cid,
+        subjectIndex,
+        taxonName: taxonName.trim(),
+        comment: comment.trim() || undefined,
+        confidence,
+        isAgreement: false,
+      });
       alert("Your identification has been submitted!");
       setShowSuggestForm(false);
       setTaxonName("");

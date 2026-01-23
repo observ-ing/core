@@ -732,6 +732,89 @@ export class AppViewServer {
   }
 
   private setupIdentificationRoutes(): void {
+    // Create a new identification
+    this.app.post("/api/identifications", async (req, res) => {
+      try {
+        const {
+          occurrenceUri,
+          occurrenceCid,
+          subjectIndex = 0,
+          taxonName,
+          taxonRank = "species",
+          comment,
+          isAgreement = false,
+          confidence = "medium",
+        } = req.body;
+
+        // Validate required fields
+        if (!occurrenceUri || !occurrenceCid) {
+          res.status(400).json({ error: "occurrenceUri and occurrenceCid are required" });
+          return;
+        }
+
+        if (!taxonName || taxonName.trim().length === 0) {
+          res.status(400).json({ error: "taxonName is required" });
+          return;
+        }
+
+        if (taxonName.length > 256) {
+          res.status(400).json({ error: "taxonName too long (max 256 characters)" });
+          return;
+        }
+
+        if (comment && comment.length > 3000) {
+          res.status(400).json({ error: "comment too long (max 3000 characters)" });
+          return;
+        }
+
+        // Require authentication
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to add identifications" });
+          return;
+        }
+
+        // Build the identification record
+        const record = {
+          $type: "org.rwell.test.identification",
+          subject: {
+            uri: occurrenceUri,
+            cid: occurrenceCid,
+          },
+          subjectIndex,
+          taxonName: taxonName.trim(),
+          taxonRank,
+          comment: comment?.trim() || undefined,
+          isAgreement,
+          confidence,
+          createdAt: new Date().toISOString(),
+        };
+
+        // Create the record on the user's PDS
+        const result = await agent.com.atproto.repo.createRecord({
+          repo: sessionDid,
+          collection: "org.rwell.test.identification",
+          record,
+        });
+
+        logger.info(
+          { uri: result.data.uri, occurrenceUri, isAgreement },
+          "Created identification record"
+        );
+
+        res.status(201).json({
+          success: true,
+          uri: result.data.uri,
+          cid: result.data.cid,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error creating identification");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
     // Get identifications for an occurrence
     this.app.get("/api/identifications/:occurrenceUri(*)", async (req, res) => {
       try {

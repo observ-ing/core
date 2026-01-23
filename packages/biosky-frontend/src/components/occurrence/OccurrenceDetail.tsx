@@ -19,7 +19,6 @@ import { fetchOccurrence, getImageUrl } from "../../services/api";
 import { useAppSelector } from "../../store";
 import type { Occurrence } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
-import type { AtpAgent } from "@atproto/api";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -39,7 +38,6 @@ export function OccurrenceDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [agent, setAgent] = useState<AtpAgent | null>(null);
   const [selectedSubject, setSelectedSubject] = useState(0);
 
   useEffect(() => {
@@ -333,7 +331,7 @@ export function OccurrenceDetail() {
         </Box>
 
         {/* Identification Panel */}
-        {user && agent ? (
+        {user ? (
           <IdentificationPanel
             occurrence={{
               uri: occurrence.uri,
@@ -342,7 +340,6 @@ export function OccurrenceDetail() {
               communityId: currentSubject?.communityId || occurrence.communityId,
             }}
             subjectIndex={selectedSubject}
-            agent={agent}
             onSuccess={handleIdentificationSuccess}
           />
         ) : (

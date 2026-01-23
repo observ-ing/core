@@ -220,3 +220,30 @@ export async function updateOccurrence(data: {
 export function getImageUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
+
+export async function submitIdentification(data: {
+  occurrenceUri: string;
+  occurrenceCid: string;
+  subjectIndex?: number;
+  taxonName: string;
+  taxonRank?: string;
+  comment?: string;
+  isAgreement?: boolean;
+  confidence?: "low" | "medium" | "high";
+}): Promise<{ uri: string; cid: string }> {
+  const response = await fetch(`${API_BASE}/api/identifications`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to submit identification");
+  }
+
+  return response.json();
+}
