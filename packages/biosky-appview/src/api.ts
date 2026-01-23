@@ -160,6 +160,9 @@ export class AppViewServer {
     // Taxonomy API
     this.setupTaxonomyRoutes();
 
+    // Proxy media requests to media-proxy service
+    this.setupMediaProxy();
+
     // Serve frontend static files in production
     // In dev: __dirname is packages/biosky-appview/src, public is at ../../dist/public
     // In prod: __dirname is /app/packages/biosky-appview/dist, public is at /app/dist/public
@@ -810,8 +813,15 @@ export class AppViewServer {
           lifeStage: row.life_stage || undefined,
           behavior: row.behavior || undefined,
           images: (
-            (row.associated_media || []) as Array<{ image: { ref: string } }>
-          ).map((b) => `/media/blob/${row.did}/${b.image?.ref || ""}`),
+            (row.associated_media || []) as Array<{
+              image: { ref: string | { $link: string } };
+            }>
+          ).map((b) => {
+            const ref = b.image?.ref;
+            const cid =
+              typeof ref === "string" ? ref : (ref as { $link: string })?.$link;
+            return `/media/blob/${row.did}/${cid || ""}`;
+          }),
           createdAt: row.created_at.toISOString(),
         };
       }),
@@ -840,6 +850,39 @@ export class AppViewServer {
             }
           : undefined,
       };
+    });
+  }
+
+  private setupMediaProxy(): void {
+    const mediaProxyUrl = process.env.MEDIA_PROXY_URL || "http://localhost:3001";
+
+    this.app.get("/media/*", async (req, res) => {
+      try {
+        // Strip /media prefix and forward to media-proxy
+        const targetPath = req.path.replace(/^\/media/, "");
+        const targetUrl = `${mediaProxyUrl}${targetPath}`;
+
+        const response = await fetch(targetUrl);
+
+        if (!response.ok) {
+          res.status(response.status).send(response.statusText);
+          return;
+        }
+
+        // Forward relevant headers
+        const contentType = response.headers.get("content-type");
+        const cacheControl = response.headers.get("cache-control");
+
+        if (contentType) res.setHeader("Content-Type", contentType);
+        if (cacheControl) res.setHeader("Cache-Control", cacheControl);
+
+        // Stream the response body
+        const buffer = await response.arrayBuffer();
+        res.send(Buffer.from(buffer));
+      } catch (error) {
+        logger.error({ err: error, path: req.path }, "Media proxy error");
+        res.status(502).json({ error: "Media proxy unavailable" });
+      }
     });
   }
 
