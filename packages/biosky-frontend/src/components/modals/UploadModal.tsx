@@ -15,6 +15,7 @@ import {
   Stack,
   IconButton,
   Alert,
+  Autocomplete,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -172,8 +173,7 @@ export function UploadModal() {
     fileInputRef.current?.click();
   };
 
-  const handleSpeciesChange = useCallback(async (value: string) => {
-    setSpecies(value);
+  const handleSpeciesSearch = useCallback(async (value: string) => {
     if (value.length >= 2) {
       const results = await searchTaxa(value);
       setSuggestions(results.slice(0, 5));
@@ -181,11 +181,6 @@ export function UploadModal() {
       setSuggestions([]);
     }
   }, []);
-
-  const handleSuggestionClick = (name: string) => {
-    setSpecies(name);
-    setSuggestions([]);
-  };
 
   const handleQuickSpecies = (name: string) => {
     setSpecies(name);
@@ -292,14 +287,78 @@ export function UploadModal() {
       </Typography>
 
       <form onSubmit={handleSubmit}>
-        <TextField
-          fullWidth
-          label="Species"
-          value={species}
-          onChange={(e) => handleSpeciesChange(e.target.value)}
-          placeholder="e.g. Eschscholzia californica"
-          autoComplete="off"
-          margin="normal"
+        <Autocomplete
+          freeSolo
+          options={suggestions}
+          getOptionLabel={(option) =>
+            typeof option === "string" ? option : option.scientificName
+          }
+          inputValue={species}
+          onInputChange={(_, value) => {
+            setSpecies(value);
+            handleSpeciesSearch(value);
+          }}
+          onChange={(_, value) => {
+            if (value) {
+              const name = typeof value === "string" ? value : value.scientificName;
+              setSpecies(name);
+              setSuggestions([]);
+            }
+          }}
+          filterOptions={(x) => x}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              fullWidth
+              label="Species"
+              placeholder="e.g. Eschscholzia californica"
+              margin="normal"
+            />
+          )}
+          renderOption={(props, option) => {
+            const { key, ...otherProps } = props;
+            return (
+              <Box
+                component="li"
+                key={key}
+                {...otherProps}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1.5,
+                  p: 1.5,
+                }}
+              >
+                {option.photoUrl && (
+                  <Box
+                    component="img"
+                    src={option.photoUrl}
+                    alt=""
+                    sx={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 1,
+                      objectFit: "cover",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <Typography fontWeight={600}>{option.scientificName}</Typography>
+                    {option.conservationStatus && (
+                      <ConservationStatus status={option.conservationStatus} size="sm" />
+                    )}
+                  </Stack>
+                  {option.commonName && (
+                    <Typography variant="caption" color="text.disabled">
+                      {option.commonName}
+                    </Typography>
+                  )}
+                </Box>
+              </Box>
+            );
+          }}
         />
 
         <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
@@ -320,60 +379,6 @@ export function UploadModal() {
             />
           ))}
         </Stack>
-
-        {suggestions.length > 0 && (
-          <Stack spacing={0.5} sx={{ mt: 1 }}>
-            {suggestions.map((s) => (
-              <Box
-                key={s.scientificName}
-                onClick={() => handleSuggestionClick(s.scientificName)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  p: 1.5,
-                  bgcolor: "background.default",
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  cursor: "pointer",
-                  "&:hover": {
-                    bgcolor: "divider",
-                    borderColor: "primary.main",
-                  },
-                }}
-              >
-                {s.photoUrl && (
-                  <Box
-                    component="img"
-                    src={s.photoUrl}
-                    alt=""
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 1,
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Typography fontWeight={600}>{s.scientificName}</Typography>
-                    {s.conservationStatus && (
-                      <ConservationStatus status={s.conservationStatus} size="sm" />
-                    )}
-                  </Stack>
-                  {s.commonName && (
-                    <Typography variant="caption" color="text.disabled">
-                      {s.commonName}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            ))}
-          </Stack>
-        )}
 
         <TextField
           fullWidth
