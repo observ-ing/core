@@ -36,8 +36,8 @@ export function BottomNav() {
           },
         }}
       >
-        <BottomNavigationAction label="Feed" icon={<HomeIcon />} />
-        <BottomNavigationAction label="Map" icon={<MapIcon />} />
+        <BottomNavigationAction label="Feed" icon={<HomeIcon />} aria-label="Navigate to feed" />
+        <BottomNavigationAction label="Map" icon={<MapIcon />} aria-label="Navigate to map" />
       </BottomNavigation>
     </Paper>
   );
