@@ -30,6 +30,7 @@ import {
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConservationStatus } from "../common/ConservationStatus";
+import { LocationPicker } from "../map/LocationPicker";
 
 interface ImagePreview {
   file: File;
@@ -269,10 +270,10 @@ export function UploadModal() {
     });
   };
 
-  const locationDisplay =
-    lat && lng
-      ? `${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}`
-      : "Getting location...";
+  const handleLocationChange = (newLat: number, newLng: number) => {
+    setLat(newLat.toFixed(6));
+    setLng(newLng.toFixed(6));
+  };
 
   return (
     <ModalOverlay isOpen={isOpen} onClose={handleClose}>
@@ -470,13 +471,13 @@ export function UploadModal() {
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
 
-        <TextField
-          fullWidth
-          label="Location (from map center)"
-          value={locationDisplay}
-          InputProps={{ readOnly: true }}
-          margin="normal"
-        />
+        {lat && lng && (
+          <LocationPicker
+            latitude={parseFloat(lat)}
+            longitude={parseFloat(lng)}
+            onChange={handleLocationChange}
+          />
+        )}
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button onClick={handleClose} color="inherit">
