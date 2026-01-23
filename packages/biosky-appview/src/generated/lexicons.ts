@@ -82,6 +82,33 @@ export const schemaDict = {
       },
     },
   },
+  OrgRwellTestLike: {
+    lexicon: 1,
+    id: 'org.rwell.test.like',
+    defs: {
+      main: {
+        type: 'record',
+        description: 'Record expressing appreciation of an observation.',
+        key: 'tid',
+        record: {
+          type: 'object',
+          required: ['subject', 'createdAt'],
+          properties: {
+            subject: {
+              type: 'ref',
+              ref: 'lex:com.atproto.repo.strongRef',
+              description: 'A strong reference to the observation being liked.',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'datetime',
+              description: 'Timestamp when this like was created.',
+            },
+          },
+        },
+      },
+    },
+  },
   OrgRwellTestOccurrence: {
     lexicon: 1,
     id: 'org.rwell.test.occurrence',
@@ -247,5 +274,6 @@ export function validate(
 
 export const ids = {
   OrgRwellTestIdentification: 'org.rwell.test.identification',
+  OrgRwellTestLike: 'org.rwell.test.like',
   OrgRwellTestOccurrence: 'org.rwell.test.occurrence',
 } as const
