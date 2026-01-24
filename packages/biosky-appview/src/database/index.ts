@@ -150,6 +150,59 @@ export class Database {
         END IF;
       END $$;
 
+      -- Add taxonomy columns to identifications if they don't exist (Darwin Core alignment)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'vernacular_name'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN vernacular_name TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'kingdom'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN kingdom TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'phylum'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN phylum TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'class'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN class TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = '"order"'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN "order" TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'family'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN family TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'genus'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN genus TEXT;
+        END IF;
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_name = 'identifications' AND column_name = 'confidence'
+        ) THEN
+          ALTER TABLE identifications ADD COLUMN confidence TEXT;
+        END IF;
+      END $$;
+
       -- Index for looking up identifications by occurrence
       CREATE INDEX IF NOT EXISTS identifications_subject_uri_idx
         ON identifications(subject_uri);
@@ -400,8 +453,9 @@ export class Database {
       `INSERT INTO identifications (
         uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
         taxon_rank, identification_qualifier, taxon_id, identification_remarks,
-        identification_verification_status, type_status, is_agreement, date_identified
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+        identification_verification_status, type_status, is_agreement, date_identified,
+        vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       ON CONFLICT (uri) DO UPDATE SET
         cid = $2,
         subject_index = $6,
@@ -413,6 +467,14 @@ export class Database {
         identification_verification_status = $12,
         type_status = $13,
         is_agreement = $14,
+        vernacular_name = $16,
+        kingdom = $17,
+        phylum = $18,
+        class = $19,
+        "order" = $20,
+        family = $21,
+        genus = $22,
+        confidence = $23,
         indexed_at = NOW()`,
       [
         event.uri,
@@ -424,12 +486,20 @@ export class Database {
         record.taxonName,
         record.taxonRank || null,
         null, // identificationQualifier
-        null, // taxonID
+        record.taxonId || null,
         record.comment || null,
         null, // identificationVerificationStatus
         null, // typeStatus
         record.isAgreement || false,
         record.createdAt,
+        record.vernacularName || null,
+        record.kingdom || null,
+        record.phylum || null,
+        record.class || null,
+        record.order || null,
+        record.family || null,
+        record.genus || null,
+        record.confidence || null,
       ],
     );
   }
@@ -665,7 +735,8 @@ export class Database {
         `SELECT
           uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
           taxon_rank, identification_qualifier, taxon_id, identification_remarks,
-          identification_verification_status, type_status, is_agreement, date_identified
+          identification_verification_status, type_status, is_agreement, date_identified,
+          vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
         FROM identifications
         WHERE did = $1 ${idCursor}
         ORDER BY date_identified DESC
@@ -830,7 +901,8 @@ export class Database {
       `SELECT
         uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
         taxon_rank, identification_qualifier, taxon_id, identification_remarks,
-        identification_verification_status, type_status, is_agreement, date_identified
+        identification_verification_status, type_status, is_agreement, date_identified,
+        vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
       FROM identifications
       WHERE subject_uri = $1
       ORDER BY subject_index, date_identified DESC`,
@@ -847,7 +919,8 @@ export class Database {
       `SELECT
         uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
         taxon_rank, identification_qualifier, taxon_id, identification_remarks,
-        identification_verification_status, type_status, is_agreement, date_identified
+        identification_verification_status, type_status, is_agreement, date_identified,
+        vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
       FROM identifications
       WHERE subject_uri = $1 AND subject_index = $2
       ORDER BY date_identified DESC`,

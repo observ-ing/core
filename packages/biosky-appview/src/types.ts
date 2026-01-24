@@ -94,6 +94,15 @@ export interface IdentificationRow {
   type_status: string | null;
   is_agreement: boolean;
   date_identified: Date;
+  // Darwin Core taxonomy fields
+  vernacular_name: string | null;
+  kingdom: string | null;
+  phylum: string | null;
+  class: string | null;
+  order: string | null;
+  family: string | null;
+  genus: string | null;
+  confidence: string | null;
 }
 
 // Legacy type aliases
