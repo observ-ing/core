@@ -15,7 +15,6 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:publish": "tsx scripts/publish-observation.ts",
     "appview": "npm run start --workspace=biosky-appview",
     "frontend:dev": "npm run dev --workspace=biosky-frontend",
     "frontend:build": "npm run build --workspace=biosky-frontend"

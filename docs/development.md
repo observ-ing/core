@@ -51,9 +51,6 @@ npm run test:coverage # With coverage
 
 # Generate lexicon types
 npm run generate-types
-
-# Publish test observation
-npm run test:publish
 ```
 
 ## Running Services
