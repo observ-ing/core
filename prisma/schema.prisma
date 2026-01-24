@@ -26,6 +26,15 @@ model Occurrence {
   // PostGIS geography type - use raw SQL for spatial queries
   location                      Unsupported("geography(Point, 4326)")
   coordinateUncertaintyMeters   Int?     @map("coordinate_uncertainty_meters")
+  // Darwin Core administrative geography fields
+  continent                     String?
+  country                       String?
+  countryCode                   String?  @map("country_code")
+  stateProvince                 String?  @map("state_province")
+  county                        String?
+  municipality                  String?
+  locality                      String?
+  waterBody                     String?  @map("water_body")
   verbatimLocality              String?  @map("verbatim_locality")
   habitat                       String?
   occurrenceStatus              String?  @default("present") @map("occurrence_status")

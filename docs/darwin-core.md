@@ -16,7 +16,13 @@ An occurrence is "an existence of an Organism at a particular place at a particu
     "decimalLatitude": "37.7749",
     "decimalLongitude": "-122.4194",
     "coordinateUncertaintyInMeters": 10,
-    "geodeticDatum": "WGS84"
+    "geodeticDatum": "WGS84",
+    "continent": "North America",
+    "country": "United States",
+    "countryCode": "US",
+    "stateProvince": "California",
+    "county": "San Francisco",
+    "locality": "Golden Gate Park"
   },
   "verbatimLocality": "Golden Gate Park, San Francisco",
   "notes": "Multiple individuals blooming along the trail",
@@ -68,15 +74,18 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | — | dwc:degreeOfEstablishment | ❌ | Degree of establishment in location |
 | — | dwc:pathway | ❌ | Means of introduction |
 | — | dwc:habitat | ❌ | Habitat description |
-| — | dwc:countryCode | ❌ | ISO 3166-1 alpha-2 country code |
-| — | dwc:stateProvince | ❌ | State/province name |
-| — | dwc:county | ❌ | County/municipality name |
-| — | dwc:locality | ❌ | Specific locality description |
-| — | dwc:waterBody | ❌ | Name of water body |
-| — | dwc:minimumElevationInMeters | ❌ | Lower elevation bound |
-| — | dwc:maximumElevationInMeters | ❌ | Upper elevation bound |
-| — | dwc:minimumDepthInMeters | ❌ | Lower depth bound |
-| — | dwc:maximumDepthInMeters | ❌ | Upper depth bound |
+| `location.continent` | dwc:continent | ✅ | Continent name |
+| `location.country` | dwc:country | ✅ | Country name |
+| `location.countryCode` | dwc:countryCode | ✅ | ISO 3166-1 alpha-2 country code |
+| `location.stateProvince` | dwc:stateProvince | ✅ | State/province name |
+| `location.county` | dwc:county | ✅ | County name |
+| `location.municipality` | dwc:municipality | ✅ | Municipality name |
+| `location.locality` | dwc:locality | ✅ | Specific locality description |
+| `location.waterBody` | dwc:waterBody | ✅ | Name of water body |
+| `location.minimumElevationInMeters` | dwc:minimumElevationInMeters | ✅ | Lower elevation bound |
+| `location.maximumElevationInMeters` | dwc:maximumElevationInMeters | ✅ | Upper elevation bound |
+| `location.minimumDepthInMeters` | dwc:minimumDepthInMeters | ✅ | Lower depth bound |
+| `location.maximumDepthInMeters` | dwc:maximumDepthInMeters | ✅ | Upper depth bound |
 | `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom |
 | `phylum` | dwc:phylum | ✅ | Taxonomic phylum |
 | `class` | dwc:class | ✅ | Taxonomic class |

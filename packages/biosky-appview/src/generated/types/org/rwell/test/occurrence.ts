@@ -93,6 +93,38 @@ export interface Location {
   coordinateUncertaintyInMeters?: number
   /** The ellipsoid, geodetic datum, or spatial reference system used (Darwin Core dwc:geodeticDatum). Defaults to WGS84. */
   geodeticDatum: string
+  /** The name of the continent (Darwin Core dwc:continent). */
+  continent?:
+    | 'Africa'
+    | 'Antarctica'
+    | 'Asia'
+    | 'Europe'
+    | 'North America'
+    | 'Oceania'
+    | 'South America'
+    | (string & {})
+  /** The name of the country or major administrative unit (Darwin Core dwc:country). */
+  country?: string
+  /** The standard code for the country (Darwin Core dwc:countryCode). ISO 3166-1-alpha-2. */
+  countryCode?: string
+  /** The name of the next smaller administrative region than country (Darwin Core dwc:stateProvince). */
+  stateProvince?: string
+  /** The full, unabbreviated name of the next smaller administrative region than stateProvince (Darwin Core dwc:county). */
+  county?: string
+  /** The full, unabbreviated name of the next smaller administrative region than county (Darwin Core dwc:municipality). */
+  municipality?: string
+  /** The specific description of the place (Darwin Core dwc:locality). */
+  locality?: string
+  /** The name of the water body in which the location occurs (Darwin Core dwc:waterBody). */
+  waterBody?: string
+  /** The lower limit of the range of elevation in meters (Darwin Core dwc:minimumElevationInMeters). */
+  minimumElevationInMeters?: string
+  /** The upper limit of the range of elevation in meters (Darwin Core dwc:maximumElevationInMeters). */
+  maximumElevationInMeters?: string
+  /** The lesser depth of a range of depth below the local surface in meters (Darwin Core dwc:minimumDepthInMeters). */
+  minimumDepthInMeters?: string
+  /** The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters). */
+  maximumDepthInMeters?: string
 }
 
 const hashLocation = 'location'

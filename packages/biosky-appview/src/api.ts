@@ -58,6 +58,7 @@ function getDatabaseUrl(): string {
 }
 import { TaxonomyResolver } from "./taxonomy.js";
 import { CommunityIdCalculator } from "./community-id.js";
+import { GeocodingService } from "./geocoding.js";
 
 interface AppViewConfig {
   port: number;
@@ -125,6 +126,7 @@ export class AppViewServer {
   private oauth: OAuthService;
   private taxonomy: TaxonomyResolver;
   private communityId: CommunityIdCalculator;
+  private geocoding: GeocodingService;
 
   constructor(config: Partial<AppViewConfig> = {}) {
     this.config = {
@@ -151,6 +153,7 @@ export class AppViewServer {
 
     this.taxonomy = new TaxonomyResolver();
     this.communityId = new CommunityIdCalculator(this.db);
+    this.geocoding = new GeocodingService();
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -292,6 +295,9 @@ export class AppViewServer {
           taxon = validationResult.taxon;
         }
 
+        // Reverse geocode to get administrative geography fields
+        const geocoded = await this.geocoding.reverseGeocode(latitude, longitude);
+
         // User is authenticated - post to AT Protocol network
         const record: Record<string, unknown> = {
           $type: "org.rwell.test.occurrence",
@@ -302,6 +308,15 @@ export class AppViewServer {
             decimalLongitude: String(longitude),
             coordinateUncertaintyInMeters: 50,
             geodeticDatum: "WGS84",
+            // Darwin Core administrative geography from geocoding
+            continent: geocoded.continent,
+            country: geocoded.country,
+            countryCode: geocoded.countryCode,
+            stateProvince: geocoded.stateProvince,
+            county: geocoded.county,
+            municipality: geocoded.municipality,
+            locality: geocoded.locality,
+            waterBody: geocoded.waterBody,
           },
           notes: notes || undefined,
           license: license || undefined,
@@ -426,6 +441,9 @@ export class AppViewServer {
           taxon = validationResult.taxon;
         }
 
+        // Reverse geocode to get administrative geography fields
+        const geocoded = await this.geocoding.reverseGeocode(latitude, longitude);
+
         // Build the updated record
         const record = {
           $type: "org.rwell.test.occurrence",
@@ -436,6 +454,15 @@ export class AppViewServer {
             decimalLongitude: String(longitude),
             coordinateUncertaintyInMeters: 50,
             geodeticDatum: "WGS84",
+            // Darwin Core administrative geography from geocoding
+            continent: geocoded.continent,
+            country: geocoded.country,
+            countryCode: geocoded.countryCode,
+            stateProvince: geocoded.stateProvince,
+            county: geocoded.county,
+            municipality: geocoded.municipality,
+            locality: geocoded.locality,
+            waterBody: geocoded.waterBody,
           },
           notes: notes || undefined,
           license: license || undefined,
@@ -1053,6 +1080,15 @@ export class AppViewServer {
             latitude: row.latitude,
             longitude: row.longitude,
             uncertaintyMeters: row.coordinate_uncertainty_meters || undefined,
+            // Darwin Core administrative geography
+            continent: row.continent || undefined,
+            country: row.country || undefined,
+            countryCode: row.country_code || undefined,
+            stateProvince: row.state_province || undefined,
+            county: row.county || undefined,
+            municipality: row.municipality || undefined,
+            locality: row.locality || undefined,
+            waterBody: row.water_body || undefined,
           },
           verbatimLocality: row.verbatim_locality || undefined,
           habitat: row.habitat || undefined,

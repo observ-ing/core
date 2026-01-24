@@ -357,3 +357,83 @@ Test cases for BioSky QA.
 2. Submit with invalid data
 
 **Expected:** Error toast with descriptive message
+
+---
+
+## Geocoding
+
+### TC-GEO-001: Coordinates are geocoded on submission
+**Precondition:** User is logged in
+1. Open upload modal
+2. Select a species
+3. Set location to San Francisco coordinates (37.7749, -122.4194)
+4. Submit the observation
+5. View the created occurrence in the database or API response
+
+**Expected:** Location includes geocoded fields:
+- `continent`: "North America"
+- `country`: "United States"
+- `countryCode`: "US"
+- `stateProvince`: "California"
+
+### TC-GEO-002: International coordinates geocoding
+**Precondition:** User is logged in
+1. Open upload modal
+2. Select a species
+3. Set location to Paris coordinates (48.8566, 2.3522)
+4. Submit the observation
+
+**Expected:** Location includes:
+- `continent`: "Europe"
+- `country`: "France"
+- `countryCode`: "FR"
+
+### TC-GEO-003: Ocean coordinates handling
+**Precondition:** User is logged in
+1. Open upload modal
+2. Select a species
+3. Set location to mid-Pacific Ocean coordinates (0, -140)
+4. Submit the observation
+
+**Expected:** Observation is created successfully. Geocoded fields may be empty or contain water body information.
+
+### TC-GEO-004: Location picker search uses geocoding
+1. Open upload modal
+2. In the location search field, type "Golden Gate Park"
+3. Select a result from the autocomplete
+
+**Expected:** Map centers on the location, coordinates are populated
+
+---
+
+## Species Input
+
+### TC-SPECIES-001: Common name autocomplete
+1. Open upload modal
+2. Type "california poppy" in the species input
+
+**Expected:** Autocomplete shows "Eschscholzia californica" (California Poppy)
+
+### TC-SPECIES-002: Common name with uppercase
+1. Open upload modal
+2. Type "White Oak" in the species input
+
+**Expected:** Autocomplete shows "Quercus alba" or similar oak species
+
+### TC-SPECIES-003: Partial common name match
+1. Open upload modal
+2. Type "blue" in the species input
+
+**Expected:** Autocomplete shows species with "blue" in common name (e.g., Blue Jay, Bluebird)
+
+### TC-SPECIES-004: Scientific name still works
+1. Open upload modal
+2. Type "Quercus" in the species input
+
+**Expected:** Autocomplete shows oak species with scientific names starting with Quercus
+
+### TC-SPECIES-005: Mixed case scientific name
+1. Open upload modal
+2. Type "quercus alba" (lowercase) in the species input
+
+**Expected:** Autocomplete finds and displays "Quercus alba" correctly

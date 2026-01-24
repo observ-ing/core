@@ -134,6 +134,63 @@
           "description": "The ellipsoid, geodetic datum, or spatial reference system used (Darwin Core dwc:geodeticDatum). Defaults to WGS84.",
           "default": "WGS84",
           "maxLength": 64
+        },
+        "continent": {
+          "type": "string",
+          "description": "The name of the continent (Darwin Core dwc:continent).",
+          "knownValues": ["Africa", "Antarctica", "Asia", "Europe", "North America", "Oceania", "South America"],
+          "maxLength": 32
+        },
+        "country": {
+          "type": "string",
+          "description": "The name of the country or major administrative unit (Darwin Core dwc:country).",
+          "maxLength": 128
+        },
+        "countryCode": {
+          "type": "string",
+          "description": "The standard code for the country (Darwin Core dwc:countryCode). ISO 3166-1-alpha-2.",
+          "maxLength": 2
+        },
+        "stateProvince": {
+          "type": "string",
+          "description": "The name of the next smaller administrative region than country (Darwin Core dwc:stateProvince).",
+          "maxLength": 128
+        },
+        "county": {
+          "type": "string",
+          "description": "The full, unabbreviated name of the next smaller administrative region than stateProvince (Darwin Core dwc:county).",
+          "maxLength": 128
+        },
+        "municipality": {
+          "type": "string",
+          "description": "The full, unabbreviated name of the next smaller administrative region than county (Darwin Core dwc:municipality).",
+          "maxLength": 128
+        },
+        "locality": {
+          "type": "string",
+          "description": "The specific description of the place (Darwin Core dwc:locality).",
+          "maxLength": 512
+        },
+        "waterBody": {
+          "type": "string",
+          "description": "The name of the water body in which the location occurs (Darwin Core dwc:waterBody).",
+          "maxLength": 128
+        },
+        "minimumElevationInMeters": {
+          "type": "string",
+          "description": "The lower limit of the range of elevation in meters (Darwin Core dwc:minimumElevationInMeters)."
+        },
+        "maximumElevationInMeters": {
+          "type": "string",
+          "description": "The upper limit of the range of elevation in meters (Darwin Core dwc:maximumElevationInMeters)."
+        },
+        "minimumDepthInMeters": {
+          "type": "string",
+          "description": "The lesser depth of a range of depth below the local surface in meters (Darwin Core dwc:minimumDepthInMeters)."
+        },
+        "maximumDepthInMeters": {
+          "type": "string",
+          "description": "The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters)."
         }
       }
     },

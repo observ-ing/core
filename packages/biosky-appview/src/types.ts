@@ -44,6 +44,15 @@ export interface OccurrenceRow {
   latitude: number;
   longitude: number;
   coordinate_uncertainty_meters: number | null;
+  // Darwin Core administrative geography fields
+  continent: string | null;
+  country: string | null;
+  country_code: string | null;
+  state_province: string | null;
+  county: string | null;
+  municipality: string | null;
+  locality: string | null;
+  water_body: string | null;
   verbatim_locality: string | null;
   habitat: string | null;
   occurrence_status: string;

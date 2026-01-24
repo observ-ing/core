@@ -155,6 +155,32 @@ impl Database {
             .and_then(|v| v.as_i64())
             .map(|v| v as i32);
 
+        // Extract Darwin Core administrative geography fields
+        let continent = location
+            .and_then(|l| l.get("continent"))
+            .and_then(|v| v.as_str());
+        let country = location
+            .and_then(|l| l.get("country"))
+            .and_then(|v| v.as_str());
+        let country_code = location
+            .and_then(|l| l.get("countryCode"))
+            .and_then(|v| v.as_str());
+        let state_province = location
+            .and_then(|l| l.get("stateProvince"))
+            .and_then(|v| v.as_str());
+        let county = location
+            .and_then(|l| l.get("county"))
+            .and_then(|v| v.as_str());
+        let municipality = location
+            .and_then(|l| l.get("municipality"))
+            .and_then(|v| v.as_str());
+        let locality = location
+            .and_then(|l| l.get("locality"))
+            .and_then(|v| v.as_str());
+        let water_body = location
+            .and_then(|l| l.get("waterBody"))
+            .and_then(|v| v.as_str());
+
         // Require lat/lng and event_date
         let (lat, lng) = match (lat, lng) {
             (Some(lat), Some(lng)) => (lat, lng),
@@ -176,14 +202,17 @@ impl Database {
             r#"
             INSERT INTO occurrences (
                 uri, did, cid, scientific_name, event_date, location,
-                coordinate_uncertainty_meters, verbatim_locality, occurrence_remarks,
+                coordinate_uncertainty_meters,
+                continent, country, country_code, state_province, county, municipality, locality, water_body,
+                verbatim_locality, occurrence_remarks,
                 associated_media, created_at, indexed_at,
                 taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus
             )
             VALUES (
                 $1, $2, $3, $4, $5::timestamptz, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
-                $8, $9, $10, $11, $12::timestamptz, NOW(),
-                $13, $14, $15, $16, $17, $18, $19, $20, $21
+                $8, $9, $10, $11, $12, $13, $14, $15, $16,
+                $17, $18, $19, $20::timestamptz, NOW(),
+                $21, $22, $23, $24, $25, $26, $27, $28, $29
             )
             ON CONFLICT (uri) DO UPDATE SET
                 cid = EXCLUDED.cid,
@@ -191,6 +220,14 @@ impl Database {
                 event_date = EXCLUDED.event_date,
                 location = EXCLUDED.location,
                 coordinate_uncertainty_meters = EXCLUDED.coordinate_uncertainty_meters,
+                continent = EXCLUDED.continent,
+                country = EXCLUDED.country,
+                country_code = EXCLUDED.country_code,
+                state_province = EXCLUDED.state_province,
+                county = EXCLUDED.county,
+                municipality = EXCLUDED.municipality,
+                locality = EXCLUDED.locality,
+                water_body = EXCLUDED.water_body,
                 verbatim_locality = EXCLUDED.verbatim_locality,
                 occurrence_remarks = EXCLUDED.occurrence_remarks,
                 associated_media = EXCLUDED.associated_media,
@@ -214,6 +251,14 @@ impl Database {
         .bind(lng) // ST_MakePoint takes (x, y) = (lng, lat)
         .bind(lat)
         .bind(coord_uncertainty)
+        .bind(continent)
+        .bind(country)
+        .bind(country_code)
+        .bind(state_province)
+        .bind(county)
+        .bind(municipality)
+        .bind(locality)
+        .bind(water_body)
         .bind(verbatim_locality)
         .bind(notes)
         .bind(associated_media)
