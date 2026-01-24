@@ -10,13 +10,7 @@ BioSky lets users record and share biodiversity observations on the federated AT
 
 ## Quick Start
 
-```bash
-npm install
-npm run build
-npm run appview
-```
-
-See [docs/development.md](docs/development.md) for full setup instructions.
+See [docs/development.md](docs/development.md) for setup instructions.
 
 ## Documentation
 
