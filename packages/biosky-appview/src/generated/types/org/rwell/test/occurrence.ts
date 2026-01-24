@@ -24,6 +24,14 @@ export interface Main {
   blobs?: ImageEmbed[]
   /** Additional notes or comments about the observation. */
   notes?: string
+  /** SPDX license identifier for this observation (maps to Dublin Core dcterms:license). */
+  license?:
+    | 'CC0-1.0'
+    | 'CC-BY-4.0'
+    | 'CC-BY-NC-4.0'
+    | 'CC-BY-SA-4.0'
+    | 'CC-BY-NC-SA-4.0'
+    | (string & {})
   /** Timestamp when this record was created. */
   createdAt: string
   [k: string]: unknown
