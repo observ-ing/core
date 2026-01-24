@@ -13,8 +13,11 @@ import {
   Tabs,
   Tab,
   Chip,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { fetchOccurrence, getImageUrl } from "../../services/api";
 import { useAppSelector } from "../../store";
 import type { Occurrence } from "../../services/types";
@@ -29,6 +32,10 @@ function formatDate(dateString: string): string {
   });
 }
 
+function getPdslsUrl(atUri: string): string {
+  return `https://pdsls.dev/${atUri}`;
+}
+
 export function OccurrenceDetail() {
   const { uri } = useParams<{ uri: string }>();
   const navigate = useNavigate();
@@ -39,6 +46,8 @@ export function OccurrenceDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState(0);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const menuOpen = Boolean(anchorEl);
 
   useEffect(() => {
     if (!uri) {
@@ -80,6 +89,14 @@ export function OccurrenceDetail() {
         setOccurrence(result.occurrence);
       }
     }
+  };
+
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
   };
 
   if (loading) {
@@ -154,6 +171,32 @@ export function OccurrenceDetail() {
         <Typography variant="subtitle1" fontWeight={500}>
           Observation
         </Typography>
+        <Box sx={{ ml: "auto" }}>
+          <IconButton
+            size="small"
+            onClick={handleMenuOpen}
+            aria-label="More options"
+            sx={{ color: "text.disabled" }}
+          >
+            <MoreVertIcon fontSize="small" />
+          </IconButton>
+          <Menu
+            anchorEl={anchorEl}
+            open={menuOpen}
+            onClose={handleMenuClose}
+            anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+            transformOrigin={{ vertical: "top", horizontal: "right" }}
+          >
+            <MenuItem
+              component="a"
+              href={getPdslsUrl(occurrence.uri)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              View on AT Protocol
+            </MenuItem>
+          </Menu>
+        </Box>
       </Box>
 
       {/* Images */}
