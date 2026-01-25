@@ -3,7 +3,7 @@
 //! Uses sqlx with PostgreSQL for storing occurrences, identifications, and cursor state.
 
 use crate::error::Result;
-use crate::types::{IdentificationEvent, OccurrenceEvent};
+use crate::types::{CommentEvent, IdentificationEvent, OccurrenceEvent};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info};
 
@@ -380,6 +380,94 @@ impl Database {
     pub async fn delete_identification(&self, uri: &str) -> Result<()> {
         debug!("Deleting identification: {}", uri);
         sqlx::query("DELETE FROM identifications WHERE uri = $1")
+            .bind(uri)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Upsert a comment record
+    pub async fn upsert_comment(&self, event: &CommentEvent) -> Result<()> {
+        debug!("Upserting comment: {}", event.uri);
+
+        // Extract fields from record JSON
+        let record = event.record.as_ref();
+        let subject = record.and_then(|r| r.get("subject"));
+        let subject_uri = subject
+            .and_then(|s| s.get("uri"))
+            .and_then(|v| v.as_str());
+        let subject_cid = subject
+            .and_then(|s| s.get("cid"))
+            .and_then(|v| v.as_str());
+        let body = record
+            .and_then(|r| r.get("body"))
+            .and_then(|v| v.as_str());
+        let reply_to = record.and_then(|r| r.get("replyTo"));
+        let reply_to_uri = reply_to
+            .and_then(|s| s.get("uri"))
+            .and_then(|v| v.as_str());
+        let reply_to_cid = reply_to
+            .and_then(|s| s.get("cid"))
+            .and_then(|v| v.as_str());
+        let created_at = record
+            .and_then(|r| r.get("createdAt"))
+            .and_then(|v| v.as_str());
+
+        // Require subject and body
+        let subject_uri = match subject_uri {
+            Some(uri) => uri,
+            None => {
+                debug!("Skipping comment without subject uri: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let subject_cid = subject_cid.unwrap_or("");
+        let body = match body {
+            Some(b) => b,
+            None => {
+                debug!("Skipping comment without body: {}", event.uri);
+                return Ok(());
+            }
+        };
+        let fallback_date = event.time.to_rfc3339();
+        let created_at = created_at.unwrap_or(&fallback_date);
+
+        sqlx::query(
+            r#"
+            INSERT INTO comments (
+                uri, did, cid, subject_uri, subject_cid, body,
+                reply_to_uri, reply_to_cid, created_at, indexed_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::timestamptz, NOW())
+            ON CONFLICT (uri) DO UPDATE SET
+                cid = EXCLUDED.cid,
+                subject_uri = EXCLUDED.subject_uri,
+                subject_cid = EXCLUDED.subject_cid,
+                body = EXCLUDED.body,
+                reply_to_uri = EXCLUDED.reply_to_uri,
+                reply_to_cid = EXCLUDED.reply_to_cid,
+                created_at = EXCLUDED.created_at,
+                indexed_at = NOW()
+            "#,
+        )
+        .bind(&event.uri)
+        .bind(&event.did)
+        .bind(&event.cid)
+        .bind(subject_uri)
+        .bind(subject_cid)
+        .bind(body)
+        .bind(reply_to_uri)
+        .bind(reply_to_cid)
+        .bind(created_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete a comment record
+    pub async fn delete_comment(&self, uri: &str) -> Result<()> {
+        debug!("Deleting comment: {}", uri);
+        sqlx::query("DELETE FROM comments WHERE uri = $1")
             .bind(uri)
             .execute(&self.pool)
             .await?;

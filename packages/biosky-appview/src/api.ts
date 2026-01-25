@@ -34,6 +34,7 @@ import {
   Database,
   type OccurrenceRow,
   type IdentificationRow,
+  type CommentRow,
 } from "./database/index.js";
 import {
   getIdentityResolver,
@@ -184,6 +185,9 @@ export class AppViewServer {
 
     // Identifications API
     this.setupIdentificationRoutes();
+
+    // Comments API
+    this.setupCommentRoutes();
 
     // Taxonomy API
     this.setupTaxonomyRoutes();
@@ -670,10 +674,12 @@ export class AppViewServer {
         const [occurrence] = await this.enrichOccurrences([row]);
         const identifications =
           await this.db.getIdentificationsForOccurrence(uri);
+        const comments = await this.db.getCommentsForOccurrence(uri);
 
         res.json({
           occurrence,
           identifications: await this.enrichIdentifications(identifications),
+          comments: await this.enrichComments(comments),
         });
       } catch (error) {
         logger.error({ err: error }, "Error fetching occurrence");
@@ -971,6 +977,86 @@ export class AppViewServer {
     });
   }
 
+  private setupCommentRoutes(): void {
+    // Create a new comment on an observation
+    this.app.post("/api/comments", async (req, res) => {
+      try {
+        const {
+          occurrenceUri,
+          occurrenceCid,
+          body,
+          replyToUri,
+          replyToCid,
+        } = req.body;
+
+        // Validate required fields
+        if (!occurrenceUri || !occurrenceCid) {
+          res.status(400).json({ error: "occurrenceUri and occurrenceCid are required" });
+          return;
+        }
+
+        if (!body || body.trim().length === 0) {
+          res.status(400).json({ error: "body is required" });
+          return;
+        }
+
+        if (body.length > 3000) {
+          res.status(400).json({ error: "body too long (max 3000 characters)" });
+          return;
+        }
+
+        // Require authentication
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to add comments" });
+          return;
+        }
+
+        // Build the comment record
+        const record: Record<string, unknown> = {
+          $type: "org.rwell.test.comment",
+          subject: {
+            uri: occurrenceUri,
+            cid: occurrenceCid,
+          },
+          body: body.trim(),
+          createdAt: new Date().toISOString(),
+        };
+
+        // Add reply reference if provided
+        if (replyToUri && replyToCid) {
+          record.replyTo = {
+            uri: replyToUri,
+            cid: replyToCid,
+          };
+        }
+
+        // Create the record on the user's PDS
+        const result = await agent.com.atproto.repo.createRecord({
+          repo: sessionDid,
+          collection: "org.rwell.test.comment",
+          record,
+        });
+
+        logger.info(
+          { uri: result.data.uri, occurrenceUri },
+          "Created comment record"
+        );
+
+        res.status(201).json({
+          success: true,
+          uri: result.data.uri,
+          cid: result.data.cid,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error creating comment");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  }
+
   private setupTaxonomyRoutes(): void {
     // Search taxa
     this.app.get("/api/taxa/search", async (req, res) => {
@@ -1123,6 +1209,31 @@ export class AppViewServer {
       return {
         ...row,
         identifier: profile
+          ? {
+              did: profile.did,
+              handle: profile.handle,
+              displayName: profile.displayName,
+              avatar: profile.avatar,
+            }
+          : undefined,
+      };
+    });
+  }
+
+  private async enrichComments(
+    rows: CommentRow[],
+  ): Promise<Array<CommentRow & { commenter?: Partial<Profile> }>> {
+    if (rows.length === 0) return [];
+
+    const dids = [...new Set(rows.map((r) => r.did))];
+    const resolver = getIdentityResolver();
+    const profiles = await resolver.getProfiles(dids);
+
+    return rows.map((row) => {
+      const profile = profiles.get(row.did);
+      return {
+        ...row,
+        commenter: profile
           ? {
               did: profile.did,
               handle: profile.handle,

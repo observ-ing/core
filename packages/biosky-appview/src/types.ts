@@ -31,6 +31,16 @@ export interface IdentificationEvent {
   time: string;
 }
 
+export interface CommentEvent {
+  did: string;
+  uri: string;
+  cid: string;
+  action: "create" | "update" | "delete";
+  record?: unknown;
+  seq: number;
+  time: string;
+}
+
 /**
  * Database row types
  */
@@ -94,6 +104,18 @@ export interface IdentificationRow {
   family: string | null;
   genus: string | null;
   confidence: string | null;
+}
+
+export interface CommentRow {
+  uri: string;
+  cid: string;
+  did: string;
+  subject_uri: string;
+  subject_cid: string;
+  body: string;
+  reply_to_uri: string | null;
+  reply_to_cid: string | null;
+  created_at: Date;
 }
 
 // Legacy type aliases

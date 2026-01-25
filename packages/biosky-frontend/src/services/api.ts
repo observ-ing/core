@@ -269,3 +269,27 @@ export async function submitIdentification(data: {
 
   return response.json();
 }
+
+export async function submitComment(data: {
+  occurrenceUri: string;
+  occurrenceCid: string;
+  body: string;
+  replyToUri?: string;
+  replyToCid?: string;
+}): Promise<{ uri: string; cid: string }> {
+  const response = await fetch(`${API_BASE}/api/comments`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to submit comment");
+  }
+
+  return response.json();
+}

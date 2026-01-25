@@ -5,8 +5,8 @@
 
 use crate::error::{IngesterError, Result};
 use crate::types::{
-    CommitTimingInfo, IdentificationEvent, OccurrenceEvent, IDENTIFICATION_COLLECTION,
-    OCCURRENCE_COLLECTION,
+    CommentEvent, CommitTimingInfo, IdentificationEvent, OccurrenceEvent, COMMENT_COLLECTION,
+    IDENTIFICATION_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
@@ -46,6 +46,7 @@ struct JetstreamCommit {
 pub enum FirehoseEvent {
     Occurrence(OccurrenceEvent),
     Identification(IdentificationEvent),
+    Comment(CommentEvent),
     Commit(CommitTimingInfo),
     Connected,
     Disconnected,
@@ -162,8 +163,8 @@ impl FirehoseSubscription {
         // Add collection filters
         let separator = if url.contains('?') { '&' } else { '?' };
         url = format!(
-            "{}{}wantedCollections={}&wantedCollections={}",
-            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION
+            "{}{}wantedCollections={}&wantedCollections={}&wantedCollections={}",
+            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION, COMMENT_COLLECTION
         );
 
         // Add cursor if available (Jetstream uses microseconds)
@@ -222,6 +223,18 @@ impl FirehoseSubscription {
                 };
                 debug!("[Identification] {}: {}", id_event.action, id_event.uri);
                 let _ = self.event_tx.send(FirehoseEvent::Identification(id_event)).await;
+            } else if collection == COMMENT_COLLECTION {
+                let comment_event = CommentEvent {
+                    did: did.to_string(),
+                    uri: uri.clone(),
+                    cid,
+                    action: commit.operation.clone(),
+                    seq,
+                    time,
+                    record: commit.record,
+                };
+                debug!("[Comment] {}: {}", comment_event.action, comment_event.uri);
+                let _ = self.event_tx.send(FirehoseEvent::Comment(comment_event)).await;
             }
         }
 

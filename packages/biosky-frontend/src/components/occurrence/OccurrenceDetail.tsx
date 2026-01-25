@@ -20,8 +20,10 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { fetchOccurrence, getImageUrl } from "../../services/api";
 import { useAppSelector } from "../../store";
-import type { Occurrence } from "../../services/types";
+import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
+import { IdentificationHistory } from "../identification/IdentificationHistory";
+import { CommentSection } from "../comment/CommentSection";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -42,6 +44,8 @@ export function OccurrenceDetail() {
   const user = useAppSelector((state) => state.auth.user);
 
   const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
+  const [identifications, setIdentifications] = useState<Identification[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -65,6 +69,8 @@ export function OccurrenceDetail() {
       const result = await fetchOccurrence(decodedUri);
       if (result?.occurrence) {
         setOccurrence(result.occurrence);
+        setIdentifications((result as { identifications?: Identification[] }).identifications || []);
+        setComments((result as { comments?: Comment[] }).comments || []);
       } else {
         setError("Occurrence not found");
       }
@@ -87,6 +93,17 @@ export function OccurrenceDetail() {
       const result = await fetchOccurrence(decodeURIComponent(uri));
       if (result?.occurrence) {
         setOccurrence(result.occurrence);
+        setIdentifications((result as { identifications?: Identification[] }).identifications || []);
+        setComments((result as { comments?: Comment[] }).comments || []);
+      }
+    }
+  };
+
+  const handleCommentAdded = async () => {
+    if (uri) {
+      const result = await fetchOccurrence(decodeURIComponent(uri));
+      if (result) {
+        setComments((result as { comments?: Comment[] }).comments || []);
       }
     }
   };
@@ -405,6 +422,16 @@ export function OccurrenceDetail() {
           </Stack>
         </Box>
 
+        {/* Identification History */}
+        {identifications.length > 0 && (
+          <Box sx={{ mt: 3 }}>
+            <IdentificationHistory
+              identifications={identifications}
+              subjectIndex={selectedSubject}
+            />
+          </Box>
+        )}
+
         {/* Identification Panel */}
         {user ? (
           <IdentificationPanel
@@ -425,6 +452,16 @@ export function OccurrenceDetail() {
             </Typography>
           </Paper>
         )}
+
+        {/* Discussion / Comments */}
+        <Box sx={{ mt: 3 }}>
+          <CommentSection
+            occurrenceUri={occurrence.uri}
+            occurrenceCid={occurrence.cid}
+            comments={comments}
+            onCommentAdded={handleCommentAdded}
+          />
+        </Box>
       </Box>
     </Container>
   );

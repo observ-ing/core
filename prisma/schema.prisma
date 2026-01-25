@@ -51,6 +51,7 @@ model Occurrence {
   indexedAt                     DateTime @default(now()) @map("indexed_at")
 
   identifications Identification[]
+  comments        Comment[]
 
   @@index([location], name: "occurrences_location_idx", type: Gist)
   @@index([scientificName], name: "occurrences_scientific_name_idx")
@@ -82,4 +83,24 @@ model Identification {
   @@index([did], name: "identifications_did_idx")
   @@index([scientificName], name: "identifications_scientific_name_idx")
   @@map("identifications")
+}
+
+model Comment {
+  uri        String   @id
+  cid        String
+  did        String
+  subjectUri String   @map("subject_uri")
+  subjectCid String   @map("subject_cid")
+  body       String
+  replyToUri String?  @map("reply_to_uri")
+  replyToCid String?  @map("reply_to_cid")
+  createdAt  DateTime @map("created_at")
+  indexedAt  DateTime @default(now()) @map("indexed_at")
+
+  occurrence Occurrence @relation(fields: [subjectUri], references: [uri], onDelete: Cascade)
+
+  @@index([subjectUri], name: "comments_subject_uri_idx")
+  @@index([did], name: "comments_did_idx")
+  @@index([replyToUri], name: "comments_reply_to_uri_idx")
+  @@map("comments")
 }

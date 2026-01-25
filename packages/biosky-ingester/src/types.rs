@@ -31,6 +31,19 @@ pub struct IdentificationEvent {
     pub record: Option<serde_json::Value>,
 }
 
+/// A comment event (discussion on an observation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommentEvent {
+    pub did: String,
+    pub uri: String,
+    pub cid: String,
+    pub action: String,
+    pub seq: i64,
+    pub time: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub record: Option<serde_json::Value>,
+}
+
 /// Timing information for lag tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitTimingInfo {
@@ -43,6 +56,7 @@ pub struct CommitTimingInfo {
 pub struct IngesterStats {
     pub occurrences: u64,
     pub identifications: u64,
+    pub comments: u64,
     pub errors: u64,
 }
 
@@ -79,6 +93,7 @@ impl Default for IngesterConfig {
 /// The collection types we care about
 pub const OCCURRENCE_COLLECTION: &str = "org.rwell.test.occurrence";
 pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
+pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
 
 #[cfg(test)]
 mod tests {

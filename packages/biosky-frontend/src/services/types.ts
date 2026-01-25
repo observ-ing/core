@@ -118,6 +118,24 @@ export interface Identification {
   };
 }
 
+export interface Comment {
+  uri: string;
+  cid: string;
+  did: string;
+  subject_uri: string;
+  subject_cid: string;
+  body: string;
+  reply_to_uri?: string;
+  reply_to_cid?: string;
+  created_at: string;
+  commenter?: {
+    did: string;
+    handle?: string;
+    displayName?: string;
+    avatar?: string;
+  };
+}
+
 export interface ProfileData {
   did: string;
   handle?: string;

@@ -11,6 +11,7 @@ import type {
   IdentificationEvent,
   OccurrenceRow,
   IdentificationRow,
+  CommentRow,
 } from "../types.js";
 import type * as OrgRwellTestOccurrence from "../generated/types/org/rwell/test/occurrence.js";
 import type * as OrgRwellTestIdentification from "../generated/types/org/rwell/test/identification.js";
@@ -166,7 +167,7 @@ export class Database {
         END IF;
         IF NOT EXISTS (
           SELECT 1 FROM information_schema.columns
-          WHERE table_name = 'identifications' AND column_name = '"order"'
+          WHERE table_name = 'identifications' AND column_name = 'order'
         ) THEN
           ALTER TABLE identifications ADD COLUMN "order" TEXT;
         END IF;
@@ -1027,10 +1028,23 @@ export class Database {
   async deleteOAuthSession(key: string): Promise<void> {
     await this.pool.query("DELETE FROM oauth_sessions WHERE key = $1", [key]);
   }
+
+  async getCommentsForOccurrence(occurrenceUri: string): Promise<CommentRow[]> {
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did, subject_uri, subject_cid, body,
+        reply_to_uri, reply_to_cid, created_at
+      FROM comments
+      WHERE subject_uri = $1
+      ORDER BY created_at ASC`,
+      [occurrenceUri],
+    );
+    return result.rows;
+  }
 }
 
 // Re-export row types
-export type { OccurrenceRow, IdentificationRow };
+export type { OccurrenceRow, IdentificationRow, CommentRow };
 
 // Legacy type aliases for backwards compatibility
 export type ObservationRow = OccurrenceRow;

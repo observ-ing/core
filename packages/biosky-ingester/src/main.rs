@@ -169,6 +169,30 @@ async fn main() -> Result<()> {
                     });
                 }
             }
+            FirehoseEvent::Comment(event) => {
+                let action = event.action.clone();
+                let uri = event.uri.clone();
+
+                let result = if action == "delete" {
+                    db.delete_comment(&uri).await
+                } else {
+                    db.upsert_comment(&event).await
+                };
+
+                let mut s = state.write().await;
+                if let Err(e) = result {
+                    error!("Database error for comment {}: {}", uri, e);
+                    s.stats.errors += 1;
+                } else {
+                    s.stats.comments += 1;
+                    s.add_recent_event(RecentEvent {
+                        event_type: "comment".to_string(),
+                        action,
+                        uri,
+                        time: event.time,
+                    });
+                }
+            }
         }
     }
 
