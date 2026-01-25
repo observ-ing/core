@@ -10,7 +10,6 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 
 ```json
 {
-  "scientificName": "Eschscholzia californica",
   "eventDate": "2024-01-15T10:30:00Z",
   "location": {
     "decimalLatitude": "37.7749",
@@ -33,24 +32,17 @@ An occurrence is "an existence of an Organism at a particular place at a particu
     }
   ],
   "license": "CC-BY-4.0",
-  "taxonId": "gbif:3084746",
-  "taxonRank": "species",
-  "vernacularName": "California Poppy",
-  "kingdom": "Plantae",
-  "phylum": "Tracheophyta",
-  "class": "Magnoliopsida",
-  "order": "Ranunculales",
-  "family": "Papaveraceae",
-  "genus": "Eschscholzia",
   "createdAt": "2024-01-15T10:35:00Z"
 }
 ```
+
+> **Note:** Taxonomy fields (`scientificName`, `taxonId`, `taxonRank`, `vernacularName`, `kingdom`, `phylum`, `class`, `order`, `family`, `genus`) are deprecated in occurrence records. Species identification should be provided via separate `org.rwell.test.identification` records, which allows users to submit observations without knowing the species and enables community identification.
 
 ### Fields
 
 | BioSky Field | GBIF / Darwin Core | Status | Description |
 |--------------|-------------------|--------|-------------|
-| `scientificName` | dwc:scientificName | ✅ | Full scientific name with authorship if known |
+| `scientificName` | dwc:scientificName | ⚠️ | **DEPRECATED** - Use identification records instead. Optional legacy field. |
 | `eventDate` | dwc:eventDate | ✅ | Date-time of the occurrence (ISO 8601) |
 | `location.decimalLatitude` | dwc:decimalLatitude | ✅ | Geographic latitude in decimal degrees (stored as string) |
 | `location.decimalLongitude` | dwc:decimalLongitude | ✅ | Geographic longitude in decimal degrees (stored as string) |
@@ -86,17 +78,17 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `location.maximumElevationInMeters` | dwc:maximumElevationInMeters | ✅ | Upper elevation bound |
 | `location.minimumDepthInMeters` | dwc:minimumDepthInMeters | ✅ | Lower depth bound |
 | `location.maximumDepthInMeters` | dwc:maximumDepthInMeters | ✅ | Upper depth bound |
-| `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom |
-| `phylum` | dwc:phylum | ✅ | Taxonomic phylum |
-| `class` | dwc:class | ✅ | Taxonomic class |
-| `order` | dwc:order | ✅ | Taxonomic order |
-| `family` | dwc:family | ✅ | Taxonomic family |
-| `genus` | dwc:genus | ✅ | Taxonomic genus |
+| `kingdom` | dwc:kingdom | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `phylum` | dwc:phylum | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `class` | dwc:class | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `order` | dwc:order | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `family` | dwc:family | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `genus` | dwc:genus | ⚠️ | **DEPRECATED** - Use identification records instead |
 | — | dwc:specificEpithet | ❌ | Species epithet |
 | — | dwc:infraspecificEpithet | ❌ | Subspecies/variety epithet |
-| `vernacularName` | dwc:vernacularName | ✅ | Common name |
-| `taxonId` | dwc:taxonID | ✅ | External taxon identifier (e.g., gbif:2878688) |
-| `taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family, etc.) |
+| `vernacularName` | dwc:vernacularName | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `taxonId` | dwc:taxonID | ⚠️ | **DEPRECATED** - Use identification records instead |
+| `taxonRank` | dwc:taxonRank | ⚠️ | **DEPRECATED** - Use identification records instead |
 | — | dwc:samplingProtocol | ❌ | Method used for sampling |
 | — | dwc:samplingEffort | ❌ | Effort expended during sampling |
 | — | dwc:eventRemarks | ❌ | Notes about the sampling event |
