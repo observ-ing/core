@@ -8,8 +8,12 @@ import {
   Paper,
   TextField,
   Button,
+  IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { submitComment } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
@@ -20,6 +24,10 @@ interface CommentSectionProps {
   occurrenceCid: string;
   comments: Comment[];
   onCommentAdded?: () => void;
+}
+
+function getPdslsUrl(atUri: string): string {
+  return `https://pdsls.dev/${atUri}`;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -48,6 +56,15 @@ export function CommentSection({
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<{ [key: string]: HTMLElement | null }>({});
+
+  const handleMenuOpen = (commentUri: string, event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl((prev) => ({ ...prev, [commentUri]: event.currentTarget }));
+  };
+
+  const handleMenuClose = (commentUri: string) => {
+    setMenuAnchorEl((prev) => ({ ...prev, [commentUri]: null }));
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -116,6 +133,33 @@ export function CommentSection({
                     <Typography variant="caption" color="text.secondary">
                       {formatRelativeTime(comment.created_at)}
                     </Typography>
+                    <Box sx={{ ml: "auto" }}>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => handleMenuOpen(comment.uri, e)}
+                        aria-label="More options"
+                        sx={{ color: "text.disabled", p: 0.5 }}
+                      >
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                      <Menu
+                        anchorEl={menuAnchorEl[comment.uri]}
+                        open={Boolean(menuAnchorEl[comment.uri])}
+                        onClose={() => handleMenuClose(comment.uri)}
+                        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                        transformOrigin={{ vertical: "top", horizontal: "right" }}
+                      >
+                        <MenuItem
+                          component="a"
+                          href={getPdslsUrl(comment.uri)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={() => handleMenuClose(comment.uri)}
+                        >
+                          View on AT Protocol
+                        </MenuItem>
+                      </Menu>
+                    </Box>
                   </Stack>
                   <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
                     {comment.body}
