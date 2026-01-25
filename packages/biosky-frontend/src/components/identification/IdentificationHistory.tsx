@@ -7,6 +7,7 @@ import {
   Paper,
   Chip,
 } from "@mui/material";
+import HistoryIcon from "@mui/icons-material/History";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 
@@ -62,9 +63,12 @@ export function IdentificationHistory({
 
   return (
     <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
-      <Typography variant="subtitle2" gutterBottom sx={{ mb: 2 }}>
-        Identification History
-      </Typography>
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+        <HistoryIcon fontSize="small" color="action" />
+        <Typography variant="subtitle2">
+          Identification History
+        </Typography>
+      </Stack>
       <Stack spacing={2}>
         {filteredIds.map((id) => (
           <Box key={id.uri} sx={{ pl: 1, borderLeft: 2, borderColor: "divider" }}>

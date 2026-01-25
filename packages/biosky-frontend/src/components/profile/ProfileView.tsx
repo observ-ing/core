@@ -15,6 +15,9 @@ import {
   Chip,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import CameraAltIcon from "@mui/icons-material/CameraAlt";
+import FingerprintIcon from "@mui/icons-material/Fingerprint";
+import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type {
   ProfileFeedResponse,
@@ -145,25 +148,34 @@ export function ProfileView() {
               <Typography variant="h6" fontWeight={600}>
                 {counts.observations}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Observations
-              </Typography>
+              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                <Typography variant="caption" color="text.secondary">
+                  Observations
+                </Typography>
+              </Stack>
             </Box>
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="h6" fontWeight={600}>
                 {counts.identifications}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                IDs
-              </Typography>
+              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                <Typography variant="caption" color="text.secondary">
+                  IDs
+                </Typography>
+              </Stack>
             </Box>
             <Box sx={{ textAlign: "center" }}>
               <Typography variant="h6" fontWeight={600}>
                 {counts.species}
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Species
-              </Typography>
+              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
+                <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                <Typography variant="caption" color="text.secondary">
+                  Species
+                </Typography>
+              </Stack>
             </Box>
           </Stack>
         )}

@@ -18,6 +18,11 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
+import NotesIcon from "@mui/icons-material/Notes";
+import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { fetchOccurrence, getImageUrl } from "../../services/api";
 import { useAppSelector } from "../../store";
 import type { Occurrence, Identification, Comment } from "../../services/types";
@@ -345,25 +350,34 @@ export function OccurrenceDetail() {
         <Box sx={{ mt: 3 }}>
           <Stack spacing={2}>
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Observed
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <CalendarTodayIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                <Typography variant="caption" color="text.secondary">
+                  Observed
+                </Typography>
+              </Stack>
               <Typography>{formatDate(occurrence.eventDate)}</Typography>
             </Box>
 
             {occurrence.verbatimLocality && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Location
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <LocationOnIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Location
+                  </Typography>
+                </Stack>
                 <Typography>{occurrence.verbatimLocality}</Typography>
               </Box>
             )}
 
             <Box>
-              <Typography variant="caption" color="text.secondary">
-                Coordinates
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={0.5}>
+                <MyLocationIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                <Typography variant="caption" color="text.secondary">
+                  Coordinates
+                </Typography>
+              </Stack>
               <Typography>
                 {occurrence.location.latitude.toFixed(5)},{" "}
                 {occurrence.location.longitude.toFixed(5)}
@@ -389,9 +403,12 @@ export function OccurrenceDetail() {
 
             {occurrence.occurrenceRemarks && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Notes
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <NotesIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Notes
+                  </Typography>
+                </Stack>
                 <Typography>{occurrence.occurrenceRemarks}</Typography>
               </Box>
             )}
@@ -399,9 +416,12 @@ export function OccurrenceDetail() {
             {/* Taxonomy Information */}
             {(occurrence.vernacularName || occurrence.kingdom || occurrence.family) && (
               <Box>
-                <Typography variant="caption" color="text.secondary">
-                  Taxonomy
-                </Typography>
+                <Stack direction="row" alignItems="center" spacing={0.5}>
+                  <AccountTreeIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Taxonomy
+                  </Typography>
+                </Stack>
                 {occurrence.vernacularName && (
                   <Typography>{occurrence.vernacularName}</Typography>
                 )}

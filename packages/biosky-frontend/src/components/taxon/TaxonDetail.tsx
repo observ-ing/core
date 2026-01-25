@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { fetchTaxon, fetchTaxonOccurrences } from "../../services/api";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
@@ -202,9 +203,7 @@ export function TaxonDetail() {
               {taxon.ancestors.map((ancestor, idx) => (
                 <Stack key={ancestor.id} direction="row" alignItems="center" spacing={0.5}>
                   {idx > 0 && (
-                    <Typography color="text.disabled" sx={{ fontSize: "0.75rem" }}>
-                      &gt;
-                    </Typography>
+                    <ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />
                   )}
                   <TaxonLink
                     name={ancestor.name}
