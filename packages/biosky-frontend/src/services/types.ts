@@ -66,11 +66,38 @@ export interface ConservationStatus {
 }
 
 export interface TaxaResult {
+  id: string;
   scientificName: string;
   commonName?: string;
   photoUrl?: string;
   rank?: string;
   conservationStatus?: ConservationStatus;
+}
+
+export interface TaxonAncestor {
+  id: string;
+  name: string;
+  rank: string;
+}
+
+export interface TaxonDetail {
+  id: string;
+  scientificName: string;
+  commonName?: string;
+  rank: string;
+  kingdom?: string;
+  phylum?: string;
+  class?: string;
+  order?: string;
+  family?: string;
+  genus?: string;
+  species?: string;
+  ancestors: TaxonAncestor[];
+  children: TaxaResult[];
+  conservationStatus?: ConservationStatus;
+  numDescendants?: number;
+  extinct?: boolean;
+  observationCount: number;
 }
 
 export interface FeedResponse {

@@ -40,6 +40,19 @@ interface TaxonResult {
   conservationStatus?: ConservationStatus;
 }
 
+interface TaxonAncestor {
+  id: string;
+  name: string;
+  rank: string;
+}
+
+interface TaxonDetail extends TaxonResult {
+  ancestors: TaxonAncestor[];
+  children: TaxonResult[];
+  numDescendants?: number;
+  extinct?: boolean;
+}
+
 interface ValidationResult {
   valid: boolean;
   matchedName?: string;
@@ -69,6 +82,115 @@ export class TaxonomyResolver {
 
     searchCache.set(cacheKey, { results, timestamp: Date.now() });
     return results;
+  }
+
+  /**
+   * Get detailed taxon information by GBIF ID
+   */
+  async getById(taxonId: string): Promise<TaxonDetail | null> {
+    // Extract numeric ID from "gbif:NNNN" format
+    const numericId = taxonId.startsWith("gbif:") ? taxonId.slice(5) : taxonId;
+
+    const cacheKey = `detail:${numericId}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.results[0] as unknown as TaxonDetail;
+    }
+
+    try {
+      const url = `${this.gbifV1BaseUrl}/species/${numericId}`;
+      const response = await fetch(url);
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as GbifSpeciesDetail;
+      const children = await this.getChildren(taxonId, 20);
+
+      // Build ancestors from individual key fields (kingdomKey, phylumKey, etc.)
+      // higherClassificationMap is often null, so we use the individual fields instead
+      const ancestors: TaxonAncestor[] = [];
+      const rankFields: Array<{ rank: string; keyField: keyof GbifSpeciesDetail; nameField: keyof GbifSpeciesDetail }> = [
+        { rank: "kingdom", keyField: "kingdomKey", nameField: "kingdom" },
+        { rank: "phylum", keyField: "phylumKey", nameField: "phylum" },
+        { rank: "class", keyField: "classKey", nameField: "class" },
+        { rank: "order", keyField: "orderKey", nameField: "order" },
+        { rank: "family", keyField: "familyKey", nameField: "family" },
+        { rank: "genus", keyField: "genusKey", nameField: "genus" },
+      ];
+
+      for (const { rank, keyField, nameField } of rankFields) {
+        const key = data[keyField];
+        const name = data[nameField];
+        // Skip if this is the current taxon (by key) or if no key/name
+        if (key && name && String(key) !== numericId) {
+          ancestors.push({
+            id: `gbif:${key}`,
+            name: String(name),
+            rank,
+          });
+        }
+      }
+
+      // Get conservation status
+      const match = await this.matchGbif(data.canonicalName || data.scientificName || "");
+      const iucnStatus = match?.additionalStatus?.find((s) => s.datasetAlias === "IUCN");
+      const conservationStatus: ConservationStatus | undefined = iucnStatus?.statusCode
+        ? { category: iucnStatus.statusCode as IUCNCategory, source: "IUCN" }
+        : undefined;
+
+      const taxonDetail: TaxonDetail = {
+        id: `gbif:${data.key}`,
+        scientificName: data.canonicalName || data.scientificName || "",
+        commonName: data.vernacularName,
+        rank: data.rank?.toLowerCase() || "unknown",
+        kingdom: data.kingdom,
+        phylum: data.phylum,
+        class: data.class,
+        order: data.order,
+        family: data.family,
+        genus: data.genus,
+        species: data.species,
+        source: "gbif",
+        conservationStatus,
+        ancestors,
+        children,
+        numDescendants: data.numDescendants,
+        extinct: data.extinct,
+      };
+
+      searchCache.set(cacheKey, { results: [taxonDetail as unknown as TaxonResult], timestamp: Date.now() });
+      return taxonDetail;
+    } catch (error) {
+      console.error("GBIF getById error:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Get children taxa for a parent taxon
+   */
+  async getChildren(taxonId: string, limit = 20): Promise<TaxonResult[]> {
+    const numericId = taxonId.startsWith("gbif:") ? taxonId.slice(5) : taxonId;
+
+    const cacheKey = `children:${numericId}:${limit}`;
+    const cached = searchCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+      return cached.results;
+    }
+
+    try {
+      const url = `${this.gbifV1BaseUrl}/species/${numericId}/children?limit=${limit}`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as { results: GbifSuggestResult[] };
+      const results = data.results.map((item) => this.gbifToTaxon(item));
+
+      searchCache.set(cacheKey, { results, timestamp: Date.now() });
+      return results;
+    } catch (error) {
+      console.error("GBIF getChildren error:", error);
+      return [];
+    }
   }
 
   /**
@@ -221,6 +343,31 @@ export class TaxonomyResolver {
 }
 
 // GBIF API types
+interface GbifSpeciesDetail {
+  key?: number;
+  scientificName?: string;
+  canonicalName?: string;
+  vernacularName?: string;
+  rank?: string;
+  kingdom?: string;
+  phylum?: string;
+  class?: string;
+  order?: string;
+  family?: string;
+  genus?: string;
+  species?: string;
+  // Individual taxon keys for building ancestor hierarchy
+  kingdomKey?: number;
+  phylumKey?: number;
+  classKey?: number;
+  orderKey?: number;
+  familyKey?: number;
+  genusKey?: number;
+  speciesKey?: number;
+  numDescendants?: number;
+  extinct?: boolean;
+}
+
 interface GbifSuggestResult {
   key?: number;
   usageKey?: number;
@@ -274,4 +421,4 @@ interface GbifV2MatchResult {
   };
 }
 
-export type { TaxonResult, ValidationResult, ConservationStatus, IUCNCategory };
+export type { TaxonResult, TaxonDetail, TaxonAncestor, ValidationResult, ConservationStatus, IUCNCategory };

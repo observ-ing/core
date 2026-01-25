@@ -3,6 +3,7 @@ import type {
   FeedResponse,
   Occurrence,
   TaxaResult,
+  TaxonDetail,
   GeoJSONFeatureCollection,
   FeedFilters,
   ExploreFeedResponse,
@@ -289,6 +290,36 @@ export async function submitComment(data: {
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to submit comment");
+  }
+
+  return response.json();
+}
+
+export async function fetchTaxon(taxonId: string): Promise<TaxonDetail | null> {
+  try {
+    const response = await fetch(
+      `${API_BASE}/api/taxa/${encodeURIComponent(taxonId)}`
+    );
+    if (!response.ok) return null;
+    return response.json();
+  } catch (e) {
+    console.error("fetchTaxon error:", e);
+    return null;
+  }
+}
+
+export async function fetchTaxonOccurrences(
+  taxonId: string,
+  cursor?: string
+): Promise<{ occurrences: Occurrence[]; cursor?: string }> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+
+  const response = await fetch(
+    `${API_BASE}/api/taxa/${encodeURIComponent(taxonId)}/occurrences?${params}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch taxon occurrences");
   }
 
   return response.json();

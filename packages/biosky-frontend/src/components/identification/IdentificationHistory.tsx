@@ -8,6 +8,7 @@ import {
   Chip,
 } from "@mui/material";
 import type { Identification } from "../../services/types";
+import { TaxonLink } from "../common/TaxonLink";
 
 interface IdentificationHistoryProps {
   identifications: Identification[];
@@ -93,12 +94,12 @@ export function IdentificationHistory({
                     <Chip label="Agrees" size="small" color="success" variant="outlined" />
                   )}
                 </Stack>
-                <Typography
-                  variant="body2"
-                  sx={{ fontStyle: "italic", color: "primary.main", mt: 0.5 }}
-                >
-                  {id.scientific_name}
-                </Typography>
+                <Box sx={{ mt: 0.5 }}>
+                  <TaxonLink
+                    name={id.scientific_name}
+                    rank={id.taxon_rank || "species"}
+                  />
+                </Box>
                 {id.identification_remarks && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                     "{id.identification_remarks}"

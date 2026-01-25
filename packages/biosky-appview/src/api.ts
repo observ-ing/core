@@ -1093,6 +1093,96 @@ export class AppViewServer {
         res.status(500).json({ error: "Internal server error" });
       }
     });
+
+    // Get taxon details by ID or name
+    // Accepts: gbif:XXXX (GBIF ID) or a scientific name like "Felidae"
+    this.app.get("/api/taxa/:id", async (req, res) => {
+      try {
+        const idOrName = decodeURIComponent(req.params.id);
+
+        let taxon;
+        if (idOrName.startsWith("gbif:")) {
+          // Direct GBIF ID lookup
+          taxon = await this.taxonomy.getById(idOrName);
+        } else {
+          // Try to resolve name via GBIF validation
+          const validation = await this.taxonomy.validate(idOrName);
+          if (validation.valid && validation.taxon) {
+            taxon = await this.taxonomy.getById(validation.taxon.id);
+          } else if (validation.suggestions && validation.suggestions.length > 0) {
+            // Use the best suggestion
+            taxon = await this.taxonomy.getById(validation.suggestions[0].id);
+          }
+        }
+
+        if (!taxon) {
+          res.status(404).json({ error: "Taxon not found" });
+          return;
+        }
+
+        // Get observation count for this taxon
+        const observationCount = await this.db.countOccurrencesByTaxon(
+          taxon.scientificName,
+          taxon.rank,
+        );
+
+        res.json({
+          ...taxon,
+          observationCount,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching taxon");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Get occurrences for a taxon
+    // Accepts: gbif:XXXX (GBIF ID) or a scientific name like "Felidae"
+    this.app.get("/api/taxa/:id/occurrences", async (req, res) => {
+      try {
+        const idOrName = decodeURIComponent(req.params.id);
+        const cursor = req.query.cursor as string | undefined;
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+
+        let taxon;
+        if (idOrName.startsWith("gbif:")) {
+          taxon = await this.taxonomy.getById(idOrName);
+        } else {
+          const validation = await this.taxonomy.validate(idOrName);
+          if (validation.valid && validation.taxon) {
+            taxon = await this.taxonomy.getById(validation.taxon.id);
+          } else if (validation.suggestions && validation.suggestions.length > 0) {
+            taxon = await this.taxonomy.getById(validation.suggestions[0].id);
+          }
+        }
+
+        if (!taxon) {
+          res.status(404).json({ error: "Taxon not found" });
+          return;
+        }
+
+        const rows = await this.db.getOccurrencesByTaxon(
+          taxon.scientificName,
+          taxon.rank,
+          { limit, cursor },
+        );
+
+        const occurrences = await this.enrichOccurrences(rows);
+
+        // Get next cursor
+        const nextCursor = rows.length === limit
+          ? rows[rows.length - 1].created_at?.toISOString()
+          : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching taxon occurrences");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
   }
 
   private async enrichOccurrences(

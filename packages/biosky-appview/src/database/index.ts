@@ -980,6 +980,119 @@ export class Database {
     );
   }
 
+  /**
+   * Get occurrences matching a taxon by scientific name or taxonomy field
+   * Used for taxon detail pages to show observations of a specific taxon
+   */
+  async getOccurrencesByTaxon(
+    taxonName: string,
+    taxonRank: string,
+    options: { limit?: number; cursor?: string } = {},
+  ): Promise<OccurrenceRow[]> {
+    const limit = options.limit || 20;
+    const params: (string | number)[] = [];
+    let paramIndex = 1;
+
+    // Build condition based on rank - match the appropriate taxonomy field
+    // or scientific_name for species/subspecies
+    let condition: string;
+    const rankLower = taxonRank.toLowerCase();
+
+    if (rankLower === "species" || rankLower === "subspecies" || rankLower === "variety") {
+      condition = `scientific_name = $${paramIndex++}`;
+      params.push(taxonName);
+    } else if (rankLower === "genus") {
+      condition = `(genus = $${paramIndex++} OR scientific_name ILIKE $${paramIndex++})`;
+      params.push(taxonName, `${taxonName} %`);
+    } else if (rankLower === "family") {
+      condition = `family = $${paramIndex++}`;
+      params.push(taxonName);
+    } else if (rankLower === "order") {
+      condition = `"order" = $${paramIndex++}`;
+      params.push(taxonName);
+    } else if (rankLower === "class") {
+      condition = `class = $${paramIndex++}`;
+      params.push(taxonName);
+    } else if (rankLower === "phylum") {
+      condition = `phylum = $${paramIndex++}`;
+      params.push(taxonName);
+    } else if (rankLower === "kingdom") {
+      condition = `kingdom = $${paramIndex++}`;
+      params.push(taxonName);
+    } else {
+      // Fallback: try matching scientific_name
+      condition = `scientific_name = $${paramIndex++}`;
+      params.push(taxonName);
+    }
+
+    if (options.cursor) {
+      condition += ` AND created_at < $${paramIndex++}`;
+      params.push(options.cursor);
+    }
+
+    params.push(limit);
+
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did, scientific_name, event_date,
+        ST_Y(location::geometry) as latitude,
+        ST_X(location::geometry) as longitude,
+        coordinate_uncertainty_meters,
+        continent, country, country_code, state_province, county, municipality, locality, water_body,
+        verbatim_locality, occurrence_remarks,
+        associated_media, recorded_by,
+        taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+        created_at
+      FROM occurrences
+      WHERE ${condition}
+      ORDER BY created_at DESC
+      LIMIT $${paramIndex}`,
+      params,
+    );
+    return result.rows;
+  }
+
+  /**
+   * Count occurrences matching a taxon
+   */
+  async countOccurrencesByTaxon(taxonName: string, taxonRank: string): Promise<number> {
+    const rankLower = taxonRank.toLowerCase();
+    let condition: string;
+    const params: string[] = [];
+
+    if (rankLower === "species" || rankLower === "subspecies" || rankLower === "variety") {
+      condition = "scientific_name = $1";
+      params.push(taxonName);
+    } else if (rankLower === "genus") {
+      condition = "(genus = $1 OR scientific_name ILIKE $2)";
+      params.push(taxonName, `${taxonName} %`);
+    } else if (rankLower === "family") {
+      condition = "family = $1";
+      params.push(taxonName);
+    } else if (rankLower === "order") {
+      condition = '"order" = $1';
+      params.push(taxonName);
+    } else if (rankLower === "class") {
+      condition = "class = $1";
+      params.push(taxonName);
+    } else if (rankLower === "phylum") {
+      condition = "phylum = $1";
+      params.push(taxonName);
+    } else if (rankLower === "kingdom") {
+      condition = "kingdom = $1";
+      params.push(taxonName);
+    } else {
+      condition = "scientific_name = $1";
+      params.push(taxonName);
+    }
+
+    const result = await this.pool.query(
+      `SELECT COUNT(*) as count FROM occurrences WHERE ${condition}`,
+      params,
+    );
+    return parseInt(result.rows[0].count);
+  }
+
   // OAuth state methods (for PKCE flow)
   async getOAuthState(key: string): Promise<string | undefined> {
     const result = await this.pool.query(

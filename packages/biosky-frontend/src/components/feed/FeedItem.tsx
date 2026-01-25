@@ -15,6 +15,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
 import { getImageUrl } from "../../services/api";
+import { TaxonLink } from "../common/TaxonLink";
 
 interface FeedItemProps {
   occurrence: Occurrence;
@@ -157,17 +158,26 @@ export function FeedItem({ occurrence, onEdit }: FeedItemProps) {
         {occurrence.subjects && occurrence.subjects.length > 1 ? (
           <Stack spacing={0.25} sx={{ my: 0.5 }}>
             {occurrence.subjects.slice(0, 3).map((subject, idx) => (
-              <Typography
+              <Box
                 key={subject.index}
                 sx={{
-                  fontStyle: "italic",
-                  color: "primary.main",
                   fontSize: idx === 0 ? "1.1rem" : "0.9rem",
                   opacity: idx === 0 ? 1 : 0.8,
                 }}
               >
-                {subject.communityId || "Unknown"}
-              </Typography>
+                {subject.communityId ? (
+                  <TaxonLink
+                    name={subject.communityId}
+                    taxonId={occurrence.taxonId}
+                    rank="species"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>
+                    Unknown
+                  </Typography>
+                )}
+              </Box>
             ))}
             {occurrence.subjects.length > 3 && (
               <Typography variant="caption" color="text.disabled">
@@ -176,16 +186,14 @@ export function FeedItem({ occurrence, onEdit }: FeedItemProps) {
             )}
           </Stack>
         ) : (
-          <Typography
-            sx={{
-              fontStyle: "italic",
-              color: "primary.main",
-              my: 0.5,
-              fontSize: "1.1rem",
-            }}
-          >
-            {species}
-          </Typography>
+          <Box sx={{ my: 0.5, fontSize: "1.1rem" }}>
+            <TaxonLink
+              name={species}
+              taxonId={occurrence.taxonId}
+              rank={occurrence.taxonRank || "species"}
+              onClick={(e) => e.stopPropagation()}
+            />
+          </Box>
         )}
 
         {occurrence.occurrenceRemarks && (

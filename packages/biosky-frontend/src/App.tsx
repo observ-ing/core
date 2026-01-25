@@ -11,6 +11,7 @@ import { FeedView } from "./components/feed/FeedView";
 import { MapView } from "./components/map/MapView";
 import { OccurrenceDetail } from "./components/occurrence/OccurrenceDetail";
 import { ProfileView } from "./components/profile/ProfileView";
+import { TaxonDetail } from "./components/taxon/TaxonDetail";
 import { LoginModal } from "./components/modals/LoginModal";
 import { UploadModal } from "./components/modals/UploadModal";
 import { FAB } from "./components/common/FAB";
@@ -43,6 +44,7 @@ function AppContent() {
           <Route path="/map" element={<MapView />} />
           <Route path="/occurrence/:uri" element={<OccurrenceDetail />} />
           <Route path="/profile/:did" element={<ProfileView />} />
+          <Route path="/taxon/:id" element={<TaxonDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>

@@ -25,6 +25,7 @@ import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
 import { LocationMap } from "../map/LocationMap";
+import { TaxonLink } from "../common/TaxonLink";
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString);
@@ -298,12 +299,11 @@ export function OccurrenceDetail() {
           </Box>
         )}
 
-        <Typography
-          variant="h5"
-          sx={{ fontStyle: "italic", color: "primary.main", fontWeight: 600 }}
-        >
-          {species}
-        </Typography>
+        <TaxonLink
+          name={species}
+          taxonId={occurrence.taxonId}
+          rank={occurrence.taxonRank || "species"}
+        />
 
         {occurrence.scientificName &&
           occurrence.communityId &&
@@ -405,24 +405,24 @@ export function OccurrenceDetail() {
                 {occurrence.vernacularName && (
                   <Typography>{occurrence.vernacularName}</Typography>
                 )}
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5 }}>
+                <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5, gap: 0.5 }}>
                   {occurrence.kingdom && (
-                    <Chip label={occurrence.kingdom} size="small" variant="outlined" />
+                    <TaxonLink name={occurrence.kingdom} rank="kingdom" variant="chip" italic={false} />
                   )}
                   {occurrence.phylum && (
-                    <Chip label={occurrence.phylum} size="small" variant="outlined" />
+                    <TaxonLink name={occurrence.phylum} rank="phylum" variant="chip" italic={false} />
                   )}
                   {occurrence.class && (
-                    <Chip label={occurrence.class} size="small" variant="outlined" />
+                    <TaxonLink name={occurrence.class} rank="class" variant="chip" italic={false} />
                   )}
                   {occurrence.order && (
-                    <Chip label={occurrence.order} size="small" variant="outlined" />
+                    <TaxonLink name={occurrence.order} rank="order" variant="chip" italic={false} />
                   )}
                   {occurrence.family && (
-                    <Chip label={occurrence.family} size="small" variant="outlined" />
+                    <TaxonLink name={occurrence.family} rank="family" variant="chip" italic={false} />
                   )}
                   {occurrence.genus && (
-                    <Chip label={occurrence.genus} size="small" variant="outlined" sx={{ fontStyle: "italic" }} />
+                    <TaxonLink name={occurrence.genus} rank="genus" variant="chip" />
                   )}
                 </Stack>
               </Box>
