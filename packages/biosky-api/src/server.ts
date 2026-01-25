@@ -1,8 +1,8 @@
 /**
  * BioSky API Server
  *
- * Standalone REST API service for read-only biodiversity data endpoints.
- * Handles public API requests; write operations and OAuth remain in appview.
+ * Standalone REST API service for biodiversity data endpoints.
+ * Uses internal RPC to appview for AT Protocol write operations.
  */
 
 import express from "express";
@@ -12,14 +12,18 @@ import {
   Database,
   TaxonomyResolver,
   CommunityIdCalculator,
+  GeocodingService,
 } from "biosky-shared";
 import { createOccurrenceRoutes } from "./routes/occurrences.js";
 import { createFeedRoutes } from "./routes/feeds.js";
 import { createIdentificationRoutes } from "./routes/identifications.js";
 import { createTaxonomyRoutes } from "./routes/taxonomy.js";
 import { createProfileRoutes } from "./routes/profiles.js";
+import { createCommentRoutes } from "./routes/comments.js";
 import { logger } from "./middleware/logging.js";
 import { errorHandler } from "./middleware/error-handler.js";
+import { createSessionMiddleware } from "./middleware/auth.js";
+import { InternalClient } from "./internal-client.js";
 
 // Utility to build DATABASE_URL from environment variables
 function getDatabaseUrl(): string {
@@ -37,6 +41,8 @@ interface ApiServerConfig {
   port: number;
   databaseUrl: string;
   corsOrigins: string[];
+  appviewUrl: string;
+  internalSecret?: string | undefined;
 }
 
 export class ApiServer {
@@ -45,6 +51,8 @@ export class ApiServer {
   private db: Database;
   private taxonomy: TaxonomyResolver;
   private communityId: CommunityIdCalculator;
+  private geocoding: GeocodingService;
+  private internalClient: InternalClient;
 
   constructor(config: ApiServerConfig) {
     this.config = config;
@@ -52,6 +60,11 @@ export class ApiServer {
     this.db = new Database(config.databaseUrl);
     this.taxonomy = new TaxonomyResolver();
     this.communityId = new CommunityIdCalculator(this.db);
+    this.geocoding = new GeocodingService();
+    this.internalClient = new InternalClient({
+      appviewUrl: config.appviewUrl,
+      internalSecret: config.internalSecret,
+    });
 
     this.setupMiddleware();
     this.setupRoutes();
@@ -69,8 +82,11 @@ export class ApiServer {
       })
     );
 
-    // Cookie parsing (for session verification in later phases)
+    // Cookie parsing
     this.app.use(cookieParser());
+
+    // Session verification - attaches req.user if valid session
+    this.app.use(createSessionMiddleware(this.db));
   }
 
   private setupRoutes(): void {
@@ -80,14 +96,18 @@ export class ApiServer {
     });
 
     // API routes
-    this.app.use("/api/occurrences", createOccurrenceRoutes(this.db));
+    this.app.use(
+      "/api/occurrences",
+      createOccurrenceRoutes(this.db, this.taxonomy, this.geocoding, this.internalClient)
+    );
     this.app.use("/api/feeds", createFeedRoutes(this.db));
     this.app.use(
       "/api/identifications",
-      createIdentificationRoutes(this.db, this.communityId)
+      createIdentificationRoutes(this.db, this.communityId, this.taxonomy, this.internalClient)
     );
     this.app.use("/api/taxa", createTaxonomyRoutes(this.db, this.taxonomy));
     this.app.use("/api/profiles", createProfileRoutes(this.db));
+    this.app.use("/api/comments", createCommentRoutes(this.internalClient));
 
     // Error handler (must be last)
     this.app.use(errorHandler);
@@ -115,6 +135,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     port: parseInt(process.env["PORT"] || "3002"),
     databaseUrl: getDatabaseUrl(),
     corsOrigins: (process.env["CORS_ORIGINS"] || "http://localhost:5173,http://localhost:3000").split(","),
+    appviewUrl: process.env["APPVIEW_URL"] || "http://localhost:3000",
+    internalSecret: process.env["INTERNAL_SECRET"],
   });
 
   process.on("SIGTERM", async () => {

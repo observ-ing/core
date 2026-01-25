@@ -1,13 +1,20 @@
 /**
- * Occurrence routes - read-only endpoints
+ * Occurrence routes - read and write endpoints
  */
 
 import { Router } from "express";
-import { Database, getIdentityResolver } from "biosky-shared";
+import { Database, getIdentityResolver, TaxonomyResolver, GeocodingService } from "biosky-shared";
 import { enrichOccurrences, enrichIdentifications, enrichComments } from "../enrichment.js";
 import { logger } from "../middleware/logging.js";
+import { requireAuth } from "../middleware/auth.js";
+import { InternalClient } from "../internal-client.js";
 
-export function createOccurrenceRoutes(db: Database): Router {
+export function createOccurrenceRoutes(
+  db: Database,
+  taxonomy: TaxonomyResolver,
+  geocoding: GeocodingService,
+  internalClient: InternalClient
+): Router {
   const router = Router();
 
   // Get observers for an occurrence
@@ -194,6 +201,163 @@ export function createOccurrenceRoutes(db: Database): Router {
       });
     } catch (error) {
       logger.error({ err: error }, "Error generating GeoJSON");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create a new occurrence
+  router.post("/", requireAuth, async (req, res) => {
+    try {
+      const sessionDid = req.user!.did;
+      const {
+        scientificName,
+        latitude,
+        longitude,
+        notes,
+        license,
+        eventDate,
+        images,
+        taxonId,
+        taxonRank,
+        vernacularName,
+        kingdom,
+        phylum,
+        class: taxonomyClass,
+        order,
+        family,
+        genus,
+        recordedBy,
+      } = req.body;
+
+      if (!latitude || !longitude) {
+        res.status(400).json({ error: "latitude and longitude are required" });
+        return;
+      }
+
+      // Upload images as blobs if provided
+      const associatedMedia: Array<{ image: unknown; alt: string }> = [];
+
+      if (images && Array.isArray(images)) {
+        for (let i = 0; i < images.length; i++) {
+          const img = images[i] as { data: string; mimeType: string };
+          if (!img.data || !img.mimeType) continue;
+
+          const blobResult = await internalClient.uploadBlob(sessionDid, img.data, img.mimeType);
+          if (blobResult.success && blobResult.blob) {
+            associatedMedia.push({
+              image: blobResult.blob,
+              alt: `Photo ${i + 1}${scientificName ? ` of ${scientificName}` : ""}`,
+            });
+            logger.info({ mimeType: img.mimeType }, "Uploaded blob via internal RPC");
+          } else {
+            logger.error({ error: blobResult.error }, "Failed to upload blob");
+          }
+        }
+      }
+
+      // Fetch taxonomy hierarchy from GBIF if scientificName is provided
+      let taxon: {
+        id?: string | undefined;
+        commonName?: string | undefined;
+        kingdom?: string | undefined;
+        phylum?: string | undefined;
+        class?: string | undefined;
+        order?: string | undefined;
+        family?: string | undefined;
+        genus?: string | undefined;
+        rank?: string | undefined;
+      } | undefined;
+      if (scientificName && !taxonId) {
+        const validationResult = await taxonomy.validate(scientificName.trim());
+        taxon = validationResult.taxon;
+      }
+
+      // Reverse geocode to get administrative geography fields
+      const geocoded = await geocoding.reverseGeocode(latitude, longitude);
+
+      // Build the record
+      const record: Record<string, unknown> = {
+        $type: "org.rwell.test.occurrence",
+        scientificName: scientificName || undefined,
+        eventDate: eventDate || new Date().toISOString(),
+        location: {
+          decimalLatitude: String(latitude),
+          decimalLongitude: String(longitude),
+          coordinateUncertaintyInMeters: 50,
+          geodeticDatum: "WGS84",
+          continent: geocoded.continent,
+          country: geocoded.country,
+          countryCode: geocoded.countryCode,
+          stateProvince: geocoded.stateProvince,
+          county: geocoded.county,
+          municipality: geocoded.municipality,
+          locality: geocoded.locality,
+          waterBody: geocoded.waterBody,
+        },
+        notes: notes || undefined,
+        license: license || undefined,
+        taxonId: taxonId || taxon?.id,
+        taxonRank: taxonRank || taxon?.rank,
+        vernacularName: vernacularName || taxon?.commonName,
+        kingdom: kingdom || taxon?.kingdom,
+        phylum: phylum || taxon?.phylum,
+        class: taxonomyClass || taxon?.class,
+        order: order || taxon?.order,
+        family: family || taxon?.family,
+        genus: genus || taxon?.genus,
+        createdAt: new Date().toISOString(),
+      };
+
+      if (associatedMedia.length > 0) {
+        record["associatedMedia"] = associatedMedia;
+      }
+
+      // Add co-observers if provided
+      const coObservers: string[] = [];
+      if (recordedBy && Array.isArray(recordedBy)) {
+        for (const did of recordedBy) {
+          if (typeof did === "string" && did !== sessionDid) {
+            coObservers.push(did);
+          }
+        }
+        if (coObservers.length > 0) {
+          record["recordedBy"] = coObservers;
+        }
+      }
+
+      // Create the record via internal RPC
+      const result = await internalClient.createRecord(
+        sessionDid,
+        "org.rwell.test.occurrence",
+        record
+      );
+
+      if (!result.success || !result.uri) {
+        res.status(500).json({ error: result.error || "Failed to create record" });
+        return;
+      }
+
+      logger.info({ uri: result.uri, imageCount: associatedMedia.length }, "Created occurrence via internal RPC");
+
+      // Store exact coordinates in private data table
+      await db.saveOccurrencePrivateData(
+        result.uri,
+        latitude,
+        longitude,
+        "open"
+      );
+
+      // Sync observers table
+      await db.syncOccurrenceObservers(result.uri, sessionDid, coObservers);
+
+      res.status(201).json({
+        success: true,
+        uri: result.uri,
+        cid: result.cid,
+        message: "Observation posted to AT Protocol network",
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Error creating occurrence");
       res.status(500).json({ error: "Internal server error" });
     }
   });

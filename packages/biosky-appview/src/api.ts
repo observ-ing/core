@@ -46,6 +46,7 @@ import {
   DatabaseStateStore,
   DatabaseSessionStore,
 } from "./auth/index.js";
+import { createInternalRoutes } from "./internal-routes.js";
 
 // Utility to build DATABASE_URL from environment variables
 function getDatabaseUrl(): string {
@@ -208,6 +209,15 @@ export class AppViewServer {
 
     // Taxonomy API
     this.setupTaxonomyRoutes();
+
+    // Internal RPC routes for API service
+    this.app.use(
+      "/internal/agent",
+      createInternalRoutes({
+        oauth: this.oauth,
+        internalSecret: process.env["INTERNAL_SECRET"],
+      })
+    );
 
     // Proxy media requests to media-proxy service
     this.setupMediaProxy();
