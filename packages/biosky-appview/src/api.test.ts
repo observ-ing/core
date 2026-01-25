@@ -142,7 +142,10 @@ describe("AppViewServer", () => {
         .send({ longitude: -122.4194 });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe("latitude and longitude are required");
+      expect(res.body.error).toBe("Validation failed");
+      expect(res.body.details).toContainEqual(
+        expect.objectContaining({ path: "latitude" })
+      );
     });
 
     it("returns 400 when longitude is missing", async () => {
@@ -151,7 +154,10 @@ describe("AppViewServer", () => {
         .send({ latitude: 37.7749 });
 
       expect(res.status).toBe(400);
-      expect(res.body.error).toBe("latitude and longitude are required");
+      expect(res.body.error).toBe("Validation failed");
+      expect(res.body.details).toContainEqual(
+        expect.objectContaining({ path: "longitude" })
+      );
     });
 
     it("returns 401 when not authenticated", async () => {

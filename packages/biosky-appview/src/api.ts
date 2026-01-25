@@ -7,9 +7,11 @@
 
 import path from "path";
 import { fileURLToPath } from "url";
+import fs from "fs";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import swaggerUi from "swagger-ui-express";
 import pino from "pino";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -40,6 +42,10 @@ import {
   TaxonomyResolver,
   CommunityIdCalculator,
   GeocodingService,
+  // Zod schemas for validation
+  CreateOccurrenceRequestSchema,
+  CreateIdentificationRequestSchema,
+  CreateCommentRequestSchema,
 } from "biosky-shared";
 import {
   OAuthService,
@@ -189,6 +195,9 @@ export class AppViewServer {
       res.json({ status: "ok" });
     });
 
+    // OpenAPI documentation
+    this.setupApiDocs();
+
     // OAuth routes
     this.oauth.setupRoutes(this.app);
 
@@ -239,6 +248,19 @@ export class AppViewServer {
     // Create new occurrence - posts to AT Protocol network if authenticated
     this.app.post("/api/occurrences", async (req, res) => {
       try {
+        // Validate request body with Zod schema
+        const parseResult = CreateOccurrenceRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
         const {
           scientificName,
           latitude,
@@ -257,12 +279,7 @@ export class AppViewServer {
           family,
           genus,
           recordedBy,
-        } = req.body;
-
-        if (!latitude || !longitude) {
-          res.status(400).json({ error: "latitude and longitude are required" });
-          return;
-        }
+        } = parseResult.data;
 
         // Require authentication
         const sessionDid = req.cookies?.session_did;
@@ -1076,37 +1093,29 @@ export class AppViewServer {
     // Create a new identification
     this.app.post("/api/identifications", async (req, res) => {
       try {
+        // Validate request body with Zod schema
+        const parseResult = CreateIdentificationRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
         const {
           occurrenceUri,
           occurrenceCid,
-          subjectIndex = 0,
+          subjectIndex,
           taxonName,
-          taxonRank = "species",
+          taxonRank,
           comment,
-          isAgreement = false,
-          confidence = "medium",
-        } = req.body;
-
-        // Validate required fields
-        if (!occurrenceUri || !occurrenceCid) {
-          res.status(400).json({ error: "occurrenceUri and occurrenceCid are required" });
-          return;
-        }
-
-        if (!taxonName || taxonName.trim().length === 0) {
-          res.status(400).json({ error: "taxonName is required" });
-          return;
-        }
-
-        if (taxonName.length > 256) {
-          res.status(400).json({ error: "taxonName too long (max 256 characters)" });
-          return;
-        }
-
-        if (comment && comment.length > 3000) {
-          res.status(400).json({ error: "comment too long (max 3000 characters)" });
-          return;
-        }
+          isAgreement,
+          confidence,
+        } = parseResult.data;
 
         // Require authentication
         const sessionDid = req.cookies?.session_did;
@@ -1199,29 +1208,26 @@ export class AppViewServer {
     // Create a new comment on an observation
     this.app.post("/api/comments", async (req, res) => {
       try {
+        // Validate request body with Zod schema
+        const parseResult = CreateCommentRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
         const {
           occurrenceUri,
           occurrenceCid,
           body,
           replyToUri,
           replyToCid,
-        } = req.body;
-
-        // Validate required fields
-        if (!occurrenceUri || !occurrenceCid) {
-          res.status(400).json({ error: "occurrenceUri and occurrenceCid are required" });
-          return;
-        }
-
-        if (!body || body.trim().length === 0) {
-          res.status(400).json({ error: "body is required" });
-          return;
-        }
-
-        if (body.length > 3000) {
-          res.status(400).json({ error: "body too long (max 3000 characters)" });
-          return;
-        }
+        } = parseResult.data;
 
         // Require authentication
         const sessionDid = req.cookies?.session_did;
@@ -1596,6 +1602,24 @@ export class AppViewServer {
         }),
       };
     });
+  }
+
+  private setupApiDocs(): void {
+    // Load OpenAPI spec from biosky-shared
+    const openapiPath = path.join(__dirname, "../../biosky-shared/openapi.json");
+    try {
+      const openapiSpec = JSON.parse(fs.readFileSync(openapiPath, "utf-8"));
+      this.app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(openapiSpec, {
+        customCss: ".swagger-ui .topbar { display: none }",
+        customSiteTitle: "BioSky API Documentation",
+      }));
+      this.app.get("/api/openapi.json", (_req, res) => {
+        res.json(openapiSpec);
+      });
+      logger.info("API documentation available at /api/docs");
+    } catch (error) {
+      logger.warn({ err: error }, "OpenAPI spec not found, /api/docs will not be available");
+    }
   }
 
   private setupMediaProxy(): void {

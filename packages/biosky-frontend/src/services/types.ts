@@ -1,234 +1,58 @@
-export interface Subject {
-  index: number;
-  communityId?: string;
-  identificationCount: number;
-}
+/**
+ * API Types for BioSky Frontend
+ *
+ * Re-exports types from biosky-shared for API contract sync.
+ * Additional frontend-only types are defined here.
+ */
 
-export interface Observer {
-  did: string;
-  handle?: string;
-  displayName?: string;
-  avatar?: string;
-  role: "owner" | "co-observer";
-}
+// Re-export API types from shared package (single source of truth)
+export type {
+  // Core types
+  Profile,
+  Observer,
+  Subject,
+  Location,
+  Occurrence,
+  Identification,
+  Comment,
 
-export interface Occurrence {
-  uri: string;
-  cid: string;
-  observer: {
-    did: string;
-    handle?: string;
-    displayName?: string;
-    avatar?: string;
-  };
-  observers: Observer[];
-  scientificName?: string;
-  communityId?: string; // Backward compat: refers to subject 0
-  subjects: Subject[]; // All subjects with their community IDs
-  eventDate: string;
-  location: {
-    latitude: number;
-    longitude: number;
-    uncertaintyMeters?: number;
-  };
-  verbatimLocality?: string;
-  occurrenceRemarks?: string;
-  // Taxonomy fields
-  taxonId?: string;
-  taxonRank?: string;
-  vernacularName?: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
-  images: string[];
-  createdAt: string;
-}
+  // Request/Response types
+  CreateOccurrenceRequest,
+  CreateOccurrenceResponse,
+  OccurrenceDetailResponse,
+  CreateIdentificationRequest,
+  CreateCommentRequest,
 
-export interface User {
-  did: string;
-  handle: string;
-}
+  // Feed types
+  FeedFilters,
+  FeedResponse,
+  ExploreFeedResponse,
+  HomeFeedResponse,
+
+  // Profile types
+  ProfileData,
+  ProfileFeedResponse,
+
+  // Taxonomy types
+  IUCNCategory,
+  ConservationStatus,
+  TaxaResult,
+  TaxonAncestor,
+  TaxonDetail,
+
+  // GeoJSON types
+  GeoJSONFeature,
+  GeoJSONFeatureCollection,
+
+  // Auth types
+  User,
+  AuthResponse,
+  ErrorResponse,
+} from "biosky-shared";
+
+// ============================================================================
+// Frontend-only types (UI state, not part of API contract)
+// ============================================================================
 
 export type ViewMode = "feed" | "map";
 export type FeedTab = "home" | "explore";
-
-/**
- * IUCN Red List conservation status categories
- */
-export type IUCNCategory =
-  | "EX" // Extinct
-  | "EW" // Extinct in the Wild
-  | "CR" // Critically Endangered
-  | "EN" // Endangered
-  | "VU" // Vulnerable
-  | "NT" // Near Threatened
-  | "LC" // Least Concern
-  | "DD" // Data Deficient
-  | "NE"; // Not Evaluated
-
-export interface ConservationStatus {
-  category: IUCNCategory;
-  source: string;
-}
-
-export interface TaxaResult {
-  id: string;
-  scientificName: string;
-  commonName?: string;
-  photoUrl?: string;
-  rank?: string;
-  conservationStatus?: ConservationStatus;
-}
-
-export interface TaxonAncestor {
-  id: string;
-  name: string;
-  rank: string;
-}
-
-export interface TaxonDescription {
-  description: string;
-  type?: string;
-  source?: string;
-}
-
-export interface TaxonReference {
-  citation: string;
-  doi?: string;
-  link?: string;
-}
-
-export interface TaxonMedia {
-  type: string;
-  url: string;
-  title?: string;
-  description?: string;
-  source?: string;
-  creator?: string;
-  license?: string;
-}
-
-export interface TaxonDetail {
-  id: string;
-  scientificName: string;
-  commonName?: string;
-  rank: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
-  species?: string;
-  ancestors: TaxonAncestor[];
-  children: TaxaResult[];
-  conservationStatus?: ConservationStatus;
-  numDescendants?: number;
-  extinct?: boolean;
-  observationCount: number;
-  descriptions?: TaxonDescription[];
-  references?: TaxonReference[];
-  media?: TaxonMedia[];
-}
-
-export interface FeedResponse {
-  occurrences: Occurrence[];
-  cursor?: string;
-}
-
-export interface FeedFilters {
-  taxon?: string;
-  lat?: number;
-  lng?: number;
-  radius?: number;
-}
-
-export interface ExploreFeedResponse extends FeedResponse {
-  meta?: {
-    filters?: FeedFilters;
-  };
-}
-
-export interface HomeFeedResponse extends FeedResponse {
-  meta?: {
-    followedCount: number;
-    nearbyCount: number;
-    totalFollows: number;
-  };
-}
-
-export interface Identification {
-  uri: string;
-  cid: string;
-  did: string;
-  subject_uri: string;
-  subject_index: number;
-  scientific_name: string;
-  taxon_rank?: string;
-  identification_remarks?: string;
-  is_agreement: boolean;
-  date_identified: string;
-  identifier?: {
-    did: string;
-    handle?: string;
-    displayName?: string;
-    avatar?: string;
-  };
-}
-
-export interface Comment {
-  uri: string;
-  cid: string;
-  did: string;
-  subject_uri: string;
-  subject_cid: string;
-  body: string;
-  reply_to_uri?: string;
-  reply_to_cid?: string;
-  created_at: string;
-  commenter?: {
-    did: string;
-    handle?: string;
-    displayName?: string;
-    avatar?: string;
-  };
-}
-
-export interface ProfileData {
-  did: string;
-  handle?: string;
-  displayName?: string;
-  avatar?: string;
-}
-
-export interface ProfileFeedResponse {
-  profile: ProfileData;
-  counts: {
-    observations: number;
-    identifications: number;
-    species: number;
-  };
-  occurrences: Occurrence[];
-  identifications: Identification[];
-  cursor?: string;
-}
-
-export interface GeoJSONFeatureCollection {
-  type: "FeatureCollection";
-  features: Array<{
-    type: "Feature";
-    geometry: {
-      type: "Point";
-      coordinates: [number, number];
-    };
-    properties: {
-      uri: string;
-      scientificName?: string;
-      point_count?: number;
-      cluster_id?: number;
-    };
-  }>;
-}

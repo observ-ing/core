@@ -437,3 +437,33 @@ Test cases for BioSky QA.
 2. Type "quercus alba" (lowercase) in the species input
 
 **Expected:** Autocomplete finds and displays "Quercus alba" correctly
+
+---
+
+## API Documentation
+
+### TC-API-001: Swagger UI loads
+1. Navigate to `/api/docs`
+
+**Expected:** Swagger UI loads with "BioSky API" title, showing all endpoint categories (Auth, Occurrences, Feeds, Profiles, Identifications, Comments, Taxonomy)
+
+### TC-API-002: OpenAPI spec endpoint
+1. Navigate to `/api/openapi.json`
+
+**Expected:** Raw OpenAPI 3.0 JSON spec is returned with correct schema definitions
+
+### TC-API-003: Try endpoint from Swagger UI
+1. Navigate to `/api/docs`
+2. Expand "Occurrences" section
+3. Click on `GET /api/occurrences/feed`
+4. Click "Try it out"
+5. Click "Execute"
+
+**Expected:** Request is made and response is displayed with occurrences array
+
+### TC-API-004: Schema definitions visible
+1. Navigate to `/api/docs`
+2. Scroll to bottom "Schemas" section
+3. Click on "Occurrence" schema
+
+**Expected:** Schema expands showing all fields with types and descriptions

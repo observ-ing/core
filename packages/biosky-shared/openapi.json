@@ -1,0 +1,1681 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "BioSky API",
+    "version": "1.0.0",
+    "description": "Decentralized biodiversity observation platform API"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "schemas": {
+      "Profile": {
+        "type": "object",
+        "properties": {
+          "did": {
+            "type": "string",
+            "description": "Decentralized identifier"
+          },
+          "handle": {
+            "type": "string",
+            "description": "User handle"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Display name"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "Avatar URL"
+          }
+        },
+        "required": [
+          "did"
+        ]
+      },
+      "Observer": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Profile"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "role": {
+                "type": "string",
+                "enum": [
+                  "owner",
+                  "co-observer"
+                ],
+                "description": "Observer role"
+              }
+            },
+            "required": [
+              "role"
+            ]
+          }
+        ]
+      },
+      "Subject": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Subject index within the observation"
+          },
+          "communityId": {
+            "type": "string",
+            "description": "Community-agreed taxon name"
+          },
+          "identificationCount": {
+            "type": "integer",
+            "description": "Number of identifications"
+          }
+        },
+        "required": [
+          "index",
+          "identificationCount"
+        ]
+      },
+      "Location": {
+        "type": "object",
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90,
+            "description": "Decimal latitude"
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180,
+            "description": "Decimal longitude"
+          },
+          "uncertaintyMeters": {
+            "type": "number",
+            "description": "Coordinate uncertainty in meters"
+          },
+          "continent": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "countryCode": {
+            "type": "string"
+          },
+          "stateProvince": {
+            "type": "string"
+          },
+          "county": {
+            "type": "string"
+          },
+          "municipality": {
+            "type": "string"
+          },
+          "locality": {
+            "type": "string"
+          },
+          "waterBody": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      },
+      "Occurrence": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "AT Protocol URI"
+          },
+          "cid": {
+            "type": "string",
+            "description": "Content identifier"
+          },
+          "observer": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Profile"
+              },
+              {
+                "description": "Primary observer"
+              }
+            ]
+          },
+          "observers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Observer"
+            },
+            "description": "All observers including co-observers"
+          },
+          "scientificName": {
+            "type": "string",
+            "description": "Scientific name"
+          },
+          "communityId": {
+            "type": "string",
+            "description": "Community ID for subject 0 (backward compat)"
+          },
+          "subjects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Subject"
+            },
+            "description": "All subjects with their community IDs"
+          },
+          "eventDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date of observation"
+          },
+          "location": {
+            "$ref": "#/components/schemas/Location"
+          },
+          "verbatimLocality": {
+            "type": "string"
+          },
+          "occurrenceRemarks": {
+            "type": "string"
+          },
+          "taxonId": {
+            "type": "string"
+          },
+          "taxonRank": {
+            "type": "string"
+          },
+          "vernacularName": {
+            "type": "string"
+          },
+          "kingdom": {
+            "type": "string"
+          },
+          "phylum": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "genus": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Image URLs"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "identificationCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "uri",
+          "cid",
+          "observer",
+          "observers",
+          "subjects",
+          "eventDate",
+          "location",
+          "images",
+          "createdAt"
+        ]
+      },
+      "CreateOccurrenceRequest": {
+        "type": "object",
+        "properties": {
+          "scientificName": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "longitude": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "notes": {
+            "type": "string"
+          },
+          "license": {
+            "type": "string"
+          },
+          "eventDate": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "string",
+                  "description": "Base64 encoded image data"
+                },
+                "mimeType": {
+                  "type": "string",
+                  "description": "MIME type of the image"
+                }
+              },
+              "required": [
+                "data",
+                "mimeType"
+              ]
+            }
+          },
+          "taxonId": {
+            "type": "string"
+          },
+          "taxonRank": {
+            "type": "string"
+          },
+          "vernacularName": {
+            "type": "string"
+          },
+          "kingdom": {
+            "type": "string"
+          },
+          "phylum": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "genus": {
+            "type": "string"
+          },
+          "recordedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Co-observer DIDs"
+          }
+        },
+        "required": [
+          "latitude",
+          "longitude"
+        ]
+      },
+      "CreateOccurrenceResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "success",
+          "uri",
+          "cid"
+        ]
+      },
+      "Identification": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "subject_uri": {
+            "type": "string"
+          },
+          "subject_index": {
+            "type": "integer"
+          },
+          "scientific_name": {
+            "type": "string"
+          },
+          "taxon_rank": {
+            "type": "string"
+          },
+          "identification_remarks": {
+            "type": "string"
+          },
+          "is_agreement": {
+            "type": "boolean"
+          },
+          "date_identified": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "identifier": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        },
+        "required": [
+          "uri",
+          "cid",
+          "did",
+          "subject_uri",
+          "subject_index",
+          "scientific_name",
+          "is_agreement",
+          "date_identified"
+        ]
+      },
+      "CreateIdentificationRequest": {
+        "type": "object",
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          },
+          "occurrenceCid": {
+            "type": "string"
+          },
+          "subjectIndex": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 99,
+            "default": 0
+          },
+          "taxonName": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256
+          },
+          "taxonRank": {
+            "type": "string",
+            "default": "species"
+          },
+          "comment": {
+            "type": "string",
+            "maxLength": 3000
+          },
+          "isAgreement": {
+            "type": "boolean",
+            "default": false
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ],
+            "default": "medium"
+          }
+        },
+        "required": [
+          "occurrenceUri",
+          "occurrenceCid",
+          "taxonName"
+        ]
+      },
+      "Comment": {
+        "type": "object",
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "subject_uri": {
+            "type": "string"
+          },
+          "subject_cid": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "reply_to_uri": {
+            "type": "string"
+          },
+          "reply_to_cid": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "commenter": {
+            "$ref": "#/components/schemas/Profile"
+          }
+        },
+        "required": [
+          "uri",
+          "cid",
+          "did",
+          "subject_uri",
+          "subject_cid",
+          "body",
+          "created_at"
+        ]
+      },
+      "CreateCommentRequest": {
+        "type": "object",
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          },
+          "occurrenceCid": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 3000
+          },
+          "replyToUri": {
+            "type": "string"
+          },
+          "replyToCid": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurrenceUri",
+          "occurrenceCid",
+          "body"
+        ]
+      },
+      "FeedFilters": {
+        "type": "object",
+        "properties": {
+          "taxon": {
+            "type": "string"
+          },
+          "lat": {
+            "type": "number"
+          },
+          "lng": {
+            "type": "number"
+          },
+          "radius": {
+            "type": "number"
+          }
+        }
+      },
+      "FeedResponse": {
+        "type": "object",
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Cursor for pagination"
+          }
+        },
+        "required": [
+          "occurrences"
+        ]
+      },
+      "ExploreFeedResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FeedResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "type": "object",
+                "properties": {
+                  "filters": {
+                    "$ref": "#/components/schemas/FeedFilters"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "HomeFeedResponse": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/FeedResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "meta": {
+                "type": "object",
+                "properties": {
+                  "followedCount": {
+                    "type": "integer"
+                  },
+                  "nearbyCount": {
+                    "type": "integer"
+                  },
+                  "totalFollows": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "followedCount",
+                  "nearbyCount",
+                  "totalFollows"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "ProfileData": {
+        "type": "object",
+        "properties": {
+          "did": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "avatar": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "did"
+        ]
+      },
+      "ProfileFeedResponse": {
+        "type": "object",
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/ProfileData"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "observations": {
+                "type": "integer"
+              },
+              "identifications": {
+                "type": "integer"
+              },
+              "species": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "observations",
+              "identifications",
+              "species"
+            ]
+          },
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "identifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identification"
+            }
+          },
+          "cursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "profile",
+          "counts",
+          "occurrences",
+          "identifications"
+        ]
+      },
+      "IUCNCategory": {
+        "type": "string",
+        "enum": [
+          "EX",
+          "EW",
+          "CR",
+          "EN",
+          "VU",
+          "NT",
+          "LC",
+          "DD",
+          "NE"
+        ]
+      },
+      "ConservationStatus": {
+        "type": "object",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/IUCNCategory"
+          },
+          "source": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "source"
+        ]
+      },
+      "TaxaResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scientificName": {
+            "type": "string"
+          },
+          "commonName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          },
+          "conservationStatus": {
+            "$ref": "#/components/schemas/ConservationStatus"
+          }
+        },
+        "required": [
+          "id",
+          "scientificName"
+        ]
+      },
+      "TaxonAncestor": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "rank"
+        ]
+      },
+      "TaxonDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scientificName": {
+            "type": "string"
+          },
+          "commonName": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          },
+          "kingdom": {
+            "type": "string"
+          },
+          "phylum": {
+            "type": "string"
+          },
+          "class": {
+            "type": "string"
+          },
+          "order": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string"
+          },
+          "genus": {
+            "type": "string"
+          },
+          "species": {
+            "type": "string"
+          },
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxonAncestor"
+            }
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxaResult"
+            }
+          },
+          "conservationStatus": {
+            "$ref": "#/components/schemas/ConservationStatus"
+          },
+          "numDescendants": {
+            "type": "integer"
+          },
+          "extinct": {
+            "type": "boolean"
+          },
+          "observationCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "scientificName",
+          "rank",
+          "ancestors",
+          "children",
+          "observationCount"
+        ]
+      },
+      "GeoJSONFeature": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "Feature"
+            ]
+          },
+          "geometry": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "Point"
+                ]
+              },
+              "coordinates": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": [
+              "type",
+              "coordinates"
+            ]
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "uri": {
+                "type": "string"
+              },
+              "scientificName": {
+                "type": "string"
+              },
+              "eventDate": {
+                "type": "string"
+              },
+              "point_count": {
+                "type": "integer"
+              },
+              "cluster_id": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "uri"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ]
+      },
+      "GeoJSONFeatureCollection": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "FeatureCollection"
+            ]
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeoJSONFeature"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "features"
+        ]
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "did": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "did",
+          "handle"
+        ]
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "OccurrenceDetailResponse": {
+        "type": "object",
+        "properties": {
+          "occurrence": {
+            "$ref": "#/components/schemas/Occurrence"
+          },
+          "identifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identification"
+            }
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          }
+        },
+        "required": [
+          "occurrence",
+          "identifications",
+          "comments"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/oauth/me": {
+      "get": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Get current authenticated user",
+        "responses": {
+          "200": {
+            "description": "Current user info",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/logout": {
+      "post": {
+        "tags": [
+          "Auth"
+        ],
+        "summary": "Logout current user",
+        "responses": {
+          "200": {
+            "description": "Logged out successfully"
+          }
+        }
+      }
+    },
+    "/api/occurrences/feed": {
+      "get": {
+        "tags": [
+          "Occurrences"
+        ],
+        "summary": "Get chronological occurrence feed",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Feed of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occurrences/nearby": {
+      "get": {
+        "tags": [
+          "Occurrences"
+        ],
+        "summary": "Get occurrences near a location",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "lat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "lng",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "radius",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "offset",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Nearby occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid parameters",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occurrences/geojson": {
+      "get": {
+        "tags": [
+          "Occurrences"
+        ],
+        "summary": "Get occurrences as GeoJSON for mapping",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "minLat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "minLng",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "maxLat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "maxLng",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "GeoJSON feature collection",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeoJSONFeatureCollection"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occurrences/{uri}": {
+      "get": {
+        "tags": [
+          "Occurrences"
+        ],
+        "summary": "Get single occurrence with identifications and comments",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "uri",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Occurrence detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Occurrence not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occurrences": {
+      "post": {
+        "tags": [
+          "Occurrences"
+        ],
+        "summary": "Create a new occurrence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOccurrenceRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Occurrence created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/feeds/explore": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Get explore feed with optional filters",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "taxon",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "lat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "lng",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "radius",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Explore feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExploreFeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/feeds/home": {
+      "get": {
+        "tags": [
+          "Feeds"
+        ],
+        "summary": "Get personalized home feed (requires auth)",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "lat",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "lng",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "nearbyRadius",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Home feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeFeedResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/profiles/{did}/feed": {
+      "get": {
+        "tags": [
+          "Profiles"
+        ],
+        "summary": "Get user profile feed",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "did",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "observations",
+                "identifications",
+                "all"
+              ]
+            },
+            "required": false,
+            "name": "type",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile feed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileFeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/identifications": {
+      "post": {
+        "tags": [
+          "Identifications"
+        ],
+        "summary": "Create identification for an occurrence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIdentificationRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Identification created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/comments": {
+      "post": {
+        "tags": [
+          "Comments"
+        ],
+        "summary": "Create comment on an occurrence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Comment created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateOccurrenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/search": {
+      "get": {
+        "tags": [
+          "Taxonomy"
+        ],
+        "summary": "Search taxa by name",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2
+            },
+            "required": true,
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "results": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaxaResult"
+                      }
+                    }
+                  },
+                  "required": [
+                    "results"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{id}": {
+      "get": {
+        "tags": [
+          "Taxonomy"
+        ],
+        "summary": "Get taxon details",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Taxon details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Taxon not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{id}/occurrences": {
+      "get": {
+        "tags": [
+          "Taxonomy"
+        ],
+        "summary": "Get occurrences for a taxon",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "cursor",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Taxon occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

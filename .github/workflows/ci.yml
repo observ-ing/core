@@ -31,6 +31,16 @@ jobs:
             exit 1
           fi
 
+      - name: Check OpenAPI spec
+        run: |
+          npm run openapi -w biosky-shared
+          if [ -n "$(git status --porcelain packages/biosky-shared/openapi.json)" ]; then
+            echo "Error: OpenAPI spec is out of date."
+            echo "Please run 'npm run openapi -w biosky-shared' and commit the changes."
+            git diff packages/biosky-shared/openapi.json
+            exit 1
+          fi
+
       - name: Build (typecheck)
         run: npm run build
 
