@@ -10,6 +10,46 @@ import {
 import { type $Typed, is$typed, maybe$typed } from './util.js'
 
 export const schemaDict = {
+  OrgRwellTestComment: {
+    lexicon: 1,
+    id: 'org.rwell.test.comment',
+    defs: {
+      main: {
+        type: 'record',
+        description:
+          'A comment on an observation. Used for general discussion, questions, or additional context about an observation.',
+        key: 'tid',
+        record: {
+          type: 'object',
+          required: ['subject', 'body', 'createdAt'],
+          properties: {
+            subject: {
+              type: 'ref',
+              ref: 'lex:com.atproto.repo.strongRef',
+              description:
+                'A strong reference (CID + URI) to the observation being commented on.',
+            },
+            body: {
+              type: 'string',
+              description: 'The text content of the comment.',
+              maxLength: 3000,
+            },
+            replyTo: {
+              type: 'ref',
+              ref: 'lex:com.atproto.repo.strongRef',
+              description:
+                'Optional reference to another comment this is replying to, for threaded discussions.',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'datetime',
+              description: 'Timestamp when this comment was created.',
+            },
+          },
+        },
+      },
+    },
+  },
   OrgRwellTestIdentification: {
     lexicon: 1,
     id: 'org.rwell.test.identification',
@@ -475,6 +515,7 @@ export function validate(
 }
 
 export const ids = {
+  OrgRwellTestComment: 'org.rwell.test.comment',
   OrgRwellTestIdentification: 'org.rwell.test.identification',
   OrgRwellTestLike: 'org.rwell.test.like',
   OrgRwellTestOccurrence: 'org.rwell.test.occurrence',
