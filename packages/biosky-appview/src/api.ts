@@ -47,15 +47,15 @@ import {
 // Utility to build DATABASE_URL from environment variables
 function getDatabaseUrl(): string {
   // If DB_PASSWORD is set, construct URL from individual components (GCP Secret Manager)
-  if (process.env.DB_PASSWORD) {
-    const host = process.env.DB_HOST || "localhost";
-    const name = process.env.DB_NAME || "biosky";
-    const user = process.env.DB_USER || "postgres";
-    const password = process.env.DB_PASSWORD;
+  if (process.env["DB_PASSWORD"]) {
+    const host = process.env["DB_HOST"] || "localhost";
+    const name = process.env["DB_NAME"] || "biosky";
+    const user = process.env["DB_USER"] || "postgres";
+    const password = process.env["DB_PASSWORD"];
     return `postgresql://${user}:${password}@/${name}?host=${host}`;
   }
   // Otherwise use DATABASE_URL directly (local dev)
-  return process.env.DATABASE_URL || "postgresql://localhost:5432/biosky";
+  return process.env["DATABASE_URL"] || "postgresql://localhost:5432/biosky";
 }
 import { TaxonomyResolver } from "./taxonomy.js";
 import { CommunityIdCalculator } from "./community-id.js";
@@ -127,10 +127,10 @@ export class AppViewServer {
       port: config.port || 3000,
       databaseUrl:
         config.databaseUrl ||
-        process.env.DATABASE_URL ||
+        process.env["DATABASE_URL"] ||
         "postgresql://localhost:5432/biosky",
       corsOrigins: config.corsOrigins || ["http://localhost:5173"],
-      publicUrl: config.publicUrl || process.env.PUBLIC_URL || "http://localhost:3000",
+      publicUrl: config.publicUrl || process.env["PUBLIC_URL"] || "http://localhost:3000",
     };
 
     this.app = express();
@@ -199,7 +199,7 @@ export class AppViewServer {
     // In dev: __dirname is packages/biosky-appview/src, public is at ../../dist/public
     // In prod: __dirname is /app/packages/biosky-appview/dist, public is at /app/dist/public
     const publicPath =
-      process.env.NODE_ENV === "production"
+      process.env["NODE_ENV"] === "production"
         ? path.resolve("/app/dist/public")
         : path.join(__dirname, "../../../dist/public");
     this.app.use(express.static(publicPath));
@@ -332,7 +332,7 @@ export class AppViewServer {
 
         // Add images if any were successfully uploaded
         if (associatedMedia.length > 0) {
-          record.associatedMedia = associatedMedia;
+          record["associatedMedia"] = associatedMedia;
         }
 
         // Create the record on the user's PDS
@@ -509,11 +509,11 @@ export class AppViewServer {
     // Get occurrences nearby
     this.app.get("/api/occurrences/nearby", async (req, res) => {
       try {
-        const lat = parseFloat(req.query.lat as string);
-        const lng = parseFloat(req.query.lng as string);
-        const radius = parseFloat(req.query.radius as string) || 10000; // default 10km
-        const limit = parseInt(req.query.limit as string) || 100;
-        const offset = parseInt(req.query.offset as string) || 0;
+        const lat = parseFloat(req.query["lat"] as string);
+        const lng = parseFloat(req.query["lng"] as string);
+        const radius = parseFloat(req.query["radius"] as string) || 10000; // default 10km
+        const limit = parseInt(req.query["limit"] as string) || 100;
+        const offset = parseInt(req.query["offset"] as string) || 0;
 
         if (isNaN(lat) || isNaN(lng)) {
           res.status(400).json({ error: "lat and lng are required" });
@@ -555,16 +555,17 @@ export class AppViewServer {
     // Get occurrences feed (chronological)
     this.app.get("/api/occurrences/feed", async (req, res) => {
       try {
-        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-        const cursor = req.query.cursor as string | undefined;
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+        const cursor = req.query["cursor"] as string | undefined;
 
         const rows = await this.db.getOccurrencesFeed(limit, cursor);
         const occurrences = await this.enrichOccurrences(rows);
 
         // Create cursor for next page
+        const lastRow = rows[rows.length - 1];
         const nextCursor =
-          rows.length === limit
-            ? rows[rows.length - 1].created_at.toISOString()
+          rows.length === limit && lastRow
+            ? lastRow.created_at.toISOString()
             : undefined;
 
         res.json({
@@ -580,11 +581,11 @@ export class AppViewServer {
     // Get occurrences in bounding box
     this.app.get("/api/occurrences/bbox", async (req, res) => {
       try {
-        const minLat = parseFloat(req.query.minLat as string);
-        const minLng = parseFloat(req.query.minLng as string);
-        const maxLat = parseFloat(req.query.maxLat as string);
-        const maxLng = parseFloat(req.query.maxLng as string);
-        const limit = parseInt(req.query.limit as string) || 1000;
+        const minLat = parseFloat(req.query["minLat"] as string);
+        const minLng = parseFloat(req.query["minLng"] as string);
+        const maxLat = parseFloat(req.query["maxLat"] as string);
+        const maxLng = parseFloat(req.query["maxLng"] as string);
+        const limit = parseInt(req.query["limit"] as string) || 1000;
 
         if (isNaN(minLat) || isNaN(minLng) || isNaN(maxLat) || isNaN(maxLng)) {
           res.status(400).json({
@@ -619,10 +620,10 @@ export class AppViewServer {
     // Get GeoJSON for map clustering (must be before :uri(*) route)
     this.app.get("/api/occurrences/geojson", async (req, res) => {
       try {
-        const minLat = parseFloat(req.query.minLat as string);
-        const minLng = parseFloat(req.query.minLng as string);
-        const maxLat = parseFloat(req.query.maxLat as string);
-        const maxLng = parseFloat(req.query.maxLng as string);
+        const minLat = parseFloat(req.query["minLat"] as string);
+        const minLng = parseFloat(req.query["minLng"] as string);
+        const maxLat = parseFloat(req.query["maxLat"] as string);
+        const maxLng = parseFloat(req.query["maxLng"] as string);
 
         if (isNaN(minLat) || isNaN(minLng) || isNaN(maxLat) || isNaN(maxLng)) {
           res.status(400).json({ error: "Bounding box required" });
@@ -663,7 +664,11 @@ export class AppViewServer {
     // Get single occurrence (must be after specific routes like /geojson)
     this.app.get("/api/occurrences/:uri(*)", async (req, res) => {
       try {
-        const uri = req.params.uri;
+        const uri = req.params["uri"];
+        if (!uri) {
+          res.status(400).json({ error: "uri is required" });
+          return;
+        }
         const row = await this.db.getOccurrence(uri);
 
         if (!row) {
@@ -692,29 +697,30 @@ export class AppViewServer {
     // Explore feed - public, with optional filters
     this.app.get("/api/feeds/explore", async (req, res) => {
       try {
-        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-        const cursor = req.query.cursor as string | undefined;
-        const taxon = req.query.taxon as string | undefined;
-        const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
-        const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
-        const radius = req.query.radius
-          ? parseFloat(req.query.radius as string)
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+        const cursor = req.query["cursor"] as string | undefined;
+        const taxon = req.query["taxon"] as string | undefined;
+        const lat = req.query["lat"] ? parseFloat(req.query["lat"] as string) : undefined;
+        const lng = req.query["lng"] ? parseFloat(req.query["lng"] as string) : undefined;
+        const radius = req.query["radius"]
+          ? parseFloat(req.query["radius"] as string)
           : undefined;
 
         const rows = await this.db.getExploreFeed({
           limit,
-          cursor,
-          taxon,
-          lat,
-          lng,
-          radius,
+          ...(cursor && { cursor }),
+          ...(taxon && { taxon }),
+          ...(lat !== undefined && { lat }),
+          ...(lng !== undefined && { lng }),
+          ...(radius !== undefined && { radius }),
         });
 
         const occurrences = await this.enrichOccurrences(rows);
 
+        const lastExploreRow = rows[rows.length - 1];
         const nextCursor =
-          rows.length === limit
-            ? rows[rows.length - 1].created_at.toISOString()
+          rows.length === limit && lastExploreRow
+            ? lastExploreRow.created_at.toISOString()
             : undefined;
 
         res.json({
@@ -751,12 +757,12 @@ export class AppViewServer {
           return;
         }
 
-        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-        const cursor = req.query.cursor as string | undefined;
-        const lat = req.query.lat ? parseFloat(req.query.lat as string) : undefined;
-        const lng = req.query.lng ? parseFloat(req.query.lng as string) : undefined;
-        const nearbyRadius = req.query.nearbyRadius
-          ? parseFloat(req.query.nearbyRadius as string)
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+        const cursor = req.query["cursor"] as string | undefined;
+        const lat = req.query["lat"] ? parseFloat(req.query["lat"] as string) : undefined;
+        const lng = req.query["lng"] ? parseFloat(req.query["lng"] as string) : undefined;
+        const nearbyRadius = req.query["nearbyRadius"]
+          ? parseFloat(req.query["nearbyRadius"] as string)
           : undefined;
 
         // Fetch user's follows
@@ -765,14 +771,21 @@ export class AppViewServer {
 
         const { rows, followedCount, nearbyCount } = await this.db.getHomeFeed(
           followedDids,
-          { limit, cursor, lat, lng, nearbyRadius },
+          {
+            limit,
+            ...(cursor && { cursor }),
+            ...(lat !== undefined && { lat }),
+            ...(lng !== undefined && { lng }),
+            ...(nearbyRadius !== undefined && { nearbyRadius }),
+          },
         );
 
         const occurrences = await this.enrichOccurrences(rows);
 
+        const lastHomeRow = rows[rows.length - 1];
         const nextCursor =
-          rows.length === limit
-            ? rows[rows.length - 1].created_at.toISOString()
+          rows.length === limit && lastHomeRow
+            ? lastHomeRow.created_at.toISOString()
             : undefined;
 
         res.json({
@@ -795,14 +808,18 @@ export class AppViewServer {
     // Get profile feed - use regex to capture DID with colons
     this.app.get(/^\/api\/profiles\/(.+)\/feed$/, async (req, res) => {
       try {
-        const did = decodeURIComponent(req.params[0]);
-        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
-        const cursor = req.query.cursor as string | undefined;
-        const type = (req.query.type as "observations" | "identifications" | "all") || "all";
+        const did = decodeURIComponent(req.params[0] ?? "");
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+        const cursor = req.query["cursor"] as string | undefined;
+        const type = (req.query["type"] as "observations" | "identifications" | "all") || "all";
 
         const { occurrences, identifications, counts } = await this.db.getProfileFeed(
           did,
-          { limit, cursor, type },
+          {
+            limit,
+            type,
+            ...(cursor && { cursor }),
+          },
         );
 
         // Enrich occurrences
@@ -817,14 +834,14 @@ export class AppViewServer {
 
         // Determine next cursor based on what was returned
         let nextCursor: string | undefined;
-        if (type === "observations" && occurrences.length === limit) {
-          nextCursor = occurrences[occurrences.length - 1].created_at.toISOString();
-        } else if (type === "identifications" && identifications.length === limit) {
-          nextCursor = identifications[identifications.length - 1].date_identified.toISOString();
+        const lastOcc = occurrences[occurrences.length - 1];
+        const lastId = identifications[identifications.length - 1];
+        if (type === "observations" && occurrences.length === limit && lastOcc) {
+          nextCursor = lastOcc.created_at.toISOString();
+        } else if (type === "identifications" && identifications.length === limit && lastId) {
+          nextCursor = lastId.date_identified.toISOString();
         } else if (type === "all") {
           // For "all", use the oldest timestamp between the two
-          const lastOcc = occurrences[occurrences.length - 1];
-          const lastId = identifications[identifications.length - 1];
           if (lastOcc && lastId) {
             nextCursor =
               lastOcc.created_at < lastId.date_identified
@@ -958,7 +975,11 @@ export class AppViewServer {
     // Get identifications for an occurrence
     this.app.get("/api/identifications/:occurrenceUri(*)", async (req, res) => {
       try {
-        const occurrenceUri = req.params.occurrenceUri;
+        const occurrenceUri = req.params["occurrenceUri"];
+        if (!occurrenceUri) {
+          res.status(400).json({ error: "occurrenceUri is required" });
+          return;
+        }
         const rows =
           await this.db.getIdentificationsForOccurrence(occurrenceUri);
         const identifications = await this.enrichIdentifications(rows);
@@ -1027,7 +1048,7 @@ export class AppViewServer {
 
         // Add reply reference if provided
         if (replyToUri && replyToCid) {
-          record.replyTo = {
+          record["replyTo"] = {
             uri: replyToUri,
             cid: replyToCid,
           };
@@ -1061,7 +1082,7 @@ export class AppViewServer {
     // Search taxa
     this.app.get("/api/taxa/search", async (req, res) => {
       try {
-        const query = req.query.q as string;
+        const query = req.query["q"] as string;
         if (!query || query.length < 2) {
           res
             .status(400)
@@ -1080,7 +1101,7 @@ export class AppViewServer {
     // Validate taxon name
     this.app.get("/api/taxa/validate", async (req, res) => {
       try {
-        const name = req.query.name as string;
+        const name = req.query["name"] as string;
         if (!name) {
           res.status(400).json({ error: "name parameter required" });
           return;
@@ -1111,7 +1132,10 @@ export class AppViewServer {
             taxon = await this.taxonomy.getById(validation.taxon.id);
           } else if (validation.suggestions && validation.suggestions.length > 0) {
             // Use the best suggestion
-            taxon = await this.taxonomy.getById(validation.suggestions[0].id);
+            const suggestion = validation.suggestions[0];
+            if (suggestion) {
+              taxon = await this.taxonomy.getById(suggestion.id);
+            }
           }
         }
 
@@ -1140,9 +1164,9 @@ export class AppViewServer {
     // Accepts: gbif:XXXX (GBIF ID) or a scientific name like "Felidae"
     this.app.get("/api/taxa/:id/occurrences", async (req, res) => {
       try {
-        const idOrName = decodeURIComponent(req.params.id);
-        const cursor = req.query.cursor as string | undefined;
-        const limit = Math.min(parseInt(req.query.limit as string) || 20, 100);
+        const idOrName = decodeURIComponent(req.params["id"] ?? "");
+        const cursor = req.query["cursor"] as string | undefined;
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
 
         let taxon;
         if (idOrName.startsWith("gbif:")) {
@@ -1152,7 +1176,10 @@ export class AppViewServer {
           if (validation.valid && validation.taxon) {
             taxon = await this.taxonomy.getById(validation.taxon.id);
           } else if (validation.suggestions && validation.suggestions.length > 0) {
-            taxon = await this.taxonomy.getById(validation.suggestions[0].id);
+            const suggestion = validation.suggestions[0];
+            if (suggestion) {
+              taxon = await this.taxonomy.getById(suggestion.id);
+            }
           }
         }
 
@@ -1164,7 +1191,7 @@ export class AppViewServer {
         const rows = await this.db.getOccurrencesByTaxon(
           taxon.scientificName,
           taxon.rank,
-          { limit, cursor },
+          { limit, ...(cursor && { cursor }) },
         );
 
         const occurrences = await this.enrichOccurrences(rows);
