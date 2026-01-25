@@ -80,6 +80,28 @@ export interface TaxonAncestor {
   rank: string;
 }
 
+export interface TaxonDescription {
+  description: string;
+  type?: string;
+  source?: string;
+}
+
+export interface TaxonReference {
+  citation: string;
+  doi?: string;
+  link?: string;
+}
+
+export interface TaxonMedia {
+  type: string;
+  url: string;
+  title?: string;
+  description?: string;
+  source?: string;
+  creator?: string;
+  license?: string;
+}
+
 export interface TaxonDetail {
   id: string;
   scientificName: string;
@@ -98,6 +120,9 @@ export interface TaxonDetail {
   numDescendants?: number;
   extinct?: boolean;
   observationCount: number;
+  descriptions?: TaxonDescription[];
+  references?: TaxonReference[];
+  media?: TaxonMedia[];
 }
 
 export interface FeedResponse {

@@ -46,11 +46,36 @@ interface TaxonAncestor {
   rank: string;
 }
 
+interface TaxonDescription {
+  description: string;
+  type?: string;
+  source?: string;
+}
+
+interface TaxonReference {
+  citation: string;
+  doi?: string;
+  link?: string;
+}
+
+interface TaxonMedia {
+  type: string;
+  url: string;
+  title?: string;
+  description?: string;
+  source?: string;
+  creator?: string;
+  license?: string;
+}
+
 interface TaxonDetail extends TaxonResult {
   ancestors: TaxonAncestor[];
   children: TaxonResult[];
   numDescendants?: number;
   extinct?: boolean;
+  descriptions?: TaxonDescription[];
+  references?: TaxonReference[];
+  media?: TaxonMedia[];
 }
 
 interface ValidationResult {
@@ -103,7 +128,14 @@ export class TaxonomyResolver {
       if (!response.ok) return null;
 
       const data = (await response.json()) as GbifSpeciesDetail;
-      const children = await this.getChildren(taxonId, 20);
+
+      // Fetch children, descriptions, references, and media in parallel
+      const [children, descriptions, references, media] = await Promise.all([
+        this.getChildren(taxonId, 20),
+        this.getDescriptions(numericId),
+        this.getReferences(numericId),
+        this.getMedia(numericId),
+      ]);
 
       // Build ancestors from individual key fields (kingdomKey, phylumKey, etc.)
       // higherClassificationMap is often null, so we use the individual fields instead
@@ -155,6 +187,9 @@ export class TaxonomyResolver {
         children,
         numDescendants: data.numDescendants,
         extinct: data.extinct,
+        descriptions: descriptions.length > 0 ? descriptions : undefined,
+        references: references.length > 0 ? references : undefined,
+        media: media.length > 0 ? media : undefined,
       };
 
       searchCache.set(cacheKey, { results: [taxonDetail as unknown as TaxonResult], timestamp: Date.now() });
@@ -162,6 +197,79 @@ export class TaxonomyResolver {
     } catch (error) {
       console.error("GBIF getById error:", error);
       return null;
+    }
+  }
+
+  /**
+   * Get descriptions for a taxon
+   */
+  private async getDescriptions(numericId: string): Promise<TaxonDescription[]> {
+    try {
+      const url = `${this.gbifV1BaseUrl}/species/${numericId}/descriptions?limit=5`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as { results: GbifDescription[] };
+      return data.results
+        .filter((d) => d.description)
+        .map((d) => ({
+          description: d.description!,
+          type: d.type,
+          source: d.source,
+        }));
+    } catch (error) {
+      console.error("GBIF getDescriptions error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get references for a taxon
+   */
+  private async getReferences(numericId: string): Promise<TaxonReference[]> {
+    try {
+      const url = `${this.gbifV1BaseUrl}/species/${numericId}/references?limit=10`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as { results: GbifReference[] };
+      return data.results
+        .filter((r) => r.citation)
+        .map((r) => ({
+          citation: r.citation!,
+          doi: r.doi,
+          link: r.link,
+        }));
+    } catch (error) {
+      console.error("GBIF getReferences error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Get media for a taxon
+   */
+  private async getMedia(numericId: string): Promise<TaxonMedia[]> {
+    try {
+      const url = `${this.gbifV1BaseUrl}/species/${numericId}/media?limit=10`;
+      const response = await fetch(url);
+      if (!response.ok) return [];
+
+      const data = (await response.json()) as { results: GbifMedia[] };
+      return data.results
+        .filter((m) => m.identifier)
+        .map((m) => ({
+          type: m.type || "StillImage",
+          url: m.identifier!,
+          title: m.title,
+          description: m.description,
+          source: m.source,
+          creator: m.creator,
+          license: m.license,
+        }));
+    } catch (error) {
+      console.error("GBIF getMedia error:", error);
+      return [];
     }
   }
 
@@ -421,4 +529,33 @@ interface GbifV2MatchResult {
   };
 }
 
-export type { TaxonResult, TaxonDetail, TaxonAncestor, ValidationResult, ConservationStatus, IUCNCategory };
+// GBIF additional data types
+interface GbifDescription {
+  description?: string;
+  type?: string;
+  language?: string;
+  source?: string;
+  sourceTaxonKey?: number;
+}
+
+interface GbifReference {
+  citation?: string;
+  type?: string;
+  source?: string;
+  doi?: string;
+  link?: string;
+}
+
+interface GbifMedia {
+  type?: string;
+  format?: string;
+  identifier?: string;
+  title?: string;
+  description?: string;
+  source?: string;
+  creator?: string;
+  license?: string;
+  rightsHolder?: string;
+}
+
+export type { TaxonResult, TaxonDetail, TaxonAncestor, TaxonDescription, TaxonReference, TaxonMedia, ValidationResult, ConservationStatus, IUCNCategory };

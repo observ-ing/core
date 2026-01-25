@@ -10,6 +10,9 @@ import {
   IconButton,
   Chip,
   Divider,
+  Card,
+  CardMedia,
+  Link,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -231,6 +234,119 @@ export function TaxonDetail() {
                   rank={child.rank}
                   variant="chip"
                 />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
+        {/* Media Gallery */}
+        {taxon.media && taxon.media.length > 0 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Media
+            </Typography>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                mt: 1,
+                overflowX: "auto",
+                pb: 1,
+                "&::-webkit-scrollbar": { height: 6 },
+                "&::-webkit-scrollbar-thumb": { bgcolor: "grey.700", borderRadius: 3 },
+              }}
+            >
+              {taxon.media.map((m, idx) => (
+                <Card
+                  key={idx}
+                  sx={{
+                    minWidth: 150,
+                    maxWidth: 150,
+                    bgcolor: "background.paper",
+                    flexShrink: 0,
+                  }}
+                >
+                  <CardMedia
+                    component="img"
+                    height="100"
+                    image={m.url}
+                    alt={m.title || `Media ${idx + 1}`}
+                    sx={{ objectFit: "cover" }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                  {(m.title || m.creator) && (
+                    <Box sx={{ p: 0.5 }}>
+                      {m.title && (
+                        <Typography variant="caption" noWrap display="block">
+                          {m.title}
+                        </Typography>
+                      )}
+                      {m.creator && (
+                        <Typography variant="caption" color="text.secondary" noWrap display="block">
+                          {m.creator}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+                </Card>
+              ))}
+            </Stack>
+          </Box>
+        )}
+
+        {/* Descriptions */}
+        {taxon.descriptions && taxon.descriptions.length > 0 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              Description
+            </Typography>
+            {taxon.descriptions.slice(0, 2).map((d, idx) => (
+              <Box key={idx} sx={{ mt: 1 }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 4,
+                    WebkitBoxOrient: "vertical",
+                    overflow: "hidden",
+                  }}
+                >
+                  {d.description}
+                </Typography>
+                {d.source && (
+                  <Typography variant="caption" color="text.secondary">
+                    Source: {d.source}
+                  </Typography>
+                )}
+              </Box>
+            ))}
+          </Box>
+        )}
+
+        {/* References */}
+        {taxon.references && taxon.references.length > 0 && (
+          <Box sx={{ mt: 3 }}>
+            <Typography variant="caption" color="text.secondary">
+              References
+            </Typography>
+            <Stack spacing={0.5} sx={{ mt: 1 }}>
+              {taxon.references.slice(0, 5).map((r, idx) => (
+                <Typography key={idx} variant="caption" color="text.secondary">
+                  {r.link || r.doi ? (
+                    <Link
+                      href={r.link || `https://doi.org/${r.doi}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      color="primary"
+                    >
+                      {r.citation}
+                    </Link>
+                  ) : (
+                    r.citation
+                  )}
+                </Typography>
               ))}
             </Stack>
           </Box>
