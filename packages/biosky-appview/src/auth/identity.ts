@@ -26,13 +26,13 @@ interface DidDocument {
 interface Profile {
   did: string;
   handle: string;
-  displayName?: string;
-  description?: string;
-  avatar?: string;
-  banner?: string;
-  followersCount?: number;
-  followsCount?: number;
-  postsCount?: number;
+  displayName?: string | undefined;
+  description?: string | undefined;
+  avatar?: string | undefined;
+  banner?: string | undefined;
+  followersCount?: number | undefined;
+  followsCount?: number | undefined;
+  postsCount?: number | undefined;
 }
 
 interface ResolveResult {
@@ -293,7 +293,7 @@ export class IdentityResolver {
         const response = await api.getFollows({
           actor,
           limit: 100,
-          cursor,
+          ...(cursor && { cursor }),
         });
 
         follows.push(...response.data.follows.map((f) => f.did));

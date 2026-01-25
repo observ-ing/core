@@ -70,15 +70,15 @@ interface AppViewConfig {
 
 interface SubjectResponse {
   index: number;
-  communityId?: string;
+  communityId?: string | undefined;
   identificationCount: number;
 }
 
 interface ObserverInfo {
   did: string;
-  handle?: string;
-  displayName?: string;
-  avatar?: string;
+  handle?: string | undefined;
+  displayName?: string | undefined;
+  avatar?: string | undefined;
   role: "owner" | "co-observer";
 }
 
@@ -87,36 +87,44 @@ interface OccurrenceResponse {
   cid: string;
   observer: {
     did: string;
-    handle?: string;
-    displayName?: string;
-    avatar?: string;
+    handle?: string | undefined;
+    displayName?: string | undefined;
+    avatar?: string | undefined;
   };
   observers: ObserverInfo[];
   // Darwin Core fields
-  scientificName?: string;
-  communityId?: string; // Keep for backward compat (refers to subject 0)
+  scientificName?: string | undefined;
+  communityId?: string | undefined; // Keep for backward compat (refers to subject 0)
   subjects: SubjectResponse[]; // All subjects with their community IDs
   eventDate: string;
   location: {
     latitude: number;
     longitude: number;
-    uncertaintyMeters?: number;
+    uncertaintyMeters?: number | undefined;
+    continent?: string | undefined;
+    country?: string | undefined;
+    countryCode?: string | undefined;
+    stateProvince?: string | undefined;
+    county?: string | undefined;
+    municipality?: string | undefined;
+    locality?: string | undefined;
+    waterBody?: string | undefined;
   };
-  verbatimLocality?: string;
-  occurrenceRemarks?: string;
+  verbatimLocality?: string | undefined;
+  occurrenceRemarks?: string | undefined;
   // Taxonomy fields
-  taxonId?: string;
-  taxonRank?: string;
-  vernacularName?: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
+  taxonId?: string | undefined;
+  taxonRank?: string | undefined;
+  vernacularName?: string | undefined;
+  kingdom?: string | undefined;
+  phylum?: string | undefined;
+  class?: string | undefined;
+  order?: string | undefined;
+  family?: string | undefined;
+  genus?: string | undefined;
   images: string[];
   createdAt: string;
-  identificationCount?: number;
+  identificationCount?: number | undefined;
 }
 
 // Legacy alias
@@ -287,15 +295,15 @@ export class AppViewServer {
 
         // Fetch taxonomy hierarchy from GBIF if scientificName is provided and taxonomy not already given
         let taxon: {
-          id?: string;
-          commonName?: string;
-          kingdom?: string;
-          phylum?: string;
-          class?: string;
-          order?: string;
-          family?: string;
-          genus?: string;
-          rank?: string;
+          id?: string | undefined;
+          commonName?: string | undefined;
+          kingdom?: string | undefined;
+          phylum?: string | undefined;
+          class?: string | undefined;
+          order?: string | undefined;
+          family?: string | undefined;
+          genus?: string | undefined;
+          rank?: string | undefined;
         } | undefined;
         if (scientificName && !taxonId) {
           const validationResult = await this.taxonomy.validate(scientificName.trim());
@@ -450,15 +458,15 @@ export class AppViewServer {
 
         // Fetch taxonomy hierarchy from GBIF if scientificName is provided and taxonomy not already given
         let taxon: {
-          id?: string;
-          commonName?: string;
-          kingdom?: string;
-          phylum?: string;
-          class?: string;
-          order?: string;
-          family?: string;
-          genus?: string;
-          rank?: string;
+          id?: string | undefined;
+          commonName?: string | undefined;
+          kingdom?: string | undefined;
+          phylum?: string | undefined;
+          class?: string | undefined;
+          order?: string | undefined;
+          family?: string | undefined;
+          genus?: string | undefined;
+          rank?: string | undefined;
         } | undefined;
         if (scientificName && !taxonId) {
           const validationResult = await this.taxonomy.validate(scientificName.trim());
@@ -1377,7 +1385,7 @@ export class AppViewServer {
 
         // Get next cursor
         const nextCursor = rows.length === limit
-          ? rows[rows.length - 1].created_at?.toISOString()
+          ? rows[rows.length - 1]?.created_at?.toISOString()
           : undefined;
 
         res.json({
@@ -1423,24 +1431,24 @@ export class AppViewServer {
         // Build observers array with profile info
         const observers: ObserverInfo[] = observerData.map((o) => {
           const p = profiles.get(o.did);
-          return {
+          return ({
             did: o.did,
             handle: p?.handle,
             displayName: p?.displayName,
             avatar: p?.avatar,
             role: o.role,
-          };
+          });
         });
 
         // If no observers in table yet, add owner from occurrence
         if (observers.length === 0) {
-          observers.push({
+          observers.push(({
             did: row.did,
             handle: profile?.handle,
             displayName: profile?.displayName,
             avatar: profile?.avatar,
-            role: "owner",
-          });
+            role: "owner" as const,
+          }));
         }
 
         // Get all subjects for this occurrence
@@ -1463,32 +1471,32 @@ export class AppViewServer {
             row.uri,
             subject.subjectIndex,
           );
-          subjects.push({
+          subjects.push(({
             index: subject.subjectIndex,
             communityId: subjectCommunityId || undefined,
             identificationCount: subject.identificationCount,
-          });
+          }));
         }
 
         // Get community ID for subject 0 (backward compat)
         const communityId = await this.db.getCommunityId(row.uri, 0);
 
-        return {
+        return ({
           uri: row.uri,
           cid: row.cid,
-          observer: {
+          observer: ({
             did: row.did,
             handle: profile?.handle,
             displayName: profile?.displayName,
             avatar: profile?.avatar,
-          },
+          }),
           observers,
           // Darwin Core fields
           scientificName: row.scientific_name || undefined,
           communityId: communityId || undefined,
           subjects,
           eventDate: row.event_date.toISOString(),
-          location: {
+          location: ({
             latitude: row.latitude,
             longitude: row.longitude,
             uncertaintyMeters: row.coordinate_uncertainty_meters || undefined,
@@ -1501,7 +1509,7 @@ export class AppViewServer {
             municipality: row.municipality || undefined,
             locality: row.locality || undefined,
             waterBody: row.water_body || undefined,
-          },
+          }),
           verbatimLocality: row.verbatim_locality || undefined,
           occurrenceRemarks: row.occurrence_remarks || undefined,
           // Taxonomy fields
@@ -1525,7 +1533,7 @@ export class AppViewServer {
             return `/media/blob/${row.did}/${cid || ""}`;
           }),
           createdAt: row.created_at.toISOString(),
-        };
+        });
       }),
     );
   }
@@ -1543,14 +1551,14 @@ export class AppViewServer {
       const profile = profiles.get(row.did);
       return {
         ...row,
-        identifier: profile
-          ? {
-              did: profile.did,
-              handle: profile.handle,
-              displayName: profile.displayName,
-              avatar: profile.avatar,
-            }
-          : undefined,
+        ...(profile && {
+          identifier: ({
+            did: profile.did,
+            handle: profile.handle,
+            displayName: profile.displayName,
+            avatar: profile.avatar,
+          }),
+        }),
       };
     });
   }
@@ -1568,20 +1576,20 @@ export class AppViewServer {
       const profile = profiles.get(row.did);
       return {
         ...row,
-        commenter: profile
-          ? {
-              did: profile.did,
-              handle: profile.handle,
-              displayName: profile.displayName,
-              avatar: profile.avatar,
-            }
-          : undefined,
+        ...(profile && {
+          commenter: ({
+            did: profile.did,
+            handle: profile.handle,
+            displayName: profile.displayName,
+            avatar: profile.avatar,
+          }),
+        }),
       };
     });
   }
 
   private setupMediaProxy(): void {
-    const mediaProxyUrl = process.env.MEDIA_PROXY_URL || "http://localhost:3001";
+    const mediaProxyUrl = process.env["MEDIA_PROXY_URL"] || "http://localhost:3001";
 
     this.app.get("/media/*", async (req, res) => {
       try {
@@ -1637,9 +1645,9 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}` ||
 
 if (isMainModule) {
   const server = new AppViewServer({
-    port: parseInt(process.env.PORT || "3000"),
+    port: parseInt(process.env["PORT"] || "3000"),
     databaseUrl: getDatabaseUrl(),
-    corsOrigins: process.env.CORS_ORIGINS?.split(",") || [
+    corsOrigins: process.env["CORS_ORIGINS"]?.split(",") || [
       "http://localhost:5173",
     ],
   });

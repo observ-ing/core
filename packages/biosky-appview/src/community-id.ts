@@ -14,7 +14,7 @@ import { Database, type IdentificationRow } from "./database/index.js";
 
 interface CommunityIdResult {
   scientificName: string;
-  taxonRank?: string;
+  taxonRank?: string | undefined;
   identificationCount: number;
   agreementCount: number;
   confidence: number;
@@ -23,7 +23,7 @@ interface CommunityIdResult {
 
 interface TaxonCount {
   scientificName: string;
-  taxonRank?: string;
+  taxonRank?: string | undefined;
   count: number;
   agreementCount: number;
 }
@@ -147,6 +147,9 @@ export class CommunityIdCalculator {
 
     // Check if the leading taxon meets the threshold
     const leader = sorted[0];
+    if (!leader) {
+      return null;
+    }
     const threshold = Math.ceil(totalIds * this.RESEARCH_GRADE_THRESHOLD);
 
     if (leader.count >= threshold) {
@@ -275,7 +278,11 @@ export class TaxonomicHierarchy {
 
     if (ancestorParts.length === 1 && taxonParts.length >= 2) {
       // possibleAncestor might be a genus
-      return taxonParts[0].toLowerCase() === ancestorParts[0].toLowerCase();
+      const ancestorFirst = ancestorParts[0];
+      const taxonFirst = taxonParts[0];
+      if (ancestorFirst && taxonFirst) {
+        return taxonFirst.toLowerCase() === ancestorFirst.toLowerCase();
+      }
     }
 
     return false;

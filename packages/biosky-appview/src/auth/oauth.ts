@@ -137,7 +137,7 @@ export class OAuthService {
     this.stateStore = config.stateStore || new MemoryStateStore();
     this.sessionStore = config.sessionStore || new MemorySessionStore();
 
-    const publicUrl = config.publicUrl || process.env.PUBLIC_URL || "http://127.0.0.1:3000";
+    const publicUrl = config.publicUrl || process.env["PUBLIC_URL"] || "http://127.0.0.1:3000";
 
     // Detect if we're in loopback mode (local development)
     // Loopback mode uses http://localhost client_id format per AT Protocol spec
@@ -417,7 +417,7 @@ export class OAuthService {
     // Login initiation
     app.get("/oauth/login", async (req, res) => {
       try {
-        const handle = req.query.handle as string;
+        const handle = req.query["handle"] as string;
         if (!handle) {
           res.status(400).json({ error: "handle parameter required" });
           return;
@@ -450,7 +450,7 @@ export class OAuthService {
         // Set session cookie
         res.cookie("session_did", session.did, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure: process.env["NODE_ENV"] === "production",
           maxAge: session.expiresAt - Date.now(),
         });
 

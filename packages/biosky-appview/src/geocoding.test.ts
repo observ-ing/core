@@ -7,7 +7,7 @@ describe("GeocodingService", () => {
 
   beforeEach(() => {
     mockFetch = vi.fn();
-    service = new GeocodingService({ fetch: mockFetch });
+    service = new GeocodingService({ fetch: mockFetch as typeof fetch });
     service.clearCache();
   });
 
@@ -45,8 +45,8 @@ describe("GeocodingService", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledOnce();
-      expect(mockFetch.mock.calls[0][0]).toContain("lat=37.7694");
-      expect(mockFetch.mock.calls[0][0]).toContain("lon=-122.4862");
+      expect(mockFetch.mock.calls[0]?.[0]).toContain("lat=37.7694");
+      expect(mockFetch.mock.calls[0]?.[0]).toContain("lon=-122.4862");
     });
 
     it("maps European countries to Europe continent", async () => {
@@ -284,7 +284,7 @@ describe("GeocodingService", () => {
 
       await service.reverseGeocode(40.0, -100.0);
 
-      expect(mockFetch.mock.calls[0][1].headers["User-Agent"]).toContain("BioSky");
+      expect(mockFetch.mock.calls[0]?.[1]?.headers?.["User-Agent"]).toContain("BioSky");
     });
   });
 

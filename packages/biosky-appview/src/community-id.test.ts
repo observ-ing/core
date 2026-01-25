@@ -130,7 +130,15 @@ describe('CommunityIdCalculator', () => {
       identification_verification_status: null,
       type_status: null,
       is_agreement: options.isAgreement ?? false,
-      date_identified: new Date()
+      date_identified: new Date(),
+      vernacular_name: null,
+      kingdom: null,
+      phylum: null,
+      class: null,
+      order: null,
+      family: null,
+      genus: null,
+      confidence: null,
     }
   }
 

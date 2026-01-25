@@ -27,17 +27,17 @@ interface ConservationStatus {
 interface TaxonResult {
   id: string;
   scientificName: string;
-  commonName?: string;
+  commonName?: string | undefined;
   rank: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
-  species?: string;
+  kingdom?: string | undefined;
+  phylum?: string | undefined;
+  class?: string | undefined;
+  order?: string | undefined;
+  family?: string | undefined;
+  genus?: string | undefined;
+  species?: string | undefined;
   source: "gbif";
-  conservationStatus?: ConservationStatus;
+  conservationStatus?: ConservationStatus | undefined;
 }
 
 interface TaxonAncestor {
@@ -48,42 +48,43 @@ interface TaxonAncestor {
 
 interface TaxonDescription {
   description: string;
-  type?: string;
-  source?: string;
+  type?: string | undefined;
+  source?: string | undefined;
 }
 
 interface TaxonReference {
   citation: string;
-  doi?: string;
-  link?: string;
+  doi?: string | undefined;
+  link?: string | undefined;
 }
 
 interface TaxonMedia {
   type: string;
   url: string;
-  title?: string;
-  description?: string;
-  source?: string;
-  creator?: string;
-  license?: string;
+  title?: string | undefined;
+  description?: string | undefined;
+  source?: string | undefined;
+  creator?: string | undefined;
+  license?: string | undefined;
 }
 
 interface TaxonDetail extends TaxonResult {
   ancestors: TaxonAncestor[];
   children: TaxonResult[];
-  numDescendants?: number;
-  extinct?: boolean;
-  descriptions?: TaxonDescription[];
-  references?: TaxonReference[];
-  media?: TaxonMedia[];
+  numDescendants?: number | undefined;
+  extinct?: boolean | undefined;
+  descriptions?: TaxonDescription[] | undefined;
+  references?: TaxonReference[] | undefined;
+  media?: TaxonMedia[] | undefined;
 }
 
 interface ValidationResult {
   valid: boolean;
-  matchedName?: string;
-  taxon?: TaxonResult;
-  suggestions?: TaxonResult[];
+  matchedName?: string | undefined;
+  taxon?: TaxonResult | undefined;
+  suggestions?: TaxonResult[] | undefined;
 }
+
 
 // Simple in-memory cache
 const searchCache = new Map<string, { results: TaxonResult[]; timestamp: number }>();
@@ -169,7 +170,7 @@ export class TaxonomyResolver {
         ? { category: iucnStatus.statusCode as IUCNCategory, source: "IUCN" }
         : undefined;
 
-      const taxonDetail: TaxonDetail = {
+      const taxonDetail: TaxonDetail = ({
         id: `gbif:${data.key}`,
         scientificName: data.canonicalName || data.scientificName || "",
         commonName: data.vernacularName,
@@ -181,7 +182,7 @@ export class TaxonomyResolver {
         family: data.family,
         genus: data.genus,
         species: data.species,
-        source: "gbif",
+        source: "gbif" as const,
         conservationStatus,
         ancestors,
         children,
@@ -190,7 +191,7 @@ export class TaxonomyResolver {
         descriptions: descriptions.length > 0 ? descriptions : undefined,
         references: references.length > 0 ? references : undefined,
         media: media.length > 0 ? media : undefined,
-      };
+      });
 
       searchCache.set(cacheKey, { results: [taxonDetail as unknown as TaxonResult], timestamp: Date.now() });
       return taxonDetail;
@@ -314,11 +315,11 @@ export class TaxonomyResolver {
     const taxon = this.gbifV2ToTaxon(gbifMatch.usage, gbifMatch.additionalStatus, gbifMatch.classification);
 
     if (matchType === "EXACT") {
-      return {
+      return ({
         valid: true,
         matchedName: gbifMatch.usage.canonicalName || gbifMatch.usage.name,
         taxon,
-      };
+      });
     }
 
     // If we have a fuzzy or higher rank match, return it as a suggestion
@@ -390,7 +391,7 @@ export class TaxonomyResolver {
    * Convert GBIF v1 result to TaxonResult
    */
   private gbifToTaxon(item: GbifSuggestResult | GbifMatchResult): TaxonResult {
-    return {
+    return ({
       id: `gbif:${item.usageKey || item.key}`,
       scientificName: item.canonicalName || item.scientificName || "",
       commonName: item.vernacularName,
@@ -402,8 +403,8 @@ export class TaxonomyResolver {
       family: item.family,
       genus: item.genus,
       species: item.species,
-      source: "gbif",
-    };
+      source: "gbif" as const,
+    });
   }
 
   /**
@@ -433,7 +434,7 @@ export class TaxonomyResolver {
       }
     }
 
-    return {
+    return ({
       id: `gbif:${usage.key}`,
       scientificName: usage.canonicalName || usage.name || "",
       rank: usage.rank?.toLowerCase() || "unknown",
@@ -444,9 +445,9 @@ export class TaxonomyResolver {
       family: classificationByRank.get("FAMILY") || usage.family,
       genus: classificationByRank.get("GENUS") || usage.genus,
       species: classificationByRank.get("SPECIES") || usage.species,
-      source: "gbif",
+      source: "gbif" as const,
       conservationStatus,
-    };
+    });
   }
 }
 

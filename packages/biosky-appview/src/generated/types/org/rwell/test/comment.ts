@@ -1,15 +1,18 @@
 /**
  * GENERATED CODE - DO NOT MODIFY
  */
-import { type ValidationResult, BlobRef } from '@atproto/lexicon'
-import { CID } from 'multiformats/cid'
-import { validate as _validate } from '../../../../lexicons'
+import { type BlobRef } from '@atproto/lexicon'
+import { validate as _validate } from '../../../../lexicons.js'
 import {
-  type $Typed,
   is$typed as _is$typed,
-  type OmitKey,
-} from '../../../../util'
-import type * as ComAtprotoRepoStrongRef from '../../../com/atproto/repo/strongRef.js'
+} from '../../../../util.js'
+
+/** A reference to a specific version of a record (AT Protocol strong ref). */
+interface StrongRef {
+  uri: string
+  cid: string
+}
+
 
 const is$typed = _is$typed,
   validate = _validate
@@ -17,10 +20,10 @@ const id = 'org.rwell.test.comment'
 
 export interface Main {
   $type: 'org.rwell.test.comment'
-  subject: ComAtprotoRepoStrongRef.Main
+  subject: StrongRef
   /** The text content of the comment. */
   body: string
-  replyTo?: ComAtprotoRepoStrongRef.Main
+  replyTo?: StrongRef
   /** Timestamp when this comment was created. */
   createdAt: string
   [k: string]: unknown

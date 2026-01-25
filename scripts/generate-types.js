@@ -140,4 +140,33 @@ if (likeLastImportIndex !== -1) {
 writeFileSync(likePath, likeContent);
 console.log('Fixed: like.ts');
 
+// Fix comment.ts - remove CID import, fix imports, and inline StrongRef
+const commentPath = join(generatedDir, 'types/org/rwell/test/comment.ts');
+let commentContent = readFileSync(commentPath, 'utf-8');
+
+commentContent = commentContent
+  .replace(/import { type ValidationResult, BlobRef } from '@atproto\/lexicon'\n/, `import { type BlobRef } from '@atproto/lexicon'\n`)
+  .replace(/import { CID } from 'multiformats\/cid'\n/, '')
+  .replace(/import { validate as _validate } from '\.\.\/\.\.\/\.\.\/\.\.\/lexicons'/, `import { validate as _validate } from '../../../../lexicons.js'`)
+  .replace(/import \{\n  type \$Typed,\n  is\$typed as _is\$typed,\n  type OmitKey,\n\} from '\.\.\/\.\.\/\.\.\/\.\.\/util'/, `import {\n  is$typed as _is$typed,\n} from '../../../../util.js'`)
+  .replace(/import type \* as ComAtprotoRepoStrongRef from '\.\.\/\.\.\/\.\.\/com\/atproto\/repo\/strongRef\.js'\n/, '')
+  .replace(/subject: ComAtprotoRepoStrongRef\.Main/g, 'subject: StrongRef')
+  .replace(/replyTo\?: ComAtprotoRepoStrongRef\.Main/g, 'replyTo?: StrongRef');
+
+// Add StrongRef interface after imports for comment.ts
+const commentLines = commentContent.split('\n');
+let commentLastImportIndex = -1;
+for (let i = 0; i < commentLines.length; i++) {
+  if (commentLines[i].startsWith('import ') || commentLines[i].startsWith('} from ')) {
+    commentLastImportIndex = i;
+  }
+}
+if (commentLastImportIndex !== -1) {
+  commentLines.splice(commentLastImportIndex + 1, 0, strongRefInterface);
+  commentContent = commentLines.join('\n');
+}
+
+writeFileSync(commentPath, commentContent);
+console.log('Fixed: comment.ts');
+
 console.log('All generated types fixed!');

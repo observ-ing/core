@@ -27,14 +27,14 @@ const logger = pino({
  * Darwin Core Location fields populated by geocoding
  */
 export interface GeocodedLocation {
-  continent?: string;
-  country?: string;
-  countryCode?: string;
-  stateProvince?: string;
-  county?: string;
-  municipality?: string;
-  locality?: string;
-  waterBody?: string;
+  continent?: string | undefined;
+  country?: string | undefined;
+  countryCode?: string | undefined;
+  stateProvince?: string | undefined;
+  county?: string | undefined;
+  municipality?: string | undefined;
+  locality?: string | undefined;
+  waterBody?: string | undefined;
 }
 
 /**
