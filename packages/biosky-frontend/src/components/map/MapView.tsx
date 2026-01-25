@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { Box } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -12,10 +12,9 @@ import type { Occurrence } from "../../services/types";
 export function MapView() {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
-    if (!mapContainer.current || isInitialized) return;
+    if (!mapContainer.current || map.current) return;
 
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
@@ -81,21 +80,6 @@ export function MapView() {
       });
 
       mapInstance.addLayer({
-        id: "cluster-count",
-        type: "symbol",
-        source: "occurrences",
-        filter: ["has", "point_count"],
-        layout: {
-          "text-field": "{point_count_abbreviated}",
-          "text-font": ["Open Sans Bold"],
-          "text-size": 12,
-        },
-        paint: {
-          "text-color": "#0a0a0a",
-        },
-      });
-
-      mapInstance.addLayer({
         id: "occurrence-points",
         type: "circle",
         source: "occurrences",
@@ -108,8 +92,11 @@ export function MapView() {
         },
       });
 
+      mapInstance.on("moveend", () => {
+        loadOccurrences(mapInstance);
+      });
+
       loadOccurrences(mapInstance);
-      setIsInitialized(true);
     });
 
     mapInstance.on("click", "clusters", async (e) => {
@@ -165,16 +152,13 @@ export function MapView() {
       mapInstance.getCanvas().style.cursor = "";
     });
 
-    mapInstance.on("moveend", () => {
-      loadOccurrences(mapInstance);
-    });
-
     map.current = mapInstance;
 
     return () => {
       mapInstance.remove();
+      map.current = null;
     };
-  }, [isInitialized]);
+  }, []);
 
   return (
     <Box sx={{ flex: 1, position: "relative" }}>
@@ -192,12 +176,15 @@ async function loadOccurrences(map: maplibregl.Map) {
       maxLat: bounds.getNorth(),
       maxLng: bounds.getEast(),
     });
-    const source = map.getSource("occurrences") as maplibregl.GeoJSONSource;
+    // Check if source still exists (map may have been removed)
+    const source = map.getSource("occurrences") as
+      | maplibregl.GeoJSONSource
+      | undefined;
     if (source) {
       source.setData(geojson);
     }
-  } catch (error) {
-    console.error("Failed to load occurrences:", error);
+  } catch {
+    // Silently ignore errors (map may have been removed)
   }
 }
 
