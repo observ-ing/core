@@ -161,7 +161,7 @@
           },
           "scientificName": {
             "type": "string",
-            "description": "Scientific name"
+            "description": "[DEPRECATED] Scientific name from record - use effectiveTaxonomy instead"
           },
           "communityId": {
             "type": "string",
@@ -186,6 +186,78 @@
             "type": "string"
           },
           "occurrenceRemarks": {
+            "type": "string"
+          },
+          "taxonId": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "taxonRank": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "vernacularName": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "kingdom": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "phylum": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "class": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "order": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "family": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "genus": {
+            "type": "string",
+            "description": "[DEPRECATED] Use effectiveTaxonomy instead"
+          },
+          "effectiveTaxonomy": {
+            "$ref": "#/components/schemas/EffectiveTaxonomy"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Image URLs"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "identificationCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "uri",
+          "cid",
+          "observer",
+          "observers",
+          "subjects",
+          "eventDate",
+          "location",
+          "images",
+          "createdAt"
+        ]
+      },
+      "EffectiveTaxonomy": {
+        "type": "object",
+        "properties": {
+          "scientificName": {
             "type": "string"
           },
           "taxonId": {
@@ -214,33 +286,12 @@
           },
           "genus": {
             "type": "string"
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "Image URLs"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
-          },
-          "identificationCount": {
-            "type": "integer"
           }
         },
         "required": [
-          "uri",
-          "cid",
-          "observer",
-          "observers",
-          "subjects",
-          "eventDate",
-          "location",
-          "images",
-          "createdAt"
-        ]
+          "scientificName"
+        ],
+        "description": "Taxonomy from winning identification"
       },
       "CreateOccurrenceRequest": {
         "type": "object",
