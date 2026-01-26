@@ -179,7 +179,7 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     environment:
       name: production
-      url: https://biosky-appview-378013734384.us-central1.run.app
+      url: ${{ steps.deploy-appview.outputs.url }}
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       REGION: us-central1
@@ -192,14 +192,17 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Deploy appview
+        id: deploy-appview
         run: |
-          gcloud run deploy biosky-appview \
+          URL=$(gcloud run deploy biosky-appview \
             --image=gcr.io/$PROJECT_ID/biosky-appview:latest \
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:biosky-db \
             --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL \
-            --set-secrets=DB_PASSWORD=biosky-db-password:latest,INTERNAL_SECRET=biosky-internal-secret:latest
+            --set-secrets=DB_PASSWORD=biosky-db-password:latest,INTERNAL_SECRET=biosky-internal-secret:latest \
+            --format='value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
 
       - name: Deploy api
         run: |
