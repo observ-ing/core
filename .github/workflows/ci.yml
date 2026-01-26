@@ -7,113 +7,132 @@ on:
     branches: [main]
 
 jobs:
-  check:
+  # Node.js jobs - run in parallel
+  npm-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '24'
           cache: 'npm'
+      - run: npm ci
+      - run: npm audit --audit-level=high
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Audit npm dependencies
-        run: npm audit --audit-level=high
-
-      - name: Validate Prisma schema
-        run: npx prisma validate
-
-      - name: Check generated types
-        run: |
-          npm run generate-types
-          if [ -n "$(git status --porcelain packages/biosky-appview/src/generated/)" ]; then
-            echo "Error: Generated types are out of date."
-            echo "Please run 'npm run generate-types' and commit the changes."
-            git diff packages/biosky-appview/src/generated/
-            exit 1
-          fi
-
-      - name: Check OpenAPI spec
-        run: |
-          npm run openapi -w biosky-shared
-          if [ -n "$(git status --porcelain packages/biosky-shared/openapi.json)" ]; then
-            echo "Error: OpenAPI spec is out of date."
-            echo "Please run 'npm run openapi -w biosky-shared' and commit the changes."
-            git diff packages/biosky-shared/openapi.json
-            exit 1
-          fi
-
-      - name: Build (typecheck)
-        run: npm run build
-
-      - name: Run tests
-        run: npm run test:run
-
-  check-rust:
+  prisma-validate:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-node@v4
         with:
-          components: clippy, rustfmt
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx prisma validate
 
-      - name: Cache cargo
-        uses: Swatinem/rust-cache@v2
+  check-generated:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - name: Check generated types
+        run: |
+          npm run generate-types
+          git diff --exit-code packages/biosky-appview/src/generated/
+      - name: Check OpenAPI spec
+        run: |
+          npm run openapi -w biosky-shared
+          git diff --exit-code packages/biosky-shared/openapi.json
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run test:run
+
+  # Rust jobs - run in parallel
+  rust-fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --manifest-path packages/biosky-ingester/Cargo.toml -- --check
+
+  rust-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo install cargo-audit
+      - run: cargo audit --file Cargo.lock --ignore RUSTSEC-2023-0071
+
+  rust-clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: packages/biosky-ingester
+      - run: cargo clippy --manifest-path packages/biosky-ingester/Cargo.toml -- -D warnings
+        env:
+          SQLX_OFFLINE: true
 
-      - name: Check formatting
-        run: cargo fmt --manifest-path packages/biosky-ingester/Cargo.toml -- --check
-
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-
-      - name: Audit Rust dependencies
-        # Ignore RUSTSEC-2023-0071: rsa vulnerability in sqlx-mysql (we only use Postgres)
-        run: cargo audit --file Cargo.lock --ignore RUSTSEC-2023-0071
-
-      - name: Install sqlx-cli
-        run: cargo install sqlx-cli --no-default-features --features postgres
-
-      - name: Check SQLx prepare is up to date
-        working-directory: packages/biosky-ingester
+  rust-sqlx:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/biosky-ingester
+      - run: cargo install sqlx-cli --no-default-features --features postgres
+      - working-directory: packages/biosky-ingester
         run: cargo sqlx prepare --check
 
-      - name: Clippy
-        run: cargo clippy --manifest-path packages/biosky-ingester/Cargo.toml -- -D warnings
-        env:
-          SQLX_OFFLINE: true
-
-      - name: Check Rust ingester
-        run: cargo check --manifest-path packages/biosky-ingester/Cargo.toml
-        env:
-          SQLX_OFFLINE: true
-
-      - name: Run Rust tests
-        run: cargo test --manifest-path packages/biosky-ingester/Cargo.toml
+  rust-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/biosky-ingester
+      - run: cargo test --manifest-path packages/biosky-ingester/Cargo.toml
         env:
           SQLX_OFFLINE: true
 
   deploy:
     runs-on: ubuntu-latest
-    needs: [check, check-rust]
+    needs: [npm-audit, prisma-validate, check-generated, build, test, rust-fmt, rust-audit, rust-clippy, rust-sqlx, rust-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
-
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
+      - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
-
-      - name: Deploy to Cloud Run
-        run: gcloud builds submit --config cloudbuild.yaml
+      - uses: google-github-actions/setup-gcloud@v2
+      - run: gcloud builds submit --config cloudbuild.yaml
