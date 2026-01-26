@@ -126,14 +126,102 @@ jobs:
         env:
           SQLX_OFFLINE: true
 
-  deploy:
+  # Build Docker images in parallel with caching
+  build-images:
     runs-on: ubuntu-latest
     needs: [npm-audit, prisma-validate, check-generated, build, test, rust-fmt, rust-audit, rust-clippy, rust-sqlx, rust-test]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    strategy:
+      matrix:
+        include:
+          - service: appview
+            context: .
+            dockerfile: packages/biosky-appview/Dockerfile
+          - service: api
+            context: .
+            dockerfile: packages/biosky-api/Dockerfile
+          - service: ingester
+            context: packages/biosky-ingester
+            dockerfile: packages/biosky-ingester/Dockerfile
+          - service: media-proxy
+            context: .
+            dockerfile: packages/biosky-media-proxy/Dockerfile
     steps:
       - uses: actions/checkout@v4
+
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push ${{ matrix.service }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: gcr.io/${{ secrets.GCP_PROJECT_ID }}/biosky-${{ matrix.service }}:latest
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-images]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGION: us-central1
+      PUBLIC_URL: https://biosky-appview-378013734384.us-central1.run.app
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - uses: google-github-actions/setup-gcloud@v2
-      - run: gcloud builds submit --config cloudbuild.yaml
+
+      - name: Deploy appview
+        run: |
+          gcloud run deploy biosky-appview \
+            --image=gcr.io/$PROJECT_ID/biosky-appview:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:biosky-db \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL \
+            --set-secrets=DB_PASSWORD=biosky-db-password:latest,INTERNAL_SECRET=biosky-internal-secret:latest
+
+      - name: Deploy api
+        run: |
+          gcloud run deploy biosky-api \
+            --image=gcr.io/$PROJECT_ID/biosky-api:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:biosky-db \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,APPVIEW_URL=$PUBLIC_URL,CORS_ORIGINS=$PUBLIC_URL \
+            --set-secrets=DB_PASSWORD=biosky-db-password:latest,INTERNAL_SECRET=biosky-internal-secret:latest
+
+      - name: Deploy ingester
+        run: |
+          gcloud run deploy biosky-ingester \
+            --image=gcr.io/$PROJECT_ID/biosky-ingester:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --cpu=1 \
+            --memory=2Gi \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:biosky-db \
+            --set-env-vars=RUST_LOG=biosky_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:biosky-db,DB_NAME=biosky,DB_USER=postgres,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
+            --set-secrets=DB_PASSWORD=biosky-db-password:latest \
+            --min-instances=1 \
+            --max-instances=1 \
+            --timeout=3600
+
+      - name: Deploy media-proxy
+        run: |
+          gcloud run deploy biosky-media-proxy \
+            --image=gcr.io/$PROJECT_ID/biosky-media-proxy:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --set-env-vars=RUST_LOG=biosky_media_proxy=info,LOG_FORMAT=json
