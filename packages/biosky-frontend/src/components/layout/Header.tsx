@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -10,12 +11,16 @@ import {
   Menu,
   MenuItem,
   Divider,
+  ToggleButtonGroup,
+  ToggleButton,
 } from "@mui/material";
 import {
   DarkMode,
   LightMode,
   SettingsBrightness,
   Info,
+  ViewList,
+  Map,
 } from "@mui/icons-material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { logout } from "../../store/authSlice";
@@ -23,9 +28,19 @@ import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlic
 
 export function Header() {
   const dispatch = useAppDispatch();
+  const location = useLocation();
+  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const [infoAnchor, setInfoAnchor] = useState<null | HTMLElement>(null);
+
+  const currentView = location.pathname === "/map" ? "map" : "feed";
+
+  const handleViewChange = (_: React.MouseEvent<HTMLElement>, newView: string | null) => {
+    if (newView) {
+      navigate(newView === "map" ? "/map" : "/");
+    }
+  };
 
   const handleLogout = () => {
     dispatch(logout());
@@ -74,12 +89,44 @@ export function Header() {
   return (
     <AppBar position="static" elevation={0}>
       <Toolbar sx={{ justifyContent: "space-between" }}>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: 600, color: "primary.main" }}
-        >
-          BioSky
-        </Typography>
+        <Stack direction="row" spacing={2} alignItems="center">
+          <Typography
+            variant="h6"
+            sx={{ fontWeight: 600, color: "primary.main" }}
+          >
+            BioSky
+          </Typography>
+          <ToggleButtonGroup
+            value={currentView}
+            exclusive
+            onChange={handleViewChange}
+            size="small"
+            sx={{
+              "& .MuiToggleButton-root": {
+                px: 1.5,
+                py: 0.5,
+                border: 1,
+                borderColor: "divider",
+                "&.Mui-selected": {
+                  bgcolor: "primary.main",
+                  color: "primary.contrastText",
+                  "&:hover": {
+                    bgcolor: "primary.dark",
+                  },
+                },
+              },
+            }}
+          >
+            <ToggleButton value="feed" aria-label="Feed view">
+              <ViewList sx={{ fontSize: 18, mr: 0.5 }} />
+              Feed
+            </ToggleButton>
+            <ToggleButton value="map" aria-label="Map view">
+              <Map sx={{ fontSize: 18, mr: 0.5 }} />
+              Map
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Stack>
         <Stack direction="row" spacing={1} alignItems="center">
           <Tooltip title="About">
             <IconButton

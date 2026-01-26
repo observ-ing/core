@@ -7,7 +7,6 @@ import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
 import { Header } from "./components/layout/Header";
-import { BottomNav } from "./components/layout/BottomNav";
 import { FeedView } from "./components/feed/FeedView";
 import { MapView } from "./components/map/MapView";
 import { OccurrenceDetail } from "./components/occurrence/OccurrenceDetail";
@@ -48,7 +47,6 @@ function AppContent() {
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
-          paddingBottom: "60px",
         }}
       >
         <Routes>
@@ -61,7 +59,6 @@ function AppContent() {
         </Routes>
       </Box>
       <FAB />
-      <BottomNav />
       <LoginModal />
       <UploadModal />
       <DeleteConfirmDialog />
