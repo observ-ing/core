@@ -409,6 +409,7 @@ const doc = generator.generateDocument({
 Decentralized biodiversity observation platform API built on AT Protocol.`,
   },
   servers: [
+    { url: "https://biosky-appview-378013734384.us-central1.run.app", description: "Production" },
     { url: "http://localhost:3000", description: "Local development" },
   ],
 });

@@ -23,6 +23,7 @@ COPY packages/biosky-appview/package.json ./packages/biosky-appview/
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/packages/biosky-shared/dist ./packages/biosky-shared/dist
+COPY --from=builder /app/packages/biosky-shared/openapi.json ./packages/biosky-shared/openapi.json
 COPY --from=builder /app/packages/biosky-appview/dist ./packages/biosky-appview/dist
 COPY --from=builder /app/dist/public ./dist/public
 
