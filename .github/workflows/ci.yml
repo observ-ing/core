@@ -68,6 +68,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
+      - run: npm run build -w biosky-shared
       - run: npm run test:run
 
   # Rust jobs - run in parallel
