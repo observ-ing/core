@@ -210,12 +210,12 @@ export const schemaDict = {
         key: 'tid',
         record: {
           type: 'object',
-          required: ['scientificName', 'eventDate', 'location', 'createdAt'],
+          required: ['eventDate', 'location', 'createdAt'],
           properties: {
             scientificName: {
               type: 'string',
               description:
-                'The full scientific name of the observed organism, following Darwin Core dwc:scientificName.',
+                '[DEPRECATED: Use identification records instead] The full scientific name of the observed organism, following Darwin Core dwc:scientificName.',
               maxLength: 256,
             },
             eventDate: {
@@ -273,13 +273,13 @@ export const schemaDict = {
             taxonId: {
               type: 'string',
               description:
-                'External taxon identifier (e.g., gbif:2878688). Prefixed with source.',
+                '[DEPRECATED: Use identification records instead] External taxon identifier (e.g., gbif:2878688). Prefixed with source.',
               maxLength: 64,
             },
             taxonRank: {
               type: 'string',
               description:
-                'The taxonomic rank of the scientific name (e.g., species, genus, family).',
+                '[DEPRECATED: Use identification records instead] The taxonomic rank of the scientific name (e.g., species, genus, family).',
               knownValues: [
                 'kingdom',
                 'phylum',
@@ -298,38 +298,43 @@ export const schemaDict = {
             vernacularName: {
               type: 'string',
               description:
-                'Common name for the taxon (Darwin Core dwc:vernacularName).',
+                '[DEPRECATED: Use identification records instead] Common name for the taxon (Darwin Core dwc:vernacularName).',
               maxLength: 256,
             },
             kingdom: {
               type: 'string',
               description:
-                'Taxonomic kingdom (e.g., Animalia, Plantae) (Darwin Core dwc:kingdom).',
+                '[DEPRECATED: Use identification records instead] Taxonomic kingdom (e.g., Animalia, Plantae) (Darwin Core dwc:kingdom).',
               maxLength: 64,
             },
             phylum: {
               type: 'string',
-              description: 'Taxonomic phylum (Darwin Core dwc:phylum).',
+              description:
+                '[DEPRECATED: Use identification records instead] Taxonomic phylum (Darwin Core dwc:phylum).',
               maxLength: 64,
             },
             class: {
               type: 'string',
-              description: 'Taxonomic class (Darwin Core dwc:class).',
+              description:
+                '[DEPRECATED: Use identification records instead] Taxonomic class (Darwin Core dwc:class).',
               maxLength: 64,
             },
             order: {
               type: 'string',
-              description: 'Taxonomic order (Darwin Core dwc:order).',
+              description:
+                '[DEPRECATED: Use identification records instead] Taxonomic order (Darwin Core dwc:order).',
               maxLength: 64,
             },
             family: {
               type: 'string',
-              description: 'Taxonomic family (Darwin Core dwc:family).',
+              description:
+                '[DEPRECATED: Use identification records instead] Taxonomic family (Darwin Core dwc:family).',
               maxLength: 64,
             },
             genus: {
               type: 'string',
-              description: 'Taxonomic genus (Darwin Core dwc:genus).',
+              description:
+                '[DEPRECATED: Use identification records instead] Taxonomic genus (Darwin Core dwc:genus).',
               maxLength: 64,
             },
             recordedBy: {

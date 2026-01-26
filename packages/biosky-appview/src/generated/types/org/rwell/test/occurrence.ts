@@ -13,8 +13,8 @@ const id = 'org.rwell.test.occurrence'
 
 export interface Main {
   $type: 'org.rwell.test.occurrence'
-  /** The full scientific name of the observed organism, following Darwin Core dwc:scientificName. */
-  scientificName: string
+  /** [DEPRECATED: Use identification records instead] The full scientific name of the observed organism, following Darwin Core dwc:scientificName. */
+  scientificName?: string
   /** The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate). */
   eventDate: string
   location: Location
@@ -34,9 +34,9 @@ export interface Main {
     | (string & {})
   /** Timestamp when this record was created. */
   createdAt: string
-  /** External taxon identifier (e.g., gbif:2878688). Prefixed with source. */
+  /** [DEPRECATED: Use identification records instead] External taxon identifier (e.g., gbif:2878688). Prefixed with source. */
   taxonId?: string
-  /** The taxonomic rank of the scientific name (e.g., species, genus, family). */
+  /** [DEPRECATED: Use identification records instead] The taxonomic rank of the scientific name (e.g., species, genus, family). */
   taxonRank:
     | 'kingdom'
     | 'phylum'
@@ -49,19 +49,19 @@ export interface Main {
     | 'variety'
     | 'form'
     | (string & {})
-  /** Common name for the taxon (Darwin Core dwc:vernacularName). */
+  /** [DEPRECATED: Use identification records instead] Common name for the taxon (Darwin Core dwc:vernacularName). */
   vernacularName?: string
-  /** Taxonomic kingdom (e.g., Animalia, Plantae) (Darwin Core dwc:kingdom). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic kingdom (e.g., Animalia, Plantae) (Darwin Core dwc:kingdom). */
   kingdom?: string
-  /** Taxonomic phylum (Darwin Core dwc:phylum). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic phylum (Darwin Core dwc:phylum). */
   phylum?: string
-  /** Taxonomic class (Darwin Core dwc:class). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic class (Darwin Core dwc:class). */
   class?: string
-  /** Taxonomic order (Darwin Core dwc:order). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic order (Darwin Core dwc:order). */
   order?: string
-  /** Taxonomic family (Darwin Core dwc:family). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic family (Darwin Core dwc:family). */
   family?: string
-  /** Taxonomic genus (Darwin Core dwc:genus). */
+  /** [DEPRECATED: Use identification records instead] Taxonomic genus (Darwin Core dwc:genus). */
   genus?: string
   /** DIDs of co-observers who participated in this observation. The record creator is the primary observer. */
   recordedBy?: string[]
