@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "BioSky API",
-    "version": "1.0.0",
-    "description": "Decentralized biodiversity observation platform API"
+    "version": "0.1.0-alpha",
+    "description": "**⚠️ This API is unstable and subject to change without notice.**\n\nDecentralized biodiversity observation platform API built on AT Protocol."
   },
   "servers": [
     {

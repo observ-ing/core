@@ -403,8 +403,10 @@ const doc = generator.generateDocument({
   openapi: "3.0.3",
   info: {
     title: "BioSky API",
-    version: "1.0.0",
-    description: "Decentralized biodiversity observation platform API",
+    version: "0.1.0-alpha",
+    description: `**⚠️ This API is unstable and subject to change without notice.**
+
+Decentralized biodiversity observation platform API built on AT Protocol.`,
   },
   servers: [
     { url: "http://localhost:3000", description: "Local development" },
