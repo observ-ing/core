@@ -13,7 +13,7 @@ vi.mock("biosky-shared", async (importOriginal) => {
   };
 });
 
-import { enrichOccurrences, enrichIdentifications, enrichComments } from "./enrichment";
+import { enrichOccurrences, enrichIdentifications, enrichComments } from "./enrichment.js";
 
 describe("enrichment", () => {
   beforeEach(() => {
@@ -59,6 +59,7 @@ describe("enrichment", () => {
       associated_media: [
         { image: { ref: "bafycid123" } },
       ],
+      recorded_by: null,
       created_at: new Date("2024-01-15T12:00:00Z"),
       ...overrides,
     });
@@ -169,7 +170,7 @@ describe("enrichment", () => {
       const rows = [createOccurrenceRow()];
       const result = await enrichOccurrences(mockDb as any, rows);
 
-      expect(result[0].subjects.some((s) => s.index === 0)).toBe(true);
+      expect(result[0].subjects.some((s: { index: number }) => s.index === 0)).toBe(true);
     });
 
     it("builds effective taxonomy from winning identification", async () => {

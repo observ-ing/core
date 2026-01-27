@@ -21,7 +21,7 @@ vi.mock("@atproto/api", () => {
   };
 });
 
-import { IdentityResolver, getIdentityResolver } from "./identity";
+import { IdentityResolver, getIdentityResolver } from "./identity.js";
 
 describe("IdentityResolver", () => {
   let resolver: IdentityResolver;
@@ -387,8 +387,8 @@ describe("IdentityResolver", () => {
       await resolver.getProfiles(actors);
 
       expect(mockGetProfiles).toHaveBeenCalledTimes(2);
-      expect(mockGetProfiles.mock.calls[0][0].actors).toHaveLength(25);
-      expect(mockGetProfiles.mock.calls[1][0].actors).toHaveLength(5);
+      expect(mockGetProfiles.mock.calls[0]?.[0].actors).toHaveLength(25);
+      expect(mockGetProfiles.mock.calls[1]?.[0].actors).toHaveLength(5);
     });
   });
 

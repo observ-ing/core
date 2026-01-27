@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { CommunityIdCalculator, TaxonomicHierarchy } from "./community-id";
+import { CommunityIdCalculator, TaxonomicHierarchy } from "./community-id.js";
 import type { IdentificationRow } from "../database/index.js";
 
 describe("CommunityIdCalculator", () => {

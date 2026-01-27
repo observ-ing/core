@@ -35,7 +35,7 @@ describe("auth middleware", () => {
     });
 
     it("continues without user when cookies object is undefined", async () => {
-      mockReq.cookies = undefined;
+      delete mockReq.cookies;
 
       await middleware(mockReq as Request, mockRes as Response, mockNext);
 
@@ -136,13 +136,13 @@ describe("auth middleware", () => {
       statusMock = vi.fn().mockReturnValue({ json: jsonMock });
       mockReq = {};
       mockRes = {
-        status: statusMock,
+        status: statusMock as unknown as Response["status"],
       };
       mockNext = vi.fn();
     });
 
     it("returns 401 when user is not present", () => {
-      mockReq.user = undefined;
+      delete mockReq.user;
 
       requireAuth(mockReq as Request, mockRes as Response, mockNext);
 

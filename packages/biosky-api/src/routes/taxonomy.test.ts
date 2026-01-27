@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createTaxonomyRoutes } from "./taxonomy";
+import { createTaxonomyRoutes } from "./taxonomy.js";
 
 vi.mock("../middleware/logging.js", () => ({
   logger: { error: vi.fn() },

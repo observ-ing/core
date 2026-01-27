@@ -10,7 +10,7 @@ import {
   OAuthService,
   type SessionData,
   type DatabaseLike,
-} from "./oauth";
+} from "./oauth.js";
 
 describe("OAuth stores", () => {
   describe("MemoryStateStore", () => {

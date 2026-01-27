@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { InternalClient } from "./internal-client";
+import { InternalClient } from "./internal-client.js";
 
 vi.mock("./middleware/logging.js", () => ({
   logger: { error: vi.fn() },

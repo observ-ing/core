@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createInternalRoutes } from "./internal-routes";
+import { createInternalRoutes } from "./internal-routes.js";
 import type { OAuthService } from "./auth/index.js";
 
 describe("createInternalRoutes", () => {

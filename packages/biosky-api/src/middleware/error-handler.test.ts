@@ -24,7 +24,7 @@ describe("errorHandler", () => {
     jsonMock = vi.fn();
     statusMock = vi.fn().mockReturnValue({ json: jsonMock });
     mockRes = {
-      status: statusMock,
+      status: statusMock as unknown as Response["status"],
     };
     mockNext = vi.fn();
   });

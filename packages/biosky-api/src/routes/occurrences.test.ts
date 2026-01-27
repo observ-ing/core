@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
-import { createOccurrenceRoutes } from "./occurrences";
+import { createOccurrenceRoutes } from "./occurrences.js";
 
 vi.mock("../middleware/logging.js", () => ({
   logger: { error: vi.fn(), info: vi.fn() },
