@@ -75,12 +75,36 @@ export function CommentSection({
   };
 
   return (
-    <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2.5,
+        bgcolor: "background.paper",
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <ChatBubbleOutlineIcon fontSize="small" color="action" />
-        <Typography variant="subtitle2">
-          Discussion {comments.length > 0 && `(${comments.length})`}
+        <ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />
+        <Typography variant="subtitle2" fontWeight={600}>
+          Discussion
         </Typography>
+        {comments.length > 0 && (
+          <Box
+            sx={{
+              ml: "auto",
+              bgcolor: "action.hover",
+              px: 1,
+              py: 0.25,
+              borderRadius: 1,
+              fontSize: "0.75rem",
+              fontWeight: 600,
+            }}
+          >
+            {comments.length}
+          </Box>
+        )}
       </Stack>
 
       {comments.length === 0 && !showForm && (
@@ -92,7 +116,21 @@ export function CommentSection({
       {comments.length > 0 && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           {comments.map((comment) => (
-            <Box key={comment.uri} sx={{ pl: 1, borderLeft: 2, borderColor: "divider" }}>
+            <Box
+              key={comment.uri}
+              sx={{
+                pl: 2,
+                borderLeft: 3,
+                borderColor: "divider",
+                transition: "all 0.2s ease",
+                borderRadius: "0 4px 4px 0",
+                py: 1,
+                "&:hover": {
+                  bgcolor: "action.hover",
+                  borderColor: "primary.main",
+                },
+              }}
+            >
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <RouterLink to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}>
                   <Avatar

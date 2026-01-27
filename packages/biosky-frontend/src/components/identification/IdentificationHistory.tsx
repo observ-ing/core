@@ -53,7 +53,16 @@ export function IdentificationHistory({
 
   if (filteredIds.length === 0) {
     return (
-      <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
+      <Paper
+        elevation={0}
+        sx={{
+          p: 2.5,
+          bgcolor: "background.paper",
+          borderRadius: 2,
+          border: 1,
+          borderColor: "divider",
+        }}
+      >
         <Typography variant="body2" color="text.secondary">
           No identifications yet. Be the first to suggest an ID!
         </Typography>
@@ -62,16 +71,41 @@ export function IdentificationHistory({
   }
 
   return (
-    <Paper sx={{ p: 2, bgcolor: "background.paper" }}>
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2.5,
+        bgcolor: "background.paper",
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-        <HistoryIcon fontSize="small" color="action" />
-        <Typography variant="subtitle2">
+        <HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />
+        <Typography variant="subtitle2" fontWeight={600}>
           Identification History
         </Typography>
+        <Chip
+          label={filteredIds.length}
+          size="small"
+          sx={{ ml: "auto", height: 20, fontSize: "0.75rem" }}
+        />
       </Stack>
       <Stack spacing={2}>
         {filteredIds.map((id) => (
-          <Box key={id.uri} sx={{ pl: 1, borderLeft: 2, borderColor: "divider" }}>
+          <Box
+            key={id.uri}
+            sx={{
+              pl: 2,
+              borderLeft: 3,
+              borderColor: id.is_agreement ? "success.main" : "primary.main",
+              transition: "background-color 0.2s ease",
+              borderRadius: "0 4px 4px 0",
+              py: 1,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
                 <Avatar

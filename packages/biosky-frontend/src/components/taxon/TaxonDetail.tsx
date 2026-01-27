@@ -13,6 +13,7 @@ import {
   Card,
   CardMedia,
   Link as MuiLink,
+  Paper,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -22,6 +23,7 @@ import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
 import { FeedItem } from "../feed/FeedItem";
+import { TaxonDetailSkeleton } from "../common/Skeletons";
 
 export function TaxonDetail() {
   const { id } = useParams<{ id: string }>();
@@ -96,18 +98,27 @@ export function TaxonDetail() {
 
   if (loading) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4, textAlign: "center" }}>
-        <CircularProgress color="primary" />
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          Loading taxon...
-        </Typography>
+      <Container
+        maxWidth="md"
+        disableGutters
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto",
+          borderLeft: { sm: 1 },
+          borderRight: { sm: 1 },
+          borderColor: "divider",
+        }}
+      >
+        <TaxonDetailSkeleton />
       </Container>
     );
   }
 
   if (error || !taxon) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4, textAlign: "center" }}>
+      <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
         <Typography color="error" sx={{ mb: 2 }}>
           {error || "Taxon not found"}
         </Typography>
@@ -124,7 +135,7 @@ export function TaxonDetail() {
 
   return (
     <Container
-      maxWidth="sm"
+      maxWidth="md"
       disableGutters
       sx={{
         flex: 1,

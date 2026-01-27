@@ -25,6 +25,7 @@ import type {
   Identification,
 } from "../../services/types";
 import { formatTimeAgo } from "../../lib/utils";
+import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton } from "../common/Skeletons";
 
 type ProfileTab = "all" | "observations" | "identifications";
 
@@ -83,7 +84,7 @@ export function ProfileView() {
 
   if (!did) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4 }}>
+      <Container maxWidth="md" sx={{ p: 4 }}>
         <Typography color="text.secondary">Profile not found</Typography>
       </Container>
     );
@@ -91,7 +92,7 @@ export function ProfileView() {
 
   if (error) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4 }}>
+      <Container maxWidth="md" sx={{ p: 4 }}>
         <Typography color="error">{error}</Typography>
       </Container>
     );
@@ -102,7 +103,7 @@ export function ProfileView() {
 
   return (
     <Container
-      maxWidth="sm"
+      maxWidth="md"
       disableGutters
       sx={{
         flex: 1,
@@ -115,6 +116,9 @@ export function ProfileView() {
       }}
     >
       {/* Profile Header */}
+      {isLoading && !profile ? (
+        <ProfileHeaderSkeleton />
+      ) : (
       <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Avatar
@@ -134,9 +138,9 @@ export function ProfileView() {
 
         {/* Stats */}
         {counts && (
-          <Stack direction="row" spacing={4} sx={{ mt: 2 }}>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="h6" fontWeight={600}>
+          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
+              <Typography variant="h6" fontWeight={700}>
                 {counts.observations}
               </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
@@ -146,8 +150,8 @@ export function ProfileView() {
                 </Typography>
               </Stack>
             </Box>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="h6" fontWeight={600}>
+            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
+              <Typography variant="h6" fontWeight={700}>
                 {counts.identifications}
               </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
@@ -157,8 +161,8 @@ export function ProfileView() {
                 </Typography>
               </Stack>
             </Box>
-            <Box sx={{ textAlign: "center" }}>
-              <Typography variant="h6" fontWeight={600}>
+            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
+              <Typography variant="h6" fontWeight={700}>
                 {counts.species}
               </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5}>
@@ -185,6 +189,7 @@ export function ProfileView() {
           View on AT Protocol
         </Button>
       </Box>
+      )}
 
       {/* Tabs */}
       <Tabs
@@ -292,9 +297,17 @@ export function ProfileView() {
             </Box>
           ))}
 
-        {isLoading && (
+        {isLoading && occurrences.length === 0 && identifications.length === 0 && (
+          <>
+            {[1, 2, 3].map((i) => (
+              <ProfileFeedItemSkeleton key={i} />
+            ))}
+          </>
+        )}
+
+        {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
           <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress color="primary" />
+            <CircularProgress color="primary" size={24} />
           </Box>
         )}
 

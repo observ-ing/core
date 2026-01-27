@@ -109,11 +109,21 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
         display: "flex",
         gap: 1.5,
         p: 2,
-        borderBottom: 1,
-        borderColor: "divider",
+        bgcolor: "background.paper",
+        borderRadius: 2,
+        mb: 2,
+        mx: { xs: 1, sm: 2 },
         cursor: "pointer",
         color: "inherit",
-        "&:hover": { bgcolor: "rgba(255, 255, 255, 0.03)" },
+        boxShadow: 1,
+        transition: "all 0.2s ease",
+        "&:hover": {
+          transform: "translateY(-2px)",
+          boxShadow: 4,
+        },
+        "&:first-of-type": {
+          mt: 2,
+        },
       }}
     >
       {hasCoObservers ? (
@@ -293,6 +303,7 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
               borderRadius: 2,
               maxHeight: 300,
               objectFit: "cover",
+              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
             }}
           />
         )}

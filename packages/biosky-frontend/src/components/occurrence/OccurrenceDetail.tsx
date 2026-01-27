@@ -6,7 +6,6 @@ import {
   Typography,
   Avatar,
   Button,
-  CircularProgress,
   Stack,
   Paper,
   IconButton,
@@ -32,6 +31,7 @@ import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
+import { OccurrenceDetailSkeleton } from "../common/Skeletons";
 import { formatDate, getPdslsUrl } from "../../lib/utils";
 
 export function OccurrenceDetail() {
@@ -122,25 +122,38 @@ export function OccurrenceDetail() {
 
   if (loading) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4, textAlign: "center" }}>
-        <CircularProgress color="primary" />
-        <Typography color="text.secondary" sx={{ mt: 2 }}>
-          Loading occurrence...
-        </Typography>
-      </Container>
+      <Box sx={{ flex: 1, overflow: "auto" }}>
+        <Container
+          maxWidth="md"
+          disableGutters
+          sx={{
+            minHeight: "100%",
+            display: "flex",
+            flexDirection: "column",
+            bgcolor: "background.paper",
+            borderLeft: { sm: 1 },
+            borderRight: { sm: 1 },
+            borderColor: "divider",
+          }}
+        >
+          <OccurrenceDetailSkeleton />
+        </Container>
+      </Box>
     );
   }
 
   if (error || !occurrence) {
     return (
-      <Container maxWidth="sm" sx={{ p: 4, textAlign: "center" }}>
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error || "Occurrence not found"}
-        </Typography>
-        <Button variant="outlined" onClick={handleBack}>
-          Go Back
-        </Button>
-      </Container>
+      <Box sx={{ flex: 1, overflow: "auto" }}>
+        <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
+          <Typography color="error" sx={{ mb: 2 }}>
+            {error || "Occurrence not found"}
+          </Typography>
+          <Button variant="outlined" onClick={handleBack}>
+            Go Back
+          </Button>
+        </Container>
+      </Box>
     );
   }
 
@@ -182,14 +195,15 @@ export function OccurrenceDetail() {
   const isOwner = user?.did === occurrence.observer.did;
 
   return (
+    <Box sx={{ flex: 1, overflow: "auto" }}>
     <Container
-      maxWidth="sm"
+      maxWidth="md"
       disableGutters
       sx={{
-        flex: 1,
+        minHeight: "100%",
         display: "flex",
         flexDirection: "column",
-        overflow: "auto",
+        bgcolor: "background.paper",
         borderLeft: { sm: 1 },
         borderRight: { sm: 1 },
         borderColor: "divider",
@@ -246,7 +260,7 @@ export function OccurrenceDetail() {
 
       {/* Images */}
       {occurrence.images.length > 0 && (
-        <Box sx={{ bgcolor: "background.default" }}>
+        <Box sx={{ bgcolor: "background.default", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
             src={getImageUrl(occurrence.images[activeImageIndex])}
@@ -256,6 +270,8 @@ export function OccurrenceDetail() {
               maxHeight: 400,
               objectFit: "contain",
               display: "block",
+              borderRadius: { xs: 0, sm: 2 },
+              boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
             }}
           />
           {occurrence.images.length > 1 && (
@@ -521,5 +537,6 @@ export function OccurrenceDetail() {
         </Box>
       </Box>
     </Container>
+    </Box>
   );
 }

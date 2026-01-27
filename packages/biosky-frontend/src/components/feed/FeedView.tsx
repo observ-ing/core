@@ -5,6 +5,7 @@ import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
+import { FeedSkeletonList } from "../common/Skeletons";
 
 export function FeedView() {
   const dispatch = useAppDispatch();
@@ -47,7 +48,7 @@ export function FeedView() {
 
   return (
     <Container
-      maxWidth="sm"
+      maxWidth="md"
       disableGutters
       sx={{
         flex: 1,
@@ -92,9 +93,13 @@ export function FeedView() {
           ))}
         </Box>
 
-        {isLoading && (
+        {isLoading && occurrences.length === 0 && (
+          <FeedSkeletonList count={3} />
+        )}
+
+        {isLoading && occurrences.length > 0 && (
           <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress color="primary" />
+            <CircularProgress color="primary" size={24} />
           </Box>
         )}
 
