@@ -32,19 +32,7 @@ import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
-
-function formatDate(dateString: string): string {
-  const date = new Date(dateString);
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-}
-
-function getPdslsUrl(atUri: string): string {
-  return `https://pdsls.dev/${atUri}`;
-}
+import { formatDate, getPdslsUrl } from "../../lib/utils";
 
 export function OccurrenceDetail() {
   const { uri } = useParams<{ uri: string }>();

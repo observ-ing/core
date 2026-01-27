@@ -18,26 +18,12 @@ import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { TaxonLink } from "../common/TaxonLink";
+import { formatTimeAgo, getPdslsUrl } from "../../lib/utils";
 
 interface FeedItemProps {
   occurrence: Occurrence;
   onEdit?: (occurrence: Occurrence) => void;
   onDelete?: (occurrence: Occurrence) => void;
-}
-
-function getPdslsUrl(atUri: string): string {
-  return `https://pdsls.dev/${atUri}`;
-}
-
-function formatTimeAgo(date: Date): string {
-  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-
-  if (seconds < 60) return "now";
-  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-  if (seconds < 604800) return `${Math.floor(seconds / 86400)}d`;
-
-  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
