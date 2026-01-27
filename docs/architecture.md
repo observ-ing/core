@@ -2,29 +2,42 @@
 
 ## System Overview
 
-```
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│   Frontend      │────▶│    AppView      │────▶│   PostgreSQL    │
-│  (MapLibre GL)  │     │   (REST API)    │     │   + PostGIS     │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                              │                         ▲
-                              ▼                         │
-                        ┌─────────────────┐             │
-                        │  Media Proxy    │             │
-                        │ (Image Cache)   │             │
-                        └─────────────────┘             │
-                                                        │
-┌─────────────────┐     ┌─────────────────┐             │
-│   User's PDS    │────▶│    Ingester     │─────────────┘
-│ (bsky.social)   │     │  (Firehose)     │
-└─────────────────┘     └─────────────────┘
+```mermaid
+flowchart TB
+    subgraph Client
+        Frontend["Frontend<br/>(MapLibre GL)"]
+    end
+
+    subgraph Services
+        AppView["AppView<br/>(OAuth, Static Files, RPC)"]
+        API["API Service<br/>(REST API)"]
+        MediaProxy["Media Proxy<br/>(Image Cache)"]
+    end
+
+    subgraph Data
+        PostgreSQL["PostgreSQL<br/>+ PostGIS"]
+    end
+
+    subgraph Ingestion
+        PDS["User's PDS<br/>(bsky.social)"]
+        Ingester["Ingester<br/>(Firehose)"]
+    end
+
+    Frontend --> AppView
+    Frontend --> API
+    AppView --> PostgreSQL
+    API --> PostgreSQL
+    API -- "Internal RPC" --> AppView
+    PDS --> Ingester
+    Ingester --> PostgreSQL
 ```
 
 ## Package Structure
 
 ```
 packages/
-├── biosky-appview/     # REST API server (Express) + database, auth, types
+├── biosky-api/         # REST API server (Express)
+├── biosky-appview/     # OAuth, static files, internal RPC (Express)
 ├── biosky-ingester/    # AT Protocol firehose consumer (Rust)
 ├── biosky-media-proxy/ # Image caching proxy (Rust)
 └── biosky-frontend/    # Web UI (Vite + MapLibre GL)
@@ -33,8 +46,9 @@ packages/
 ### Package Dependencies
 
 ```
-biosky-appview (standalone TypeScript)
-biosky-frontend (communicates with appview via REST)
+biosky-api (TypeScript, calls appview for AT Protocol writes)
+biosky-appview (TypeScript, handles OAuth and PDS operations)
+biosky-frontend (communicates with api and appview via REST)
 biosky-media-proxy (standalone Rust binary)
 biosky-ingester (standalone Rust binary)
 ```
@@ -56,13 +70,21 @@ Rust service that monitors the AT Protocol firehose.
 - **Event Processing** - Handles occurrence and identification records
 - **Built with** - Tokio, Axum, SQLx
 
+### API Service (`packages/biosky-api/`)
+
+TypeScript REST API server handling read and write operations.
+
+- **REST API** - Occurrences, identifications, comments, feeds, profiles, taxonomy
+- **Internal RPC** - Calls AppView for AT Protocol write operations
+- **Session Auth** - Verifies OAuth sessions from shared database
+- **Data Enrichment** - Adds profile data and community IDs to responses
+
 ### AppView (`packages/biosky-appview/`)
 
-TypeScript REST API server.
+TypeScript server handling OAuth and AT Protocol operations.
 
-- **REST API** - Geospatial queries, taxonomy search, community ID
-- **Taxonomy Resolver** - Integrates GBIF and iNaturalist APIs
-- **Community ID** - Consensus algorithm (2/3 majority)
+- **OAuth** - AT Protocol authentication flow
+- **Internal RPC** - Endpoints for blob upload, record create/update/delete
 - **Static Files** - Serves the built frontend
 
 ### Media Proxy (`packages/biosky-media-proxy/`)
@@ -83,6 +105,8 @@ Vite + React SPA.
 ## Key Files
 
 - `lexicons/` - AT Protocol lexicon definitions
+- `packages/biosky-api/src/routes/` - REST API endpoint handlers
+- `packages/biosky-api/src/internal-client.ts` - RPC client for AppView
 - `packages/biosky-appview/src/database/` - PostgreSQL + PostGIS layer
 - `packages/biosky-appview/src/auth/` - OAuth and identity resolution
 - `packages/biosky-appview/src/generated/` - Generated TypeScript from lexicons
