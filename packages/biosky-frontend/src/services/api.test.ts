@@ -635,7 +635,7 @@ describe("api", () => {
         json: () => Promise.resolve({ occurrences: [] }),
       });
 
-      await api.fetchTaxonOccurrences("123", "cursor456");
+      await api.fetchTaxonOccurrences("123", undefined, "cursor456");
 
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/taxa/123/occurrences?limit=20&cursor=cursor456"

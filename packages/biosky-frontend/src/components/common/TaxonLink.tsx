@@ -1,11 +1,14 @@
 import { Link } from "react-router-dom";
 import { Chip, Typography } from "@mui/material";
+import { nameToSlug } from "../../lib/taxonSlug";
 
 interface TaxonLinkProps {
   /** The taxon name to display */
   name: string;
-  /** GBIF taxon ID (e.g., "gbif:3084746") for direct linking */
+  /** @deprecated Use kingdom prop instead. GBIF taxon ID (e.g., "gbif:3084746") for direct linking */
   taxonId?: string;
+  /** Kingdom for building the taxon URL (e.g., "Plantae", "Animalia") */
+  kingdom?: string;
   /** Taxonomic rank (e.g., "species", "genus", "family") */
   rank?: string;
   /** Display variant: text (default) or chip */
@@ -23,6 +26,7 @@ interface TaxonLinkProps {
 export function TaxonLink({
   name,
   taxonId,
+  kingdom,
   rank,
   variant = "text",
   italic,
@@ -37,9 +41,17 @@ export function TaxonLink({
         rank === "subspecies" ||
         rank === "variety";
 
-  // Build the URL - use taxonId if available, otherwise use the name directly
-  // The backend handles both GBIF IDs (gbif:XXXX) and scientific names
-  const taxonUrl = `/taxon/${encodeURIComponent(taxonId || name)}`;
+  // Build the URL using kingdom/name pattern with hyphenated slugs
+  let taxonUrl: string;
+  if (rank === "kingdom") {
+    taxonUrl = `/taxon/${nameToSlug(name)}`;
+  } else if (kingdom) {
+    taxonUrl = `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
+  } else if (taxonId) {
+    taxonUrl = `/taxon/${encodeURIComponent(taxonId)}`;
+  } else {
+    taxonUrl = `/taxon/${nameToSlug(name)}`;
+  }
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation if handler provided (e.g., to prevent parent link activation)

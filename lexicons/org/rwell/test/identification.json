@@ -36,7 +36,7 @@
           },
           "taxonId": {
             "type": "string",
-            "description": "External taxon identifier (e.g., gbif:2878688). Prefixed with source.",
+            "description": "[DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source.",
             "maxLength": 64
           },
           "vernacularName": {

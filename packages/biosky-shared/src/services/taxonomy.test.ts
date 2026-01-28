@@ -100,7 +100,7 @@ describe("TaxonomyResolver", () => {
 
       expect(results).toHaveLength(1);
       expect(results[0].scientificName).toBe("Quercus alba");
-      expect(results[0].id).toBe("gbif:12345");
+      expect(results[0].id).toBe("Plantae/Quercus alba");
       expect(results[0].source).toBe("gbif");
     });
 
@@ -327,12 +327,12 @@ describe("TaxonomyResolver", () => {
       const result = await resolver.getById(id);
 
       expect(result?.ancestors).toContainEqual({
-        id: "gbif:100",
+        id: "Plantae",
         name: "Plantae",
         rank: "kingdom",
       });
       expect(result?.ancestors).toContainEqual({
-        id: "gbif:500",
+        id: "Plantae/Fagaceae",
         name: "Fagaceae",
         rank: "family",
       });
@@ -439,6 +439,49 @@ describe("TaxonomyResolver", () => {
       mockFetch.mockRejectedValue(new Error("Network error"));
 
       const result = await resolver.getById(id);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe("getByName", () => {
+    it("resolves a taxon by scientific name and kingdom", async () => {
+      mockFetch.mockImplementation((url: string) => {
+        if (url.includes("/v2/species/match")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({
+              ...createGbifV2MatchResult(),
+              usage: { key: 200000 + testId, name: "Quercus alba", canonicalName: "Quercus alba", rank: "SPECIES" },
+            }),
+          });
+        }
+        if (url.includes("/children") || url.includes("/descriptions") || url.includes("/references") || url.includes("/media")) {
+          return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ results: [] }),
+          });
+        }
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(createGbifSpeciesDetail({ key: 200000 + testId })),
+        });
+      });
+
+      const result = await resolver.getByName("Quercus alba", "Plantae");
+
+      expect(result).not.toBeNull();
+      expect(result?.scientificName).toBe("Quercus alba");
+      expect(result?.id).toBe("Plantae/Quercus alba");
+    });
+
+    it("returns null when no match found", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ synonym: false }),
+      });
+
+      const result = await resolver.getByName("Nonexistent species");
 
       expect(result).toBeNull();
     });

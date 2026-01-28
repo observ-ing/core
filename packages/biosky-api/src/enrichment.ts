@@ -8,11 +8,21 @@
 import {
   Database,
   getIdentityResolver,
+  TaxonomyResolver,
   type OccurrenceRow,
   type IdentificationRow,
   type CommentRow,
   type Profile,
 } from "biosky-shared";
+
+// Singleton taxonomy resolver for GBIF lookups
+let taxonomyResolver: TaxonomyResolver | null = null;
+function getTaxonomyResolver(): TaxonomyResolver {
+  if (!taxonomyResolver) {
+    taxonomyResolver = new TaxonomyResolver();
+  }
+  return taxonomyResolver;
+}
 
 interface ObserverInfo {
   did: string;
@@ -164,27 +174,53 @@ export async function enrichOccurrences(
 
       // Get effective taxonomy from the winning identification for subject 0
       let effectiveTaxonomy: EffectiveTaxonomy | undefined;
-      if (communityId) {
-        const identifications = await db.getIdentificationsForOccurrence(row.uri);
+      const effectiveName = communityId || row.scientific_name;
+      if (effectiveName) {
+        const identifications = communityId
+          ? await db.getIdentificationsForOccurrence(row.uri)
+          : [];
         // Find an identification that matches the community ID
         const winningId = identifications.find(
           (id) =>
             id.subject_index === 0 &&
-            id.scientific_name?.toLowerCase() === communityId.toLowerCase()
+            id.scientific_name?.toLowerCase() === communityId?.toLowerCase()
         );
-        if (winningId) {
+        if (winningId?.kingdom) {
+          // Use winning identification taxonomy if it has kingdom data
           effectiveTaxonomy = {
             scientificName: winningId.scientific_name,
-            taxonId: winningId.taxon_id || undefined,
+            taxonId: undefined, // Deprecated: use kingdom + scientificName for taxon resolution
             taxonRank: winningId.taxon_rank || undefined,
             vernacularName: winningId.vernacular_name || undefined,
-            kingdom: winningId.kingdom || undefined,
+            kingdom: winningId.kingdom,
             phylum: winningId.phylum || undefined,
             class: winningId.class || undefined,
             order: winningId.order || undefined,
             family: winningId.family || undefined,
             genus: winningId.genus || undefined,
           };
+        } else {
+          // Look up taxonomy from GBIF when winning identification lacks kingdom
+          try {
+            const taxonomy = getTaxonomyResolver();
+            const taxonDetail = await taxonomy.getByName(effectiveName);
+            if (taxonDetail) {
+              effectiveTaxonomy = {
+                scientificName: taxonDetail.scientificName,
+                taxonId: undefined,
+                taxonRank: taxonDetail.rank || undefined,
+                vernacularName: taxonDetail.commonName || undefined,
+                kingdom: taxonDetail.kingdom || undefined,
+                phylum: taxonDetail.phylum || undefined,
+                class: taxonDetail.class || undefined,
+                order: taxonDetail.order || undefined,
+                family: taxonDetail.family || undefined,
+                genus: taxonDetail.genus || undefined,
+              };
+            }
+          } catch {
+            // GBIF lookup failed, leave effectiveTaxonomy undefined
+          }
         }
       }
 

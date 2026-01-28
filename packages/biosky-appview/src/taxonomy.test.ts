@@ -56,7 +56,7 @@ describe('TaxonomyResolver', () => {
       const gbifResult = results.find(r => r.source === 'gbif')
       expect(gbifResult).toBeDefined()
       expect(gbifResult).toMatchObject({
-        id: 'gbif:12345',
+        id: 'Plantae/Quercus alba',
         scientificName: 'Quercus alba',  // uses canonicalName when available
         commonName: 'White Oak',
         rank: 'species',
@@ -105,7 +105,7 @@ describe('TaxonomyResolver', () => {
 
       const gbifResult = results.find(r => r.source === 'gbif')
       expect(gbifResult).toBeDefined()
-      expect(gbifResult!.id).toBe('gbif:54321')
+      expect(gbifResult!.id).toBe('Test species usageKey')
     })
 
     it('lowercases rank from GBIF', async () => {

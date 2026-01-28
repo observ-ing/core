@@ -47,32 +47,105 @@ export function createTaxonomyRoutes(
     }
   });
 
-  // Get taxon details by ID or name
-  router.get("/:id", async (req, res) => {
+  // Helper to resolve a taxon from an ID or name string
+  async function resolveTaxon(idOrName: string) {
+    if (idOrName.startsWith("gbif:")) {
+      return taxonomy.getById(idOrName);
+    }
+    // Try name-based resolution
+    return taxonomy.getByName(idOrName);
+  }
+
+  // Helper to resolve a taxon from kingdom + name
+  async function resolveTaxonByKingdomName(kingdom: string, name: string) {
+    return taxonomy.getByName(name, kingdom);
+  }
+
+  // Get taxon occurrences by kingdom + name (must be before /:param1/:param2)
+  router.get("/:kingdom/:name/occurrences", async (req, res) => {
     try {
-      const idOrName = decodeURIComponent(req.params["id"] ?? "");
+      const kingdom = decodeURIComponent(req.params["kingdom"] ?? "");
+      const name = decodeURIComponent(req.params["name"] ?? "");
+      const cursor = req.query["cursor"] as string | undefined;
+      const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
 
-      let taxon;
-      if (idOrName.startsWith("gbif:")) {
-        taxon = await taxonomy.getById(idOrName);
-      } else {
-        const validation = await taxonomy.validate(idOrName);
-        if (validation.valid && validation.taxon) {
-          taxon = await taxonomy.getById(validation.taxon.id);
-        } else if (validation.suggestions && validation.suggestions.length > 0) {
-          const suggestion = validation.suggestions[0];
-          if (suggestion) {
-            taxon = await taxonomy.getById(suggestion.id);
-          }
-        }
-      }
-
+      const taxon = await resolveTaxonByKingdomName(kingdom, name);
       if (!taxon) {
         res.status(404).json({ error: "Taxon not found" });
         return;
       }
 
-      // Get observation count for this taxon
+      const rows = await db.getOccurrencesByTaxon(taxon.scientificName, taxon.rank, {
+        limit,
+        ...(cursor && { cursor }),
+        ...(taxon.kingdom && { kingdom: taxon.kingdom }),
+      });
+
+      const occurrences = await enrichOccurrences(db, rows);
+
+      const nextCursor =
+        rows.length === limit
+          ? rows[rows.length - 1]?.created_at?.toISOString()
+          : undefined;
+
+      res.json({
+        occurrences,
+        cursor: nextCursor,
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Error fetching taxon occurrences");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get taxon occurrences by ID or name (backward compat)
+  router.get("/:id/occurrences", async (req, res) => {
+    try {
+      const idOrName = decodeURIComponent(req.params["id"] ?? "");
+      const cursor = req.query["cursor"] as string | undefined;
+      const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+
+      const taxon = await resolveTaxon(idOrName);
+      if (!taxon) {
+        res.status(404).json({ error: "Taxon not found" });
+        return;
+      }
+
+      const rows = await db.getOccurrencesByTaxon(taxon.scientificName, taxon.rank, {
+        limit,
+        ...(cursor && { cursor }),
+        ...(taxon.kingdom && { kingdom: taxon.kingdom }),
+      });
+
+      const occurrences = await enrichOccurrences(db, rows);
+
+      const nextCursor =
+        rows.length === limit
+          ? rows[rows.length - 1]?.created_at?.toISOString()
+          : undefined;
+
+      res.json({
+        occurrences,
+        cursor: nextCursor,
+      });
+    } catch (error) {
+      logger.error({ err: error }, "Error fetching taxon occurrences");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get taxon details by kingdom + name
+  router.get("/:kingdom/:name", async (req, res) => {
+    try {
+      const kingdom = decodeURIComponent(req.params["kingdom"] ?? "");
+      const name = decodeURIComponent(req.params["name"] ?? "");
+
+      const taxon = await resolveTaxonByKingdomName(kingdom, name);
+      if (!taxon) {
+        res.status(404).json({ error: "Taxon not found" });
+        return;
+      }
+
       const observationCount = await db.countOccurrencesByTaxon(
         taxon.scientificName,
         taxon.rank,
@@ -89,52 +162,29 @@ export function createTaxonomyRoutes(
     }
   });
 
-  // Get occurrences for a taxon
-  router.get("/:id/occurrences", async (req, res) => {
+  // Get taxon details by ID or name (backward compat + kingdom-level lookup)
+  router.get("/:id", async (req, res) => {
     try {
       const idOrName = decodeURIComponent(req.params["id"] ?? "");
-      const cursor = req.query["cursor"] as string | undefined;
-      const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
 
-      let taxon;
-      if (idOrName.startsWith("gbif:")) {
-        taxon = await taxonomy.getById(idOrName);
-      } else {
-        const validation = await taxonomy.validate(idOrName);
-        if (validation.valid && validation.taxon) {
-          taxon = await taxonomy.getById(validation.taxon.id);
-        } else if (validation.suggestions && validation.suggestions.length > 0) {
-          const suggestion = validation.suggestions[0];
-          if (suggestion) {
-            taxon = await taxonomy.getById(suggestion.id);
-          }
-        }
-      }
-
+      const taxon = await resolveTaxon(idOrName);
       if (!taxon) {
         res.status(404).json({ error: "Taxon not found" });
         return;
       }
 
-      const rows = await db.getOccurrencesByTaxon(taxon.scientificName, taxon.rank, {
-        limit,
-        ...(cursor && { cursor }),
-        kingdom: taxon.kingdom,
-      });
-
-      const occurrences = await enrichOccurrences(db, rows);
-
-      const nextCursor =
-        rows.length === limit
-          ? rows[rows.length - 1]?.created_at?.toISOString()
-          : undefined;
+      const observationCount = await db.countOccurrencesByTaxon(
+        taxon.scientificName,
+        taxon.rank,
+        taxon.kingdom,
+      );
 
       res.json({
-        occurrences,
-        cursor: nextCursor,
+        ...taxon,
+        observationCount,
       });
     } catch (error) {
-      logger.error({ err: error }, "Error fetching taxon occurrences");
+      logger.error({ err: error }, "Error fetching taxon");
       res.status(500).json({ error: "Internal server error" });
     }
   });

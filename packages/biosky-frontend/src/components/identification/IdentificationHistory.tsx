@@ -14,6 +14,8 @@ import { TaxonLink } from "../common/TaxonLink";
 interface IdentificationHistoryProps {
   identifications: Identification[];
   subjectIndex?: number;
+  /** Fallback kingdom to use if identification doesn't have kingdom data */
+  kingdom?: string;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -45,6 +47,7 @@ function getConfidenceLabel(confidence?: string): string {
 export function IdentificationHistory({
   identifications,
   subjectIndex = 0,
+  kingdom,
 }: IdentificationHistoryProps) {
   // Filter identifications by subject index
   const filteredIds = identifications.filter(
@@ -135,6 +138,7 @@ export function IdentificationHistory({
                 <Box sx={{ mt: 0.5 }}>
                   <TaxonLink
                     name={id.scientific_name}
+                    kingdom={id.kingdom || kingdom}
                     rank={id.taxon_rank || "species"}
                   />
                 </Box>

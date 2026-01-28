@@ -316,11 +316,21 @@ export async function submitComment(data: {
   return response.json();
 }
 
-export async function fetchTaxon(taxonId: string): Promise<TaxonDetail | null> {
+/**
+ * Fetch taxon details. Supports:
+ * - kingdom + name: fetchTaxon("Plantae", "Quercus alba")
+ * - kingdom only: fetchTaxon("Plantae")
+ * - legacy ID: fetchTaxon("gbif:12345")
+ */
+export async function fetchTaxon(kingdomOrId: string, name?: string): Promise<TaxonDetail | null> {
   try {
-    const response = await fetch(
-      `${API_BASE}/api/taxa/${encodeURIComponent(taxonId)}`
-    );
+    let url: string;
+    if (name) {
+      url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/${encodeURIComponent(name)}`;
+    } else {
+      url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}`;
+    }
+    const response = await fetch(url);
     if (!response.ok) return null;
     return response.json();
   } catch (e) {
@@ -329,16 +339,28 @@ export async function fetchTaxon(taxonId: string): Promise<TaxonDetail | null> {
   }
 }
 
+/**
+ * Fetch occurrences for a taxon. Supports:
+ * - kingdom + name: fetchTaxonOccurrences("Plantae", "Quercus alba", cursor?)
+ * - kingdom only: fetchTaxonOccurrences("Plantae", undefined, cursor?)
+ * - legacy ID: fetchTaxonOccurrences("gbif:12345", undefined, cursor?)
+ */
 export async function fetchTaxonOccurrences(
-  taxonId: string,
+  kingdomOrId: string,
+  name?: string,
   cursor?: string
 ): Promise<{ occurrences: Occurrence[]; cursor?: string }> {
   const params = new URLSearchParams({ limit: "20" });
   if (cursor) params.set("cursor", cursor);
 
-  const response = await fetch(
-    `${API_BASE}/api/taxa/${encodeURIComponent(taxonId)}/occurrences?${params}`
-  );
+  let url: string;
+  if (name) {
+    url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/${encodeURIComponent(name)}/occurrences?${params}`;
+  } else {
+    url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/occurrences?${params}`;
+  }
+
+  const response = await fetch(url);
   if (!response.ok) {
     throw new Error("Failed to fetch taxon occurrences");
   }

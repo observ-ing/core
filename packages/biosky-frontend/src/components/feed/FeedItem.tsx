@@ -53,6 +53,7 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
     scientificName: occurrence.scientificName,
     taxonId: occurrence.taxonId,
     taxonRank: occurrence.taxonRank,
+    kingdom: occurrence.kingdom,
   };
   const species =
     occurrence.communityId || taxonomy.scientificName || undefined;
@@ -242,7 +243,7 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
                 {subject.communityId ? (
                   <TaxonLink
                     name={subject.communityId}
-                    taxonId={occurrence.taxonId}
+                    kingdom={taxonomy.kingdom}
                     rank="species"
                     onClick={(e) => e.stopPropagation()}
                   />
@@ -264,7 +265,7 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
             {species ? (
               <TaxonLink
                 name={species}
-                taxonId={taxonomy.taxonId}
+                kingdom={taxonomy.kingdom}
                 rank={taxonomy.taxonRank || "species"}
                 onClick={(e) => e.stopPropagation()}
               />

@@ -23,10 +23,11 @@ describe("taxonomy routes", () => {
     search: ReturnType<typeof vi.fn>;
     validate: ReturnType<typeof vi.fn>;
     getById: ReturnType<typeof vi.fn>;
+    getByName: ReturnType<typeof vi.fn>;
   };
 
   const createMockTaxon = (overrides = {}) => ({
-    id: "gbif:12345",
+    id: "Plantae/Quercus alba",
     scientificName: "Quercus alba",
     rank: "SPECIES",
     kingdom: "Plantae",
@@ -36,6 +37,7 @@ describe("taxonomy routes", () => {
     family: "Fagaceae",
     genus: "Quercus",
     vernacularName: "White Oak",
+    gbifUrl: "https://www.gbif.org/species/12345",
     ...overrides,
   });
 
@@ -51,6 +53,7 @@ describe("taxonomy routes", () => {
       search: vi.fn(),
       validate: vi.fn(),
       getById: vi.fn(),
+      getByName: vi.fn(),
     };
 
     app = express();
@@ -61,7 +64,7 @@ describe("taxonomy routes", () => {
     it("returns search results", async () => {
       const results = [
         createMockTaxon(),
-        createMockTaxon({ id: "gbif:67890", scientificName: "Quercus rubra" }),
+        createMockTaxon({ id: "Plantae/Quercus rubra", scientificName: "Quercus rubra" }),
       ];
       mockTaxonomy.search.mockResolvedValue(results);
 
@@ -126,7 +129,7 @@ describe("taxonomy routes", () => {
         valid: false,
         suggestions: [
           createMockTaxon(),
-          createMockTaxon({ id: "gbif:67890", scientificName: "Quercus rubra" }),
+          createMockTaxon({ id: "Plantae/Quercus rubra", scientificName: "Quercus rubra" }),
         ],
       });
 
@@ -154,7 +157,40 @@ describe("taxonomy routes", () => {
     });
   });
 
-  describe("GET /:id", () => {
+  describe("GET /:kingdom/:name", () => {
+    it("returns taxon by kingdom and name", async () => {
+      const taxon = createMockTaxon();
+      mockTaxonomy.getByName.mockResolvedValue(taxon);
+      mockDb.countOccurrencesByTaxon.mockResolvedValue(42);
+
+      const res = await request(app).get("/taxonomy/Plantae/Quercus%20alba");
+
+      expect(res.status).toBe(200);
+      expect(res.body.scientificName).toBe("Quercus alba");
+      expect(res.body.observationCount).toBe(42);
+      expect(mockTaxonomy.getByName).toHaveBeenCalledWith("Quercus alba", "Plantae");
+    });
+
+    it("returns 404 when taxon not found", async () => {
+      mockTaxonomy.getByName.mockResolvedValue(null);
+
+      const res = await request(app).get("/taxonomy/Plantae/Nonexistent");
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe("Taxon not found");
+    });
+
+    it("returns 500 on error", async () => {
+      mockTaxonomy.getByName.mockRejectedValue(new Error("DB error"));
+
+      const res = await request(app).get("/taxonomy/Plantae/Quercus%20alba");
+
+      expect(res.status).toBe(500);
+      expect(res.body.error).toBe("Internal server error");
+    });
+  });
+
+  describe("GET /:id (backward compat)", () => {
     it("returns taxon by GBIF ID", async () => {
       const taxon = createMockTaxon();
       mockTaxonomy.getById.mockResolvedValue(taxon);
@@ -168,35 +204,15 @@ describe("taxonomy routes", () => {
       expect(mockTaxonomy.getById).toHaveBeenCalledWith("gbif:12345");
     });
 
-    it("looks up taxon by name via validation", async () => {
+    it("looks up taxon by name via getByName", async () => {
       const taxon = createMockTaxon();
-      mockTaxonomy.validate.mockResolvedValue({
-        valid: true,
-        taxon: { id: "gbif:12345" },
-      });
-      mockTaxonomy.getById.mockResolvedValue(taxon);
+      mockTaxonomy.getByName.mockResolvedValue(taxon);
       mockDb.countOccurrencesByTaxon.mockResolvedValue(10);
 
-      const res = await request(app).get("/taxonomy/Quercus%20alba");
+      const res = await request(app).get("/taxonomy/Plantae");
 
       expect(res.status).toBe(200);
-      expect(mockTaxonomy.validate).toHaveBeenCalledWith("Quercus alba");
-      expect(mockTaxonomy.getById).toHaveBeenCalledWith("gbif:12345");
-    });
-
-    it("uses first suggestion when validation returns suggestions", async () => {
-      const taxon = createMockTaxon();
-      mockTaxonomy.validate.mockResolvedValue({
-        valid: false,
-        suggestions: [{ id: "gbif:99999" }],
-      });
-      mockTaxonomy.getById.mockResolvedValue(taxon);
-      mockDb.countOccurrencesByTaxon.mockResolvedValue(5);
-
-      const res = await request(app).get("/taxonomy/Quercus");
-
-      expect(res.status).toBe(200);
-      expect(mockTaxonomy.getById).toHaveBeenCalledWith("gbif:99999");
+      expect(mockTaxonomy.getByName).toHaveBeenCalledWith("Plantae");
     });
 
     it("passes kingdom to countOccurrencesByTaxon for disambiguation", async () => {
@@ -237,11 +253,8 @@ describe("taxonomy routes", () => {
       expect(res.body.error).toBe("Taxon not found");
     });
 
-    it("returns 404 when validation has no match or suggestions", async () => {
-      mockTaxonomy.validate.mockResolvedValue({
-        valid: false,
-        suggestions: [],
-      });
+    it("returns 404 when getByName returns null", async () => {
+      mockTaxonomy.getByName.mockResolvedValue(null);
 
       const res = await request(app).get("/taxonomy/nonexistent");
 
@@ -259,7 +272,48 @@ describe("taxonomy routes", () => {
     });
   });
 
-  describe("GET /:id/occurrences", () => {
+  describe("GET /:kingdom/:name/occurrences", () => {
+    const createMockOccurrenceRow = () => ({
+      uri: "at://did:plc:test/org.rwell.test.occurrence/1",
+      cid: "cid123",
+      did: "did:plc:test",
+      scientific_name: "Quercus alba",
+      event_date: new Date("2024-01-15"),
+      created_at: new Date("2024-01-15T12:00:00Z"),
+    });
+
+    it("returns occurrences for taxon by kingdom and name", async () => {
+      const taxon = createMockTaxon();
+      const rows = [createMockOccurrenceRow()];
+      const enrichedOccurrences = [{ uri: "at://...", observer: { did: "did:plc:test" } }];
+
+      mockTaxonomy.getByName.mockResolvedValue(taxon);
+      mockDb.getOccurrencesByTaxon.mockResolvedValue(rows);
+      vi.mocked(enrichOccurrences).mockResolvedValue(enrichedOccurrences as any);
+
+      const res = await request(app).get("/taxonomy/Plantae/Quercus%20alba/occurrences");
+
+      expect(res.status).toBe(200);
+      expect(res.body.occurrences).toEqual(enrichedOccurrences);
+      expect(mockTaxonomy.getByName).toHaveBeenCalledWith("Quercus alba", "Plantae");
+      expect(mockDb.getOccurrencesByTaxon).toHaveBeenCalledWith(
+        "Quercus alba",
+        "SPECIES",
+        { limit: 20, kingdom: "Plantae" }
+      );
+    });
+
+    it("returns 404 when taxon not found", async () => {
+      mockTaxonomy.getByName.mockResolvedValue(null);
+
+      const res = await request(app).get("/taxonomy/Plantae/Nonexistent/occurrences");
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe("Taxon not found");
+    });
+  });
+
+  describe("GET /:id/occurrences (backward compat)", () => {
     const createMockOccurrenceRow = () => ({
       uri: "at://did:plc:test/org.rwell.test.occurrence/1",
       cid: "cid123",
@@ -287,38 +341,6 @@ describe("taxonomy routes", () => {
         "SPECIES",
         { limit: 20, kingdom: "Plantae" }
       );
-    });
-
-    it("looks up taxon by name and returns occurrences", async () => {
-      const taxon = createMockTaxon();
-      mockTaxonomy.validate.mockResolvedValue({
-        valid: true,
-        taxon: { id: "gbif:12345" },
-      });
-      mockTaxonomy.getById.mockResolvedValue(taxon);
-      mockDb.getOccurrencesByTaxon.mockResolvedValue([]);
-      vi.mocked(enrichOccurrences).mockResolvedValue([]);
-
-      const res = await request(app).get("/taxonomy/Quercus%20alba/occurrences");
-
-      expect(res.status).toBe(200);
-      expect(mockTaxonomy.validate).toHaveBeenCalledWith("Quercus alba");
-    });
-
-    it("uses first suggestion for name lookup", async () => {
-      const taxon = createMockTaxon();
-      mockTaxonomy.validate.mockResolvedValue({
-        valid: false,
-        suggestions: [{ id: "gbif:99999" }],
-      });
-      mockTaxonomy.getById.mockResolvedValue(taxon);
-      mockDb.getOccurrencesByTaxon.mockResolvedValue([]);
-      vi.mocked(enrichOccurrences).mockResolvedValue([]);
-
-      const res = await request(app).get("/taxonomy/Quercus/occurrences");
-
-      expect(res.status).toBe(200);
-      expect(mockTaxonomy.getById).toHaveBeenCalledWith("gbif:99999");
     });
 
     it("respects cursor parameter", async () => {

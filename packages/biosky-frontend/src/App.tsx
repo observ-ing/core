@@ -54,6 +54,7 @@ function AppContent() {
           <Route path="/map" element={<MapView />} />
           <Route path="/occurrence/:uri" element={<OccurrenceDetail />} />
           <Route path="/profile/:did" element={<ProfileView />} />
+          <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
           <Route path="/taxon/:id" element={<TaxonDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

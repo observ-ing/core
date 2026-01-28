@@ -165,6 +165,8 @@ export const IdentificationSchema = z
     is_agreement: z.boolean(),
     date_identified: z.string().datetime(),
     identifier: ProfileSchema.optional(),
+    // Taxonomy fields from GBIF (may be populated for newer identifications)
+    kingdom: z.string().optional(),
   })
   .openapi("Identification");
 
@@ -328,6 +330,7 @@ export const TaxonDetailSchema = z
     numDescendants: z.number().int().optional(),
     extinct: z.boolean().optional(),
     observationCount: z.number().int(),
+    gbifUrl: z.string().optional().describe("URL to the GBIF species page"),
   })
   .openapi("TaxonDetail");
 

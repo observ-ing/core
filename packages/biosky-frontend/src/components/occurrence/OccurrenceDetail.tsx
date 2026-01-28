@@ -419,19 +419,19 @@ export function OccurrenceDetail() {
                     <TaxonLink name={taxonomy.kingdom} rank="kingdom" variant="chip" italic={false} />
                   )}
                   {taxonomy.phylum && (
-                    <TaxonLink name={taxonomy.phylum} rank="phylum" variant="chip" italic={false} />
+                    <TaxonLink name={taxonomy.phylum} kingdom={taxonomy.kingdom} rank="phylum" variant="chip" italic={false} />
                   )}
                   {taxonomy.class && (
-                    <TaxonLink name={taxonomy.class} rank="class" variant="chip" italic={false} />
+                    <TaxonLink name={taxonomy.class} kingdom={taxonomy.kingdom} rank="class" variant="chip" italic={false} />
                   )}
                   {taxonomy.order && (
-                    <TaxonLink name={taxonomy.order} rank="order" variant="chip" italic={false} />
+                    <TaxonLink name={taxonomy.order} kingdom={taxonomy.kingdom} rank="order" variant="chip" italic={false} />
                   )}
                   {taxonomy.family && (
-                    <TaxonLink name={taxonomy.family} rank="family" variant="chip" italic={false} />
+                    <TaxonLink name={taxonomy.family} kingdom={taxonomy.kingdom} rank="family" variant="chip" italic={false} />
                   )}
                   {taxonomy.genus && (
-                    <TaxonLink name={taxonomy.genus} rank="genus" variant="chip" />
+                    <TaxonLink name={taxonomy.genus} kingdom={taxonomy.kingdom} rank="genus" variant="chip" />
                   )}
                 </Stack>
               </Box>
@@ -477,7 +477,7 @@ export function OccurrenceDetail() {
           {species ? (
             <TaxonLink
               name={species}
-              taxonId={taxonomy.taxonId}
+              kingdom={taxonomy.kingdom}
               rank={taxonomy.taxonRank || "species"}
             />
           ) : (
@@ -500,6 +500,7 @@ export function OccurrenceDetail() {
               <IdentificationHistory
                 identifications={identifications}
                 subjectIndex={selectedSubject}
+                kingdom={taxonomy.kingdom}
               />
             </Box>
           )}

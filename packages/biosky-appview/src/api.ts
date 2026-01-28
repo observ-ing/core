@@ -81,6 +81,19 @@ interface SubjectResponse {
   identificationCount: number;
 }
 
+interface EffectiveTaxonomy {
+  scientificName: string;
+  taxonId?: string | undefined;
+  taxonRank?: string | undefined;
+  vernacularName?: string | undefined;
+  kingdom?: string | undefined;
+  phylum?: string | undefined;
+  class?: string | undefined;
+  order?: string | undefined;
+  family?: string | undefined;
+  genus?: string | undefined;
+}
+
 interface ObserverInfo {
   did: string;
   handle?: string | undefined;
@@ -102,6 +115,7 @@ interface OccurrenceResponse {
   // Darwin Core fields
   scientificName?: string | undefined;
   communityId?: string | undefined; // Keep for backward compat (refers to subject 0)
+  effectiveTaxonomy?: EffectiveTaxonomy | undefined; // Taxonomy from winning ID or GBIF lookup
   subjects: SubjectResponse[]; // All subjects with their community IDs
   eventDate: string;
   location: {
@@ -1374,36 +1388,97 @@ export class AppViewServer {
       }
     });
 
-    // Get taxon details by ID or name
-    // Accepts: gbif:XXXX (GBIF ID) or a scientific name like "Felidae"
-    this.app.get("/api/taxa/:id", async (req, res) => {
+    // Helper to resolve a taxon from an ID or name string
+    const resolveTaxon = async (idOrName: string) => {
+      if (idOrName.startsWith("gbif:")) {
+        return this.taxonomy.getById(idOrName);
+      }
+      return this.taxonomy.getByName(idOrName);
+    };
+
+    // Get taxon occurrences by kingdom + name (must be before /:param1/:param2)
+    this.app.get("/api/taxa/:kingdom/:name/occurrences", async (req, res) => {
       try {
-        const idOrName = decodeURIComponent(req.params.id);
+        const kingdom = decodeURIComponent(req.params["kingdom"] ?? "");
+        const name = decodeURIComponent(req.params["name"] ?? "");
+        const cursor = req.query["cursor"] as string | undefined;
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
 
-        let taxon;
-        if (idOrName.startsWith("gbif:")) {
-          // Direct GBIF ID lookup
-          taxon = await this.taxonomy.getById(idOrName);
-        } else {
-          // Try to resolve name via GBIF validation
-          const validation = await this.taxonomy.validate(idOrName);
-          if (validation.valid && validation.taxon) {
-            taxon = await this.taxonomy.getById(validation.taxon.id);
-          } else if (validation.suggestions && validation.suggestions.length > 0) {
-            // Use the best suggestion
-            const suggestion = validation.suggestions[0];
-            if (suggestion) {
-              taxon = await this.taxonomy.getById(suggestion.id);
-            }
-          }
-        }
-
+        const taxon = await this.taxonomy.getByName(name, kingdom);
         if (!taxon) {
           res.status(404).json({ error: "Taxon not found" });
           return;
         }
 
-        // Get observation count for this taxon
+        const rows = await this.db.getOccurrencesByTaxon(
+          taxon.scientificName,
+          taxon.rank,
+          { limit, ...(cursor && { cursor }), kingdom: taxon.kingdom },
+        );
+
+        const occurrences = await this.enrichOccurrences(rows);
+
+        const nextCursor = rows.length === limit
+          ? rows[rows.length - 1]?.created_at?.toISOString()
+          : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching taxon occurrences");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Get taxon occurrences by ID or name (backward compat)
+    this.app.get("/api/taxa/:id/occurrences", async (req, res) => {
+      try {
+        const idOrName = decodeURIComponent(req.params["id"] ?? "");
+        const cursor = req.query["cursor"] as string | undefined;
+        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
+
+        const taxon = await resolveTaxon(idOrName);
+        if (!taxon) {
+          res.status(404).json({ error: "Taxon not found" });
+          return;
+        }
+
+        const rows = await this.db.getOccurrencesByTaxon(
+          taxon.scientificName,
+          taxon.rank,
+          { limit, ...(cursor && { cursor }), kingdom: taxon.kingdom },
+        );
+
+        const occurrences = await this.enrichOccurrences(rows);
+
+        const nextCursor = rows.length === limit
+          ? rows[rows.length - 1]?.created_at?.toISOString()
+          : undefined;
+
+        res.json({
+          occurrences,
+          cursor: nextCursor,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching taxon occurrences");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Get taxon details by kingdom + name
+    this.app.get("/api/taxa/:kingdom/:name", async (req, res) => {
+      try {
+        const kingdom = decodeURIComponent(req.params["kingdom"] ?? "");
+        const name = decodeURIComponent(req.params["name"] ?? "");
+
+        const taxon = await this.taxonomy.getByName(name, kingdom);
+        if (!taxon) {
+          res.status(404).json({ error: "Taxon not found" });
+          return;
+        }
+
         const observationCount = await this.db.countOccurrencesByTaxon(
           taxon.scientificName,
           taxon.rank,
@@ -1420,53 +1495,29 @@ export class AppViewServer {
       }
     });
 
-    // Get occurrences for a taxon
-    // Accepts: gbif:XXXX (GBIF ID) or a scientific name like "Felidae"
-    this.app.get("/api/taxa/:id/occurrences", async (req, res) => {
+    // Get taxon details by ID or name (backward compat + kingdom-level lookup)
+    this.app.get("/api/taxa/:id", async (req, res) => {
       try {
         const idOrName = decodeURIComponent(req.params["id"] ?? "");
-        const cursor = req.query["cursor"] as string | undefined;
-        const limit = Math.min(parseInt(req.query["limit"] as string) || 20, 100);
 
-        let taxon;
-        if (idOrName.startsWith("gbif:")) {
-          taxon = await this.taxonomy.getById(idOrName);
-        } else {
-          const validation = await this.taxonomy.validate(idOrName);
-          if (validation.valid && validation.taxon) {
-            taxon = await this.taxonomy.getById(validation.taxon.id);
-          } else if (validation.suggestions && validation.suggestions.length > 0) {
-            const suggestion = validation.suggestions[0];
-            if (suggestion) {
-              taxon = await this.taxonomy.getById(suggestion.id);
-            }
-          }
-        }
-
+        const taxon = await resolveTaxon(idOrName);
         if (!taxon) {
           res.status(404).json({ error: "Taxon not found" });
           return;
         }
 
-        const rows = await this.db.getOccurrencesByTaxon(
+        const observationCount = await this.db.countOccurrencesByTaxon(
           taxon.scientificName,
           taxon.rank,
-          { limit, ...(cursor && { cursor }), kingdom: taxon.kingdom },
+          taxon.kingdom,
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
-
-        // Get next cursor
-        const nextCursor = rows.length === limit
-          ? rows[rows.length - 1]?.created_at?.toISOString()
-          : undefined;
-
         res.json({
-          occurrences,
-          cursor: nextCursor,
+          ...taxon,
+          observationCount,
         });
       } catch (error) {
-        logger.error({ err: error }, "Error fetching taxon occurrences");
+        logger.error({ err: error }, "Error fetching taxon");
         res.status(500).json({ error: "Internal server error" });
       }
     });
@@ -1554,6 +1605,57 @@ export class AppViewServer {
         // Get community ID for subject 0 (backward compat)
         const communityId = await this.db.getCommunityId(row.uri, 0);
 
+        // Get effective taxonomy from winning identification or GBIF lookup
+        let effectiveTaxonomy: EffectiveTaxonomy | undefined;
+        const effectiveName = communityId || row.scientific_name;
+        if (effectiveName) {
+          const identifications = communityId
+            ? await this.db.getIdentificationsForOccurrence(row.uri)
+            : [];
+          // Find identification that matches community ID
+          const winningId = identifications.find(
+            (id) =>
+              id.subject_index === 0 &&
+              id.scientific_name?.toLowerCase() === communityId?.toLowerCase()
+          );
+          if (winningId?.kingdom) {
+            // Use winning identification taxonomy if it has kingdom data
+            effectiveTaxonomy = {
+              scientificName: winningId.scientific_name,
+              taxonId: undefined,
+              taxonRank: winningId.taxon_rank || undefined,
+              vernacularName: winningId.vernacular_name || undefined,
+              kingdom: winningId.kingdom,
+              phylum: winningId.phylum || undefined,
+              class: winningId.class || undefined,
+              order: winningId.order || undefined,
+              family: winningId.family || undefined,
+              genus: winningId.genus || undefined,
+            };
+          } else {
+            // Look up taxonomy from GBIF when winning identification lacks kingdom
+            try {
+              const taxonDetail = await this.taxonomy.getByName(effectiveName);
+              if (taxonDetail) {
+                effectiveTaxonomy = {
+                  scientificName: taxonDetail.scientificName,
+                  taxonId: undefined,
+                  taxonRank: taxonDetail.rank || undefined,
+                  vernacularName: taxonDetail.commonName || undefined,
+                  kingdom: taxonDetail.kingdom || undefined,
+                  phylum: taxonDetail.phylum || undefined,
+                  class: taxonDetail.class || undefined,
+                  order: taxonDetail.order || undefined,
+                  family: taxonDetail.family || undefined,
+                  genus: taxonDetail.genus || undefined,
+                };
+              }
+            } catch {
+              // GBIF lookup failed, leave effectiveTaxonomy undefined
+            }
+          }
+        }
+
         return ({
           uri: row.uri,
           cid: row.cid,
@@ -1567,6 +1669,7 @@ export class AppViewServer {
           // Darwin Core fields
           scientificName: row.scientific_name || undefined,
           communityId: communityId || undefined,
+          effectiveTaxonomy,
           subjects,
           eventDate: row.event_date.toISOString(),
           location: ({

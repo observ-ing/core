@@ -20,13 +20,15 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { fetchTaxon, fetchTaxonOccurrences } from "../../services/api";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
+import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
 import { FeedItem } from "../feed/FeedItem";
 import { TaxonDetailSkeleton } from "../common/Skeletons";
 
 export function TaxonDetail() {
-  const { id } = useParams<{ id: string }>();
+  // Support both /taxon/:kingdom/:name and /taxon/:id
+  const { kingdom, name, id } = useParams<{ kingdom?: string; name?: string; id?: string }>();
   const navigate = useNavigate();
 
   const [taxon, setTaxon] = useState<TaxonDetailType | null>(null);
@@ -37,30 +39,44 @@ export function TaxonDetail() {
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
 
+  // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
+  const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
+  const lookupName = name ? slugToName(decodeURIComponent(name)) : undefined;
+  const lookupId = id ? decodeURIComponent(id) : undefined;
+
   useEffect(() => {
-    if (!id) {
-      setError("No taxon ID provided");
+    if (!lookupKingdom && !lookupId) {
+      setError("No taxon specified");
       setLoading(false);
       return;
     }
-
-    const decodedId = decodeURIComponent(id);
 
     async function loadTaxon() {
       setLoading(true);
       setError(null);
 
-      const result = await fetchTaxon(decodedId);
+      let result: TaxonDetailType | null;
+      if (lookupKingdom && lookupName) {
+        result = await fetchTaxon(lookupKingdom, lookupName);
+      } else {
+        // Single param: either a kingdom name or a legacy ID
+        result = await fetchTaxon(lookupId || lookupKingdom!);
+      }
+
       if (result) {
         setTaxon(result);
         // Load initial occurrences
         try {
-          const occResult = await fetchTaxonOccurrences(decodedId);
+          let occResult;
+          if (lookupKingdom && lookupName) {
+            occResult = await fetchTaxonOccurrences(lookupKingdom, lookupName);
+          } else {
+            occResult = await fetchTaxonOccurrences(lookupId || lookupKingdom!);
+          }
           setOccurrences(occResult.occurrences);
           setCursor(occResult.cursor);
           setHasMore(!!occResult.cursor);
         } catch {
-          // Occurrences failed but taxon loaded - that's ok
           setOccurrences([]);
           setHasMore(false);
         }
@@ -71,7 +87,7 @@ export function TaxonDetail() {
     }
 
     loadTaxon();
-  }, [id]);
+  }, [lookupKingdom, lookupName, lookupId]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -82,11 +98,16 @@ export function TaxonDetail() {
   };
 
   const loadMoreOccurrences = async () => {
-    if (!id || !cursor || loadingMore) return;
+    if (!cursor || loadingMore) return;
 
     setLoadingMore(true);
     try {
-      const result = await fetchTaxonOccurrences(decodeURIComponent(id), cursor);
+      let result;
+      if (lookupKingdom && lookupName) {
+        result = await fetchTaxonOccurrences(lookupKingdom, lookupName, cursor);
+      } else {
+        result = await fetchTaxonOccurrences(lookupId || lookupKingdom!, undefined, cursor);
+      }
       setOccurrences((prev) => [...prev, ...result.occurrences]);
       setCursor(result.cursor);
       setHasMore(!!result.cursor);
@@ -129,9 +150,8 @@ export function TaxonDetail() {
     );
   }
 
-  // Extract numeric ID for GBIF link
-  const gbifNumericId = taxon.id.startsWith("gbif:") ? taxon.id.slice(5) : taxon.id;
-  const gbifUrl = `https://www.gbif.org/species/${gbifNumericId}`;
+  // Use gbifUrl from the API response
+  const gbifUrl = taxon.gbifUrl;
 
   return (
     <Container
@@ -219,7 +239,7 @@ export function TaxonDetail() {
                   )}
                   <TaxonLink
                     name={ancestor.name}
-                    taxonId={ancestor.id}
+                    kingdom={taxon.kingdom}
                     rank={ancestor.rank}
                     variant="chip"
                     italic={ancestor.rank === "genus"}
@@ -241,7 +261,7 @@ export function TaxonDetail() {
                 <TaxonLink
                   key={child.id}
                   name={child.scientificName}
-                  taxonId={child.id}
+                  kingdom={taxon.kingdom}
                   rank={child.rank}
                   variant="chip"
                 />
@@ -364,18 +384,20 @@ export function TaxonDetail() {
         )}
 
         {/* External Link */}
-        <Button
-          component="a"
-          href={gbifUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="outlined"
-          size="small"
-          endIcon={<OpenInNewIcon fontSize="small" />}
-          sx={{ mt: 3 }}
-        >
-          View on GBIF
-        </Button>
+        {gbifUrl && (
+          <Button
+            component="a"
+            href={gbifUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outlined"
+            size="small"
+            endIcon={<OpenInNewIcon fontSize="small" />}
+            sx={{ mt: 3 }}
+          >
+            View on GBIF
+          </Button>
+        )}
       </Box>
 
       {/* Observations Section */}

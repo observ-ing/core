@@ -76,6 +76,7 @@ interface TaxonDetail extends TaxonResult {
   descriptions?: TaxonDescription[] | undefined;
   references?: TaxonReference[] | undefined;
   media?: TaxonMedia[] | undefined;
+  gbifUrl?: string | undefined;
 }
 
 interface ValidationResult {
@@ -90,9 +91,46 @@ interface ValidationResult {
 const searchCache = new Map<string, { results: TaxonResult[]; timestamp: number }>();
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
+/**
+ * Build a path-based taxon identifier: "{kingdom}/{name}" or just "{name}" for kingdom rank.
+ */
+function buildTaxonPath(scientificName: string, rank: string, kingdom?: string): string {
+  const lowerRank = rank.toLowerCase();
+  if (lowerRank === "kingdom") {
+    return scientificName;
+  }
+  if (kingdom) {
+    return `${kingdom}/${scientificName}`;
+  }
+  return scientificName;
+}
+
 export class TaxonomyResolver {
   private gbifV1BaseUrl = "https://api.gbif.org/v1";
   private gbifV2BaseUrl = "https://api.gbif.org/v2";
+
+  /**
+   * Get detailed taxon information by scientific name, optionally disambiguated by kingdom.
+   */
+  async getByName(scientificName: string, kingdom?: string): Promise<TaxonDetail | null> {
+    try {
+      const params = new URLSearchParams({ scientificName });
+      if (kingdom) {
+        params.set("kingdom", kingdom);
+      }
+      const url = `${this.gbifV2BaseUrl}/species/match?${params}`;
+      const response = await fetch(url);
+      if (!response.ok) return null;
+
+      const data = (await response.json()) as GbifV2MatchResult;
+      if (!data.usage?.key) return null;
+
+      return this.getById(`gbif:${data.usage.key}`);
+    } catch (error) {
+      console.error("GBIF getByName error:", error);
+      return null;
+    }
+  }
 
   /**
    * Search for taxa matching a query
@@ -156,7 +194,7 @@ export class TaxonomyResolver {
         // Skip if this is the current taxon (by key) or if no key/name
         if (key && name && String(key) !== numericId) {
           ancestors.push({
-            id: `gbif:${key}`,
+            id: buildTaxonPath(String(name), rank, rank === "kingdom" ? undefined : data.kingdom),
             name: String(name),
             rank,
           });
@@ -170,11 +208,14 @@ export class TaxonomyResolver {
         ? { category: iucnStatus.statusCode as IUCNCategory, source: "IUCN" }
         : undefined;
 
+      const resolvedName = data.canonicalName || data.scientificName || "";
+      const resolvedRank = data.rank?.toLowerCase() || "unknown";
+
       const taxonDetail: TaxonDetail = ({
-        id: `gbif:${data.key}`,
-        scientificName: data.canonicalName || data.scientificName || "",
+        id: buildTaxonPath(resolvedName, resolvedRank, data.kingdom),
+        scientificName: resolvedName,
         commonName: data.vernacularName,
-        rank: data.rank?.toLowerCase() || "unknown",
+        rank: resolvedRank,
         kingdom: data.kingdom,
         phylum: data.phylum,
         class: data.class,
@@ -191,6 +232,7 @@ export class TaxonomyResolver {
         descriptions: descriptions.length > 0 ? descriptions : undefined,
         references: references.length > 0 ? references : undefined,
         media: media.length > 0 ? media : undefined,
+        gbifUrl: data.key ? `https://www.gbif.org/species/${data.key}` : undefined,
       });
 
       searchCache.set(cacheKey, { results: [taxonDetail as unknown as TaxonResult], timestamp: Date.now() });
@@ -391,11 +433,13 @@ export class TaxonomyResolver {
    * Convert GBIF v1 result to TaxonResult
    */
   private gbifToTaxon(item: GbifSuggestResult | GbifMatchResult): TaxonResult {
+    const name = item.canonicalName || item.scientificName || "";
+    const rank = item.rank?.toLowerCase() || "unknown";
     return ({
-      id: `gbif:${item.usageKey || item.key}`,
-      scientificName: item.canonicalName || item.scientificName || "",
+      id: buildTaxonPath(name, rank, item.kingdom),
+      scientificName: name,
       commonName: item.vernacularName,
-      rank: item.rank?.toLowerCase() || "unknown",
+      rank,
       kingdom: item.kingdom,
       phylum: item.phylum,
       class: item.class,
@@ -434,11 +478,15 @@ export class TaxonomyResolver {
       }
     }
 
+    const resolvedName = usage.canonicalName || usage.name || "";
+    const resolvedRank = usage.rank?.toLowerCase() || "unknown";
+    const resolvedKingdom = classificationByRank.get("KINGDOM") || usage.kingdom;
+
     return ({
-      id: `gbif:${usage.key}`,
-      scientificName: usage.canonicalName || usage.name || "",
-      rank: usage.rank?.toLowerCase() || "unknown",
-      kingdom: classificationByRank.get("KINGDOM") || usage.kingdom,
+      id: buildTaxonPath(resolvedName, resolvedRank, resolvedKingdom),
+      scientificName: resolvedName,
+      rank: resolvedRank,
+      kingdom: resolvedKingdom,
       phylum: classificationByRank.get("PHYLUM") || usage.phylum,
       class: classificationByRank.get("CLASS") || usage.class,
       order: classificationByRank.get("ORDER") || usage.order,
@@ -559,4 +607,5 @@ interface GbifMedia {
   rightsHolder?: string;
 }
 
+export { buildTaxonPath };
 export type { TaxonResult, TaxonDetail, TaxonAncestor, TaxonDescription, TaxonReference, TaxonMedia, ValidationResult, ConservationStatus, IUCNCategory };

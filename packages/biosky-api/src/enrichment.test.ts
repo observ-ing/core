@@ -200,7 +200,7 @@ describe("enrichment", () => {
 
       expect(result[0].effectiveTaxonomy).toEqual({
         scientificName: "Quercus alba",
-        taxonId: "12345",
+        taxonId: undefined,
         taxonRank: "species",
         vernacularName: "White Oak",
         kingdom: "Plantae",
