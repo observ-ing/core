@@ -118,24 +118,21 @@ export async function fetchProfileFeed(
   return response.json();
 }
 
-export async function fetchOccurrence(
+export async function fetchObservation(
   uri: string
 ): Promise<{ occurrence: Occurrence } | null> {
   try {
     const url = `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`;
-    console.log("fetchOccurrence - uri:", uri);
-    console.log("fetchOccurrence - url:", url);
     const response = await fetch(url);
-    console.log("fetchOccurrence - response status:", response.status);
     if (!response.ok) return null;
     return response.json();
   } catch (e) {
-    console.error("fetchOccurrence error:", e);
+    console.error("fetchObservation error:", e);
     return null;
   }
 }
 
-export async function fetchOccurrencesGeoJSON(bounds: {
+export async function fetchObservationsGeoJSON(bounds: {
   minLat: number;
   minLng: number;
   maxLat: number;
@@ -150,7 +147,7 @@ export async function fetchOccurrencesGeoJSON(bounds: {
 
   const response = await fetch(`${API_BASE}/api/occurrences/geojson?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to load occurrences");
+    throw new Error("Failed to load observations");
   }
 
   return response.json();
@@ -168,7 +165,7 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   return data.results || [];
 }
 
-export async function submitOccurrence(data: {
+export async function submitObservation(data: {
   scientificName: string;
   latitude: number;
   longitude: number;
@@ -206,7 +203,7 @@ export async function submitOccurrence(data: {
   return response.json();
 }
 
-export async function updateOccurrence(data: {
+export async function updateObservation(data: {
   uri: string;
   scientificName: string;
   latitude: number;
@@ -244,7 +241,7 @@ export async function updateOccurrence(data: {
   return response.json();
 }
 
-export async function deleteOccurrence(uri: string): Promise<{ success: boolean }> {
+export async function deleteObservation(uri: string): Promise<{ success: boolean }> {
   const response = await fetch(
     `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`,
     {
@@ -340,12 +337,12 @@ export async function fetchTaxon(kingdomOrId: string, name?: string): Promise<Ta
 }
 
 /**
- * Fetch occurrences for a taxon. Supports:
- * - kingdom + name: fetchTaxonOccurrences("Plantae", "Quercus alba", cursor?)
- * - kingdom only: fetchTaxonOccurrences("Plantae", undefined, cursor?)
- * - legacy ID: fetchTaxonOccurrences("gbif:12345", undefined, cursor?)
+ * Fetch observations for a taxon. Supports:
+ * - kingdom + name: fetchTaxonObservations("Plantae", "Quercus alba", cursor?)
+ * - kingdom only: fetchTaxonObservations("Plantae", undefined, cursor?)
+ * - legacy ID: fetchTaxonObservations("gbif:12345", undefined, cursor?)
  */
-export async function fetchTaxonOccurrences(
+export async function fetchTaxonObservations(
   kingdomOrId: string,
   name?: string,
   cursor?: string
@@ -362,7 +359,7 @@ export async function fetchTaxonOccurrences(
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Failed to fetch taxon occurrences");
+    throw new Error("Failed to fetch taxon observations");
   }
 
   return response.json();

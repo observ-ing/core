@@ -28,10 +28,10 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
 import {
-  submitOccurrence,
-  updateOccurrence,
+  submitObservation,
+  updateObservation,
   searchTaxa,
-  fetchOccurrence,
+  fetchObservation,
 } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
@@ -61,13 +61,13 @@ const LICENSE_OPTIONS = [
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
-  const editingOccurrence = useAppSelector(
-    (state) => state.ui.editingOccurrence
+  const editingObservation = useAppSelector(
+    (state) => state.ui.editingObservation
   );
   const user = useAppSelector((state) => state.auth.user);
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
-  const isEditMode = !!editingOccurrence;
+  const isEditMode = !!editingObservation;
 
   const [species, setSpecies] = useState("");
   const [notes, setNotes] = useState("");
@@ -87,12 +87,12 @@ export function UploadModal() {
 
   useEffect(() => {
     if (isOpen) {
-      if (editingOccurrence) {
-        setSpecies(editingOccurrence.scientificName || "");
-        setNotes(editingOccurrence.occurrenceRemarks || "");
-        if (editingOccurrence.location) {
-          setLat(editingOccurrence.location.latitude.toFixed(6));
-          setLng(editingOccurrence.location.longitude.toFixed(6));
+      if (editingObservation) {
+        setSpecies(editingObservation.scientificName || "");
+        setNotes(editingObservation.occurrenceRemarks || "");
+        if (editingObservation.location) {
+          setLat(editingObservation.location.latitude.toFixed(6));
+          setLng(editingObservation.location.longitude.toFixed(6));
         }
       } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
@@ -110,7 +110,7 @@ export function UploadModal() {
         );
       }
     }
-  }, [isOpen, currentLocation, editingOccurrence]);
+  }, [isOpen, currentLocation, editingObservation]);
 
   const handleClose = () => {
     dispatch(closeUploadModal());
@@ -220,10 +220,10 @@ export function UploadModal() {
     setSuggestions([]);
   };
 
-  // Poll for occurrence to appear in database after AT Protocol submission
-  const waitForOccurrence = async (uri: string, maxAttempts = 30): Promise<boolean> => {
+  // Poll for observation to appear in database after AT Protocol submission
+  const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const result = await fetchOccurrence(uri);
+      const result = await fetchObservation(uri);
       if (result?.occurrence) {
         return true;
       }
@@ -255,32 +255,32 @@ export function UploadModal() {
         });
       }
 
-      let occurrenceUri: string;
+      let observationUri: string;
 
-      if (isEditMode && editingOccurrence) {
-        const result = await updateOccurrence({
-          uri: editingOccurrence.uri,
+      if (isEditMode && editingObservation) {
+        const result = await updateObservation({
+          uri: editingObservation.uri,
           scientificName: species.trim() || undefined,
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           notes: notes || undefined,
           license,
-          eventDate: editingOccurrence.eventDate || new Date().toISOString(),
+          eventDate: editingObservation.eventDate || new Date().toISOString(),
           recordedBy: coObservers.length > 0 ? coObservers : undefined,
         });
 
         // Wait for the update to be processed
-        await waitForOccurrence(result.uri);
-        occurrenceUri = result.uri;
+        await waitForObservation(result.uri);
+        observationUri = result.uri;
 
         dispatch(
           addToast({
-            message: "Occurrence updated successfully!",
+            message: "Observation updated successfully!",
             type: "success",
           })
         );
       } else {
-        const result = await submitOccurrence({
+        const result = await submitObservation({
           scientificName: species.trim() || undefined,
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
@@ -291,22 +291,22 @@ export function UploadModal() {
           recordedBy: coObservers.length > 0 ? coObservers : undefined,
         });
 
-        // Wait for the occurrence to be processed by the ingester
-        const processed = await waitForOccurrence(result.uri);
-        occurrenceUri = result.uri;
+        // Wait for the observation to be processed by the ingester
+        const processed = await waitForObservation(result.uri);
+        observationUri = result.uri;
 
         dispatch(
           addToast({
             message: processed
-              ? "Occurrence submitted successfully!"
+              ? "Observation submitted successfully!"
               : "Observation submitted! It may take a moment to appear.",
             type: "success",
           })
         );
       }
 
-      // Navigate to the occurrence page
-      window.location.href = `/occurrence/${encodeURIComponent(occurrenceUri)}`;
+      // Navigate to the observation page
+      window.location.href = `/observation/${encodeURIComponent(observationUri)}`;
     } catch (error) {
       dispatch(
         addToast({
@@ -346,7 +346,7 @@ export function UploadModal() {
       )}
 
       <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
-        {isEditMode ? "Edit Occurrence" : "New Occurrence"}
+        {isEditMode ? "Edit Observation" : "New Observation"}
       </Typography>
 
       <form onSubmit={handleSubmit}>

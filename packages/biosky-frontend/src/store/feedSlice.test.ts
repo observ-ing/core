@@ -21,7 +21,7 @@ import * as api from "../services/api";
 
 describe("feedSlice", () => {
   const defaultFeedState = {
-    occurrences: [],
+    observations: [],
     cursor: undefined,
     isLoading: false,
     currentTab: "explore" as const,
@@ -53,7 +53,7 @@ describe("feedSlice", () => {
       const store = createTestStore();
       const state = store.getState().feed;
 
-      expect(state.occurrences).toEqual([]);
+      expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.isLoading).toBe(false);
       expect(state.currentTab).toBe("explore");
@@ -68,7 +68,7 @@ describe("feedSlice", () => {
     it("switches tab and resets state", () => {
       const store = createTestStore({
         feed: {
-          occurrences: [{ uri: "test" } as any],
+          observations: [{ uri: "test" } as any],
           cursor: "abc",
           currentTab: "explore",
           hasMore: false,
@@ -80,7 +80,7 @@ describe("feedSlice", () => {
 
       const state = store.getState().feed;
       expect(state.currentTab).toBe("home");
-      expect(state.occurrences).toEqual([]);
+      expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
       expect(state.homeFeedMeta).toBeNull();
@@ -91,7 +91,7 @@ describe("feedSlice", () => {
     it("resets feed state", () => {
       const store = createTestStore({
         feed: {
-          occurrences: [{ uri: "test" } as any],
+          observations: [{ uri: "test" } as any],
           cursor: "abc",
           hasMore: false,
           homeFeedMeta: { followedCount: 5, nearbyCount: 10, totalFollows: 20 },
@@ -101,7 +101,7 @@ describe("feedSlice", () => {
       store.dispatch(resetFeed());
 
       const state = store.getState().feed;
-      expect(state.occurrences).toEqual([]);
+      expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
       expect(state.homeFeedMeta).toBeNull();
@@ -112,7 +112,7 @@ describe("feedSlice", () => {
     it("sets filters and resets feed", () => {
       const store = createTestStore({
         feed: {
-          occurrences: [{ uri: "test" } as any],
+          observations: [{ uri: "test" } as any],
           cursor: "abc",
           hasMore: false,
           filters: {},
@@ -123,7 +123,7 @@ describe("feedSlice", () => {
 
       const state = store.getState().feed;
       expect(state.filters).toEqual({ taxon: "Quercus", lat: 40, lng: -74 });
-      expect(state.occurrences).toEqual([]);
+      expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
     });
@@ -167,7 +167,7 @@ describe("feedSlice", () => {
       await store.dispatch(loadFeed());
 
       expect(api.fetchExploreFeed).toHaveBeenCalledWith(undefined, { taxon: "Oak" });
-      expect(store.getState().feed.occurrences).toHaveLength(2);
+      expect(store.getState().feed.observations).toHaveLength(2);
       expect(store.getState().feed.cursor).toBe("next123");
       expect(store.getState().feed.hasMore).toBe(true);
     });
@@ -238,16 +238,16 @@ describe("feedSlice", () => {
       const store = createTestStore({
         auth: { user: null, isLoading: false },
         feed: {
-          occurrences: [{ uri: "at://existing" } as any],
+          observations: [{ uri: "at://existing" } as any],
           cursor: "prev",
         },
       });
 
       await store.dispatch(loadFeed());
 
-      expect(store.getState().feed.occurrences).toHaveLength(2);
-      expect(store.getState().feed.occurrences[0].uri).toBe("at://existing");
-      expect(store.getState().feed.occurrences[1].uri).toBe("at://new");
+      expect(store.getState().feed.observations).toHaveLength(2);
+      expect(store.getState().feed.observations[0].uri).toBe("at://existing");
+      expect(store.getState().feed.observations[1].uri).toBe("at://new");
     });
 
     it("sets hasMore to false when no cursor", async () => {
@@ -293,8 +293,8 @@ describe("feedSlice", () => {
       await store.dispatch(loadInitialFeed());
 
       // Should replace, not append
-      expect(store.getState().feed.occurrences).toHaveLength(1);
-      expect(store.getState().feed.occurrences[0].uri).toBe("at://new");
+      expect(store.getState().feed.observations).toHaveLength(1);
+      expect(store.getState().feed.observations[0].uri).toBe("at://new");
     });
 
     it("loads home feed for authenticated user on home tab", async () => {
@@ -344,7 +344,7 @@ describe("feedSlice", () => {
 
       const state = store.getState().feed;
       expect(state.cursor).toBeUndefined();
-      expect(state.occurrences).toEqual([]);
+      expect(state.observations).toEqual([]);
       expect(state.isLoading).toBe(true);
     });
 

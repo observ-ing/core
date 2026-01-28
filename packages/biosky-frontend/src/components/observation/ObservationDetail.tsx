@@ -22,7 +22,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import { fetchOccurrence, getImageUrl } from "../../services/api";
+import { fetchObservation, getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { openDeleteConfirm } from "../../store/uiSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
@@ -31,16 +31,16 @@ import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
-import { OccurrenceDetailSkeleton } from "../common/Skeletons";
+import { ObservationDetailSkeleton } from "../common/Skeletons";
 import { formatDate, getPdslsUrl } from "../../lib/utils";
 
-export function OccurrenceDetail() {
+export function ObservationDetail() {
   const { uri } = useParams<{ uri: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
-  const [occurrence, setOccurrence] = useState<Occurrence | null>(null);
+  const [observation, setObservation] = useState<Occurrence | null>(null);
   const [identifications, setIdentifications] = useState<Identification[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,29 +52,29 @@ export function OccurrenceDetail() {
 
   useEffect(() => {
     if (!uri) {
-      setError("No occurrence URI provided");
+      setError("No observation URI provided");
       setLoading(false);
       return;
     }
 
     const decodedUri = decodeURIComponent(uri);
 
-    async function loadOccurrence() {
+    async function loadObservation() {
       setLoading(true);
       setError(null);
 
-      const result = await fetchOccurrence(decodedUri);
+      const result = await fetchObservation(decodedUri);
       if (result?.occurrence) {
-        setOccurrence(result.occurrence);
+        setObservation(result.occurrence);
         setIdentifications((result as { identifications?: Identification[] }).identifications || []);
         setComments((result as { comments?: Comment[] }).comments || []);
       } else {
-        setError("Occurrence not found");
+        setError("Observation not found");
       }
       setLoading(false);
     }
 
-    loadOccurrence();
+    loadObservation();
   }, [uri]);
 
   const handleBack = () => {
@@ -87,9 +87,9 @@ export function OccurrenceDetail() {
 
   const handleIdentificationSuccess = async () => {
     if (uri) {
-      const result = await fetchOccurrence(decodeURIComponent(uri));
+      const result = await fetchObservation(decodeURIComponent(uri));
       if (result?.occurrence) {
-        setOccurrence(result.occurrence);
+        setObservation(result.occurrence);
         setIdentifications((result as { identifications?: Identification[] }).identifications || []);
         setComments((result as { comments?: Comment[] }).comments || []);
       }
@@ -98,7 +98,7 @@ export function OccurrenceDetail() {
 
   const handleCommentAdded = async () => {
     if (uri) {
-      const result = await fetchOccurrence(decodeURIComponent(uri));
+      const result = await fetchObservation(decodeURIComponent(uri));
       if (result) {
         setComments((result as { comments?: Comment[] }).comments || []);
       }
@@ -115,8 +115,8 @@ export function OccurrenceDetail() {
 
   const handleDeleteClick = () => {
     handleMenuClose();
-    if (occurrence) {
-      dispatch(openDeleteConfirm(occurrence));
+    if (observation) {
+      dispatch(openDeleteConfirm(observation));
     }
   };
 
@@ -136,18 +136,18 @@ export function OccurrenceDetail() {
             borderColor: "divider",
           }}
         >
-          <OccurrenceDetailSkeleton />
+          <ObservationDetailSkeleton />
         </Container>
       </Box>
     );
   }
 
-  if (error || !occurrence) {
+  if (error || !observation) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
         <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
           <Typography color="error" sx={{ mb: 2 }}>
-            {error || "Occurrence not found"}
+            {error || "Observation not found"}
           </Typography>
           <Button variant="outlined" onClick={handleBack}>
             Go Back
@@ -158,41 +158,41 @@ export function OccurrenceDetail() {
   }
 
   const displayName =
-    occurrence.observer.displayName ||
-    occurrence.observer.handle ||
-    occurrence.observer.did.slice(0, 20);
-  const handle = occurrence.observer.handle
-    ? `@${occurrence.observer.handle}`
+    observation.observer.displayName ||
+    observation.observer.handle ||
+    observation.observer.did.slice(0, 20);
+  const handle = observation.observer.handle
+    ? `@${observation.observer.handle}`
     : "";
 
   // Find the current subject's data
-  const currentSubject = occurrence.subjects?.find((s) => s.index === selectedSubject);
+  const currentSubject = observation.subjects?.find((s) => s.index === selectedSubject);
 
   // Get taxonomy from effectiveTaxonomy (preferred), falling back to legacy fields
-  const taxonomy = occurrence.effectiveTaxonomy || {
-    scientificName: occurrence.scientificName,
-    vernacularName: occurrence.vernacularName,
-    kingdom: occurrence.kingdom,
-    phylum: occurrence.phylum,
-    class: occurrence.class,
-    order: occurrence.order,
-    family: occurrence.family,
-    genus: occurrence.genus,
-    taxonId: occurrence.taxonId,
-    taxonRank: occurrence.taxonRank,
+  const taxonomy = observation.effectiveTaxonomy || {
+    scientificName: observation.scientificName,
+    vernacularName: observation.vernacularName,
+    kingdom: observation.kingdom,
+    phylum: observation.phylum,
+    class: observation.class,
+    order: observation.order,
+    family: observation.family,
+    genus: observation.genus,
+    taxonId: observation.taxonId,
+    taxonRank: observation.taxonRank,
   };
 
   const species =
     currentSubject?.communityId ||
-    occurrence.communityId ||
+    observation.communityId ||
     taxonomy.scientificName ||
     undefined;
 
   // Check if there are multiple subjects
-  const hasMultipleSubjects = occurrence.subjects && occurrence.subjects.length > 1;
+  const hasMultipleSubjects = observation.subjects && observation.subjects.length > 1;
 
   // Check if current user owns this observation
-  const isOwner = user?.did === occurrence.observer.did;
+  const isOwner = user?.did === observation.observer.did;
 
   return (
     <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -248,7 +248,7 @@ export function OccurrenceDetail() {
             )}
             <MenuItem
               component="a"
-              href={getPdslsUrl(occurrence.uri)}
+              href={getPdslsUrl(observation.uri)}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -259,11 +259,11 @@ export function OccurrenceDetail() {
       </Box>
 
       {/* Images */}
-      {occurrence.images.length > 0 && (
+      {observation.images.length > 0 && (
         <Box sx={{ bgcolor: "background.default", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
-            src={getImageUrl(occurrence.images[activeImageIndex])}
+            src={getImageUrl(observation.images[activeImageIndex])}
             alt={species}
             sx={{
               width: "100%",
@@ -274,9 +274,9 @@ export function OccurrenceDetail() {
               boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
             }}
           />
-          {occurrence.images.length > 1 && (
+          {observation.images.length > 1 && (
             <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
-              {occurrence.images.map((img, idx) => (
+              {observation.images.map((img, idx) => (
                 <Box
                   key={img}
                   component="button"
@@ -314,7 +314,7 @@ export function OccurrenceDetail() {
           spacing={1.5}
           alignItems="center"
           component={Link}
-          to={`/profile/${encodeURIComponent(occurrence.observer.did)}`}
+          to={`/profile/${encodeURIComponent(observation.observer.did)}`}
           sx={{
             textDecoration: "none",
             color: "inherit",
@@ -324,7 +324,7 @@ export function OccurrenceDetail() {
             borderRadius: 1,
           }}
         >
-          <Avatar src={occurrence.observer.avatar} alt={displayName} />
+          <Avatar src={observation.observer.avatar} alt={displayName} />
           <Box>
             <Typography fontWeight={600}>{displayName}</Typography>
             {handle && (
@@ -345,10 +345,10 @@ export function OccurrenceDetail() {
                   Observed
                 </Typography>
               </Stack>
-              <Typography>{formatDate(occurrence.eventDate)}</Typography>
+              <Typography>{formatDate(observation.eventDate)}</Typography>
             </Box>
 
-            {occurrence.verbatimLocality && (
+            {observation.verbatimLocality && (
               <Box>
                 <Stack direction="row" alignItems="center" spacing={0.5}>
                   <LocationOnIcon sx={{ fontSize: 14, color: "text.secondary" }} />
@@ -356,7 +356,7 @@ export function OccurrenceDetail() {
                     Location
                   </Typography>
                 </Stack>
-                <Typography>{occurrence.verbatimLocality}</Typography>
+                <Typography>{observation.verbatimLocality}</Typography>
               </Box>
             )}
 
@@ -368,29 +368,29 @@ export function OccurrenceDetail() {
                 </Typography>
               </Stack>
               <Typography>
-                {occurrence.location.latitude.toFixed(5)},{" "}
-                {occurrence.location.longitude.toFixed(5)}
-                {occurrence.location.uncertaintyMeters && (
+                {observation.location.latitude.toFixed(5)},{" "}
+                {observation.location.longitude.toFixed(5)}
+                {observation.location.uncertaintyMeters && (
                   <Typography
                     component="span"
                     variant="body2"
                     color="text.disabled"
                   >
                     {" "}
-                    (±{occurrence.location.uncertaintyMeters}m)
+                    (±{observation.location.uncertaintyMeters}m)
                   </Typography>
                 )}
               </Typography>
               <Box sx={{ mt: 1 }}>
                 <LocationMap
-                  latitude={occurrence.location.latitude}
-                  longitude={occurrence.location.longitude}
-                  uncertaintyMeters={occurrence.location.uncertaintyMeters}
+                  latitude={observation.location.latitude}
+                  longitude={observation.location.longitude}
+                  uncertaintyMeters={observation.location.uncertaintyMeters}
                 />
               </Box>
             </Box>
 
-            {occurrence.occurrenceRemarks && (
+            {observation.occurrenceRemarks && (
               <Box>
                 <Stack direction="row" alignItems="center" spacing={0.5}>
                   <NotesIcon sx={{ fontSize: 14, color: "text.secondary" }} />
@@ -398,7 +398,7 @@ export function OccurrenceDetail() {
                     Notes
                   </Typography>
                 </Stack>
-                <Typography>{occurrence.occurrenceRemarks}</Typography>
+                <Typography>{observation.occurrenceRemarks}</Typography>
               </Box>
             )}
 
@@ -450,7 +450,7 @@ export function OccurrenceDetail() {
                 variant="scrollable"
                 scrollButtons="auto"
               >
-                {occurrence.subjects.map((subject) => (
+                {observation.subjects.map((subject) => (
                   <Tab
                     key={subject.index}
                     value={subject.index}
@@ -486,11 +486,11 @@ export function OccurrenceDetail() {
             </Typography>
           )}
 
-          {occurrence.scientificName &&
-            occurrence.communityId &&
-            occurrence.scientificName !== occurrence.communityId && (
+          {observation.scientificName &&
+            observation.communityId &&
+            observation.scientificName !== observation.communityId && (
               <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Originally identified as: {occurrence.scientificName}
+                Originally identified as: {observation.scientificName}
               </Typography>
             )}
 
@@ -508,14 +508,14 @@ export function OccurrenceDetail() {
           {/* Identification Panel */}
           {user ? (
             <IdentificationPanel
-              occurrence={{
-                uri: occurrence.uri,
-                cid: occurrence.cid,
-                scientificName: occurrence.scientificName,
-                communityId: currentSubject?.communityId || occurrence.communityId,
+              observation={{
+                uri: observation.uri,
+                cid: observation.cid,
+                scientificName: observation.scientificName,
+                communityId: currentSubject?.communityId || observation.communityId,
               }}
               subjectIndex={selectedSubject}
-              existingSubjectCount={occurrence.subjects?.length ?? 1}
+              existingSubjectCount={observation.subjects?.length ?? 1}
               onSuccess={handleIdentificationSuccess}
             />
           ) : (
@@ -530,8 +530,8 @@ export function OccurrenceDetail() {
         {/* Discussion / Comments */}
         <Box sx={{ mt: 3 }}>
           <CommentSection
-            occurrenceUri={occurrence.uri}
-            occurrenceCid={occurrence.cid}
+            observationUri={observation.uri}
+            observationCid={observation.cid}
             comments={comments}
             onCommentAdded={handleCommentAdded}
           />

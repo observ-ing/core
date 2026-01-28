@@ -11,16 +11,16 @@ import {
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
-import { deleteOccurrence } from "../../services/api";
+import { deleteObservation } from "../../services/api";
 
 export function DeleteConfirmDialog() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const occurrence = useAppSelector((state) => state.ui.deleteConfirmOccurrence);
+  const observation = useAppSelector((state) => state.ui.deleteConfirmObservation);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const isOpen = !!occurrence;
+  const isOpen = !!observation;
 
   const handleClose = () => {
     if (!isDeleting) {
@@ -29,11 +29,11 @@ export function DeleteConfirmDialog() {
   };
 
   const handleConfirmDelete = async () => {
-    if (!occurrence) return;
+    if (!observation) return;
 
     setIsDeleting(true);
     try {
-      await deleteOccurrence(occurrence.uri);
+      await deleteObservation(observation.uri);
 
       dispatch(
         addToast({
@@ -43,8 +43,8 @@ export function DeleteConfirmDialog() {
       );
       dispatch(closeDeleteConfirm());
 
-      // Navigate away if on the occurrence detail page
-      const isOnDetailPage = location.pathname.includes("/occurrence/");
+      // Navigate away if on the observation detail page
+      const isOnDetailPage = location.pathname.includes("/observation/");
       if (isOnDetailPage) {
         navigate("/");
       } else {
@@ -65,7 +65,7 @@ export function DeleteConfirmDialog() {
   };
 
   const species =
-    occurrence?.communityId || occurrence?.scientificName || "Unidentified";
+    observation?.communityId || observation?.scientificName || "Unidentified";
 
   return (
     <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>

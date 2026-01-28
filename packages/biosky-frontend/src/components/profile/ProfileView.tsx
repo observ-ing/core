@@ -254,7 +254,7 @@ export function ProfileView() {
             <Box
               key={occ.uri}
               component={Link}
-              to={`/occurrence/${encodeURIComponent(occ.uri)}`}
+              to={`/observation/${encodeURIComponent(occ.uri)}`}
               sx={{
                 display: "block",
                 p: 2,
@@ -305,7 +305,7 @@ export function ProfileView() {
             <Box
               key={id.uri}
               component={Link}
-              to={`/occurrence/${encodeURIComponent(id.subject_uri)}`}
+              to={`/observation/${encodeURIComponent(id.subject_uri)}`}
               sx={{
                 display: "block",
                 p: 2,

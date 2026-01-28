@@ -160,9 +160,9 @@ export function TaxonDetailSkeleton() {
 }
 
 /**
- * Skeleton loader matching occurrence detail page layout
+ * Skeleton loader matching observation detail page layout
  */
-export function OccurrenceDetailSkeleton() {
+export function ObservationDetailSkeleton() {
   return (
     <Box>
       {/* Image skeleton */}

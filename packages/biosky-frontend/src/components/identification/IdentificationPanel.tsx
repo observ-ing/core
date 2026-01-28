@@ -25,7 +25,7 @@ import { addToast } from "../../store/uiSlice";
 type ConfidenceLevel = "low" | "medium" | "high";
 
 interface IdentificationPanelProps {
-  occurrence: {
+  observation: {
     uri: string;
     cid: string;
     scientificName?: string;
@@ -38,7 +38,7 @@ interface IdentificationPanelProps {
 }
 
 export function IdentificationPanel({
-  occurrence,
+  observation,
   subjectIndex = 0,
   existingSubjectCount = 1,
   onSuccess,
@@ -55,14 +55,14 @@ export function IdentificationPanel({
   const nextSubjectIndex = existingSubjectCount;
 
   const currentId =
-    occurrence.communityId || occurrence.scientificName || "Unknown";
+    observation.communityId || observation.scientificName || "Unknown";
 
   const handleAgree = async () => {
     setIsSubmitting(true);
     try {
       await submitIdentification({
-        occurrenceUri: occurrence.uri,
-        occurrenceCid: occurrence.cid,
+        occurrenceUri: observation.uri,
+        occurrenceCid: observation.cid,
         subjectIndex,
         taxonName: currentId,
         isAgreement: true,
@@ -91,8 +91,8 @@ export function IdentificationPanel({
     setIsSubmitting(true);
     try {
       await submitIdentification({
-        occurrenceUri: occurrence.uri,
-        occurrenceCid: occurrence.cid,
+        occurrenceUri: observation.uri,
+        occurrenceCid: observation.cid,
         subjectIndex: targetSubjectIndex,
         taxonName: taxonName.trim(),
         comment: comment.trim() || undefined,

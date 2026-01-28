@@ -99,7 +99,7 @@ describe("uiSlice", () => {
 
       const state = store.getState().ui;
       expect(state.uploadModalOpen).toBe(true);
-      expect(state.editingOccurrence).toBeNull();
+      expect(state.editingObservation).toBeNull();
     });
 
     it("opens edit modal with occurrence", () => {
@@ -108,7 +108,7 @@ describe("uiSlice", () => {
 
       const state = store.getState().ui;
       expect(state.uploadModalOpen).toBe(true);
-      expect(state.editingOccurrence).toEqual(mockOccurrence);
+      expect(state.editingObservation).toEqual(mockOccurrence);
     });
 
     it("clears editing occurrence when opening for new upload", () => {
@@ -116,7 +116,7 @@ describe("uiSlice", () => {
       store.dispatch(openEditModal(mockOccurrence));
       store.dispatch(openUploadModal());
 
-      expect(store.getState().ui.editingOccurrence).toBeNull();
+      expect(store.getState().ui.editingObservation).toBeNull();
     });
 
     it("closes upload modal and clears editing occurrence", () => {
@@ -126,7 +126,7 @@ describe("uiSlice", () => {
 
       const state = store.getState().ui;
       expect(state.uploadModalOpen).toBe(false);
-      expect(state.editingOccurrence).toBeNull();
+      expect(state.editingObservation).toBeNull();
     });
   });
 
@@ -135,7 +135,7 @@ describe("uiSlice", () => {
       const store = createTestStore();
       store.dispatch(openDeleteConfirm(mockOccurrence));
 
-      expect(store.getState().ui.deleteConfirmOccurrence).toEqual(mockOccurrence);
+      expect(store.getState().ui.deleteConfirmObservation).toEqual(mockOccurrence);
     });
 
     it("closes delete confirm", () => {
@@ -143,7 +143,7 @@ describe("uiSlice", () => {
       store.dispatch(openDeleteConfirm(mockOccurrence));
       store.dispatch(closeDeleteConfirm());
 
-      expect(store.getState().ui.deleteConfirmOccurrence).toBeNull();
+      expect(store.getState().ui.deleteConfirmObservation).toBeNull();
     });
   });
 

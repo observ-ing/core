@@ -9,7 +9,7 @@ import { FeedSkeletonList } from "../common/Skeletons";
 
 export function FeedView() {
   const dispatch = useAppDispatch();
-  const { occurrences, isLoading, currentTab, hasMore, homeFeedMeta } =
+  const { observations, isLoading, currentTab, hasMore, homeFeedMeta } =
     useAppSelector((state) => state.feed);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -88,22 +88,22 @@ export function FeedView() {
         }}
       >
         <Box>
-          {occurrences.map((occ) => (
-            <FeedItem key={occ.uri} occurrence={occ} onEdit={handleEdit} onDelete={handleDelete} />
+          {observations.map((obs) => (
+            <FeedItem key={obs.uri} observation={obs} onEdit={handleEdit} onDelete={handleDelete} />
           ))}
         </Box>
 
-        {isLoading && occurrences.length === 0 && (
+        {isLoading && observations.length === 0 && (
           <FeedSkeletonList count={3} />
         )}
 
-        {isLoading && occurrences.length > 0 && (
+        {isLoading && observations.length > 0 && (
           <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
             <CircularProgress color="primary" size={24} />
           </Box>
         )}
 
-        {!isLoading && occurrences.length === 0 && (
+        {!isLoading && observations.length === 0 && (
           <Box sx={{ p: 4, textAlign: "center" }}>
             {currentTab === "home" ? (
               <>
@@ -126,7 +126,7 @@ export function FeedView() {
               </>
             ) : (
               <Typography color="text.secondary">
-                No occurrences yet. Be the first to post!
+                No observations yet. Be the first to post!
               </Typography>
             )}
           </Box>

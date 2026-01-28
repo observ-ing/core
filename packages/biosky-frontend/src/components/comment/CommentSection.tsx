@@ -21,15 +21,15 @@ import type { Comment } from "../../services/types";
 import { formatRelativeTime, getPdslsUrl } from "../../lib/utils";
 
 interface CommentSectionProps {
-  occurrenceUri: string;
-  occurrenceCid: string;
+  observationUri: string;
+  observationCid: string;
   comments: Comment[];
   onCommentAdded?: () => void;
 }
 
 export function CommentSection({
-  occurrenceUri,
-  occurrenceCid,
+  observationUri,
+  observationCid,
   comments,
   onCommentAdded,
 }: CommentSectionProps) {
@@ -59,8 +59,8 @@ export function CommentSection({
     setIsSubmitting(true);
     try {
       await submitComment({
-        occurrenceUri,
-        occurrenceCid,
+        occurrenceUri: observationUri,
+        occurrenceCid: observationCid,
         body: body.trim(),
       });
       dispatch(addToast({ message: "Comment posted!", type: "success" }));

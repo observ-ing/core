@@ -35,8 +35,8 @@ interface Toast {
 interface UIState {
   loginModalOpen: boolean;
   uploadModalOpen: boolean;
-  editingOccurrence: Occurrence | null;
-  deleteConfirmOccurrence: Occurrence | null;
+  editingObservation: Occurrence | null;
+  deleteConfirmObservation: Occurrence | null;
   toasts: Toast[];
   currentLocation: { lat: number; lng: number } | null;
   themeMode: ThemeMode;
@@ -48,8 +48,8 @@ const storedTheme = getStoredTheme();
 const initialState: UIState = {
   loginModalOpen: false,
   uploadModalOpen: false,
-  editingOccurrence: null,
-  deleteConfirmOccurrence: null,
+  editingObservation: null,
+  deleteConfirmObservation: null,
   toasts: [],
   currentLocation: null,
   themeMode: storedTheme,
@@ -68,21 +68,21 @@ const uiSlice = createSlice({
     },
     openUploadModal: (state) => {
       state.uploadModalOpen = true;
-      state.editingOccurrence = null;
+      state.editingObservation = null;
     },
     openEditModal: (state, action: PayloadAction<Occurrence>) => {
       state.uploadModalOpen = true;
-      state.editingOccurrence = action.payload;
+      state.editingObservation = action.payload;
     },
     closeUploadModal: (state) => {
       state.uploadModalOpen = false;
-      state.editingOccurrence = null;
+      state.editingObservation = null;
     },
     openDeleteConfirm: (state, action: PayloadAction<Occurrence>) => {
-      state.deleteConfirmOccurrence = action.payload;
+      state.deleteConfirmObservation = action.payload;
     },
     closeDeleteConfirm: (state) => {
-      state.deleteConfirmOccurrence = null;
+      state.deleteConfirmObservation = null;
     },
     addToast: (
       state,

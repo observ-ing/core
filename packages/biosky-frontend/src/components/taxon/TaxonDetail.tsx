@@ -23,7 +23,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { fetchTaxon, fetchTaxonOccurrences } from "../../services/api";
+import { fetchTaxon, fetchTaxonObservations } from "../../services/api";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
@@ -37,7 +37,7 @@ export function TaxonDetail() {
   const navigate = useNavigate();
 
   const [taxon, setTaxon] = useState<TaxonDetailType | null>(null);
-  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
+  const [observations, setObservations] = useState<Occurrence[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,19 +70,19 @@ export function TaxonDetail() {
 
       if (result) {
         setTaxon(result);
-        // Load initial occurrences
+        // Load initial observations
         try {
-          let occResult;
+          let obsResult;
           if (lookupKingdom && lookupName) {
-            occResult = await fetchTaxonOccurrences(lookupKingdom, lookupName);
+            obsResult = await fetchTaxonObservations(lookupKingdom, lookupName);
           } else {
-            occResult = await fetchTaxonOccurrences(lookupId || lookupKingdom!);
+            obsResult = await fetchTaxonObservations(lookupId || lookupKingdom!);
           }
-          setOccurrences(occResult.occurrences);
-          setCursor(occResult.cursor);
-          setHasMore(!!occResult.cursor);
+          setObservations(obsResult.occurrences);
+          setCursor(obsResult.cursor);
+          setHasMore(!!obsResult.cursor);
         } catch {
-          setOccurrences([]);
+          setObservations([]);
           setHasMore(false);
         }
       } else {
@@ -102,18 +102,18 @@ export function TaxonDetail() {
     }
   };
 
-  const loadMoreOccurrences = async () => {
+  const loadMoreObservations = async () => {
     if (!cursor || loadingMore) return;
 
     setLoadingMore(true);
     try {
       let result;
       if (lookupKingdom && lookupName) {
-        result = await fetchTaxonOccurrences(lookupKingdom, lookupName, cursor);
+        result = await fetchTaxonObservations(lookupKingdom, lookupName, cursor);
       } else {
-        result = await fetchTaxonOccurrences(lookupId || lookupKingdom!, undefined, cursor);
+        result = await fetchTaxonObservations(lookupId || lookupKingdom!, undefined, cursor);
       }
-      setOccurrences((prev) => [...prev, ...result.occurrences]);
+      setObservations((prev) => [...prev, ...result.occurrences]);
       setCursor(result.cursor);
       setHasMore(!!result.cursor);
     } catch {
@@ -434,7 +434,7 @@ export function TaxonDetail() {
         </Typography>
       </Box>
 
-      {occurrences.length === 0 ? (
+      {observations.length === 0 ? (
         <Box sx={{ p: 3, textAlign: "center" }}>
           <Typography color="text.secondary">
             No observations yet
@@ -442,15 +442,15 @@ export function TaxonDetail() {
         </Box>
       ) : (
         <Box>
-          {occurrences.map((occ) => (
-            <FeedItem key={occ.uri} occurrence={occ} />
+          {observations.map((obs) => (
+            <FeedItem key={obs.uri} observation={obs} />
           ))}
 
           {hasMore && (
             <Box sx={{ p: 2, textAlign: "center" }}>
               <Button
                 variant="text"
-                onClick={loadMoreOccurrences}
+                onClick={loadMoreObservations}
                 disabled={loadingMore}
               >
                 {loadingMore ? (

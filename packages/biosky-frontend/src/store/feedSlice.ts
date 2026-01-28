@@ -3,7 +3,7 @@ import type { Occurrence, FeedTab, FeedFilters } from "../services/types";
 import * as api from "../services/api";
 
 interface FeedState {
-  occurrences: Occurrence[];
+  observations: Occurrence[];
   cursor: string | undefined;
   isLoading: boolean;
   currentTab: FeedTab;
@@ -19,7 +19,7 @@ interface FeedState {
 }
 
 const initialState: FeedState = {
-  occurrences: [],
+  observations: [],
   cursor: undefined,
   isLoading: false,
   currentTab: "explore",  // Default to explore to show all posts
@@ -71,20 +71,20 @@ const feedSlice = createSlice({
   reducers: {
     switchTab: (state, action: PayloadAction<FeedTab>) => {
       state.currentTab = action.payload;
-      state.occurrences = [];
+      state.observations = [];
       state.cursor = undefined;
       state.hasMore = true;
       state.homeFeedMeta = null;
     },
     resetFeed: (state) => {
-      state.occurrences = [];
+      state.observations = [];
       state.cursor = undefined;
       state.hasMore = true;
       state.homeFeedMeta = null;
     },
     setFilters: (state, action: PayloadAction<FeedFilters>) => {
       state.filters = action.payload;
-      state.occurrences = [];
+      state.observations = [];
       state.cursor = undefined;
       state.hasMore = true;
     },
@@ -101,8 +101,8 @@ const feedSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(loadFeed.fulfilled, (state, action) => {
-        state.occurrences = [
-          ...state.occurrences,
+        state.observations = [
+          ...state.observations,
           ...action.payload.occurrences,
         ];
         state.cursor = action.payload.cursor;
@@ -121,11 +121,11 @@ const feedSlice = createSlice({
       })
       .addCase(loadInitialFeed.pending, (state) => {
         state.isLoading = true;
-        state.occurrences = [];
+        state.observations = [];
         state.cursor = undefined;
       })
       .addCase(loadInitialFeed.fulfilled, (state, action) => {
-        state.occurrences = action.payload.occurrences;
+        state.observations = action.payload.occurrences;
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;

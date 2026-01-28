@@ -21,21 +21,21 @@ import { TaxonLink } from "../common/TaxonLink";
 import { formatTimeAgo, getPdslsUrl } from "../../lib/utils";
 
 interface FeedItemProps {
-  occurrence: Occurrence;
-  onEdit?: (occurrence: Occurrence) => void;
-  onDelete?: (occurrence: Occurrence) => void;
+  observation: Occurrence;
+  onEdit?: (observation: Occurrence) => void;
+  onDelete?: (observation: Occurrence) => void;
 }
 
-export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
+export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  const isOwnPost = currentUser?.did === occurrence.observer.did;
+  const isOwnPost = currentUser?.did === observation.observer.did;
 
   // Get owner and co-observers
-  const observers = occurrence.observers || [];
-  const owner = observers.find((o) => o.role === "owner") || occurrence.observer;
+  const observers = observation.observers || [];
+  const owner = observers.find((o) => o.role === "owner") || observation.observer;
   const coObservers = observers.filter((o) => o.role === "co-observer");
   const hasCoObservers = coObservers.length > 0;
 
@@ -46,24 +46,24 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
   const handle = owner.handle
     ? `@${owner.handle}`
     : "";
-  const timeAgo = formatTimeAgo(new Date(occurrence.createdAt));
+  const timeAgo = formatTimeAgo(new Date(observation.createdAt));
 
   // Use effectiveTaxonomy (preferred) or fall back to legacy fields
-  const taxonomy = occurrence.effectiveTaxonomy || {
-    scientificName: occurrence.scientificName,
-    taxonId: occurrence.taxonId,
-    taxonRank: occurrence.taxonRank,
-    kingdom: occurrence.kingdom,
+  const taxonomy = observation.effectiveTaxonomy || {
+    scientificName: observation.scientificName,
+    taxonId: observation.taxonId,
+    taxonRank: observation.taxonRank,
+    kingdom: observation.kingdom,
   };
   const species =
-    occurrence.communityId || taxonomy.scientificName || undefined;
+    observation.communityId || taxonomy.scientificName || undefined;
 
-  const imageUrl = occurrence.images[0]
-    ? getImageUrl(occurrence.images[0])
+  const imageUrl = observation.images[0]
+    ? getImageUrl(observation.images[0])
     : "";
 
-  const occurrenceUrl = `/occurrence/${encodeURIComponent(occurrence.uri)}`;
-  const pdslsUrl = getPdslsUrl(occurrence.uri);
+  const observationUrl = `/observation/${encodeURIComponent(observation.uri)}`;
+  const pdslsUrl = getPdslsUrl(observation.uri);
 
   // Build tooltip for co-observers
   const coObserverNames = coObservers
@@ -84,14 +84,14 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
     e.preventDefault();
     e.stopPropagation();
     handleMenuClose();
-    onEdit?.(occurrence);
+    onEdit?.(observation);
   };
 
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     handleMenuClose();
-    onDelete?.(occurrence);
+    onDelete?.(observation);
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
@@ -100,7 +100,7 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
     if (target.closest('a, button')) {
       return;
     }
-    navigate(occurrenceUrl);
+    navigate(observationUrl);
   };
 
   return (
@@ -230,9 +230,9 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
         </Stack>
 
         {/* Species display - show multiple if multi-subject */}
-        {occurrence.subjects && occurrence.subjects.length > 1 ? (
+        {observation.subjects && observation.subjects.length > 1 ? (
           <Stack spacing={0.25} sx={{ my: 0.5 }}>
-            {occurrence.subjects.slice(0, 3).map((subject, idx) => (
+            {observation.subjects.slice(0, 3).map((subject, idx) => (
               <Box
                 key={subject.index}
                 sx={{
@@ -254,9 +254,9 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
                 )}
               </Box>
             ))}
-            {occurrence.subjects.length > 3 && (
+            {observation.subjects.length > 3 && (
               <Typography variant="caption" color="text.disabled">
-                +{occurrence.subjects.length - 3} more
+                +{observation.subjects.length - 3} more
               </Typography>
             )}
           </Stack>
@@ -277,19 +277,19 @@ export function FeedItem({ occurrence, onEdit, onDelete }: FeedItemProps) {
           </Box>
         )}
 
-        {occurrence.occurrenceRemarks && (
+        {observation.occurrenceRemarks && (
           <Typography
             variant="body2"
             color="text.secondary"
             sx={{ lineHeight: 1.4, my: 0.5 }}
           >
-            {occurrence.occurrenceRemarks}
+            {observation.occurrenceRemarks}
           </Typography>
         )}
 
-        {occurrence.verbatimLocality && (
+        {observation.verbatimLocality && (
           <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-            {occurrence.verbatimLocality}
+            {observation.verbatimLocality}
           </Typography>
         )}
 

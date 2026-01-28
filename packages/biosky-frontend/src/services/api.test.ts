@@ -246,7 +246,7 @@ describe("api", () => {
     });
   });
 
-  describe("fetchOccurrence", () => {
+  describe("fetchObservation", () => {
     it("fetches single occurrence", async () => {
       const mockData = { occurrence: { uri: "at://test" } };
       mockFetch.mockResolvedValue({
@@ -254,7 +254,7 @@ describe("api", () => {
         json: () => Promise.resolve(mockData),
       });
 
-      const result = await api.fetchOccurrence("at://test/occurrence/123");
+      const result = await api.fetchObservation("at://test/occurrence/123");
 
       expect(result).toEqual(mockData);
     });
@@ -262,7 +262,7 @@ describe("api", () => {
     it("returns null on 404", async () => {
       mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
-      const result = await api.fetchOccurrence("at://test/occurrence/notfound");
+      const result = await api.fetchObservation("at://test/occurrence/notfound");
 
       expect(result).toBeNull();
     });
@@ -271,14 +271,14 @@ describe("api", () => {
       mockFetch.mockRejectedValue(new Error("Network error"));
       const consoleSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
-      const result = await api.fetchOccurrence("at://test/occurrence/123");
+      const result = await api.fetchObservation("at://test/occurrence/123");
 
       expect(result).toBeNull();
       consoleSpy.mockRestore();
     });
   });
 
-  describe("fetchOccurrencesGeoJSON", () => {
+  describe("fetchObservationsGeoJSON", () => {
     it("fetches GeoJSON with bounds", async () => {
       const mockData = { type: "FeatureCollection", features: [] };
       mockFetch.mockResolvedValue({
@@ -286,7 +286,7 @@ describe("api", () => {
         json: () => Promise.resolve(mockData),
       });
 
-      const result = await api.fetchOccurrencesGeoJSON({
+      const result = await api.fetchObservationsGeoJSON({
         minLat: 40,
         minLng: -75,
         maxLat: 41,
@@ -303,13 +303,13 @@ describe("api", () => {
       mockFetch.mockResolvedValue({ ok: false });
 
       await expect(
-        api.fetchOccurrencesGeoJSON({
+        api.fetchObservationsGeoJSON({
           minLat: 40,
           minLng: -75,
           maxLat: 41,
           maxLng: -74,
         })
-      ).rejects.toThrow("Failed to load occurrences");
+      ).rejects.toThrow("Failed to load observations");
     });
   });
 
@@ -354,14 +354,14 @@ describe("api", () => {
     });
   });
 
-  describe("submitOccurrence", () => {
+  describe("submitObservation", () => {
     it("submits occurrence data", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ uri: "at://test", cid: "cid123" }),
       });
 
-      const result = await api.submitOccurrence({
+      const result = await api.submitObservation({
         scientificName: "Quercus alba",
         latitude: 40.7128,
         longitude: -74.006,
@@ -384,7 +384,7 @@ describe("api", () => {
       });
 
       await expect(
-        api.submitOccurrence({
+        api.submitObservation({
           scientificName: "Test",
           latitude: 999,
           longitude: -74,
@@ -400,7 +400,7 @@ describe("api", () => {
       });
 
       await expect(
-        api.submitOccurrence({
+        api.submitObservation({
           scientificName: "Test",
           latitude: 40,
           longitude: -74,
@@ -410,14 +410,14 @@ describe("api", () => {
     });
   });
 
-  describe("updateOccurrence", () => {
+  describe("updateObservation", () => {
     it("updates occurrence with PUT", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ uri: "at://test", cid: "cid456" }),
       });
 
-      const result = await api.updateOccurrence({
+      const result = await api.updateObservation({
         uri: "at://test/occurrence/123",
         scientificName: "Quercus rubra",
         latitude: 40,
@@ -441,7 +441,7 @@ describe("api", () => {
       });
 
       await expect(
-        api.updateOccurrence({
+        api.updateObservation({
           uri: "at://test",
           scientificName: "Test",
           latitude: 40,
@@ -452,14 +452,14 @@ describe("api", () => {
     });
   });
 
-  describe("deleteOccurrence", () => {
+  describe("deleteObservation", () => {
     it("deletes occurrence", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({ success: true }),
       });
 
-      const result = await api.deleteOccurrence("at://test/occurrence/123");
+      const result = await api.deleteObservation("at://test/occurrence/123");
 
       expect(result).toEqual({ success: true });
       expect(mockFetch).toHaveBeenCalledWith(
@@ -474,7 +474,7 @@ describe("api", () => {
         json: () => Promise.resolve({ error: "Unauthorized" }),
       });
 
-      await expect(api.deleteOccurrence("at://test")).rejects.toThrow(
+      await expect(api.deleteObservation("at://test")).rejects.toThrow(
         "Unauthorized"
       );
     });
@@ -613,7 +613,7 @@ describe("api", () => {
     });
   });
 
-  describe("fetchTaxonOccurrences", () => {
+  describe("fetchTaxonObservations", () => {
     it("fetches occurrences for taxon", async () => {
       const mockData = { occurrences: [], cursor: "next" };
       mockFetch.mockResolvedValue({
@@ -621,7 +621,7 @@ describe("api", () => {
         json: () => Promise.resolve(mockData),
       });
 
-      const result = await api.fetchTaxonOccurrences("123");
+      const result = await api.fetchTaxonObservations("123");
 
       expect(result).toEqual(mockData);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -635,7 +635,7 @@ describe("api", () => {
         json: () => Promise.resolve({ occurrences: [] }),
       });
 
-      await api.fetchTaxonOccurrences("123", undefined, "cursor456");
+      await api.fetchTaxonObservations("123", undefined, "cursor456");
 
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/taxa/123/occurrences?limit=20&cursor=cursor456"
@@ -645,8 +645,8 @@ describe("api", () => {
     it("throws on error", async () => {
       mockFetch.mockResolvedValue({ ok: false });
 
-      await expect(api.fetchTaxonOccurrences("123")).rejects.toThrow(
-        "Failed to fetch taxon occurrences"
+      await expect(api.fetchTaxonObservations("123")).rejects.toThrow(
+        "Failed to fetch taxon observations"
       );
     });
   });

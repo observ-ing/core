@@ -9,7 +9,7 @@ import { updateSystemTheme } from "./store/uiSlice";
 import { Header } from "./components/layout/Header";
 import { FeedView } from "./components/feed/FeedView";
 import { MapView } from "./components/map/MapView";
-import { OccurrenceDetail } from "./components/occurrence/OccurrenceDetail";
+import { ObservationDetail } from "./components/observation/ObservationDetail";
 import { ProfileView } from "./components/profile/ProfileView";
 import { TaxonDetail } from "./components/taxon/TaxonDetail";
 import { LoginModal } from "./components/modals/LoginModal";
@@ -52,7 +52,7 @@ function AppContent() {
         <Routes>
           <Route path="/" element={<FeedView />} />
           <Route path="/map" element={<MapView />} />
-          <Route path="/occurrence/:uri" element={<OccurrenceDetail />} />
+          <Route path="/observation/:uri" element={<ObservationDetail />} />
           <Route path="/profile/:did" element={<ProfileView />} />
           <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
           <Route path="/taxon/:id" element={<TaxonDetail />} />
