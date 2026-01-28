@@ -232,16 +232,13 @@ export function TaxonDetail() {
 
         {/* Taxonomy Hierarchy (Ancestors) - using Breadcrumbs */}
         {taxon.ancestors.length > 0 && (
-          <Accordion defaultExpanded sx={{ mt: 3, bgcolor: "transparent", boxShadow: "none" }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ px: 0, minHeight: "auto", "& .MuiAccordionSummary-content": { my: 1 } }}
-            >
+          <Accordion defaultExpanded sx={{ mt: 3 }}>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 Classification
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
+            <AccordionDetails>
               <Breadcrumbs
                 separator={<ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />}
                 aria-label="taxonomy breadcrumb"
@@ -264,16 +261,13 @@ export function TaxonDetail() {
 
         {/* Children Taxa */}
         {taxon.children.length > 0 && (
-          <Accordion sx={{ bgcolor: "transparent", boxShadow: "none" }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ px: 0, minHeight: "auto", "& .MuiAccordionSummary-content": { my: 1 } }}
-            >
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 {taxon.rank === "genus" ? "Species" : "Child Taxa"} ({taxon.children.length})
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
+            <AccordionDetails>
               <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.5 }}>
                 {taxon.children.map((child) => (
                   <TaxonLink
@@ -291,16 +285,13 @@ export function TaxonDetail() {
 
         {/* Media Gallery - using ImageList */}
         {taxon.media && taxon.media.length > 0 && (
-          <Accordion defaultExpanded sx={{ bgcolor: "transparent", boxShadow: "none" }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ px: 0, minHeight: "auto", "& .MuiAccordionSummary-content": { my: 1 } }}
-            >
+          <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 Media ({taxon.media.length})
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
+            <AccordionDetails>
               <ImageList
                 variant="masonry"
                 cols={3}
@@ -341,16 +332,13 @@ export function TaxonDetail() {
 
         {/* Descriptions */}
         {taxon.descriptions && taxon.descriptions.length > 0 && (
-          <Accordion sx={{ bgcolor: "transparent", boxShadow: "none" }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ px: 0, minHeight: "auto", "& .MuiAccordionSummary-content": { my: 1 } }}
-            >
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 Description
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
+            <AccordionDetails>
               {taxon.descriptions.slice(0, 2).map((d, idx) => (
                 <Box key={idx} sx={{ mb: idx < taxon.descriptions!.length - 1 ? 2 : 0 }}>
                   <Typography
@@ -377,16 +365,13 @@ export function TaxonDetail() {
 
         {/* References */}
         {taxon.references && taxon.references.length > 0 && (
-          <Accordion sx={{ bgcolor: "transparent", boxShadow: "none" }}>
-            <AccordionSummary
-              expandIcon={<ExpandMoreIcon />}
-              sx={{ px: 0, minHeight: "auto", "& .MuiAccordionSummary-content": { my: 1 } }}
-            >
+          <Accordion>
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 References ({taxon.references.length})
               </Typography>
             </AccordionSummary>
-            <AccordionDetails sx={{ px: 0 }}>
+            <AccordionDetails>
               <Stack spacing={0.5}>
                 {taxon.references.slice(0, 5).map((r, idx) => (
                   <Typography key={idx} variant="caption" color="text.secondary">
