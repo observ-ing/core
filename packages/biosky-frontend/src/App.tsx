@@ -8,7 +8,6 @@ import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
 import { Header } from "./components/layout/Header";
 import { FeedView } from "./components/feed/FeedView";
-import { MapView } from "./components/map/MapView";
 import { ObservationDetail } from "./components/observation/ObservationDetail";
 import { ProfileView } from "./components/profile/ProfileView";
 import { TaxonDetail } from "./components/taxon/TaxonDetail";
@@ -51,7 +50,6 @@ function AppContent() {
       >
         <Routes>
           <Route path="/" element={<FeedView />} />
-          <Route path="/map" element={<MapView />} />
           <Route path="/observation/:uri" element={<ObservationDetail />} />
           <Route path="/profile/:did" element={<ProfileView />} />
           <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
