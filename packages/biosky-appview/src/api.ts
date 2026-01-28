@@ -1413,7 +1413,7 @@ export class AppViewServer {
         const rows = await this.db.getOccurrencesByTaxon(
           taxon.scientificName,
           taxon.rank,
-          { limit, ...(cursor && { cursor }), kingdom: taxon.kingdom },
+          { limit, ...(cursor && { cursor }), ...(taxon.kingdom && { kingdom: taxon.kingdom }) },
         );
 
         const occurrences = await this.enrichOccurrences(rows);
@@ -1448,7 +1448,7 @@ export class AppViewServer {
         const rows = await this.db.getOccurrencesByTaxon(
           taxon.scientificName,
           taxon.rank,
-          { limit, ...(cursor && { cursor }), kingdom: taxon.kingdom },
+          { limit, ...(cursor && { cursor }), ...(taxon.kingdom && { kingdom: taxon.kingdom }) },
         );
 
         const occurrences = await this.enrichOccurrences(rows);

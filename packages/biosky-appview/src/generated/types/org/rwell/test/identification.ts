@@ -38,7 +38,7 @@ export interface Main {
     | 'variety'
     | 'form'
     | (string & {})
-  /** External taxon identifier (e.g., gbif:2878688). Prefixed with source. */
+  /** [DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source. */
   taxonId?: string
   /** Common name for the taxon in the identifier's language. */
   vernacularName?: string
