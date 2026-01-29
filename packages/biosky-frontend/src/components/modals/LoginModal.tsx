@@ -6,6 +6,9 @@ import {
   DialogActions,
   TextField,
   Button,
+  Typography,
+  Box,
+  Link,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
@@ -32,14 +35,30 @@ export function LoginModal() {
   return (
     <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>
       <form onSubmit={handleSubmit}>
-        <DialogTitle>Log in with Bluesky</DialogTitle>
+        <DialogTitle>Log in</DialogTitle>
         <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            BioSky uses the{" "}
+            <Link
+              href="https://atproto.com"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              AT Protocol
+            </Link>
+            . You can log in with any compatible service, including Bluesky.
+          </Typography>
           <TextField
             fullWidth
-            label="Handle"
+            label="Your handle"
             value={handle}
             onChange={(e) => setHandle(e.target.value)}
-            placeholder="e.g., alice.bsky.social"
+            placeholder="alice.bsky.social"
+            helperText={
+              <Box component="span">
+                Examples: alice.bsky.social, bob.us-west.host.bsky.network, carol.example.com
+              </Box>
+            }
             autoComplete="username"
             autoCapitalize="none"
             autoCorrect="off"
@@ -52,8 +71,8 @@ export function LoginModal() {
           <Button onClick={handleClose} color="inherit">
             Cancel
           </Button>
-          <Button type="submit" variant="contained" color="primary">
-            Log in
+          <Button type="submit" variant="contained" color="primary" disabled={!handle.trim()}>
+            Continue
           </Button>
         </DialogActions>
       </form>
