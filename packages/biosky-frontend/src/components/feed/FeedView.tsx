@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from "react";
-import { Box, Container, Tabs, Tab, Typography, Button, CircularProgress } from "@mui/material";
+import { Link, useNavigate } from "react-router-dom";
+import { Box, Container, Typography, Button, CircularProgress } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
@@ -7,11 +8,23 @@ import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
 import { FeedSkeletonList } from "../common/Skeletons";
 
-export function FeedView() {
+interface FeedViewProps {
+  tab?: FeedTab;
+}
+
+export function FeedView({ tab = "home" }: FeedViewProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const { observations, isLoading, currentTab, hasMore, homeFeedMeta } =
     useAppSelector((state) => state.feed);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Sync route tab with store
+  useEffect(() => {
+    if (tab !== currentTab) {
+      dispatch(switchTab(tab));
+    }
+  }, [dispatch, tab, currentTab]);
 
   useEffect(() => {
     dispatch(loadInitialFeed());
@@ -25,12 +38,6 @@ export function FeedView() {
       dispatch(loadFeed());
     }
   }, [dispatch, isLoading, hasMore]);
-
-  const handleTabClick = (_: React.SyntheticEvent, tab: FeedTab) => {
-    if (tab !== currentTab) {
-      dispatch(switchTab(tab));
-    }
-  };
 
   const handleEdit = useCallback(
     (occurrence: Occurrence) => {
@@ -55,28 +62,8 @@ export function FeedView() {
         display: "flex",
         flexDirection: "column",
         overflow: "hidden",
-        borderLeft: { sm: 1 },
-        borderRight: { sm: 1 },
-        borderColor: "divider",
       }}
     >
-      <Tabs
-        value={currentTab}
-        onChange={handleTabClick}
-        sx={{
-          borderBottom: 1,
-          borderColor: "divider",
-          bgcolor: "background.paper",
-          position: "sticky",
-          top: 0,
-          zIndex: 10,
-          "& .MuiTab-root": { flex: 1, minWidth: 0 },
-        }}
-      >
-        <Tab label="Home" value="home" />
-        <Tab label="Explore" value="explore" />
-      </Tabs>
-
       <Box
         ref={contentRef}
         onScroll={handleScroll}
@@ -119,7 +106,8 @@ export function FeedView() {
                 <Button
                   variant="outlined"
                   color="primary"
-                  onClick={() => dispatch(switchTab("explore"))}
+                  component={Link}
+                  to="/explore"
                 >
                   Browse all observations
                 </Button>

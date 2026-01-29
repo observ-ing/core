@@ -131,9 +131,6 @@ export function ObservationDetail() {
             display: "flex",
             flexDirection: "column",
             bgcolor: "background.paper",
-            borderLeft: { sm: 1 },
-            borderRight: { sm: 1 },
-            borderColor: "divider",
           }}
         >
           <ObservationDetailSkeleton />
@@ -204,9 +201,6 @@ export function ObservationDetail() {
         display: "flex",
         flexDirection: "column",
         bgcolor: "background.paper",
-        borderLeft: { sm: 1 },
-        borderRight: { sm: 1 },
-        borderColor: "divider",
       }}
     >
       {/* Header */}

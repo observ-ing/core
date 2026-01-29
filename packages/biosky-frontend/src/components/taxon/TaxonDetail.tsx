@@ -132,9 +132,6 @@ export function TaxonDetail() {
           display: "flex",
           flexDirection: "column",
           overflow: "auto",
-          borderLeft: { sm: 1 },
-          borderRight: { sm: 1 },
-          borderColor: "divider",
         }}
       >
         <TaxonDetailSkeleton />
@@ -167,9 +164,6 @@ export function TaxonDetail() {
         display: "flex",
         flexDirection: "column",
         overflow: "auto",
-        borderLeft: { sm: 1 },
-        borderRight: { sm: 1 },
-        borderColor: "divider",
       }}
     >
       {/* Header */}

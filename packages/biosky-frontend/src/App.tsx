@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box } from "@mui/material";
@@ -6,7 +6,7 @@ import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
-import { Header } from "./components/layout/Header";
+import { Sidebar, DRAWER_WIDTH } from "./components/layout/Sidebar";
 import { FeedView } from "./components/feed/FeedView";
 import { ObservationDetail } from "./components/observation/ObservationDetail";
 import { ProfileView } from "./components/profile/ProfileView";
@@ -21,6 +21,11 @@ import "./styles/global.css";
 
 function AppContent() {
   const dispatch = useAppDispatch();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const handleDrawerToggle = () => {
+    setMobileOpen(!mobileOpen);
+  };
 
   useEffect(() => {
     dispatch(checkAuth());
@@ -38,24 +43,28 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-      <Header />
-      <Box
-        component="main"
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <Routes>
-          <Route path="/" element={<FeedView />} />
-          <Route path="/observation/:uri" element={<ObservationDetail />} />
-          <Route path="/profile/:did" element={<ProfileView />} />
-          <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
-          <Route path="/taxon/:id" element={<TaxonDetail />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />
+        <Box
+          component="main"
+          sx={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
+          }}
+        >
+          <Routes>
+            <Route path="/" element={<FeedView tab="home" />} />
+            <Route path="/explore" element={<FeedView tab="explore" />} />
+            <Route path="/observation/:uri" element={<ObservationDetail />} />
+            <Route path="/profile/:did" element={<ProfileView />} />
+            <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
+            <Route path="/taxon/:id" element={<TaxonDetail />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Box>
       </Box>
       <FAB />
       <LoginModal />
