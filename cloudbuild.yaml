@@ -20,6 +20,11 @@ steps:
     args: ['build', '-f', 'packages/observing-media-proxy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-media-proxy', '.']
     waitFor: ['-']
 
+  - id: 'build-taxonomy'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'packages/observing-taxonomy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-taxonomy', '.']
+    waitFor: ['-']
+
   # Push all images in parallel
   - id: 'push-appview'
     name: 'gcr.io/cloud-builders/docker'
@@ -41,6 +46,11 @@ steps:
     args: ['push', 'gcr.io/$PROJECT_ID/observing-media-proxy']
     waitFor: ['build-media-proxy']
 
+  - id: 'push-taxonomy'
+    name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/observing-taxonomy']
+    waitFor: ['build-taxonomy']
+
   # Deploy all services in parallel
   - id: 'deploy-appview'
     name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -53,7 +63,7 @@ steps:
       - '--region=$_REGION'
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances=$PROJECT_ID:$_REGION:observing-db'
-      - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$_PUBLIC_URL'
+      - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$_PUBLIC_URL,TAXONOMY_SERVICE_URL=$_TAXONOMY_URL'
       - '--set-secrets=DB_PASSWORD=observing-db-password:latest,INTERNAL_SECRET=observing-internal-secret:latest'
     waitFor: ['push-appview']
 
@@ -68,7 +78,7 @@ steps:
       - '--region=$_REGION'
       - '--allow-unauthenticated'
       - '--add-cloudsql-instances=$PROJECT_ID:$_REGION:observing-db'
-      - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:observing-db,DB_NAME=observing,DB_USER=postgres,APPVIEW_URL=$_APPVIEW_URL,CORS_ORIGINS=$_PUBLIC_URL'
+      - '--set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$_REGION:observing-db,DB_NAME=observing,DB_USER=postgres,APPVIEW_URL=$_APPVIEW_URL,CORS_ORIGINS=$_PUBLIC_URL,TAXONOMY_SERVICE_URL=$_TAXONOMY_URL'
       - '--set-secrets=DB_PASSWORD=observing-db-password:latest,INTERNAL_SECRET=observing-internal-secret:latest'
     waitFor: ['push-api']
 
@@ -105,13 +115,28 @@ steps:
       - '--set-env-vars=RUST_LOG=observing_media_proxy=info,LOG_FORMAT=json'
     waitFor: ['push-media-proxy']
 
+  - id: 'deploy-taxonomy'
+    name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'observing-taxonomy'
+      - '--image=gcr.io/$PROJECT_ID/observing-taxonomy'
+      - '--region=$_REGION'
+      - '--allow-unauthenticated'
+      - '--set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json'
+    waitFor: ['push-taxonomy']
+
 images:
   - 'gcr.io/$PROJECT_ID/observing-appview'
   - 'gcr.io/$PROJECT_ID/observing-api'
   - 'gcr.io/$PROJECT_ID/observing-ingester'
   - 'gcr.io/$PROJECT_ID/observing-media-proxy'
+  - 'gcr.io/$PROJECT_ID/observing-taxonomy'
 
 substitutions:
   _REGION: us-central1
   _PUBLIC_URL: https://observing-appview-378013734384.us-central1.run.app
   _APPVIEW_URL: https://observing-appview-378013734384.us-central1.run.app
+  _TAXONOMY_URL: https://observing-taxonomy-378013734384.us-central1.run.app

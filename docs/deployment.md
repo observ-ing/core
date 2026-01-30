@@ -2,13 +2,14 @@
 
 ## Google Cloud Run
 
-Three services deployed via `cloudbuild.yaml`:
+Services deployed via `cloudbuild.yaml`:
 
 | Service | Dockerfile | Public | Cloud SQL | Notes |
 |---------|------------|--------|-----------|-------|
 | observing-appview | packages/observing-appview/Dockerfile | Yes | Yes | Main API + serves frontend |
 | observing-ingester | packages/observing-ingester/Dockerfile | Yes | Yes | min-instances=1 (always running) |
 | observing-media-proxy | packages/observing-media-proxy/Dockerfile | Yes | No | Stateless image cache |
+| observing-taxonomy | packages/observing-taxonomy/Dockerfile | Yes | No | GBIF taxonomy lookups with caching |
 
 ## Manual Deploy
 
@@ -54,4 +55,13 @@ CACHE_DIR=./cache/media
 ```bash
 PORT=3000
 PUBLIC_URL=https://your-domain.run.app
+TAXONOMY_SERVICE_URL=https://observing-taxonomy-xxx.run.app
+```
+
+### Taxonomy
+
+```bash
+PORT=8080
+RUST_LOG=observing_taxonomy=info
+LOG_FORMAT=json  # For GCP Cloud Logging
 ```
