@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider, CssBaseline, Box } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
@@ -43,6 +43,20 @@ function AppContent() {
 
   return (
     <BrowserRouter>
+      <Alert
+        severity="warning"
+        sx={{
+          borderRadius: 0,
+          py: 0.5,
+          "& .MuiAlert-message": {
+            width: "100%",
+            textAlign: "center",
+          },
+        }}
+      >
+        <strong>Pre-release:</strong> This is an early alpha. The database may
+        be wiped at any time without notice.
+      </Alert>
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />
         <Box
