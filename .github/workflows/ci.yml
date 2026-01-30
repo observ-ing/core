@@ -79,7 +79,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt
-      - run: cargo fmt --manifest-path packages/observing-ingester/Cargo.toml -- --check
+      - run: cargo fmt --manifest-path crates/observing-ingester/Cargo.toml -- --check
 
   rust-audit:
     runs-on: ubuntu-latest
@@ -99,8 +99,8 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/observing-ingester
-      - run: cargo clippy --manifest-path packages/observing-ingester/Cargo.toml -- -D warnings
+          workspaces: crates/observing-ingester
+      - run: cargo clippy --manifest-path crates/observing-ingester/Cargo.toml -- -D warnings
         env:
           SQLX_OFFLINE: true
 
@@ -111,13 +111,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/observing-ingester
+          workspaces: crates/observing-ingester
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
           tool: sqlx-cli
           no-default-features: true
           features: postgres
-      - working-directory: packages/observing-ingester
+      - working-directory: crates/observing-ingester
         run: cargo sqlx prepare --check
 
   rust-test:
@@ -127,8 +127,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/observing-ingester
-      - run: cargo test --manifest-path packages/observing-ingester/Cargo.toml
+          workspaces: crates/observing-ingester
+      - run: cargo test --manifest-path crates/observing-ingester/Cargo.toml
         env:
           SQLX_OFFLINE: true
 
@@ -147,11 +147,11 @@ jobs:
             context: .
             dockerfile: packages/observing-api/Dockerfile
           - service: ingester
-            context: packages/observing-ingester
-            dockerfile: packages/observing-ingester/Dockerfile
+            context: crates/observing-ingester
+            dockerfile: crates/observing-ingester/Dockerfile
           - service: media-proxy
             context: .
-            dockerfile: packages/observing-media-proxy/Dockerfile
+            dockerfile: crates/observing-media-proxy/Dockerfile
     steps:
       - uses: actions/checkout@v4
 

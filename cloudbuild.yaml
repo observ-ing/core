@@ -12,17 +12,17 @@ steps:
 
   - id: 'build-ingester'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/observing-ingester', 'packages/observing-ingester']
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/observing-ingester', 'crates/observing-ingester']
     waitFor: ['-']
 
   - id: 'build-media-proxy'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'packages/observing-media-proxy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-media-proxy', '.']
+    args: ['build', '-f', 'crates/observing-media-proxy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-media-proxy', '.']
     waitFor: ['-']
 
   - id: 'build-taxonomy'
     name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'packages/observing-taxonomy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-taxonomy', '.']
+    args: ['build', '-f', 'crates/observing-taxonomy/Dockerfile', '-t', 'gcr.io/$PROJECT_ID/observing-taxonomy', '.']
     waitFor: ['-']
 
   # Push all images in parallel

@@ -52,7 +52,7 @@ cargo build --release -p observing-media-proxy
 
 ```bash
 # Build from repository root
-docker build -f packages/observing-media-proxy-rs/Dockerfile -t observing-media-proxy .
+docker build -f crates/observing-media-proxy/Dockerfile -t observing-media-proxy .
 
 # Run
 docker run -p 3001:3001 observing-media-proxy
