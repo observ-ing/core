@@ -3,7 +3,7 @@
  */
 
 import { Router } from "express";
-import { Database, CommunityIdCalculator, TaxonomyResolver } from "observing-shared";
+import { Database, CommunityIdCalculator, TaxonomyClient } from "observing-shared";
 import { enrichIdentifications } from "../enrichment.js";
 import { logger } from "../middleware/logging.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -12,7 +12,7 @@ import { InternalClient } from "../internal-client.js";
 export function createIdentificationRoutes(
   db: Database,
   communityId: CommunityIdCalculator,
-  taxonomy: TaxonomyResolver,
+  taxonomy: TaxonomyClient,
   internalClient: InternalClient
 ): Router {
   const router = Router();

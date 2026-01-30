@@ -10,7 +10,7 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import {
   Database,
-  TaxonomyResolver,
+  TaxonomyClient,
   CommunityIdCalculator,
   GeocodingService,
 } from "observing-shared";
@@ -49,7 +49,7 @@ export class ApiServer {
   private app: express.Application;
   private config: ApiServerConfig;
   private db: Database;
-  private taxonomy: TaxonomyResolver;
+  private taxonomy: TaxonomyClient;
   private communityId: CommunityIdCalculator;
   private geocoding: GeocodingService;
   private internalClient: InternalClient;
@@ -58,7 +58,7 @@ export class ApiServer {
     this.config = config;
     this.app = express();
     this.db = new Database(config.databaseUrl);
-    this.taxonomy = new TaxonomyResolver();
+    this.taxonomy = new TaxonomyClient();
     this.communityId = new CommunityIdCalculator(this.db);
     this.geocoding = new GeocodingService();
     this.internalClient = new InternalClient({

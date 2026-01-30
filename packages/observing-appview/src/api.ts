@@ -39,7 +39,7 @@ import {
   type CommentRow,
   getIdentityResolver,
   type Profile,
-  TaxonomyResolver,
+  TaxonomyClient,
   CommunityIdCalculator,
   GeocodingService,
   // Zod schemas for validation
@@ -156,7 +156,7 @@ export class AppViewServer {
   private config: AppViewConfig;
   private db: Database;
   private oauth: OAuthService;
-  private taxonomy: TaxonomyResolver;
+  private taxonomy: TaxonomyClient;
   private communityId: CommunityIdCalculator;
   private geocoding: GeocodingService;
 
@@ -183,7 +183,7 @@ export class AppViewServer {
       sessionStore: new DatabaseSessionStore(this.db),
     });
 
-    this.taxonomy = new TaxonomyResolver();
+    this.taxonomy = new TaxonomyClient();
     this.communityId = new CommunityIdCalculator(this.db);
     this.geocoding = new GeocodingService();
 

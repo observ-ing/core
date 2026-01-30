@@ -59,3 +59,13 @@ processes:
     depends_on:
       cloud-sql-proxy:
         condition: process_healthy
+
+  taxonomy:
+    command: cargo run -p observing-taxonomy
+    environment:
+      - PORT=3003
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 3003
+        path: /health

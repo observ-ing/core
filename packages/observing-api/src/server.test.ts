@@ -20,7 +20,7 @@ vi.mock("observing-shared", () => {
     Database: vi.fn().mockImplementation(function () {
       return mockDbInstance;
     }),
-    TaxonomyResolver: vi.fn().mockImplementation(function () {
+    TaxonomyClient: vi.fn().mockImplementation(function () {
       return mockTaxonomyInstance;
     }),
     CommunityIdCalculator: vi.fn().mockImplementation(function () {
@@ -73,7 +73,7 @@ vi.mock("./middleware/logging.js", () => ({
 import { ApiServer } from "./server.js";
 import {
   Database,
-  TaxonomyResolver,
+  TaxonomyClient,
   CommunityIdCalculator,
   GeocodingService,
 } from "observing-shared";
@@ -105,9 +105,9 @@ describe("server.ts", () => {
         expect(Database).toHaveBeenCalledWith(defaultConfig.databaseUrl);
       });
 
-      it("initializes TaxonomyResolver", () => {
+      it("initializes TaxonomyClient", () => {
         new ApiServer(defaultConfig);
-        expect(TaxonomyResolver).toHaveBeenCalled();
+        expect(TaxonomyClient).toHaveBeenCalled();
       });
 
       it("initializes CommunityIdCalculator with database", () => {

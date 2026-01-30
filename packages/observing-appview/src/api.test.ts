@@ -44,7 +44,16 @@ const createMockCommunityIdCalculator = () => ({
   calculate: vi.fn().mockResolvedValue(null),
 });
 
+const createMockTaxonomyClient = () => ({
+  search: vi.fn().mockResolvedValue([]),
+  validate: vi.fn().mockResolvedValue({ valid: false, suggestions: [] }),
+  getById: vi.fn().mockResolvedValue(null),
+  getByName: vi.fn().mockResolvedValue(null),
+  getChildren: vi.fn().mockResolvedValue([]),
+});
+
 let mockCommunityIdCalculator: ReturnType<typeof createMockCommunityIdCalculator>;
+let mockTaxonomyClient: ReturnType<typeof createMockTaxonomyClient>;
 
 // Mock the dependencies before importing AppViewServer
 vi.mock("observing-shared", async (importOriginal) => {
@@ -62,10 +71,17 @@ vi.mock("observing-shared", async (importOriginal) => {
     Object.assign(this, mockCommunityIdCalculator);
   };
 
+  // Mock TaxonomyClient
+  const MockTaxonomyClient = function (this: object) {
+    mockTaxonomyClient = createMockTaxonomyClient();
+    Object.assign(this, mockTaxonomyClient);
+  };
+
   return {
     ...actual,
     Database: MockDatabase,
     CommunityIdCalculator: MockCommunityIdCalculator,
+    TaxonomyClient: MockTaxonomyClient,
     getIdentityResolver: vi.fn().mockImplementation(() => {
       if (!mockIdentityResolver) {
         mockIdentityResolver = createMockIdentityResolver();

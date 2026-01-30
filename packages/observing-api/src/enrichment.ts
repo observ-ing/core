@@ -8,20 +8,20 @@
 import {
   Database,
   getIdentityResolver,
-  TaxonomyResolver,
+  TaxonomyClient,
   type OccurrenceRow,
   type IdentificationRow,
   type CommentRow,
   type Profile,
 } from "observing-shared";
 
-// Singleton taxonomy resolver for GBIF lookups
-let taxonomyResolver: TaxonomyResolver | null = null;
-function getTaxonomyResolver(): TaxonomyResolver {
-  if (!taxonomyResolver) {
-    taxonomyResolver = new TaxonomyResolver();
+// Singleton taxonomy client for taxonomy service calls
+let taxonomyClient: TaxonomyClient | null = null;
+function getTaxonomyClient(): TaxonomyClient {
+  if (!taxonomyClient) {
+    taxonomyClient = new TaxonomyClient();
   }
-  return taxonomyResolver;
+  return taxonomyClient;
 }
 
 interface ObserverInfo {
@@ -202,7 +202,7 @@ export async function enrichOccurrences(
         } else {
           // Look up taxonomy from GBIF when winning identification lacks kingdom
           try {
-            const taxonomy = getTaxonomyResolver();
+            const taxonomy = getTaxonomyClient();
             const taxonDetail = await taxonomy.getByName(effectiveName);
             if (taxonDetail) {
               effectiveTaxonomy = {

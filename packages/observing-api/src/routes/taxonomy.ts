@@ -3,13 +3,13 @@
  */
 
 import { Router } from "express";
-import { Database, TaxonomyResolver } from "observing-shared";
+import { Database, TaxonomyClient } from "observing-shared";
 import { enrichOccurrences } from "../enrichment.js";
 import { logger } from "../middleware/logging.js";
 
 export function createTaxonomyRoutes(
   db: Database,
-  taxonomy: TaxonomyResolver
+  taxonomy: TaxonomyClient
 ): Router {
   const router = Router();
 

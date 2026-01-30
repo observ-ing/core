@@ -1,0 +1,46 @@
+[package]
+name = "observing-taxonomy"
+version = "0.1.0"
+edition = "2021"
+description = "Taxonomy resolver service for Observ.ing - integrates with GBIF API"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP server
+axum = "0.8"
+tower-http = { version = "0.6", features = ["cors"] }
+
+# HTTP client
+reqwest = { version = "0.13", features = ["json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing-stackdriver = "0.10"
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Caching
+moka = { version = "0.12", features = ["future"] }
+
+# URL encoding
+urlencoding = "2"
+
+# Async utilities
+futures = "0.3"
+
+[dev-dependencies]
+tokio-test = "0.4"
+tower = { version = "0.5", features = ["util"] }
+
+[[bin]]
+name = "observing-taxonomy"
+path = "src/main.rs"

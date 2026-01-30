@@ -3,7 +3,7 @@
  */
 
 import { Router } from "express";
-import { Database, getIdentityResolver, TaxonomyResolver, GeocodingService } from "observing-shared";
+import { Database, getIdentityResolver, TaxonomyClient, GeocodingService } from "observing-shared";
 import { enrichOccurrences, enrichIdentifications, enrichComments } from "../enrichment.js";
 import { logger } from "../middleware/logging.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -11,7 +11,7 @@ import { InternalClient } from "../internal-client.js";
 
 export function createOccurrenceRoutes(
   db: Database,
-  taxonomy: TaxonomyResolver,
+  taxonomy: TaxonomyClient,
   geocoding: GeocodingService,
   internalClient: InternalClient
 ): Router {

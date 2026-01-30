@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "packages/observing-ingester",
     "packages/observing-media-proxy",
+    "packages/observing-taxonomy",
 ]
 
 [profile.release]
