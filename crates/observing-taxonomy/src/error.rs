@@ -4,10 +4,8 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum TaxonomyError {
-    /// HTTP request failed
-    Http(reqwest::Error),
-    /// Failed to parse JSON response
-    Json(serde_json::Error),
+    /// GBIF API error
+    Gbif(gbif_api::GbifError),
     /// Configuration error
     Config(String),
 }
@@ -15,8 +13,7 @@ pub enum TaxonomyError {
 impl fmt::Display for TaxonomyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Http(e) => write!(f, "HTTP error: {}", e),
-            Self::Json(e) => write!(f, "JSON parse error: {}", e),
+            Self::Gbif(e) => write!(f, "{}", e),
             Self::Config(msg) => write!(f, "Configuration error: {}", msg),
         }
     }
@@ -25,22 +22,15 @@ impl fmt::Display for TaxonomyError {
 impl std::error::Error for TaxonomyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            Self::Http(e) => Some(e),
-            Self::Json(e) => Some(e),
-            _ => None,
+            Self::Gbif(e) => Some(e),
+            Self::Config(_) => None,
         }
     }
 }
 
-impl From<reqwest::Error> for TaxonomyError {
-    fn from(e: reqwest::Error) -> Self {
-        Self::Http(e)
-    }
-}
-
-impl From<serde_json::Error> for TaxonomyError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
+impl From<gbif_api::GbifError> for TaxonomyError {
+    fn from(e: gbif_api::GbifError) -> Self {
+        Self::Gbif(e)
     }
 }
 

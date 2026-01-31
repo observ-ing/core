@@ -1,10 +1,6 @@
 [workspace]
 resolver = "2"
-members = [
-    "packages/observing-ingester",
-    "packages/observing-media-proxy",
-    "packages/observing-taxonomy",
-]
+members = ["crates/*"]
 
 [profile.release]
 debug = true

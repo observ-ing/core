@@ -32,15 +32,19 @@ flowchart TB
     Ingester --> PostgreSQL
 ```
 
-## Package Structure
+## Project Structure
 
 ```
+crates/
+├── observing-ingester/    # AT Protocol firehose consumer (Rust)
+├── observing-media-proxy/ # Image caching proxy (Rust)
+└── observing-taxonomy/    # Taxonomy resolver service (Rust)
+
 packages/
 ├── observing-api/         # REST API server (Express)
 ├── observing-appview/     # OAuth, static files, internal RPC (Express)
-├── observing-ingester/    # AT Protocol firehose consumer (Rust)
-├── observing-media-proxy/ # Image caching proxy (Rust)
-└── observing-frontend/    # Web UI (Vite + MapLibre GL)
+├── observing-frontend/    # Web UI (Vite + MapLibre GL)
+└── observing-shared/      # Shared TypeScript types
 ```
 
 ### Package Dependencies
@@ -62,7 +66,7 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 - `org.rwell.test.occurrence` - Occurrence records
 - `org.rwell.test.identification` - Taxonomic determinations
 
-### Ingester (`packages/observing-ingester/`)
+### Ingester (`crates/observing-ingester/`)
 
 Rust service that monitors the AT Protocol firehose.
 
@@ -87,7 +91,7 @@ TypeScript server handling OAuth and AT Protocol operations.
 - **Internal RPC** - Endpoints for blob upload, record create/update/delete
 - **Static Files** - Serves the built frontend
 
-### Media Proxy (`packages/observing-media-proxy/`)
+### Media Proxy (`crates/observing-media-proxy/`)
 
 Rust image caching service.
 

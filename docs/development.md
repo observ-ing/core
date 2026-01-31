@@ -92,10 +92,10 @@ Service names: `cloud-sql-proxy`, `appview`, `frontend`, `media-proxy`, `ingeste
 
 ```bash
 # Ingester
-cd packages/observing-ingester
+cd crates/observing-ingester
 DATABASE_URL="postgresql://..." cargo run
 
 # Media Proxy
-cd packages/observing-media-proxy
+cd crates/observing-media-proxy
 cargo run
 ```

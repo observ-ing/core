@@ -67,7 +67,7 @@ function AppContent() {
             flex: 1,
             display: "flex",
             flexDirection: "column",
-            overflow: "hidden",
+            overflow: "auto",
             width: { md: `calc(100% - ${DRAWER_WIDTH}px)` },
           }}
         >

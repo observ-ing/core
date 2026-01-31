@@ -7,9 +7,9 @@ Services deployed via `cloudbuild.yaml`:
 | Service | Dockerfile | Public | Cloud SQL | Notes |
 |---------|------------|--------|-----------|-------|
 | observing-appview | packages/observing-appview/Dockerfile | Yes | Yes | Main API + serves frontend |
-| observing-ingester | packages/observing-ingester/Dockerfile | Yes | Yes | min-instances=1 (always running) |
-| observing-media-proxy | packages/observing-media-proxy/Dockerfile | Yes | No | Stateless image cache |
-| observing-taxonomy | packages/observing-taxonomy/Dockerfile | Yes | No | GBIF taxonomy lookups with caching |
+| observing-ingester | crates/observing-ingester/Dockerfile | Yes | Yes | min-instances=1 (always running) |
+| observing-media-proxy | crates/observing-media-proxy/Dockerfile | Yes | No | Stateless image cache |
+| observing-taxonomy | crates/observing-taxonomy/Dockerfile | Yes | No | GBIF taxonomy lookups with caching |
 
 ## Manual Deploy
 

@@ -9,26 +9,40 @@ import {
   Typography,
   Box,
   Link,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
-import { getLoginUrl } from "../../services/api";
+import { initiateLogin } from "../../services/api";
 
 export function LoginModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.loginModalOpen);
   const [handle, setHandle] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleClose = () => {
     dispatch(closeLoginModal());
     setHandle("");
+    setError(null);
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const trimmed = handle.trim();
-    if (trimmed) {
-      window.location.href = getLoginUrl(trimmed);
+    if (!trimmed) return;
+
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const { url } = await initiateLogin(trimmed);
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to initiate login");
+      setIsLoading(false);
     }
   };
 
@@ -48,11 +62,19 @@ export function LoginModal() {
             </Link>
             . You can log in with any compatible service, including Bluesky.
           </Typography>
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
           <TextField
             fullWidth
             label="Your handle"
             value={handle}
-            onChange={(e) => setHandle(e.target.value)}
+            onChange={(e) => {
+              setHandle(e.target.value);
+              if (error) setError(null);
+            }}
             placeholder="alice.bsky.social"
             helperText={
               <Box component="span">
@@ -65,14 +87,22 @@ export function LoginModal() {
             spellCheck={false}
             margin="normal"
             autoFocus
+            disabled={isLoading}
+            error={!!error}
           />
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={handleClose} color="inherit">
+          <Button onClick={handleClose} color="inherit" disabled={isLoading}>
             Cancel
           </Button>
-          <Button type="submit" variant="contained" color="primary" disabled={!handle.trim()}>
-            Continue
+          <Button
+            type="submit"
+            variant="contained"
+            color="primary"
+            disabled={!handle.trim() || isLoading}
+            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : null}
+          >
+            {isLoading ? "Connecting..." : "Continue"}
           </Button>
         </DialogActions>
       </form>

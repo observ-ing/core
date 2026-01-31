@@ -1,0 +1,20 @@
+[package]
+name = "gbif-api"
+version = "0.1.0"
+edition = "2021"
+description = "Rust client for the GBIF (Global Biodiversity Information Facility) API"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# HTTP client
+reqwest = { version = "0.13", features = ["json"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# URL encoding
+urlencoding = "2"
+
+# Async runtime (for timeout)
+tokio = { version = "1", features = ["time"] }

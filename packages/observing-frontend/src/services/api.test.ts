@@ -75,17 +75,46 @@ describe("api", () => {
     });
   });
 
-  describe("getLoginUrl", () => {
-    it("returns login URL with encoded handle", () => {
-      const url = api.getLoginUrl("alice.bsky.social");
+  describe("initiateLogin", () => {
+    it("returns auth URL on success", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ url: "https://auth.example.com/authorize" }),
+      });
 
-      expect(url).toBe("/oauth/login?handle=alice.bsky.social");
+      const result = await api.initiateLogin("alice.bsky.social");
+
+      expect(result).toEqual({ url: "https://auth.example.com/authorize" });
+      expect(mockFetch).toHaveBeenCalledWith("/oauth/login?handle=alice.bsky.social");
     });
 
-    it("encodes special characters in handle", () => {
-      const url = api.getLoginUrl("user+test@example.com");
+    it("encodes special characters in handle", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ url: "https://auth.example.com/authorize" }),
+      });
 
-      expect(url).toBe("/oauth/login?handle=user%2Btest%40example.com");
+      await api.initiateLogin("user+test@example.com");
+
+      expect(mockFetch).toHaveBeenCalledWith("/oauth/login?handle=user%2Btest%40example.com");
+    });
+
+    it("throws error with message from server", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({ error: "Could not find handle" }),
+      });
+
+      await expect(api.initiateLogin("invalid")).rejects.toThrow("Could not find handle");
+    });
+
+    it("throws generic error when no message", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        json: () => Promise.resolve({}),
+      });
+
+      await expect(api.initiateLogin("invalid")).rejects.toThrow("Failed to initiate login");
     });
   });
 

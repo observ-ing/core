@@ -6,6 +6,9 @@ description = "Taxonomy resolver service for Observ.ing - integrates with GBIF A
 license = "AGPL-3.0-only"
 
 [dependencies]
+# GBIF API client
+gbif-api = { path = "../gbif-api" }
+
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
@@ -13,7 +16,7 @@ tokio = { version = "1", features = ["full"] }
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
 
-# HTTP client
+# HTTP client (still needed for error type re-export)
 reqwest = { version = "0.13", features = ["json"] }
 
 # Serialization

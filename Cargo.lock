@@ -654,6 +654,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "gbif-api"
+version = "0.1.0"
+dependencies = [
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "urlencoding",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1356,6 +1367,7 @@ dependencies = [
  "axum",
  "chrono",
  "futures",
+ "gbif-api",
  "moka",
  "reqwest",
  "serde",

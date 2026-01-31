@@ -53,7 +53,7 @@ processes:
 
   ingester:
     command: cargo run
-    working_dir: packages/observing-ingester
+    working_dir: crates/observing-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
     depends_on:

@@ -417,15 +417,13 @@ export class AppViewServer {
         logger.info({ uri: result.data.uri, imageCount: associatedMedia.length }, "Created AT Protocol record");
 
         // Store exact coordinates in private data table
+        // Note: occurrence_observers is populated by the ingester when it processes the record
         await this.db.saveOccurrencePrivateData(
           result.data.uri,
           latitude,
           longitude,
           "open", // Default geoprivacy for now
         );
-
-        // Sync observers table (owner + co-observers)
-        await this.db.syncOccurrenceObservers(result.data.uri, sessionDid, coObservers);
 
         res.status(201).json({
           success: true,

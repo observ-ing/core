@@ -108,7 +108,6 @@ export function ProfileView() {
         flex: 1,
         display: "flex",
         flexDirection: "column",
-        overflow: "auto",
       }}
     >
       {/* Profile Header */}

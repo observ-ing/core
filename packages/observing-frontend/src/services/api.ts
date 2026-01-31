@@ -35,8 +35,18 @@ export async function logout(): Promise<void> {
   });
 }
 
-export function getLoginUrl(handle: string): string {
-  return `${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`;
+export async function initiateLogin(handle: string): Promise<{ url: string }> {
+  const response = await fetch(
+    `${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`
+  );
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || "Failed to initiate login");
+  }
+
+  return data;
 }
 
 export async function fetchFeed(cursor?: string): Promise<FeedResponse> {

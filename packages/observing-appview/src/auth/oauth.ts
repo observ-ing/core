@@ -414,22 +414,30 @@ export class OAuthService {
       res.json(this.getClientMetadata());
     });
 
-    // Login initiation
+    // Login initiation - returns auth URL as JSON for frontend handling
     app.get("/oauth/login", async (req, res) => {
       try {
         const handle = req.query["handle"] as string;
         if (!handle) {
-          res.status(400).json({ error: "handle parameter required" });
+          res.status(400).json({ error: "Handle is required" });
           return;
         }
 
         const { url } = await this.getAuthorizationUrl(handle);
 
-        console.log("OAuth login: redirecting to", url);
-        res.redirect(url);
+        console.log("OAuth login: returning auth URL for", handle);
+        res.json({ url });
       } catch (error) {
         console.error("OAuth login error:", error);
-        res.status(500).json({ error: "Failed to initiate login" });
+        // Provide a user-friendly error message
+        const message = error instanceof Error ? error.message : "Unknown error";
+        if (message.includes("could not resolve") || message.includes("Unable to resolve")) {
+          res.status(400).json({ error: `Could not find handle "${req.query["handle"]}". Please check the spelling and try again.` });
+        } else if (message.includes("not initialized")) {
+          res.status(503).json({ error: "Login service is temporarily unavailable. Please try again later." });
+        } else {
+          res.status(400).json({ error: "Could not initiate login. Please verify your handle is correct." });
+        }
       }
     });
 

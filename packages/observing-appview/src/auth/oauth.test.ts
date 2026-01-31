@@ -383,13 +383,13 @@ describe("OAuthService", () => {
       it("returns 400 without handle", async () => {
         const res = await request(app).get("/oauth/login");
         expect(res.status).toBe(400);
-        expect(res.body.error).toBe("handle parameter required");
+        expect(res.body.error).toBe("Handle is required");
       });
 
-      it("returns 500 when client not initialized", async () => {
+      it("returns 503 when client not initialized", async () => {
         const res = await request(app).get("/oauth/login?handle=test.bsky.social");
-        expect(res.status).toBe(500);
-        expect(res.body.error).toBe("Failed to initiate login");
+        expect(res.status).toBe(503);
+        expect(res.body.error).toBe("Login service is temporarily unavailable. Please try again later.");
       });
     });
 
