@@ -9,9 +9,11 @@ import pg from "pg";
 import type {
   OccurrenceEvent,
   IdentificationEvent,
+  InteractionEvent,
   OccurrenceRow,
   IdentificationRow,
   CommentRow,
+  InteractionRow,
 } from "../types.js";
 import type * as OrgRwellTestOccurrence from "../generated/types/org/rwell/test/occurrence.js";
 import type * as OrgRwellTestIdentification from "../generated/types/org/rwell/test/identification.js";
@@ -282,6 +284,37 @@ export class Database {
 
       CREATE INDEX IF NOT EXISTS idx_occurrence_observers_did
         ON occurrence_observers(observer_did);
+
+      -- Interactions table (species interactions between organisms)
+      CREATE TABLE IF NOT EXISTS interactions (
+        uri TEXT PRIMARY KEY,
+        cid TEXT NOT NULL,
+        did TEXT NOT NULL,
+        -- Subject A
+        subject_a_occurrence_uri TEXT REFERENCES occurrences(uri) ON DELETE CASCADE,
+        subject_a_occurrence_cid TEXT,
+        subject_a_subject_index INTEGER DEFAULT 0,
+        subject_a_taxon_name TEXT,
+        subject_a_kingdom TEXT,
+        -- Subject B
+        subject_b_occurrence_uri TEXT REFERENCES occurrences(uri) ON DELETE CASCADE,
+        subject_b_occurrence_cid TEXT,
+        subject_b_subject_index INTEGER DEFAULT 0,
+        subject_b_taxon_name TEXT,
+        subject_b_kingdom TEXT,
+        -- Interaction details
+        interaction_type TEXT NOT NULL,
+        direction TEXT NOT NULL DEFAULT 'AtoB',
+        confidence TEXT,
+        comment TEXT,
+        created_at TIMESTAMPTZ NOT NULL,
+        indexed_at TIMESTAMPTZ DEFAULT NOW()
+      );
+
+      CREATE INDEX IF NOT EXISTS interactions_did_idx ON interactions(did);
+      CREATE INDEX IF NOT EXISTS interactions_subject_a_occurrence_idx ON interactions(subject_a_occurrence_uri);
+      CREATE INDEX IF NOT EXISTS interactions_subject_b_occurrence_idx ON interactions(subject_b_occurrence_uri);
+      CREATE INDEX IF NOT EXISTS interactions_type_idx ON interactions(interaction_type);
     `);
 
     console.log("Database migrations completed");
@@ -1296,10 +1329,152 @@ export class Database {
     );
     return result.rows;
   }
+
+  // Interaction methods
+
+  async upsertInteraction(event: InteractionEvent): Promise<void> {
+    const record = event.record as {
+      subjectA?: {
+        occurrence?: { uri: string; cid: string };
+        subjectIndex?: number;
+        taxonName?: string;
+        kingdom?: string;
+      };
+      subjectB?: {
+        occurrence?: { uri: string; cid: string };
+        subjectIndex?: number;
+        taxonName?: string;
+        kingdom?: string;
+      };
+      interactionType?: string;
+      direction?: string;
+      confidence?: string;
+      comment?: string;
+      createdAt?: string;
+    } | undefined;
+
+    if (!record) {
+      console.warn(`No record data for interaction ${event.uri}`);
+      return;
+    }
+
+    const subjectA = record.subjectA;
+    const subjectB = record.subjectB;
+
+    if (!record.interactionType || !record.direction) {
+      console.warn(`Missing required fields for interaction ${event.uri}`);
+      return;
+    }
+
+    const createdAt = record.createdAt ? new Date(record.createdAt) : new Date();
+
+    await this.pool.query(
+      `INSERT INTO interactions (
+        uri, cid, did,
+        subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+        subject_a_taxon_name, subject_a_kingdom,
+        subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+        subject_b_taxon_name, subject_b_kingdom,
+        interaction_type, direction, confidence, comment, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ON CONFLICT (uri) DO UPDATE SET
+        cid = $2,
+        subject_a_occurrence_uri = $4,
+        subject_a_occurrence_cid = $5,
+        subject_a_subject_index = $6,
+        subject_a_taxon_name = $7,
+        subject_a_kingdom = $8,
+        subject_b_occurrence_uri = $9,
+        subject_b_occurrence_cid = $10,
+        subject_b_subject_index = $11,
+        subject_b_taxon_name = $12,
+        subject_b_kingdom = $13,
+        interaction_type = $14,
+        direction = $15,
+        confidence = $16,
+        comment = $17,
+        indexed_at = NOW()`,
+      [
+        event.uri,
+        event.cid,
+        event.did,
+        subjectA?.occurrence?.uri || null,
+        subjectA?.occurrence?.cid || null,
+        subjectA?.subjectIndex ?? 0,
+        subjectA?.taxonName || null,
+        subjectA?.kingdom || null,
+        subjectB?.occurrence?.uri || null,
+        subjectB?.occurrence?.cid || null,
+        subjectB?.subjectIndex ?? 0,
+        subjectB?.taxonName || null,
+        subjectB?.kingdom || null,
+        record.interactionType,
+        record.direction,
+        record.confidence || null,
+        record.comment || null,
+        createdAt,
+      ],
+    );
+  }
+
+  async deleteInteraction(uri: string): Promise<void> {
+    await this.pool.query("DELETE FROM interactions WHERE uri = $1", [uri]);
+  }
+
+  async getInteractionsForOccurrence(occurrenceUri: string): Promise<InteractionRow[]> {
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did,
+        subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+        subject_a_taxon_name, subject_a_kingdom,
+        subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+        subject_b_taxon_name, subject_b_kingdom,
+        interaction_type, direction, confidence, comment, created_at, indexed_at
+      FROM interactions
+      WHERE subject_a_occurrence_uri = $1 OR subject_b_occurrence_uri = $1
+      ORDER BY created_at DESC`,
+      [occurrenceUri],
+    );
+    return result.rows;
+  }
+
+  async getInteractionsByType(interactionType: string, limit = 100): Promise<InteractionRow[]> {
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did,
+        subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+        subject_a_taxon_name, subject_a_kingdom,
+        subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+        subject_b_taxon_name, subject_b_kingdom,
+        interaction_type, direction, confidence, comment, created_at, indexed_at
+      FROM interactions
+      WHERE interaction_type = $1
+      ORDER BY created_at DESC
+      LIMIT $2`,
+      [interactionType, limit],
+    );
+    return result.rows;
+  }
+
+  async getInteraction(uri: string): Promise<InteractionRow | null> {
+    const result = await this.pool.query(
+      `SELECT
+        uri, cid, did,
+        subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+        subject_a_taxon_name, subject_a_kingdom,
+        subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+        subject_b_taxon_name, subject_b_kingdom,
+        interaction_type, direction, confidence, comment, created_at, indexed_at
+      FROM interactions
+      WHERE uri = $1`,
+      [uri],
+    );
+    return result.rows[0] || null;
+  }
 }
 
 // Re-export row types
-export type { OccurrenceRow, IdentificationRow, CommentRow };
+export type { OccurrenceRow, IdentificationRow, CommentRow, InteractionRow };
 
 // Legacy type aliases for backwards compatibility
 export type ObservationRow = OccurrenceRow;

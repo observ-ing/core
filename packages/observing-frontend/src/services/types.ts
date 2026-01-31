@@ -16,6 +16,8 @@ export type {
   Occurrence,
   Identification,
   Comment,
+  Interaction,
+  InteractionSubject,
 
   // Request/Response types
   CreateOccurrenceRequest,
@@ -23,6 +25,7 @@ export type {
   OccurrenceDetailResponse,
   CreateIdentificationRequest,
   CreateCommentRequest,
+  CreateInteractionRequest,
 
   // Feed types
   FeedFilters,

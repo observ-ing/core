@@ -3,7 +3,7 @@
 //! Uses sqlx with PostgreSQL for storing occurrences, identifications, and cursor state.
 
 use crate::error::Result;
-use crate::types::{CommentEvent, IdentificationEvent, OccurrenceEvent};
+use crate::types::{CommentEvent, IdentificationEvent, InteractionEvent, OccurrenceEvent};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info};
@@ -512,6 +512,152 @@ impl Database {
     pub async fn delete_comment(&self, uri: &str) -> Result<()> {
         debug!("Deleting comment: {}", uri);
         sqlx::query!("DELETE FROM comments WHERE uri = $1", uri)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Upsert an interaction record
+    pub async fn upsert_interaction(&self, event: &InteractionEvent) -> Result<()> {
+        debug!("Upserting interaction: {}", event.uri);
+
+        // Extract fields from record JSON
+        let record = event.record.as_ref();
+        let subject_a = record.and_then(|r| r.get("subjectA"));
+        let subject_b = record.and_then(|r| r.get("subjectB"));
+
+        // Subject A fields
+        let subject_a_occurrence = subject_a.and_then(|s| s.get("occurrence"));
+        let subject_a_occurrence_uri = subject_a_occurrence
+            .and_then(|o| o.get("uri"))
+            .and_then(|v| v.as_str());
+        let subject_a_occurrence_cid = subject_a_occurrence
+            .and_then(|o| o.get("cid"))
+            .and_then(|v| v.as_str());
+        let subject_a_subject_index = subject_a
+            .and_then(|s| s.get("subjectIndex"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32;
+        let subject_a_taxon_name = subject_a
+            .and_then(|s| s.get("taxonName"))
+            .and_then(|v| v.as_str());
+        let subject_a_kingdom = subject_a
+            .and_then(|s| s.get("kingdom"))
+            .and_then(|v| v.as_str());
+
+        // Subject B fields
+        let subject_b_occurrence = subject_b.and_then(|s| s.get("occurrence"));
+        let subject_b_occurrence_uri = subject_b_occurrence
+            .and_then(|o| o.get("uri"))
+            .and_then(|v| v.as_str());
+        let subject_b_occurrence_cid = subject_b_occurrence
+            .and_then(|o| o.get("cid"))
+            .and_then(|v| v.as_str());
+        let subject_b_subject_index = subject_b
+            .and_then(|s| s.get("subjectIndex"))
+            .and_then(|v| v.as_i64())
+            .unwrap_or(0) as i32;
+        let subject_b_taxon_name = subject_b
+            .and_then(|s| s.get("taxonName"))
+            .and_then(|v| v.as_str());
+        let subject_b_kingdom = subject_b
+            .and_then(|s| s.get("kingdom"))
+            .and_then(|v| v.as_str());
+
+        // Interaction details
+        let interaction_type = record
+            .and_then(|r| r.get("interactionType"))
+            .and_then(|v| v.as_str());
+        let direction = record
+            .and_then(|r| r.get("direction"))
+            .and_then(|v| v.as_str())
+            .unwrap_or("AtoB");
+        let confidence = record
+            .and_then(|r| r.get("confidence"))
+            .and_then(|v| v.as_str());
+        let comment = record
+            .and_then(|r| r.get("comment"))
+            .and_then(|v| v.as_str());
+        let created_at = record
+            .and_then(|r| r.get("createdAt"))
+            .and_then(|v| v.as_str());
+
+        // Require interaction_type
+        let interaction_type = match interaction_type {
+            Some(t) => t,
+            None => {
+                debug!(
+                    "Skipping interaction without interactionType: {}",
+                    event.uri
+                );
+                return Ok(());
+            }
+        };
+
+        let created_at = created_at
+            .and_then(parse_naive_datetime)
+            .unwrap_or_else(|| event.time.naive_utc());
+
+        // Use sqlx::query instead of sqlx::query! since the interactions table
+        // may not exist in the database yet (compile-time verification)
+        sqlx::query(
+            r#"
+            INSERT INTO interactions (
+                uri, cid, did,
+                subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+                subject_a_taxon_name, subject_a_kingdom,
+                subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+                subject_b_taxon_name, subject_b_kingdom,
+                interaction_type, direction, confidence, comment, created_at, indexed_at
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+            ON CONFLICT (uri) DO UPDATE SET
+                cid = EXCLUDED.cid,
+                subject_a_occurrence_uri = EXCLUDED.subject_a_occurrence_uri,
+                subject_a_occurrence_cid = EXCLUDED.subject_a_occurrence_cid,
+                subject_a_subject_index = EXCLUDED.subject_a_subject_index,
+                subject_a_taxon_name = EXCLUDED.subject_a_taxon_name,
+                subject_a_kingdom = EXCLUDED.subject_a_kingdom,
+                subject_b_occurrence_uri = EXCLUDED.subject_b_occurrence_uri,
+                subject_b_occurrence_cid = EXCLUDED.subject_b_occurrence_cid,
+                subject_b_subject_index = EXCLUDED.subject_b_subject_index,
+                subject_b_taxon_name = EXCLUDED.subject_b_taxon_name,
+                subject_b_kingdom = EXCLUDED.subject_b_kingdom,
+                interaction_type = EXCLUDED.interaction_type,
+                direction = EXCLUDED.direction,
+                confidence = EXCLUDED.confidence,
+                comment = EXCLUDED.comment,
+                indexed_at = NOW()
+            "#,
+        )
+        .bind(&event.uri)
+        .bind(&event.cid)
+        .bind(&event.did)
+        .bind(subject_a_occurrence_uri)
+        .bind(subject_a_occurrence_cid)
+        .bind(subject_a_subject_index)
+        .bind(subject_a_taxon_name)
+        .bind(subject_a_kingdom)
+        .bind(subject_b_occurrence_uri)
+        .bind(subject_b_occurrence_cid)
+        .bind(subject_b_subject_index)
+        .bind(subject_b_taxon_name)
+        .bind(subject_b_kingdom)
+        .bind(interaction_type)
+        .bind(direction)
+        .bind(confidence)
+        .bind(comment)
+        .bind(created_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete an interaction record
+    pub async fn delete_interaction(&self, uri: &str) -> Result<()> {
+        debug!("Deleting interaction: {}", uri);
+        sqlx::query("DELETE FROM interactions WHERE uri = $1")
+            .bind(uri)
             .execute(&self.pool)
             .await?;
         Ok(())

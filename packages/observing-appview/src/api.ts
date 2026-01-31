@@ -37,6 +37,7 @@ import {
   type OccurrenceRow,
   type IdentificationRow,
   type CommentRow,
+  type InteractionRow,
   getIdentityResolver,
   type Profile,
   TaxonomyClient,
@@ -46,6 +47,7 @@ import {
   CreateOccurrenceRequestSchema,
   CreateIdentificationRequestSchema,
   CreateCommentRequestSchema,
+  CreateInteractionRequestSchema,
 } from "observing-shared";
 import {
   OAuthService,
@@ -229,6 +231,9 @@ export class AppViewServer {
 
     // Comments API
     this.setupCommentRoutes();
+
+    // Interactions API
+    this.setupInteractionRoutes();
 
     // Taxonomy API
     this.setupTaxonomyRoutes();
@@ -1346,6 +1351,141 @@ export class AppViewServer {
         logger.error({ err: error }, "Error creating comment");
         res.status(500).json({ error: "Internal server error" });
       }
+    });
+  }
+
+  private setupInteractionRoutes(): void {
+    // Create a new interaction
+    this.app.post("/api/interactions", async (req, res) => {
+      try {
+        // Validate request body with Zod schema
+        const parseResult = CreateInteractionRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
+        const {
+          subjectA,
+          subjectB,
+          interactionType,
+          direction,
+          confidence,
+          comment,
+        } = parseResult.data;
+
+        // Require authentication
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to add interactions" });
+          return;
+        }
+
+        // Build the interaction record
+        const record: Record<string, unknown> = {
+          $type: "org.rwell.test.interaction",
+          subjectA: {
+            ...(subjectA.occurrenceUri && {
+              occurrence: {
+                uri: subjectA.occurrenceUri,
+                cid: subjectA.occurrenceCid,
+              },
+            }),
+            subjectIndex: subjectA.subjectIndex ?? 0,
+            taxonName: subjectA.taxonName,
+            kingdom: subjectA.kingdom,
+          },
+          subjectB: {
+            ...(subjectB.occurrenceUri && {
+              occurrence: {
+                uri: subjectB.occurrenceUri,
+                cid: subjectB.occurrenceCid,
+              },
+            }),
+            subjectIndex: subjectB.subjectIndex ?? 0,
+            taxonName: subjectB.taxonName,
+            kingdom: subjectB.kingdom,
+          },
+          interactionType,
+          direction,
+          confidence,
+          comment: comment?.trim() || undefined,
+          createdAt: new Date().toISOString(),
+        };
+
+        // Create the record on the user's PDS
+        const result = await agent.com.atproto.repo.createRecord({
+          repo: sessionDid,
+          collection: "org.rwell.test.interaction",
+          record,
+        });
+
+        logger.info(
+          { uri: result.data.uri, interactionType },
+          "Created interaction record"
+        );
+
+        res.status(201).json({
+          success: true,
+          uri: result.data.uri,
+          cid: result.data.cid,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error creating interaction");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Get interactions for an occurrence
+    this.app.get("/api/interactions/occurrence/:uri(*)", async (req, res) => {
+      try {
+        const occurrenceUri = req.params["uri"];
+        if (!occurrenceUri) {
+          res.status(400).json({ error: "occurrenceUri is required" });
+          return;
+        }
+
+        const rows = await this.db.getInteractionsForOccurrence(occurrenceUri);
+        const interactions = await this.enrichInteractions(rows);
+
+        res.json({ interactions });
+      } catch (error) {
+        logger.error({ err: error }, "Error fetching interactions");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  }
+
+  private async enrichInteractions(
+    rows: InteractionRow[],
+  ): Promise<Array<InteractionRow & { creator?: Partial<Profile> }>> {
+    if (rows.length === 0) return [];
+
+    const dids = [...new Set(rows.map((r) => r.did))];
+    const resolver = getIdentityResolver();
+    const profiles = await resolver.getProfiles(dids);
+
+    return rows.map((row) => {
+      const profile = profiles.get(row.did);
+      return {
+        ...row,
+        ...(profile && {
+          creator: {
+            did: profile.did,
+            handle: profile.handle,
+            displayName: profile.displayName,
+            avatar: profile.avatar,
+          },
+        }),
+      };
     });
   }
 

@@ -213,6 +213,47 @@ export const CreateCommentRequestSchema = z
   .openapi("CreateCommentRequest");
 
 // ============================================================================
+// Interaction Schemas
+// ============================================================================
+
+export const InteractionSubjectSchema = z
+  .object({
+    occurrenceUri: z.string().optional().describe("URI of the related occurrence"),
+    occurrenceCid: z.string().optional().describe("CID of the related occurrence"),
+    subjectIndex: z.number().int().min(0).max(99).default(0).describe("Subject index within the occurrence"),
+    taxonName: z.string().max(256).optional().describe("Scientific name of the organism"),
+    kingdom: z.string().max(64).optional().describe("Taxonomic kingdom"),
+  })
+  .openapi("InteractionSubject");
+
+export const InteractionSchema = z
+  .object({
+    uri: z.string(),
+    cid: z.string(),
+    did: z.string(),
+    subjectA: InteractionSubjectSchema,
+    subjectB: InteractionSubjectSchema,
+    interactionType: z.string(),
+    direction: z.enum(["AtoB", "BtoA", "bidirectional"]),
+    confidence: z.enum(["low", "medium", "high"]).optional(),
+    comment: z.string().optional(),
+    createdAt: z.string().datetime(),
+    creator: ProfileSchema.optional(),
+  })
+  .openapi("Interaction");
+
+export const CreateInteractionRequestSchema = z
+  .object({
+    subjectA: InteractionSubjectSchema,
+    subjectB: InteractionSubjectSchema,
+    interactionType: z.string().max(64),
+    direction: z.enum(["AtoB", "BtoA", "bidirectional"]).default("AtoB"),
+    confidence: z.enum(["low", "medium", "high"]).default("medium"),
+    comment: z.string().max(3000).optional(),
+  })
+  .openapi("CreateInteractionRequest");
+
+// ============================================================================
 // Feed Schemas
 // ============================================================================
 
@@ -406,6 +447,9 @@ export type Identification = z.infer<typeof IdentificationSchema>;
 export type CreateIdentificationRequest = z.infer<typeof CreateIdentificationRequestSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
 export type CreateCommentRequest = z.infer<typeof CreateCommentRequestSchema>;
+export type InteractionSubject = z.infer<typeof InteractionSubjectSchema>;
+export type Interaction = z.infer<typeof InteractionSchema>;
+export type CreateInteractionRequest = z.infer<typeof CreateInteractionRequestSchema>;
 export type FeedFilters = z.infer<typeof FeedFiltersSchema>;
 export type FeedResponse = z.infer<typeof FeedResponseSchema>;
 export type ExploreFeedResponse = z.infer<typeof ExploreFeedResponseSchema>;

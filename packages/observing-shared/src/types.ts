@@ -118,5 +118,40 @@ export interface CommentRow {
   created_at: Date;
 }
 
+export interface InteractionRow {
+  uri: string;
+  cid: string;
+  did: string;
+  // Subject A
+  subject_a_occurrence_uri: string | null;
+  subject_a_occurrence_cid: string | null;
+  subject_a_subject_index: number;
+  subject_a_taxon_name: string | null;
+  subject_a_kingdom: string | null;
+  // Subject B
+  subject_b_occurrence_uri: string | null;
+  subject_b_occurrence_cid: string | null;
+  subject_b_subject_index: number;
+  subject_b_taxon_name: string | null;
+  subject_b_kingdom: string | null;
+  // Interaction details
+  interaction_type: string;
+  direction: string;
+  confidence: string | null;
+  comment: string | null;
+  created_at: Date;
+  indexed_at: Date;
+}
+
+export interface InteractionEvent {
+  did: string;
+  uri: string;
+  cid: string;
+  action: "create" | "update" | "delete";
+  record?: unknown;
+  seq: number;
+  time: string;
+}
+
 // Legacy type aliases
 export type ObservationRow = OccurrenceRow;

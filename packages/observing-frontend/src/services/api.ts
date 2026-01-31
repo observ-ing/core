@@ -374,3 +374,84 @@ export async function fetchTaxonObservations(
 
   return response.json();
 }
+
+// ============================================================================
+// Interaction API Functions
+// ============================================================================
+
+export interface InteractionResponse {
+  uri: string;
+  cid: string;
+  did: string;
+  subject_a_occurrence_uri: string | null;
+  subject_a_occurrence_cid: string | null;
+  subject_a_subject_index: number;
+  subject_a_taxon_name: string | null;
+  subject_a_kingdom: string | null;
+  subject_b_occurrence_uri: string | null;
+  subject_b_occurrence_cid: string | null;
+  subject_b_subject_index: number;
+  subject_b_taxon_name: string | null;
+  subject_b_kingdom: string | null;
+  interaction_type: string;
+  direction: string;
+  confidence: string | null;
+  comment: string | null;
+  created_at: string;
+  creator?: {
+    did: string;
+    handle?: string;
+    displayName?: string;
+    avatar?: string;
+  };
+}
+
+export async function submitInteraction(data: {
+  subjectA: {
+    occurrenceUri?: string;
+    occurrenceCid?: string;
+    subjectIndex?: number;
+    taxonName?: string;
+    kingdom?: string;
+  };
+  subjectB: {
+    occurrenceUri?: string;
+    occurrenceCid?: string;
+    subjectIndex?: number;
+    taxonName?: string;
+    kingdom?: string;
+  };
+  interactionType: string;
+  direction: "AtoB" | "BtoA" | "bidirectional";
+  confidence?: "low" | "medium" | "high";
+  comment?: string;
+}): Promise<{ uri: string; cid: string }> {
+  const response = await fetch(`${API_BASE}/api/interactions`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to submit interaction");
+  }
+
+  return response.json();
+}
+
+export async function fetchInteractionsForOccurrence(
+  occurrenceUri: string
+): Promise<{ interactions: InteractionResponse[] }> {
+  const response = await fetch(
+    `${API_BASE}/api/interactions/occurrence/${encodeURIComponent(occurrenceUri)}`
+  );
+  if (!response.ok) {
+    throw new Error("Failed to fetch interactions");
+  }
+
+  return response.json();
+}

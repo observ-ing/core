@@ -29,6 +29,7 @@ import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
+import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "../common/Skeletons";
@@ -519,6 +520,18 @@ export function ObservationDetail() {
               </Typography>
             </Paper>
           )}
+
+          {/* Interactions Panel */}
+          <InteractionPanel
+            observation={{
+              uri: observation.uri,
+              cid: observation.cid,
+              scientificName: observation.scientificName,
+              communityId: currentSubject?.communityId || observation.communityId,
+            }}
+            subjects={observation.subjects || [{ index: 0, identificationCount: 0 }]}
+            onSuccess={handleIdentificationSuccess}
+          />
         </Box>
 
         {/* Discussion / Comments */}

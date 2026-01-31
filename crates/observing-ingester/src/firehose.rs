@@ -5,8 +5,8 @@
 
 use crate::error::{IngesterError, Result};
 use crate::types::{
-    CommentEvent, CommitTimingInfo, IdentificationEvent, OccurrenceEvent, COMMENT_COLLECTION,
-    IDENTIFICATION_COLLECTION, OCCURRENCE_COLLECTION,
+    CommentEvent, CommitTimingInfo, IdentificationEvent, InteractionEvent, OccurrenceEvent,
+    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
@@ -47,6 +47,7 @@ pub enum FirehoseEvent {
     Occurrence(OccurrenceEvent),
     Identification(IdentificationEvent),
     Comment(CommentEvent),
+    Interaction(InteractionEvent),
     Commit(CommitTimingInfo),
     Connected,
     Disconnected,
@@ -166,8 +167,8 @@ impl FirehoseSubscription {
         // Add collection filters
         let separator = if url.contains('?') { '&' } else { '?' };
         url = format!(
-            "{}{}wantedCollections={}&wantedCollections={}&wantedCollections={}",
-            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION, COMMENT_COLLECTION
+            "{}{}wantedCollections={}&wantedCollections={}&wantedCollections={}&wantedCollections={}",
+            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION, COMMENT_COLLECTION, INTERACTION_COLLECTION
         );
 
         // Add cursor if available (Jetstream uses microseconds)
@@ -252,6 +253,21 @@ impl FirehoseSubscription {
                 let _ = self
                     .event_tx
                     .send(FirehoseEvent::Comment(comment_event))
+                    .await;
+            } else if collection == INTERACTION_COLLECTION {
+                let interaction_event = InteractionEvent {
+                    did: did.to_string(),
+                    uri: uri.clone(),
+                    cid,
+                    action: commit.operation.clone(),
+                    seq,
+                    time,
+                    record: commit.record,
+                };
+                debug!("[Interaction] {}: {}", interaction_event.action, interaction_event.uri);
+                let _ = self
+                    .event_tx
+                    .send(FirehoseEvent::Interaction(interaction_event))
                     .await;
             }
         }

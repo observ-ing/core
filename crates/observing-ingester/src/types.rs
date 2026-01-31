@@ -44,6 +44,19 @@ pub struct CommentEvent {
     pub record: Option<serde_json::Value>,
 }
 
+/// An interaction event (species interaction between organisms)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InteractionEvent {
+    pub did: String,
+    pub uri: String,
+    pub cid: String,
+    pub action: String,
+    pub seq: i64,
+    pub time: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub record: Option<serde_json::Value>,
+}
+
 /// Timing information for lag tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitTimingInfo {
@@ -57,6 +70,7 @@ pub struct IngesterStats {
     pub occurrences: u64,
     pub identifications: u64,
     pub comments: u64,
+    pub interactions: u64,
     pub errors: u64,
 }
 
@@ -94,6 +108,7 @@ impl Default for IngesterConfig {
 pub const OCCURRENCE_COLLECTION: &str = "org.rwell.test.occurrence";
 pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
 pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
+pub const INTERACTION_COLLECTION: &str = "org.rwell.test.interaction";
 
 #[cfg(test)]
 mod tests {
@@ -213,5 +228,7 @@ mod tests {
     fn test_collection_constants() {
         assert_eq!(OCCURRENCE_COLLECTION, "org.rwell.test.occurrence");
         assert_eq!(IDENTIFICATION_COLLECTION, "org.rwell.test.identification");
+        assert_eq!(COMMENT_COLLECTION, "org.rwell.test.comment");
+        assert_eq!(INTERACTION_COLLECTION, "org.rwell.test.interaction");
     }
 }

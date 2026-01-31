@@ -9,7 +9,7 @@ export * from "./types.js";
 export * from "./schemas/index.js";
 
 // Database
-export { Database, type OccurrenceRow, type IdentificationRow, type CommentRow, type ObservationRow } from "./database/index.js";
+export { Database, type OccurrenceRow, type IdentificationRow, type CommentRow, type InteractionRow, type ObservationRow } from "./database/index.js";
 
 // Services
 export { TaxonomyClient, type TaxonResult, type TaxonDetail as TaxonDetailService, type TaxonAncestor as TaxonAncestorService, type TaxonDescription, type TaxonReference, type TaxonMedia, type ValidationResult, type ConservationStatus as ConservationStatusService, type IUCNCategory as IUCNCategoryService } from "./services/taxonomy.js";

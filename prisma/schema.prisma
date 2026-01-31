@@ -50,8 +50,10 @@ model Occurrence {
   createdAt                     DateTime @map("created_at")
   indexedAt                     DateTime @default(now()) @map("indexed_at")
 
-  identifications Identification[]
-  comments        Comment[]
+  identifications  Identification[]
+  comments         Comment[]
+  interactionsAsA  Interaction[]    @relation("InteractionSubjectA")
+  interactionsAsB  Interaction[]    @relation("InteractionSubjectB")
 
   @@index([location], name: "occurrences_location_idx", type: Gist)
   @@index([scientificName], name: "occurrences_scientific_name_idx")
@@ -103,4 +105,35 @@ model Comment {
   @@index([did], name: "comments_did_idx")
   @@index([replyToUri], name: "comments_reply_to_uri_idx")
   @@map("comments")
+}
+
+model Interaction {
+  uri                    String   @id
+  cid                    String
+  did                    String
+  subjectAOccurrenceUri  String?  @map("subject_a_occurrence_uri")
+  subjectAOccurrenceCid  String?  @map("subject_a_occurrence_cid")
+  subjectASubjectIndex   Int      @default(0) @map("subject_a_subject_index")
+  subjectATaxonName      String?  @map("subject_a_taxon_name")
+  subjectAKingdom        String?  @map("subject_a_kingdom")
+  subjectBOccurrenceUri  String?  @map("subject_b_occurrence_uri")
+  subjectBOccurrenceCid  String?  @map("subject_b_occurrence_cid")
+  subjectBSubjectIndex   Int      @default(0) @map("subject_b_subject_index")
+  subjectBTaxonName      String?  @map("subject_b_taxon_name")
+  subjectBKingdom        String?  @map("subject_b_kingdom")
+  interactionType        String   @map("interaction_type")
+  direction              String   @default("AtoB")
+  confidence             String?
+  comment                String?
+  createdAt              DateTime @map("created_at")
+  indexedAt              DateTime @default(now()) @map("indexed_at")
+
+  occurrenceA Occurrence? @relation("InteractionSubjectA", fields: [subjectAOccurrenceUri], references: [uri], onDelete: Cascade)
+  occurrenceB Occurrence? @relation("InteractionSubjectB", fields: [subjectBOccurrenceUri], references: [uri], onDelete: Cascade)
+
+  @@index([did], name: "interactions_did_idx")
+  @@index([subjectAOccurrenceUri], name: "interactions_subject_a_occurrence_idx")
+  @@index([subjectBOccurrenceUri], name: "interactions_subject_b_occurrence_idx")
+  @@index([interactionType], name: "interactions_type_idx")
+  @@map("interactions")
 }
