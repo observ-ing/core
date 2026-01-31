@@ -55,7 +55,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
   return (
     <Container
-      maxWidth="md"
+      maxWidth="sm"
       disableGutters
       sx={{
         flex: 1,
