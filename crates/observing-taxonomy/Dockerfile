@@ -12,27 +12,30 @@ WORKDIR /app
 # Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy package manifests
-COPY packages/observing-ingester/Cargo.toml packages/observing-ingester/
-COPY packages/observing-media-proxy/Cargo.toml packages/observing-media-proxy/
-COPY packages/observing-taxonomy/Cargo.toml packages/observing-taxonomy/
+# Copy crate manifests
+COPY crates/gbif-api/Cargo.toml crates/gbif-api/
+COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
+COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
+COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN mkdir -p packages/observing-ingester/src packages/observing-media-proxy/src packages/observing-taxonomy/src && \
-    echo "fn main() {}" > packages/observing-ingester/src/main.rs && \
-    echo "" > packages/observing-ingester/src/lib.rs && \
-    echo "fn main() {}" > packages/observing-media-proxy/src/main.rs && \
-    echo "" > packages/observing-media-proxy/src/lib.rs && \
-    echo "fn main() {}" > packages/observing-taxonomy/src/main.rs
+RUN mkdir -p crates/gbif-api/src crates/observing-ingester/src crates/observing-media-proxy/src crates/observing-taxonomy/src && \
+    echo "" > crates/gbif-api/src/lib.rs && \
+    echo "fn main() {}" > crates/observing-ingester/src/main.rs && \
+    echo "" > crates/observing-ingester/src/lib.rs && \
+    echo "fn main() {}" > crates/observing-media-proxy/src/main.rs && \
+    echo "" > crates/observing-media-proxy/src/lib.rs && \
+    echo "fn main() {}" > crates/observing-taxonomy/src/main.rs
 
 # Build dependencies only (this layer will be cached)
-RUN cargo build --release -p observing-taxonomy && rm -rf packages/observing-taxonomy/src
+RUN cargo build --release -p observing-taxonomy && rm -rf crates/observing-taxonomy/src
 
 # Copy real source code for taxonomy
-COPY packages/observing-taxonomy/src packages/observing-taxonomy/src
+COPY crates/gbif-api/src crates/gbif-api/src
+COPY crates/observing-taxonomy/src crates/observing-taxonomy/src
 
 # Build for release (touch to invalidate cache for main.rs)
-RUN touch packages/observing-taxonomy/src/main.rs && cargo build --release -p observing-taxonomy
+RUN touch crates/observing-taxonomy/src/main.rs && cargo build --release -p observing-taxonomy
 
 # Runtime stage
 FROM debian:bookworm-slim

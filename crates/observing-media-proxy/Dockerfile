@@ -12,25 +12,25 @@ WORKDIR /app
 # Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy package manifests
-COPY packages/observing-ingester/Cargo.toml packages/observing-ingester/
-COPY packages/observing-media-proxy/Cargo.toml packages/observing-media-proxy/
+# Copy crate manifests
+COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
+COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 
 # Create dummy sources to cache dependencies
-RUN mkdir -p packages/observing-ingester/src packages/observing-media-proxy/src && \
-    echo "fn main() {}" > packages/observing-ingester/src/main.rs && \
-    echo "" > packages/observing-ingester/src/lib.rs && \
-    echo "fn main() {}" > packages/observing-media-proxy/src/main.rs && \
-    echo "" > packages/observing-media-proxy/src/lib.rs
+RUN mkdir -p crates/observing-ingester/src crates/observing-media-proxy/src && \
+    echo "fn main() {}" > crates/observing-ingester/src/main.rs && \
+    echo "" > crates/observing-ingester/src/lib.rs && \
+    echo "fn main() {}" > crates/observing-media-proxy/src/main.rs && \
+    echo "" > crates/observing-media-proxy/src/lib.rs
 
 # Build dependencies only (this layer will be cached)
-RUN cargo build --release -p observing-media-proxy && rm -rf packages/observing-media-proxy/src
+RUN cargo build --release -p observing-media-proxy && rm -rf crates/observing-media-proxy/src
 
 # Copy real source code for media proxy
-COPY packages/observing-media-proxy/src packages/observing-media-proxy/src
+COPY crates/observing-media-proxy/src crates/observing-media-proxy/src
 
 # Build for release (touch to invalidate cache for main.rs)
-RUN touch packages/observing-media-proxy/src/main.rs && cargo build --release -p observing-media-proxy
+RUN touch crates/observing-media-proxy/src/main.rs && cargo build --release -p observing-media-proxy
 
 # Runtime stage
 FROM debian:bookworm-slim
