@@ -21,10 +21,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  FormControlLabel,
+  Checkbox,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
 import {
@@ -79,6 +82,8 @@ export function UploadModal() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [coObservers, setCoObservers] = useState<string[]>([]);
   const [coObserverInput, setCoObserverInput] = useState("");
+  const [photoDate, setPhotoDate] = useState<Date | null>(null);
+  const [usePhotoDate, setUsePhotoDate] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
@@ -122,6 +127,8 @@ export function UploadModal() {
     setImages([]);
     setCoObservers([]);
     setCoObserverInput("");
+    setPhotoDate(null);
+    setUsePhotoDate(false);
   };
 
   const handleAddCoObserver = () => {
@@ -173,8 +180,8 @@ export function UploadModal() {
       const preview = URL.createObjectURL(file);
       setImages((prev) => [...prev, { file, preview }]);
 
-      if (images.length === 0 && !lat && !lng) {
-        extractExifLocation(file);
+      if (images.length === 0) {
+        extractExifData(file);
       }
     }
 
@@ -183,11 +190,50 @@ export function UploadModal() {
     }
   };
 
-  const extractExifLocation = async (file: File) => {
+  const extractExifData = async (file: File) => {
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const dataView = new DataView(arrayBuffer);
-      if (dataView.getUint16(0) !== 0xffd8) return;
+      const tags = ExifReader.load(arrayBuffer);
+
+      // Extract GPS coordinates
+      const gpsLat = tags.GPSLatitude;
+      const gpsLng = tags.GPSLongitude;
+      const latRef = tags.GPSLatitudeRef;
+      const lngRef = tags.GPSLongitudeRef;
+
+      if (gpsLat && gpsLng) {
+        let latitude = gpsLat.description;
+        let longitude = gpsLng.description;
+
+        // Handle numeric values directly from description
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          // Apply hemisphere signs
+          if (latRef?.value?.[0] === "S") latitude = -Math.abs(latitude);
+          if (lngRef?.value?.[0] === "W") longitude = -Math.abs(longitude);
+
+          setLat(latitude.toFixed(6));
+          setLng(longitude.toFixed(6));
+          dispatch(
+            addToast({
+              message: "Location extracted from photo EXIF data",
+              type: "success",
+            })
+          );
+        }
+      }
+
+      // Extract date taken
+      const dateOriginal = tags.DateTimeOriginal || tags.DateTime;
+      if (dateOriginal?.description) {
+        // EXIF date format: "YYYY:MM:DD HH:MM:SS"
+        const dateStr = dateOriginal.description;
+        const parsed = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
+        const date = new Date(parsed);
+        if (!isNaN(date.getTime())) {
+          setPhotoDate(date);
+          setUsePhotoDate(true);
+        }
+      }
     } catch (error) {
       console.error("EXIF extraction error:", error);
     }
@@ -280,13 +326,17 @@ export function UploadModal() {
           })
         );
       } else {
+        const eventDate = usePhotoDate && photoDate
+          ? photoDate.toISOString()
+          : new Date().toISOString();
+
         const result = await submitObservation({
           scientificName: species.trim() || undefined,
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           notes: notes || undefined,
           license,
-          eventDate: new Date().toISOString(),
+          eventDate,
           images: imageData.length > 0 ? imageData : undefined,
           recordedBy: coObservers.length > 0 ? coObservers : undefined,
         });
@@ -595,6 +645,24 @@ export function UploadModal() {
         <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
+
+        {photoDate && (
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={usePhotoDate}
+                onChange={(e) => setUsePhotoDate(e.target.checked)}
+                size="small"
+              />
+            }
+            label={
+              <Typography variant="body2">
+                Use photo date: {photoDate.toLocaleDateString()} {photoDate.toLocaleTimeString()}
+              </Typography>
+            }
+            sx={{ mt: 1 }}
+          />
+        )}
 
         {lat && lng && (
           <LocationPicker
