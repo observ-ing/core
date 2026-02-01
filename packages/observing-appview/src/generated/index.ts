@@ -6,7 +6,9 @@
  * dependencies that are not used in this project.
  */
 
+export * as OrgRwellTestComment from './types/org/rwell/test/comment.js'
 export * as OrgRwellTestIdentification from './types/org/rwell/test/identification.js'
+export * as OrgRwellTestInteraction from './types/org/rwell/test/interaction.js'
 export * as OrgRwellTestLike from './types/org/rwell/test/like.js'
 export * as OrgRwellTestOccurrence from './types/org/rwell/test/occurrence.js'
 

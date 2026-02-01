@@ -51,7 +51,9 @@ const simplifiedIndex = `/**
  * dependencies that are not used in this project.
  */
 
+export * as OrgRwellTestComment from './types/org/rwell/test/comment.js'
 export * as OrgRwellTestIdentification from './types/org/rwell/test/identification.js'
+export * as OrgRwellTestInteraction from './types/org/rwell/test/interaction.js'
 export * as OrgRwellTestLike from './types/org/rwell/test/like.js'
 export * as OrgRwellTestOccurrence from './types/org/rwell/test/occurrence.js'
 
@@ -168,5 +170,33 @@ if (commentLastImportIndex !== -1) {
 
 writeFileSync(commentPath, commentContent);
 console.log('Fixed: comment.ts');
+
+// Fix interaction.ts - remove CID import, fix imports, and inline StrongRef
+const interactionPath = join(generatedDir, 'types/org/rwell/test/interaction.ts');
+let interactionContent = readFileSync(interactionPath, 'utf-8');
+
+interactionContent = interactionContent
+  .replace(/import { type ValidationResult, BlobRef } from '@atproto\/lexicon'\n/, `import { type BlobRef } from '@atproto/lexicon'\n`)
+  .replace(/import { CID } from 'multiformats\/cid'\n/, '')
+  .replace(/import { validate as _validate } from '\.\.\/\.\.\/\.\.\/\.\.\/lexicons'/, `import { validate as _validate } from '../../../../lexicons.js'`)
+  .replace(/import \{\n  type \$Typed,\n  is\$typed as _is\$typed,\n  type OmitKey,\n\} from '\.\.\/\.\.\/\.\.\/\.\.\/util'/, `import {\n  is$typed as _is$typed,\n} from '../../../../util.js'`)
+  .replace(/import type \* as ComAtprotoRepoStrongRef from '\.\.\/\.\.\/\.\.\/com\/atproto\/repo\/strongRef\.js'\n/, '')
+  .replace(/occurrence\?: ComAtprotoRepoStrongRef\.Main/g, 'occurrence?: StrongRef');
+
+// Add StrongRef interface after imports for interaction.ts
+const interactionLines = interactionContent.split('\n');
+let interactionLastImportIndex = -1;
+for (let i = 0; i < interactionLines.length; i++) {
+  if (interactionLines[i].startsWith('import ') || interactionLines[i].startsWith('} from ')) {
+    interactionLastImportIndex = i;
+  }
+}
+if (interactionLastImportIndex !== -1) {
+  interactionLines.splice(interactionLastImportIndex + 1, 0, strongRefInterface);
+  interactionContent = interactionLines.join('\n');
+}
+
+writeFileSync(interactionPath, interactionContent);
+console.log('Fixed: interaction.ts');
 
 console.log('All generated types fixed!');
