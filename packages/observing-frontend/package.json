@@ -15,6 +15,7 @@
     "@mui/icons-material": "^7.3.7",
     "@mui/material": "^7.3.7",
     "@reduxjs/toolkit": "^2.11.2",
+    "dompurify": "^3.3.1",
     "exifreader": "^4.36.1",
     "maplibre-gl": "^4.1.0",
     "observing-shared": "*",
@@ -24,6 +25,7 @@
     "react-router-dom": "^7.12.0"
   },
   "devDependencies": {
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^20.10.0",
     "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import DOMPurify from "dompurify";
 import {
   Box,
   Container,
@@ -337,15 +338,22 @@ export function TaxonDetail() {
                 <Box key={idx} sx={{ mb: idx < taxon.descriptions!.length - 1 ? 2 : 0 }}>
                   <Typography
                     variant="body2"
+                    component="div"
                     sx={{
                       display: "-webkit-box",
                       WebkitLineClamp: 6,
                       WebkitBoxOrient: "vertical",
                       overflow: "hidden",
+                      "& p": { m: 0 },
+                      "& em, & i": { fontStyle: "italic" },
                     }}
-                  >
-                    {d.description}
-                  </Typography>
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(d.description, {
+                        ALLOWED_TAGS: ["p", "br", "em", "i", "strong", "b", "a"],
+                        ALLOWED_ATTR: ["href", "target", "rel"],
+                      }),
+                    }}
+                  />
                   {d.source && (
                     <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: "block" }}>
                       Source: {d.source}
