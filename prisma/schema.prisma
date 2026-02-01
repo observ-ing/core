@@ -68,6 +68,7 @@ model Identification {
   did                              String
   subjectUri                       String   @map("subject_uri")
   subjectCid                       String   @map("subject_cid")
+  subjectIndex                     Int      @default(0) @map("subject_index")
   scientificName                   String   @map("scientific_name")
   taxonRank                        String?  @map("taxon_rank")
   identificationQualifier          String?  @map("identification_qualifier")
@@ -78,10 +79,20 @@ model Identification {
   isAgreement                      Boolean  @default(false) @map("is_agreement")
   dateIdentified                   DateTime @map("date_identified")
   indexedAt                        DateTime @default(now()) @map("indexed_at")
+  // Darwin Core taxonomy fields (snapshot at time of identification)
+  vernacularName                   String?  @map("vernacular_name")
+  kingdom                          String?
+  phylum                           String?
+  class                            String?
+  order                            String?
+  family                           String?
+  genus                            String?
+  confidence                       String?
 
   occurrence Occurrence @relation(fields: [subjectUri], references: [uri], onDelete: Cascade)
 
   @@index([subjectUri], name: "identifications_subject_uri_idx")
+  @@index([subjectUri, subjectIndex], name: "identifications_subject_idx")
   @@index([did], name: "identifications_did_idx")
   @@index([scientificName], name: "identifications_scientific_name_idx")
   @@map("identifications")

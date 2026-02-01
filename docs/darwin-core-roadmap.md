@@ -116,13 +116,14 @@ The `upsertIdentification` method now correctly saves taxonomy fields from the l
 
 ### Changes Made
 
-1. Added migration to create taxonomy columns in identifications table:
-   - `vernacular_name`, `kingdom`, `phylum`, `class`, `order`, `family`, `genus`, `confidence`
+1. Added migration `20260201_restore_identification_taxonomy_columns` to create taxonomy columns in identifications table:
+   - `subject_index`, `vernacular_name`, `kingdom`, `phylum`, `class`, `order`, `family`, `genus`, `confidence`
 2. Updated `upsertIdentification` to save all taxonomy fields from the record
 3. Updated all identification queries to include new columns
 4. Updated `IdentificationRow` type definition
+5. Added composite index on `(subject_uri, subject_index)` for efficient multi-subject queries
 
-**Impact**: Taxonomy info from identifications is now properly stored and retrievable.
+**Impact**: Taxonomy info from identifications is now properly stored and retrievable. Supports multi-subject occurrences (e.g., identifying both a butterfly and the flower it's on).
 
 ---
 
@@ -229,9 +230,11 @@ For structured surveys (bioblitzes, transects):
 
 ## Tier 5: Identification Enhancements
 
-**Status**: 🔲 Not Started
+**Status**: 🔶 Partially Complete (DB columns exist, lexicon needs update)
 
 ### Add missing DwC identification fields to lexicon
+
+The database already has `identification_qualifier` and `identification_verification_status` columns. Only the lexicon update is needed.
 
 ```json
 "identificationQualifier": {
@@ -258,8 +261,8 @@ For structured surveys (bioblitzes, transects):
 |-------|---------|--------|--------|
 | **1** | Add Tier 1 fields to occurrence lexicon | Low | High - richer data capture |
 | **2** | ~~Add geographic hierarchy to location~~ | ~~Low~~ | ~~High - GBIF export ready~~ ✅ |
-| **3** | Fix identification DB storage bug | Low | Medium - data integrity |
-| **4** | Add identificationQualifier, verificationStatus | Low | Medium - data quality |
+| **3** | ~~Fix identification DB storage bug~~ | ~~Low~~ | ~~Medium - data integrity~~ ✅ |
+| **4** | Add identificationQualifier, verificationStatus to lexicon | Low | Medium - data quality |
 | **5** | Create Organism lexicon for re-sightings | Medium | Medium - power users |
 | **6** | Create Event lexicon for surveys | Medium | Low - structured surveys |
 
