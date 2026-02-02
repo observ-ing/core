@@ -333,7 +333,7 @@ export class AppViewServer {
               });
 
               blobs.push({
-                image: blobResponse.data.blob as l.BlobRef,
+                image: blobResponse.data.blob as unknown as l.BlobRef,
                 alt: `Photo ${i + 1}${scientificName ? ` of ${scientificName}` : ""}`,
               });
 
@@ -376,40 +376,44 @@ export class AppViewServer {
         }
 
         // User is authenticated - post to AT Protocol network
+        // Build location with only defined optional fields (exactOptionalPropertyTypes)
+        const location: OccurrenceRecord.Location = {
+          decimalLatitude: String(latitude),
+          decimalLongitude: String(longitude),
+          coordinateUncertaintyInMeters: 50,
+          geodeticDatum: "WGS84",
+          // Darwin Core administrative geography from geocoding
+          ...(geocoded.continent && { continent: geocoded.continent }),
+          ...(geocoded.country && { country: geocoded.country }),
+          ...(geocoded.countryCode && { countryCode: geocoded.countryCode }),
+          ...(geocoded.stateProvince && { stateProvince: geocoded.stateProvince }),
+          ...(geocoded.county && { county: geocoded.county }),
+          ...(geocoded.municipality && { municipality: geocoded.municipality }),
+          ...(geocoded.locality && { locality: geocoded.locality }),
+          ...(geocoded.waterBody && { waterBody: geocoded.waterBody }),
+        };
+
         const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
-          scientificName: scientificName || undefined,
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
-          location: {
-            decimalLatitude: String(latitude),
-            decimalLongitude: String(longitude),
-            coordinateUncertaintyInMeters: 50,
-            geodeticDatum: "WGS84",
-            // Darwin Core administrative geography from geocoding
-            continent: geocoded.continent,
-            country: geocoded.country,
-            countryCode: geocoded.countryCode,
-            stateProvince: geocoded.stateProvince,
-            county: geocoded.county,
-            municipality: geocoded.municipality,
-            locality: geocoded.locality,
-            waterBody: geocoded.waterBody,
-          },
-          blobs: blobs.length > 0 ? blobs : undefined,
-          notes: notes || undefined,
-          license: license || undefined,
-          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
-          taxonId: taxonId || taxon?.id,
-          taxonRank: taxonRank || taxon?.rank,
-          vernacularName: vernacularName || taxon?.commonName,
-          kingdom: kingdom || taxon?.kingdom,
-          phylum: phylum || taxon?.phylum,
-          class: taxonomyClass || taxon?.class,
-          order: order || taxon?.order,
-          family: family || taxon?.family,
-          genus: genus || taxon?.genus,
-          recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          location,
           createdAt: new Date().toISOString() as l.DatetimeString,
+          // Optional fields - only include if defined
+          ...(scientificName && { scientificName }),
+          ...(blobs.length > 0 && { blobs }),
+          ...(notes && { notes }),
+          ...(license && { license }),
+          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
+          ...((taxonId || taxon?.id) && { taxonId: taxonId || taxon?.id }),
+          ...((taxonRank || taxon?.rank) && { taxonRank: taxonRank || taxon?.rank }),
+          ...((vernacularName || taxon?.commonName) && { vernacularName: vernacularName || taxon?.commonName }),
+          ...((kingdom || taxon?.kingdom) && { kingdom: kingdom || taxon?.kingdom }),
+          ...((phylum || taxon?.phylum) && { phylum: phylum || taxon?.phylum }),
+          ...((taxonomyClass || taxon?.class) && { class: taxonomyClass || taxon?.class }),
+          ...((order || taxon?.order) && { order: order || taxon?.order }),
+          ...((family || taxon?.family) && { family: family || taxon?.family }),
+          ...((genus || taxon?.genus) && { genus: genus || taxon?.genus }),
+          ...(coObservers.length > 0 && { recordedBy: coObservers }),
         };
 
         // Create the record on the user's PDS
@@ -530,40 +534,43 @@ export class AppViewServer {
           }
         }
 
-        // Build the updated record
+        // Build the updated record with only defined optional fields (exactOptionalPropertyTypes)
+        const location: OccurrenceRecord.Location = {
+          decimalLatitude: String(latitude),
+          decimalLongitude: String(longitude),
+          coordinateUncertaintyInMeters: 50,
+          geodeticDatum: "WGS84",
+          // Darwin Core administrative geography from geocoding
+          ...(geocoded.continent && { continent: geocoded.continent }),
+          ...(geocoded.country && { country: geocoded.country }),
+          ...(geocoded.countryCode && { countryCode: geocoded.countryCode }),
+          ...(geocoded.stateProvince && { stateProvince: geocoded.stateProvince }),
+          ...(geocoded.county && { county: geocoded.county }),
+          ...(geocoded.municipality && { municipality: geocoded.municipality }),
+          ...(geocoded.locality && { locality: geocoded.locality }),
+          ...(geocoded.waterBody && { waterBody: geocoded.waterBody }),
+        };
+
         const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
-          scientificName: scientificName || undefined,
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
-          location: {
-            decimalLatitude: String(latitude),
-            decimalLongitude: String(longitude),
-            coordinateUncertaintyInMeters: 50,
-            geodeticDatum: "WGS84",
-            // Darwin Core administrative geography from geocoding
-            continent: geocoded.continent,
-            country: geocoded.country,
-            countryCode: geocoded.countryCode,
-            stateProvince: geocoded.stateProvince,
-            county: geocoded.county,
-            municipality: geocoded.municipality,
-            locality: geocoded.locality,
-            waterBody: geocoded.waterBody,
-          },
-          notes: notes || undefined,
-          license: license || undefined,
-          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
-          taxonId: taxonId || taxon?.id,
-          taxonRank: taxonRank || taxon?.rank,
-          vernacularName: vernacularName || taxon?.commonName,
-          kingdom: kingdom || taxon?.kingdom,
-          phylum: phylum || taxon?.phylum,
-          class: taxonomyClass || taxon?.class,
-          order: order || taxon?.order,
-          family: family || taxon?.family,
-          genus: genus || taxon?.genus,
-          recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          location,
           createdAt: new Date().toISOString() as l.DatetimeString,
+          // Optional fields - only include if defined
+          ...(scientificName && { scientificName }),
+          ...(notes && { notes }),
+          ...(license && { license }),
+          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
+          ...((taxonId || taxon?.id) && { taxonId: taxonId || taxon?.id }),
+          ...((taxonRank || taxon?.rank) && { taxonRank: taxonRank || taxon?.rank }),
+          ...((vernacularName || taxon?.commonName) && { vernacularName: vernacularName || taxon?.commonName }),
+          ...((kingdom || taxon?.kingdom) && { kingdom: kingdom || taxon?.kingdom }),
+          ...((phylum || taxon?.phylum) && { phylum: phylum || taxon?.phylum }),
+          ...((taxonomyClass || taxon?.class) && { class: taxonomyClass || taxon?.class }),
+          ...((order || taxon?.order) && { order: order || taxon?.order }),
+          ...((family || taxon?.family) && { family: family || taxon?.family }),
+          ...((genus || taxon?.genus) && { genus: genus || taxon?.genus }),
+          ...(coObservers.length > 0 && { recordedBy: coObservers }),
         };
 
         // Update the record on the user's PDS using putRecord
@@ -1307,7 +1314,7 @@ export class AppViewServer {
           return;
         }
 
-        // Build the comment record
+        // Build the comment record (exactOptionalPropertyTypes - omit undefined fields)
         const record: CommentRecord.Main = {
           $type: "org.rwell.test.comment",
           subject: {
@@ -1315,11 +1322,13 @@ export class AppViewServer {
             cid: occurrenceCid as l.CidString,
           },
           body: body.trim(),
-          replyTo: replyToUri && replyToCid ? {
-            uri: replyToUri as l.AtUriString,
-            cid: replyToCid as l.CidString,
-          } : undefined,
           createdAt: new Date().toISOString() as l.DatetimeString,
+          ...(replyToUri && replyToCid && {
+            replyTo: {
+              uri: replyToUri as l.AtUriString,
+              cid: replyToCid as l.CidString,
+            },
+          }),
         };
 
         // Create the record on the user's PDS
@@ -1381,15 +1390,17 @@ export class AppViewServer {
           return;
         }
 
-        // Build the interaction record
+        // Build the interaction record (exactOptionalPropertyTypes - omit undefined fields)
         const buildSubject = (s: typeof subjectA): InteractionRecord.InteractionSubject => ({
-          occurrence: s.occurrenceUri && s.occurrenceCid ? {
-            uri: s.occurrenceUri as l.AtUriString,
-            cid: s.occurrenceCid as l.CidString,
-          } : undefined,
           subjectIndex: s.subjectIndex ?? 0,
-          taxonName: s.taxonName,
-          kingdom: s.kingdom,
+          ...(s.occurrenceUri && s.occurrenceCid && {
+            occurrence: {
+              uri: s.occurrenceUri as l.AtUriString,
+              cid: s.occurrenceCid as l.CidString,
+            },
+          }),
+          ...(s.taxonName && { taxonName: s.taxonName }),
+          ...(s.kingdom && { kingdom: s.kingdom }),
         });
 
         const record: InteractionRecord.Main = {
@@ -1398,9 +1409,9 @@ export class AppViewServer {
           subjectB: buildSubject(subjectB),
           interactionType,
           direction,
-          confidence,
-          comment: comment?.trim() || undefined,
           createdAt: new Date().toISOString() as l.DatetimeString,
+          ...(confidence && { confidence }),
+          ...(comment?.trim() && { comment: comment.trim() }),
         };
 
         // Create the record on the user's PDS

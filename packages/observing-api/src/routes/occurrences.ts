@@ -288,28 +288,31 @@ export function createOccurrenceRoutes(
 
       // Build the occurrence record WITHOUT taxonomy fields
       // Taxonomy data goes into the identification record instead
+      // Build location with only defined optional fields (exactOptionalPropertyTypes)
+      const location: org.rwell.test.occurrence.Location = {
+        decimalLatitude: String(latitude),
+        decimalLongitude: String(longitude),
+        coordinateUncertaintyInMeters: 50,
+        geodeticDatum: "WGS84",
+        ...(geocoded.continent && { continent: geocoded.continent }),
+        ...(geocoded.country && { country: geocoded.country }),
+        ...(geocoded.countryCode && { countryCode: geocoded.countryCode }),
+        ...(geocoded.stateProvince && { stateProvince: geocoded.stateProvince }),
+        ...(geocoded.county && { county: geocoded.county }),
+        ...(geocoded.municipality && { municipality: geocoded.municipality }),
+        ...(geocoded.locality && { locality: geocoded.locality }),
+        ...(geocoded.waterBody && { waterBody: geocoded.waterBody }),
+      };
+
       const record: org.rwell.test.occurrence.Main = {
         $type: "org.rwell.test.occurrence",
         eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
-        location: {
-          decimalLatitude: String(latitude),
-          decimalLongitude: String(longitude),
-          coordinateUncertaintyInMeters: 50,
-          geodeticDatum: "WGS84",
-          continent: geocoded.continent,
-          country: geocoded.country,
-          countryCode: geocoded.countryCode,
-          stateProvince: geocoded.stateProvince,
-          county: geocoded.county,
-          municipality: geocoded.municipality,
-          locality: geocoded.locality,
-          waterBody: geocoded.waterBody,
-        },
-        blobs: blobs.length > 0 ? blobs : undefined,
-        notes: notes || undefined,
-        license: license || undefined,
-        recordedBy: coObservers.length > 0 ? coObservers : undefined,
+        location,
         createdAt: new Date().toISOString() as l.DatetimeString,
+        ...(blobs.length > 0 && { blobs }),
+        ...(notes && { notes }),
+        ...(license && { license }),
+        ...(coObservers.length > 0 && { recordedBy: coObservers }),
       };
 
       // Create the record via internal RPC
