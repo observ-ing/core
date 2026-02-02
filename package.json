@@ -21,7 +21,7 @@
     "frontend:build": "npm run build --workspace=observing-frontend"
   },
   "devDependencies": {
-    "@atproto/lex-cli": "^0.9.8",
+    "@atproto/lex": "^0.0.14",
     "@types/node": "^20.10.0",
     "@vitest/coverage-v8": "^4.0.17",
     "dotenv": "^17.2.3",

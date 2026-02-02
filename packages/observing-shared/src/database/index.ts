@@ -15,8 +15,8 @@ import type {
   CommentRow,
   InteractionRow,
 } from "../types.js";
-import type * as OrgRwellTestOccurrence from "../generated/types/org/rwell/test/occurrence.js";
-import type * as OrgRwellTestIdentification from "../generated/types/org/rwell/test/identification.js";
+import type * as OrgRwellTestOccurrence from "../generated/org/rwell/test/occurrence.defs.js";
+import type * as OrgRwellTestIdentification from "../generated/org/rwell/test/identification.defs.js";
 
 const { Pool } = pg;
 
