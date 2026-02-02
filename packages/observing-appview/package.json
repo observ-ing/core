@@ -14,13 +14,14 @@
   "dependencies": {
     "@atproto/api": "^0.18.15",
     "@atproto/jwk-jose": "^0.1.0",
+    "@atproto/lex": "^0.0.14",
     "@atproto/lexicon": "^0.6.0",
     "@atproto/oauth-client-node": "^0.3.15",
     "@atproto/xrpc": "^0.7.0",
-    "observing-shared": "*",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.0",
+    "observing-shared": "*",
     "pg": "^8.11.0",
     "pino": "^10.2.1",
     "swagger-ui-express": "^5.0.1"
