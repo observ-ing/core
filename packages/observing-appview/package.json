@@ -21,6 +21,7 @@
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "express": "^4.18.0",
+    "observing-lexicon": "*",
     "observing-shared": "*",
     "pg": "^8.11.0",
     "pino": "^10.2.1",

@@ -15,14 +15,13 @@ import type {
   CommentRow,
   InteractionRow,
 } from "../types.js";
-import type * as OrgRwellTestOccurrence from "../generated/org/rwell/test/occurrence.defs.js";
-import type * as OrgRwellTestIdentification from "../generated/org/rwell/test/identification.defs.js";
+import { org } from "observing-lexicon";
 
 const { Pool } = pg;
 
 // Type aliases for the record types
-type Occurrence = OrgRwellTestOccurrence.Main;
-type Identification = OrgRwellTestIdentification.Main;
+type Occurrence = org.rwell.test.occurrence.Main;
+type Identification = org.rwell.test.identification.Main;
 
 export class Database {
   private pool: pg.Pool;

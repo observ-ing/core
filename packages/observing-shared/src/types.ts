@@ -2,8 +2,8 @@
  * Shared types for Observ.ing services
  */
 
-// Re-export generated types
-export * from "./generated/index.js";
+// Re-export generated lexicon types
+export * from "observing-lexicon";
 
 /**
  * Event types for firehose operations

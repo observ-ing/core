@@ -56,10 +56,8 @@ import {
 } from "./auth/index.js";
 import { createInternalRoutes } from "./internal-routes.js";
 
-// Generated lexicon types
-import type * as OccurrenceRecord from "./generated/org/rwell/test/occurrence.defs.js";
-import type * as CommentRecord from "./generated/org/rwell/test/comment.defs.js";
-import type * as InteractionRecord from "./generated/org/rwell/test/interaction.defs.js";
+// Generated lexicon types from observing-lexicon package
+import { org } from "observing-lexicon";
 import type { l } from "@atproto/lex";
 
 // Utility to build DATABASE_URL from environment variables
@@ -316,7 +314,7 @@ export class AppViewServer {
         }
 
         // Upload images as blobs if provided
-        const blobs: OccurrenceRecord.ImageEmbed[] = [];
+        const blobs: org.rwell.test.occurrence.ImageEmbed[] = [];
 
         if (images && Array.isArray(images)) {
           for (let i = 0; i < images.length; i++) {
@@ -377,7 +375,7 @@ export class AppViewServer {
 
         // User is authenticated - post to AT Protocol network
         // Build location with only defined optional fields (exactOptionalPropertyTypes)
-        const location: OccurrenceRecord.Location = {
+        const location: org.rwell.test.occurrence.Location = {
           decimalLatitude: String(latitude),
           decimalLongitude: String(longitude),
           coordinateUncertaintyInMeters: 50,
@@ -404,7 +402,7 @@ export class AppViewServer {
         const finalFamily = family || taxon?.family;
         const finalGenus = genus || taxon?.genus;
 
-        const record: OccurrenceRecord.Main = {
+        const record: org.rwell.test.occurrence.Main = {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
@@ -545,7 +543,7 @@ export class AppViewServer {
         }
 
         // Build the updated record with only defined optional fields (exactOptionalPropertyTypes)
-        const location: OccurrenceRecord.Location = {
+        const location: org.rwell.test.occurrence.Location = {
           decimalLatitude: String(latitude),
           decimalLongitude: String(longitude),
           coordinateUncertaintyInMeters: 50,
@@ -572,7 +570,7 @@ export class AppViewServer {
         const finalFamily = family || taxon?.family;
         const finalGenus = genus || taxon?.genus;
 
-        const record: OccurrenceRecord.Main = {
+        const record: org.rwell.test.occurrence.Main = {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
@@ -1335,7 +1333,7 @@ export class AppViewServer {
         }
 
         // Build the comment record (exactOptionalPropertyTypes - omit undefined fields)
-        const record: CommentRecord.Main = {
+        const record: org.rwell.test.comment.Main = {
           $type: "org.rwell.test.comment",
           subject: {
             uri: occurrenceUri as l.AtUriString,
@@ -1411,7 +1409,7 @@ export class AppViewServer {
         }
 
         // Build the interaction record (exactOptionalPropertyTypes - omit undefined fields)
-        const buildSubject = (s: typeof subjectA): InteractionRecord.InteractionSubject => ({
+        const buildSubject = (s: typeof subjectA): org.rwell.test.interaction.InteractionSubject => ({
           subjectIndex: s.subjectIndex ?? 0,
           ...(s.occurrenceUri && s.occurrenceCid && {
             occurrence: {
@@ -1423,7 +1421,7 @@ export class AppViewServer {
           ...(s.kingdom && { kingdom: s.kingdom }),
         });
 
-        const record: InteractionRecord.Main = {
+        const record: org.rwell.test.interaction.Main = {
           $type: "org.rwell.test.interaction",
           subjectA: buildSubject(subjectA),
           subjectB: buildSubject(subjectB),

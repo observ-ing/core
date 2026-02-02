@@ -17,5 +17,5 @@ export { GeocodingService, type GeocodedLocation } from "./services/geocoding.js
 export { CommunityIdCalculator, TaxonomicHierarchy, type CommunityIdResult, type TaxonCount } from "./services/community-id.js";
 export { IdentityResolver, getIdentityResolver, type DidDocument, type Profile as IdentityProfile, type ResolveResult } from "./services/identity.js";
 
-// Generated types
-export * from "./generated/index.js";
+// Generated lexicon types (re-exported from observing-lexicon)
+export * from "observing-lexicon";

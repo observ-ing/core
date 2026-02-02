@@ -3,7 +3,7 @@
 /**
  * Generate AT Protocol types from lexicon definitions.
  *
- * Uses @atproto/lex (ts-lex) to generate TypeScript types for both packages.
+ * Uses @atproto/lex (ts-lex) to generate TypeScript types in the observing-lexicon package.
  */
 
 import { execSync } from 'child_process';
@@ -14,19 +14,14 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const rootDir = join(__dirname, '..');
 
-const packages = [
-  'packages/observing-appview/src/generated',
-  'packages/observing-shared/src/generated',
-];
+const outDir = 'packages/observing-lexicon/src/generated';
 
-// Generate types for each package
-for (const outDir of packages) {
-  console.log(`Generating types in ${outDir}...`);
-  execSync(
-    `npx ts-lex build --lexicons ./lexicons --out ./${outDir} --clear --indexFile`,
-    { stdio: 'inherit', cwd: rootDir }
-  );
-}
+// Generate types
+console.log(`Generating types in ${outDir}...`);
+execSync(
+  `npx ts-lex build --lexicons ./lexicons --out ./${outDir} --clear --indexFile`,
+  { stdio: 'inherit', cwd: rootDir }
+);
 
 // Add @ts-nocheck to .defs.ts files to work around library type inference issues
 // The generated code is correct at runtime, but TypeScript has issues with optional field inference
@@ -49,8 +44,6 @@ function addTsNocheck(dir) {
   }
 }
 
-for (const outDir of packages) {
-  addTsNocheck(join(rootDir, outDir));
-}
+addTsNocheck(join(rootDir, outDir));
 
-console.log('All types generated!');
+console.log('Types generated!');

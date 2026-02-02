@@ -9,7 +9,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w observing-shared -w observing-appview -w observing-api -w observing-frontend",
+    "build": "npm run build -w observing-lexicon -w observing-shared -w observing-appview -w observing-api -w observing-frontend",
     "dev": "npm run dev --workspace=observing-appview",
     "generate-types": "node scripts/generate-types.js",
     "test": "vitest",
