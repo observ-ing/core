@@ -393,26 +393,36 @@ export class AppViewServer {
           ...(geocoded.waterBody && { waterBody: geocoded.waterBody }),
         };
 
+        // Resolve taxonomy fields - prefer user-provided, fall back to GBIF lookup
+        const finalTaxonId = taxonId || taxon?.id;
+        const finalTaxonRank = taxonRank || taxon?.rank;
+        const finalVernacularName = vernacularName || taxon?.commonName;
+        const finalKingdom = kingdom || taxon?.kingdom;
+        const finalPhylum = phylum || taxon?.phylum;
+        const finalClass = taxonomyClass || taxon?.class;
+        const finalOrder = order || taxon?.order;
+        const finalFamily = family || taxon?.family;
+        const finalGenus = genus || taxon?.genus;
+
         const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
           createdAt: new Date().toISOString() as l.DatetimeString,
-          // Optional fields - only include if defined
+          // Optional fields - only include if defined (exactOptionalPropertyTypes)
           ...(scientificName && { scientificName }),
           ...(blobs.length > 0 && { blobs }),
           ...(notes && { notes }),
           ...(license && { license }),
-          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
-          ...((taxonId || taxon?.id) && { taxonId: taxonId || taxon?.id }),
-          ...((taxonRank || taxon?.rank) && { taxonRank: taxonRank || taxon?.rank }),
-          ...((vernacularName || taxon?.commonName) && { vernacularName: vernacularName || taxon?.commonName }),
-          ...((kingdom || taxon?.kingdom) && { kingdom: kingdom || taxon?.kingdom }),
-          ...((phylum || taxon?.phylum) && { phylum: phylum || taxon?.phylum }),
-          ...((taxonomyClass || taxon?.class) && { class: taxonomyClass || taxon?.class }),
-          ...((order || taxon?.order) && { order: order || taxon?.order }),
-          ...((family || taxon?.family) && { family: family || taxon?.family }),
-          ...((genus || taxon?.genus) && { genus: genus || taxon?.genus }),
+          ...(finalTaxonId && { taxonId: finalTaxonId }),
+          ...(finalTaxonRank && { taxonRank: finalTaxonRank }),
+          ...(finalVernacularName && { vernacularName: finalVernacularName }),
+          ...(finalKingdom && { kingdom: finalKingdom }),
+          ...(finalPhylum && { phylum: finalPhylum }),
+          ...(finalClass && { class: finalClass }),
+          ...(finalOrder && { order: finalOrder }),
+          ...(finalFamily && { family: finalFamily }),
+          ...(finalGenus && { genus: finalGenus }),
           ...(coObservers.length > 0 && { recordedBy: coObservers }),
         };
 
@@ -551,25 +561,35 @@ export class AppViewServer {
           ...(geocoded.waterBody && { waterBody: geocoded.waterBody }),
         };
 
+        // Resolve taxonomy fields - prefer user-provided, fall back to GBIF lookup
+        const finalTaxonId = taxonId || taxon?.id;
+        const finalTaxonRank = taxonRank || taxon?.rank;
+        const finalVernacularName = vernacularName || taxon?.commonName;
+        const finalKingdom = kingdom || taxon?.kingdom;
+        const finalPhylum = phylum || taxon?.phylum;
+        const finalClass = taxonomyClass || taxon?.class;
+        const finalOrder = order || taxon?.order;
+        const finalFamily = family || taxon?.family;
+        const finalGenus = genus || taxon?.genus;
+
         const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
           createdAt: new Date().toISOString() as l.DatetimeString,
-          // Optional fields - only include if defined
+          // Optional fields - only include if defined (exactOptionalPropertyTypes)
           ...(scientificName && { scientificName }),
           ...(notes && { notes }),
           ...(license && { license }),
-          // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
-          ...((taxonId || taxon?.id) && { taxonId: taxonId || taxon?.id }),
-          ...((taxonRank || taxon?.rank) && { taxonRank: taxonRank || taxon?.rank }),
-          ...((vernacularName || taxon?.commonName) && { vernacularName: vernacularName || taxon?.commonName }),
-          ...((kingdom || taxon?.kingdom) && { kingdom: kingdom || taxon?.kingdom }),
-          ...((phylum || taxon?.phylum) && { phylum: phylum || taxon?.phylum }),
-          ...((taxonomyClass || taxon?.class) && { class: taxonomyClass || taxon?.class }),
-          ...((order || taxon?.order) && { order: order || taxon?.order }),
-          ...((family || taxon?.family) && { family: family || taxon?.family }),
-          ...((genus || taxon?.genus) && { genus: genus || taxon?.genus }),
+          ...(finalTaxonId && { taxonId: finalTaxonId }),
+          ...(finalTaxonRank && { taxonRank: finalTaxonRank }),
+          ...(finalVernacularName && { vernacularName: finalVernacularName }),
+          ...(finalKingdom && { kingdom: finalKingdom }),
+          ...(finalPhylum && { phylum: finalPhylum }),
+          ...(finalClass && { class: finalClass }),
+          ...(finalOrder && { order: finalOrder }),
+          ...(finalFamily && { family: finalFamily }),
+          ...(finalGenus && { genus: finalGenus }),
           ...(coObservers.length > 0 && { recordedBy: coObservers }),
         };
 
