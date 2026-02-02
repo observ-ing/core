@@ -56,6 +56,12 @@ import {
 } from "./auth/index.js";
 import { createInternalRoutes } from "./internal-routes.js";
 
+// Generated lexicon types
+import type * as OccurrenceRecord from "./generated/org/rwell/test/occurrence.defs.js";
+import type * as CommentRecord from "./generated/org/rwell/test/comment.defs.js";
+import type * as InteractionRecord from "./generated/org/rwell/test/interaction.defs.js";
+import type { l } from "@atproto/lex";
+
 // Utility to build DATABASE_URL from environment variables
 function getDatabaseUrl(): string {
   // If DB_PASSWORD is set, construct URL from individual components (GCP Secret Manager)
@@ -310,7 +316,7 @@ export class AppViewServer {
         }
 
         // Upload images as blobs if provided
-        const associatedMedia: Array<{ image: unknown; alt: string }> = [];
+        const blobs: OccurrenceRecord.ImageEmbed[] = [];
 
         if (images && Array.isArray(images)) {
           for (let i = 0; i < images.length; i++) {
@@ -326,8 +332,8 @@ export class AppViewServer {
                 encoding: img.mimeType,
               });
 
-              associatedMedia.push({
-                image: blobResponse.data.blob,
+              blobs.push({
+                image: blobResponse.data.blob as l.BlobRef,
                 alt: `Photo ${i + 1}${scientificName ? ` of ${scientificName}` : ""}`,
               });
 
@@ -359,11 +365,21 @@ export class AppViewServer {
         // Reverse geocode to get administrative geography fields
         const geocoded = await this.geocoding.reverseGeocode(latitude, longitude);
 
+        // Collect co-observers if provided
+        const coObservers: string[] = [];
+        if (recordedBy && Array.isArray(recordedBy)) {
+          for (const did of recordedBy) {
+            if (typeof did === "string" && did !== sessionDid) {
+              coObservers.push(did);
+            }
+          }
+        }
+
         // User is authenticated - post to AT Protocol network
-        const record: Record<string, unknown> = {
+        const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
           scientificName: scientificName || undefined,
-          eventDate: eventDate || new Date().toISOString(),
+          eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location: {
             decimalLatitude: String(latitude),
             decimalLongitude: String(longitude),
@@ -379,6 +395,7 @@ export class AppViewServer {
             locality: geocoded.locality,
             waterBody: geocoded.waterBody,
           },
+          blobs: blobs.length > 0 ? blobs : undefined,
           notes: notes || undefined,
           license: license || undefined,
           // Taxonomy fields - prefer user-provided, fall back to GBIF lookup
@@ -391,26 +408,9 @@ export class AppViewServer {
           order: order || taxon?.order,
           family: family || taxon?.family,
           genus: genus || taxon?.genus,
-          createdAt: new Date().toISOString(),
+          recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          createdAt: new Date().toISOString() as l.DatetimeString,
         };
-
-        // Add images if any were successfully uploaded
-        if (associatedMedia.length > 0) {
-          record["associatedMedia"] = associatedMedia;
-        }
-
-        // Add co-observers if provided
-        const coObservers: string[] = [];
-        if (recordedBy && Array.isArray(recordedBy)) {
-          for (const did of recordedBy) {
-            if (typeof did === "string" && did !== sessionDid) {
-              coObservers.push(did);
-            }
-          }
-          if (coObservers.length > 0) {
-            record["recordedBy"] = coObservers;
-          }
-        }
 
         // Create the record on the user's PDS
         const result = await agent.com.atproto.repo.createRecord({
@@ -419,7 +419,7 @@ export class AppViewServer {
           record,
         });
 
-        logger.info({ uri: result.data.uri, imageCount: associatedMedia.length }, "Created AT Protocol record");
+        logger.info({ uri: result.data.uri, imageCount: blobs.length }, "Created AT Protocol record");
 
         // Store exact coordinates in private data table
         // Note: occurrence_observers is populated by the ingester when it processes the record
@@ -531,10 +531,10 @@ export class AppViewServer {
         }
 
         // Build the updated record
-        const record: Record<string, unknown> = {
+        const record: OccurrenceRecord.Main = {
           $type: "org.rwell.test.occurrence",
           scientificName: scientificName || undefined,
-          eventDate: eventDate || new Date().toISOString(),
+          eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location: {
             decimalLatitude: String(latitude),
             decimalLongitude: String(longitude),
@@ -562,13 +562,9 @@ export class AppViewServer {
           order: order || taxon?.order,
           family: family || taxon?.family,
           genus: genus || taxon?.genus,
-          createdAt: new Date().toISOString(),
+          recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          createdAt: new Date().toISOString() as l.DatetimeString,
         };
-
-        // Add co-observers if any
-        if (coObservers.length > 0) {
-          record["recordedBy"] = coObservers;
-        }
 
         // Update the record on the user's PDS using putRecord
         const result = await agent.com.atproto.repo.putRecord({
@@ -1312,23 +1308,19 @@ export class AppViewServer {
         }
 
         // Build the comment record
-        const record: Record<string, unknown> = {
+        const record: CommentRecord.Main = {
           $type: "org.rwell.test.comment",
           subject: {
-            uri: occurrenceUri,
-            cid: occurrenceCid,
+            uri: occurrenceUri as l.AtUriString,
+            cid: occurrenceCid as l.CidString,
           },
           body: body.trim(),
-          createdAt: new Date().toISOString(),
+          replyTo: replyToUri && replyToCid ? {
+            uri: replyToUri as l.AtUriString,
+            cid: replyToCid as l.CidString,
+          } : undefined,
+          createdAt: new Date().toISOString() as l.DatetimeString,
         };
-
-        // Add reply reference if provided
-        if (replyToUri && replyToCid) {
-          record["replyTo"] = {
-            uri: replyToUri,
-            cid: replyToCid,
-          };
-        }
 
         // Create the record on the user's PDS
         const result = await agent.com.atproto.repo.createRecord({
@@ -1390,35 +1382,25 @@ export class AppViewServer {
         }
 
         // Build the interaction record
-        const record: Record<string, unknown> = {
+        const buildSubject = (s: typeof subjectA): InteractionRecord.InteractionSubject => ({
+          occurrence: s.occurrenceUri && s.occurrenceCid ? {
+            uri: s.occurrenceUri as l.AtUriString,
+            cid: s.occurrenceCid as l.CidString,
+          } : undefined,
+          subjectIndex: s.subjectIndex ?? 0,
+          taxonName: s.taxonName,
+          kingdom: s.kingdom,
+        });
+
+        const record: InteractionRecord.Main = {
           $type: "org.rwell.test.interaction",
-          subjectA: {
-            ...(subjectA.occurrenceUri && {
-              occurrence: {
-                uri: subjectA.occurrenceUri,
-                cid: subjectA.occurrenceCid,
-              },
-            }),
-            subjectIndex: subjectA.subjectIndex ?? 0,
-            taxonName: subjectA.taxonName,
-            kingdom: subjectA.kingdom,
-          },
-          subjectB: {
-            ...(subjectB.occurrenceUri && {
-              occurrence: {
-                uri: subjectB.occurrenceUri,
-                cid: subjectB.occurrenceCid,
-              },
-            }),
-            subjectIndex: subjectB.subjectIndex ?? 0,
-            taxonName: subjectB.taxonName,
-            kingdom: subjectB.kingdom,
-          },
+          subjectA: buildSubject(subjectA),
+          subjectB: buildSubject(subjectB),
           interactionType,
           direction,
           confidence,
           comment: comment?.trim() || undefined,
-          createdAt: new Date().toISOString(),
+          createdAt: new Date().toISOString() as l.DatetimeString,
         };
 
         // Create the record on the user's PDS

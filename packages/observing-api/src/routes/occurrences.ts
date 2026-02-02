@@ -3,7 +3,8 @@
  */
 
 import { Router } from "express";
-import { Database, getIdentityResolver, TaxonomyClient, GeocodingService } from "observing-shared";
+import { Database, getIdentityResolver, TaxonomyClient, GeocodingService, org } from "observing-shared";
+import type { l } from "@atproto/lex";
 import { enrichOccurrences, enrichIdentifications, enrichComments } from "../enrichment.js";
 import { logger } from "../middleware/logging.js";
 import { requireAuth } from "../middleware/auth.js";
@@ -235,7 +236,7 @@ export function createOccurrenceRoutes(
       }
 
       // Upload images as blobs if provided
-      const associatedMedia: Array<{ image: unknown; alt: string }> = [];
+      const blobs: org.rwell.test.occurrence.ImageEmbed[] = [];
 
       if (images && Array.isArray(images)) {
         for (let i = 0; i < images.length; i++) {
@@ -244,8 +245,8 @@ export function createOccurrenceRoutes(
 
           const blobResult = await internalClient.uploadBlob(sessionDid, img.data, img.mimeType);
           if (blobResult.success && blobResult.blob) {
-            associatedMedia.push({
-              image: blobResult.blob,
+            blobs.push({
+              image: blobResult.blob as l.BlobRef,
               alt: `Photo ${i + 1}${scientificName ? ` of ${scientificName}` : ""}`,
             });
             logger.info({ mimeType: img.mimeType }, "Uploaded blob via internal RPC");
@@ -275,11 +276,21 @@ export function createOccurrenceRoutes(
       // Reverse geocode to get administrative geography fields
       const geocoded = await geocoding.reverseGeocode(latitude, longitude);
 
+      // Collect co-observers if provided
+      const coObservers: string[] = [];
+      if (recordedBy && Array.isArray(recordedBy)) {
+        for (const did of recordedBy) {
+          if (typeof did === "string" && did !== sessionDid) {
+            coObservers.push(did);
+          }
+        }
+      }
+
       // Build the occurrence record WITHOUT taxonomy fields
       // Taxonomy data goes into the identification record instead
-      const record: Record<string, unknown> = {
+      const record: org.rwell.test.occurrence.Main = {
         $type: "org.rwell.test.occurrence",
-        eventDate: eventDate || new Date().toISOString(),
+        eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
         location: {
           decimalLatitude: String(latitude),
           decimalLongitude: String(longitude),
@@ -294,27 +305,12 @@ export function createOccurrenceRoutes(
           locality: geocoded.locality,
           waterBody: geocoded.waterBody,
         },
+        blobs: blobs.length > 0 ? blobs : undefined,
         notes: notes || undefined,
         license: license || undefined,
-        createdAt: new Date().toISOString(),
+        recordedBy: coObservers.length > 0 ? coObservers : undefined,
+        createdAt: new Date().toISOString() as l.DatetimeString,
       };
-
-      if (associatedMedia.length > 0) {
-        record["associatedMedia"] = associatedMedia;
-      }
-
-      // Add co-observers if provided
-      const coObservers: string[] = [];
-      if (recordedBy && Array.isArray(recordedBy)) {
-        for (const did of recordedBy) {
-          if (typeof did === "string" && did !== sessionDid) {
-            coObservers.push(did);
-          }
-        }
-        if (coObservers.length > 0) {
-          record["recordedBy"] = coObservers;
-        }
-      }
 
       // Create the record via internal RPC
       const result = await internalClient.createRecord(
@@ -328,7 +324,7 @@ export function createOccurrenceRoutes(
         return;
       }
 
-      logger.info({ uri: result.uri, imageCount: associatedMedia.length }, "Created occurrence via internal RPC");
+      logger.info({ uri: result.uri, imageCount: blobs.length }, "Created occurrence via internal RPC");
 
       // Store exact coordinates in private data table
       await db.saveOccurrencePrivateData(
