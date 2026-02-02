@@ -43,7 +43,7 @@ jobs:
       - name: Check generated types
         run: |
           npm run generate-types
-          git diff --exit-code packages/observing-appview/src/generated/
+          git diff --exit-code packages/observing-lexicon/src/generated/
       - name: Check OpenAPI spec
         run: |
           npm run openapi -w observing-shared
@@ -69,7 +69,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build -w observing-shared
+      - run: npm run build -w observing-lexicon -w observing-shared
       - run: npm run test:run
 
   # Rust jobs - run in parallel
