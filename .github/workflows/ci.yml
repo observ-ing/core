@@ -153,6 +153,9 @@ jobs:
           - service: media-proxy
             context: .
             dockerfile: crates/observing-media-proxy/Dockerfile
+          - service: taxonomy
+            context: .
+            dockerfile: crates/observing-taxonomy/Dockerfile
     steps:
       - uses: actions/checkout@v4
 
@@ -186,6 +189,7 @@ jobs:
       REGION: us-central1
       PUBLIC_URL: https://observing-appview-378013734384.us-central1.run.app
       MEDIA_PROXY_URL: https://observing-media-proxy-378013734384.us-central1.run.app
+      TAXONOMY_URL: https://observing-taxonomy-378013734384.us-central1.run.app
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -201,7 +205,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=$MEDIA_PROXY_URL \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=$MEDIA_PROXY_URL,TAXONOMY_SERVICE_URL=$TAXONOMY_URL \
             --set-secrets=DB_PASSWORD=observing-db-password:latest,INTERNAL_SECRET=observing-internal-secret:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
@@ -213,7 +217,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,APPVIEW_URL=$PUBLIC_URL,CORS_ORIGINS=$PUBLIC_URL \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,APPVIEW_URL=$PUBLIC_URL,CORS_ORIGINS=$PUBLIC_URL,TAXONOMY_SERVICE_URL=$TAXONOMY_URL \
             --set-secrets=DB_PASSWORD=observing-db-password:latest,INTERNAL_SECRET=observing-internal-secret:latest
 
       - name: Deploy ingester
@@ -238,3 +242,11 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --set-env-vars=RUST_LOG=observing_media_proxy=info,LOG_FORMAT=json
+
+      - name: Deploy taxonomy
+        run: |
+          gcloud run deploy observing-taxonomy \
+            --image=gcr.io/$PROJECT_ID/observing-taxonomy:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json
