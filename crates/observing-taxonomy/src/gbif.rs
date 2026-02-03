@@ -419,7 +419,7 @@ impl GbifClient {
                 if s.dataset_alias.as_ref().map(|a| a == "IUCN").unwrap_or(false) {
                     s.status_code
                         .as_ref()
-                        .and_then(|code| IucnCategory::from_str(code))
+                        .and_then(|code| code.parse().ok())
                         .map(|category| ConservationStatus {
                             category,
                             source: "IUCN".to_string(),

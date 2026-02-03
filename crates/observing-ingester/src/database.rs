@@ -15,7 +15,7 @@ fn parse_datetime(s: &str) -> Option<DateTime<Utc>> {
         .ok()
 }
 
-/// Parse an ISO 8601 date string into a NaiveDateTime (for timestamp columns without timezone)
+/// Parse an ISO 8601 date string into a NaiveDateTime
 fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
     DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.naive_utc())
@@ -390,9 +390,7 @@ impl Database {
                 return Ok(());
             }
         };
-        let date_identified = created_at
-            .and_then(parse_naive_datetime)
-            .unwrap_or_else(|| event.time.naive_utc());
+        let date_identified = created_at.and_then(parse_datetime).unwrap_or(event.time);
 
         sqlx::query!(
             r#"
@@ -594,9 +592,7 @@ impl Database {
             }
         };
 
-        let created_at = created_at
-            .and_then(parse_naive_datetime)
-            .unwrap_or_else(|| event.time.naive_utc());
+        let created_at = created_at.and_then(parse_datetime).unwrap_or(event.time);
 
         // Use sqlx::query instead of sqlx::query! since the interactions table
         // may not exist in the database yet (compile-time verification)

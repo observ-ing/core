@@ -28,20 +28,21 @@ pub enum IucnCategory {
     NE,
 }
 
-impl IucnCategory {
-    /// Parse an IUCN category from a string code
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for IucnCategory {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "EX" => Some(Self::EX),
-            "EW" => Some(Self::EW),
-            "CR" => Some(Self::CR),
-            "EN" => Some(Self::EN),
-            "VU" => Some(Self::VU),
-            "NT" => Some(Self::NT),
-            "LC" => Some(Self::LC),
-            "DD" => Some(Self::DD),
-            "NE" => Some(Self::NE),
-            _ => None,
+            "EX" => Ok(Self::EX),
+            "EW" => Ok(Self::EW),
+            "CR" => Ok(Self::CR),
+            "EN" => Ok(Self::EN),
+            "VU" => Ok(Self::VU),
+            "NT" => Ok(Self::NT),
+            "LC" => Ok(Self::LC),
+            "DD" => Ok(Self::DD),
+            "NE" => Ok(Self::NE),
+            _ => Err(()),
         }
     }
 }

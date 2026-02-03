@@ -263,6 +263,6 @@ mod tests {
 
         // started_at should be close to now
         let diff = (Utc::now() - state.started_at).num_seconds();
-        assert!(diff >= 0 && diff < 5);
+        assert!((0..5).contains(&diff));
     }
 }

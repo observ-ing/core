@@ -208,7 +208,7 @@ impl GbifClient {
                 .map(|a| a == "IUCN")
                 .unwrap_or(false)
         })?;
-        IucnCategory::from_str(iucn_status.status_code.as_deref()?)
+        iucn_status.status_code.as_deref()?.parse().ok()
     }
 }
 
