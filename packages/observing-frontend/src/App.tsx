@@ -74,7 +74,7 @@ function AppContent() {
           <Routes>
             <Route path="/" element={<FeedView tab="home" />} />
             <Route path="/explore" element={<FeedView tab="explore" />} />
-            <Route path="/observation/:uri" element={<ObservationDetail />} />
+            <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
             <Route path="/profile/:did" element={<ProfileView />} />
             <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
             <Route path="/taxon/:id" element={<TaxonDetail />} />

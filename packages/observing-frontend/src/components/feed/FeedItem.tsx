@@ -18,7 +18,7 @@ import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { TaxonLink } from "../common/TaxonLink";
-import { formatTimeAgo, getPdslsUrl } from "../../lib/utils";
+import { formatTimeAgo, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 
 interface FeedItemProps {
   observation: Occurrence;
@@ -65,7 +65,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
     ? getImageUrl(observation.images[0])
     : "";
 
-  const observationUrl = `/observation/${encodeURIComponent(observation.uri)}`;
+  const observationUrl = getObservationUrl(observation.uri);
   const pdslsUrl = getPdslsUrl(observation.uri);
 
   // Build tooltip for co-observers

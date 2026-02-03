@@ -54,3 +54,31 @@ export function formatDate(dateString: string): string {
 export function getPdslsUrl(atUri: string): string {
   return `https://pdsls.dev/${atUri}`;
 }
+
+/**
+ * Parse an AT URI into its components
+ * Format: at://did:plc:xxx/collection/rkey
+ */
+export function parseAtUri(atUri: string): { did: string; collection: string; rkey: string } | null {
+  const match = atUri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
+  if (!match) return null;
+  return { did: match[1], collection: match[2], rkey: match[3] };
+}
+
+/**
+ * Build an observation URL from an AT URI
+ * Converts: at://did:plc:xxx/org.rwell.test.occurrence/rkey
+ * To: /observation/did:plc:xxx/rkey
+ */
+export function getObservationUrl(atUri: string): string {
+  const parsed = parseAtUri(atUri);
+  if (!parsed) return `/observation/${encodeURIComponent(atUri)}`;
+  return `/observation/${parsed.did}/${parsed.rkey}`;
+}
+
+/**
+ * Reconstruct an AT URI from did and rkey (for occurrences)
+ */
+export function buildOccurrenceAtUri(did: string, rkey: string): string {
+  return `at://${did}/org.rwell.test.occurrence/${rkey}`;
+}

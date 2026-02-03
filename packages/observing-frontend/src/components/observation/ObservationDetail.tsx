@@ -33,10 +33,10 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "../common/Skeletons";
-import { formatDate, getPdslsUrl } from "../../lib/utils";
+import { formatDate, getPdslsUrl, buildOccurrenceAtUri } from "../../lib/utils";
 
 export function ObservationDetail() {
-  const { uri } = useParams<{ uri: string }>();
+  const { did, rkey } = useParams<{ did: string; rkey: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -51,20 +51,21 @@ export function ObservationDetail() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
+  // Reconstruct AT URI from route params
+  const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
+
   useEffect(() => {
-    if (!uri) {
+    if (!atUri) {
       setError("No observation URI provided");
       setLoading(false);
       return;
     }
 
-    const decodedUri = decodeURIComponent(uri);
-
     async function loadObservation() {
       setLoading(true);
       setError(null);
 
-      const result = await fetchObservation(decodedUri);
+      const result = await fetchObservation(atUri!);
       if (result?.occurrence) {
         setObservation(result.occurrence);
         setIdentifications((result as { identifications?: Identification[] }).identifications || []);
@@ -76,7 +77,7 @@ export function ObservationDetail() {
     }
 
     loadObservation();
-  }, [uri]);
+  }, [atUri]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -87,8 +88,8 @@ export function ObservationDetail() {
   };
 
   const handleIdentificationSuccess = async () => {
-    if (uri) {
-      const result = await fetchObservation(decodeURIComponent(uri));
+    if (atUri) {
+      const result = await fetchObservation(atUri);
       if (result?.occurrence) {
         setObservation(result.occurrence);
         setIdentifications((result as { identifications?: Identification[] }).identifications || []);
@@ -98,8 +99,8 @@ export function ObservationDetail() {
   };
 
   const handleCommentAdded = async () => {
-    if (uri) {
-      const result = await fetchObservation(decodeURIComponent(uri));
+    if (atUri) {
+      const result = await fetchObservation(atUri);
       if (result) {
         setComments((result as { comments?: Comment[] }).comments || []);
       }

@@ -23,7 +23,7 @@ import type {
   Occurrence,
   Identification,
 } from "../../services/types";
-import { formatTimeAgo } from "../../lib/utils";
+import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
 import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton } from "../common/Skeletons";
 
 type ProfileTab = "all" | "observations" | "identifications";
@@ -250,7 +250,7 @@ export function ProfileView() {
             <Box
               key={occ.uri}
               component={Link}
-              to={`/observation/${encodeURIComponent(occ.uri)}`}
+              to={getObservationUrl(occ.uri)}
               sx={{
                 display: "block",
                 p: 2,
@@ -301,7 +301,7 @@ export function ProfileView() {
             <Box
               key={id.uri}
               component={Link}
-              to={`/observation/${encodeURIComponent(id.subject_uri)}`}
+              to={getObservationUrl(id.subject_uri)}
               sx={{
                 display: "block",
                 p: 2,

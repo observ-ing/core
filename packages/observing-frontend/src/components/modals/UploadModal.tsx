@@ -40,6 +40,7 @@ import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { LocationPicker } from "../map/LocationPicker";
+import { getObservationUrl } from "../../lib/utils";
 
 interface ImagePreview {
   file: File;
@@ -363,7 +364,7 @@ export function UploadModal() {
       }
 
       // Navigate to the observation page
-      window.location.href = `/observation/${encodeURIComponent(observationUri)}`;
+      window.location.href = getObservationUrl(observationUri);
     } catch (error) {
       dispatch(
         addToast({
