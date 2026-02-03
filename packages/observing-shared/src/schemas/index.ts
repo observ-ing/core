@@ -107,6 +107,7 @@ export const CreateOccurrenceRequestSchema = z
     scientificName: z.string().optional(),
     latitude: z.number().min(-90).max(90),
     longitude: z.number().min(-180).max(180),
+    coordinateUncertaintyInMeters: z.number().min(1).max(500000).optional().describe("Coordinate uncertainty in meters"),
     notes: z.string().optional(),
     license: z.string().optional(),
     eventDate: z.string().datetime().optional(),

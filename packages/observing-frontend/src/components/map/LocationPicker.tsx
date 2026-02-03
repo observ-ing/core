@@ -6,6 +6,7 @@ import {
   Autocomplete,
   Stack,
   InputAdornment,
+  Slider,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import maplibregl from "maplibre-gl";
@@ -15,6 +16,8 @@ interface LocationPickerProps {
   latitude: number;
   longitude: number;
   onChange: (lat: number, lng: number) => void;
+  uncertaintyMeters?: number;
+  onUncertaintyChange?: (meters: number) => void;
 }
 
 interface NominatimResult {
@@ -24,10 +27,67 @@ interface NominatimResult {
   lon: string;
 }
 
+// Create a GeoJSON circle polygon from center point and radius in meters
+function createCircleGeoJSON(
+  lng: number,
+  lat: number,
+  radiusMeters: number
+): GeoJSON.FeatureCollection {
+  const points = 64;
+  const coords: [number, number][] = [];
+
+  for (let i = 0; i < points; i++) {
+    const angle = (i / points) * 2 * Math.PI;
+    const dx = radiusMeters * Math.cos(angle);
+    const dy = radiusMeters * Math.sin(angle);
+
+    // Convert meters to degrees (approximate)
+    const latOffset = dy / 111320;
+    const lngOffset = dx / (111320 * Math.cos((lat * Math.PI) / 180));
+
+    coords.push([lng + lngOffset, lat + latOffset]);
+  }
+  coords.push(coords[0]); // Close the polygon
+
+  return {
+    type: "FeatureCollection",
+    features: [
+      {
+        type: "Feature",
+        properties: {},
+        geometry: {
+          type: "Polygon",
+          coordinates: [coords],
+        },
+      },
+    ],
+  };
+}
+
+// Logarithmic scale for slider (better UX for wide range)
+function valueToSlider(value: number): number {
+  return Math.log10(value);
+}
+
+function sliderToValue(slider: number): number {
+  return Math.round(Math.pow(10, slider));
+}
+
+const SLIDER_MIN = valueToSlider(1);
+const SLIDER_MAX = valueToSlider(500000);
+const SLIDER_MARKS = [
+  { value: valueToSlider(100), label: "100m" },
+  { value: valueToSlider(1000), label: "1km" },
+  { value: valueToSlider(10000), label: "10km" },
+  { value: valueToSlider(100000), label: "100km" },
+];
+
 export function LocationPicker({
   latitude,
   longitude,
   onChange,
+  uncertaintyMeters = 50,
+  onUncertaintyChange,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -39,7 +99,7 @@ export function LocationPicker({
   const [latInput, setLatInput] = useState(latitude.toFixed(6));
   const [lngInput, setLngInput] = useState(longitude.toFixed(6));
 
-  const updateMarker = useCallback((lng: number, lat: number) => {
+  const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
     if (!map.current) return;
 
     if (marker.current) {
@@ -49,7 +109,14 @@ export function LocationPicker({
         .setLngLat([lng, lat])
         .addTo(map.current);
     }
-  }, []);
+
+    // Update uncertainty circle
+    const effectiveRadius = radius ?? uncertaintyMeters;
+    const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
+    }
+  }, [uncertaintyMeters]);
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
@@ -142,6 +209,33 @@ export function LocationPicker({
     );
 
     mapInstance.on("load", () => {
+      // Add uncertainty circle source and layers
+      mapInstance.addSource("uncertainty", {
+        type: "geojson",
+        data: createCircleGeoJSON(longitude, latitude, uncertaintyMeters),
+      });
+
+      mapInstance.addLayer({
+        id: "uncertainty-fill",
+        type: "fill",
+        source: "uncertainty",
+        paint: {
+          "fill-color": "#22c55e",
+          "fill-opacity": 0.15,
+        },
+      });
+
+      mapInstance.addLayer({
+        id: "uncertainty-outline",
+        type: "line",
+        source: "uncertainty",
+        paint: {
+          "line-color": "#22c55e",
+          "line-width": 2,
+          "line-opacity": 0.5,
+        },
+      });
+
       updateMarker(longitude, latitude);
     });
 
@@ -296,6 +390,43 @@ export function LocationPicker({
       >
         Search, click map, or enter coordinates
       </Typography>
+
+      {onUncertaintyChange && (
+        <Box sx={{ mt: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+            Coordinate Uncertainty: {uncertaintyMeters >= 1000 ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km` : `${uncertaintyMeters}m`}
+          </Typography>
+          <Slider
+            value={valueToSlider(uncertaintyMeters)}
+            min={SLIDER_MIN}
+            max={SLIDER_MAX}
+            step={0.01}
+            marks={SLIDER_MARKS}
+            onChange={(_, value) => {
+              const meters = sliderToValue(value as number);
+              onUncertaintyChange(meters);
+              // Update circle immediately
+              const source = map.current?.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+              if (source) {
+                source.setData(createCircleGeoJSON(parseFloat(lngInput), parseFloat(latInput), meters));
+              }
+            }}
+            valueLabelDisplay="auto"
+            valueLabelFormat={(value) => {
+              const meters = sliderToValue(value);
+              return meters >= 1000 ? `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)}km` : `${meters}m`;
+            }}
+            sx={{
+              "& .MuiSlider-markLabel": {
+                fontSize: "0.75rem",
+              },
+            }}
+          />
+          <Typography variant="caption" color="text.disabled">
+            Adjust the circle to indicate location precision
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 }

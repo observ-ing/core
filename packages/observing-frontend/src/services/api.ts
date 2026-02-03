@@ -176,9 +176,10 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
 }
 
 export async function submitObservation(data: {
-  scientificName: string;
+  scientificName?: string;
   latitude: number;
   longitude: number;
+  coordinateUncertaintyInMeters?: number;
   notes?: string;
   license?: string;
   eventDate: string;
@@ -215,9 +216,10 @@ export async function submitObservation(data: {
 
 export async function updateObservation(data: {
   uri: string;
-  scientificName: string;
+  scientificName?: string;
   latitude: number;
   longitude: number;
+  coordinateUncertaintyInMeters?: number;
   notes?: string;
   license?: string;
   eventDate: string;
