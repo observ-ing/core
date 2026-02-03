@@ -288,6 +288,7 @@ export class AppViewServer {
           scientificName,
           latitude,
           longitude,
+          coordinateUncertaintyInMeters,
           notes,
           license,
           eventDate,
@@ -378,9 +379,9 @@ export class AppViewServer {
         const location: org.rwell.test.occurrence.Location = {
           decimalLatitude: String(latitude),
           decimalLongitude: String(longitude),
-          coordinateUncertaintyInMeters: 50,
           geodeticDatum: "WGS84",
           // Darwin Core administrative geography from geocoding
+          ...(coordinateUncertaintyInMeters && { coordinateUncertaintyInMeters }),
           ...(geocoded.continent && { continent: geocoded.continent }),
           ...(geocoded.country && { country: geocoded.country }),
           ...(geocoded.countryCode && { countryCode: geocoded.countryCode }),
@@ -462,6 +463,7 @@ export class AppViewServer {
           scientificName,
           latitude,
           longitude,
+          coordinateUncertaintyInMeters,
           notes,
           license,
           eventDate,
@@ -546,9 +548,9 @@ export class AppViewServer {
         const location: org.rwell.test.occurrence.Location = {
           decimalLatitude: String(latitude),
           decimalLongitude: String(longitude),
-          coordinateUncertaintyInMeters: 50,
           geodeticDatum: "WGS84",
           // Darwin Core administrative geography from geocoding
+          ...(coordinateUncertaintyInMeters && { coordinateUncertaintyInMeters }),
           ...(geocoded.continent && { continent: geocoded.continent }),
           ...(geocoded.country && { country: geocoded.country }),
           ...(geocoded.countryCode && { countryCode: geocoded.countryCode }),

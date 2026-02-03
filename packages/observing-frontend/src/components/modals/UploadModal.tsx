@@ -84,6 +84,7 @@ export function UploadModal() {
   const [coObserverInput, setCoObserverInput] = useState("");
   const [photoDate, setPhotoDate] = useState<Date | null>(null);
   const [usePhotoDate, setUsePhotoDate] = useState(false);
+  const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
@@ -98,6 +99,9 @@ export function UploadModal() {
         if (editingObservation.location) {
           setLat(editingObservation.location.latitude.toFixed(6));
           setLng(editingObservation.location.longitude.toFixed(6));
+          if (editingObservation.location.uncertaintyMeters) {
+            setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
+          }
         }
       } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
@@ -129,6 +133,7 @@ export function UploadModal() {
     setCoObserverInput("");
     setPhotoDate(null);
     setUsePhotoDate(false);
+    setUncertaintyMeters(50);
   };
 
   const handleAddCoObserver = () => {
@@ -309,6 +314,7 @@ export function UploadModal() {
           scientificName: species.trim() || undefined,
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
+          coordinateUncertaintyInMeters: uncertaintyMeters,
           notes: notes || undefined,
           license,
           eventDate: editingObservation.eventDate || new Date().toISOString(),
@@ -334,6 +340,7 @@ export function UploadModal() {
           scientificName: species.trim() || undefined,
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
+          coordinateUncertaintyInMeters: uncertaintyMeters,
           notes: notes || undefined,
           license,
           eventDate,
@@ -669,6 +676,8 @@ export function UploadModal() {
             latitude={parseFloat(lat)}
             longitude={parseFloat(lng)}
             onChange={handleLocationChange}
+            uncertaintyMeters={uncertaintyMeters}
+            onUncertaintyChange={setUncertaintyMeters}
           />
         )}
 

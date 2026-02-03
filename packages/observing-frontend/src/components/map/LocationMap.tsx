@@ -89,6 +89,17 @@ export function LocationMap({
             "line-opacity": 0.5,
           },
         });
+
+        // Fit map to uncertainty circle bounds
+        const latOffset = uncertaintyMeters / 111320;
+        const lngOffset = uncertaintyMeters / (111320 * Math.cos((latitude * Math.PI) / 180));
+        mapInstance.fitBounds(
+          [
+            [longitude - lngOffset, latitude - latOffset],
+            [longitude + lngOffset, latitude + latOffset],
+          ],
+          { padding: 40, maxZoom: 18 }
+        );
       }
     });
 
