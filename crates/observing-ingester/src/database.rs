@@ -6,7 +6,7 @@ use crate::error::Result;
 use crate::types::{CommentEvent, IdentificationEvent, InteractionEvent, OccurrenceEvent};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::postgres::{PgPool, PgPoolOptions};
-use tracing::{debug, info};
+use tracing::{debug, info, warn};
 
 /// Parse an ISO 8601 date string into a DateTime<Utc>
 fn parse_datetime(s: &str) -> Option<DateTime<Utc>> {
@@ -192,9 +192,9 @@ impl Database {
         let (lat, lng) = match (lat, lng) {
             (Some(lat), Some(lng)) => (lat, lng),
             _ => {
-                debug!(
-                    "Skipping occurrence without valid coordinates: {}",
-                    event.uri
+                warn!(
+                    uri = %event.uri,
+                    "Skipping occurrence without valid coordinates"
                 );
                 return Ok(());
             }
@@ -202,7 +202,10 @@ impl Database {
         let event_date = match event_date.and_then(parse_datetime) {
             Some(d) => d,
             None => {
-                debug!("Skipping occurrence without valid eventDate: {}", event.uri);
+                warn!(
+                    uri = %event.uri,
+                    "Skipping occurrence without valid eventDate"
+                );
                 return Ok(());
             }
         };
@@ -378,7 +381,10 @@ impl Database {
         let subject_uri = match subject_uri {
             Some(uri) => uri,
             None => {
-                debug!("Skipping identification without subject uri: {}", event.uri);
+                warn!(
+                    uri = %event.uri,
+                    "Skipping identification without subject uri"
+                );
                 return Ok(());
             }
         };
@@ -386,7 +392,10 @@ impl Database {
         let taxon_name = match taxon_name {
             Some(name) => name,
             None => {
-                debug!("Skipping identification without taxonName: {}", event.uri);
+                warn!(
+                    uri = %event.uri,
+                    "Skipping identification without taxonName"
+                );
                 return Ok(());
             }
         };
@@ -458,7 +467,10 @@ impl Database {
         let subject_uri = match subject_uri {
             Some(uri) => uri,
             None => {
-                debug!("Skipping comment without subject uri: {}", event.uri);
+                warn!(
+                    uri = %event.uri,
+                    "Skipping comment without subject uri"
+                );
                 return Ok(());
             }
         };
@@ -466,7 +478,10 @@ impl Database {
         let body = match body {
             Some(b) => b,
             None => {
-                debug!("Skipping comment without body: {}", event.uri);
+                warn!(
+                    uri = %event.uri,
+                    "Skipping comment without body"
+                );
                 return Ok(());
             }
         };
@@ -584,9 +599,9 @@ impl Database {
         let interaction_type = match interaction_type {
             Some(t) => t,
             None => {
-                debug!(
-                    "Skipping interaction without interactionType: {}",
-                    event.uri
+                warn!(
+                    uri = %event.uri,
+                    "Skipping interaction without interactionType"
                 );
                 return Ok(());
             }
