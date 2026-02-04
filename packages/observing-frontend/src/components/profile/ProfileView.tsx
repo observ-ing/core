@@ -139,6 +139,7 @@ export function ProfileView() {
                 badgeContent={counts.observations}
                 color="primary"
                 max={9999}
+                showZero
                 sx={{
                   "& .MuiBadge-badge": {
                     position: "static",
@@ -164,6 +165,7 @@ export function ProfileView() {
                 badgeContent={counts.identifications}
                 color="secondary"
                 max={9999}
+                showZero
                 sx={{
                   "& .MuiBadge-badge": {
                     position: "static",
@@ -189,6 +191,7 @@ export function ProfileView() {
                 badgeContent={counts.species}
                 color="success"
                 max={9999}
+                showZero
                 sx={{
                   "& .MuiBadge-badge": {
                     position: "static",
