@@ -399,7 +399,9 @@ impl Database {
                 return Ok(());
             }
         };
-        let date_identified = created_at.and_then(parse_datetime).unwrap_or(event.time);
+        let date_identified = created_at
+            .and_then(parse_naive_datetime)
+            .unwrap_or_else(|| event.time.naive_utc());
 
         sqlx::query!(
             r#"
