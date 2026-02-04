@@ -11,6 +11,7 @@ use axum::{
 };
 use chrono::{DateTime, Utc};
 use serde::Serialize;
+use std::collections::VecDeque;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tower_http::cors::CorsLayer;
@@ -23,7 +24,7 @@ pub struct ServerState {
     pub cursor: Option<i64>,
     pub started_at: DateTime<Utc>,
     pub stats: IngesterStats,
-    pub recent_events: Vec<RecentEvent>,
+    pub recent_events: VecDeque<RecentEvent>,
     pub last_processed: Option<CommitTimingInfo>,
 }
 
@@ -34,15 +35,15 @@ impl ServerState {
             cursor: None,
             started_at: Utc::now(),
             stats: IngesterStats::default(),
-            recent_events: Vec::new(),
+            recent_events: VecDeque::new(),
             last_processed: None,
         }
     }
 
     pub fn add_recent_event(&mut self, event: RecentEvent) {
-        self.recent_events.insert(0, event);
+        self.recent_events.push_front(event);
         if self.recent_events.len() > 10 {
-            self.recent_events.pop();
+            self.recent_events.pop_back();
         }
     }
 }
@@ -114,7 +115,7 @@ async fn stats(State(state): State<SharedState>) -> Json<StatsResponse> {
         cursor: state.cursor,
         uptime,
         stats: state.stats.clone(),
-        recent_events: state.recent_events.clone(),
+        recent_events: state.recent_events.iter().cloned().collect(),
         last_processed: state
             .last_processed
             .as_ref()
