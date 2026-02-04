@@ -99,8 +99,6 @@ jobs:
         with:
           components: clippy
       - run: cargo clippy --manifest-path crates/observing-ingester/Cargo.toml -- -D warnings
-        env:
-          SQLX_OFFLINE: true
 
   rust-sqlx:
     runs-on: ubuntu-latest
@@ -121,8 +119,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: cargo test --manifest-path crates/observing-ingester/Cargo.toml
-        env:
-          SQLX_OFFLINE: true
 
   # Build Docker images in parallel with caching
   build-images:
