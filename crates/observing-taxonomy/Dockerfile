@@ -34,8 +34,8 @@ RUN cargo build --release -p observing-taxonomy && rm -rf crates/observing-taxon
 COPY crates/gbif-api/src crates/gbif-api/src
 COPY crates/observing-taxonomy/src crates/observing-taxonomy/src
 
-# Build for release (touch to invalidate cache for main.rs)
-RUN touch crates/observing-taxonomy/src/main.rs && cargo build --release -p observing-taxonomy
+# Build for release (touch to invalidate cache for changed sources)
+RUN touch crates/gbif-api/src/lib.rs crates/observing-taxonomy/src/main.rs && cargo build --release -p observing-taxonomy
 
 # Runtime stage
 FROM debian:bookworm-slim
