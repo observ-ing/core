@@ -247,6 +247,8 @@ impl GbifClient {
                 species: data.species,
                 source: "gbif".to_string(),
                 conservation_status,
+                is_synonym: false,
+                accepted_name: None,
             },
             ancestors,
             children,
@@ -329,8 +331,11 @@ impl GbifClient {
     /// Search GBIF species API and enrich with conservation status and photos
     ///
     /// Uses the full-text search endpoint which searches both scientific and vernacular names.
+    /// Searches only the GBIF Backbone Taxonomy for authoritative results with accurate
+    /// taxonomic status (accepted vs synonym).
     async fn search_gbif(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
-        let data = self.api.search(query, limit, Some("ACCEPTED")).await;
+        // Search backbone only - no status filter so we get both accepted and synonyms
+        let data = self.api.search(query, limit, None, true).await;
 
         let data = match data {
             Ok(d) => d,
@@ -340,17 +345,7 @@ impl GbifClient {
             }
         };
 
-        // Deduplicate results by scientific name (GBIF returns same species from multiple datasets)
-        let mut seen_names = std::collections::HashSet::new();
-        let data: Vec<_> = data
-            .into_iter()
-            .filter(|item| {
-                let name = item.canonical_name.as_deref()
-                    .or(item.scientific_name.as_deref())
-                    .unwrap_or("");
-                seen_names.insert(name.to_string())
-            })
-            .collect();
+        // No deduplication needed - backbone has unique entries
 
         // Extract GBIF keys for Wikidata image lookup
         let keys: Vec<u64> = data.iter().filter_map(|item| item.key).collect();
@@ -440,6 +435,8 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            is_synonym: false,
+            accepted_name: None,
         }
     }
 
@@ -484,6 +481,13 @@ impl GbifClient {
                     .and_then(|v| v.vernacular_name.clone())
             });
 
+        // Check if this is a synonym (status contains "SYNONYM")
+        let is_synonym = item
+            .taxonomic_status
+            .as_ref()
+            .map(|s| s.contains("SYNONYM"))
+            .unwrap_or(false);
+
         TaxonResult {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
             scientific_name: name.to_string(),
@@ -499,6 +503,8 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            is_synonym,
+            accepted_name: if is_synonym { item.accepted.clone() } else { None },
         }
     }
 
@@ -584,6 +590,8 @@ impl GbifClient {
                 .or_else(|| usage.species.clone()),
             source: "gbif".to_string(),
             conservation_status,
+            is_synonym: false,
+            accepted_name: None,
         }
     }
 }

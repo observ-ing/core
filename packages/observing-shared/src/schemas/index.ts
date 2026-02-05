@@ -345,6 +345,8 @@ export const TaxaResultSchema = z
     photoUrl: z.string().optional(),
     rank: z.string().optional(),
     conservationStatus: ConservationStatusSchema.optional(),
+    isSynonym: z.boolean().optional(),
+    acceptedName: z.string().optional(),
   })
   .openapi("TaxaResult");
 

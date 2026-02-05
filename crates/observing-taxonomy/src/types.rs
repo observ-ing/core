@@ -41,6 +41,12 @@ pub struct TaxonResult {
     pub source: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conservation_status: Option<ConservationStatus>,
+    /// True if this is a synonym (not the accepted name)
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_synonym: bool,
+    /// The accepted name if this is a synonym
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub accepted_name: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

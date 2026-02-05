@@ -116,6 +116,9 @@ pub struct SearchResult {
     pub vernacular_names: Vec<VernacularName>,
     pub rank: Option<String>,
     pub taxonomic_status: Option<String>,
+    /// The accepted name (for synonyms)
+    pub accepted: Option<String>,
+    pub accepted_key: Option<u64>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,

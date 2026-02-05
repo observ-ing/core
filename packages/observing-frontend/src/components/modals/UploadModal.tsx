@@ -467,11 +467,30 @@ export function UploadModal() {
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
                     <Typography fontWeight={600}>{option.scientificName}</Typography>
+                    {option.isSynonym && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          bgcolor: "action.selected",
+                          px: 0.75,
+                          py: 0.25,
+                          borderRadius: 0.5,
+                          fontSize: "0.65rem",
+                        }}
+                      >
+                        synonym
+                      </Typography>
+                    )}
                     {option.conservationStatus && (
                       <ConservationStatus status={option.conservationStatus} size="sm" />
                     )}
                   </Stack>
-                  {option.commonName && (
+                  {option.isSynonym && option.acceptedName && (
+                    <Typography variant="caption" color="text.disabled">
+                      → {option.acceptedName}
+                    </Typography>
+                  )}
+                  {option.commonName && !option.isSynonym && (
                     <Typography variant="caption" color="text.disabled">
                       {option.commonName}
                     </Typography>

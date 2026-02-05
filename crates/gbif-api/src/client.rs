@@ -67,20 +67,28 @@ impl GbifClient {
         Ok(response.json().await?)
     }
 
+    /// GBIF Backbone Taxonomy dataset key
+    pub const BACKBONE_DATASET_KEY: &'static str = "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c";
+
     /// Search for species using the full-text search endpoint
     ///
     /// This endpoint searches across both scientific names and vernacular names,
     /// providing better results for common name searches.
     ///
+    /// When `backbone_only` is true, searches only the GBIF Backbone Taxonomy,
+    /// which provides authoritative taxonomic status (accepted vs synonym).
+    ///
     /// # Arguments
     /// * `query` - Search string to match against scientific and vernacular names
     /// * `limit` - Maximum number of results to return
     /// * `status` - Optional taxonomic status filter (e.g., "ACCEPTED", "SYNONYM")
+    /// * `backbone_only` - If true, search only the GBIF Backbone Taxonomy
     pub async fn search(
         &self,
         query: &str,
         limit: u32,
         status: Option<&str>,
+        backbone_only: bool,
     ) -> Result<Vec<SearchResult>> {
         let mut url = format!(
             "{}/species/search?q={}&limit={}",
@@ -90,6 +98,9 @@ impl GbifClient {
         );
         if let Some(s) = status {
             url.push_str(&format!("&status={}", urlencoding::encode(s)));
+        }
+        if backbone_only {
+            url.push_str(&format!("&datasetKey={}", Self::BACKBONE_DATASET_KEY));
         }
 
         let response = self.http.get(&url).send().await?;
