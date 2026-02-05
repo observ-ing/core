@@ -159,7 +159,7 @@ export class GeocodingService {
 
   constructor(options: { baseUrl?: string; userAgent?: string; fetch?: typeof fetch } = {}) {
     this.baseUrl = options.baseUrl || "https://nominatim.openstreetmap.org";
-    this.userAgent = options.userAgent || "Observ.ing/1.0 (https://github.com/frewsxcv/observing)";
+    this.userAgent = options.userAgent || "Observ.ing/1.0 (https://github.com/observ-ing/core)";
     this.fetchFn = options.fetch || fetch;
   }
 
