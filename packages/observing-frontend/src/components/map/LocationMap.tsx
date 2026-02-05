@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Box } from "@mui/material";
+import { Box, useTheme } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -16,9 +16,16 @@ export function LocationMap({
 }: LocationMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
+  const theme = useTheme();
 
   useEffect(() => {
-    if (!mapContainer.current || map.current) return;
+    if (!mapContainer.current) return;
+
+    // Clean up any existing map (handles theme changes)
+    if (map.current) {
+      map.current.remove();
+      map.current = null;
+    }
 
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
@@ -109,12 +116,14 @@ export function LocationMap({
       mapInstance.remove();
       map.current = null;
     };
-  }, [latitude, longitude, uncertaintyMeters]);
+    // Include theme.palette.mode to recreate map on theme change
+  }, [latitude, longitude, uncertaintyMeters, theme.palette.mode]);
 
   return (
     <Box
       ref={mapContainer}
       sx={{
+        position: "relative",
         width: "100%",
         height: 200,
         borderRadius: 1,
