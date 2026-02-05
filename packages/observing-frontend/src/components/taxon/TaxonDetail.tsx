@@ -48,7 +48,7 @@ export function TaxonDetail() {
   // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
   const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
   const lookupName = name ? slugToName(decodeURIComponent(name)) : undefined;
-  const lookupId = id ? decodeURIComponent(id) : undefined;
+  const lookupId = id ? slugToName(decodeURIComponent(id)) : undefined;
 
   useEffect(() => {
     if (!lookupKingdom && !lookupId) {
