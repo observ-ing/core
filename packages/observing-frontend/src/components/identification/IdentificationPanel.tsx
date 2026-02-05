@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -13,12 +13,15 @@ import {
   Divider,
   Collapse,
   Link,
+  Autocomplete,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
 import CloseIcon from "@mui/icons-material/Close";
-import { submitIdentification } from "../../services/api";
+import { submitIdentification, searchTaxa } from "../../services/api";
+import type { TaxaResult } from "../../services/types";
+import { ConservationStatus } from "../common/ConservationStatus";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 
@@ -50,6 +53,16 @@ export function IdentificationPanel({
   const [confidence, setConfidence] = useState<ConfidenceLevel>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
+  const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
+
+  const handleSpeciesSearch = useCallback(async (value: string) => {
+    if (value.length >= 2) {
+      const results = await searchTaxa(value);
+      setSuggestions(results.slice(0, 5));
+    } else {
+      setSuggestions([]);
+    }
+  }, []);
 
   // Calculate the next available subject index for new organisms
   const nextSubjectIndex = existingSubjectCount;
@@ -106,6 +119,7 @@ export function IdentificationPanel({
       setShowSuggestForm(false);
       setTaxonName("");
       setComment("");
+      setSuggestions([]);
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     } catch (error) {
@@ -151,14 +165,79 @@ export function IdentificationPanel({
 
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          <TextField
-            fullWidth
-            label="Scientific Name"
-            value={taxonName}
-            onChange={(e) => setTaxonName(e.target.value)}
-            placeholder="Enter species name..."
-            margin="normal"
+          <Autocomplete
+            freeSolo
+            options={suggestions}
+            getOptionLabel={(option) =>
+              typeof option === "string" ? option : option.scientificName
+            }
+            inputValue={taxonName}
+            onInputChange={(_, value) => {
+              setTaxonName(value);
+              handleSpeciesSearch(value);
+            }}
+            onChange={(_, value) => {
+              if (value) {
+                const name = typeof value === "string" ? value : value.scientificName;
+                setTaxonName(name);
+                setSuggestions([]);
+              }
+            }}
+            filterOptions={(x) => x}
             size="small"
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                fullWidth
+                label="Species Name"
+                placeholder="Search by common or scientific name..."
+                margin="normal"
+              />
+            )}
+            renderOption={(props, option) => {
+              const { key, ...otherProps } = props;
+              return (
+                <Box
+                  component="li"
+                  key={key}
+                  {...otherProps}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1.5,
+                    p: 1.5,
+                  }}
+                >
+                  {option.photoUrl && (
+                    <Box
+                      component="img"
+                      src={option.photoUrl}
+                      alt=""
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 1,
+                        objectFit: "cover",
+                        flexShrink: 0,
+                      }}
+                    />
+                  )}
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                      <Typography fontWeight={600}>{option.scientificName}</Typography>
+                      {option.conservationStatus && (
+                        <ConservationStatus status={option.conservationStatus} size="sm" />
+                      )}
+                    </Stack>
+                    {option.commonName && (
+                      <Typography variant="caption" color="text.disabled">
+                        {option.commonName}
+                      </Typography>
+                    )}
+                  </Box>
+                </Box>
+              );
+            }}
           />
 
           <TextField
@@ -248,6 +327,8 @@ export function IdentificationPanel({
               color="inherit"
               onClick={() => {
                 setShowSuggestForm(false);
+                setTaxonName("");
+                setSuggestions([]);
                 setIdentifyingNewOrganism(false);
               }}
             >
