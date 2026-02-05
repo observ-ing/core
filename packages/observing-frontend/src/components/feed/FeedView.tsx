@@ -7,6 +7,7 @@ import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
 import { FeedSkeletonList } from "../common/Skeletons";
+import { ExploreFilterPanel } from "./ExploreFilterPanel";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -64,11 +65,19 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
         overflow: "hidden",
       }}
     >
+      {/* Filter panel for explore tab only */}
+      {currentTab === "explore" && (
+        <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
+          <ExploreFilterPanel />
+        </Box>
+      )}
+
       <Box
         ref={contentRef}
         onScroll={handleScroll}
         sx={{
           flex: 1,
+          minHeight: 0,
           overflowY: "auto",
           scrollbarWidth: "none",
           "&::-webkit-scrollbar": { display: "none" },

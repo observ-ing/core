@@ -264,6 +264,9 @@ export const FeedFiltersSchema = z
     lat: z.number().optional(),
     lng: z.number().optional(),
     radius: z.number().optional(),
+    kingdom: z.string().optional(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
   })
   .openapi("FeedFilters");
 
