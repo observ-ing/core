@@ -36,27 +36,14 @@ Test cases for Observ.ing QA.
 
 **Expected:** Feed view loads, header shows "Observ.ing", bottom nav is visible
 
-### TC-NAV-002: Map view load
-1. Navigate to `/map`
-
-**Expected:** Map loads with markers (if data exists), controls are visible
-
-### TC-NAV-003: Bottom nav navigation
-1. From home, click map icon in bottom nav
-2. Verify URL changes to `/map` and map view loads
-3. Click home icon
-4. Verify URL changes to `/` and feed view loads
-
-**Expected:** Navigation between views works correctly via bottom nav
-
-### TC-NAV-004: 404 page
+### TC-NAV-002: 404 page
 1. Navigate to `/invalid-route-xyz`
 2. Verify 404 page shows with "Page not found" and "Go home" link
 3. Click "Go home"
 
 **Expected:** Redirected to `/`
 
-### TC-NAV-005: Occurrence detail page
+### TC-NAV-003: Occurrence detail page
 1. Click on a feed item
 
 **Expected:** Occurrence detail page loads with species info, location, date
@@ -374,30 +361,6 @@ Test cases for Observ.ing QA.
 2. Scroll to bottom
 
 **Expected:** More items load automatically
-
----
-
-## Map View
-
-### TC-MAP-001: Map loads
-1. Navigate to `/map`
-
-**Expected:** Map renders with tiles loading
-
-### TC-MAP-002: Observation markers
-1. Navigate to `/map` with existing observations
-
-**Expected:** Markers/clusters appear on map at observation locations
-
-### TC-MAP-003: Marker click
-1. Click on a map marker
-
-**Expected:** Popup shows observation details
-
-### TC-MAP-004: Map pan/zoom
-1. Pan and zoom the map
-
-**Expected:** Map responds, markers update for visible area
 
 ---
 
