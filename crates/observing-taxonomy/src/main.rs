@@ -6,6 +6,7 @@ mod error;
 mod gbif;
 mod server;
 mod types;
+mod wikidata;
 
 use crate::error::{Result, TaxonomyError};
 use crate::gbif::GbifClient;

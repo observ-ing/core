@@ -2,6 +2,7 @@
 
 use crate::error::Result;
 use crate::types::*;
+use crate::wikidata::WikidataClient;
 use gbif_api::{GbifClient as GbifApiClient, SpeciesDetail, SuggestResult, V2NameUsage};
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -24,6 +25,7 @@ fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) ->
 /// Taxonomy client that wraps GBIF API with caching and app-specific type conversion
 pub struct GbifClient {
     api: GbifApiClient,
+    wikidata: WikidataClient,
     cache: Cache<String, CachedValue>,
     hits: AtomicU64,
     misses: AtomicU64,
@@ -41,6 +43,7 @@ impl GbifClient {
 
     pub fn new() -> Self {
         let api = GbifApiClient::new();
+        let wikidata = WikidataClient::new();
 
         let cache = Cache::builder()
             .max_capacity(10_000)
@@ -49,6 +52,7 @@ impl GbifClient {
 
         Self {
             api,
+            wikidata,
             cache,
             hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
@@ -224,11 +228,15 @@ impl GbifClient {
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
+        // Get photo from first media item if available
+        let photo_url = media.first().map(|m| m.url.clone());
+
         let taxon_detail = TaxonDetail {
             base: TaxonResult {
                 id: build_taxon_path(resolved_name, &resolved_rank, data.kingdom.as_deref()),
                 scientific_name: resolved_name.to_string(),
                 common_name: data.vernacular_name,
+                photo_url,
                 rank: resolved_rank,
                 kingdom: data.kingdom,
                 phylum: data.phylum,
@@ -318,7 +326,7 @@ impl GbifClient {
         })
     }
 
-    /// Search GBIF species API and enrich with conservation status
+    /// Search GBIF species API and enrich with conservation status and photos
     async fn search_gbif(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
         let data = self.api.suggest(query, limit, Some("ACCEPTED")).await;
 
@@ -330,14 +338,28 @@ impl GbifClient {
             }
         };
 
-        let basic_results: Vec<TaxonResult> = data.iter().map(|item| self.gbif_to_taxon(item)).collect();
+        // Extract GBIF keys for Wikidata image lookup
+        let keys: Vec<u64> = data.iter().filter_map(|item| item.key).collect();
 
-        // Enrich with conservation status in parallel
-        let enriched_futures = basic_results.into_iter().map(|result| async {
-            let conservation_status = self.get_conservation_status(&result.scientific_name).await;
-            TaxonResult {
-                conservation_status,
-                ..result
+        // Fetch photos from Wikidata using GBIF taxon IDs (single batched SPARQL query)
+        let photos = self.wikidata.get_images_for_keys(&keys).await;
+
+        // Convert to TaxonResults with photos
+        let basic_results: Vec<(TaxonResult, Option<u64>)> = data
+            .iter()
+            .map(|item| (self.gbif_to_taxon(item), item.key))
+            .collect();
+
+        // Enrich with conservation status and photos in parallel
+        let enriched_futures = basic_results.into_iter().map(|(result, key)| {
+            let photo_url = key.and_then(|k| photos.get(&k).cloned());
+            async move {
+                let conservation_status = self.get_conservation_status(&result.scientific_name).await;
+                TaxonResult {
+                    conservation_status,
+                    photo_url,
+                    ..result
+                }
             }
         });
 
@@ -393,6 +415,7 @@ impl GbifClient {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
             scientific_name: name.to_string(),
             common_name: item.vernacular_name.clone(),
+            photo_url: None,
             rank,
             kingdom: item.kingdom.clone(),
             phylum: item.phylum.clone(),
@@ -459,6 +482,7 @@ impl GbifClient {
             id: build_taxon_path(resolved_name, &resolved_rank, resolved_kingdom.as_deref()),
             scientific_name: resolved_name.to_string(),
             common_name: None,
+            photo_url: None,
             rank: resolved_rank,
             kingdom: resolved_kingdom,
             phylum: classification_by_rank

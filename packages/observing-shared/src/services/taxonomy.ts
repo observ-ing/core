@@ -29,6 +29,7 @@ interface TaxonResult {
   id: string;
   scientificName: string;
   commonName?: string | undefined;
+  photoUrl?: string | undefined;
   rank: string;
   kingdom?: string | undefined;
   phylum?: string | undefined;
