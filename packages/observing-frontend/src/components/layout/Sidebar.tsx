@@ -166,7 +166,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           <ListItem disablePadding>
             <ListItemButton
               component="a"
-              href="https://github.com/frewsxcv/observing"
+              href="https://github.com/observ-ing/core"
               target="_blank"
               rel="noopener noreferrer"
               sx={{ mx: 1, borderRadius: 2 }}
