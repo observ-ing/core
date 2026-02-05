@@ -111,22 +111,21 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       onClick={handleCardClick}
       sx={{
         display: "flex",
-        gap: 1.5,
-        p: 2,
+        gap: 1,
+        p: 1.5,
         bgcolor: "background.paper",
-        borderRadius: 2,
-        mb: 2,
-        mx: { xs: 1, sm: 2 },
+        borderRadius: 0.5,
+        mb: 1,
+        mx: { xs: 0.5, sm: 1 },
         cursor: "pointer",
         color: "inherit",
-        boxShadow: 1,
-        transition: "all 0.2s ease",
+        borderBottom: 1,
+        borderColor: "divider",
         "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: 4,
+          bgcolor: "action.hover",
         },
         "&:first-of-type": {
-          mt: 2,
+          mt: 1,
         },
       }}
     >
@@ -135,7 +134,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           <AvatarGroup
             max={3}
             sx={{
-              "& .MuiAvatar-root": { width: 40, height: 40, border: "2px solid", borderColor: "background.paper" },
+              "& .MuiAvatar-root": { width: 36, height: 36, border: "2px solid", borderColor: "background.paper" },
             }}
           >
             <Avatar src={owner.avatar} alt={displayName} />
@@ -152,7 +151,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
         <Avatar
           src={owner.avatar}
           alt={displayName}
-          sx={{ width: 48, height: 48 }}
+          sx={{ width: 40, height: 40 }}
         />
       )}
 
@@ -323,11 +322,10 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
             alt={species || "Observation photo"}
             loading="lazy"
             sx={{
-              mt: 1.5,
-              borderRadius: 2,
-              maxHeight: 300,
+              mt: 1,
+              borderRadius: 0.5,
+              maxHeight: 280,
               objectFit: "cover",
-              boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
             }}
           />
         )}
