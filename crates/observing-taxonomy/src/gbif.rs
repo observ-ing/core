@@ -340,6 +340,18 @@ impl GbifClient {
             }
         };
 
+        // Deduplicate results by scientific name (GBIF returns same species from multiple datasets)
+        let mut seen_names = std::collections::HashSet::new();
+        let data: Vec<_> = data
+            .into_iter()
+            .filter(|item| {
+                let name = item.canonical_name.as_deref()
+                    .or(item.scientific_name.as_deref())
+                    .unwrap_or("");
+                seen_names.insert(name.to_string())
+            })
+            .collect();
+
         // Extract GBIF keys for Wikidata image lookup
         let keys: Vec<u64> = data.iter().filter_map(|item| item.key).collect();
 
