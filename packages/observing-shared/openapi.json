@@ -597,6 +597,15 @@
           },
           "radius": {
             "type": "number"
+          },
+          "kingdom": {
+            "type": "string"
+          },
+          "startDate": {
+            "type": "string"
+          },
+          "endDate": {
+            "type": "string"
           }
         }
       },
