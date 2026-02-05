@@ -42,15 +42,15 @@ export function TaxonLink({
         rank === "variety";
 
   // Build the URL using kingdom/name pattern with hyphenated slugs
-  let taxonUrl: string;
+  // All non-kingdom taxa require a kingdom prefix
+  let taxonUrl: string | null;
   if (rank === "kingdom") {
     taxonUrl = `/taxon/${nameToSlug(name)}`;
   } else if (kingdom) {
     taxonUrl = `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
-  } else if (taxonId) {
-    taxonUrl = `/taxon/${encodeURIComponent(taxonId)}`;
   } else {
-    taxonUrl = `/taxon/${nameToSlug(name)}`;
+    // No valid URL without kingdom - render as plain text
+    taxonUrl = null;
   }
 
   const handleClick = (e: React.MouseEvent) => {
@@ -59,6 +59,25 @@ export function TaxonLink({
       onClick(e);
     }
   };
+
+  // If no valid URL, render as plain text
+  if (!taxonUrl) {
+    if (variant === "chip") {
+      return (
+        <Chip
+          label={name}
+          size="small"
+          variant="outlined"
+          sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}
+        />
+      );
+    }
+    return (
+      <Typography sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}>
+        {name}
+      </Typography>
+    );
+  }
 
   if (variant === "chip") {
     return (
