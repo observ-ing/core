@@ -1015,6 +1015,9 @@ export class AppViewServer {
         const radius = req.query["radius"]
           ? parseFloat(req.query["radius"] as string)
           : undefined;
+        const kingdom = req.query["kingdom"] as string | undefined;
+        const startDate = req.query["startDate"] as string | undefined;
+        const endDate = req.query["endDate"] as string | undefined;
 
         const rows = await this.db.getExploreFeed({
           limit,
@@ -1023,6 +1026,9 @@ export class AppViewServer {
           ...(lat !== undefined && { lat }),
           ...(lng !== undefined && { lng }),
           ...(radius !== undefined && { radius }),
+          ...(kingdom && { kingdom }),
+          ...(startDate && { startDate }),
+          ...(endDate && { endDate }),
         });
 
         const occurrences = await this.enrichOccurrences(rows);

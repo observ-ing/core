@@ -720,6 +720,8 @@ export class Database {
     lat?: number;
     lng?: number;
     radius?: number;
+    startDate?: string;
+    endDate?: string;
   }): Promise<OccurrenceRow[]> {
     const conditions: string[] = [];
     const params: (string | number)[] = [];
@@ -733,6 +735,16 @@ export class Database {
     if (options.kingdom) {
       conditions.push(`kingdom = $${paramIndex++}`);
       params.push(options.kingdom);
+    }
+
+    if (options.startDate) {
+      conditions.push(`event_date >= $${paramIndex++}`);
+      params.push(options.startDate);
+    }
+
+    if (options.endDate) {
+      conditions.push(`event_date <= $${paramIndex++}`);
+      params.push(options.endDate);
     }
 
     if (options.lat !== undefined && options.lng !== undefined) {

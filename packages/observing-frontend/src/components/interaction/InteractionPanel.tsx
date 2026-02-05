@@ -311,7 +311,7 @@ export function InteractionPanel({
             )}
 
             {/* Subject B - taxon name input */}
-            <Box>
+            <Box sx={{ position: "relative" }}>
               <TextField
                 size="small"
                 fullWidth
@@ -337,18 +337,37 @@ export function InteractionPanel({
                       sx={{
                         p: 1,
                         cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.5,
                         "&:hover": { bgcolor: "action.hover" },
                       }}
                       onClick={() => handleSelectTaxon(taxon)}
                     >
-                      <Typography variant="body2" sx={{ fontStyle: "italic" }}>
-                        {taxon.scientificName}
-                      </Typography>
-                      {taxon.commonName && (
-                        <Typography variant="caption" color="text.secondary">
-                          {taxon.commonName}
-                        </Typography>
+                      {taxon.photoUrl && (
+                        <Box
+                          component="img"
+                          src={taxon.photoUrl}
+                          alt=""
+                          sx={{
+                            width: 36,
+                            height: 36,
+                            borderRadius: 1,
+                            objectFit: "cover",
+                            flexShrink: 0,
+                          }}
+                        />
                       )}
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+                          {taxon.scientificName}
+                        </Typography>
+                        {taxon.commonName && (
+                          <Typography variant="caption" color="text.secondary">
+                            {taxon.commonName}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   ))}
                 </Paper>

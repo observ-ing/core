@@ -21,6 +21,8 @@ pub struct TaxonResult {
     pub scientific_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub common_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub photo_url: Option<String>,
     pub rank: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<String>,
