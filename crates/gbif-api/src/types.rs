@@ -93,6 +93,46 @@ pub struct SuggestResult {
     pub species: Option<String>,
 }
 
+/// Vernacular name entry from GBIF search results
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VernacularName {
+    pub vernacular_name: Option<String>,
+    pub language: Option<String>,
+    pub preferred: Option<bool>,
+}
+
+/// Result from GBIF v1 `/species/search` endpoint
+/// This endpoint returns more detailed results including multiple vernacular names
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchResult {
+    pub key: Option<u64>,
+    pub nub_key: Option<u64>,
+    pub scientific_name: Option<String>,
+    pub canonical_name: Option<String>,
+    pub vernacular_name: Option<String>,
+    #[serde(default)]
+    pub vernacular_names: Vec<VernacularName>,
+    pub rank: Option<String>,
+    pub taxonomic_status: Option<String>,
+    pub kingdom: Option<String>,
+    pub phylum: Option<String>,
+    pub class: Option<String>,
+    pub order: Option<String>,
+    pub family: Option<String>,
+    pub genus: Option<String>,
+    pub species: Option<String>,
+    pub kingdom_key: Option<u64>,
+    pub phylum_key: Option<u64>,
+    pub class_key: Option<u64>,
+    pub order_key: Option<u64>,
+    pub family_key: Option<u64>,
+    pub genus_key: Option<u64>,
+    pub species_key: Option<u64>,
+    pub num_descendants: Option<u64>,
+}
+
 /// Name usage data from GBIF v2 API
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]

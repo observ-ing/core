@@ -3,7 +3,7 @@
 use crate::error::Result;
 use crate::types::*;
 use crate::wikidata::WikidataClient;
-use gbif_api::{GbifClient as GbifApiClient, SpeciesDetail, SuggestResult, V2NameUsage};
+use gbif_api::{GbifClient as GbifApiClient, SearchResult, SpeciesDetail, SuggestResult, V2NameUsage};
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -327,8 +327,10 @@ impl GbifClient {
     }
 
     /// Search GBIF species API and enrich with conservation status and photos
+    ///
+    /// Uses the full-text search endpoint which searches both scientific and vernacular names.
     async fn search_gbif(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
-        let data = self.api.suggest(query, limit, Some("ACCEPTED")).await;
+        let data = self.api.search(query, limit, Some("ACCEPTED")).await;
 
         let data = match data {
             Ok(d) => d,
@@ -347,7 +349,7 @@ impl GbifClient {
         // Convert to TaxonResults with photos
         let basic_results: Vec<(TaxonResult, Option<u64>)> = data
             .iter()
-            .map(|item| (self.gbif_to_taxon(item), item.key))
+            .map(|item| (self.search_result_to_taxon(item), item.key))
             .collect();
 
         // Enrich with conservation status and photos in parallel
@@ -398,7 +400,7 @@ impl GbifClient {
         ancestors
     }
 
-    /// Convert GBIF v1 result to TaxonResult
+    /// Convert GBIF v1 suggest result to TaxonResult
     fn gbif_to_taxon(&self, item: &SuggestResult) -> TaxonResult {
         let name = item
             .canonical_name
@@ -415,6 +417,65 @@ impl GbifClient {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
             scientific_name: name.to_string(),
             common_name: item.vernacular_name.clone(),
+            photo_url: None,
+            rank,
+            kingdom: item.kingdom.clone(),
+            phylum: item.phylum.clone(),
+            class: item.class.clone(),
+            order: item.order.clone(),
+            family: item.family.clone(),
+            genus: item.genus.clone(),
+            species: item.species.clone(),
+            source: "gbif".to_string(),
+            conservation_status: None,
+        }
+    }
+
+    /// Convert GBIF v1 search result to TaxonResult
+    ///
+    /// The search endpoint returns more detailed results including multiple vernacular names.
+    /// We prefer the English vernacular name if available, otherwise use the first one.
+    fn search_result_to_taxon(&self, item: &SearchResult) -> TaxonResult {
+        let name = item
+            .canonical_name
+            .as_deref()
+            .or(item.scientific_name.as_deref())
+            .unwrap_or("");
+        let rank = item
+            .rank
+            .as_deref()
+            .map(|r| r.to_lowercase())
+            .unwrap_or_else(|| "unknown".to_string());
+
+        // Get the best vernacular name: prefer English, then any preferred, then first available
+        let common_name = item
+            .vernacular_name
+            .clone()
+            .or_else(|| {
+                // Try to find an English vernacular name
+                item.vernacular_names
+                    .iter()
+                    .find(|v| v.language.as_deref() == Some("eng"))
+                    .and_then(|v| v.vernacular_name.clone())
+            })
+            .or_else(|| {
+                // Try to find any preferred vernacular name
+                item.vernacular_names
+                    .iter()
+                    .find(|v| v.preferred == Some(true))
+                    .and_then(|v| v.vernacular_name.clone())
+            })
+            .or_else(|| {
+                // Fall back to first available vernacular name
+                item.vernacular_names
+                    .first()
+                    .and_then(|v| v.vernacular_name.clone())
+            });
+
+        TaxonResult {
+            id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
+            scientific_name: name.to_string(),
+            common_name,
             photo_url: None,
             rank,
             kingdom: item.kingdom.clone(),

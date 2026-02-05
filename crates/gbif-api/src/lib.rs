@@ -49,6 +49,6 @@ mod types;
 pub use client::GbifClient;
 pub use error::{GbifError, Result};
 pub use types::{
-    Description, IucnCategory, ListResponse, Media, Reference, SpeciesDetail, SuggestResult,
-    V2AdditionalStatus, V2Diagnostics, V2MatchResult, V2NameUsage,
+    Description, IucnCategory, ListResponse, Media, Reference, SearchResult, SpeciesDetail,
+    SuggestResult, V2AdditionalStatus, V2Diagnostics, V2MatchResult, V2NameUsage, VernacularName,
 };

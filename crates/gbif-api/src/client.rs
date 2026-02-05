@@ -36,6 +36,7 @@ impl GbifClient {
     /// Search for species using the suggest endpoint
     ///
     /// Returns taxa matching the query string, useful for autocomplete functionality.
+    /// Note: This endpoint primarily matches scientific names.
     ///
     /// # Arguments
     /// * `query` - Search string to match against scientific and vernacular names
@@ -64,6 +65,41 @@ impl GbifClient {
         }
 
         Ok(response.json().await?)
+    }
+
+    /// Search for species using the full-text search endpoint
+    ///
+    /// This endpoint searches across both scientific names and vernacular names,
+    /// providing better results for common name searches.
+    ///
+    /// # Arguments
+    /// * `query` - Search string to match against scientific and vernacular names
+    /// * `limit` - Maximum number of results to return
+    /// * `status` - Optional taxonomic status filter (e.g., "ACCEPTED", "SYNONYM")
+    pub async fn search(
+        &self,
+        query: &str,
+        limit: u32,
+        status: Option<&str>,
+    ) -> Result<Vec<SearchResult>> {
+        let mut url = format!(
+            "{}/species/search?q={}&limit={}",
+            Self::V1_BASE_URL,
+            urlencoding::encode(query),
+            limit
+        );
+        if let Some(s) = status {
+            url.push_str(&format!("&status={}", urlencoding::encode(s)));
+        }
+
+        let response = self.http.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            return Ok(vec![]);
+        }
+
+        let data: ListResponse<SearchResult> = response.json().await?;
+        Ok(data.results)
     }
 
     /// Get detailed species information by GBIF key
