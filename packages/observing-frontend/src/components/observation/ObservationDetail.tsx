@@ -505,29 +505,25 @@ export function ObservationDetail() {
                 date: observation.createdAt,
                 kingdom: taxonomy.kingdom,
               } : undefined}
+              footer={user ? (
+                <IdentificationPanel
+                  observation={{
+                    uri: observation.uri,
+                    cid: observation.cid,
+                    scientificName: observation.scientificName,
+                    communityId: currentSubject?.communityId || observation.communityId,
+                  }}
+                  subjectIndex={selectedSubject}
+                  existingSubjectCount={observation.subjects?.length ?? 1}
+                  onSuccess={handleIdentificationSuccess}
+                />
+              ) : (
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 2, textAlign: "center" }}>
+                  Log in to add an identification
+                </Typography>
+              )}
             />
           </Box>
-
-          {/* Identification Panel */}
-          {user ? (
-            <IdentificationPanel
-              observation={{
-                uri: observation.uri,
-                cid: observation.cid,
-                scientificName: observation.scientificName,
-                communityId: currentSubject?.communityId || observation.communityId,
-              }}
-              subjectIndex={selectedSubject}
-              existingSubjectCount={observation.subjects?.length ?? 1}
-              onSuccess={handleIdentificationSuccess}
-            />
-          ) : (
-            <Paper sx={{ mt: 3, p: 2, textAlign: "center", bgcolor: "background.paper" }}>
-              <Typography color="text.secondary">
-                Log in to add an identification
-              </Typography>
-            </Paper>
-          )}
 
           {/* Interactions Panel */}
           <InteractionPanel

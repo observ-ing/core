@@ -25,6 +25,8 @@ interface IdentificationHistoryProps {
   kingdom?: string;
   /** Observer's original scientificName from the observation payload */
   observerInitialId?: ObserverInitialId;
+  /** Optional content rendered at the bottom of the panel (e.g. login prompt, add ID form) */
+  footer?: React.ReactNode;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -58,6 +60,7 @@ export function IdentificationHistory({
   subjectIndex = 0,
   kingdom,
   observerInitialId,
+  footer,
 }: IdentificationHistoryProps) {
   // Filter identifications by subject index and sort oldest first
   const filteredIds = identifications
@@ -99,6 +102,7 @@ export function IdentificationHistory({
         <Typography variant="body2" color="text.secondary">
           No identifications yet. Be the first to suggest an ID!
         </Typography>
+        {footer}
       </Paper>
     );
   }
@@ -243,6 +247,7 @@ export function IdentificationHistory({
           );
         })}
       </Stack>
+      {footer}
     </Paper>
   );
 }

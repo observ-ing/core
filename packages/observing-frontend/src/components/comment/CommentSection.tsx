@@ -238,7 +238,7 @@ export function CommentSection({
           </Button>
         )
       ) : (
-        <Typography variant="body2" color="text.secondary">
+        <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
           Log in to add a comment
         </Typography>
       )}
