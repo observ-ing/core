@@ -482,24 +482,20 @@ export function ObservationDetail() {
             </Typography>
           )}
 
-          {observation.scientificName &&
-            observation.communityId &&
-            observation.scientificName !== observation.communityId && (
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                Originally identified as: {observation.scientificName}
-              </Typography>
-            )}
-
           {/* Identification History */}
-          {identifications.length > 0 && (
-            <Box sx={{ mt: 2 }}>
-              <IdentificationHistory
-                identifications={identifications}
-                subjectIndex={selectedSubject}
-                kingdom={taxonomy.kingdom}
-              />
-            </Box>
-          )}
+          <Box sx={{ mt: 2 }}>
+            <IdentificationHistory
+              identifications={identifications}
+              subjectIndex={selectedSubject}
+              kingdom={taxonomy.kingdom}
+              observerInitialId={observation.scientificName ? {
+                scientificName: observation.scientificName,
+                observer: observation.observer,
+                date: observation.createdAt,
+                kingdom: taxonomy.kingdom,
+              } : undefined}
+            />
+          </Box>
 
           {/* Identification Panel */}
           {user ? (

@@ -8,14 +8,23 @@ import {
   Chip,
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
-import type { Identification } from "../../services/types";
+import type { Identification, Profile } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
+
+interface ObserverInitialId {
+  scientificName: string;
+  observer: Profile;
+  date: string;
+  kingdom?: string;
+}
 
 interface IdentificationHistoryProps {
   identifications: Identification[];
   subjectIndex?: number;
   /** Fallback kingdom to use if identification doesn't have kingdom data */
   kingdom?: string;
+  /** Observer's original scientificName from the observation payload */
+  observerInitialId?: ObserverInitialId;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -48,13 +57,17 @@ export function IdentificationHistory({
   identifications,
   subjectIndex = 0,
   kingdom,
+  observerInitialId,
 }: IdentificationHistoryProps) {
-  // Filter identifications by subject index
-  const filteredIds = identifications.filter(
-    (id) => id.subject_index === subjectIndex
-  );
+  // Filter identifications by subject index and sort oldest first
+  const filteredIds = identifications
+    .filter((id) => id.subject_index === subjectIndex)
+    .sort((a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime());
 
-  if (filteredIds.length === 0) {
+  // Only show observer's initial ID for subject 0
+  const showObserverInitialId = observerInitialId && subjectIndex === 0;
+
+  if (filteredIds.length === 0 && !showObserverInitialId) {
     return (
       <Paper
         elevation={0}
@@ -90,12 +103,60 @@ export function IdentificationHistory({
           Identification History
         </Typography>
         <Chip
-          label={filteredIds.length}
+          label={filteredIds.length + (showObserverInitialId ? 1 : 0)}
           size="small"
           sx={{ ml: "auto", height: 20, fontSize: "0.75rem" }}
         />
       </Stack>
       <Stack spacing={2}>
+        {showObserverInitialId && (
+          <Box
+            key="observer-initial-id"
+            sx={{
+              pl: 2,
+              borderLeft: 3,
+              borderColor: "info.main",
+              transition: "background-color 0.2s ease",
+              borderRadius: "0 4px 4px 0",
+              py: 1,
+              "&:hover": { bgcolor: "action.hover" },
+            }}
+          >
+            <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <RouterLink to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}>
+                <Avatar
+                  src={observerInitialId.observer.avatar}
+                  sx={{ width: 32, height: 32 }}
+                >
+                  {(observerInitialId.observer.displayName || observerInitialId.observer.handle || "?")[0]}
+                </Avatar>
+              </RouterLink>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <RouterLink
+                    to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}
+                    style={{ textDecoration: "none" }}
+                  >
+                    <Typography variant="body2" fontWeight="medium" color="text.primary">
+                      {observerInitialId.observer.displayName || observerInitialId.observer.handle || "Unknown"}
+                    </Typography>
+                  </RouterLink>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatRelativeTime(observerInitialId.date)}
+                  </Typography>
+                  <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
+                </Stack>
+                <Box sx={{ mt: 0.5 }}>
+                  <TaxonLink
+                    name={observerInitialId.scientificName}
+                    kingdom={observerInitialId.kingdom || kingdom}
+                    rank="species"
+                  />
+                </Box>
+              </Box>
+            </Stack>
+          </Box>
+        )}
         {filteredIds.map((id) => (
           <Box
             key={id.uri}
