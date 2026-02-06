@@ -194,7 +194,7 @@ export function InteractionPanel({
   }
 
   return (
-    <Paper sx={{ mt: 3, p: 2, bgcolor: "background.paper" }}>
+    <Paper elevation={0} sx={{ mt: 3, p: 2.5, bgcolor: "background.paper", borderRadius: 2, border: 1, borderColor: "divider" }}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Typography variant="subtitle1" fontWeight={600}>
           <LinkIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: "middle" }} />
