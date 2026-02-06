@@ -195,9 +195,9 @@ export function InteractionPanel({
 
   return (
     <Paper elevation={0} sx={{ mt: 3, p: 2.5, bgcolor: "background.paper", borderRadius: 2, border: 1, borderColor: "divider" }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={600}>
-          <LinkIcon sx={{ fontSize: 18, mr: 0.5, verticalAlign: "middle" }} />
+      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+        <LinkIcon fontSize="small" sx={{ color: "primary.main" }} />
+        <Typography variant="subtitle2" fontWeight={600}>
           Species Interactions
         </Typography>
         {user && !showForm && (
@@ -205,6 +205,7 @@ export function InteractionPanel({
             size="small"
             startIcon={<AddIcon />}
             onClick={() => setShowForm(true)}
+            sx={{ ml: "auto" }}
           >
             Add
           </Button>

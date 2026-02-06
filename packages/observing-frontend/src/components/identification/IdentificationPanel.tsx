@@ -130,7 +130,8 @@ export function IdentificationPanel({
   };
 
   return (
-    <Paper sx={{ mt: 3, p: 2, bgcolor: "background.paper" }}>
+    <Box sx={{ mt: 2 }}>
+      <Divider sx={{ mb: 2 }} />
       <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
         <Box>
           <Typography variant="caption" color="text.secondary">
@@ -146,6 +147,7 @@ export function IdentificationPanel({
         <Button
           variant="outlined"
           color="primary"
+          size="small"
           startIcon={<CheckIcon />}
           onClick={handleAgree}
           disabled={isSubmitting}
@@ -155,6 +157,7 @@ export function IdentificationPanel({
         <Button
           variant="outlined"
           color="inherit"
+          size="small"
           startIcon={<EditIcon />}
           onClick={() => setShowSuggestForm(true)}
           disabled={isSubmitting}
@@ -344,6 +347,7 @@ export function IdentificationPanel({
           <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
             <Button
               color="inherit"
+              size="small"
               onClick={() => {
                 setShowSuggestForm(false);
                 setTaxonName("");
@@ -357,6 +361,7 @@ export function IdentificationPanel({
               type="submit"
               variant="contained"
               color="primary"
+              size="small"
               disabled={isSubmitting}
             >
               Submit ID
@@ -364,6 +369,6 @@ export function IdentificationPanel({
           </Stack>
         </Box>
       )}
-    </Paper>
+    </Box>
   );
 }

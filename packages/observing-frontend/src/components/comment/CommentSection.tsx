@@ -11,6 +11,7 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Chip,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -91,19 +92,21 @@ export function CommentSection({
           Discussion
         </Typography>
         {comments.length > 0 && (
-          <Box
-            sx={{
-              ml: "auto",
-              bgcolor: "action.hover",
-              px: 1,
-              py: 0.25,
-              borderRadius: 1,
-              fontSize: "0.75rem",
-              fontWeight: 600,
-            }}
+          <Chip
+            label={comments.length}
+            size="small"
+            sx={{ height: 20, fontSize: "0.75rem" }}
+          />
+        )}
+        {user && !showForm && (
+          <Button
+            size="small"
+            startIcon={<ChatBubbleOutlineIcon />}
+            onClick={() => setShowForm(true)}
+            sx={{ ml: "auto" }}
           >
-            {comments.length}
-          </Box>
+            Add
+          </Button>
         )}
       </Stack>
 
@@ -191,53 +194,42 @@ export function CommentSection({
         </Stack>
       )}
 
-      {user ? (
-        showForm ? (
-          <Box component="form" onSubmit={handleSubmit}>
-            <TextField
-              fullWidth
-              label="Add a comment"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              multiline
-              rows={2}
-              size="small"
-              placeholder="Share your thoughts, ask questions..."
-            />
-            <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1 }}>
-              <Button
-                color="inherit"
-                onClick={() => {
-                  setShowForm(false);
-                  setBody("");
-                }}
-                size="small"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                disabled={isSubmitting}
-                size="small"
-              >
-                Post
-              </Button>
-            </Stack>
-          </Box>
-        ) : (
-          <Button
-            variant="outlined"
-            color="inherit"
-            startIcon={<ChatBubbleOutlineIcon />}
-            onClick={() => setShowForm(true)}
+      {user && showForm && (
+        <Box component="form" onSubmit={handleSubmit}>
+          <TextField
+            fullWidth
+            label="Add a comment"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            multiline
+            rows={2}
             size="small"
-          >
-            Add Comment
-          </Button>
-        )
-      ) : (
+            placeholder="Share your thoughts, ask questions..."
+          />
+          <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1 }}>
+            <Button
+              color="inherit"
+              onClick={() => {
+                setShowForm(false);
+                setBody("");
+              }}
+              size="small"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="contained"
+              color="primary"
+              disabled={isSubmitting}
+              size="small"
+            >
+              Post
+            </Button>
+          </Stack>
+        </Box>
+      )}
+      {!user && (
         <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
           Log in to add a comment
         </Typography>
