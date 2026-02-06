@@ -57,8 +57,8 @@ export function FAB() {
           bottom: 80,
           right: 16,
           zIndex: 100,
-          "@media (min-width: 640px)": {
-            right: "calc(50% - 328px)",
+          "@media (min-width: 900px)": {
+            right: "max(16px, calc(50% - 554px))",
           },
         }}
       >
