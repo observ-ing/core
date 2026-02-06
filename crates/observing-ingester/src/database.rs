@@ -436,6 +436,7 @@ impl Database {
         )
         .execute(&self.pool)
         .await?;
+        self.refresh_community_ids().await?;
         Ok(())
     }
 
@@ -443,6 +444,15 @@ impl Database {
     pub async fn delete_identification(&self, uri: &str) -> Result<()> {
         debug!("Deleting identification: {}", uri);
         sqlx::query!("DELETE FROM identifications WHERE uri = $1", uri)
+            .execute(&self.pool)
+            .await?;
+        self.refresh_community_ids().await?;
+        Ok(())
+    }
+
+    /// Refresh the community_ids materialized view
+    async fn refresh_community_ids(&self) -> Result<()> {
+        sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
             .execute(&self.pool)
             .await?;
         Ok(())

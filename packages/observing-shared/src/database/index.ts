@@ -614,10 +614,12 @@ export class Database {
         record.confidence || null,
       ],
     );
+    await this.refreshCommunityIds();
   }
 
   async deleteIdentification(uri: string): Promise<void> {
     await this.pool.query("DELETE FROM identifications WHERE uri = $1", [uri]);
+    await this.refreshCommunityIds();
   }
 
   // Query methods for the AppView
