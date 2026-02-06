@@ -112,12 +112,12 @@ describe('CommunityIdCalculator', () => {
   // Helper to create mock identification rows
   function createIdentification(
     scientificName: string,
-    options: { taxonRank?: string; isAgreement?: boolean; subjectIndex?: number } = {}
+    options: { taxonRank?: string; isAgreement?: boolean; subjectIndex?: number; did?: string } = {}
   ): IdentificationRow {
     return {
       uri: `at://did:plc:test/org.rwell.test.identification/${Math.random()}`,
       cid: 'test-cid',
-      did: 'did:plc:test',
+      did: options.did || 'did:plc:test',
       subject_uri: 'at://did:plc:test/org.rwell.test.occurrence/1',
       subject_cid: 'subject-cid',
       subject_index: options.subjectIndex ?? 0,
@@ -144,9 +144,9 @@ describe('CommunityIdCalculator', () => {
   describe('groupByTaxon (via calculate)', () => {
     it('groups identifications by scientific name case-insensitively', async () => {
       const identifications = [
-        createIdentification('Homo sapiens'),
-        createIdentification('homo sapiens'),
-        createIdentification('HOMO SAPIENS')
+        createIdentification('Homo sapiens', { did: 'did:plc:user1' }),
+        createIdentification('homo sapiens', { did: 'did:plc:user2' }),
+        createIdentification('HOMO SAPIENS', { did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -159,9 +159,9 @@ describe('CommunityIdCalculator', () => {
 
     it('counts agreements correctly', async () => {
       const identifications = [
-        createIdentification('Quercus alba', { isAgreement: false }),
-        createIdentification('Quercus alba', { isAgreement: true }),
-        createIdentification('Quercus alba', { isAgreement: true })
+        createIdentification('Quercus alba', { isAgreement: false, did: 'did:plc:user1' }),
+        createIdentification('Quercus alba', { isAgreement: true, did: 'did:plc:user2' }),
+        createIdentification('Quercus alba', { isAgreement: true, did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -195,9 +195,9 @@ describe('CommunityIdCalculator', () => {
 
     it('tracks multiple taxa separately', async () => {
       const identifications = [
-        createIdentification('Quercus alba'),
-        createIdentification('Quercus alba'),
-        createIdentification('Quercus rubra')
+        createIdentification('Quercus alba', { did: 'did:plc:user1' }),
+        createIdentification('Quercus alba', { did: 'did:plc:user2' }),
+        createIdentification('Quercus rubra', { did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -213,9 +213,9 @@ describe('CommunityIdCalculator', () => {
   describe('findWinner (via calculate)', () => {
     it('returns leader when 2/3 threshold met', async () => {
       const identifications = [
-        createIdentification('Pinus strobus'),
-        createIdentification('Pinus strobus'),
-        createIdentification('Pinus rigida')
+        createIdentification('Pinus strobus', { did: 'did:plc:user1' }),
+        createIdentification('Pinus strobus', { did: 'did:plc:user2' }),
+        createIdentification('Pinus rigida', { did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -228,9 +228,9 @@ describe('CommunityIdCalculator', () => {
 
     it('returns leader even when threshold not met (needs_id state)', async () => {
       const identifications = [
-        createIdentification('Betula papyrifera'),
-        createIdentification('Betula alleghaniensis'),
-        createIdentification('Betula lenta')
+        createIdentification('Betula papyrifera', { did: 'did:plc:user1' }),
+        createIdentification('Betula alleghaniensis', { did: 'did:plc:user2' }),
+        createIdentification('Betula lenta', { did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -243,8 +243,8 @@ describe('CommunityIdCalculator', () => {
 
     it('handles tie by returning first (stable sort)', async () => {
       const identifications = [
-        createIdentification('Species A'),
-        createIdentification('Species B')
+        createIdentification('Species A', { did: 'did:plc:user1' }),
+        createIdentification('Species B', { did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -267,10 +267,10 @@ describe('CommunityIdCalculator', () => {
 
     it('calculates confidence correctly', async () => {
       const identifications = [
-        createIdentification('Fagus grandifolia'),
-        createIdentification('Fagus grandifolia'),
-        createIdentification('Fagus sylvatica'),
-        createIdentification('Fagus sylvatica')
+        createIdentification('Fagus grandifolia', { did: 'did:plc:user1' }),
+        createIdentification('Fagus grandifolia', { did: 'did:plc:user2' }),
+        createIdentification('Fagus sylvatica', { did: 'did:plc:user3' }),
+        createIdentification('Fagus sylvatica', { did: 'did:plc:user4' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -282,9 +282,9 @@ describe('CommunityIdCalculator', () => {
 
     it('sets isResearchGrade true when threshold met with 2+ IDs', async () => {
       const identifications = [
-        createIdentification('Tsuga canadensis'),
-        createIdentification('Tsuga canadensis'),
-        createIdentification('Tsuga canadensis')
+        createIdentification('Tsuga canadensis', { did: 'did:plc:user1' }),
+        createIdentification('Tsuga canadensis', { did: 'did:plc:user2' }),
+        createIdentification('Tsuga canadensis', { did: 'did:plc:user3' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -308,8 +308,8 @@ describe('CommunityIdCalculator', () => {
 
     it('preserves taxonRank from winning identification', async () => {
       const identifications = [
-        createIdentification('Carya ovata', { taxonRank: 'species' }),
-        createIdentification('Carya ovata', { taxonRank: 'species' })
+        createIdentification('Carya ovata', { taxonRank: 'species', did: 'did:plc:user1' }),
+        createIdentification('Carya ovata', { taxonRank: 'species', did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -323,8 +323,8 @@ describe('CommunityIdCalculator', () => {
   describe('isResearchGrade', () => {
     it('returns true when criteria met', async () => {
       const identifications = [
-        createIdentification('Liriodendron tulipifera'),
-        createIdentification('Liriodendron tulipifera')
+        createIdentification('Liriodendron tulipifera', { did: 'did:plc:user1' }),
+        createIdentification('Liriodendron tulipifera', { did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -345,8 +345,8 @@ describe('CommunityIdCalculator', () => {
   describe('getQualityGrade', () => {
     it('returns "research" when research grade', async () => {
       const identifications = [
-        createIdentification('Platanus occidentalis'),
-        createIdentification('Platanus occidentalis')
+        createIdentification('Platanus occidentalis', { did: 'did:plc:user1' }),
+        createIdentification('Platanus occidentalis', { did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -357,8 +357,8 @@ describe('CommunityIdCalculator', () => {
 
     it('returns "needs_id" when has IDs but not research grade', async () => {
       const identifications = [
-        createIdentification('Ulmus americana'),
-        createIdentification('Ulmus rubra')
+        createIdentification('Ulmus americana', { did: 'did:plc:user1' }),
+        createIdentification('Ulmus rubra', { did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 
@@ -379,8 +379,8 @@ describe('CommunityIdCalculator', () => {
   describe('calculateBatch', () => {
     it('returns results for multiple occurrence URIs', async () => {
       const identifications1 = [
-        createIdentification('Quercus alba'),
-        createIdentification('Quercus alba')
+        createIdentification('Quercus alba', { did: 'did:plc:user1' }),
+        createIdentification('Quercus alba', { did: 'did:plc:user2' })
       ]
       const identifications2 = [
         createIdentification('Acer rubrum')
@@ -410,8 +410,8 @@ describe('CommunityIdCalculator', () => {
   describe('calculateWeighted', () => {
     it('delegates to calculate for now', async () => {
       const identifications = [
-        createIdentification('Pinus strobus'),
-        createIdentification('Pinus strobus')
+        createIdentification('Pinus strobus', { did: 'did:plc:user1' }),
+        createIdentification('Pinus strobus', { did: 'did:plc:user2' })
       ]
       vi.mocked(mockDb.getIdentificationsForOccurrence!).mockResolvedValue(identifications)
 

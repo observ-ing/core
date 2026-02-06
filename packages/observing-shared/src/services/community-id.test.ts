@@ -72,9 +72,9 @@ describe("CommunityIdCalculator", () => {
 
     it("reaches research grade with 2/3 majority and 2+ IDs", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "Quercus rubra" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "Quercus rubra", did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -87,9 +87,9 @@ describe("CommunityIdCalculator", () => {
 
     it("does not reach research grade without 2/3 majority", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "Quercus rubra" }),
-        createMockIdentification({ scientific_name: "Quercus velutina" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus rubra", did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "Quercus velutina", did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -100,9 +100,9 @@ describe("CommunityIdCalculator", () => {
 
     it("groups identifications case-insensitively", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "QUERCUS ALBA" }),
-        createMockIdentification({ scientific_name: "quercus alba" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "QUERCUS ALBA", did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "quercus alba", did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -128,9 +128,9 @@ describe("CommunityIdCalculator", () => {
     it("separates cross-kingdom homonyms into distinct groups", async () => {
       // "Ficus" exists as both a plant genus and a gastropod genus
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae" }),
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae" }),
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Animalia" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae", did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Animalia", did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -145,9 +145,9 @@ describe("CommunityIdCalculator", () => {
     it("does not conflate same name across kingdoms for research grade", async () => {
       // Same name, different kingdoms — should not count as 3 agreeing IDs
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae" }),
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Animalia" }),
-        createMockIdentification({ scientific_name: "Ficus", kingdom: "Fungi" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Plantae", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Animalia", did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "Ficus", kingdom: "Fungi", did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -159,8 +159,8 @@ describe("CommunityIdCalculator", () => {
 
     it("groups same name with same kingdom together", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba", kingdom: "Plantae" }),
-        createMockIdentification({ scientific_name: "Quercus alba", kingdom: "Plantae" }),
+        createMockIdentification({ scientific_name: "Quercus alba", kingdom: "Plantae", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", kingdom: "Plantae", did: "did:plc:user2" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -173,8 +173,8 @@ describe("CommunityIdCalculator", () => {
 
     it("treats null kingdom identifications as a single group", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba", kingdom: null }),
-        createMockIdentification({ scientific_name: "Quercus alba", kingdom: null }),
+        createMockIdentification({ scientific_name: "Quercus alba", kingdom: null, did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", kingdom: null, did: "did:plc:user2" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
@@ -195,14 +195,71 @@ describe("CommunityIdCalculator", () => {
 
     it("counts agreement identifications", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: false }),
-        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: true }),
-        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: true }),
+        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: false, did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: true, did: "did:plc:user2" }),
+        createMockIdentification({ scientific_name: "Quercus alba", is_agreement: true, did: "did:plc:user3" }),
       ]);
 
       const result = await calculator.calculate("at://test/occurrence/1");
 
       expect(result?.agreementCount).toBe(3); // All count toward total
+    });
+
+    it("only counts each user's latest identification", async () => {
+      // User1 first says Quercus alba, then changes to Quercus rubra
+      mockDb.getIdentificationsForOccurrence.mockResolvedValue([
+        createMockIdentification({
+          scientific_name: "Quercus alba",
+          did: "did:plc:user1",
+          date_identified: new Date("2026-01-01"),
+        }),
+        createMockIdentification({
+          scientific_name: "Quercus rubra",
+          did: "did:plc:user1",
+          date_identified: new Date("2026-01-02"),
+        }),
+        createMockIdentification({
+          scientific_name: "Quercus rubra",
+          did: "did:plc:user2",
+          date_identified: new Date("2026-01-01"),
+        }),
+      ]);
+
+      const result = await calculator.calculate("at://test/occurrence/1");
+
+      // User1's latest is Quercus rubra, user2 is Quercus rubra → 2 votes rubra
+      expect(result?.scientificName).toBe("Quercus rubra");
+      expect(result?.agreementCount).toBe(2);
+      expect(result?.identificationCount).toBe(2);
+      expect(result?.isResearchGrade).toBe(true);
+    });
+
+    it("user's earlier identification does not count when superseded", async () => {
+      // User1 changes their mind from alba to rubra, user2 says alba
+      mockDb.getIdentificationsForOccurrence.mockResolvedValue([
+        createMockIdentification({
+          scientific_name: "Quercus alba",
+          did: "did:plc:user1",
+          date_identified: new Date("2026-01-01"),
+        }),
+        createMockIdentification({
+          scientific_name: "Quercus rubra",
+          did: "did:plc:user1",
+          date_identified: new Date("2026-01-02"),
+        }),
+        createMockIdentification({
+          scientific_name: "Quercus alba",
+          did: "did:plc:user2",
+          date_identified: new Date("2026-01-01"),
+        }),
+      ]);
+
+      const result = await calculator.calculate("at://test/occurrence/1");
+
+      // User1's latest is rubra, user2 is alba → 1 each, tie
+      expect(result?.identificationCount).toBe(2);
+      expect(result?.agreementCount).toBe(1);
+      expect(result?.isResearchGrade).toBe(false);
     });
   });
 
@@ -214,8 +271,8 @@ describe("CommunityIdCalculator", () => {
       ]);
       mockDb.getIdentificationsForSubject
         .mockResolvedValueOnce([
-          createMockIdentification({ scientific_name: "Quercus alba", subject_index: 0 }),
-          createMockIdentification({ scientific_name: "Quercus alba", subject_index: 0 }),
+          createMockIdentification({ scientific_name: "Quercus alba", subject_index: 0, did: "did:plc:user1" }),
+          createMockIdentification({ scientific_name: "Quercus alba", subject_index: 0, did: "did:plc:user2" }),
         ])
         .mockResolvedValueOnce([
           createMockIdentification({ scientific_name: "Acer rubrum", subject_index: 1 }),
@@ -244,8 +301,8 @@ describe("CommunityIdCalculator", () => {
   describe("isResearchGrade", () => {
     it("returns true when research grade criteria met", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "Quercus alba" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user2" }),
       ]);
 
       const result = await calculator.isResearchGrade("at://test/occurrence/1");
@@ -275,8 +332,8 @@ describe("CommunityIdCalculator", () => {
   describe("getQualityGrade", () => {
     it("returns 'research' for research grade occurrences", async () => {
       mockDb.getIdentificationsForOccurrence.mockResolvedValue([
-        createMockIdentification({ scientific_name: "Quercus alba" }),
-        createMockIdentification({ scientific_name: "Quercus alba" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user1" }),
+        createMockIdentification({ scientific_name: "Quercus alba", did: "did:plc:user2" }),
       ]);
 
       const result = await calculator.getQualityGrade("at://test/occurrence/1");

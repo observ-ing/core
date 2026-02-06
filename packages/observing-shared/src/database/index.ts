@@ -226,22 +226,29 @@ export class Database {
         created_at TIMESTAMPTZ DEFAULT NOW()
       );
 
-      -- Community ID materialized view (refreshed periodically)
+      -- Community ID materialized view (refreshed after identification changes)
+      -- Uses each user's latest identification only (new IDs supersede previous ones)
       -- Groups by subject_index to support multiple subjects per occurrence
       -- Includes kingdom to disambiguate cross-kingdom homonyms
       DROP MATERIALIZED VIEW IF EXISTS community_ids;
       CREATE MATERIALIZED VIEW community_ids AS
+      WITH latest_ids AS (
+        SELECT DISTINCT ON (did, subject_uri, subject_index)
+          subject_uri, subject_index, scientific_name, kingdom, is_agreement
+        FROM identifications
+        ORDER BY did, subject_uri, subject_index, date_identified DESC
+      )
       SELECT
         o.uri as occurrence_uri,
-        i.subject_index,
-        i.scientific_name,
-        i.kingdom,
+        li.subject_index,
+        li.scientific_name,
+        li.kingdom,
         COUNT(*) as id_count,
-        COUNT(*) FILTER (WHERE i.is_agreement) as agreement_count
+        COUNT(*) FILTER (WHERE li.is_agreement) as agreement_count
       FROM occurrences o
-      JOIN identifications i ON i.subject_uri = o.uri
-      GROUP BY o.uri, i.subject_index, i.scientific_name, i.kingdom
-      ORDER BY o.uri, i.subject_index, id_count DESC;
+      JOIN latest_ids li ON li.subject_uri = o.uri
+      GROUP BY o.uri, li.subject_index, li.scientific_name, li.kingdom
+      ORDER BY o.uri, li.subject_index, id_count DESC;
 
       CREATE UNIQUE INDEX IF NOT EXISTS community_ids_uri_subject_taxon_idx
         ON community_ids(occurrence_uri, subject_index, scientific_name, kingdom);

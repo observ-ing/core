@@ -58,26 +58,29 @@ export class CommunityIdCalculator {
       return null;
     }
 
+    // Keep only each user's most recent identification
+    const deduplicated = this.deduplicateByUser(identifications);
+
     // Group identifications by taxon
-    const taxonCounts = this.groupByTaxon(identifications);
+    const taxonCounts = this.groupByTaxon(deduplicated);
 
     // Find the winning taxon
-    const winner = this.findWinner(taxonCounts, identifications.length);
+    const winner = this.findWinner(taxonCounts, deduplicated.length);
 
     if (!winner) {
       return null;
     }
 
-    const confidence = winner.count / identifications.length;
+    const confidence = winner.count / deduplicated.length;
     const isResearchGrade =
-      identifications.length >= this.MIN_IDS_FOR_RESEARCH_GRADE &&
+      deduplicated.length >= this.MIN_IDS_FOR_RESEARCH_GRADE &&
       confidence >= this.RESEARCH_GRADE_THRESHOLD;
 
     return {
       scientificName: winner.scientificName,
       kingdom: winner.kingdom,
       taxonRank: winner.taxonRank,
-      identificationCount: identifications.length,
+      identificationCount: deduplicated.length,
       agreementCount: winner.count,
       confidence,
       isResearchGrade,
@@ -104,6 +107,23 @@ export class CommunityIdCalculator {
     }
 
     return results;
+  }
+
+  /**
+   * Keep only each user's most recent identification.
+   * A user's new identification supersedes their previous one.
+   */
+  private deduplicateByUser(identifications: IdentificationRow[]): IdentificationRow[] {
+    const latestByUser = new Map<string, IdentificationRow>();
+
+    for (const id of identifications) {
+      const existing = latestByUser.get(id.did);
+      if (!existing || id.date_identified > existing.date_identified) {
+        latestByUser.set(id.did, id);
+      }
+    }
+
+    return Array.from(latestByUser.values());
   }
 
   /**
