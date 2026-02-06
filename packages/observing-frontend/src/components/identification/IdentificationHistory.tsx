@@ -64,8 +64,25 @@ export function IdentificationHistory({
     .filter((id) => id.subject_index === subjectIndex)
     .sort((a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime());
 
+  // Build set of superseded identification URIs (user has a newer ID)
+  const supersededUris = new Set<string>();
+  const latestByUser = new Map<string, Identification>();
+  for (const id of filteredIds) {
+    const existing = latestByUser.get(id.did);
+    if (!existing || new Date(id.date_identified).getTime() > new Date(existing.date_identified).getTime()) {
+      if (existing) supersededUris.add(existing.uri);
+      latestByUser.set(id.did, id);
+    } else {
+      supersededUris.add(id.uri);
+    }
+  }
+
   // Only show observer's initial ID for subject 0
   const showObserverInitialId = observerInitialId && subjectIndex === 0;
+
+  // Observer's initial ID is superseded if they have any later identification
+  const observerInitialIdSuperseded = showObserverInitialId &&
+    filteredIds.some((id) => id.did === observerInitialId.observer.did);
 
   if (filteredIds.length === 0 && !showObserverInitialId) {
     return (
@@ -115,10 +132,11 @@ export function IdentificationHistory({
             sx={{
               pl: 2,
               borderLeft: 3,
-              borderColor: "info.main",
+              borderColor: observerInitialIdSuperseded ? "text.disabled" : "info.main",
               transition: "background-color 0.2s ease",
               borderRadius: "0 4px 4px 0",
               py: 1,
+              opacity: observerInitialIdSuperseded ? 0.5 : 1,
               "&:hover": { bgcolor: "action.hover" },
             }}
           >
@@ -146,7 +164,7 @@ export function IdentificationHistory({
                   </Typography>
                   <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                 </Stack>
-                <Box sx={{ mt: 0.5 }}>
+                <Box sx={{ mt: 0.5, textDecoration: observerInitialIdSuperseded ? "line-through" : "none" }}>
                   <TaxonLink
                     name={observerInitialId.scientificName}
                     kingdom={observerInitialId.kingdom || kingdom}
@@ -157,16 +175,19 @@ export function IdentificationHistory({
             </Stack>
           </Box>
         )}
-        {filteredIds.map((id) => (
+        {filteredIds.map((id) => {
+          const isSuperseded = supersededUris.has(id.uri);
+          return (
           <Box
             key={id.uri}
             sx={{
               pl: 2,
               borderLeft: 3,
-              borderColor: id.is_agreement ? "success.main" : "primary.main",
+              borderColor: isSuperseded ? "text.disabled" : id.is_agreement ? "success.main" : "primary.main",
               transition: "background-color 0.2s ease",
               borderRadius: "0 4px 4px 0",
               py: 1,
+              opacity: isSuperseded ? 0.5 : 1,
               "&:hover": { bgcolor: "action.hover" },
             }}
           >
@@ -192,11 +213,14 @@ export function IdentificationHistory({
                   <Typography variant="caption" color="text.secondary">
                     {formatRelativeTime(id.date_identified)}
                   </Typography>
-                  {id.is_agreement && (
+                  {isSuperseded && (
+                    <Chip label="Superseded" size="small" variant="outlined" />
+                  )}
+                  {!isSuperseded && id.is_agreement && (
                     <Chip label="Agrees" size="small" color="success" variant="outlined" />
                   )}
                 </Stack>
-                <Box sx={{ mt: 0.5 }}>
+                <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
                   <TaxonLink
                     name={id.scientific_name}
                     kingdom={id.kingdom || kingdom}
@@ -216,7 +240,8 @@ export function IdentificationHistory({
               </Box>
             </Stack>
           </Box>
-        ))}
+          );
+        })}
       </Stack>
     </Paper>
   );
