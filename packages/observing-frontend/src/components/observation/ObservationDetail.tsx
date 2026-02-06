@@ -256,9 +256,29 @@ export function ObservationDetail() {
         </Box>
       </Box>
 
+      {/* Species Header */}
+      <Box sx={{ px: 3, pt: 2, pb: 1 }}>
+        {species ? (
+          <TaxonLink
+            name={species}
+            kingdom={taxonomy.kingdom}
+            rank={taxonomy.taxonRank || "species"}
+          />
+        ) : (
+          <Typography variant="h5" sx={{ fontWeight: 600, fontStyle: "italic", color: "text.secondary" }}>
+            Unidentified
+          </Typography>
+        )}
+        {taxonomy.vernacularName && (
+          <Typography variant="body1" color="text.secondary">
+            {taxonomy.vernacularName}
+          </Typography>
+        )}
+      </Box>
+
       {/* Images */}
       {observation.images.length > 0 && (
-        <Box sx={{ bgcolor: "background.default", p: { xs: 0, sm: 2 } }}>
+        <Box sx={{ bgcolor: "#1a1a1a", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
             src={getImageUrl(observation.images[activeImageIndex])}
@@ -409,9 +429,6 @@ export function ObservationDetail() {
                     Taxonomy
                   </Typography>
                 </Stack>
-                {taxonomy.vernacularName && (
-                  <Typography>{taxonomy.vernacularName}</Typography>
-                )}
                 <Breadcrumbs
                   separator={<ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />}
                   aria-label="taxonomy breadcrumb"
@@ -474,18 +491,6 @@ export function ObservationDetail() {
                 ))}
               </Tabs>
             </Box>
-          )}
-
-          {species ? (
-            <TaxonLink
-              name={species}
-              kingdom={taxonomy.kingdom}
-              rank={taxonomy.taxonRank || "species"}
-            />
-          ) : (
-            <Typography variant="h5" sx={{ fontWeight: 600, fontStyle: "italic", color: "text.secondary" }}>
-              Unidentified
-            </Typography>
           )}
 
           {/* Identification History */}
