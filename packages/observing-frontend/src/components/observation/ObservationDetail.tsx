@@ -14,6 +14,7 @@ import {
   Chip,
   Menu,
   MenuItem,
+  Breadcrumbs,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -22,6 +23,7 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { fetchObservation, getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { openDeleteConfirm } from "../../store/uiSlice";
@@ -410,7 +412,11 @@ export function ObservationDetail() {
                 {taxonomy.vernacularName && (
                   <Typography>{taxonomy.vernacularName}</Typography>
                 )}
-                <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5, gap: 0.5 }}>
+                <Breadcrumbs
+                  separator={<ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />}
+                  aria-label="taxonomy breadcrumb"
+                  sx={{ mt: 0.5, "& .MuiBreadcrumbs-ol": { flexWrap: "wrap", gap: 0.5 } }}
+                >
                   {taxonomy.kingdom && (
                     <TaxonLink name={taxonomy.kingdom} rank="kingdom" variant="chip" italic={false} />
                   )}
@@ -429,7 +435,7 @@ export function ObservationDetail() {
                   {taxonomy.genus && (
                     <TaxonLink name={taxonomy.genus} kingdom={taxonomy.kingdom} rank="genus" variant="chip" />
                   )}
-                </Stack>
+                </Breadcrumbs>
               </Box>
             )}
           </Stack>
