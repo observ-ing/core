@@ -1280,6 +1280,60 @@ export class AppViewServer {
       }
     });
 
+    // Delete an identification
+    this.app.delete("/api/identifications/:uri(*)", async (req, res) => {
+      try {
+        const uri = req.params["uri"];
+        if (!uri) {
+          res.status(400).json({ error: "uri is required" });
+          return;
+        }
+
+        // Parse AT URI: at://did:plc:xxx/org.rwell.test.identification/rkey
+        const uriMatch = uri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
+        if (!uriMatch) {
+          res.status(400).json({ error: "Invalid AT URI format" });
+          return;
+        }
+
+        const recordDid = uriMatch[1]!;
+        const collection = uriMatch[2]!;
+        const rkey = uriMatch[3]!;
+
+        // Require authentication
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to delete identifications" });
+          return;
+        }
+
+        // Verify user owns this identification
+        if (sessionDid !== recordDid) {
+          res.status(403).json({ error: "You can only delete your own identifications" });
+          return;
+        }
+
+        // Delete from AT Protocol (user's PDS)
+        await agent.com.atproto.repo.deleteRecord({
+          repo: sessionDid,
+          collection,
+          rkey,
+        });
+
+        logger.info({ uri }, "Deleted identification record");
+
+        // Delete from database (also refreshes community IDs)
+        await this.db.deleteIdentification(uri);
+
+        res.json({ success: true });
+      } catch (error) {
+        logger.error({ err: error }, "Error deleting identification");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
     // Get identifications for an occurrence
     this.app.get("/api/identifications/:occurrenceUri(*)", async (req, res) => {
       try {

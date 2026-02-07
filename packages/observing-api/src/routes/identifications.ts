@@ -106,6 +106,53 @@ export function createIdentificationRoutes(
     }
   });
 
+  // Delete an identification
+  router.delete("/:uri(*)", requireAuth, async (req, res) => {
+    try {
+      const uri = req.params["uri"];
+      if (!uri) {
+        res.status(400).json({ error: "uri is required" });
+        return;
+      }
+
+      // Parse AT URI: at://did:plc:xxx/org.rwell.test.identification/rkey
+      const uriMatch = uri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
+      if (!uriMatch) {
+        res.status(400).json({ error: "Invalid AT URI format" });
+        return;
+      }
+
+      const recordDid = uriMatch[1]!;
+      const collection = uriMatch[2]!;
+      const rkey = uriMatch[3]!;
+
+      const sessionDid = req.user!.did;
+
+      // Verify user owns this identification
+      if (sessionDid !== recordDid) {
+        res.status(403).json({ error: "You can only delete your own identifications" });
+        return;
+      }
+
+      // Delete from AT Protocol via internal RPC
+      const result = await internalClient.deleteRecord(sessionDid, collection, rkey);
+      if (!result.success) {
+        res.status(500).json({ error: result.error || "Failed to delete from AT Protocol" });
+        return;
+      }
+
+      // Delete from database (also refreshes community IDs)
+      await db.deleteIdentification(uri);
+
+      logger.info({ uri, sessionDid }, "Deleted identification");
+
+      res.json({ success: true });
+    } catch (error) {
+      logger.error({ err: error }, "Error deleting identification");
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Get identifications for an occurrence
   router.get("/:occurrenceUri(*)", async (req, res) => {
     try {

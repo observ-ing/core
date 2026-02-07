@@ -273,6 +273,23 @@ export async function deleteObservation(uri: string): Promise<{ success: boolean
   return response.json();
 }
 
+export async function deleteIdentification(uri: string): Promise<{ success: boolean }> {
+  const response = await fetch(
+    `${API_BASE}/api/identifications/${encodeURIComponent(uri)}`,
+    {
+      method: "DELETE",
+      credentials: "include",
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to delete identification");
+  }
+
+  return response.json();
+}
+
 export function getImageUrl(path: string): string {
   return `${API_BASE}${path}`;
 }

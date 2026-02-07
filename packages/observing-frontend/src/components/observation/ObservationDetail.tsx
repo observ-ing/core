@@ -21,9 +21,9 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
-import { fetchObservation, getImageUrl } from "../../services/api";
+import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { openDeleteConfirm } from "../../store/uiSlice";
+import { openDeleteConfirm, addToast } from "../../store/uiSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
@@ -461,6 +461,12 @@ export function ObservationDetail() {
               identifications={identifications}
               subjectIndex={selectedSubject}
               kingdom={taxonomy.kingdom}
+              currentUserDid={user?.did}
+              onDeleteIdentification={async (uri) => {
+                await deleteIdentification(uri);
+                dispatch(addToast({ message: "Identification deleted", type: "success" }));
+                await handleIdentificationSuccess();
+              }}
               observerInitialId={observation.scientificName ? {
                 scientificName: observation.scientificName,
                 observer: observation.observer,

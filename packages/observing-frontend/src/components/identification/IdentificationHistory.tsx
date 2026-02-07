@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -6,8 +7,10 @@ import {
   Stack,
   Paper,
   Chip,
+  IconButton,
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import type { Identification, Profile } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 
@@ -27,6 +30,10 @@ interface IdentificationHistoryProps {
   observerInitialId?: ObserverInitialId;
   /** Optional content rendered at the bottom of the panel (e.g. login prompt, add ID form) */
   footer?: React.ReactNode;
+  /** Current user's DID, used to show delete button on own identifications */
+  currentUserDid?: string;
+  /** Called when an identification is deleted */
+  onDeleteIdentification?: (uri: string) => Promise<void>;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -61,7 +68,10 @@ export function IdentificationHistory({
   kingdom,
   observerInitialId,
   footer,
+  currentUserDid,
+  onDeleteIdentification,
 }: IdentificationHistoryProps) {
+  const [deletingUri, setDeletingUri] = useState<string | null>(null);
   // Filter identifications by subject index and sort oldest first
   const filteredIds = identifications
     .filter((id) => id.subject_index === subjectIndex)
@@ -242,6 +252,28 @@ export function IdentificationHistory({
                   </Typography>
                 )}
               </Box>
+              {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
+                <IconButton
+                  size="small"
+                  onClick={async () => {
+                    setDeletingUri(id.uri);
+                    try {
+                      await onDeleteIdentification(id.uri);
+                    } finally {
+                      setDeletingUri(null);
+                    }
+                  }}
+                  disabled={deletingUri === id.uri}
+                  sx={{
+                    color: "text.disabled",
+                    alignSelf: "flex-start",
+                    mt: 0.5,
+                    "&:hover": { color: "error.main" },
+                  }}
+                >
+                  <DeleteOutlineIcon fontSize="small" />
+                </IconButton>
+              )}
             </Stack>
           </Box>
           );
