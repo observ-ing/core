@@ -1,8 +1,13 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
+use chrono::Utc;
+use observing_db::types::UpsertOccurrenceParams;
 use serde::Deserialize;
 use serde_json::{json, Value};
+use tracing::info;
 
+use crate::atproto::AtUri;
+use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -283,4 +288,295 @@ async fn get_observers_inner(
     Ok(Json(json!({ "observers": infos })))
 }
 
+// --- Write handlers ---
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateOccurrenceRequest {
+    scientific_name: Option<String>,
+    latitude: f64,
+    longitude: f64,
+    coordinate_uncertainty_in_meters: Option<i32>,
+    notes: Option<String>,
+    event_date: Option<String>,
+    images: Option<Vec<ImageUpload>>,
+    taxon_id: Option<String>,
+    taxon_rank: Option<String>,
+    vernacular_name: Option<String>,
+    kingdom: Option<String>,
+    phylum: Option<String>,
+    class: Option<String>,
+    order: Option<String>,
+    family: Option<String>,
+    genus: Option<String>,
+    recorded_by: Option<Vec<String>>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageUpload {
+    data: String, // base64
+    mime_type: String,
+}
+
+pub async fn create_occurrence(
+    State(state): State<AppState>,
+    cookies: axum_extra::extract::CookieJar,
+    Json(body): Json<CreateOccurrenceRequest>,
+) -> Result<Json<Value>, AppError> {
+    let user = auth::require_auth(&state.pool, &cookies)
+        .await
+        .map_err(|_| AppError::Unauthorized)?;
+
+    // Validate coordinates
+    if !(-90.0..=90.0).contains(&body.latitude) || !(-180.0..=180.0).contains(&body.longitude) {
+        return Err(AppError::BadRequest("Invalid coordinates".into()));
+    }
+
+    // Upload blobs
+    let mut blobs = Vec::new();
+    if let Some(images) = &body.images {
+        for img in images {
+            let blob_resp = state
+                .agent
+                .upload_blob(&user.did, &img.data, &img.mime_type)
+                .await
+                .map_err(|e| AppError::Internal(e))?;
+            if let Some(blob) = blob_resp.blob {
+                blobs.push(json!({ "image": blob, "alt": "" }));
+            }
+        }
+    }
+
+    // Validate taxonomy via GBIF if needed
+    let mut taxon_id = body.taxon_id.clone();
+    let mut taxon_rank = body.taxon_rank.clone();
+    let mut vernacular_name = body.vernacular_name.clone();
+    let mut kingdom = body.kingdom.clone();
+    let mut phylum = body.phylum.clone();
+    let mut class = body.class.clone();
+    let mut order = body.order.clone();
+    let mut family = body.family.clone();
+    let mut genus = body.genus.clone();
+
+    if body.scientific_name.is_some() && taxon_id.is_none() {
+        if let Some(validation) = state
+            .taxonomy
+            .validate(body.scientific_name.as_deref().unwrap())
+            .await
+        {
+            if let Some(ref t) = validation.taxon {
+                taxon_id = Some(t.id.clone());
+                if taxon_rank.is_none() {
+                    taxon_rank = Some(t.rank.clone());
+                }
+                if vernacular_name.is_none() {
+                    vernacular_name = t.common_name.clone();
+                }
+                if kingdom.is_none() {
+                    kingdom = t.kingdom.clone();
+                }
+                if phylum.is_none() {
+                    phylum = t.phylum.clone();
+                }
+                if class.is_none() {
+                    class = t.class.clone();
+                }
+                if order.is_none() {
+                    order = t.order.clone();
+                }
+                if family.is_none() {
+                    family = t.family.clone();
+                }
+                if genus.is_none() {
+                    genus = t.genus.clone();
+                }
+            }
+        }
+    }
+
+    // Reverse geocode
+    let geo = state
+        .geocoding
+        .reverse_geocode(body.latitude, body.longitude)
+        .await
+        .ok();
+
+    let now = Utc::now().to_rfc3339();
+    let event_date = body.event_date.as_deref().unwrap_or(&now);
+
+    // Build location using Darwin Core field names (strings per lexicon)
+    let mut location = json!({
+        "decimalLatitude": body.latitude.to_string(),
+        "decimalLongitude": body.longitude.to_string(),
+        "coordinateUncertaintyInMeters": body.coordinate_uncertainty_in_meters.unwrap_or(50),
+        "geodeticDatum": "WGS84",
+    });
+    if let Some(ref g) = geo {
+        if let Some(ref v) = g.continent { location["continent"] = json!(v); }
+        if let Some(ref v) = g.country { location["country"] = json!(v); }
+        if let Some(ref v) = g.country_code { location["countryCode"] = json!(v); }
+        if let Some(ref v) = g.state_province { location["stateProvince"] = json!(v); }
+        if let Some(ref v) = g.county { location["county"] = json!(v); }
+        if let Some(ref v) = g.municipality { location["municipality"] = json!(v); }
+        if let Some(ref v) = g.locality { location["locality"] = json!(v); }
+        if let Some(ref v) = g.water_body { location["waterBody"] = json!(v); }
+    }
+
+    // Build AT Protocol record
+    let mut record = json!({
+        "$type": "org.rwell.test.occurrence",
+        "eventDate": event_date,
+        "location": location,
+        "createdAt": now,
+    });
+
+    if let Some(ref name) = body.scientific_name {
+        record["scientificName"] = json!(name);
+    }
+    if let Some(ref notes) = body.notes {
+        record["notes"] = json!(notes);
+    }
+    if !blobs.is_empty() {
+        record["blobs"] = json!(blobs);
+    }
+    if let Some(ref recorded_by) = body.recorded_by {
+        if !recorded_by.is_empty() {
+            record["recordedBy"] = json!(recorded_by);
+        }
+    }
+
+    // Create AT Protocol record
+    let resp = state
+        .agent
+        .create_record(&user.did, "org.rwell.test.occurrence", record, None)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
+
+    let uri = resp.uri.ok_or_else(|| AppError::Internal("No URI in response".into()))?;
+    let cid = resp.cid.ok_or_else(|| AppError::Internal("No CID in response".into()))?;
+
+    info!(uri = %uri, "Created occurrence");
+
+    // Immediate DB upsert for visibility
+    let params = UpsertOccurrenceParams {
+        uri: uri.clone(),
+        cid: cid.clone(),
+        did: user.did.clone(),
+        scientific_name: body.scientific_name.clone(),
+        event_date: chrono::DateTime::parse_from_rfc3339(event_date)
+            .map(|d| d.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now()),
+        longitude: body.longitude,
+        latitude: body.latitude,
+        coordinate_uncertainty_meters: body.coordinate_uncertainty_in_meters,
+        continent: geo.as_ref().and_then(|g| g.continent.clone()),
+        country: geo.as_ref().and_then(|g| g.country.clone()),
+        country_code: geo.as_ref().and_then(|g| g.country_code.clone()),
+        state_province: geo.as_ref().and_then(|g| g.state_province.clone()),
+        county: geo.as_ref().and_then(|g| g.county.clone()),
+        municipality: geo.as_ref().and_then(|g| g.municipality.clone()),
+        locality: geo.as_ref().and_then(|g| g.locality.clone()),
+        water_body: geo.as_ref().and_then(|g| g.water_body.clone()),
+        verbatim_locality: None,
+        occurrence_remarks: body.notes.clone(),
+        associated_media: None,
+        recorded_by: body
+            .recorded_by
+            .as_ref()
+            .map(|r| serde_json::to_string(r).unwrap_or_default()),
+        taxon_id,
+        taxon_rank,
+        vernacular_name,
+        kingdom,
+        phylum,
+        class,
+        order,
+        family,
+        genus,
+        created_at: Utc::now(),
+    };
+    let _ = observing_db::occurrences::upsert(&state.pool, &params).await;
+
+    // Save private location data
+    let _ =
+        observing_db::private_data::save(&state.pool, &uri, body.latitude, body.longitude, "open")
+            .await;
+
+    // Sync observers
+    let co_observers = body.recorded_by.unwrap_or_default();
+    let _ = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await;
+
+    Ok(Json(json!({
+        "success": true,
+        "uri": uri,
+        "cid": cid,
+    })))
+}
+
+/// POST catch-all for /api/occurrences/{*uri} — dispatches observers POST
+pub async fn post_occurrence_catch_all(
+    State(state): State<AppState>,
+    cookies: axum_extra::extract::CookieJar,
+    Path(full_path): Path<String>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, AppError> {
+    if let Some(uri) = full_path.strip_suffix("/observers") {
+        let user = auth::require_auth(&state.pool, &cookies)
+            .await
+            .map_err(|_| AppError::Unauthorized)?;
+        let observer_did = body["did"]
+            .as_str()
+            .ok_or_else(|| AppError::BadRequest("did is required".into()))?;
+        let _ = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await;
+        let _ =
+            observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await;
+        return Ok(Json(json!({ "success": true })));
+    }
+
+    Err(AppError::NotFound("Not found".into()))
+}
+
+/// DELETE catch-all for /api/occurrences/{*uri} — dispatches occurrence delete or observer remove
+pub async fn delete_occurrence_catch_all(
+    State(state): State<AppState>,
+    cookies: axum_extra::extract::CookieJar,
+    Path(full_path): Path<String>,
+) -> Result<Json<Value>, AppError> {
+    // Try observer removal: path contains /observers/{did}
+    if full_path.contains("/observers/") {
+        let idx = full_path.rfind("/observers/").unwrap();
+        let uri = &full_path[..idx];
+        let observer_did = &full_path[idx + "/observers/".len()..];
+        let _user = auth::require_auth(&state.pool, &cookies)
+            .await
+            .map_err(|_| AppError::Unauthorized)?;
+        let _ = observing_db::observers::remove(&state.pool, uri, observer_did).await;
+        return Ok(Json(json!({ "success": true })));
+    }
+
+    // Otherwise, delete the occurrence itself
+    let uri = &full_path;
+    let user = auth::require_auth(&state.pool, &cookies)
+        .await
+        .map_err(|_| AppError::Unauthorized)?;
+
+    let at_uri =
+        AtUri::parse(uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+
+    if at_uri.did != user.did {
+        return Err(AppError::Forbidden(
+            "You can only delete your own records".into(),
+        ));
+    }
+
+    state
+        .agent
+        .delete_record(&user.did, &at_uri.collection, &at_uri.rkey)
+        .await
+        .map_err(|e| AppError::Internal(e))?;
+
+    let _ = observing_db::occurrences::delete(&state.pool, uri).await;
+
+    Ok(Json(json!({ "success": true })))
+}

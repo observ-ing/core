@@ -1,3 +1,5 @@
+mod atproto;
+mod auth;
 mod config;
 mod enrichment;
 mod error;
@@ -7,7 +9,7 @@ mod taxonomy_client;
 
 use std::sync::Arc;
 
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
 use axum::http::{header, Method};
@@ -43,6 +45,11 @@ async fn main() {
         pool,
         resolver: Arc::new(observing_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
+        geocoding: Arc::new(observing_geocoding::GeocodingService::new()),
+        agent: Arc::new(atproto::InternalAgentClient::new(
+            &config.ts_appview_url,
+            config.internal_secret.clone(),
+        )),
         media_proxy_url: config.media_proxy_url.clone(),
     };
 
@@ -82,7 +89,14 @@ async fn main() {
         )
         .route(
             "/api/occurrences/{*uri}",
-            get(routes::occurrences::get_occurrence_or_observers),
+            get(routes::occurrences::get_occurrence_or_observers)
+                .post(routes::occurrences::post_occurrence_catch_all)
+                .delete(routes::occurrences::delete_occurrence_catch_all),
+        )
+        // Occurrences write (no wildcard)
+        .route(
+            "/api/occurrences",
+            post(routes::occurrences::create_occurrence),
         )
         // Feeds
         .route("/api/feeds/explore", get(routes::feeds::get_explore))
@@ -94,10 +108,30 @@ async fn main() {
         )
         // Identifications
         .route(
-            "/api/identifications/{*occurrence_uri}",
-            get(routes::identifications::get_for_occurrence),
+            "/api/identifications",
+            post(routes::identifications::create_identification),
+        )
+        .route(
+            "/api/identifications/{*uri}",
+            get(routes::identifications::get_for_occurrence)
+                .delete(routes::identifications::delete_identification),
+        )
+        // Comments
+        .route(
+            "/api/comments",
+            post(routes::comments::create_comment),
+        )
+        // Likes
+        .route(
+            "/api/likes",
+            post(routes::likes::create_like)
+                .delete(routes::likes::delete_like),
         )
         // Interactions
+        .route(
+            "/api/interactions",
+            post(routes::interactions::create_interaction),
+        )
         .route(
             "/api/interactions/occurrence/{*uri}",
             get(routes::interactions::get_for_occurrence),

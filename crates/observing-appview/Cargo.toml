@@ -9,6 +9,7 @@ license = "AGPL-3.0-only"
 # Internal crates
 observing-db = { path = "../observing-db" }
 observing-identity = { path = "../observing-identity" }
+observing-geocoding = { path = "../observing-geocoding" }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -22,7 +23,7 @@ tower = "0.5"
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }
 
-# HTTP client (for taxonomy service + media proxy)
+# HTTP client (for taxonomy service + internal agent RPC)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 # Serialization
@@ -35,6 +36,12 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "regis
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
+
+# Regex for AT URI parsing
+regex = "1"
+
+# Base64 for blob uploads
+base64 = "0.22"
 
 [[bin]]
 name = "observing-appview"

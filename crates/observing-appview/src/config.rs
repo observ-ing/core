@@ -9,6 +9,10 @@ pub struct Config {
     pub media_proxy_url: String,
     pub taxonomy_service_url: String,
     pub public_url: Option<String>,
+    /// URL of the TypeScript appview for internal agent RPC (transitional)
+    pub ts_appview_url: String,
+    /// Optional secret for internal agent RPC
+    pub internal_secret: Option<String>,
 }
 
 impl Config {
@@ -39,6 +43,11 @@ impl Config {
 
         let public_url = env::var("PUBLIC_URL").ok();
 
+        let ts_appview_url = env::var("TS_APPVIEW_URL")
+            .unwrap_or_else(|_| "http://localhost:3000".to_string());
+
+        let internal_secret = env::var("INTERNAL_SECRET").ok();
+
         Self {
             port,
             database_url,
@@ -46,6 +55,8 @@ impl Config {
             media_proxy_url,
             taxonomy_service_url,
             public_url,
+            ts_appview_url,
+            internal_secret,
         }
     }
 }

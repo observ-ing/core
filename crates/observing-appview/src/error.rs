@@ -8,6 +8,7 @@ pub enum AppError {
     BadRequest(String),
     NotFound(String),
     Unauthorized,
+    Forbidden(String),
     Internal(String),
     Database(sqlx::Error),
 }
@@ -18,6 +19,7 @@ impl IntoResponse for AppError {
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Authentication required".into()),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             AppError::Internal(msg) => {
                 tracing::error!(error = %msg, "Internal server error");
                 (
