@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { Box, useTheme } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { mapStyle, darkMapFilter } from "./mapStyle";
 
 interface LocationMapProps {
   latitude: number;
@@ -29,29 +30,7 @@ export function LocationMap({
 
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: [
-              "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            ],
-            tileSize: 256,
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          },
-        },
-        layers: [
-          {
-            id: "osm",
-            type: "raster",
-            source: "osm",
-          },
-        ],
-      },
+      style: mapStyle,
       center: [longitude, latitude],
       zoom: 14,
       interactive: true,
@@ -116,8 +95,7 @@ export function LocationMap({
       mapInstance.remove();
       map.current = null;
     };
-    // Include theme.palette.mode to recreate map on theme change
-  }, [latitude, longitude, uncertaintyMeters, theme.palette.mode]);
+  }, [latitude, longitude, uncertaintyMeters]);
 
   return (
     <Box
@@ -130,6 +108,7 @@ export function LocationMap({
         overflow: "hidden",
         border: 1,
         borderColor: "divider",
+        ...(theme.palette.mode === "dark" && darkMapFilter),
       }}
     />
   );

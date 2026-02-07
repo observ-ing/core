@@ -14,7 +14,6 @@ import {
   Chip,
   Menu,
   MenuItem,
-  Breadcrumbs,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -22,8 +21,6 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
-import AccountTreeIcon from "@mui/icons-material/AccountTree";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { fetchObservation, getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { openDeleteConfirm } from "../../store/uiSlice";
@@ -420,41 +417,6 @@ export function ObservationDetail() {
               </Box>
             )}
 
-            {/* Taxonomy Information */}
-            {(taxonomy.vernacularName || taxonomy.kingdom || taxonomy.family) && (
-              <Box>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <AccountTreeIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
-                    Taxonomy
-                  </Typography>
-                </Stack>
-                <Breadcrumbs
-                  separator={<ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />}
-                  aria-label="taxonomy breadcrumb"
-                  sx={{ mt: 0.5, "& .MuiBreadcrumbs-ol": { flexWrap: "wrap", gap: 0.5 } }}
-                >
-                  {taxonomy.kingdom && (
-                    <TaxonLink name={taxonomy.kingdom} rank="kingdom" variant="chip" italic={false} />
-                  )}
-                  {taxonomy.phylum && (
-                    <TaxonLink name={taxonomy.phylum} kingdom={taxonomy.kingdom} rank="phylum" variant="chip" italic={false} />
-                  )}
-                  {taxonomy.class && (
-                    <TaxonLink name={taxonomy.class} kingdom={taxonomy.kingdom} rank="class" variant="chip" italic={false} />
-                  )}
-                  {taxonomy.order && (
-                    <TaxonLink name={taxonomy.order} kingdom={taxonomy.kingdom} rank="order" variant="chip" italic={false} />
-                  )}
-                  {taxonomy.family && (
-                    <TaxonLink name={taxonomy.family} kingdom={taxonomy.kingdom} rank="family" variant="chip" italic={false} />
-                  )}
-                  {taxonomy.genus && (
-                    <TaxonLink name={taxonomy.genus} kingdom={taxonomy.kingdom} rank="genus" variant="chip" />
-                  )}
-                </Breadcrumbs>
-              </Box>
-            )}
           </Stack>
         </Box>
 

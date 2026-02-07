@@ -7,10 +7,12 @@ import {
   Stack,
   InputAdornment,
   Slider,
+  useTheme,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import { mapStyle, darkMapFilter } from "./mapStyle";
 
 interface LocationPickerProps {
   latitude: number;
@@ -98,6 +100,7 @@ export function LocationPicker({
   const [isSearching, setIsSearching] = useState(false);
   const [latInput, setLatInput] = useState(latitude.toFixed(6));
   const [lngInput, setLngInput] = useState(longitude.toFixed(6));
+  const theme = useTheme();
 
   const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
     if (!map.current) return;
@@ -176,29 +179,7 @@ export function LocationPicker({
 
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: [
-              "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://b.tile.openstreetmap.org/{z}/{x}/{y}.png",
-              "https://c.tile.openstreetmap.org/{z}/{x}/{y}.png",
-            ],
-            tileSize: 256,
-            attribution:
-              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-          },
-        },
-        layers: [
-          {
-            id: "osm",
-            type: "raster",
-            source: "osm",
-          },
-        ],
-      },
+      style: mapStyle,
       center: [longitude, latitude],
       zoom: 12,
     });
@@ -361,6 +342,7 @@ export function LocationPicker({
           overflow: "hidden",
           border: 1,
           borderColor: "divider",
+          ...(theme.palette.mode === "dark" && darkMapFilter),
         }}
       />
 
