@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO ingester_state (key, value, updated_at)\n            VALUES ('cursor', $1, NOW())\n            ON CONFLICT (key) DO UPDATE SET\n                value = EXCLUDED.value,\n                updated_at = NOW()\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7da0fc550dd93c0f7aede3f70a462d88db77f2049cbbfe5752b1ede438d6a21a"
+}

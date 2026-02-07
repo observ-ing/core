@@ -33,18 +33,12 @@ pub struct AppState {
 }
 
 /// Create an OAuthClient configured for localhost development.
-pub fn create_oauth_client(
-    pool: PgPool,
-    host: &str,
-    port: u16,
-) -> OAuthClientType {
+pub fn create_oauth_client(pool: PgPool, host: &str, port: u16) -> OAuthClientType {
     let http_client = Arc::new(DefaultHttpClient::default());
 
     let config = atrium_oauth::OAuthClientConfig {
         client_metadata: atrium_oauth::AtprotoLocalhostClientMetadata {
-            redirect_uris: Some(vec![format!(
-                "http://{host}:{port}/oauth/callback"
-            )]),
+            redirect_uris: Some(vec![format!("http://{host}:{port}/oauth/callback")]),
             scopes: Some(vec![
                 atrium_oauth::Scope::Known(atrium_oauth::KnownScope::Atproto),
                 atrium_oauth::Scope::Known(atrium_oauth::KnownScope::TransitionGeneric),

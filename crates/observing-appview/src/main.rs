@@ -12,10 +12,10 @@ mod taxonomy_client;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use axum::http::{header, Method};
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
-use axum::http::{header, Method};
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -62,11 +62,7 @@ async fn main() {
     };
 
     // CORS
-    let cors = if config
-        .cors_origins
-        .iter()
-        .any(|o| o == "*")
-    {
+    let cors = if config.cors_origins.iter().any(|o| o == "*") {
         CorsLayer::new()
             .allow_origin(Any)
             .allow_methods(Any)
@@ -93,7 +89,10 @@ async fn main() {
         .route("/oauth/logout", post(routes::oauth::logout))
         .route("/oauth/me", get(routes::oauth::me))
         // Occurrences - specific routes before wildcard
-        .route("/api/occurrences/nearby", get(routes::occurrences::get_nearby))
+        .route(
+            "/api/occurrences/nearby",
+            get(routes::occurrences::get_nearby),
+        )
         .route("/api/occurrences/feed", get(routes::occurrences::get_feed))
         .route("/api/occurrences/bbox", get(routes::occurrences::get_bbox))
         .route(
@@ -130,15 +129,11 @@ async fn main() {
                 .delete(routes::identifications::delete_identification),
         )
         // Comments
-        .route(
-            "/api/comments",
-            post(routes::comments::create_comment),
-        )
+        .route("/api/comments", post(routes::comments::create_comment))
         // Likes
         .route(
             "/api/likes",
-            post(routes::likes::create_like)
-                .delete(routes::likes::delete_like),
+            post(routes::likes::create_like).delete(routes::likes::delete_like),
         )
         // Interactions
         .route(
@@ -183,8 +178,8 @@ async fn main() {
 
     info!(public_path = %public_path, "Serving static files");
 
-    let spa_fallback = ServeDir::new(&public_path)
-        .fallback(ServeFile::new(format!("{}/index.html", public_path)));
+    let spa_fallback =
+        ServeDir::new(&public_path).fallback(ServeFile::new(format!("{}/index.html", public_path)));
 
     let app = app.fallback_service(spa_fallback);
 

@@ -37,13 +37,12 @@ pub async fn delete_by_subject_and_did(
     subject_uri: &str,
     did: &str,
 ) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> = sqlx::query_as(
-        "DELETE FROM likes WHERE subject_uri = $1 AND did = $2 RETURNING uri",
-    )
-    .bind(subject_uri)
-    .bind(did)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(String,)> =
+        sqlx::query_as("DELETE FROM likes WHERE subject_uri = $1 AND did = $2 RETURNING uri")
+            .bind(subject_uri)
+            .bind(did)
+            .fetch_optional(pool)
+            .await?;
     Ok(row.map(|r| r.0))
 }
 

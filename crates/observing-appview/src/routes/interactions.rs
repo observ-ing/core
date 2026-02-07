@@ -55,12 +55,14 @@ fn build_interaction_subject(
     let occurrence = match (&req.occurrence_uri, &req.occurrence_cid) {
         (Some(uri), Some(cid)) => Some(
             StrongRef::new()
-                .uri(JAtUri::from_str(uri).map_err(|_| {
-                    AppError::BadRequest("Invalid occurrence URI".into())
-                })?)
-                .cid(JCid::from_str(cid).map_err(|_| {
-                    AppError::BadRequest("Invalid occurrence CID".into())
-                })?)
+                .uri(
+                    JAtUri::from_str(uri)
+                        .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
+                )
+                .cid(
+                    JCid::from_str(cid)
+                        .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
+                )
                 .build(),
         ),
         _ => None,
@@ -113,7 +115,7 @@ pub async fn create_interaction(
         .agent
         .create_record(&user.did, Interaction::NSID, record_value, None)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     let uri = resp
         .uri

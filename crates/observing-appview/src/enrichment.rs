@@ -222,9 +222,7 @@ pub async fn enrich_occurrences(
     let mut observers_by_uri: HashMap<String, Vec<observing_db::types::ObserverRow>> =
         HashMap::new();
     for row in rows {
-        if let Ok(observers) =
-            observing_db::observers::get_for_occurrence(pool, &row.uri).await
-        {
+        if let Ok(observers) = observing_db::observers::get_for_occurrence(pool, &row.uri).await {
             observers_by_uri.insert(row.uri.clone(), observers);
         }
     }
@@ -267,10 +265,9 @@ pub async fn enrich_occurrences(
         }
 
         // Subject 0 community ID
-        let community_id =
-            observing_db::identifications::get_community_id(pool, &row.uri, 0)
-                .await
-                .unwrap_or(None);
+        let community_id = observing_db::identifications::get_community_id(pool, &row.uri, 0)
+            .await
+            .unwrap_or(None);
 
         // Stage 6: Effective taxonomy
         let effective_taxonomy = resolve_effective_taxonomy(
@@ -283,10 +280,7 @@ pub async fn enrich_occurrences(
         .await;
 
         // Stage 7: Build observer info with profiles
-        let observer_rows = observers_by_uri
-            .get(&row.uri)
-            .cloned()
-            .unwrap_or_default();
+        let observer_rows = observers_by_uri.get(&row.uri).cloned().unwrap_or_default();
         let observer_infos: Vec<ObserverInfo> = observer_rows
             .iter()
             .map(|o| {
@@ -358,10 +352,9 @@ async fn resolve_effective_taxonomy(
     let effective_name = community_id?;
 
     // Try to find a matching identification with taxonomy info
-    let identifications =
-        observing_db::identifications::get_for_subject(pool, occurrence_uri, 0)
-            .await
-            .unwrap_or_default();
+    let identifications = observing_db::identifications::get_for_subject(pool, occurrence_uri, 0)
+        .await
+        .unwrap_or_default();
 
     let matching_id = identifications
         .iter()
@@ -381,7 +374,10 @@ async fn resolve_effective_taxonomy(
     }
 
     // Fall back to GBIF lookup
-    if let Some(detail) = taxonomy.get_by_name(effective_name, occurrence_kingdom).await {
+    if let Some(detail) = taxonomy
+        .get_by_name(effective_name, occurrence_kingdom)
+        .await
+    {
         return Some(EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
             vernacular_name: detail.common_name,

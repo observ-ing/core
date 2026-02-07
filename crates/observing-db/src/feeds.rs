@@ -145,7 +145,10 @@ pub async fn get_profile_feed(
     let mut occurrences = Vec::new();
     let mut identifications = Vec::new();
 
-    if matches!(feed_type, ProfileFeedType::Observations | ProfileFeedType::All) {
+    if matches!(
+        feed_type,
+        ProfileFeedType::Observations | ProfileFeedType::All
+    ) {
         occurrences = if let Some(ref cursor) = options.cursor {
             sqlx::query_as::<_, OccurrenceRow>(
                 r#"
@@ -207,7 +210,10 @@ pub async fn get_profile_feed(
         occurrences.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     }
 
-    if matches!(feed_type, ProfileFeedType::Identifications | ProfileFeedType::All) {
+    if matches!(
+        feed_type,
+        ProfileFeedType::Identifications | ProfileFeedType::All
+    ) {
         identifications = if let Some(ref cursor) = options.cursor {
             sqlx::query_as::<_, IdentificationRow>(
                 r#"

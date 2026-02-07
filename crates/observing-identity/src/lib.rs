@@ -165,9 +165,7 @@ impl IdentityResolver {
                         self.identity_cache
                             .insert(handle.to_string(), result.clone())
                             .await;
-                        self.identity_cache
-                            .insert(data.did, result.clone())
-                            .await;
+                        self.identity_cache.insert(data.did, result.clone()).await;
 
                         Some(result)
                     }
@@ -178,7 +176,10 @@ impl IdentityResolver {
                 }
             }
             Ok(response) => {
-                debug!("Failed to resolve handle {handle}: status {}", response.status());
+                debug!(
+                    "Failed to resolve handle {handle}: status {}",
+                    response.status()
+                );
                 None
             }
             Err(e) => {
@@ -290,9 +291,7 @@ impl IdentityResolver {
                         });
 
                         // Cache by both DID and handle
-                        self.profile_cache
-                            .insert(data.did, profile.clone())
-                            .await;
+                        self.profile_cache.insert(data.did, profile.clone()).await;
                         self.profile_cache
                             .insert(data.handle, profile.clone())
                             .await;
@@ -357,9 +356,7 @@ impl IdentityResolver {
                             results.insert(p.did.clone(), profile.clone());
                             results.insert(p.handle.clone(), profile.clone());
 
-                            self.profile_cache
-                                .insert(p.did, profile.clone())
-                                .await;
+                            self.profile_cache.insert(p.did, profile.clone()).await;
                             self.profile_cache.insert(p.handle, profile).await;
                         }
                     }

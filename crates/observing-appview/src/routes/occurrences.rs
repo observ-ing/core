@@ -44,8 +44,7 @@ pub async fn get_nearby(
     let offset = params.offset.unwrap_or(0);
 
     let rows =
-        observing_db::occurrences::get_nearby(&state.pool, lat, lng, radius, limit, offset)
-            .await?;
+        observing_db::occurrences::get_nearby(&state.pool, lat, lng, radius, limit, offset).await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -137,7 +136,12 @@ pub async fn get_bbox(
     let limit = params.limit.unwrap_or(1000);
 
     let rows = observing_db::occurrences::get_by_bounding_box(
-        &state.pool, min_lat, min_lng, max_lat, max_lng, limit,
+        &state.pool,
+        min_lat,
+        min_lng,
+        max_lat,
+        max_lng,
+        limit,
     )
     .await?;
 
@@ -183,7 +187,12 @@ pub async fn get_geojson(
         .ok_or_else(|| AppError::BadRequest("maxLng is required".into()))?;
 
     let rows = observing_db::occurrences::get_by_bounding_box(
-        &state.pool, min_lat, min_lng, max_lat, max_lng, 10000,
+        &state.pool,
+        min_lat,
+        min_lng,
+        max_lat,
+        max_lng,
+        10000,
     )
     .await?;
 
@@ -264,10 +273,7 @@ async fn get_occurrence_inner(
     })))
 }
 
-async fn get_observers_inner(
-    state: &AppState,
-    uri: &str,
-) -> Result<Json<Value>, AppError> {
+async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>, AppError> {
     let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
 
     let dids: Vec<String> = observers.iter().map(|o| o.did.clone()).collect();
@@ -344,7 +350,7 @@ pub async fn create_occurrence(
                 .agent
                 .upload_blob(&user.did, &img.data, &img.mime_type)
                 .await
-                .map_err(|e| AppError::Internal(e))?;
+                .map_err(AppError::Internal)?;
             if let Some(blob) = blob_resp.blob {
                 blobs.push(json!({ "image": blob, "alt": "" }));
             }
@@ -417,17 +423,41 @@ pub async fn create_occurrence(
         decimal_latitude: body.latitude.to_string().into(),
         decimal_longitude: body.longitude.to_string().into(),
         coordinate_uncertainty_in_meters: Some(
-            body.coordinate_uncertainty_in_meters.unwrap_or(50) as i64,
+            body.coordinate_uncertainty_in_meters.unwrap_or(50) as i64
         ),
         geodetic_datum: Some("WGS84".into()),
-        continent: geo.as_ref().and_then(|g| g.continent.as_deref()).map(Into::into),
-        country: geo.as_ref().and_then(|g| g.country.as_deref()).map(Into::into),
-        country_code: geo.as_ref().and_then(|g| g.country_code.as_deref()).map(Into::into),
-        state_province: geo.as_ref().and_then(|g| g.state_province.as_deref()).map(Into::into),
-        county: geo.as_ref().and_then(|g| g.county.as_deref()).map(Into::into),
-        municipality: geo.as_ref().and_then(|g| g.municipality.as_deref()).map(Into::into),
-        locality: geo.as_ref().and_then(|g| g.locality.as_deref()).map(Into::into),
-        water_body: geo.as_ref().and_then(|g| g.water_body.as_deref()).map(Into::into),
+        continent: geo
+            .as_ref()
+            .and_then(|g| g.continent.as_deref())
+            .map(Into::into),
+        country: geo
+            .as_ref()
+            .and_then(|g| g.country.as_deref())
+            .map(Into::into),
+        country_code: geo
+            .as_ref()
+            .and_then(|g| g.country_code.as_deref())
+            .map(Into::into),
+        state_province: geo
+            .as_ref()
+            .and_then(|g| g.state_province.as_deref())
+            .map(Into::into),
+        county: geo
+            .as_ref()
+            .and_then(|g| g.county.as_deref())
+            .map(Into::into),
+        municipality: geo
+            .as_ref()
+            .and_then(|g| g.municipality.as_deref())
+            .map(Into::into),
+        locality: geo
+            .as_ref()
+            .and_then(|g| g.locality.as_deref())
+            .map(Into::into),
+        water_body: geo
+            .as_ref()
+            .and_then(|g| g.water_body.as_deref())
+            .map(Into::into),
         maximum_depth_in_meters: None,
         maximum_elevation_in_meters: None,
         minimum_depth_in_meters: None,
@@ -475,10 +505,14 @@ pub async fn create_occurrence(
         .agent
         .create_record(&user.did, Occurrence::NSID, record_value, None)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
-    let uri = resp.uri.ok_or_else(|| AppError::Internal("No URI in response".into()))?;
-    let cid = resp.cid.ok_or_else(|| AppError::Internal("No CID in response".into()))?;
+    let uri = resp
+        .uri
+        .ok_or_else(|| AppError::Internal("No URI in response".into()))?;
+    let cid = resp
+        .cid
+        .ok_or_else(|| AppError::Internal("No CID in response".into()))?;
 
     info!(uri = %uri, "Created occurrence");
 
@@ -553,8 +587,7 @@ pub async fn post_occurrence_catch_all(
             .as_str()
             .ok_or_else(|| AppError::BadRequest("did is required".into()))?;
         let _ = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await;
-        let _ =
-            observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await;
+        let _ = observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await;
         return Ok(Json(json!({ "success": true })));
     }
 
@@ -585,8 +618,7 @@ pub async fn delete_occurrence_catch_all(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    let at_uri =
-        AtUri::parse(uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri = AtUri::parse(uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
         return Err(AppError::Forbidden(
@@ -598,7 +630,7 @@ pub async fn delete_occurrence_catch_all(
         .agent
         .delete_record(&user.did, &at_uri.collection, &at_uri.rkey)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     let _ = observing_db::occurrences::delete(&state.pool, uri).await;
 

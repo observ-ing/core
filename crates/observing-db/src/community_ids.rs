@@ -181,7 +181,9 @@ mod tests {
             identification_verification_status: None,
             type_status: None,
             is_agreement: Some(is_agreement),
-            date_identified: chrono::Utc.from_utc_datetime(&NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap()),
+            date_identified: chrono::Utc.from_utc_datetime(
+                &NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap(),
+            ),
             vernacular_name: None,
             kingdom: kingdom.map(|s| s.to_string()),
             phylum: None,
@@ -200,7 +202,13 @@ mod tests {
 
     #[test]
     fn test_single_identification() {
-        let ids = vec![make_id("user1", "Quercus alba", Some("Plantae"), false, "2024-01-01 12:00:00")];
+        let ids = vec![make_id(
+            "user1",
+            "Quercus alba",
+            Some("Plantae"),
+            false,
+            "2024-01-01 12:00:00",
+        )];
         let result = calculate(&ids).unwrap();
         assert_eq!(result.scientific_name, "Quercus alba");
         assert_eq!(result.identification_count, 1);
@@ -210,9 +218,27 @@ mod tests {
     #[test]
     fn test_research_grade_consensus() {
         let ids = vec![
-            make_id("user1", "Quercus alba", Some("Plantae"), true, "2024-01-01 12:00:00"),
-            make_id("user2", "Quercus alba", Some("Plantae"), true, "2024-01-02 12:00:00"),
-            make_id("user3", "Quercus alba", Some("Plantae"), true, "2024-01-03 12:00:00"),
+            make_id(
+                "user1",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-02 12:00:00",
+            ),
+            make_id(
+                "user3",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-03 12:00:00",
+            ),
         ];
         let result = calculate(&ids).unwrap();
         assert_eq!(result.scientific_name, "Quercus alba");
@@ -224,9 +250,27 @@ mod tests {
     fn test_deduplication_by_user() {
         // user1 submits two IDs, only the latest should be kept
         let ids = vec![
-            make_id("user1", "Quercus rubra", Some("Plantae"), false, "2024-01-01 12:00:00"),
-            make_id("user1", "Quercus alba", Some("Plantae"), false, "2024-01-02 12:00:00"),
-            make_id("user2", "Quercus alba", Some("Plantae"), true, "2024-01-03 12:00:00"),
+            make_id(
+                "user1",
+                "Quercus rubra",
+                Some("Plantae"),
+                false,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user1",
+                "Quercus alba",
+                Some("Plantae"),
+                false,
+                "2024-01-02 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-03 12:00:00",
+            ),
         ];
         let result = calculate(&ids).unwrap();
         assert_eq!(result.scientific_name, "Quercus alba");
@@ -236,9 +280,27 @@ mod tests {
     #[test]
     fn test_no_threshold_still_returns_leader() {
         let ids = vec![
-            make_id("user1", "Quercus alba", Some("Plantae"), false, "2024-01-01 12:00:00"),
-            make_id("user2", "Quercus rubra", Some("Plantae"), false, "2024-01-02 12:00:00"),
-            make_id("user3", "Acer saccharum", Some("Plantae"), false, "2024-01-03 12:00:00"),
+            make_id(
+                "user1",
+                "Quercus alba",
+                Some("Plantae"),
+                false,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Quercus rubra",
+                Some("Plantae"),
+                false,
+                "2024-01-02 12:00:00",
+            ),
+            make_id(
+                "user3",
+                "Acer saccharum",
+                Some("Plantae"),
+                false,
+                "2024-01-03 12:00:00",
+            ),
         ];
         let result = calculate(&ids).unwrap();
         // No consensus, but should still return one of them

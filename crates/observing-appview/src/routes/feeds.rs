@@ -92,8 +92,7 @@ pub async fn get_home(
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<HomeParams>,
 ) -> Result<Json<Value>, AppError> {
-    let viewer = session_did(&cookies)
-        .ok_or(AppError::Unauthorized)?;
+    let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
     let limit = params.limit.unwrap_or(20).min(100);
 
     // Get followed DIDs
@@ -108,8 +107,7 @@ pub async fn get_home(
         nearby_radius: params.nearby_radius,
     };
 
-    let result =
-        observing_db::feeds::get_home_feed(&state.pool, &followed_dids, &options).await?;
+    let result = observing_db::feeds::get_home_feed(&state.pool, &followed_dids, &options).await?;
 
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,

@@ -171,7 +171,9 @@ impl GbifClient {
     pub async fn get_children(&self, parent_key: u64, limit: u32) -> Result<Vec<SuggestResult>> {
         let url = format!(
             "{}/species/{}/children?limit={}",
-            Self::V1_BASE_URL, parent_key, limit
+            Self::V1_BASE_URL,
+            parent_key,
+            limit
         );
         let response = self.http.get(&url).send().await?;
 
@@ -191,7 +193,9 @@ impl GbifClient {
     pub async fn get_descriptions(&self, key: u64, limit: u32) -> Result<Vec<Description>> {
         let url = format!(
             "{}/species/{}/descriptions?limit={}",
-            Self::V1_BASE_URL, key, limit
+            Self::V1_BASE_URL,
+            key,
+            limit
         );
         let response = self.http.get(&url).send().await?;
 
@@ -211,7 +215,9 @@ impl GbifClient {
     pub async fn get_references(&self, key: u64, limit: u32) -> Result<Vec<Reference>> {
         let url = format!(
             "{}/species/{}/references?limit={}",
-            Self::V1_BASE_URL, key, limit
+            Self::V1_BASE_URL,
+            key,
+            limit
         );
         let response = self.http.get(&url).send().await?;
 
@@ -231,7 +237,9 @@ impl GbifClient {
     pub async fn get_media(&self, key: u64, limit: u32) -> Result<Vec<Media>> {
         let url = format!(
             "{}/species/{}/media?limit={}",
-            Self::V1_BASE_URL, key, limit
+            Self::V1_BASE_URL,
+            key,
+            limit
         );
         let response = self.http.get(&url).send().await?;
 

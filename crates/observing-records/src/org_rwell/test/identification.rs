@@ -8,13 +8,7 @@
 /// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
 #[jacquard_derive::lexicon]
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Identification<'a> {
@@ -80,7 +74,7 @@ pub struct Identification<'a> {
 
 pub mod identification_state {
 
-    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
+    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -173,22 +167,8 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
         IdentificationBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: (
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
+                None, None, None, None, None, None, None, None, None, None, None, None, None, None,
+                None, None,
             ),
             _phantom: ::core::marker::PhantomData,
         }
@@ -197,10 +177,7 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `class` field (optional)
-    pub fn class(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn class(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.0 = value.into();
         self
     }
@@ -213,10 +190,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.1 = value.into();
         self
     }
@@ -229,18 +203,12 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `confidence` field (optional)
-    pub fn confidence(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn confidence(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.2 = value.into();
         self
     }
     /// Set the `confidence` field to an Option value (optional)
-    pub fn maybe_confidence(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_confidence(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.2 = value;
         self
     }
@@ -267,10 +235,7 @@ where
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `family` field (optional)
-    pub fn family(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn family(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.4 = value.into();
         self
     }
@@ -283,10 +248,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `genus` field (optional)
-    pub fn genus(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn genus(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.5 = value.into();
         self
     }
@@ -312,10 +274,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `kingdom` field (optional)
-    pub fn kingdom(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn kingdom(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.7 = value.into();
         self
     }
@@ -328,10 +287,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `order` field (optional)
-    pub fn order(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn order(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.8 = value.into();
         self
     }
@@ -344,10 +300,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `phylum` field (optional)
-    pub fn phylum(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn phylum(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.9 = value.into();
         self
     }
@@ -392,10 +345,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonId` field (optional)
-    pub fn taxon_id(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn taxon_id(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.12 = value.into();
         self
     }
@@ -427,18 +377,12 @@ where
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonRank` field (optional)
-    pub fn taxon_rank(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn taxon_rank(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.14 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
-    pub fn maybe_taxon_rank(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_taxon_rank(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.14 = value;
         self
     }
@@ -454,10 +398,7 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
         self
     }
     /// Set the `vernacularName` field to an Option value (optional)
-    pub fn maybe_vernacular_name(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_vernacular_name(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.15 = value;
         self
     }
@@ -537,13 +478,7 @@ impl<'a> Identification<'a> {
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct IdentificationGetRecordOutput<'a> {
@@ -600,9 +535,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "class",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("class"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -612,9 +545,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 3000usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "comment",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
                     max: 3000usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -624,9 +555,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "family",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("family"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -636,9 +565,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "genus",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("genus"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -648,9 +575,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "kingdom",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("kingdom"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -660,9 +585,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "order",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("order"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -672,9 +595,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "phylum",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("phylum"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -706,9 +627,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_id",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_id"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -719,9 +638,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 256usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_name",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_name"),
                     max: 256usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -731,9 +648,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 32usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_rank",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_rank"),
                     max: 32usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -755,9 +670,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
     }
 }
 
-fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::LexiconDoc<
-    'static,
-> {
+fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
     ::jacquard_lexicon::lexicon::LexiconDoc {
         lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
         id: ::jacquard_common::CowStr::new_static("org.rwell.test.identification"),

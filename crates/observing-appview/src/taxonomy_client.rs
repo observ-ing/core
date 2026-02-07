@@ -56,11 +56,6 @@ pub struct TaxonDetail {
     pub wikidata_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct SearchResponse {
-    pub results: Vec<TaxonResult>,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ValidateResponse {
     pub valid: bool,

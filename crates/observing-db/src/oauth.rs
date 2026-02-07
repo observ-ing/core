@@ -4,12 +4,11 @@ use sqlx::PgPool;
 
 /// Get OAuth state value (only if not expired)
 pub async fn get_state(pool: &PgPool, key: &str) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> = sqlx::query_as(
-        "SELECT value FROM oauth_state WHERE key = $1 AND expires_at > NOW()",
-    )
-    .bind(key)
-    .fetch_optional(pool)
-    .await?;
+    let row: Option<(String,)> =
+        sqlx::query_as("SELECT value FROM oauth_state WHERE key = $1 AND expires_at > NOW()")
+            .bind(key)
+            .fetch_optional(pool)
+            .await?;
     Ok(row.map(|r| r.0))
 }
 
@@ -56,11 +55,10 @@ pub async fn cleanup_expired_state(pool: &PgPool) -> Result<(), sqlx::Error> {
 
 /// Get OAuth session value
 pub async fn get_session(pool: &PgPool, key: &str) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> =
-        sqlx::query_as("SELECT value FROM oauth_sessions WHERE key = $1")
-            .bind(key)
-            .fetch_optional(pool)
-            .await?;
+    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM oauth_sessions WHERE key = $1")
+        .bind(key)
+        .fetch_optional(pool)
+        .await?;
     Ok(row.map(|r| r.0))
 }
 

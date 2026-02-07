@@ -51,7 +51,11 @@ async fn main() -> Result<()> {
     info!("Cache TTL: {} seconds", config.cache_ttl_secs);
 
     // Create cache and fetcher
-    let cache = BlobCache::new(config.cache_dir, config.max_cache_size, config.cache_ttl_secs);
+    let cache = BlobCache::new(
+        config.cache_dir,
+        config.max_cache_size,
+        config.cache_ttl_secs,
+    );
     cache.init().await?;
 
     let fetcher = BlobFetcher::new();

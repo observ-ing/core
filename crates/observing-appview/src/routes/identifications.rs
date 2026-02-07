@@ -92,8 +92,14 @@ pub async fn create_identification(
     }
 
     let subject = StrongRef::new()
-        .uri(JAtUri::from_str(&body.occurrence_uri).map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?)
-        .cid(JCid::from_str(&body.occurrence_cid).map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?)
+        .uri(
+            JAtUri::from_str(&body.occurrence_uri)
+                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
+        )
+        .cid(
+            JCid::from_str(&body.occurrence_cid)
+                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
+        )
         .build();
 
     let record = Identification::new()
@@ -123,7 +129,7 @@ pub async fn create_identification(
         .agent
         .create_record(&user.did, Identification::NSID, record_value, None)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     let uri = resp
         .uri
@@ -150,8 +156,7 @@ pub async fn delete_identification(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    let at_uri =
-        AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
         return Err(AppError::Forbidden(
@@ -163,7 +168,7 @@ pub async fn delete_identification(
         .agent
         .delete_record(&user.did, &at_uri.collection, &at_uri.rkey)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     // Delete from local DB (refreshes community IDs)
     let _ = observing_db::identifications::delete(&state.pool, &uri).await;

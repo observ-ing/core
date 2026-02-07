@@ -44,14 +44,6 @@ struct CreateRecordRequest<'a> {
 }
 
 #[derive(Serialize)]
-struct PutRecordRequest<'a> {
-    did: &'a str,
-    collection: &'a str,
-    rkey: &'a str,
-    record: serde_json::Value,
-}
-
-#[derive(Serialize)]
 struct DeleteRecordRequest<'a> {
     did: &'a str,
     collection: &'a str,
@@ -68,14 +60,12 @@ struct UploadBlobRequest<'a> {
 
 #[derive(Debug, Deserialize)]
 pub struct RecordResponse {
-    pub success: bool,
     pub uri: Option<String>,
     pub cid: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct BlobResponse {
-    pub success: bool,
     pub blob: Option<serde_json::Value>,
 }
 
@@ -122,40 +112,6 @@ impl InternalAgentClient {
             let status = resp.status();
             let body = resp.text().await.unwrap_or_default();
             error!(%status, %body, "Internal agent create-record failed");
-            return Err(format!("Internal agent returned {status}"));
-        }
-        resp.json()
-            .await
-            .map_err(|e| format!("Failed to parse response: {e}"))
-    }
-
-    pub async fn put_record(
-        &self,
-        did: &str,
-        collection: &str,
-        rkey: &str,
-        record: serde_json::Value,
-    ) -> Result<RecordResponse, String> {
-        let body = PutRecordRequest {
-            did,
-            collection,
-            rkey,
-            record,
-        };
-        let req = self
-            .client
-            .post(format!("{}/internal/agent/put-record", self.base_url))
-            .json(&body);
-        let resp = self
-            .add_secret(req)
-            .send()
-            .await
-            .map_err(|e| format!("Internal agent request failed: {e}"))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            error!(%status, %body, "Internal agent put-record failed");
             return Err(format!("Internal agent returned {status}"));
         }
         resp.json()

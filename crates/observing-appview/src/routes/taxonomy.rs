@@ -31,7 +31,11 @@ pub async fn search(
         ));
     }
 
-    let results = state.taxonomy.search(&query, None).await.unwrap_or_default();
+    let results = state
+        .taxonomy
+        .search(&query, None)
+        .await
+        .unwrap_or_default();
 
     Ok(Json(json!({ "results": results })))
 }
@@ -78,14 +82,10 @@ pub async fn get_taxon_by_kingdom_name(
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
     let rank = detail["rank"].as_str().unwrap_or("species").to_string();
-    let count = observing_db::feeds::count_occurrences_by_taxon(
-        &state.pool,
-        &name,
-        &rank,
-        Some(&kingdom),
-    )
-    .await
-    .unwrap_or(0);
+    let count =
+        observing_db::feeds::count_occurrences_by_taxon(&state.pool, &name, &rank, Some(&kingdom))
+            .await
+            .unwrap_or(0);
 
     // TS returns {...taxon, observationCount} (taxon fields at root level)
     if let Value::Object(ref mut map) = detail {
@@ -118,8 +118,7 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     };
 
     let rows =
-        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options)
-            .await?;
+        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options).await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -192,8 +191,7 @@ pub async fn get_taxon_occurrences_by_id(
     };
 
     let rows =
-        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options)
-            .await?;
+        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options).await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(

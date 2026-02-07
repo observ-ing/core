@@ -11,6 +11,12 @@ app_bsky = ["com_atproto"]
 com_atproto = []
 org_rwell = ["com_atproto"]
 
+[lints.rust]
+non_snake_case = "allow"
+
+[lints.clippy]
+all = "allow"
+
 [dependencies]
 jacquard-common = "0.9"
 jacquard-derive = "0.9"

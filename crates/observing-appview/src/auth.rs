@@ -17,7 +17,10 @@ pub async fn require_auth(pool: &PgPool, cookies: &CookieJar) -> Result<AuthUser
     let did = session_did(cookies).ok_or(())?;
 
     // Verify session exists in database
-    let session = observing_db::oauth::get_session(pool, &did).await.ok().flatten();
+    let session = observing_db::oauth::get_session(pool, &did)
+        .await
+        .ok()
+        .flatten();
     if session.is_none() {
         return Err(());
     }

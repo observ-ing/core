@@ -8,10 +8,7 @@ use crate::state::AppState;
 
 /// GET /media/{*path}
 /// Proxies requests to the media-proxy service, forwarding Content-Type and Cache-Control headers.
-pub async fn proxy(
-    State(state): State<AppState>,
-    Path(path): Path<String>,
-) -> Response {
+pub async fn proxy(State(state): State<AppState>, Path(path): Path<String>) -> Response {
     let target_url = format!("{}/{}", state.media_proxy_url, path);
 
     let client = reqwest::Client::new();

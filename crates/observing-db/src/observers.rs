@@ -109,11 +109,7 @@ pub async fn get_for_occurrence(
 }
 
 /// Check if a user is the owner of an occurrence
-pub async fn is_owner(
-    pool: &PgPool,
-    occurrence_uri: &str,
-    did: &str,
-) -> Result<bool, sqlx::Error> {
+pub async fn is_owner(pool: &PgPool, occurrence_uri: &str, did: &str) -> Result<bool, sqlx::Error> {
     let row: Option<(i32,)> = sqlx::query_as(
         r#"
         SELECT 1 as exists_ FROM occurrence_observers

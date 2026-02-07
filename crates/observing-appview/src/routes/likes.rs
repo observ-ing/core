@@ -36,8 +36,14 @@ pub async fn create_like(
     let now = Utc::now();
 
     let subject = StrongRef::new()
-        .uri(JAtUri::from_str(&body.occurrence_uri).map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?)
-        .cid(JCid::from_str(&body.occurrence_cid).map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?)
+        .uri(
+            JAtUri::from_str(&body.occurrence_uri)
+                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
+        )
+        .cid(
+            JCid::from_str(&body.occurrence_cid)
+                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
+        )
         .build();
 
     let record = Like::new()
@@ -53,7 +59,7 @@ pub async fn create_like(
         .agent
         .create_record(&user.did, Like::NSID, record_value, None)
         .await
-        .map_err(|e| AppError::Internal(e))?;
+        .map_err(AppError::Internal)?;
 
     let uri = resp
         .uri
@@ -98,9 +104,12 @@ pub async fn delete_like(
         .map_err(|_| AppError::Unauthorized)?;
 
     // Delete from local DB first (returns the like URI)
-    let like_uri =
-        observing_db::likes::delete_by_subject_and_did(&state.pool, &body.occurrence_uri, &user.did)
-            .await?;
+    let like_uri = observing_db::likes::delete_by_subject_and_did(
+        &state.pool,
+        &body.occurrence_uri,
+        &user.did,
+    )
+    .await?;
 
     // Try to delete from AT Protocol too
     if let Some(ref uri) = like_uri {

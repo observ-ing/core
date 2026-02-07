@@ -113,17 +113,14 @@ pub async fn callback(
 
 /// POST /oauth/logout
 /// Clears session cookie and returns { success: true }.
-pub async fn logout(
-    cookies: axum_extra::extract::CookieJar,
-) -> Response {
+pub async fn logout(cookies: axum_extra::extract::CookieJar) -> Response {
     let did = cookies.get("session_did").map(|c| c.value().to_string());
     if let Some(ref did) = did {
         info!(did = %did, "Logout");
     }
 
     // Clear the cookie
-    let cookie =
-        "session_did=; HttpOnly; Path=/; Max-Age=0";
+    let cookie = "session_did=; HttpOnly; Path=/; Max-Age=0";
     (
         [(axum::http::header::SET_COOKIE, cookie)],
         Json(json!({ "success": true })),
