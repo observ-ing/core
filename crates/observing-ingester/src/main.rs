@@ -18,6 +18,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::interval;
+use chrono::Utc;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -95,11 +96,15 @@ async fn main() -> Result<()> {
         let mut ticker = interval(Duration::from_secs(30));
         loop {
             ticker.tick().await;
-            let cursor = cursor_state.read().await.cursor;
-            if let Some(c) = cursor {
+            let state = cursor_state.read().await;
+            if let Some(c) = state.cursor {
                 if let Err(e) = cursor_db.save_cursor(c).await {
                     error!("Failed to save cursor: {}", e);
                 }
+            }
+            if let Some(ref lp) = state.last_processed {
+                let lag_ms = (Utc::now() - lp.time).num_milliseconds();
+                info!(lag_ms, "ingester_lag");
             }
         }
     });
