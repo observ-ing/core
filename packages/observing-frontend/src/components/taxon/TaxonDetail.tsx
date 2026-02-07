@@ -27,6 +27,7 @@ import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/
 import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
+import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
 import { FeedItem } from "../feed/FeedItem";
 import { TaxonDetailSkeleton } from "../common/Skeletons";
 
@@ -235,19 +236,20 @@ export function TaxonDetail() {
               <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
                 {taxon.ancestors.map((ancestor, idx) => (
                   <Box component="li" key={ancestor.id} sx={{ pl: idx * 2.5 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                       {idx > 0 && (
-                        <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                        <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                           └
                         </Typography>
                       )}
+                      <WikiTaxonThumbnail name={ancestor.name} size={22} />
                       <TaxonLink
                         name={ancestor.name}
                         kingdom={taxon.kingdom}
                         rank={ancestor.rank}
                         variant="text"
                       />
-                      <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                      <Typography variant="caption" color="text.disabled">
                         {ancestor.rank}
                       </Typography>
                     </Box>
@@ -255,12 +257,13 @@ export function TaxonDetail() {
                 ))}
                 {/* Current taxon */}
                 <Box component="li" sx={{ pl: taxon.ancestors.length * 2.5 }}>
-                  <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                     {taxon.ancestors.length > 0 && (
-                      <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                      <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └
                       </Typography>
                     )}
+                    <WikiTaxonThumbnail name={taxon.scientificName} size={22} />
                     <Typography
                       sx={{
                         fontWeight: 700,
@@ -269,7 +272,7 @@ export function TaxonDetail() {
                     >
                       {taxon.scientificName}
                     </Typography>
-                    <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                    <Typography variant="caption" color="text.disabled">
                       {taxon.rank}
                     </Typography>
                   </Box>
@@ -277,17 +280,18 @@ export function TaxonDetail() {
                 {/* Children */}
                 {taxon.children.map((child) => (
                   <Box component="li" key={child.id} sx={{ pl: (taxon.ancestors.length + 1) * 2.5 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
-                      <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
+                      <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └
                       </Typography>
+                      <WikiTaxonThumbnail name={child.scientificName} size={22} />
                       <TaxonLink
                         name={child.scientificName}
                         kingdom={taxon.kingdom}
                         rank={child.rank}
                         variant="text"
                       />
-                      <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                      <Typography variant="caption" color="text.disabled">
                         {child.rank}
                       </Typography>
                     </Box>
