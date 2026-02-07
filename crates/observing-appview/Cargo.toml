@@ -43,6 +43,19 @@ regex = "1"
 # Base64 for blob uploads
 base64 = "0.22"
 
+# AT Protocol OAuth + Agent
+atrium-api = "0.25"
+atrium-common = "0.1"
+atrium-identity = "0.1"
+atrium-oauth = "0.1"
+hickory-resolver = "0.24"
+
+# Async trait support (needed for Store implementations)
+async-trait = "0.1"
+
+# Error handling
+thiserror = "1"
+
 [[bin]]
 name = "observing-appview"
 path = "src/main.rs"

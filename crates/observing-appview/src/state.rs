@@ -4,7 +4,21 @@ use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
 use crate::atproto::InternalAgentClient;
+use crate::oauth_store::{PgSessionStore, PgStateStore};
+use crate::resolver::HickoryDnsTxtResolver;
 use crate::taxonomy_client::TaxonomyClient;
+
+use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig, DEFAULT_PLC_DIRECTORY_URL};
+use atrium_identity::handle::{AtprotoHandleResolver, AtprotoHandleResolverConfig};
+use atrium_oauth::{DefaultHttpClient, OAuthClient};
+
+/// The concrete OAuthClient type with PostgreSQL stores and DNS resolution.
+pub type OAuthClientType = OAuthClient<
+    PgStateStore,
+    PgSessionStore,
+    CommonDidResolver<DefaultHttpClient>,
+    AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>,
+>;
 
 /// Shared application state passed to all route handlers
 #[derive(Clone)]
@@ -14,5 +28,44 @@ pub struct AppState {
     pub taxonomy: Arc<TaxonomyClient>,
     pub geocoding: Arc<GeocodingService>,
     pub agent: Arc<InternalAgentClient>,
+    pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
+}
+
+/// Create an OAuthClient configured for localhost development.
+pub fn create_oauth_client(
+    pool: PgPool,
+    host: &str,
+    port: u16,
+) -> OAuthClientType {
+    let http_client = Arc::new(DefaultHttpClient::default());
+
+    let config = atrium_oauth::OAuthClientConfig {
+        client_metadata: atrium_oauth::AtprotoLocalhostClientMetadata {
+            redirect_uris: Some(vec![format!(
+                "http://{host}:{port}/oauth/callback"
+            )]),
+            scopes: Some(vec![
+                atrium_oauth::Scope::Known(atrium_oauth::KnownScope::Atproto),
+                atrium_oauth::Scope::Known(atrium_oauth::KnownScope::TransitionGeneric),
+            ]),
+        },
+        keys: None,
+        resolver: atrium_oauth::OAuthResolverConfig {
+            did_resolver: CommonDidResolver::new(CommonDidResolverConfig {
+                plc_directory_url: DEFAULT_PLC_DIRECTORY_URL.to_string(),
+                http_client: http_client.clone(),
+            }),
+            handle_resolver: AtprotoHandleResolver::new(AtprotoHandleResolverConfig {
+                dns_txt_resolver: HickoryDnsTxtResolver::default(),
+                http_client: http_client.clone(),
+            }),
+            authorization_server_metadata: Default::default(),
+            protected_resource_metadata: Default::default(),
+        },
+        state_store: PgStateStore::new(pool.clone()),
+        session_store: PgSessionStore::new(pool),
+    };
+
+    OAuthClient::new(config).expect("failed to create OAuth client")
 }

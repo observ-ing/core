@@ -3,6 +3,8 @@ mod auth;
 mod config;
 mod enrichment;
 mod error;
+mod oauth_store;
+mod resolver;
 mod routes;
 mod state;
 mod taxonomy_client;
@@ -41,6 +43,9 @@ async fn main() {
         .await
         .expect("Failed to connect to database");
 
+    // Create OAuth client
+    let oauth_client = state::create_oauth_client(pool.clone(), "127.0.0.1", config.port);
+
     let state = AppState {
         pool,
         resolver: Arc::new(observing_identity::IdentityResolver::new()),
@@ -50,6 +55,7 @@ async fn main() {
             &config.ts_appview_url,
             config.internal_secret.clone(),
         )),
+        oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
     };
 
@@ -79,6 +85,11 @@ async fn main() {
     let app = Router::new()
         // Health
         .route("/health", get(routes::health::health))
+        // OAuth
+        .route("/oauth/login", get(routes::oauth::login))
+        .route("/oauth/callback", get(routes::oauth::callback))
+        .route("/oauth/logout", post(routes::oauth::logout))
+        .route("/oauth/me", get(routes::oauth::me))
         // Occurrences - specific routes before wildcard
         .route("/api/occurrences/nearby", get(routes::occurrences::get_nearby))
         .route("/api/occurrences/feed", get(routes::occurrences::get_feed))
