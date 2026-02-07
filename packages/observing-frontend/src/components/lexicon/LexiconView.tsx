@@ -17,9 +17,9 @@ import {
 } from "@mui/material";
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
 
-// Eagerly import all org.rwell.test lexicons at build time via the @lexicons alias.
+// Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
-const lexiconModules = import.meta.glob("@lexicons/org/rwell/test/*.json", {
+const lexiconModules = import.meta.glob("@lexicons/**/*.json", {
   eager: true,
 });
 
@@ -62,9 +62,15 @@ interface LexiconSchema {
 }
 
 // Parse and sort lexicons by ID
-const lexicons: LexiconSchema[] = Object.values(lexiconModules)
+const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
   .map((mod) => (mod as { default: LexiconSchema }).default)
   .sort((a, b) => a.id.localeCompare(b.id));
+
+const isInHouse = (schema: LexiconSchema) =>
+  schema.id.startsWith("org.rwell.test.");
+
+const inHouseLexicons = allLexicons.filter(isInHouse);
+const externalLexicons = allLexicons.filter((s) => !isInHouse(s));
 
 function formatType(prop: LexiconProperty): string {
   if (prop.type === "ref" && prop.ref) {
@@ -277,7 +283,20 @@ export function LexiconView() {
         biodiversity standards.
       </Typography>
 
-      {lexicons.map((schema) => (
+      <Typography variant="h5" fontWeight={600} sx={{ mt: 2, mb: 2 }}>
+        Observ.ing Lexicons
+      </Typography>
+      {inHouseLexicons.map((schema) => (
+        <LexiconCard key={schema.id} schema={schema} />
+      ))}
+
+      <Typography variant="h5" fontWeight={600} sx={{ mt: 4, mb: 1 }}>
+        External Lexicons
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Third-party AT Protocol lexicons used by Observ.ing.
+      </Typography>
+      {externalLexicons.map((schema) => (
         <LexiconCard key={schema.id} schema={schema} />
       ))}
     </Box>
