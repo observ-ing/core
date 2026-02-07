@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate, Link as RouterLink } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import {
   Box,
@@ -15,9 +15,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  ImageList,
-  ImageListItem,
-  ImageListItemBar,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -28,6 +25,7 @@ import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
+import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
 import { TaxonDetailSkeleton } from "../common/Skeletons";
 
@@ -302,52 +300,17 @@ export function TaxonDetail() {
           </Accordion>
         )}
 
-        {/* Media Gallery - using ImageList */}
-        {taxon.media && taxon.media.length > 0 && (
-          <Accordion defaultExpanded>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Media ({taxon.media.length})
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <ImageList
-                variant="masonry"
-                cols={3}
-                gap={8}
-                sx={{
-                  m: 0,
-                  "@media (max-width: 600px)": { "& > li": { width: "calc(50% - 4px) !important" } },
-                }}
-              >
-                {taxon.media.map((m, idx) => (
-                  <ImageListItem key={idx}>
-                    <img
-                      src={m.url}
-                      alt={m.title || `Media ${idx + 1}`}
-                      loading="lazy"
-                      style={{ borderRadius: 4 }}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                    {(m.title || m.creator) && (
-                      <ImageListItemBar
-                        title={m.title}
-                        subtitle={m.creator}
-                        sx={{
-                          borderRadius: "0 0 4px 4px",
-                          "& .MuiImageListItemBar-title": { fontSize: "0.75rem" },
-                          "& .MuiImageListItemBar-subtitle": { fontSize: "0.65rem" },
-                        }}
-                      />
-                    )}
-                  </ImageListItem>
-                ))}
-              </ImageList>
-            </AccordionDetails>
-          </Accordion>
-        )}
+        {/* Wikimedia Commons Gallery */}
+        <Accordion defaultExpanded>
+          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+            <Typography variant="subtitle2" color="text.secondary">
+              Wikimedia Commons
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails>
+            <WikiCommonsGallery taxonName={taxon.scientificName} />
+          </AccordionDetails>
+        </Accordion>
 
         {/* Descriptions */}
         {taxon.descriptions && taxon.descriptions.length > 0 && (
