@@ -300,11 +300,11 @@ export function TaxonDetail() {
           </Accordion>
         )}
 
-        {/* Wikimedia Commons Gallery */}
+        {/* Media Gallery */}
         <Accordion defaultExpanded>
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
             <Typography variant="subtitle2" color="text.secondary">
-              Wikimedia Commons
+              Media
             </Typography>
           </AccordionSummary>
           <AccordionDetails>
