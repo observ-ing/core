@@ -23,7 +23,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
 import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
-import { openDeleteConfirm, addToast } from "../../store/uiSlice";
+import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
@@ -112,6 +112,13 @@ export function ObservationDetail() {
 
   const handleMenuClose = () => {
     setAnchorEl(null);
+  };
+
+  const handleEditClick = () => {
+    handleMenuClose();
+    if (observation) {
+      dispatch(openEditModal(observation));
+    }
   };
 
   const handleDeleteClick = () => {
@@ -236,6 +243,11 @@ export function ObservationDetail() {
             anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
             transformOrigin={{ vertical: "top", horizontal: "right" }}
           >
+            {isOwner && (
+              <MenuItem onClick={handleEditClick}>
+                Edit
+              </MenuItem>
+            )}
             {isOwner && (
               <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
                 Delete

@@ -104,6 +104,10 @@ export function UploadModal() {
             setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
           }
         }
+        const coObserverDids = editingObservation.observers
+          ?.filter((o) => o.role === "co-observer")
+          .map((o) => o.did) || [];
+        setCoObservers(coObserverDids);
       } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
         setLng(currentLocation.lng.toFixed(6));
