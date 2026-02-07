@@ -9,6 +9,7 @@ mod routes;
 mod state;
 mod taxonomy_client;
 
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::routing::{get, post};
@@ -16,6 +17,7 @@ use axum::Router;
 use sqlx::postgres::PgPoolOptions;
 use axum::http::{header, Method};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
 use config::Config;
@@ -163,8 +165,28 @@ async fn main() {
             "/api/taxa/{id}/occurrences",
             get(routes::taxonomy::get_taxon_occurrences_by_id),
         )
+        // Media proxy
+        .route("/media/{*path}", get(routes::media::proxy))
         .layer(cors)
         .with_state(state);
+
+    // Serve React SPA with fallback to index.html for client-side routing
+    let public_path = std::env::var("PUBLIC_PATH").unwrap_or_else(|_| {
+        // Default: dist/public relative to the workspace root
+        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        manifest_dir
+            .join("../../dist/public")
+            .canonicalize()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| "dist/public".to_string())
+    });
+
+    info!(public_path = %public_path, "Serving static files");
+
+    let spa_fallback = ServeDir::new(&public_path)
+        .fallback(ServeFile::new(format!("{}/index.html", public_path)));
+
+    let app = app.fallback_service(spa_fallback);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port))
         .await
