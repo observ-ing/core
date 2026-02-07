@@ -57,8 +57,13 @@ COPY crates/observing-geocoding/src crates/observing-geocoding/src
 COPY crates/observing-lexicons/src crates/observing-lexicons/src
 COPY crates/gbif-api/src crates/gbif-api/src
 
-# Build for release
-RUN touch crates/observing-appview/src/main.rs && cargo build --release -p observing-appview
+# Copy SQLx query cache for offline compilation
+COPY .sqlx ./.sqlx
+
+# Build for release with offline SQLx
+ENV SQLX_OFFLINE=true
+RUN touch crates/observing-appview/src/main.rs crates/observing-db/src/lib.rs crates/observing-identity/src/lib.rs crates/observing-geocoding/src/lib.rs crates/observing-lexicons/src/lib.rs crates/gbif-api/src/lib.rs && \
+    cargo build --release -p observing-appview
 
 # Stage 3: Runtime
 FROM debian:bookworm-slim
