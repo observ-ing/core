@@ -20,9 +20,7 @@
     "noEmit": true,
     "skipLibCheck": true
   },
-  "references": [
-    { "path": "./packages/observing-appview" }
-  ],
-  "include": ["scripts/**/*", "prisma.config.ts"],
+  "references": [],
+  "include": ["scripts/**/*"],
   "exclude": ["node_modules", "dist", "packages"]
 }

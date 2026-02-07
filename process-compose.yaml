@@ -8,27 +8,16 @@ processes:
         command: pg_isready -h localhost -p 5432
 
   appview:
-    command: npm run appview
+    command: cargo run -p observing-appview
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
+      - PORT=3000
+      - MEDIA_PROXY_URL=http://localhost:3001
+      - TAXONOMY_SERVICE_URL=http://localhost:3003
     readiness_probe:
       http_get:
         host: localhost
         port: 3000
-        path: /health
-    depends_on:
-      cloud-sql-proxy:
-        condition: process_healthy
-
-  api:
-    command: npm run api
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
-      - PORT=3002
-    readiness_probe:
-      http_get:
-        host: localhost
-        port: 3002
         path: /health
     depends_on:
       cloud-sql-proxy:
