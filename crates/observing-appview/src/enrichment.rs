@@ -94,8 +94,8 @@ pub struct LocationResponse {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SubjectResponse {
+    #[serde(rename = "index")]
     pub subject_index: i32,
-    pub community_id: Option<String>,
     pub identification_count: i64,
 }
 
@@ -253,38 +253,24 @@ pub async fn enrich_occurrences(
 
         let mut subjects: Vec<SubjectResponse> = Vec::new();
         if !has_subject_0 {
-            // Stage 5: Community ID for subject 0
-            let community_id =
-                observing_db::identifications::get_community_id(pool, &row.uri, 0)
-                    .await
-                    .unwrap_or(None);
             subjects.push(SubjectResponse {
                 subject_index: 0,
-                community_id,
                 identification_count: 0,
             });
         }
 
         for si in &subject_data {
-            let community_id = observing_db::identifications::get_community_id(
-                pool,
-                &row.uri,
-                si.subject_index,
-            )
-            .await
-            .unwrap_or(None);
             subjects.push(SubjectResponse {
                 subject_index: si.subject_index,
-                community_id,
                 identification_count: si.identification_count,
             });
         }
 
         // Subject 0 community ID
-        let community_id = subjects
-            .iter()
-            .find(|s| s.subject_index == 0)
-            .and_then(|s| s.community_id.clone());
+        let community_id =
+            observing_db::identifications::get_community_id(pool, &row.uri, 0)
+                .await
+                .unwrap_or(None);
 
         // Stage 6: Effective taxonomy
         let effective_taxonomy = resolve_effective_taxonomy(

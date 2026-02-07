@@ -76,7 +76,7 @@ pub async fn get_profile_feed(
             "avatar": profile.as_ref().and_then(|p| p.avatar.as_deref()),
         },
         "counts": {
-            "occurrences": result.counts.observations,
+            "observations": result.counts.observations,
             "identifications": result.counts.identifications,
             "species": result.counts.species,
         },
