@@ -155,14 +155,14 @@ export function TaxonDetail() {
   const gbifUrl = taxon.gbifUrl;
 
   return (
+    <Box sx={{ flex: 1, overflow: "auto" }}>
     <Container
       maxWidth="md"
       disableGutters
       sx={{
-        flex: 1,
+        minHeight: "100%",
         display: "flex",
         flexDirection: "column",
-        overflow: "auto",
       }}
     >
       {/* Header */}
@@ -470,5 +470,6 @@ export function TaxonDetail() {
         </Box>
       )}
     </Container>
+    </Box>
   );
 }

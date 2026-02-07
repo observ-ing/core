@@ -55,20 +55,15 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
   );
 
   return (
-    <Container
-      maxWidth="sm"
-      disableGutters
-      sx={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* Filter panel for explore tab only */}
       {currentTab === "explore" && (
-        <Box sx={{ px: 2, pt: 2, flexShrink: 0 }}>
-          <ExploreFilterPanel />
+        <Box sx={{ flexShrink: 0 }}>
+          <Container maxWidth="sm" disableGutters>
+            <Box sx={{ px: 2, pt: 2 }}>
+              <ExploreFilterPanel />
+            </Box>
+          </Container>
         </Box>
       )}
 
@@ -83,52 +78,54 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
           "&::-webkit-scrollbar": { display: "none" },
         }}
       >
-        <Box>
-          {observations.map((obs) => (
-            <FeedItem key={obs.uri} observation={obs} onEdit={handleEdit} onDelete={handleDelete} />
-          ))}
-        </Box>
-
-        {isLoading && observations.length === 0 && (
-          <FeedSkeletonList count={3} />
-        )}
-
-        {isLoading && observations.length > 0 && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress color="primary" size={24} />
+        <Container maxWidth="sm" disableGutters>
+          <Box>
+            {observations.map((obs) => (
+              <FeedItem key={obs.uri} observation={obs} onEdit={handleEdit} onDelete={handleDelete} />
+            ))}
           </Box>
-        )}
 
-        {!isLoading && observations.length === 0 && (
-          <Box sx={{ p: 4, textAlign: "center" }}>
-            {currentTab === "home" ? (
-              <>
-                <Typography color="text.secondary" sx={{ mb: 1 }}>
-                  No observations from people you follow yet.
-                </Typography>
-                {homeFeedMeta && homeFeedMeta.totalFollows > 0 && (
-                  <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-                    You follow {homeFeedMeta.totalFollows} people, but none have
-                    posted observations.
+          {isLoading && observations.length === 0 && (
+            <FeedSkeletonList count={3} />
+          )}
+
+          {isLoading && observations.length > 0 && (
+            <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+              <CircularProgress color="primary" size={24} />
+            </Box>
+          )}
+
+          {!isLoading && observations.length === 0 && (
+            <Box sx={{ p: 4, textAlign: "center" }}>
+              {currentTab === "home" ? (
+                <>
+                  <Typography color="text.secondary" sx={{ mb: 1 }}>
+                    No observations from people you follow yet.
                   </Typography>
-                )}
-                <Button
-                  variant="outlined"
-                  color="primary"
-                  component={Link}
-                  to="/explore"
-                >
-                  Browse all observations
-                </Button>
-              </>
-            ) : (
-              <Typography color="text.secondary">
-                No observations yet. Be the first to post!
-              </Typography>
-            )}
-          </Box>
-        )}
+                  {homeFeedMeta && homeFeedMeta.totalFollows > 0 && (
+                    <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
+                      You follow {homeFeedMeta.totalFollows} people, but none have
+                      posted observations.
+                    </Typography>
+                  )}
+                  <Button
+                    variant="outlined"
+                    color="primary"
+                    component={Link}
+                    to="/explore"
+                  >
+                    Browse all observations
+                  </Button>
+                </>
+              ) : (
+                <Typography color="text.secondary">
+                  No observations yet. Be the first to post!
+                </Typography>
+              )}
+            </Box>
+          )}
+        </Container>
       </Box>
-    </Container>
+    </Box>
   );
 }
