@@ -31,7 +31,8 @@ RUN for crate in gbif-api observing-appview observing-db observing-geocoding obs
     done
 
 # Build dependencies only (this layer will be cached)
-RUN cargo build --release -p observing-ingester && rm -rf crates/observing-ingester/src
+RUN cargo build --release -p observing-ingester && \
+    rm -rf crates/observing-ingester/src crates/observing-db/src crates/observing-lexicons/src
 
 # Copy SQLx query cache for offline compilation
 COPY .sqlx ./.sqlx
@@ -41,9 +42,10 @@ COPY crates/observing-ingester/src crates/observing-ingester/src
 COPY crates/observing-db/src crates/observing-db/src
 COPY crates/observing-lexicons/src crates/observing-lexicons/src
 
-# Build for release with offline SQLx (touch to invalidate cache for main.rs)
+# Build for release with offline SQLx
 ENV SQLX_OFFLINE=true
-RUN touch crates/observing-ingester/src/main.rs && cargo build --release -p observing-ingester
+RUN touch crates/observing-ingester/src/main.rs crates/observing-db/src/lib.rs crates/observing-lexicons/src/lib.rs && \
+    cargo build --release -p observing-ingester
 
 # Runtime stage
 FROM debian:bookworm-slim
