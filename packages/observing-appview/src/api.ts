@@ -529,7 +529,7 @@ export class AppViewServer {
           collection,
           rkey,
         });
-        const existingBlobs = (existingRecord.data.value as Record<string, unknown>).blobs as org.rwell.test.occurrence.ImageEmbed[] | undefined;
+        const existingBlobs = (existingRecord.data.value as Record<string, unknown>)["blobs"] as org.rwell.test.occurrence.ImageEmbed[] | undefined;
 
         // Upload new images as blobs if provided
         const newBlobs: org.rwell.test.occurrence.ImageEmbed[] = [];
@@ -637,7 +637,7 @@ export class AppViewServer {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
-          createdAt: ((existingRecord.data.value as Record<string, unknown>).createdAt as string || new Date().toISOString()) as l.DatetimeString,
+          createdAt: ((existingRecord.data.value as Record<string, unknown>)["createdAt"] as string || new Date().toISOString()) as l.DatetimeString,
           // Optional fields - only include if defined (exactOptionalPropertyTypes)
           ...(scientificName && { scientificName }),
           ...(allBlobs.length > 0 && { blobs: allBlobs }),
