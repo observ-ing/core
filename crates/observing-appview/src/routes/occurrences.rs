@@ -4,7 +4,7 @@ use chrono::Utc;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::UpsertOccurrenceParams;
-use observing_records::org_rwell::test::occurrence::{Location, Occurrence};
+use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;

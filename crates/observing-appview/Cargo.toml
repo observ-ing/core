@@ -10,7 +10,7 @@ license = "AGPL-3.0-only"
 observing-db = { path = "../observing-db" }
 observing-identity = { path = "../observing-identity" }
 observing-geocoding = { path = "../observing-geocoding" }
-observing-records = { path = "../observing-records" }
+observing-lexicons = { path = "../observing-lexicons" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.9"

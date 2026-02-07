@@ -1,5 +1,5 @@
 [package]
-name = "observing-records"
+name = "observing-lexicons"
 version = "0.1.0"
 edition = "2021"
 description = "Generated AT Protocol record types from lexicon schemas"

@@ -13,7 +13,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 INPUT_DIR="$ROOT_DIR/lexicons"
-OUTPUT_DIR="$ROOT_DIR/crates/observing-records/src"
+OUTPUT_DIR="$ROOT_DIR/crates/observing-lexicons/src"
 
 # Try to find jacquard-codegen on PATH or in ~/.cargo/bin
 JACQUARD_CODEGEN="jacquard-codegen"

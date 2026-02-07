@@ -2401,7 +2401,7 @@ dependencies = [
  "observing-db",
  "observing-geocoding",
  "observing-identity",
- "observing-records",
+ "observing-lexicons",
  "regex",
  "reqwest 0.12.28",
  "serde",
@@ -2459,7 +2459,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "observing-db",
- "observing-records",
+ "observing-lexicons",
  "serde",
  "serde_json",
  "sqlx",
@@ -2472,6 +2472,17 @@ dependencies = [
  "tracing-stackdriver",
  "tracing-subscriber",
  "url",
+]
+
+[[package]]
+name = "observing-lexicons"
+version = "0.1.0"
+dependencies = [
+ "jacquard-common",
+ "jacquard-derive",
+ "jacquard-lexicon",
+ "rustversion",
+ "serde",
 ]
 
 [[package]]
@@ -2495,17 +2506,6 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "urlencoding",
-]
-
-[[package]]
-name = "observing-records"
-version = "0.1.0"
-dependencies = [
- "jacquard-common",
- "jacquard-derive",
- "jacquard-lexicon",
- "rustversion",
- "serde",
 ]
 
 [[package]]

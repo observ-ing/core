@@ -1,7 +1,7 @@
 //! Database layer for the Observ.ing ingester
 //!
 //! Deserializes raw firehose JSON events into typed records using
-//! `observing-records` and delegates to the shared `observing-db` crate for SQL execution.
+//! `observing-lexicons` and delegates to the shared `observing-db` crate for SQL execution.
 
 use crate::error::Result;
 use crate::types::{
@@ -12,7 +12,7 @@ use observing_db::types::{
     CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams, UpsertInteractionParams,
     UpsertOccurrenceParams,
 };
-use observing_records::org_rwell::test::{
+use observing_lexicons::org_rwell::test::{
     comment::Comment, identification::Identification, interaction::Interaction,
     occurrence::Occurrence,
 };
@@ -360,7 +360,7 @@ impl Database {
         // Likes can be app.bsky.feed.like or org.rwell.test.like — both have the same
         // shape (subject + createdAt). Use the org.rwell.test.like type.
         let record_str = record_json.to_string();
-        let record: observing_records::org_rwell::test::like::Like<'_> =
+        let record: observing_lexicons::org_rwell::test::like::Like<'_> =
             match serde_json::from_str(&record_str) {
                 Ok(r) => r,
                 Err(e) => {
