@@ -8,28 +8,31 @@ export function FeedItemSkeleton() {
     <Box
       sx={{
         display: "flex",
-        gap: 1.5,
-        p: 2,
+        gap: 1,
+        p: 1.5,
         bgcolor: "background.paper",
-        borderRadius: 2,
-        mb: 2,
-        mx: { xs: 1, sm: 2 },
-        boxShadow: 1,
+        borderRadius: 0.5,
+        mb: 1,
+        mx: { xs: 0.5, sm: 1 },
+        borderBottom: 1,
+        borderColor: "divider",
+        "&:first-of-type": {
+          mt: 1,
+        },
       }}
     >
-      <Skeleton variant="circular" width={48} height={48} />
+      <Skeleton variant="circular" width={40} height={40} />
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
           <Skeleton variant="text" width="30%" height={20} />
           <Skeleton variant="text" width="20%" height={16} />
           <Skeleton variant="text" width="10%" height={16} />
         </Stack>
-        <Skeleton variant="text" width="45%" height={24} sx={{ mb: 0.5 }} />
-        <Skeleton variant="text" width="70%" height={18} />
+        <Skeleton variant="text" width="45%" height={24} sx={{ my: 0.5 }} />
         <Skeleton
           variant="rectangular"
-          height={200}
-          sx={{ borderRadius: 2, mt: 1.5 }}
+          height={280}
+          sx={{ borderRadius: 0.5, mt: 1 }}
         />
       </Box>
     </Box>
@@ -41,7 +44,7 @@ export function FeedItemSkeleton() {
  */
 export function FeedSkeletonList({ count = 3 }: { count?: number }) {
   return (
-    <Box sx={{ pt: 2 }}>
+    <Box>
       {Array.from({ length: count }).map((_, i) => (
         <FeedItemSkeleton key={i} />
       ))}
