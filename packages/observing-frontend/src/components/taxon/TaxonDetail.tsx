@@ -15,14 +15,12 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Breadcrumbs,
   ImageList,
   ImageListItem,
   ImageListItemBar,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { fetchTaxon, fetchTaxonObservations } from "../../services/api";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
@@ -225,55 +223,77 @@ export function TaxonDetail() {
           )}
         </Typography>
 
-        {/* Taxonomy Hierarchy (Ancestors) - using Breadcrumbs */}
-        {taxon.ancestors.length > 0 && (
+        {/* Taxonomy Tree */}
+        {(taxon.ancestors.length > 0 || taxon.children.length > 0) && (
           <Accordion defaultExpanded sx={{ mt: 3 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 Classification
               </Typography>
             </AccordionSummary>
-            <AccordionDetails>
-              <Breadcrumbs
-                separator={<ChevronRightIcon sx={{ fontSize: 16, color: "text.disabled" }} />}
-                aria-label="taxonomy breadcrumb"
-                sx={{ "& .MuiBreadcrumbs-ol": { flexWrap: "wrap", gap: 0.5 } }}
-              >
-                {taxon.ancestors.map((ancestor) => (
-                  <TaxonLink
-                    key={ancestor.id}
-                    name={ancestor.name}
-                    kingdom={taxon.kingdom}
-                    rank={ancestor.rank}
-                    variant="chip"
-                    italic={ancestor.rank === "genus"}
-                  />
+            <AccordionDetails sx={{ pl: 1 }}>
+              <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
+                {taxon.ancestors.map((ancestor, idx) => (
+                  <Box component="li" key={ancestor.id} sx={{ pl: idx * 2.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
+                      {idx > 0 && (
+                        <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                          └
+                        </Typography>
+                      )}
+                      <TaxonLink
+                        name={ancestor.name}
+                        kingdom={taxon.kingdom}
+                        rank={ancestor.rank}
+                        variant="text"
+                      />
+                      <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                        {ancestor.rank}
+                      </Typography>
+                    </Box>
+                  </Box>
                 ))}
-              </Breadcrumbs>
-            </AccordionDetails>
-          </Accordion>
-        )}
-
-        {/* Children Taxa */}
-        {taxon.children.length > 0 && (
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle2" color="text.secondary">
-                {taxon.rank === "genus" ? "Species" : "Child Taxa"} ({taxon.children.length})
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ gap: 0.5 }}>
+                {/* Current taxon */}
+                <Box component="li" sx={{ pl: taxon.ancestors.length * 2.5 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
+                    {taxon.ancestors.length > 0 && (
+                      <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                        └
+                      </Typography>
+                    )}
+                    <Typography
+                      sx={{
+                        fontWeight: 700,
+                        fontStyle: taxon.rank === "species" || taxon.rank === "genus" || taxon.rank === "subspecies" ? "italic" : "normal",
+                      }}
+                    >
+                      {taxon.scientificName}
+                    </Typography>
+                    <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                      {taxon.rank}
+                    </Typography>
+                  </Box>
+                </Box>
+                {/* Children */}
                 {taxon.children.map((child) => (
-                  <TaxonLink
-                    key={child.id}
-                    name={child.scientificName}
-                    kingdom={taxon.kingdom}
-                    rank={child.rank}
-                    variant="chip"
-                  />
+                  <Box component="li" key={child.id} sx={{ pl: (taxon.ancestors.length + 1) * 2.5 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", py: 0.3 }}>
+                      <Typography component="span" sx={{ color: "text.disabled", mr: 0.5, fontSize: "0.85rem", userSelect: "none" }}>
+                        └
+                      </Typography>
+                      <TaxonLink
+                        name={child.scientificName}
+                        kingdom={taxon.kingdom}
+                        rank={child.rank}
+                        variant="text"
+                      />
+                      <Typography variant="caption" color="text.disabled" sx={{ ml: 1 }}>
+                        {child.rank}
+                      </Typography>
+                    </Box>
+                  </Box>
                 ))}
-              </Stack>
+              </Box>
             </AccordionDetails>
           </Accordion>
         )}
