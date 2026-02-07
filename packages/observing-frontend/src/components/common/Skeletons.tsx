@@ -1,4 +1,4 @@
-import { Box, Skeleton, Stack, Paper } from "@mui/material";
+import { Box, Skeleton, Stack } from "@mui/material";
 
 /**
  * Skeleton loader matching FeedItem layout

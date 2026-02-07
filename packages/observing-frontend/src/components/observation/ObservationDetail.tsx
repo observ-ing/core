@@ -287,7 +287,7 @@ export function ObservationDetail() {
 
       {/* Images */}
       {observation.images.length > 0 && (
-        <Box sx={{ bgcolor: "#1a1a1a", p: { xs: 0, sm: 2 } }}>
+        <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
             src={getImageUrl(observation.images[activeImageIndex])}
