@@ -57,9 +57,6 @@ hickory-resolver = "0.24"
 # Async trait support (needed for Store implementations)
 async-trait = "0.1"
 
-# Error handling
-thiserror = "1"
-
 # URL encoding
 urlencoding = "2"
 

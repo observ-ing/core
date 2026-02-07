@@ -4,16 +4,36 @@ use atrium_oauth::store::state::StateStore;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use sqlx::PgPool;
-use std::fmt::Debug;
+use std::fmt::{self, Debug, Display};
 use std::hash::Hash;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Debug)]
 pub enum PgStoreError {
-    #[error("Database error: {0}")]
-    Database(#[from] sqlx::Error),
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] serde_json::Error),
+    Database(sqlx::Error),
+    Serialization(serde_json::Error),
+}
+
+impl Display for PgStoreError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Database(e) => write!(f, "Database error: {e}"),
+            Self::Serialization(e) => write!(f, "Serialization error: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for PgStoreError {}
+
+impl From<sqlx::Error> for PgStoreError {
+    fn from(e: sqlx::Error) -> Self {
+        Self::Database(e)
+    }
+}
+
+impl From<serde_json::Error> for PgStoreError {
+    fn from(e: serde_json::Error) -> Self {
+        Self::Serialization(e)
+    }
 }
 
 /// PostgreSQL-backed state store for OAuth PKCE/CSRF flow data.
