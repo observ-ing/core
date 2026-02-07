@@ -378,6 +378,7 @@ export const TaxonDetailSchema = z
     extinct: z.boolean().optional(),
     observationCount: z.number().int(),
     gbifUrl: z.string().optional().describe("URL to the GBIF species page"),
+    wikidataUrl: z.string().optional().describe("URL to the Wikidata entity page"),
   })
   .openapi("TaxonDetail");
 

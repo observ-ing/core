@@ -113,6 +113,8 @@ pub struct TaxonDetail {
     pub media: Option<Vec<TaxonMedia>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub gbif_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub wikidata_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

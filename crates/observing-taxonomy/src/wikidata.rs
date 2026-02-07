@@ -119,6 +119,58 @@ SELECT ?gbif_taxon_id (SAMPLE(?image) AS ?image) WHERE {{
             file_url.to_string()
         }
     }
+
+    /// Get the Wikidata entity URL for a GBIF taxon ID
+    /// Returns e.g. "https://www.wikidata.org/wiki/Q12345"
+    pub async fn get_entity_url(&self, gbif_key: u64) -> Option<String> {
+        let query = format!(
+            r#"SELECT ?item WHERE {{ ?item wdt:P846 "{}" . }} LIMIT 1"#,
+            gbif_key
+        );
+
+        let url = format!(
+            "{}?query={}&format=json",
+            WIKIDATA_SPARQL_ENDPOINT,
+            urlencoding::encode(&query)
+        );
+
+        let response = match self.client.get(&url).send().await {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(error = ?e, "Wikidata entity URL lookup failed");
+                return None;
+            }
+        };
+
+        if !response.status().is_success() {
+            return None;
+        }
+
+        #[derive(Deserialize)]
+        struct EntityResponse {
+            results: EntityResults,
+        }
+        #[derive(Deserialize)]
+        struct EntityResults {
+            bindings: Vec<EntityBinding>,
+        }
+        #[derive(Deserialize)]
+        struct EntityBinding {
+            item: SparqlValue,
+        }
+
+        let data: EntityResponse = match response.json().await {
+            Ok(d) => d,
+            Err(_) => return None,
+        };
+
+        data.results.bindings.first().map(|b| {
+            // Convert http://www.wikidata.org/entity/Q123 to https://www.wikidata.org/wiki/Q123
+            b.item
+                .value
+                .replace("http://www.wikidata.org/entity/", "https://www.wikidata.org/wiki/")
+        })
+    }
 }
 
 impl Default for WikidataClient {

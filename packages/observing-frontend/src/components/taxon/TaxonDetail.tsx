@@ -150,8 +150,9 @@ export function TaxonDetail() {
     );
   }
 
-  // Use gbifUrl from the API response
+  // Use external URLs from the API response
   const gbifUrl = taxon.gbifUrl;
+  const wikidataUrl = taxon.wikidataUrl;
 
   return (
     <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -383,20 +384,36 @@ export function TaxonDetail() {
           </Accordion>
         )}
 
-        {/* External Link */}
-        {gbifUrl && (
-          <Button
-            component="a"
-            href={gbifUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            variant="outlined"
-            size="small"
-            endIcon={<OpenInNewIcon fontSize="small" />}
-            sx={{ mt: 3 }}
-          >
-            View on GBIF
-          </Button>
+        {/* External Links */}
+        {(gbifUrl || wikidataUrl) && (
+          <Stack direction="row" spacing={1} sx={{ mt: 3 }} flexWrap="wrap">
+            {gbifUrl && (
+              <Button
+                component="a"
+                href={gbifUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                size="small"
+                endIcon={<OpenInNewIcon fontSize="small" />}
+              >
+                View on GBIF
+              </Button>
+            )}
+            {wikidataUrl && (
+              <Button
+                component="a"
+                href={wikidataUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                variant="outlined"
+                size="small"
+                endIcon={<OpenInNewIcon fontSize="small" />}
+              >
+                View on Wikidata
+              </Button>
+            )}
+          </Stack>
         )}
       </Box>
 

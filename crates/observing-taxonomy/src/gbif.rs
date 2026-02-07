@@ -158,12 +158,13 @@ impl GbifClient {
             None => return Ok(None),
         };
 
-        // Fetch children, descriptions, references, and media in parallel
-        let (children, descriptions, references, media) = tokio::join!(
+        // Fetch children, descriptions, references, media, and Wikidata URL in parallel
+        let (children, descriptions, references, media, wikidata_url) = tokio::join!(
             self.get_children(taxon_id, 20),
             self.api.get_descriptions(key, 5),
             self.api.get_references(key, 10),
             self.api.get_media(key, 10),
+            self.wikidata.get_entity_url(key),
         );
 
         let children = children.unwrap_or_default();
@@ -266,6 +267,7 @@ impl GbifClient {
             },
             media: if media.is_empty() { None } else { Some(media) },
             gbif_url: data.key.map(|k| format!("https://www.gbif.org/species/{}", k)),
+            wikidata_url,
         };
 
         self.cache
