@@ -5,8 +5,9 @@
 
 use crate::error::{IngesterError, Result};
 use crate::types::{
-    CommentEvent, CommitTimingInfo, IdentificationEvent, InteractionEvent, OccurrenceEvent,
-    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, OCCURRENCE_COLLECTION,
+    CommentEvent, CommitTimingInfo, IdentificationEvent, InteractionEvent, LikeEvent,
+    OccurrenceEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
+    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::{TimeZone, Utc};
 use futures_util::StreamExt;
@@ -48,6 +49,7 @@ pub enum FirehoseEvent {
     Identification(IdentificationEvent),
     Comment(CommentEvent),
     Interaction(InteractionEvent),
+    Like(LikeEvent),
     Commit(CommitTimingInfo),
     Connected,
     Disconnected,
@@ -167,8 +169,8 @@ impl FirehoseSubscription {
         // Add collection filters
         let separator = if url.contains('?') { '&' } else { '?' };
         url = format!(
-            "{}{}wantedCollections={}&wantedCollections={}&wantedCollections={}&wantedCollections={}",
-            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION, COMMENT_COLLECTION, INTERACTION_COLLECTION
+            "{}{}wantedCollections={}&wantedCollections={}&wantedCollections={}&wantedCollections={}&wantedCollections={}",
+            url, separator, OCCURRENCE_COLLECTION, IDENTIFICATION_COLLECTION, COMMENT_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION
         );
 
         // Add cursor if available (Jetstream uses microseconds)
@@ -272,6 +274,32 @@ impl FirehoseSubscription {
                     .event_tx
                     .send(FirehoseEvent::Interaction(interaction_event))
                     .await;
+            } else if collection == LIKE_COLLECTION {
+                // Filter: only process likes whose subject is an occurrence
+                let is_occurrence_like = commit
+                    .record
+                    .as_ref()
+                    .and_then(|r| r.get("subject"))
+                    .and_then(|s| s.get("uri"))
+                    .and_then(|u| u.as_str())
+                    .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
+
+                if is_occurrence_like || commit.operation == "delete" {
+                    let like_event = LikeEvent {
+                        did: did.to_string(),
+                        uri: uri.clone(),
+                        cid,
+                        action: commit.operation.clone(),
+                        seq,
+                        time,
+                        record: commit.record,
+                    };
+                    debug!("[Like] {}: {}", like_event.action, like_event.uri);
+                    let _ = self
+                        .event_tx
+                        .send(FirehoseEvent::Like(like_event))
+                        .await;
+                }
             }
         }
 
@@ -298,6 +326,7 @@ mod tests {
         let url = sub.build_url();
         assert!(url.contains("wantedCollections=org.rwell.test.occurrence"));
         assert!(url.contains("wantedCollections=org.rwell.test.identification"));
+        assert!(url.contains("wantedCollections=app.bsky.feed.like"));
         assert!(!url.contains("cursor="));
     }
 
@@ -364,5 +393,66 @@ mod tests {
 
         let event: JetstreamEvent = serde_json::from_str(json).unwrap();
         assert!(event.commit.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_like_event_filters_occurrence_likes() {
+        let (tx, mut rx) = mpsc::channel(10);
+        let mut sub = FirehoseSubscription::new(FirehoseConfig::default(), tx);
+
+        // Like on an occurrence — should be emitted
+        let occurrence_like = r#"{
+            "did": "did:plc:liker1",
+            "time_us": 1704067200000000,
+            "commit": {
+                "rev": "abc",
+                "operation": "create",
+                "collection": "app.bsky.feed.like",
+                "rkey": "tid1",
+                "record": {
+                    "subject": {
+                        "uri": "at://did:plc:owner/org.rwell.test.occurrence/123",
+                        "cid": "bafyrei..."
+                    },
+                    "createdAt": "2024-01-01T00:00:00Z"
+                },
+                "cid": "bafylike1"
+            }
+        }"#;
+        sub.handle_message(occurrence_like).await.unwrap();
+
+        // Like on a Bluesky post — should be filtered out
+        let bsky_like = r#"{
+            "did": "did:plc:liker2",
+            "time_us": 1704067200000001,
+            "commit": {
+                "rev": "def",
+                "operation": "create",
+                "collection": "app.bsky.feed.like",
+                "rkey": "tid2",
+                "record": {
+                    "subject": {
+                        "uri": "at://did:plc:someone/app.bsky.feed.post/abc",
+                        "cid": "bafypost..."
+                    },
+                    "createdAt": "2024-01-01T00:00:00Z"
+                },
+                "cid": "bafylike2"
+            }
+        }"#;
+        sub.handle_message(bsky_like).await.unwrap();
+
+        // Should receive the occurrence like
+        let event = rx.try_recv().unwrap();
+        assert!(matches!(event, FirehoseEvent::Like(_)));
+        if let FirehoseEvent::Like(like) = event {
+            assert_eq!(like.did, "did:plc:liker1");
+        }
+
+        // Should NOT receive the Bluesky post like (only timing may come through)
+        match rx.try_recv() {
+            Ok(FirehoseEvent::Like(_)) => panic!("Should not receive non-occurrence like"),
+            _ => {} // OK — either empty or a Commit timing event
+        }
     }
 }

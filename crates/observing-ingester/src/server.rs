@@ -160,6 +160,7 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
   <table>
     <tr><td>Occurrences</td><td id="occurrences">0</td></tr>
     <tr><td>Identifications</td><td id="identifications">0</td></tr>
+    <tr><td>Likes</td><td id="likes">0</td></tr>
     <tr><td>Errors</td><td id="errors">0</td></tr>
   </table>
 
@@ -197,6 +198,7 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
         document.getElementById('lag').textContent = formatLag(data.lastProcessed);
         document.getElementById('occurrences').textContent = data.stats.occurrences.toLocaleString();
         document.getElementById('identifications').textContent = data.stats.identifications.toLocaleString();
+        document.getElementById('likes').textContent = data.stats.likes.toLocaleString();
         document.getElementById('errors').textContent = data.stats.errors.toLocaleString();
 
         const eventsEl = document.getElementById('events');

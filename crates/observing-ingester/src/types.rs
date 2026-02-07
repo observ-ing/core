@@ -57,6 +57,19 @@ pub struct InteractionEvent {
     pub record: Option<serde_json::Value>,
 }
 
+/// A like event (app.bsky.feed.like on an observation)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LikeEvent {
+    pub did: String,
+    pub uri: String,
+    pub cid: String,
+    pub action: String,
+    pub seq: i64,
+    pub time: DateTime<Utc>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub record: Option<serde_json::Value>,
+}
+
 /// Timing information for lag tracking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitTimingInfo {
@@ -71,6 +84,7 @@ pub struct IngesterStats {
     pub identifications: u64,
     pub comments: u64,
     pub interactions: u64,
+    pub likes: u64,
     pub errors: u64,
 }
 
@@ -109,6 +123,7 @@ pub const OCCURRENCE_COLLECTION: &str = "org.rwell.test.occurrence";
 pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
 pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
 pub const INTERACTION_COLLECTION: &str = "org.rwell.test.interaction";
+pub const LIKE_COLLECTION: &str = "app.bsky.feed.like";
 
 #[cfg(test)]
 mod tests {
@@ -131,6 +146,7 @@ mod tests {
         let stats = IngesterStats::default();
         assert_eq!(stats.occurrences, 0);
         assert_eq!(stats.identifications, 0);
+        assert_eq!(stats.likes, 0);
         assert_eq!(stats.errors, 0);
     }
 
@@ -230,5 +246,6 @@ mod tests {
         assert_eq!(IDENTIFICATION_COLLECTION, "org.rwell.test.identification");
         assert_eq!(COMMENT_COLLECTION, "org.rwell.test.comment");
         assert_eq!(INTERACTION_COLLECTION, "org.rwell.test.interaction");
+        assert_eq!(LIKE_COLLECTION, "app.bsky.feed.like");
     }
 }

@@ -3,7 +3,7 @@
 //! Uses sqlx with PostgreSQL for storing occurrences, identifications, and cursor state.
 
 use crate::error::Result;
-use crate::types::{CommentEvent, IdentificationEvent, InteractionEvent, OccurrenceEvent};
+use crate::types::{CommentEvent, IdentificationEvent, InteractionEvent, LikeEvent, OccurrenceEvent};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
@@ -707,6 +707,58 @@ impl Database {
     pub async fn delete_interaction(&self, uri: &str) -> Result<()> {
         debug!("Deleting interaction: {}", uri);
         sqlx::query("DELETE FROM interactions WHERE uri = $1")
+            .bind(uri)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    /// Upsert a like record
+    pub async fn upsert_like(&self, event: &LikeEvent) -> Result<()> {
+        debug!("Upserting like: {}", event.uri);
+
+        let record = event.record.as_ref();
+        let subject = record.and_then(|r| r.get("subject"));
+        let subject_uri = subject.and_then(|s| s.get("uri")).and_then(|v| v.as_str());
+        let subject_cid = subject.and_then(|s| s.get("cid")).and_then(|v| v.as_str());
+        let created_at = record
+            .and_then(|r| r.get("createdAt"))
+            .and_then(|v| v.as_str());
+
+        let subject_uri = match subject_uri {
+            Some(uri) => uri,
+            None => {
+                warn!(uri = %event.uri, "Skipping like without subject uri");
+                return Ok(());
+            }
+        };
+        let subject_cid = subject_cid.unwrap_or("");
+        let created_at = created_at
+            .and_then(parse_naive_datetime)
+            .unwrap_or_else(|| event.time.naive_utc());
+
+        sqlx::query(
+            r#"
+            INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (subject_uri, did) DO NOTHING
+            "#,
+        )
+        .bind(&event.uri)
+        .bind(&event.cid)
+        .bind(&event.did)
+        .bind(subject_uri)
+        .bind(subject_cid)
+        .bind(created_at)
+        .execute(&self.pool)
+        .await?;
+        Ok(())
+    }
+
+    /// Delete a like record
+    pub async fn delete_like(&self, uri: &str) -> Result<()> {
+        debug!("Deleting like: {}", uri);
+        sqlx::query("DELETE FROM likes WHERE uri = $1")
             .bind(uri)
             .execute(&self.pool)
             .await?;

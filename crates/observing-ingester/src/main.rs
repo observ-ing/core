@@ -220,6 +220,30 @@ async fn main() -> Result<()> {
                     });
                 }
             }
+            FirehoseEvent::Like(event) => {
+                let action = event.action.clone();
+                let uri = event.uri.clone();
+
+                let result = if action == "delete" {
+                    db.delete_like(&uri).await
+                } else {
+                    db.upsert_like(&event).await
+                };
+
+                let mut s = state.write().await;
+                if let Err(e) = result {
+                    error!("Database error for like {}: {}", uri, e);
+                    s.stats.errors += 1;
+                } else {
+                    s.stats.likes += 1;
+                    s.add_recent_event(RecentEvent {
+                        event_type: "like".to_string(),
+                        action,
+                        uri,
+                        time: event.time,
+                    });
+                }
+            }
         }
     }
 
