@@ -11,6 +11,7 @@
   "scripts": {
     "build": "npm run build -w observing-lexicon -w observing-frontend",
     "generate-types": "node scripts/generate-types.js",
+    "generate-rust-types": "./scripts/generate-rust-types.sh",
     "frontend:dev": "npm run dev --workspace=observing-frontend",
     "frontend:build": "npm run build --workspace=observing-frontend"
   },

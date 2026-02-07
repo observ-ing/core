@@ -1,5 +1,11 @@
+use std::str::FromStr;
+
 use axum::extract::{Path, State};
 use axum::Json;
+use jacquard_common::types::collection::Collection;
+use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use observing_records::com_atproto::repo::strong_ref::StrongRef;
+use observing_records::org_rwell::test::identification::Identification;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -85,58 +91,37 @@ pub async fn create_identification(
         }
     }
 
-    let now = chrono::Utc::now().to_rfc3339();
-    let subject_index = body.subject_index.unwrap_or(0);
+    let subject = StrongRef::new()
+        .uri(JAtUri::from_str(&body.occurrence_uri).map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?)
+        .cid(JCid::from_str(&body.occurrence_cid).map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?)
+        .build();
 
-    let mut record = json!({
-        "$type": "org.rwell.test.identification",
-        "subject": {
-            "uri": body.occurrence_uri,
-            "cid": body.occurrence_cid,
-        },
-        "subjectIndex": subject_index,
-        "taxonName": body.taxon_name,
-        "isAgreement": body.is_agreement.unwrap_or(false),
-        "createdAt": now,
-    });
+    let record = Identification::new()
+        .taxon_name(&body.taxon_name)
+        .created_at(Datetime::now())
+        .subject(subject)
+        .subject_index(body.subject_index.map(|i| i as i64))
+        .is_agreement(body.is_agreement.unwrap_or(false))
+        .maybe_taxon_rank(taxon_rank.as_deref().map(Into::into))
+        .maybe_comment(body.comment.as_deref().map(Into::into))
+        .maybe_confidence(body.confidence.as_deref().map(Into::into))
+        .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
+        .maybe_vernacular_name(vernacular_name.as_deref().map(Into::into))
+        .maybe_kingdom(kingdom.as_deref().map(Into::into))
+        .maybe_phylum(phylum.as_deref().map(Into::into))
+        .maybe_class(class.as_deref().map(Into::into))
+        .maybe_order(order.as_deref().map(Into::into))
+        .maybe_family(family.as_deref().map(Into::into))
+        .maybe_genus(genus.as_deref().map(Into::into))
+        .build();
 
-    if let Some(ref rank) = taxon_rank {
-        record["taxonRank"] = json!(rank);
-    }
-    if let Some(ref comment) = body.comment {
-        record["comment"] = json!(comment);
-    }
-    if let Some(ref conf) = body.confidence {
-        record["confidence"] = json!(conf);
-    }
-    if let Some(ref id) = taxon_id {
-        record["taxonId"] = json!(id);
-    }
-    if let Some(ref vn) = vernacular_name {
-        record["vernacularName"] = json!(vn);
-    }
-    if let Some(ref k) = kingdom {
-        record["kingdom"] = json!(k);
-    }
-    if let Some(ref p) = phylum {
-        record["phylum"] = json!(p);
-    }
-    if let Some(ref c) = class {
-        record["class"] = json!(c);
-    }
-    if let Some(ref o) = order {
-        record["order"] = json!(o);
-    }
-    if let Some(ref f) = family {
-        record["family"] = json!(f);
-    }
-    if let Some(ref g) = genus {
-        record["genus"] = json!(g);
-    }
+    let mut record_value =
+        serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
+    record_value["$type"] = json!(Identification::NSID);
 
     let resp = state
         .agent
-        .create_record(&user.did, "org.rwell.test.identification", record, None)
+        .create_record(&user.did, Identification::NSID, record_value, None)
         .await
         .map_err(|e| AppError::Internal(e))?;
 

@@ -1,7 +1,10 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use chrono::Utc;
+use jacquard_common::types::collection::Collection;
+use jacquard_common::types::string::Datetime;
 use observing_db::types::UpsertOccurrenceParams;
+use observing_records::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -402,54 +405,75 @@ pub async fn create_occurrence(
         .await
         .ok();
 
-    let now = Utc::now().to_rfc3339();
-    let event_date = body.event_date.as_deref().unwrap_or(&now);
+    let now = Datetime::now();
+    let now_rfc3339 = now.as_str().to_string();
+    let event_date_str = body.event_date.as_deref().unwrap_or(&now_rfc3339);
+    let event_date: Datetime = event_date_str
+        .parse()
+        .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
 
-    // Build location using Darwin Core field names (strings per lexicon)
-    let mut location = json!({
-        "decimalLatitude": body.latitude.to_string(),
-        "decimalLongitude": body.longitude.to_string(),
-        "coordinateUncertaintyInMeters": body.coordinate_uncertainty_in_meters.unwrap_or(50),
-        "geodeticDatum": "WGS84",
-    });
-    if let Some(ref g) = geo {
-        if let Some(ref v) = g.continent { location["continent"] = json!(v); }
-        if let Some(ref v) = g.country { location["country"] = json!(v); }
-        if let Some(ref v) = g.country_code { location["countryCode"] = json!(v); }
-        if let Some(ref v) = g.state_province { location["stateProvince"] = json!(v); }
-        if let Some(ref v) = g.county { location["county"] = json!(v); }
-        if let Some(ref v) = g.municipality { location["municipality"] = json!(v); }
-        if let Some(ref v) = g.locality { location["locality"] = json!(v); }
-        if let Some(ref v) = g.water_body { location["waterBody"] = json!(v); }
-    }
+    // Build location using typed Location struct
+    let location = Location {
+        decimal_latitude: body.latitude.to_string().into(),
+        decimal_longitude: body.longitude.to_string().into(),
+        coordinate_uncertainty_in_meters: Some(
+            body.coordinate_uncertainty_in_meters.unwrap_or(50) as i64,
+        ),
+        geodetic_datum: Some("WGS84".into()),
+        continent: geo.as_ref().and_then(|g| g.continent.as_deref()).map(Into::into),
+        country: geo.as_ref().and_then(|g| g.country.as_deref()).map(Into::into),
+        country_code: geo.as_ref().and_then(|g| g.country_code.as_deref()).map(Into::into),
+        state_province: geo.as_ref().and_then(|g| g.state_province.as_deref()).map(Into::into),
+        county: geo.as_ref().and_then(|g| g.county.as_deref()).map(Into::into),
+        municipality: geo.as_ref().and_then(|g| g.municipality.as_deref()).map(Into::into),
+        locality: geo.as_ref().and_then(|g| g.locality.as_deref()).map(Into::into),
+        water_body: geo.as_ref().and_then(|g| g.water_body.as_deref()).map(Into::into),
+        maximum_depth_in_meters: None,
+        maximum_elevation_in_meters: None,
+        minimum_depth_in_meters: None,
+        minimum_elevation_in_meters: None,
+        extra_data: None,
+    };
 
-    // Build AT Protocol record
-    let mut record = json!({
-        "$type": "org.rwell.test.occurrence",
-        "eventDate": event_date,
-        "location": location,
-        "createdAt": now,
-    });
+    // Build record in a block so CowStr borrows are released before variables are moved
+    let record_value = {
+        let recorded_by_cowstrs: Option<Vec<jacquard_common::CowStr<'_>>> = body
+            .recorded_by
+            .as_ref()
+            .filter(|r| !r.is_empty())
+            .map(|r| r.iter().map(|s| s.as_str().into()).collect());
 
-    if let Some(ref name) = body.scientific_name {
-        record["scientificName"] = json!(name);
-    }
-    if let Some(ref notes) = body.notes {
-        record["notes"] = json!(notes);
-    }
-    if !blobs.is_empty() {
-        record["blobs"] = json!(blobs);
-    }
-    if let Some(ref recorded_by) = body.recorded_by {
-        if !recorded_by.is_empty() {
-            record["recordedBy"] = json!(recorded_by);
+        let record = Occurrence::new()
+            .event_date(event_date)
+            .location(location)
+            .created_at(now)
+            .maybe_scientific_name(body.scientific_name.as_deref().map(Into::into))
+            .maybe_notes(body.notes.as_deref().map(Into::into))
+            .maybe_recorded_by(recorded_by_cowstrs)
+            .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
+            .maybe_taxon_rank(taxon_rank.as_deref().map(Into::into))
+            .maybe_vernacular_name(vernacular_name.as_deref().map(Into::into))
+            .maybe_kingdom(kingdom.as_deref().map(Into::into))
+            .maybe_phylum(phylum.as_deref().map(Into::into))
+            .maybe_class(class.as_deref().map(Into::into))
+            .maybe_order(order.as_deref().map(Into::into))
+            .maybe_family(family.as_deref().map(Into::into))
+            .maybe_genus(genus.as_deref().map(Into::into))
+            .build();
+
+        let mut rv =
+            serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
+        rv["$type"] = json!(Occurrence::NSID);
+        if !blobs.is_empty() {
+            rv["blobs"] = json!(blobs);
         }
-    }
+        rv
+    };
 
     // Create AT Protocol record
     let resp = state
         .agent
-        .create_record(&user.did, "org.rwell.test.occurrence", record, None)
+        .create_record(&user.did, Occurrence::NSID, record_value, None)
         .await
         .map_err(|e| AppError::Internal(e))?;
 
@@ -464,7 +488,7 @@ pub async fn create_occurrence(
         cid: cid.clone(),
         did: user.did.clone(),
         scientific_name: body.scientific_name.clone(),
-        event_date: chrono::DateTime::parse_from_rfc3339(event_date)
+        event_date: chrono::DateTime::parse_from_rfc3339(event_date_str)
             .map(|d| d.with_timezone(&Utc))
             .unwrap_or_else(|_| Utc::now()),
         longitude: body.longitude,

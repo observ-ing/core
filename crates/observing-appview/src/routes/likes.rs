@@ -1,7 +1,13 @@
+use std::str::FromStr;
+
 use axum::extract::State;
 use axum::Json;
 use chrono::Utc;
+use jacquard_common::types::collection::Collection;
+use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
 use observing_db::types::CreateLikeParams;
+use observing_records::app_bsky::feed::like::Like;
+use observing_records::com_atproto::repo::strong_ref::StrongRef;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -28,18 +34,24 @@ pub async fn create_like(
         .map_err(|_| AppError::Unauthorized)?;
 
     let now = Utc::now();
-    let record = json!({
-        "$type": "app.bsky.feed.like",
-        "subject": {
-            "uri": body.occurrence_uri,
-            "cid": body.occurrence_cid,
-        },
-        "createdAt": now.to_rfc3339(),
-    });
+
+    let subject = StrongRef::new()
+        .uri(JAtUri::from_str(&body.occurrence_uri).map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?)
+        .cid(JCid::from_str(&body.occurrence_cid).map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?)
+        .build();
+
+    let record = Like::new()
+        .created_at(Datetime::new(now.fixed_offset()))
+        .subject(subject)
+        .build();
+
+    let mut record_value =
+        serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
+    record_value["$type"] = json!(Like::NSID);
 
     let resp = state
         .agent
-        .create_record(&user.did, "app.bsky.feed.like", record, None)
+        .create_record(&user.did, Like::NSID, record_value, None)
         .await
         .map_err(|e| AppError::Internal(e))?;
 

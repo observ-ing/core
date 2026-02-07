@@ -1,0 +1,19 @@
+[package]
+name = "observing-records"
+version = "0.1.0"
+edition = "2021"
+description = "Generated AT Protocol record types from lexicon schemas"
+license = "AGPL-3.0-only"
+
+[features]
+default = ["app_bsky", "com_atproto", "org_rwell"]
+app_bsky = ["com_atproto"]
+com_atproto = []
+org_rwell = ["com_atproto"]
+
+[dependencies]
+jacquard-common = "0.9"
+jacquard-derive = "0.9"
+jacquard-lexicon = "0.9"
+rustversion = "1"
+serde = { version = "1", features = ["derive"] }
