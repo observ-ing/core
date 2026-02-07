@@ -9,24 +9,41 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# Copy manifests
-COPY Cargo.toml Cargo.lock* ./
+# Copy workspace manifests
+COPY Cargo.toml Cargo.lock ./
 
-# Create dummy src to cache dependencies
-RUN mkdir src && echo "fn main() {}" > src/main.rs && echo "" > src/lib.rs
+# Copy all crate manifests
+COPY crates/gbif-api/Cargo.toml crates/gbif-api/
+COPY crates/observing-appview/Cargo.toml crates/observing-appview/
+COPY crates/observing-db/Cargo.toml crates/observing-db/
+COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
+COPY crates/observing-identity/Cargo.toml crates/observing-identity/
+COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
+COPY crates/observing-lexicons/Cargo.toml crates/observing-lexicons/
+COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
+COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
+
+# Create dummy sources to cache dependencies
+RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
+        mkdir -p crates/$crate/src && \
+        echo "fn main() {}" > crates/$crate/src/main.rs && \
+        echo "" > crates/$crate/src/lib.rs; \
+    done
 
 # Build dependencies only (this layer will be cached)
-RUN cargo build --release && rm -rf src
+RUN cargo build --release -p observing-ingester && rm -rf crates/observing-ingester/src
 
 # Copy SQLx query cache for offline compilation
 COPY .sqlx ./.sqlx
 
 # Copy real source code
-COPY src ./src
+COPY crates/observing-ingester/src crates/observing-ingester/src
+COPY crates/observing-db/src crates/observing-db/src
+COPY crates/observing-lexicons/src crates/observing-lexicons/src
 
 # Build for release with offline SQLx (touch to invalidate cache for main.rs)
 ENV SQLX_OFFLINE=true
-RUN touch src/main.rs && cargo build --release
+RUN touch crates/observing-ingester/src/main.rs && cargo build --release -p observing-ingester
 
 # Runtime stage
 FROM debian:bookworm-slim

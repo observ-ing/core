@@ -12,20 +12,23 @@ WORKDIR /app
 # Copy workspace manifests
 COPY Cargo.toml Cargo.lock ./
 
-# Copy crate manifests
+# Copy all crate manifests
 COPY crates/gbif-api/Cargo.toml crates/gbif-api/
+COPY crates/observing-appview/Cargo.toml crates/observing-appview/
+COPY crates/observing-db/Cargo.toml crates/observing-db/
+COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
+COPY crates/observing-identity/Cargo.toml crates/observing-identity/
 COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
+COPY crates/observing-lexicons/Cargo.toml crates/observing-lexicons/
 COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN mkdir -p crates/gbif-api/src crates/observing-ingester/src crates/observing-media-proxy/src crates/observing-taxonomy/src && \
-    echo "" > crates/gbif-api/src/lib.rs && \
-    echo "fn main() {}" > crates/observing-ingester/src/main.rs && \
-    echo "" > crates/observing-ingester/src/lib.rs && \
-    echo "fn main() {}" > crates/observing-media-proxy/src/main.rs && \
-    echo "" > crates/observing-media-proxy/src/lib.rs && \
-    echo "fn main() {}" > crates/observing-taxonomy/src/main.rs
+RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
+        mkdir -p crates/$crate/src && \
+        echo "fn main() {}" > crates/$crate/src/main.rs && \
+        echo "" > crates/$crate/src/lib.rs; \
+    done
 
 # Build dependencies only (this layer will be cached)
 RUN cargo build --release -p observing-taxonomy && rm -rf crates/observing-taxonomy/src

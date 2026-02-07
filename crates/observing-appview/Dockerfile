@@ -34,11 +34,12 @@ COPY crates/observing-db/Cargo.toml crates/observing-db/
 COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
 COPY crates/observing-identity/Cargo.toml crates/observing-identity/
 COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
+COPY crates/observing-lexicons/Cargo.toml crates/observing-lexicons/
 COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-media-proxy observing-taxonomy; do \
+RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
         mkdir -p crates/$crate/src && \
         echo "fn main() {}" > crates/$crate/src/main.rs && \
         echo "" > crates/$crate/src/lib.rs; \
@@ -46,13 +47,14 @@ RUN for crate in gbif-api observing-appview observing-db observing-geocoding obs
 
 # Build dependencies only (this layer will be cached)
 RUN cargo build --release -p observing-appview && \
-    rm -rf crates/observing-appview/src crates/observing-db/src crates/observing-identity/src crates/observing-geocoding/src crates/gbif-api/src
+    rm -rf crates/observing-appview/src crates/observing-db/src crates/observing-identity/src crates/observing-geocoding/src crates/observing-lexicons/src crates/gbif-api/src
 
 # Copy real source code
 COPY crates/observing-appview/src crates/observing-appview/src
 COPY crates/observing-db/src crates/observing-db/src
 COPY crates/observing-identity/src crates/observing-identity/src
 COPY crates/observing-geocoding/src crates/observing-geocoding/src
+COPY crates/observing-lexicons/src crates/observing-lexicons/src
 COPY crates/gbif-api/src crates/gbif-api/src
 
 # Build for release
