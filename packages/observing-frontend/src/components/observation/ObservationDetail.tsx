@@ -9,6 +9,7 @@ import {
   Stack,
   Paper,
   IconButton,
+  ButtonBase,
   Tabs,
   Tab,
   Chip,
@@ -304,20 +305,16 @@ export function ObservationDetail() {
           {observation.images.length > 1 && (
             <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
               {observation.images.map((img, idx) => (
-                <Box
+                <ButtonBase
                   key={img}
-                  component="button"
                   onClick={() => setActiveImageIndex(idx)}
                   sx={{
                     width: 60,
                     height: 60,
-                    p: 0,
                     border: 2,
                     borderColor: idx === activeImageIndex ? "primary.main" : "divider",
                     borderRadius: 1,
                     overflow: "hidden",
-                    cursor: "pointer",
-                    bgcolor: "transparent",
                   }}
                 >
                   <Box
@@ -326,7 +323,7 @@ export function ObservationDetail() {
                     alt={`Photo ${idx + 1}`}
                     sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                   />
-                </Box>
+                </ButtonBase>
               ))}
             </Stack>
           )}
