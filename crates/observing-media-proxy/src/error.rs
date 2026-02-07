@@ -73,7 +73,10 @@ mod tests {
     #[test]
     fn test_did_resolution_error_display() {
         let err = MediaProxyError::DidResolution("invalid DID format".to_string());
-        assert_eq!(format!("{}", err), "DID resolution error: invalid DID format");
+        assert_eq!(
+            format!("{}", err),
+            "DID resolution error: invalid DID format"
+        );
     }
 
     #[test]

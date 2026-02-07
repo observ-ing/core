@@ -9,33 +9,20 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w observing-lexicon -w observing-shared -w observing-appview -w observing-api -w observing-frontend",
-    "dev": "npm run dev --workspace=observing-appview",
+    "build": "npm run build -w observing-lexicon -w observing-frontend",
     "generate-types": "node scripts/generate-types.js",
-    "test": "vitest",
-    "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage",
-    "appview": "npm run start --workspace=observing-appview",
-    "api": "npm run start --workspace=observing-api",
+    "generate-rust-types": "./scripts/generate-rust-types.sh",
     "frontend:dev": "npm run dev --workspace=observing-frontend",
     "frontend:build": "npm run build --workspace=observing-frontend"
   },
   "devDependencies": {
     "@atproto/lex": "^0.0.14",
     "@types/node": "^20.10.0",
-    "@vitest/coverage-v8": "^4.0.17",
     "dotenv": "^17.2.3",
-    "prisma": "^7.2.0",
     "tsx": "^4.7.0",
-    "typescript": "^5.3.0",
-    "vitest": "^4.0.17"
+    "typescript": "^5.3.0"
   },
   "engines": {
     "node": ">=24.0.0"
-  },
-  "dependencies": {
-    "@mui/x-date-pickers": "^8.27.0",
-    "@prisma/client": "^7.3.0",
-    "date-fns": "^4.1.0"
   }
 }

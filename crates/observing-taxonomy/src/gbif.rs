@@ -3,7 +3,9 @@
 use crate::error::Result;
 use crate::types::*;
 use crate::wikidata::WikidataClient;
-use gbif_api::{GbifClient as GbifApiClient, SearchResult, SpeciesDetail, SuggestResult, V2NameUsage};
+use gbif_api::{
+    GbifClient as GbifApiClient, SearchResult, SpeciesDetail, SuggestResult, V2NameUsage,
+};
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -266,7 +268,9 @@ impl GbifClient {
                 Some(references)
             },
             media: if media.is_empty() { None } else { Some(media) },
-            gbif_url: data.key.map(|k| format!("https://www.gbif.org/species/{}", k)),
+            gbif_url: data
+                .key
+                .map(|k| format!("https://www.gbif.org/species/{}", k)),
             wikidata_url,
         };
 
@@ -286,7 +290,10 @@ impl GbifClient {
         kingdom: Option<&str>,
     ) -> Result<Option<TaxonDetail>> {
         let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
-        let usage_key = gbif_match.as_ref().and_then(|m| m.usage.as_ref()).and_then(|u| u.key);
+        let usage_key = gbif_match
+            .as_ref()
+            .and_then(|m| m.usage.as_ref())
+            .and_then(|u| u.key);
 
         if let Some(key) = usage_key {
             self.get_by_id(&format!("gbif:{}", key)).await
@@ -365,7 +372,8 @@ impl GbifClient {
         let enriched_futures = basic_results.into_iter().map(|(result, key)| {
             let photo_url = key.and_then(|k| photos.get(&k).cloned());
             async move {
-                let conservation_status = self.get_conservation_status(&result.scientific_name).await;
+                let conservation_status =
+                    self.get_conservation_status(&result.scientific_name).await;
                 TaxonResult {
                     conservation_status,
                     photo_url,
@@ -506,7 +514,11 @@ impl GbifClient {
             source: "gbif".to_string(),
             conservation_status: None,
             is_synonym,
-            accepted_name: if is_synonym { item.accepted.clone() } else { None },
+            accepted_name: if is_synonym {
+                item.accepted.clone()
+            } else {
+                None
+            },
         }
     }
 
@@ -520,7 +532,11 @@ impl GbifClient {
         // Extract IUCN conservation status if available
         let conservation_status = additional_status.and_then(|statuses| {
             statuses.iter().find_map(|s| {
-                if s.dataset_alias.as_ref().map(|a| a == "IUCN").unwrap_or(false) {
+                if s.dataset_alias
+                    .as_ref()
+                    .map(|a| a == "IUCN")
+                    .unwrap_or(false)
+                {
                     s.status_code
                         .as_ref()
                         .and_then(|code| code.parse().ok())

@@ -1,12 +1,21 @@
 //! Database layer for the Observ.ing ingester
 //!
-//! Uses sqlx with PostgreSQL for storing occurrences, identifications, and cursor state.
+//! Deserializes raw firehose JSON events into typed records using
+//! `observing-lexicons` and delegates to the shared `observing-db` crate for SQL execution.
 
 use crate::error::Result;
 use crate::types::{
     CommentEvent, IdentificationEvent, InteractionEvent, LikeEvent, OccurrenceEvent,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
+use observing_db::types::{
+    CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams, UpsertInteractionParams,
+    UpsertOccurrenceParams,
+};
+use observing_lexicons::org_rwell::test::{
+    comment::Comment, identification::Identification, interaction::Interaction,
+    occurrence::Occurrence,
+};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
 
@@ -41,94 +50,9 @@ impl Database {
         Ok(Self { pool })
     }
 
-    /// Run database migrations
+    /// Run database migrations using the shared migration
     pub async fn migrate(&self) -> Result<()> {
-        info!("Running database migrations...");
-
-        // Create occurrences table
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS occurrences (
-                uri TEXT PRIMARY KEY,
-                did TEXT NOT NULL,
-                cid TEXT NOT NULL,
-                record JSONB,
-                indexed_at TIMESTAMPTZ DEFAULT NOW(),
-                created_at TIMESTAMPTZ,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            )
-            "#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Create identifications table
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS identifications (
-                uri TEXT PRIMARY KEY,
-                did TEXT NOT NULL,
-                cid TEXT NOT NULL,
-                record JSONB,
-                indexed_at TIMESTAMPTZ DEFAULT NOW(),
-                created_at TIMESTAMPTZ,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            )
-            "#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Create cursor table for resumption (use TEXT for compatibility with existing schema)
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS ingester_state (
-                key TEXT PRIMARY KEY,
-                value TEXT NOT NULL,
-                updated_at TIMESTAMPTZ DEFAULT NOW()
-            )
-            "#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Create likes table
-        sqlx::query(
-            r#"
-            CREATE TABLE IF NOT EXISTS likes (
-                uri TEXT PRIMARY KEY,
-                cid TEXT NOT NULL,
-                did TEXT NOT NULL,
-                subject_uri TEXT NOT NULL REFERENCES occurrences(uri) ON DELETE CASCADE,
-                subject_cid TEXT NOT NULL,
-                created_at TIMESTAMP(3) NOT NULL,
-                indexed_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (subject_uri, did)
-            )
-            "#,
-        )
-        .execute(&self.pool)
-        .await?;
-
-        // Create indexes
-        sqlx::query("CREATE INDEX IF NOT EXISTS likes_subject_uri_idx ON likes(subject_uri)")
-            .execute(&self.pool)
-            .await?;
-
-        sqlx::query("CREATE INDEX IF NOT EXISTS likes_did_idx ON likes(did)")
-            .execute(&self.pool)
-            .await?;
-
-        // Create indexes
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_occurrences_did ON occurrences(did)")
-            .execute(&self.pool)
-            .await?;
-
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_identifications_did ON identifications(did)")
-            .execute(&self.pool)
-            .await?;
-
-        info!("Database migrations complete");
+        observing_db::migrate::migrate(&self.pool).await?;
         Ok(())
     }
 
@@ -136,233 +60,102 @@ impl Database {
     pub async fn upsert_occurrence(&self, event: &OccurrenceEvent) -> Result<()> {
         debug!("Upserting occurrence: {}", event.uri);
 
-        // Extract fields from record JSON to match existing Darwin Core schema
-        let record = event.record.as_ref();
-        let scientific_name = record
-            .and_then(|r| r.get("scientificName"))
-            .and_then(|v| v.as_str());
-        let event_date = record
-            .and_then(|r| r.get("eventDate"))
-            .and_then(|v| v.as_str());
-        let created_at = record
-            .and_then(|r| r.get("createdAt"))
-            .and_then(|v| v.as_str());
-        let verbatim_locality = record
-            .and_then(|r| r.get("verbatimLocality"))
-            .and_then(|v| v.as_str());
-        let notes = record.and_then(|r| r.get("notes")).and_then(|v| v.as_str());
-        let associated_media = record.and_then(|r| r.get("blobs"));
+        let record_json = match &event.record {
+            Some(v) => v,
+            None => {
+                warn!(uri = %event.uri, "Skipping occurrence without record");
+                return Ok(());
+            }
+        };
 
-        // Extract taxonomy fields
-        let taxon_id = record
-            .and_then(|r| r.get("taxonId"))
-            .and_then(|v| v.as_str());
-        let taxon_rank = record
-            .and_then(|r| r.get("taxonRank"))
-            .and_then(|v| v.as_str());
-        let vernacular_name = record
-            .and_then(|r| r.get("vernacularName"))
-            .and_then(|v| v.as_str());
-        let kingdom = record
-            .and_then(|r| r.get("kingdom"))
-            .and_then(|v| v.as_str());
-        let phylum = record
-            .and_then(|r| r.get("phylum"))
-            .and_then(|v| v.as_str());
-        let class = record.and_then(|r| r.get("class")).and_then(|v| v.as_str());
-        let order = record.and_then(|r| r.get("order")).and_then(|v| v.as_str());
-        let family = record
-            .and_then(|r| r.get("family"))
-            .and_then(|v| v.as_str());
-        let genus = record.and_then(|r| r.get("genus")).and_then(|v| v.as_str());
+        let record_str = record_json.to_string();
+        let record: Occurrence<'_> = match serde_json::from_str(&record_str) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(uri = %event.uri, error = %e, "Failed to deserialize occurrence record");
+                return Ok(());
+            }
+        };
 
-        // Extract location
-        let location = record.and_then(|r| r.get("location"));
-        let lat = location
-            .and_then(|l| l.get("decimalLatitude"))
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<f64>().ok());
-        let lng = location
-            .and_then(|l| l.get("decimalLongitude"))
-            .and_then(|v| v.as_str())
-            .and_then(|s| s.parse::<f64>().ok());
-        let coord_uncertainty = location
-            .and_then(|l| l.get("coordinateUncertaintyInMeters"))
-            .and_then(|v| v.as_i64())
-            .map(|v| v as i32);
+        let lat = record
+            .location
+            .decimal_latitude
+            .as_ref()
+            .parse::<f64>()
+            .ok();
+        let lng = record
+            .location
+            .decimal_longitude
+            .as_ref()
+            .parse::<f64>()
+            .ok();
 
-        // Extract Darwin Core administrative geography fields
-        let continent = location
-            .and_then(|l| l.get("continent"))
-            .and_then(|v| v.as_str());
-        let country = location
-            .and_then(|l| l.get("country"))
-            .and_then(|v| v.as_str());
-        let country_code = location
-            .and_then(|l| l.get("countryCode"))
-            .and_then(|v| v.as_str());
-        let state_province = location
-            .and_then(|l| l.get("stateProvince"))
-            .and_then(|v| v.as_str());
-        let county = location
-            .and_then(|l| l.get("county"))
-            .and_then(|v| v.as_str());
-        let municipality = location
-            .and_then(|l| l.get("municipality"))
-            .and_then(|v| v.as_str());
-        let locality = location
-            .and_then(|l| l.get("locality"))
-            .and_then(|v| v.as_str());
-        let water_body = location
-            .and_then(|l| l.get("waterBody"))
-            .and_then(|v| v.as_str());
-
-        // Require lat/lng and event_date
         let (lat, lng) = match (lat, lng) {
             (Some(lat), Some(lng)) => (lat, lng),
             _ => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping occurrence without valid coordinates"
-                );
+                warn!(uri = %event.uri, "Skipping occurrence without valid coordinates");
                 return Ok(());
             }
         };
-        let event_date = match event_date.and_then(parse_datetime) {
+
+        let event_date = match parse_datetime(&record.event_date.to_string()) {
             Some(d) => d,
             None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping occurrence without valid eventDate"
-                );
+                warn!(uri = %event.uri, "Skipping occurrence without valid eventDate");
                 return Ok(());
             }
         };
-        let created_at = created_at.and_then(parse_datetime).unwrap_or(event_date);
 
-        sqlx::query!(
-            r#"
-            INSERT INTO occurrences (
-                uri, did, cid, scientific_name, event_date, location,
-                coordinate_uncertainty_meters,
-                continent, country, country_code, state_province, county, municipality, locality, water_body,
-                verbatim_locality, occurrence_remarks,
-                associated_media, created_at, indexed_at,
-                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus
-            )
-            VALUES (
-                $1, $2, $3, $4, $5::timestamptz, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
-                $8, $9, $10, $11, $12, $13, $14, $15, $16,
-                $17, $18, $19, $20::timestamptz, NOW(),
-                $21, $22, $23, $24, $25, $26, $27, $28, $29
-            )
-            ON CONFLICT (uri) DO UPDATE SET
-                cid = EXCLUDED.cid,
-                scientific_name = EXCLUDED.scientific_name,
-                event_date = EXCLUDED.event_date,
-                location = EXCLUDED.location,
-                coordinate_uncertainty_meters = EXCLUDED.coordinate_uncertainty_meters,
-                continent = EXCLUDED.continent,
-                country = EXCLUDED.country,
-                country_code = EXCLUDED.country_code,
-                state_province = EXCLUDED.state_province,
-                county = EXCLUDED.county,
-                municipality = EXCLUDED.municipality,
-                locality = EXCLUDED.locality,
-                water_body = EXCLUDED.water_body,
-                verbatim_locality = EXCLUDED.verbatim_locality,
-                occurrence_remarks = EXCLUDED.occurrence_remarks,
-                associated_media = EXCLUDED.associated_media,
-                indexed_at = NOW(),
-                taxon_id = EXCLUDED.taxon_id,
-                taxon_rank = EXCLUDED.taxon_rank,
-                vernacular_name = EXCLUDED.vernacular_name,
-                kingdom = EXCLUDED.kingdom,
-                phylum = EXCLUDED.phylum,
-                class = EXCLUDED.class,
-                "order" = EXCLUDED."order",
-                family = EXCLUDED.family,
-                genus = EXCLUDED.genus
-            "#,
-            &event.uri,
-            &event.did,
-            &event.cid,
-            scientific_name,
+        let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(event_date);
+
+        let params = UpsertOccurrenceParams {
+            uri: event.uri.clone(),
+            cid: event.cid.clone(),
+            did: event.did.clone(),
+            scientific_name: record.scientific_name.map(|s| s.to_string()),
             event_date,
-            lng, // ST_MakePoint takes (x, y) = (lng, lat)
-            lat,
-            coord_uncertainty,
-            continent,
-            country,
-            country_code,
-            state_province,
-            county,
-            municipality,
-            locality,
-            water_body,
-            verbatim_locality,
-            notes,
-            associated_media,
+            longitude: lng,
+            latitude: lat,
+            coordinate_uncertainty_meters: record
+                .location
+                .coordinate_uncertainty_in_meters
+                .map(|v| v as i32),
+            continent: record.location.continent.map(|s| s.to_string()),
+            country: record.location.country.map(|s| s.to_string()),
+            country_code: record.location.country_code.map(|s| s.to_string()),
+            state_province: record.location.state_province.map(|s| s.to_string()),
+            county: record.location.county.map(|s| s.to_string()),
+            municipality: record.location.municipality.map(|s| s.to_string()),
+            locality: record.location.locality.map(|s| s.to_string()),
+            water_body: record.location.water_body.map(|s| s.to_string()),
+            verbatim_locality: record.verbatim_locality.map(|s| s.to_string()),
+            occurrence_remarks: record.notes.map(|s| s.to_string()),
+            associated_media: record_json.get("blobs").cloned(),
+            recorded_by: None,
+            taxon_id: record.taxon_id.map(|s| s.to_string()),
+            taxon_rank: record.taxon_rank.map(|s| s.to_string()),
+            vernacular_name: record.vernacular_name.map(|s| s.to_string()),
+            kingdom: record.kingdom.map(|s| s.to_string()),
+            phylum: record.phylum.map(|s| s.to_string()),
+            class: record.class.map(|s| s.to_string()),
+            order: record.order.map(|s| s.to_string()),
+            family: record.family.map(|s| s.to_string()),
+            genus: record.genus.map(|s| s.to_string()),
             created_at,
-            taxon_id,
-            taxon_rank,
-            vernacular_name,
-            kingdom,
-            phylum,
-            class,
-            order,
-            family,
-            genus
-        )
-        .execute(&self.pool)
-        .await?;
+        };
 
-        // Sync occurrence_observers table
-        // First, delete existing observers for this occurrence
-        sqlx::query!(
-            "DELETE FROM occurrence_observers WHERE occurrence_uri = $1",
-            &event.uri
-        )
-        .execute(&self.pool)
-        .await?;
+        observing_db::occurrences::upsert(&self.pool, &params).await?;
 
-        // Insert owner
-        sqlx::query!(
-            r#"
-            INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
-            VALUES ($1, $2, 'owner')
-            ON CONFLICT (occurrence_uri, observer_did) DO NOTHING
-            "#,
-            &event.uri,
-            &event.did
-        )
-        .execute(&self.pool)
-        .await?;
+        // Sync occurrence_observers
+        let co_observers: Vec<String> = record
+            .recorded_by
+            .unwrap_or_default()
+            .iter()
+            .filter(|did| did.as_ref() != event.did)
+            .map(|s| s.to_string())
+            .collect();
 
-        // Extract and insert co-observers from recordedBy array
-        if let Some(recorded_by) = record
-            .and_then(|r| r.get("recordedBy"))
-            .and_then(|v| v.as_array())
-        {
-            for did_value in recorded_by {
-                if let Some(co_observer_did) = did_value.as_str() {
-                    // Don't add owner as co-observer
-                    if co_observer_did != event.did {
-                        sqlx::query!(
-                            r#"
-                            INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
-                            VALUES ($1, $2, 'co-observer')
-                            ON CONFLICT (occurrence_uri, observer_did) DO NOTHING
-                            "#,
-                            &event.uri,
-                            co_observer_did
-                        )
-                        .execute(&self.pool)
-                        .await?;
-                    }
-                }
-            }
-        }
+        observing_db::observers::sync(&self.pool, &event.uri, &event.did, &co_observers).await?;
 
         Ok(())
     }
@@ -370,9 +163,7 @@ impl Database {
     /// Delete an occurrence record
     pub async fn delete_occurrence(&self, uri: &str) -> Result<()> {
         debug!("Deleting occurrence: {}", uri);
-        sqlx::query!("DELETE FROM occurrences WHERE uri = $1", uri)
-            .execute(&self.pool)
-            .await?;
+        observing_db::occurrences::delete(&self.pool, uri).await?;
         Ok(())
     }
 
@@ -380,110 +171,57 @@ impl Database {
     pub async fn upsert_identification(&self, event: &IdentificationEvent) -> Result<()> {
         debug!("Upserting identification: {}", event.uri);
 
-        // Extract fields from record JSON to match existing schema
-        let record = event.record.as_ref();
-        let subject = record.and_then(|r| r.get("subject"));
-        let subject_uri = subject.and_then(|s| s.get("uri")).and_then(|v| v.as_str());
-        let subject_cid = subject.and_then(|s| s.get("cid")).and_then(|v| v.as_str());
-        let subject_index = record
-            .and_then(|r| r.get("subjectIndex"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
-        let taxon_name = record
-            .and_then(|r| r.get("taxonName"))
-            .and_then(|v| v.as_str());
-        let taxon_rank = record
-            .and_then(|r| r.get("taxonRank"))
-            .and_then(|v| v.as_str());
-        let comment = record
-            .and_then(|r| r.get("comment"))
-            .and_then(|v| v.as_str());
-        let is_agreement = record
-            .and_then(|r| r.get("isAgreement"))
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-        let created_at = record
-            .and_then(|r| r.get("createdAt"))
-            .and_then(|v| v.as_str());
+        let record_json = match &event.record {
+            Some(v) => v,
+            None => {
+                warn!(uri = %event.uri, "Skipping identification without record");
+                return Ok(());
+            }
+        };
 
-        // Require subject and taxon_name
-        let subject_uri = match subject_uri {
-            Some(uri) => uri,
-            None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping identification without subject uri"
-                );
+        let record_str = record_json.to_string();
+        let record: Identification<'_> = match serde_json::from_str(&record_str) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(uri = %event.uri, error = %e, "Failed to deserialize identification record");
                 return Ok(());
             }
         };
-        let subject_cid = subject_cid.unwrap_or("");
-        let taxon_name = match taxon_name {
-            Some(name) => name,
-            None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping identification without taxonName"
-                );
-                return Ok(());
-            }
-        };
-        let date_identified = created_at
-            .and_then(parse_naive_datetime)
+
+        let date_identified = parse_naive_datetime(&record.created_at.to_string())
             .unwrap_or_else(|| event.time.naive_utc());
 
-        sqlx::query!(
-            r#"
-            INSERT INTO identifications (
-                uri, did, cid, subject_uri, subject_cid, subject_index, scientific_name,
-                taxon_rank, identification_remarks, is_agreement, date_identified, indexed_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
-            ON CONFLICT (uri) DO UPDATE SET
-                cid = EXCLUDED.cid,
-                subject_uri = EXCLUDED.subject_uri,
-                subject_cid = EXCLUDED.subject_cid,
-                subject_index = EXCLUDED.subject_index,
-                scientific_name = EXCLUDED.scientific_name,
-                taxon_rank = EXCLUDED.taxon_rank,
-                identification_remarks = EXCLUDED.identification_remarks,
-                is_agreement = EXCLUDED.is_agreement,
-                date_identified = EXCLUDED.date_identified,
-                indexed_at = NOW()
-            "#,
-            &event.uri,
-            &event.did,
-            &event.cid,
-            subject_uri,
-            subject_cid,
-            subject_index,
-            taxon_name,
-            taxon_rank,
-            comment,
-            is_agreement,
-            date_identified
-        )
-        .execute(&self.pool)
-        .await?;
-        self.refresh_community_ids().await?;
+        let params = UpsertIdentificationParams {
+            uri: event.uri.clone(),
+            cid: event.cid.clone(),
+            did: event.did.clone(),
+            subject_uri: record.subject.uri.to_string(),
+            subject_cid: record.subject.cid.to_string(),
+            subject_index: record.subject_index.unwrap_or(0) as i32,
+            scientific_name: record.taxon_name.to_string(),
+            taxon_rank: record.taxon_rank.map(|s| s.to_string()),
+            taxon_id: record.taxon_id.map(|s| s.to_string()),
+            identification_remarks: record.comment.map(|s| s.to_string()),
+            is_agreement: record.is_agreement.unwrap_or(false),
+            date_identified,
+            vernacular_name: record.vernacular_name.map(|s| s.to_string()),
+            kingdom: record.kingdom.map(|s| s.to_string()),
+            phylum: record.phylum.map(|s| s.to_string()),
+            class: record.class.map(|s| s.to_string()),
+            order: record.order.map(|s| s.to_string()),
+            family: record.family.map(|s| s.to_string()),
+            genus: record.genus.map(|s| s.to_string()),
+            confidence: record.confidence.map(|s| s.to_string()),
+        };
+
+        observing_db::identifications::upsert(&self.pool, &params).await?;
         Ok(())
     }
 
     /// Delete an identification record
     pub async fn delete_identification(&self, uri: &str) -> Result<()> {
         debug!("Deleting identification: {}", uri);
-        sqlx::query!("DELETE FROM identifications WHERE uri = $1", uri)
-            .execute(&self.pool)
-            .await?;
-        self.refresh_community_ids().await?;
-        Ok(())
-    }
-
-    /// Refresh the community_ids materialized view
-    async fn refresh_community_ids(&self) -> Result<()> {
-        sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
-            .execute(&self.pool)
-            .await?;
+        observing_db::identifications::delete(&self.pool, uri).await?;
         Ok(())
     }
 
@@ -491,83 +229,46 @@ impl Database {
     pub async fn upsert_comment(&self, event: &CommentEvent) -> Result<()> {
         debug!("Upserting comment: {}", event.uri);
 
-        // Extract fields from record JSON
-        let record = event.record.as_ref();
-        let subject = record.and_then(|r| r.get("subject"));
-        let subject_uri = subject.and_then(|s| s.get("uri")).and_then(|v| v.as_str());
-        let subject_cid = subject.and_then(|s| s.get("cid")).and_then(|v| v.as_str());
-        let body = record.and_then(|r| r.get("body")).and_then(|v| v.as_str());
-        let reply_to = record.and_then(|r| r.get("replyTo"));
-        let reply_to_uri = reply_to.and_then(|s| s.get("uri")).and_then(|v| v.as_str());
-        let reply_to_cid = reply_to.and_then(|s| s.get("cid")).and_then(|v| v.as_str());
-        let created_at = record
-            .and_then(|r| r.get("createdAt"))
-            .and_then(|v| v.as_str());
+        let record_json = match &event.record {
+            Some(v) => v,
+            None => {
+                warn!(uri = %event.uri, "Skipping comment without record");
+                return Ok(());
+            }
+        };
 
-        // Require subject and body
-        let subject_uri = match subject_uri {
-            Some(uri) => uri,
-            None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping comment without subject uri"
-                );
+        let record_str = record_json.to_string();
+        let record: Comment<'_> = match serde_json::from_str(&record_str) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(uri = %event.uri, error = %e, "Failed to deserialize comment record");
                 return Ok(());
             }
         };
-        let subject_cid = subject_cid.unwrap_or("");
-        let body = match body {
-            Some(b) => b,
-            None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping comment without body"
-                );
-                return Ok(());
-            }
-        };
-        let created_at = created_at
-            .and_then(parse_naive_datetime)
+
+        let created_at = parse_naive_datetime(&record.created_at.to_string())
             .unwrap_or_else(|| event.time.naive_utc());
 
-        sqlx::query!(
-            r#"
-            INSERT INTO comments (
-                uri, did, cid, subject_uri, subject_cid, body,
-                reply_to_uri, reply_to_cid, created_at, indexed_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-            ON CONFLICT (uri) DO UPDATE SET
-                cid = EXCLUDED.cid,
-                subject_uri = EXCLUDED.subject_uri,
-                subject_cid = EXCLUDED.subject_cid,
-                body = EXCLUDED.body,
-                reply_to_uri = EXCLUDED.reply_to_uri,
-                reply_to_cid = EXCLUDED.reply_to_cid,
-                created_at = EXCLUDED.created_at,
-                indexed_at = NOW()
-            "#,
-            &event.uri,
-            &event.did,
-            &event.cid,
-            subject_uri,
-            subject_cid,
-            body,
-            reply_to_uri,
-            reply_to_cid,
-            created_at
-        )
-        .execute(&self.pool)
-        .await?;
+        let params = UpsertCommentParams {
+            uri: event.uri.clone(),
+            cid: event.cid.clone(),
+            did: event.did.clone(),
+            subject_uri: record.subject.uri.to_string(),
+            subject_cid: record.subject.cid.to_string(),
+            body: record.body.to_string(),
+            reply_to_uri: record.reply_to.as_ref().map(|r| r.uri.to_string()),
+            reply_to_cid: record.reply_to.as_ref().map(|r| r.cid.to_string()),
+            created_at,
+        };
+
+        observing_db::comments::upsert(&self.pool, &params).await?;
         Ok(())
     }
 
     /// Delete a comment record
     pub async fn delete_comment(&self, uri: &str) -> Result<()> {
         debug!("Deleting comment: {}", uri);
-        sqlx::query!("DELETE FROM comments WHERE uri = $1", uri)
-            .execute(&self.pool)
-            .await?;
+        observing_db::comments::delete(&self.pool, uri).await?;
         Ok(())
     }
 
@@ -575,143 +276,72 @@ impl Database {
     pub async fn upsert_interaction(&self, event: &InteractionEvent) -> Result<()> {
         debug!("Upserting interaction: {}", event.uri);
 
-        // Extract fields from record JSON
-        let record = event.record.as_ref();
-        let subject_a = record.and_then(|r| r.get("subjectA"));
-        let subject_b = record.and_then(|r| r.get("subjectB"));
-
-        // Subject A fields
-        let subject_a_occurrence = subject_a.and_then(|s| s.get("occurrence"));
-        let subject_a_occurrence_uri = subject_a_occurrence
-            .and_then(|o| o.get("uri"))
-            .and_then(|v| v.as_str());
-        let subject_a_occurrence_cid = subject_a_occurrence
-            .and_then(|o| o.get("cid"))
-            .and_then(|v| v.as_str());
-        let subject_a_subject_index = subject_a
-            .and_then(|s| s.get("subjectIndex"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
-        let subject_a_taxon_name = subject_a
-            .and_then(|s| s.get("taxonName"))
-            .and_then(|v| v.as_str());
-        let subject_a_kingdom = subject_a
-            .and_then(|s| s.get("kingdom"))
-            .and_then(|v| v.as_str());
-
-        // Subject B fields
-        let subject_b_occurrence = subject_b.and_then(|s| s.get("occurrence"));
-        let subject_b_occurrence_uri = subject_b_occurrence
-            .and_then(|o| o.get("uri"))
-            .and_then(|v| v.as_str());
-        let subject_b_occurrence_cid = subject_b_occurrence
-            .and_then(|o| o.get("cid"))
-            .and_then(|v| v.as_str());
-        let subject_b_subject_index = subject_b
-            .and_then(|s| s.get("subjectIndex"))
-            .and_then(|v| v.as_i64())
-            .unwrap_or(0) as i32;
-        let subject_b_taxon_name = subject_b
-            .and_then(|s| s.get("taxonName"))
-            .and_then(|v| v.as_str());
-        let subject_b_kingdom = subject_b
-            .and_then(|s| s.get("kingdom"))
-            .and_then(|v| v.as_str());
-
-        // Interaction details
-        let interaction_type = record
-            .and_then(|r| r.get("interactionType"))
-            .and_then(|v| v.as_str());
-        let direction = record
-            .and_then(|r| r.get("direction"))
-            .and_then(|v| v.as_str())
-            .unwrap_or("AtoB");
-        let confidence = record
-            .and_then(|r| r.get("confidence"))
-            .and_then(|v| v.as_str());
-        let comment = record
-            .and_then(|r| r.get("comment"))
-            .and_then(|v| v.as_str());
-        let created_at = record
-            .and_then(|r| r.get("createdAt"))
-            .and_then(|v| v.as_str());
-
-        // Require interaction_type
-        let interaction_type = match interaction_type {
-            Some(t) => t,
+        let record_json = match &event.record {
+            Some(v) => v,
             None => {
-                warn!(
-                    uri = %event.uri,
-                    "Skipping interaction without interactionType"
-                );
+                warn!(uri = %event.uri, "Skipping interaction without record");
                 return Ok(());
             }
         };
 
-        let created_at = created_at.and_then(parse_datetime).unwrap_or(event.time);
+        let record_str = record_json.to_string();
+        let record: Interaction<'_> = match serde_json::from_str(&record_str) {
+            Ok(r) => r,
+            Err(e) => {
+                warn!(uri = %event.uri, error = %e, "Failed to deserialize interaction record");
+                return Ok(());
+            }
+        };
 
-        // Use sqlx::query instead of sqlx::query! since the interactions table
-        // may not exist in the database yet (compile-time verification)
-        sqlx::query(
-            r#"
-            INSERT INTO interactions (
-                uri, cid, did,
-                subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
-                subject_a_taxon_name, subject_a_kingdom,
-                subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
-                subject_b_taxon_name, subject_b_kingdom,
-                interaction_type, direction, confidence, comment, created_at, indexed_at
-            )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
-            ON CONFLICT (uri) DO UPDATE SET
-                cid = EXCLUDED.cid,
-                subject_a_occurrence_uri = EXCLUDED.subject_a_occurrence_uri,
-                subject_a_occurrence_cid = EXCLUDED.subject_a_occurrence_cid,
-                subject_a_subject_index = EXCLUDED.subject_a_subject_index,
-                subject_a_taxon_name = EXCLUDED.subject_a_taxon_name,
-                subject_a_kingdom = EXCLUDED.subject_a_kingdom,
-                subject_b_occurrence_uri = EXCLUDED.subject_b_occurrence_uri,
-                subject_b_occurrence_cid = EXCLUDED.subject_b_occurrence_cid,
-                subject_b_subject_index = EXCLUDED.subject_b_subject_index,
-                subject_b_taxon_name = EXCLUDED.subject_b_taxon_name,
-                subject_b_kingdom = EXCLUDED.subject_b_kingdom,
-                interaction_type = EXCLUDED.interaction_type,
-                direction = EXCLUDED.direction,
-                confidence = EXCLUDED.confidence,
-                comment = EXCLUDED.comment,
-                indexed_at = NOW()
-            "#,
-        )
-        .bind(&event.uri)
-        .bind(&event.cid)
-        .bind(&event.did)
-        .bind(subject_a_occurrence_uri)
-        .bind(subject_a_occurrence_cid)
-        .bind(subject_a_subject_index)
-        .bind(subject_a_taxon_name)
-        .bind(subject_a_kingdom)
-        .bind(subject_b_occurrence_uri)
-        .bind(subject_b_occurrence_cid)
-        .bind(subject_b_subject_index)
-        .bind(subject_b_taxon_name)
-        .bind(subject_b_kingdom)
-        .bind(interaction_type)
-        .bind(direction)
-        .bind(confidence)
-        .bind(comment)
-        .bind(created_at)
-        .execute(&self.pool)
-        .await?;
+        let interaction_type = record.interaction_type.as_ref();
+        let direction = record.direction.to_string();
+        let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(event.time);
+
+        let params = UpsertInteractionParams {
+            uri: event.uri.clone(),
+            cid: event.cid.clone(),
+            did: event.did.clone(),
+            subject_a_occurrence_uri: record
+                .subject_a
+                .occurrence
+                .as_ref()
+                .map(|o| o.uri.to_string()),
+            subject_a_occurrence_cid: record
+                .subject_a
+                .occurrence
+                .as_ref()
+                .map(|o| o.cid.to_string()),
+            subject_a_subject_index: record.subject_a.subject_index.unwrap_or(0) as i32,
+            subject_a_taxon_name: record.subject_a.taxon_name.as_ref().map(|s| s.to_string()),
+            subject_a_kingdom: record.subject_a.kingdom.as_ref().map(|s| s.to_string()),
+            subject_b_occurrence_uri: record
+                .subject_b
+                .occurrence
+                .as_ref()
+                .map(|o| o.uri.to_string()),
+            subject_b_occurrence_cid: record
+                .subject_b
+                .occurrence
+                .as_ref()
+                .map(|o| o.cid.to_string()),
+            subject_b_subject_index: record.subject_b.subject_index.unwrap_or(0) as i32,
+            subject_b_taxon_name: record.subject_b.taxon_name.as_ref().map(|s| s.to_string()),
+            subject_b_kingdom: record.subject_b.kingdom.as_ref().map(|s| s.to_string()),
+            interaction_type: interaction_type.to_string(),
+            direction,
+            confidence: record.confidence.map(|s| s.to_string()),
+            comment: record.comment.map(|s| s.to_string()),
+            created_at,
+        };
+
+        observing_db::interactions::upsert(&self.pool, &params).await?;
         Ok(())
     }
 
     /// Delete an interaction record
     pub async fn delete_interaction(&self, uri: &str) -> Result<()> {
         debug!("Deleting interaction: {}", uri);
-        sqlx::query("DELETE FROM interactions WHERE uri = $1")
-            .bind(uri)
-            .execute(&self.pool)
-            .await?;
+        observing_db::interactions::delete(&self.pool, uri).await?;
         Ok(())
     }
 
@@ -719,57 +349,51 @@ impl Database {
     pub async fn upsert_like(&self, event: &LikeEvent) -> Result<()> {
         debug!("Upserting like: {}", event.uri);
 
-        let record = event.record.as_ref();
-        let subject = record.and_then(|r| r.get("subject"));
-        let subject_uri = subject.and_then(|s| s.get("uri")).and_then(|v| v.as_str());
-        let subject_cid = subject.and_then(|s| s.get("cid")).and_then(|v| v.as_str());
-        let created_at = record
-            .and_then(|r| r.get("createdAt"))
-            .and_then(|v| v.as_str());
-
-        let subject_uri = match subject_uri {
-            Some(uri) => uri,
+        let record_json = match &event.record {
+            Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping like without subject uri");
+                warn!(uri = %event.uri, "Skipping like without record");
                 return Ok(());
             }
         };
-        let subject_cid = subject_cid.unwrap_or("");
-        let created_at = created_at
-            .and_then(parse_naive_datetime)
+
+        // Likes can be app.bsky.feed.like or org.rwell.test.like — both have the same
+        // shape (subject + createdAt). Use the org.rwell.test.like type.
+        let record_str = record_json.to_string();
+        let record: observing_lexicons::org_rwell::test::like::Like<'_> =
+            match serde_json::from_str(&record_str) {
+                Ok(r) => r,
+                Err(e) => {
+                    warn!(uri = %event.uri, error = %e, "Failed to deserialize like record");
+                    return Ok(());
+                }
+            };
+
+        let created_at = parse_naive_datetime(&record.created_at.to_string())
             .unwrap_or_else(|| event.time.naive_utc());
 
-        sqlx::query(
-            r#"
-            INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (subject_uri, did) DO NOTHING
-            "#,
-        )
-        .bind(&event.uri)
-        .bind(&event.cid)
-        .bind(&event.did)
-        .bind(subject_uri)
-        .bind(subject_cid)
-        .bind(created_at)
-        .execute(&self.pool)
-        .await?;
+        let params = CreateLikeParams {
+            uri: event.uri.clone(),
+            cid: event.cid.clone(),
+            did: event.did.clone(),
+            subject_uri: record.subject.uri.to_string(),
+            subject_cid: record.subject.cid.to_string(),
+            created_at,
+        };
+
+        observing_db::likes::create(&self.pool, &params).await?;
         Ok(())
     }
 
     /// Delete a like record
     pub async fn delete_like(&self, uri: &str) -> Result<()> {
         debug!("Deleting like: {}", uri);
-        sqlx::query("DELETE FROM likes WHERE uri = $1")
-            .bind(uri)
-            .execute(&self.pool)
-            .await?;
+        observing_db::likes::delete(&self.pool, uri).await?;
         Ok(())
     }
 
     /// Get the saved cursor for resumption
     pub async fn get_cursor(&self) -> Result<Option<i64>> {
-        // Value is stored as TEXT for compatibility with existing schema
         let row = sqlx::query!("SELECT value FROM ingester_state WHERE key = 'cursor'")
             .fetch_optional(&self.pool)
             .await?;
@@ -778,7 +402,6 @@ impl Database {
 
     /// Save the cursor for resumption
     pub async fn save_cursor(&self, cursor: i64) -> Result<()> {
-        // Value is stored as TEXT for compatibility with existing schema
         let cursor_str = cursor.to_string();
         sqlx::query!(
             r#"
@@ -806,5 +429,4 @@ impl Database {
 #[cfg(test)]
 mod tests {
     // Integration tests would require a test database
-    // Unit tests for query building could go here
 }

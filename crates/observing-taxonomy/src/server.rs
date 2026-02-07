@@ -98,10 +98,7 @@ async fn health(State(state): State<SharedState>) -> Json<HealthResponse> {
 }
 
 /// Search for taxa
-async fn search(
-    State(state): State<SharedState>,
-    Query(params): Query<SearchQuery>,
-) -> Response {
+async fn search(State(state): State<SharedState>, Query(params): Query<SearchQuery>) -> Response {
     match state.client.search(&params.q, params.limit).await {
         Ok(results) => Json(results).into_response(),
         Err(e) => {
@@ -144,8 +141,7 @@ async fn get_taxon(
     Query(params): Query<TaxonQuery>,
 ) -> Response {
     // Check if this looks like a GBIF ID (gbif:NNN or just numeric)
-    let is_id = id_or_name.starts_with("gbif:")
-        || id_or_name.parse::<u64>().is_ok();
+    let is_id = id_or_name.starts_with("gbif:") || id_or_name.parse::<u64>().is_ok();
 
     let result = if is_id {
         state.client.get_by_id(&id_or_name).await
@@ -179,10 +175,7 @@ async fn get_taxon(
 }
 
 /// Get children of a taxon
-async fn get_children(
-    State(state): State<SharedState>,
-    Path(id): Path<String>,
-) -> Response {
+async fn get_children(State(state): State<SharedState>, Path(id): Path<String>) -> Response {
     match state.client.get_children(&id, 20).await {
         Ok(children) => Json(children).into_response(),
         Err(e) => {
@@ -216,7 +209,12 @@ mod tests {
         let router = create_router(state);
 
         let response = router
-            .oneshot(Request::builder().uri("/health").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/health")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -237,7 +235,12 @@ mod tests {
         let router = create_router(state);
 
         let response = router
-            .oneshot(Request::builder().uri("/search").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/search")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 
@@ -251,7 +254,12 @@ mod tests {
         let router = create_router(state);
 
         let response = router
-            .oneshot(Request::builder().uri("/validate").body(Body::empty()).unwrap())
+            .oneshot(
+                Request::builder()
+                    .uri("/validate")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
             .await
             .unwrap();
 

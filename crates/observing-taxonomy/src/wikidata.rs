@@ -51,7 +51,11 @@ impl WikidataClient {
         }
 
         // Build SPARQL VALUES clause with quoted string IDs
-        let values: String = keys.iter().map(|k| format!("\"{}\"", k)).collect::<Vec<_>>().join(" ");
+        let values: String = keys
+            .iter()
+            .map(|k| format!("\"{}\"", k))
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let query = format!(
             r#"
@@ -166,9 +170,10 @@ SELECT ?gbif_taxon_id (SAMPLE(?image) AS ?image) WHERE {{
 
         data.results.bindings.first().map(|b| {
             // Convert http://www.wikidata.org/entity/Q123 to https://www.wikidata.org/wiki/Q123
-            b.item
-                .value
-                .replace("http://www.wikidata.org/entity/", "https://www.wikidata.org/wiki/")
+            b.item.value.replace(
+                "http://www.wikidata.org/entity/",
+                "https://www.wikidata.org/wiki/",
+            )
         })
     }
 }
