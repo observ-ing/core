@@ -90,6 +90,33 @@ impl Database {
         .execute(&self.pool)
         .await?;
 
+        // Create likes table
+        sqlx::query(
+            r#"
+            CREATE TABLE IF NOT EXISTS likes (
+                uri TEXT PRIMARY KEY,
+                cid TEXT NOT NULL,
+                did TEXT NOT NULL,
+                subject_uri TEXT NOT NULL REFERENCES occurrences(uri) ON DELETE CASCADE,
+                subject_cid TEXT NOT NULL,
+                created_at TIMESTAMP(3) NOT NULL,
+                indexed_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (subject_uri, did)
+            )
+            "#,
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // Create indexes
+        sqlx::query("CREATE INDEX IF NOT EXISTS likes_subject_uri_idx ON likes(subject_uri)")
+            .execute(&self.pool)
+            .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS likes_did_idx ON likes(did)")
+            .execute(&self.pool)
+            .await?;
+
         // Create indexes
         sqlx::query("CREATE INDEX IF NOT EXISTS idx_occurrences_did ON occurrences(did)")
             .execute(&self.pool)

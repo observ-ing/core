@@ -23,11 +23,13 @@ import {
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
-import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
+import { fetchObservation, getImageUrl, deleteIdentification, likeObservation, unlikeObservation } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
@@ -53,6 +55,8 @@ export function ObservationDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState(0);
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -73,6 +77,8 @@ export function ObservationDetail() {
       const result = await fetchObservation(atUri!);
       if (result?.occurrence) {
         setObservation(result.occurrence);
+        setLiked(result.occurrence.viewerHasLiked ?? false);
+        setLikeCount(result.occurrence.likeCount ?? 0);
         setIdentifications((result as { identifications?: Identification[] }).identifications || []);
         setComments((result as { comments?: Comment[] }).comments || []);
       } else {
@@ -131,6 +137,25 @@ export function ObservationDetail() {
     handleMenuClose();
     if (observation) {
       dispatch(openDeleteConfirm(observation));
+    }
+  };
+
+  const handleLikeToggle = async () => {
+    if (!user || !observation) return;
+
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikeCount((c) => c + (wasLiked ? -1 : 1));
+
+    try {
+      if (wasLiked) {
+        await unlikeObservation(observation.uri);
+      } else {
+        await likeObservation(observation.uri, observation.cid);
+      }
+    } catch {
+      setLiked(wasLiked);
+      setLikeCount((c) => c + (wasLiked ? 1 : -1));
     }
   };
 
@@ -290,6 +315,31 @@ export function ObservationDetail() {
           </Typography>
         )}
       </Box>
+
+      {/* Like button */}
+      <Stack direction="row" alignItems="center" sx={{ px: 3, pb: 1 }}>
+        <IconButton
+          size="small"
+          onClick={handleLikeToggle}
+          disabled={!user}
+          aria-label={liked ? "Unlike" : "Like"}
+          sx={{
+            color: liked ? "error.main" : "text.disabled",
+            ml: -0.5,
+          }}
+        >
+          {liked ? (
+            <FavoriteIcon fontSize="small" />
+          ) : (
+            <FavoriteBorderIcon fontSize="small" />
+          )}
+        </IconButton>
+        {likeCount > 0 && (
+          <Typography variant="body2" color="text.secondary" sx={{ ml: -0.25 }}>
+            {likeCount}
+          </Typography>
+        )}
+      </Stack>
 
       {/* Images */}
       {observation.images.length > 0 && (

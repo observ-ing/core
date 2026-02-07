@@ -477,3 +477,40 @@ export async function fetchInteractionsForOccurrence(
 
   return response.json();
 }
+
+export async function likeObservation(
+  occurrenceUri: string,
+  occurrenceCid: string,
+): Promise<{ uri: string; cid: string }> {
+  const response = await fetch(`${API_BASE}/api/likes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ occurrenceUri, occurrenceCid }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to like observation");
+  }
+
+  return response.json();
+}
+
+export async function unlikeObservation(
+  occurrenceUri: string,
+): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/likes`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ occurrenceUri }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to unlike observation");
+  }
+
+  return response.json();
+}

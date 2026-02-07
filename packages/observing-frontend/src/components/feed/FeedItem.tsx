@@ -13,14 +13,17 @@ import {
   CardHeader,
   CardMedia,
   CardContent,
+  CardActions,
   CardActionArea,
   Stack,
   Tooltip,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
+import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
-import { getImageUrl } from "../../services/api";
+import { getImageUrl, likeObservation, unlikeObservation } from "../../services/api";
 import { TaxonLink } from "../common/TaxonLink";
 import { formatTimeAgo, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 
@@ -35,6 +38,8 @@ const REMARKS_TRUNCATE_LENGTH = 200;
 export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [remarksExpanded, setRemarksExpanded] = useState(false);
+  const [liked, setLiked] = useState(observation.viewerHasLiked ?? false);
+  const [likeCount, setLikeCount] = useState(observation.likeCount ?? 0);
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -108,6 +113,27 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       return;
     }
     navigate(observationUrl);
+  };
+
+  const handleLikeToggle = async () => {
+    if (!currentUser) return;
+
+    const wasLiked = liked;
+    // Optimistic update
+    setLiked(!wasLiked);
+    setLikeCount((c) => c + (wasLiked ? -1 : 1));
+
+    try {
+      if (wasLiked) {
+        await unlikeObservation(observation.uri);
+      } else {
+        await likeObservation(observation.uri, observation.cid);
+      }
+    } catch {
+      // Revert on failure
+      setLiked(wasLiked);
+      setLikeCount((c) => c + (wasLiked ? 1 : -1));
+    }
   };
 
   const avatarEl = hasCoObservers ? (
@@ -246,7 +272,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           />
         )}
 
-        <CardContent sx={{ "&:last-child": { pb: 1.5 } }}>
+        <CardContent>
           {/* Species display - show multiple if multi-subject */}
           {observation.subjects && observation.subjects.length > 1 ? (
             <Stack spacing={0.25}>
@@ -332,6 +358,28 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           )}
         </CardContent>
       </CardActionArea>
+      <CardActions disableSpacing sx={{ pt: 0 }}>
+        <IconButton
+          size="small"
+          onClick={handleLikeToggle}
+          disabled={!currentUser}
+          aria-label={liked ? "Unlike" : "Like"}
+          sx={{
+            color: liked ? "error.main" : "text.disabled",
+          }}
+        >
+          {liked ? (
+            <FavoriteIcon fontSize="small" />
+          ) : (
+            <FavoriteBorderIcon fontSize="small" />
+          )}
+        </IconButton>
+        {likeCount > 0 && (
+          <Typography variant="body2" color="text.secondary">
+            {likeCount}
+          </Typography>
+        )}
+      </CardActions>
     </Card>
   );
 }

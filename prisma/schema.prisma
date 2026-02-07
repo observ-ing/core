@@ -52,6 +52,7 @@ model Occurrence {
 
   identifications  Identification[]
   comments         Comment[]
+  likes            Like[]
   interactionsAsA  Interaction[]    @relation("InteractionSubjectA")
   interactionsAsB  Interaction[]    @relation("InteractionSubjectB")
 
@@ -116,6 +117,23 @@ model Comment {
   @@index([did], name: "comments_did_idx")
   @@index([replyToUri], name: "comments_reply_to_uri_idx")
   @@map("comments")
+}
+
+model Like {
+  uri        String   @id
+  cid        String
+  did        String
+  subjectUri String   @map("subject_uri")
+  subjectCid String   @map("subject_cid")
+  createdAt  DateTime @map("created_at")
+  indexedAt  DateTime @default(now()) @map("indexed_at")
+
+  occurrence Occurrence @relation(fields: [subjectUri], references: [uri], onDelete: Cascade)
+
+  @@unique([subjectUri, did], name: "likes_subject_did_unique")
+  @@index([subjectUri], name: "likes_subject_uri_idx")
+  @@index([did], name: "likes_did_idx")
+  @@map("likes")
 }
 
 model Interaction {

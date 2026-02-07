@@ -510,3 +510,68 @@ Test cases for Observ.ing QA.
 3. Click on "Occurrence" schema
 
 **Expected:** Schema expands showing all fields with types and descriptions
+
+---
+
+## Likes
+
+### TC-LIKE-001: Like button visible on feed items
+1. Navigate to `/`
+2. Wait for feed to load
+
+**Expected:** Each feed item shows a heart icon below the species name
+
+### TC-LIKE-002: Like button disabled when logged out
+**Precondition:** User is logged out
+1. Navigate to `/`
+2. Observe heart icon on a feed item
+
+**Expected:** Heart icon button is disabled (not clickable)
+
+### TC-LIKE-003: Like an observation from feed
+**Precondition:** User is logged in
+1. Navigate to `/`
+2. Click the heart icon on a feed item
+
+**Expected:** Heart fills in (solid red), like count increments by 1
+
+### TC-LIKE-004: Unlike an observation from feed
+**Precondition:** User is logged in, has liked an observation
+1. Navigate to `/`
+2. Click the filled heart icon on a liked feed item
+
+**Expected:** Heart becomes outlined (unfilled), like count decrements by 1
+
+### TC-LIKE-005: Like button on observation detail page
+1. Navigate to an observation detail page
+
+**Expected:** Heart icon is visible between the species name and the images
+
+### TC-LIKE-006: Like an observation from detail page
+**Precondition:** User is logged in
+1. Navigate to an observation detail page
+2. Click the heart icon
+
+**Expected:** Heart fills in (solid red), like count increments by 1
+
+### TC-LIKE-007: Unlike an observation from detail page
+**Precondition:** User is logged in, has liked this observation
+1. Navigate to a liked observation's detail page
+2. Click the filled heart icon
+
+**Expected:** Heart becomes outlined (unfilled), like count decrements by 1
+
+### TC-LIKE-008: Like count persists across navigation
+**Precondition:** User is logged in
+1. Navigate to feed
+2. Like an observation (note the species/observer)
+3. Click into the observation detail page
+
+**Expected:** Observation detail shows the heart as filled and the correct like count
+
+### TC-LIKE-009: Like button click does not navigate
+**Precondition:** User is logged in
+1. Navigate to feed
+2. Click the heart icon on a feed item
+
+**Expected:** Card does NOT navigate to the detail page — only the like state changes

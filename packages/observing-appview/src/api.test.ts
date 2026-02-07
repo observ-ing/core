@@ -23,6 +23,11 @@ const createMockDatabase = () => ({
   removeOccurrenceObserver: vi.fn().mockResolvedValue(undefined),
   syncOccurrenceObservers: vi.fn().mockResolvedValue(undefined),
   isOccurrenceOwner: vi.fn().mockResolvedValue(false),
+  // Like methods
+  getLikeCountsForOccurrences: vi.fn().mockResolvedValue(new Map()),
+  getUserLikeStatuses: vi.fn().mockResolvedValue(new Set()),
+  createLike: vi.fn().mockResolvedValue(undefined),
+  deleteLikeBySubjectAndDid: vi.fn().mockResolvedValue(null),
 });
 
 const createMockIdentityResolver = () => ({

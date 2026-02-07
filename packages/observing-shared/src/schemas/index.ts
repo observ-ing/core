@@ -99,6 +99,8 @@ export const OccurrenceSchema = z
     images: z.array(z.string()).describe("Image URLs"),
     createdAt: z.string().datetime(),
     identificationCount: z.number().int().optional(),
+    likeCount: z.number().int().optional().describe("Number of likes"),
+    viewerHasLiked: z.boolean().optional().describe("Whether the authenticated viewer has liked this"),
   })
   .openapi("Occurrence");
 
@@ -212,6 +214,23 @@ export const CreateCommentRequestSchema = z
     replyToCid: z.string().optional(),
   })
   .openapi("CreateCommentRequest");
+
+// ============================================================================
+// Like Schemas
+// ============================================================================
+
+export const CreateLikeRequestSchema = z
+  .object({
+    occurrenceUri: z.string().describe("AT Protocol URI of the occurrence to like"),
+    occurrenceCid: z.string().describe("CID of the occurrence to like"),
+  })
+  .openapi("CreateLikeRequest");
+
+export const DeleteLikeRequestSchema = z
+  .object({
+    occurrenceUri: z.string().describe("AT Protocol URI of the occurrence to unlike"),
+  })
+  .openapi("DeleteLikeRequest");
 
 // ============================================================================
 // Interaction Schemas
@@ -454,6 +473,8 @@ export type Identification = z.infer<typeof IdentificationSchema>;
 export type CreateIdentificationRequest = z.infer<typeof CreateIdentificationRequestSchema>;
 export type Comment = z.infer<typeof CommentSchema>;
 export type CreateCommentRequest = z.infer<typeof CreateCommentRequestSchema>;
+export type CreateLikeRequest = z.infer<typeof CreateLikeRequestSchema>;
+export type DeleteLikeRequest = z.infer<typeof DeleteLikeRequestSchema>;
 export type InteractionSubject = z.infer<typeof InteractionSubjectSchema>;
 export type Interaction = z.infer<typeof InteractionSchema>;
 export type CreateInteractionRequest = z.infer<typeof CreateInteractionRequestSchema>;

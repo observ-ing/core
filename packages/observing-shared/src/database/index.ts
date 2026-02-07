@@ -291,6 +291,21 @@ export class Database {
       CREATE INDEX IF NOT EXISTS idx_occurrence_observers_did
         ON occurrence_observers(observer_did);
 
+      -- Likes table (app.bsky.feed.like records)
+      CREATE TABLE IF NOT EXISTS likes (
+        uri TEXT PRIMARY KEY,
+        cid TEXT NOT NULL,
+        did TEXT NOT NULL,
+        subject_uri TEXT NOT NULL REFERENCES occurrences(uri) ON DELETE CASCADE,
+        subject_cid TEXT NOT NULL,
+        created_at TIMESTAMP(3) NOT NULL,
+        indexed_at TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE (subject_uri, did)
+      );
+
+      CREATE INDEX IF NOT EXISTS likes_subject_uri_idx ON likes(subject_uri);
+      CREATE INDEX IF NOT EXISTS likes_did_idx ON likes(did);
+
       -- Interactions table (species interactions between organisms)
       CREATE TABLE IF NOT EXISTS interactions (
         uri TEXT PRIMARY KEY,
@@ -1348,6 +1363,57 @@ export class Database {
       [occurrenceUri],
     );
     return result.rows;
+  }
+
+  // Like methods
+
+  async createLike(
+    uri: string,
+    cid: string,
+    did: string,
+    subjectUri: string,
+    subjectCid: string,
+    createdAt: Date,
+  ): Promise<void> {
+    await this.pool.query(
+      `INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (subject_uri, did) DO NOTHING`,
+      [uri, cid, did, subjectUri, subjectCid, createdAt],
+    );
+  }
+
+  async deleteLikeBySubjectAndDid(subjectUri: string, did: string): Promise<string | null> {
+    const result = await this.pool.query(
+      `DELETE FROM likes WHERE subject_uri = $1 AND did = $2 RETURNING uri`,
+      [subjectUri, did],
+    );
+    return result.rows[0]?.uri || null;
+  }
+
+  async getLikeCountsForOccurrences(uris: string[]): Promise<Map<string, number>> {
+    if (uris.length === 0) return new Map();
+    const result = await this.pool.query(
+      `SELECT subject_uri, COUNT(*)::int as count
+       FROM likes
+       WHERE subject_uri = ANY($1)
+       GROUP BY subject_uri`,
+      [uris],
+    );
+    const map = new Map<string, number>();
+    for (const row of result.rows) {
+      map.set(row.subject_uri, row.count);
+    }
+    return map;
+  }
+
+  async getUserLikeStatuses(uris: string[], did: string): Promise<Set<string>> {
+    if (uris.length === 0) return new Set();
+    const result = await this.pool.query(
+      `SELECT subject_uri FROM likes WHERE subject_uri = ANY($1) AND did = $2`,
+      [uris, did],
+    );
+    return new Set(result.rows.map((r: { subject_uri: string }) => r.subject_uri));
   }
 
   // Interaction methods

@@ -48,6 +48,8 @@ import {
   CreateIdentificationRequestSchema,
   CreateCommentRequestSchema,
   CreateInteractionRequestSchema,
+  CreateLikeRequestSchema,
+  DeleteLikeRequestSchema,
 } from "observing-shared";
 import {
   OAuthService,
@@ -152,6 +154,8 @@ interface OccurrenceResponse {
   images: string[];
   createdAt: string;
   identificationCount?: number | undefined;
+  likeCount?: number | undefined;
+  viewerHasLiked?: boolean | undefined;
 }
 
 // Legacy alias
@@ -235,6 +239,9 @@ export class AppViewServer {
 
     // Comments API
     this.setupCommentRoutes();
+
+    // Likes API
+    this.setupLikeRoutes();
 
     // Interactions API
     this.setupInteractionRoutes();
@@ -843,7 +850,7 @@ export class AppViewServer {
           offset,
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         res.json({
           occurrences,
@@ -869,7 +876,7 @@ export class AppViewServer {
         const cursor = req.query["cursor"] as string | undefined;
 
         const rows = await this.db.getOccurrencesFeed(limit, cursor);
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         // Create cursor for next page
         const lastRow = rows[rows.length - 1];
@@ -912,7 +919,7 @@ export class AppViewServer {
           limit,
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         res.json({
           occurrences,
@@ -986,7 +993,7 @@ export class AppViewServer {
           return;
         }
 
-        const [occurrence] = await this.enrichOccurrences([row]);
+        const [occurrence] = await this.enrichOccurrences([row], req.cookies?.session_did);
         const identifications =
           await this.db.getIdentificationsForOccurrence(uri);
         const comments = await this.db.getCommentsForOccurrence(uri);
@@ -1031,7 +1038,7 @@ export class AppViewServer {
           ...(endDate && { endDate }),
         });
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         const lastExploreRow = rows[rows.length - 1];
         const nextCursor =
@@ -1096,7 +1103,7 @@ export class AppViewServer {
           },
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, sessionDid);
 
         const lastHomeRow = rows[rows.length - 1];
         const nextCursor =
@@ -1139,7 +1146,7 @@ export class AppViewServer {
         );
 
         // Enrich occurrences
-        const enrichedOccurrences = await this.enrichOccurrences(occurrences);
+        const enrichedOccurrences = await this.enrichOccurrences(occurrences, req.cookies?.session_did);
 
         // Enrich identifications
         const enrichedIdentifications = await this.enrichIdentifications(identifications);
@@ -1435,6 +1442,126 @@ export class AppViewServer {
     });
   }
 
+  private setupLikeRoutes(): void {
+    // Like an observation
+    this.app.post("/api/likes", async (req, res) => {
+      try {
+        const parseResult = CreateLikeRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
+        const { occurrenceUri, occurrenceCid } = parseResult.data;
+
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to like observations" });
+          return;
+        }
+
+        // Create app.bsky.feed.like record on user's PDS
+        const now = new Date().toISOString();
+        const result = await agent.com.atproto.repo.createRecord({
+          repo: sessionDid,
+          collection: "app.bsky.feed.like",
+          record: {
+            $type: "app.bsky.feed.like",
+            subject: {
+              uri: occurrenceUri,
+              cid: occurrenceCid,
+            },
+            createdAt: now,
+          },
+        });
+
+        // Store in local DB
+        await this.db.createLike(
+          result.data.uri,
+          result.data.cid,
+          sessionDid,
+          occurrenceUri,
+          occurrenceCid,
+          new Date(now),
+        );
+
+        logger.info(
+          { uri: result.data.uri, occurrenceUri },
+          "Created like record"
+        );
+
+        res.status(201).json({
+          success: true,
+          uri: result.data.uri,
+          cid: result.data.cid,
+        });
+      } catch (error) {
+        logger.error({ err: error }, "Error creating like");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+
+    // Unlike an observation
+    this.app.delete("/api/likes", async (req, res) => {
+      try {
+        const parseResult = DeleteLikeRequestSchema.safeParse(req.body);
+        if (!parseResult.success) {
+          res.status(400).json({
+            error: "Validation failed",
+            details: parseResult.error.issues.map((i) => ({
+              path: i.path.join("."),
+              message: i.message,
+            })),
+          });
+          return;
+        }
+
+        const { occurrenceUri } = parseResult.data;
+
+        const sessionDid = req.cookies?.session_did;
+        const agent = sessionDid ? await this.oauth.getAgent(sessionDid) : null;
+
+        if (!agent) {
+          res.status(401).json({ error: "Authentication required to unlike observations" });
+          return;
+        }
+
+        // Find the like in local DB to get the AT URI
+        const likeUri = await this.db.deleteLikeBySubjectAndDid(occurrenceUri, sessionDid);
+
+        if (likeUri) {
+          // Extract rkey from AT URI: at://did/collection/rkey
+          const rkey = likeUri.split("/").pop();
+          if (rkey) {
+            try {
+              await agent.com.atproto.repo.deleteRecord({
+                repo: sessionDid,
+                collection: "app.bsky.feed.like",
+                rkey,
+              });
+            } catch (pdsError) {
+              // Log but don't fail - local DB is already updated
+              logger.warn({ err: pdsError, likeUri }, "Failed to delete like from PDS");
+            }
+          }
+        }
+
+        res.json({ success: true });
+      } catch (error) {
+        logger.error({ err: error }, "Error deleting like");
+        res.status(500).json({ error: "Internal server error" });
+      }
+    });
+  }
+
   private setupInteractionRoutes(): void {
     // Create a new interaction
     this.app.post("/api/interactions", async (req, res) => {
@@ -1627,7 +1754,7 @@ export class AppViewServer {
           { limit, ...(cursor && { cursor }), ...(taxon.kingdom && { kingdom: taxon.kingdom }) },
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         const nextCursor = rows.length === limit
           ? rows[rows.length - 1]?.created_at?.toISOString()
@@ -1662,7 +1789,7 @@ export class AppViewServer {
           { limit, ...(cursor && { cursor }), ...(taxon.kingdom && { kingdom: taxon.kingdom }) },
         );
 
-        const occurrences = await this.enrichOccurrences(rows);
+        const occurrences = await this.enrichOccurrences(rows, req.cookies?.session_did);
 
         const nextCursor = rows.length === limit
           ? rows[rows.length - 1]?.created_at?.toISOString()
@@ -1736,8 +1863,16 @@ export class AppViewServer {
 
   private async enrichOccurrences(
     rows: OccurrenceRow[],
+    viewerDid?: string,
   ): Promise<OccurrenceResponse[]> {
     if (rows.length === 0) return [];
+
+    // Batch fetch like data for all occurrences
+    const uris = rows.map((r) => r.uri);
+    const [likeCounts, viewerLikes] = await Promise.all([
+      this.db.getLikeCountsForOccurrences(uris),
+      viewerDid ? this.db.getUserLikeStatuses(uris, viewerDid) : Promise.resolve(new Set<string>()),
+    ]);
 
     // Fetch all observers for all occurrences
     const observersByUri = new Map<string, Array<{ did: string; role: "owner" | "co-observer"; addedAt: Date }>>();
@@ -1920,6 +2055,8 @@ export class AppViewServer {
             return `/media/blob/${row.did}/${cid || ""}`;
           }),
           createdAt: row.created_at.toISOString(),
+          likeCount: likeCounts.get(row.uri) || 0,
+          viewerHasLiked: viewerDid ? viewerLikes.has(row.uri) : undefined,
         });
       }),
     );
