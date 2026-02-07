@@ -244,6 +244,14 @@
           },
           "identificationCount": {
             "type": "integer"
+          },
+          "likeCount": {
+            "type": "integer",
+            "description": "Number of likes"
+          },
+          "viewerHasLiked": {
+            "type": "boolean",
+            "description": "Whether the authenticated viewer has liked this"
           }
         },
         "required": [
@@ -795,6 +803,12 @@
           },
           "conservationStatus": {
             "$ref": "#/components/schemas/ConservationStatus"
+          },
+          "isSynonym": {
+            "type": "boolean"
+          },
+          "acceptedName": {
+            "type": "string"
           }
         },
         "required": [
@@ -884,6 +898,10 @@
           "gbifUrl": {
             "type": "string",
             "description": "URL to the GBIF species page"
+          },
+          "wikidataUrl": {
+            "type": "string",
+            "description": "URL to the Wikidata entity page"
           }
         },
         "required": [
