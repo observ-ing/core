@@ -14,11 +14,11 @@ use crate::error::{IngesterError, Result};
 use crate::firehose::{FirehoseConfig, FirehoseEvent, FirehoseSubscription};
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::{IngesterConfig, RecentEvent};
+use chrono::Utc;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::interval;
-use chrono::Utc;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 

@@ -33,11 +33,17 @@ impl Config {
 
             if host.starts_with("/cloudsql/") {
                 // Unix socket connection for Cloud SQL
-                format!("postgresql://{}:{}@localhost/{}?host={}", user, password, name, host)
+                format!(
+                    "postgresql://{}:{}@localhost/{}?host={}",
+                    user, password, name, host
+                )
             } else {
                 // Regular TCP connection
                 let port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
-                format!("postgresql://{}:{}@{}:{}/{}", user, password, host, port, name)
+                format!(
+                    "postgresql://{}:{}@{}:{}/{}",
+                    user, password, host, port, name
+                )
             }
         } else {
             "postgres://localhost/observing".to_string()
