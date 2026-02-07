@@ -104,7 +104,7 @@ jobs:
             context: .
             dockerfile: crates/observing-appview/Dockerfile
           - service: ingester
-            context: crates/observing-ingester
+            context: .
             dockerfile: crates/observing-ingester/Dockerfile
           - service: media-proxy
             context: .

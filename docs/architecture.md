@@ -9,9 +9,9 @@ flowchart TB
     end
 
     subgraph Services
-        AppView["AppView<br/>(OAuth, Static Files, RPC)"]
-        API["API Service<br/>(REST API)"]
+        AppView["AppView<br/>(REST API, OAuth, Static Files)"]
         MediaProxy["Media Proxy<br/>(Image Cache)"]
+        Taxonomy["Taxonomy<br/>(GBIF Resolver)"]
     end
 
     subgraph Data
@@ -24,10 +24,9 @@ flowchart TB
     end
 
     Frontend --> AppView
-    Frontend --> API
     AppView --> PostgreSQL
-    API --> PostgreSQL
-    API -- "Internal RPC" --> AppView
+    AppView --> Taxonomy
+    AppView --> MediaProxy
     PDS --> Ingester
     Ingester --> PostgreSQL
 ```
@@ -36,25 +35,19 @@ flowchart TB
 
 ```
 crates/
+├── observing-appview/     # Unified REST API + OAuth + static serving (Rust/Axum)
+├── observing-db/          # Shared database layer (Rust)
+├── observing-geocoding/   # Nominatim reverse geocoding (Rust)
+├── observing-identity/    # DID/handle resolution + profile caching (Rust)
 ├── observing-ingester/    # AT Protocol firehose consumer (Rust)
+├── observing-lexicons/    # Generated AT Protocol record types (Rust)
 ├── observing-media-proxy/ # Image caching proxy (Rust)
-└── observing-taxonomy/    # Taxonomy resolver service (Rust)
+├── observing-taxonomy/    # GBIF taxonomy resolver service (Rust)
+└── gbif-api/              # GBIF API client (Rust)
 
 packages/
-├── observing-api/         # REST API server (Express)
-├── observing-appview/     # OAuth, static files, internal RPC (Express)
-├── observing-frontend/    # Web UI (Vite + MapLibre GL)
-└── observing-shared/      # Shared TypeScript types
-```
-
-### Package Dependencies
-
-```
-observing-api (TypeScript, calls appview for AT Protocol writes)
-observing-appview (TypeScript, handles OAuth and PDS operations)
-observing-frontend (communicates with api and appview via REST)
-observing-media-proxy (standalone Rust binary)
-observing-ingester (standalone Rust binary)
+├── observing-frontend/    # Web UI (Vite + React + MapLibre GL)
+└── observing-lexicon/     # Lexicon TypeScript type generation
 ```
 
 ## Components
@@ -65,31 +58,27 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 
 - `org.rwell.test.occurrence` - Occurrence records
 - `org.rwell.test.identification` - Taxonomic determinations
+- `org.rwell.test.comment` - Discussion comments
+- `org.rwell.test.interaction` - Species interactions
+- `org.rwell.test.like` / `app.bsky.feed.like` - Likes
+
+### AppView (`crates/observing-appview/`)
+
+Unified Rust/Axum server handling all backend concerns:
+
+- **REST API** - Occurrences, identifications, comments, feeds, profiles, taxonomy, interactions, likes
+- **OAuth** - AT Protocol authentication via `atrium-oauth`
+- **AT Protocol Client** - Record create/update/delete, blob upload via internal RPC
+- **Static Files** - Serves the built React frontend
+- **Data Enrichment** - Profile resolution, community IDs, image URLs, effective taxonomy
 
 ### Ingester (`crates/observing-ingester/`)
 
 Rust service that monitors the AT Protocol firehose.
 
 - **Firehose** - WebSocket client subscribing to the AT Protocol relay
-- **Event Processing** - Handles occurrence and identification records
-- **Built with** - Tokio, Axum, SQLx
-
-### API Service (`packages/observing-api/`)
-
-TypeScript REST API server handling read and write operations.
-
-- **REST API** - Occurrences, identifications, comments, feeds, profiles, taxonomy
-- **Internal RPC** - Calls AppView for AT Protocol write operations
-- **Session Auth** - Verifies OAuth sessions from shared database
-- **Data Enrichment** - Adds profile data and community IDs to responses
-
-### AppView (`packages/observing-appview/`)
-
-TypeScript server handling OAuth and AT Protocol operations.
-
-- **OAuth** - AT Protocol authentication flow
-- **Internal RPC** - Endpoints for blob upload, record create/update/delete
-- **Static Files** - Serves the built frontend
+- **Event Processing** - Handles occurrence, identification, comment, interaction, and like records
+- **Built with** - Tokio, SQLx
 
 ### Media Proxy (`crates/observing-media-proxy/`)
 
@@ -97,6 +86,14 @@ Rust image caching service.
 
 - **Image Cache** - Caches and proxies image blobs from PDS servers
 - **Stateless** - No database, filesystem cache only
+
+### Taxonomy (`crates/observing-taxonomy/`)
+
+Rust taxonomy resolution service.
+
+- **GBIF Lookups** - Species search, validation, and taxonomy hierarchy
+- **Wikidata** - Species image and metadata enrichment
+- **Caching** - In-memory cache for frequently accessed taxa
 
 ### Frontend (`packages/observing-frontend/`)
 
@@ -109,12 +106,11 @@ Vite + React SPA.
 ## Key Files
 
 - `lexicons/` - AT Protocol lexicon definitions
-- `packages/observing-api/src/routes/` - REST API endpoint handlers
-- `packages/observing-api/src/internal-client.ts` - RPC client for AppView
-- `packages/observing-appview/src/database/` - PostgreSQL + PostGIS layer
-- `packages/observing-appview/src/auth/` - OAuth and identity resolution
-- `packages/observing-appview/src/generated/` - Generated TypeScript from lexicons
-- `scripts/generate-types.js` - Lexicon → TypeScript generator
+- `crates/observing-appview/src/routes/` - REST API endpoint handlers
+- `crates/observing-appview/src/enrichment.rs` - Response enrichment (profiles, community IDs)
+- `crates/observing-db/src/` - PostgreSQL + PostGIS database layer
+- `crates/observing-appview/src/routes/oauth.rs` - OAuth authentication
+- `scripts/generate-rust-types.sh` - Lexicon → Rust type generator (jacquard-codegen)
 - `cloudbuild.yaml` - Multi-service Cloud Build config
 
 ## Community Identification

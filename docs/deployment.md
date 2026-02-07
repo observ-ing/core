@@ -6,10 +6,12 @@ Services deployed via `cloudbuild.yaml`:
 
 | Service | Dockerfile | Public | Cloud SQL | Notes |
 |---------|------------|--------|-----------|-------|
-| observing-appview | packages/observing-appview/Dockerfile | Yes | Yes | Main API + serves frontend |
+| observing-appview | crates/observing-appview/Dockerfile | Yes | Yes | REST API + OAuth + serves frontend |
 | observing-ingester | crates/observing-ingester/Dockerfile | Yes | Yes | min-instances=1 (always running) |
 | observing-media-proxy | crates/observing-media-proxy/Dockerfile | Yes | No | Stateless image cache |
 | observing-taxonomy | crates/observing-taxonomy/Dockerfile | Yes | No | GBIF taxonomy lookups with caching |
+
+All services are Rust binaries.
 
 ## Manual Deploy
 
@@ -56,6 +58,8 @@ CACHE_DIR=./cache/media
 PORT=3000
 PUBLIC_URL=https://your-domain.run.app
 TAXONOMY_SERVICE_URL=https://observing-taxonomy-xxx.run.app
+MEDIA_PROXY_URL=https://observing-media-proxy-xxx.run.app
+TS_APPVIEW_URL=http://localhost:3000  # Internal agent RPC target
 ```
 
 ### Taxonomy

@@ -13,14 +13,15 @@ flowchart TB
         Modal --> FormData --> Base64
     end
 
-    subgraph AppView["AppView (Express)"]
-        API["POST /api/occurrences<br/>api.ts:268-443"]
-        Auth["OAuth Authentication<br/>oauth.ts"]
-        BlobUpload["Upload Images to PDS<br/>agent.uploadBlob()"]
-        GBIF["Taxonomy Validation<br/>GBIF API"]
+    subgraph AppView["AppView (Rust/Axum)"]
+        API["POST /api/occurrences<br/>routes/occurrences.rs"]
+        Auth["OAuth Authentication"]
+        BlobUpload["Upload Images to PDS<br/>via internal agent RPC"]
+        GBIF["Taxonomy Validation<br/>Taxonomy Service"]
         Geocode["Reverse Geocoding<br/>Nominatim API"]
         BuildRecord["Build AT Protocol Record<br/>org.rwell.test.occurrence"]
         PrivateData["Save Private Coordinates<br/>occurrence_private_data table"]
+        DirectInsert["Direct DB Insert<br/>(immediate visibility)"]
     end
 
     subgraph ATProtocol["AT Protocol"]
@@ -30,14 +31,14 @@ flowchart TB
 
     subgraph Firehose["AT Protocol Network"]
         Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Collection Filter<br/>org.rwell.test.occurrence"]
+        Filter["Collection Filter<br/>org.rwell.test.*<br/>app.bsky.feed.like"]
     end
 
     subgraph Ingester["Ingester (Rust)"]
         WS["WebSocket Connection<br/>firehose.rs"]
         Parse["Parse JSON Event<br/>Extract fields"]
         Validate["Validate Required Fields<br/>• lat/lng required<br/>• eventDate required"]
-        Upsert["Upsert to Database<br/>database.rs:106-336"]
+        Upsert["Upsert to Database<br/>database.rs"]
     end
 
     subgraph Database["PostgreSQL + PostGIS"]
@@ -53,8 +54,9 @@ flowchart TB
     BlobUpload --> GBIF
     GBIF --> Geocode
     Geocode --> BuildRecord
-    BuildRecord -->|"agent.com.atproto.repo.createRecord()"| PDS
+    BuildRecord -->|"agent createRecord"| PDS
     BuildRecord --> PrivateData
+    BuildRecord --> DirectInsert
     PDS --> URI
     URI -->|"Record broadcast"| Jetstream
     Jetstream --> Filter
@@ -71,19 +73,19 @@ flowchart TB
     API -.->|"Response to frontend"| Modal
 ```
 
-**Key insight**: Writes go through AT Protocol (user's PDS), then get indexed via the firehose. Reads come directly from PostgreSQL.
+**Key insight**: Writes go through AT Protocol (user's PDS), then get indexed via the firehose. The appview also does a direct DB insert for immediate visibility (bypasses ingester latency). Reads come directly from PostgreSQL.
 
 ### Key Files
 
-| Component | File | Lines |
-|-----------|------|-------|
-| Create Modal | `packages/observing-frontend/src/components/modals/UploadModal.tsx` | - |
-| API Endpoint | `packages/observing-appview/src/api.ts` | 268-443 |
-| OAuth Service | `packages/observing-appview/src/auth/oauth.ts` | 392-405 |
-| Firehose | `crates/observing-ingester/src/firehose.rs` | 164-279 |
-| Ingester Main | `crates/observing-ingester/src/main.rs` | 127-149 |
-| Database Ops | `crates/observing-ingester/src/database.rs` | 106-336 |
-| Prisma Schema | `packages/observing-appview/prisma/schema.prisma` | - |
+| Component | File |
+|-----------|------|
+| Create Modal | `packages/observing-frontend/src/components/modals/UploadModal.tsx` |
+| Occurrence Routes | `crates/observing-appview/src/routes/occurrences.rs` |
+| OAuth Routes | `crates/observing-appview/src/routes/oauth.rs` |
+| Data Enrichment | `crates/observing-appview/src/enrichment.rs` |
+| Firehose | `crates/observing-ingester/src/firehose.rs` |
+| Ingester DB Ops | `crates/observing-ingester/src/database.rs` |
+| Shared DB Layer | `crates/observing-db/src/` |
 
 ### Data Transformations by Stage
 
@@ -100,13 +102,10 @@ flowchart TB
 
 | Service | Port | Role | DB Access |
 |---------|------|------|-----------|
-| **AppView** | 3000 | OAuth, AT Protocol client, static files | Read/Write |
+| **AppView** | 3000 | REST API, OAuth, AT Protocol client, static files | Read/Write |
 | **Ingester** | 8080 | Firehose consumer, indexes records | Write-heavy |
-| **API** | 3002 | REST API for frontend | Read-only* |
 | **Media Proxy** | 3001 | Image caching | None |
 | **Taxonomy** | 3003 | GBIF taxonomy lookups | None |
-
-*API writes via RPC to AppView, not directly to DB
 
 ## Database Tables
 
@@ -114,10 +113,12 @@ flowchart TB
 
 | Table | Description | Written By | Read By |
 |-------|-------------|------------|---------|
-| `occurrences` | Biodiversity observations | Ingester | API, AppView |
-| `identifications` | Taxonomic determinations | Ingester | API, AppView |
-| `comments` | Discussion on observations | Ingester | API, AppView |
-| `occurrence_observers` | Co-observer relationships | Ingester, AppView | API, AppView |
+| `occurrences` | Biodiversity observations | Ingester, AppView | AppView |
+| `identifications` | Taxonomic determinations | Ingester, AppView | AppView |
+| `comments` | Discussion on observations | Ingester, AppView | AppView |
+| `likes` | Observation likes | Ingester, AppView | AppView |
+| `interactions` | Species interactions | Ingester, AppView | AppView |
+| `occurrence_observers` | Co-observer relationships | Ingester, AppView | AppView |
 | `occurrence_private_data` | Exact coordinates (geoprivacy) | AppView | AppView |
 | `sensitive_species` | Auto-obscuration rules | (manual) | AppView |
 
@@ -133,7 +134,7 @@ flowchart TB
 
 | View | Description | Refreshed By | Read By |
 |------|-------------|--------------|---------|
-| `community_ids` | Consensus taxonomy | AppView (periodic) | API |
+| `community_ids` | Consensus taxonomy | AppView (periodic) | AppView |
 
 ## Data Lifecycles
 
@@ -146,15 +147,16 @@ flowchart TB
 2. Frontend POST /api/occurrences → AppView
    │
    ├─▶ Validate OAuth session
-   ├─▶ Validate taxonomy (GBIF)
-   ├─▶ Reverse geocode coordinates
-   ├─▶ Upload images to user's PDS
+   ├─▶ Validate taxonomy (Taxonomy Service → GBIF)
+   ├─▶ Reverse geocode coordinates (Nominatim)
+   ├─▶ Upload images to user's PDS (via internal agent RPC)
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  repo.createRecord({ collection: "org.rwell.test.occurrence", ... })
+   │  createRecord({ collection: "org.rwell.test.occurrence", ... })
    │
    ├─▶ Writes exact coords to `occurrence_private_data`
+   ├─▶ Direct insert to `occurrences` (immediate visibility)
    │
    ▼
 4. PDS emits event to Jetstream firehose
@@ -175,28 +177,25 @@ flowchart TB
 1. User submits ID in frontend
    │
    ▼
-2. Frontend POST /api/identifications → API
+2. Frontend POST /api/identifications → AppView
    │
-   ├─▶ Validate taxonomy (GBIF)
-   │
-   ▼
-3. API calls AppView via internal RPC
-   │  POST /internal/agent/create-record
+   ├─▶ Validate OAuth session
+   ├─▶ Validate taxonomy (Taxonomy Service → GBIF)
    │
    ▼
-4. AppView creates AT Protocol record on user's PDS
-   │  repo.createRecord({ collection: "org.rwell.test.identification", ... })
+3. AppView creates AT Protocol record on user's PDS
+   │  createRecord({ collection: "org.rwell.test.identification", ... })
    │
    ▼
-5. PDS emits event to Jetstream firehose
+4. PDS emits event to Jetstream firehose
    │
    ▼
-6. Ingester receives create event
+5. Ingester receives create event
    │
    ├─▶ UPSERT to `identifications` table
    │
    ▼
-7. Community ID recalculated on next query
+6. Community ID recalculated on next query
 ```
 
 ### Firehose Ingestion
@@ -208,6 +207,9 @@ Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │  - org.rwell.test.occurrence
    │  - org.rwell.test.identification
    │  - org.rwell.test.comment
+   │  - org.rwell.test.interaction
+   │  - org.rwell.test.like
+   │  - app.bsky.feed.like
    │
    ▼
 ┌─────────────────────────────────────────────────────┐
@@ -232,6 +234,9 @@ Every 30 seconds: Save cursor to `ingester_state`
 | INSERT/UPDATE/DELETE | `oauth_sessions` | Login/logout |
 | INSERT/UPDATE | `occurrence_private_data` | Create/update observation |
 | INSERT/DELETE | `occurrence_observers` | Add/remove co-observer |
+| INSERT | `occurrences` | Direct insert for immediate visibility |
+| INSERT | `identifications` | Direct insert after AT Protocol write |
+| INSERT/DELETE | `likes` | Like/unlike |
 
 ### Ingester Writes
 
@@ -240,13 +245,11 @@ Every 30 seconds: Save cursor to `ingester_state`
 | UPSERT | `occurrences` | Firehose occurrence event |
 | UPSERT | `identifications` | Firehose identification event |
 | UPSERT | `comments` | Firehose comment event |
+| UPSERT | `interactions` | Firehose interaction event |
+| UPSERT | `likes` | Firehose like event |
 | SYNC | `occurrence_observers` | Firehose occurrence with recordedBy |
 | UPDATE | `ingester_state` | Every 30 seconds |
 | DELETE | `occurrences` | Firehose delete event (cascades) |
-
-### API Writes
-
-None directly. All writes are RPC calls to AppView.
 
 ## Read Patterns
 
@@ -310,6 +313,8 @@ When an occurrence is deleted:
 DELETE occurrences WHERE uri = '...'
   └─▶ CASCADE DELETE identifications WHERE subject_uri = '...'
   └─▶ CASCADE DELETE comments WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE likes WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE interactions WHERE subject_a/b_occurrence_uri = '...'
   └─▶ CASCADE DELETE occurrence_observers WHERE occurrence_uri = '...'
   └─▶ CASCADE DELETE occurrence_private_data WHERE occurrence_uri = '...'
 ```
@@ -328,4 +333,4 @@ Environment variables:
 - or DB_HOST, DB_NAME, DB_USER, DB_PASSWORD (Cloud SQL style)
 ```
 
-Migrations run only in AppView on startup.
+Migrations run in both AppView and Ingester on startup (idempotent `CREATE TABLE IF NOT EXISTS`).

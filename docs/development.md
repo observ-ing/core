@@ -2,9 +2,9 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20+ (for frontend build)
 - PostgreSQL with PostGIS extension
-- Rust (for ingester and media-proxy)
+- Rust
 
 ## Installation
 
@@ -38,33 +38,28 @@ export PORT=3000
 # Install dependencies
 npm install
 
-# Build all packages
-npm run build
+# Build frontend
+npm run frontend:build
 
-# Typecheck
+# Typecheck frontend
 npx tsc
 
-# Run tests
-npm run test:run      # Run once
-npm run test          # Watch mode
-npm run test:coverage # With coverage
+# Build Rust workspace
+cargo build
 
-# Generate lexicon types
+# Run Rust tests
+cargo test --workspace
+
+# Generate lexicon types (Rust)
+npm run generate-rust-types
+
+# Generate lexicon types (TypeScript)
 npm run generate-types
 ```
 
 ## Running Services
 
-### Individual Services
-
-```bash
-npm run appview       # REST API on port 3000
-npm run ingester      # Firehose consumer
-npm run media-proxy   # Image proxy on port 3001
-npm run frontend:dev  # Vite dev server
-```
-
-### Using process-compose
+### Using process-compose (recommended)
 
 All services can be managed with `process-compose`. Config in `process-compose.yaml`.
 
@@ -79,6 +74,9 @@ process-compose process list
 process-compose process stop <name>
 process-compose process start <name>
 
+# Restart after changes
+process-compose process restart appview
+
 # View logs
 process-compose process logs <name>
 
@@ -88,14 +86,30 @@ process-compose down
 
 Service names: `cloud-sql-proxy`, `appview`, `frontend`, `media-proxy`, `ingester`
 
-## Running Rust Services
+### Individual Services
 
 ```bash
-# Ingester
-cd crates/observing-ingester
-DATABASE_URL="postgresql://..." cargo run
+# AppView (REST API + OAuth + static files on port 3000)
+cargo run -p observing-appview
 
-# Media Proxy
-cd crates/observing-media-proxy
-cargo run
+# Ingester (firehose consumer)
+cargo run -p observing-ingester
+
+# Media Proxy (image proxy on port 3001)
+cargo run -p observing-media-proxy
+
+# Taxonomy (GBIF resolver on port 3003)
+cargo run -p observing-taxonomy
+
+# Frontend dev server
+npm run frontend:dev
 ```
+
+### After Frontend Changes
+
+Rebuild and restart:
+```bash
+npm run frontend:build && process-compose process restart appview
+```
+
+The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.
