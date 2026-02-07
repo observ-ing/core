@@ -25,7 +25,6 @@ import {
   Login,
   Logout,
   GitHub,
-  Description,
   Schema,
   Menu as MenuIcon,
 } from "@mui/icons-material";
@@ -176,18 +175,6 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 <GitHub fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Source Code" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component="a"
-              href="/api/docs"
-              sx={{ mx: 1, borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Description fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="API Docs" />
             </ListItemButton>
           </ListItem>
           <ListItem disablePadding>
