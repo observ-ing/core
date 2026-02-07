@@ -295,10 +295,7 @@ impl FirehoseSubscription {
                         record: commit.record,
                     };
                     debug!("[Like] {}: {}", like_event.action, like_event.uri);
-                    let _ = self
-                        .event_tx
-                        .send(FirehoseEvent::Like(like_event))
-                        .await;
+                    let _ = self.event_tx.send(FirehoseEvent::Like(like_event)).await;
                 }
             }
         }

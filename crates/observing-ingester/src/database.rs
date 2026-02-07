@@ -3,7 +3,9 @@
 //! Uses sqlx with PostgreSQL for storing occurrences, identifications, and cursor state.
 
 use crate::error::Result;
-use crate::types::{CommentEvent, IdentificationEvent, InteractionEvent, LikeEvent, OccurrenceEvent};
+use crate::types::{
+    CommentEvent, IdentificationEvent, InteractionEvent, LikeEvent, OccurrenceEvent,
+};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
