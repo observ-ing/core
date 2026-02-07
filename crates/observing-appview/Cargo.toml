@@ -1,0 +1,41 @@
+[package]
+name = "observing-appview"
+version = "0.1.0"
+edition = "2021"
+description = "Unified REST API and web server for Observ.ing"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# Internal crates
+observing-db = { path = "../observing-db" }
+observing-identity = { path = "../observing-identity" }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Web framework
+axum = { version = "0.8", features = ["macros"] }
+axum-extra = { version = "0.10", features = ["cookie"] }
+tower-http = { version = "0.6", features = ["cors", "fs"] }
+tower = "0.5"
+
+# Database
+sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }
+
+# HTTP client (for taxonomy service + media proxy)
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+
+# Time
+chrono = { version = "0.4", features = ["serde"] }
+
+[[bin]]
+name = "observing-appview"
+path = "src/main.rs"
