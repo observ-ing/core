@@ -22,8 +22,26 @@ impl Config {
             .and_then(|p| p.parse().ok())
             .unwrap_or(3004);
 
-        let database_url = env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://localhost/observing".to_string());
+        // Support both DATABASE_URL and separate DB_* environment variables
+        // (for compatibility with Cloud SQL socket connections)
+        let database_url = if let Ok(url) = env::var("DATABASE_URL") {
+            url
+        } else if let Ok(host) = env::var("DB_HOST") {
+            let name = env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
+            let user = env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
+            let password = env::var("DB_PASSWORD").unwrap_or_default();
+
+            if host.starts_with("/cloudsql/") {
+                // Unix socket connection for Cloud SQL
+                format!("postgresql://{}:{}@localhost/{}?host={}", user, password, name, host)
+            } else {
+                // Regular TCP connection
+                let port = env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
+                format!("postgresql://{}:{}@{}:{}/{}", user, password, host, port, name)
+            }
+        } else {
+            "postgres://localhost/observing".to_string()
+        };
 
         let cors_origins = env::var("CORS_ORIGINS")
             .map(|s| s.split(',').map(|o| o.trim().to_string()).collect())
