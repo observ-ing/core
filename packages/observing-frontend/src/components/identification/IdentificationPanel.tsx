@@ -11,14 +11,11 @@ import {
   Stack,
   Paper,
   Divider,
-  Collapse,
-  Link,
   Autocomplete,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
-import CloseIcon from "@mui/icons-material/Close";
 import { submitIdentification, searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
@@ -143,14 +140,14 @@ export function IdentificationPanel({
         </Box>
       </Stack>
 
-      <Stack direction="row" spacing={1}>
+      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
         <Button
           variant="outlined"
           color="primary"
           size="small"
           startIcon={<CheckIcon />}
           onClick={handleAgree}
-          disabled={isSubmitting}
+          disabled={isSubmitting || showSuggestForm}
         >
           Agree
         </Button>
@@ -159,10 +156,26 @@ export function IdentificationPanel({
           color="inherit"
           size="small"
           startIcon={<EditIcon />}
-          onClick={() => setShowSuggestForm(true)}
-          disabled={isSubmitting}
+          onClick={() => {
+            setIdentifyingNewOrganism(false);
+            setShowSuggestForm(true);
+          }}
+          disabled={isSubmitting || showSuggestForm}
         >
           Suggest Different ID
+        </Button>
+        <Button
+          variant="outlined"
+          color="inherit"
+          size="small"
+          startIcon={<NatureIcon />}
+          onClick={() => {
+            setIdentifyingNewOrganism(true);
+            setShowSuggestForm(true);
+          }}
+          disabled={isSubmitting || showSuggestForm}
+        >
+          Add Another Organism
         </Button>
       </Stack>
 
@@ -286,63 +299,30 @@ export function IdentificationPanel({
             </Select>
           </FormControl>
 
-          {/* Different organism toggle */}
-          <Box sx={{ mt: 2 }}>
-            <Divider sx={{ mb: 2 }} />
-            <Collapse in={!identifyingNewOrganism}>
-              <Link
-                component="button"
-                type="button"
-                variant="body2"
-                onClick={() => setIdentifyingNewOrganism(true)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.5,
-                  color: "text.secondary",
-                  textDecoration: "none",
-                  "&:hover": { color: "primary.main" },
-                }}
-              >
-                <NatureIcon fontSize="small" />
-                Identify a different organism in this photo
-              </Link>
-            </Collapse>
-            <Collapse in={identifyingNewOrganism}>
-              <Paper
-                variant="outlined"
-                sx={{
-                  p: 2,
-                  bgcolor: "action.hover",
-                  borderColor: "primary.main",
-                }}
-              >
-                <Stack direction="row" alignItems="flex-start" spacing={1}>
-                  <NatureIcon color="primary" sx={{ mt: 0.5 }} />
-                  <Box sx={{ flex: 1 }}>
-                    <Typography variant="body2" fontWeight="medium" color="primary.main">
-                      Adding organism #{nextSubjectIndex + 1}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
-                      This creates a new organism in this observation. Use this when multiple
-                      species are visible (e.g., a butterfly AND the flower it's on).
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5, fontStyle: "italic" }}>
-                      For a different opinion on the same organism, cancel this and just submit your ID.
-                    </Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    color="inherit"
-                    onClick={() => setIdentifyingNewOrganism(false)}
-                    sx={{ minWidth: "auto", p: 0.5 }}
-                  >
-                    <CloseIcon fontSize="small" />
-                  </Button>
-                </Stack>
-              </Paper>
-            </Collapse>
-          </Box>
+          {identifyingNewOrganism && (
+            <Paper
+              variant="outlined"
+              sx={{
+                p: 2,
+                mt: 2,
+                bgcolor: "action.hover",
+                borderColor: "primary.main",
+              }}
+            >
+              <Stack direction="row" alignItems="flex-start" spacing={1}>
+                <NatureIcon color="primary" sx={{ mt: 0.5 }} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body2" fontWeight="medium" color="primary.main">
+                    Adding organism #{nextSubjectIndex + 1}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
+                    This creates a new organism in this observation. Use this when multiple
+                    species are visible (e.g., a butterfly AND the flower it's on).
+                  </Typography>
+                </Box>
+              </Stack>
+            </Paper>
+          )}
 
           <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
             <Button
