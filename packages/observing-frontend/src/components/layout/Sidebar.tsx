@@ -26,6 +26,7 @@ import {
   Logout,
   GitHub,
   Description,
+  Schema,
   Menu as MenuIcon,
 } from "@mui/icons-material";
 import { useAppSelector, useAppDispatch } from "../../store";
@@ -187,6 +188,19 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 <Description fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="API Docs" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              to="/lexicons"
+              onClick={isMobile ? onMobileClose : undefined}
+              sx={{ mx: 1, borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <Schema fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Lexicons" />
             </ListItemButton>
           </ListItem>
         </List>

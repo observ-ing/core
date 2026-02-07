@@ -17,6 +17,7 @@ import { DeleteConfirmDialog } from "./components/modals/DeleteConfirmDialog";
 import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
 import { NotFound } from "./components/common/NotFound";
+import { LexiconView } from "./components/lexicon/LexiconView";
 import "./styles/global.css";
 
 function AppContent() {
@@ -78,6 +79,7 @@ function AppContent() {
             <Route path="/profile/:did" element={<ProfileView />} />
             <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
             <Route path="/taxon/:id" element={<TaxonDetail />} />
+            <Route path="/lexicons" element={<LexiconView />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Box>
