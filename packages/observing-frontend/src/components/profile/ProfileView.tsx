@@ -11,7 +11,6 @@ import {
   CircularProgress,
   Stack,
   Chip,
-  Badge,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -131,28 +130,13 @@ export function ProfileView() {
           </Box>
         </Stack>
 
-        {/* Stats with Badges */}
+        {/* Stats */}
         {counts && (
           <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
             <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Badge
-                badgeContent={counts.observations}
-                color="primary"
-                max={9999}
-                showZero
-                sx={{
-                  "& .MuiBadge-badge": {
-                    position: "static",
-                    transform: "none",
-                    fontSize: "1rem",
-                    fontWeight: 700,
-                    height: "auto",
-                    minWidth: "auto",
-                    padding: "4px 8px",
-                    borderRadius: 1,
-                  },
-                }}
-              />
+              <Typography variant="h6" fontWeight={700} color="primary.main">
+                {counts.observations.toLocaleString()}
+              </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
                 <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
                 <Typography variant="caption" color="text.secondary">
@@ -161,24 +145,9 @@ export function ProfileView() {
               </Stack>
             </Box>
             <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Badge
-                badgeContent={counts.identifications}
-                color="secondary"
-                max={9999}
-                showZero
-                sx={{
-                  "& .MuiBadge-badge": {
-                    position: "static",
-                    transform: "none",
-                    fontSize: "1rem",
-                    fontWeight: 700,
-                    height: "auto",
-                    minWidth: "auto",
-                    padding: "4px 8px",
-                    borderRadius: 1,
-                  },
-                }}
-              />
+              <Typography variant="h6" fontWeight={700} color="secondary.main">
+                {counts.identifications.toLocaleString()}
+              </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
                 <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
                 <Typography variant="caption" color="text.secondary">
@@ -187,24 +156,9 @@ export function ProfileView() {
               </Stack>
             </Box>
             <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Badge
-                badgeContent={counts.species}
-                color="success"
-                max={9999}
-                showZero
-                sx={{
-                  "& .MuiBadge-badge": {
-                    position: "static",
-                    transform: "none",
-                    fontSize: "1rem",
-                    fontWeight: 700,
-                    height: "auto",
-                    minWidth: "auto",
-                    padding: "4px 8px",
-                    borderRadius: 1,
-                  },
-                }}
-              />
+              <Typography variant="h6" fontWeight={700} color="success.main">
+                {counts.species.toLocaleString()}
+              </Typography>
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
                 <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
                 <Typography variant="caption" color="text.secondary">
