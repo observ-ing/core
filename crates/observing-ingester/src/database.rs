@@ -149,7 +149,7 @@ impl Database {
             .and_then(|r| r.get("verbatimLocality"))
             .and_then(|v| v.as_str());
         let notes = record.and_then(|r| r.get("notes")).and_then(|v| v.as_str());
-        let associated_media = record.and_then(|r| r.get("associatedMedia"));
+        let associated_media = record.and_then(|r| r.get("blobs"));
 
         // Extract taxonomy fields
         let taxon_id = record

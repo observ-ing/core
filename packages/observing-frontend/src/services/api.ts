@@ -226,6 +226,8 @@ export async function updateObservation(data: {
   notes?: string;
   license?: string;
   eventDate: string;
+  images?: Array<{ data: string; mimeType: string }>;
+  retainedBlobCids?: string[];
   // Taxonomy fields
   taxonId?: string;
   taxonRank?: string;

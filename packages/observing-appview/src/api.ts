@@ -484,6 +484,8 @@ export class AppViewServer {
           family,
           genus,
           recordedBy,
+          images,
+          retainedBlobCids,
         } = req.body;
 
         if (!uri) {
@@ -520,6 +522,58 @@ export class AppViewServer {
           res.status(403).json({ error: "You can only edit your own observations" });
           return;
         }
+
+        // Fetch existing record to preserve blobs
+        const existingRecord = await agent.com.atproto.repo.getRecord({
+          repo: recordDid,
+          collection,
+          rkey,
+        });
+        const existingBlobs = (existingRecord.data.value as Record<string, unknown>).blobs as org.rwell.test.occurrence.ImageEmbed[] | undefined;
+
+        // Upload new images as blobs if provided
+        const newBlobs: org.rwell.test.occurrence.ImageEmbed[] = [];
+        if (images && Array.isArray(images)) {
+          for (let i = 0; i < images.length; i++) {
+            const img = images[i] as { data: string; mimeType: string };
+            if (!img.data || !img.mimeType) continue;
+
+            try {
+              const bytes = new Uint8Array(Buffer.from(img.data, "base64"));
+              const blobResponse = await agent.uploadBlob(bytes, {
+                encoding: img.mimeType,
+              });
+
+              newBlobs.push({
+                image: blobResponse.data.blob as unknown as l.BlobRef,
+                alt: `Photo ${(existingBlobs?.length || 0) + i + 1}${scientificName ? ` of ${scientificName}` : ""}`,
+              });
+
+              logger.info({ size: bytes.length, mimeType: img.mimeType }, "Uploaded blob to PDS");
+            } catch (blobError) {
+              logger.error({ err: blobError }, "Error uploading blob");
+            }
+          }
+        }
+
+        // Filter existing blobs by retained CIDs (if provided), then merge with new ones
+        let retainedExistingBlobs = existingBlobs || [];
+        if (retainedBlobCids && Array.isArray(retainedBlobCids)) {
+          const cidSet = new Set(retainedBlobCids as string[]);
+          retainedExistingBlobs = retainedExistingBlobs.filter((blob) => {
+            const ref = blob.image?.ref;
+            // ref can be: a string, a {$link: string} object, or a CID object with toString()
+            let cid: string | undefined;
+            if (typeof ref === "string") {
+              cid = ref;
+            } else if (ref && typeof ref === "object") {
+              const refObj = ref as unknown as { $link?: string; toString?: () => string };
+              cid = refObj.$link || refObj.toString?.();
+            }
+            return cid && cidSet.has(cid);
+          });
+        }
+        const allBlobs = [...retainedExistingBlobs, ...newBlobs];
 
         // Fetch taxonomy hierarchy from GBIF if scientificName is provided and taxonomy not already given
         let taxon: {
@@ -583,9 +637,10 @@ export class AppViewServer {
           $type: "org.rwell.test.occurrence",
           eventDate: (eventDate || new Date().toISOString()) as l.DatetimeString,
           location,
-          createdAt: new Date().toISOString() as l.DatetimeString,
+          createdAt: ((existingRecord.data.value as Record<string, unknown>).createdAt as string || new Date().toISOString()) as l.DatetimeString,
           // Optional fields - only include if defined (exactOptionalPropertyTypes)
           ...(scientificName && { scientificName }),
+          ...(allBlobs.length > 0 && { blobs: allBlobs }),
           ...(notes && { notes }),
           ...(license && { license }),
           ...(finalTaxonId && { taxonId: finalTaxonId }),
@@ -609,6 +664,17 @@ export class AppViewServer {
         });
 
         logger.info({ uri: result.data.uri }, "Updated AT Protocol record");
+
+        // Update the database directly so changes are visible immediately
+        await this.db.upsertOccurrence({
+          did: sessionDid,
+          uri: result.data.uri,
+          cid: result.data.cid,
+          action: "update",
+          record,
+          seq: 0,
+          time: new Date().toISOString(),
+        });
 
         // Update exact coordinates in private data table
         await this.db.saveOccurrencePrivateData(

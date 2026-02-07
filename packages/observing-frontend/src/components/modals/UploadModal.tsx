@@ -81,6 +81,7 @@ export function UploadModal() {
   const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
+  const [existingImages, setExistingImages] = useState<string[]>([]);
   const [coObservers, setCoObservers] = useState<string[]>([]);
   const [coObserverInput, setCoObserverInput] = useState("");
   const [photoDate, setPhotoDate] = useState<Date | null>(null);
@@ -108,6 +109,7 @@ export function UploadModal() {
           ?.filter((o) => o.role === "co-observer")
           .map((o) => o.did) || [];
         setCoObservers(coObserverDids);
+        setExistingImages(editingObservation.images || []);
       } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
         setLng(currentLocation.lng.toFixed(6));
@@ -134,6 +136,7 @@ export function UploadModal() {
     setSuggestions([]);
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
+    setExistingImages([]);
     setCoObservers([]);
     setCoObserverInput("");
     setPhotoDate(null);
@@ -258,6 +261,10 @@ export function UploadModal() {
     });
   };
 
+  const handleRemoveExistingImage = (index: number) => {
+    setExistingImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const handleUploadClick = () => {
     fileInputRef.current?.click();
   };
@@ -314,6 +321,12 @@ export function UploadModal() {
       let observationUri: string;
 
       if (isEditMode && editingObservation) {
+        // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
+        const retainedBlobCids = existingImages.map((url) => {
+          const parts = url.split("/");
+          return parts[parts.length - 1];
+        });
+
         const result = await updateObservation({
           uri: editingObservation.uri,
           scientificName: species.trim() || undefined,
@@ -324,6 +337,8 @@ export function UploadModal() {
           license,
           eventDate: editingObservation.eventDate || new Date().toISOString(),
           recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          images: imageData.length > 0 ? imageData : undefined,
+          retainedBlobCids,
         });
 
         // Wait for the update to be processed
@@ -611,11 +626,49 @@ export function UploadModal() {
           style={{ display: "none" }}
         />
 
-        {images.length > 0 && (
+        {(existingImages.length > 0 || images.length > 0) && (
           <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
+            {existingImages.map((url, index) => (
+              <Box
+                key={`existing-${index}`}
+                sx={{
+                  position: "relative",
+                  width: 80,
+                  height: 80,
+                  borderRadius: 1,
+                  overflow: "hidden",
+                  border: 1,
+                  borderColor: "divider",
+                }}
+              >
+                <Box
+                  component="img"
+                  src={url}
+                  alt={`Existing ${index + 1}`}
+                  sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                <IconButton
+                  size="small"
+                  onClick={() => handleRemoveExistingImage(index)}
+                  aria-label="Remove image"
+                  sx={{
+                    position: "absolute",
+                    top: 2,
+                    right: 2,
+                    bgcolor: "rgba(0, 0, 0, 0.7)",
+                    color: "white",
+                    width: 20,
+                    height: 20,
+                    "&:hover": { bgcolor: "error.main" },
+                  }}
+                >
+                  <CloseIcon sx={{ fontSize: 14 }} />
+                </IconButton>
+              </Box>
+            ))}
             {images.map((img, index) => (
               <Box
-                key={index}
+                key={`new-${index}`}
                 sx={{
                   position: "relative",
                   width: 80,
@@ -654,7 +707,7 @@ export function UploadModal() {
           </Stack>
         )}
 
-        {images.length < MAX_IMAGES && (
+        {existingImages.length + images.length < MAX_IMAGES && (
           <Button
             fullWidth
             variant="outlined"
