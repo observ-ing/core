@@ -167,9 +167,7 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       MuiCard: {
         styleOverrides: {
           root: {
-            backgroundColor: "transparent",
-            borderBottom: `1px solid ${borderColor}`,
-            borderRadius: 0,
+            boxShadow: cardShadow,
           },
         },
       },
@@ -245,7 +243,7 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       MuiCardMedia: {
         styleOverrides: {
           root: {
-            borderRadius: 8,
+            borderRadius: 0,
           },
         },
       },

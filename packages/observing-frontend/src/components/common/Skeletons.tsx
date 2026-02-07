@@ -1,41 +1,37 @@
-import { Box, Skeleton, Stack } from "@mui/material";
+import { Box, Card, Skeleton, Stack } from "@mui/material";
 
 /**
  * Skeleton loader matching FeedItem layout
  */
 export function FeedItemSkeleton() {
   return (
-    <Box
+    <Card
       sx={{
-        display: "flex",
-        gap: 1,
-        p: 1.5,
-        bgcolor: "background.paper",
-        borderRadius: 0.5,
-        mb: 1,
+        mb: 1.5,
         mx: { xs: 0.5, sm: 1 },
-        borderBottom: 1,
-        borderColor: "divider",
         "&:first-of-type": {
-          mt: 1,
+          mt: 1.5,
         },
       }}
     >
-      <Skeleton variant="circular" width={40} height={40} />
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
-          <Skeleton variant="text" width="30%" height={20} />
-          <Skeleton variant="text" width="20%" height={16} />
-          <Skeleton variant="text" width="10%" height={16} />
-        </Stack>
-        <Skeleton variant="text" width="45%" height={24} sx={{ my: 0.5 }} />
-        <Skeleton
-          variant="rectangular"
-          height={280}
-          sx={{ borderRadius: 0.5, mt: 1 }}
-        />
+      <Box sx={{ display: "flex", gap: 1, p: 2 }}>
+        <Skeleton variant="circular" width={40} height={40} />
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
+            <Skeleton variant="text" width="30%" height={20} />
+            <Skeleton variant="text" width="20%" height={16} />
+          </Stack>
+          <Skeleton variant="text" width="15%" height={16} />
+        </Box>
       </Box>
-    </Box>
+      <Skeleton
+        variant="rectangular"
+        height={280}
+      />
+      <Box sx={{ p: 2 }}>
+        <Skeleton variant="text" width="45%" height={24} />
+      </Box>
+    </Card>
   );
 }
 

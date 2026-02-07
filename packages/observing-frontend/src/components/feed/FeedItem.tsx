@@ -9,7 +9,11 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Card,
+  CardHeader,
   CardMedia,
+  CardContent,
+  CardActionArea,
   Stack,
   Tooltip,
 } from "@mui/material";
@@ -106,214 +110,128 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
     navigate(observationUrl);
   };
 
+  const avatarEl = hasCoObservers ? (
+    <Tooltip title={`With ${coObserverNames}`} placement="top">
+      <AvatarGroup
+        max={3}
+        sx={{
+          "& .MuiAvatar-root": { width: 36, height: 36, border: "2px solid", borderColor: "background.paper" },
+        }}
+      >
+        <Avatar src={owner.avatar} alt={displayName} />
+        {coObservers.slice(0, 2).map((co) => (
+          <Avatar
+            key={co.did}
+            src={co.avatar}
+            alt={co.displayName || co.handle || co.did}
+          />
+        ))}
+      </AvatarGroup>
+    </Tooltip>
+  ) : (
+    <Avatar
+      component={Link}
+      to={`/profile/${encodeURIComponent(owner.did)}`}
+      src={owner.avatar}
+      alt={displayName}
+      onClick={(e) => e.stopPropagation()}
+      sx={{ width: 40, height: 40, cursor: "pointer" }}
+    />
+  );
+
+  const titleEl = (
+    <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap">
+      <Typography
+        component={Link}
+        to={`/profile/${encodeURIComponent(owner.did)}`}
+        onClick={(e) => e.stopPropagation()}
+        sx={{
+          fontWeight: 600,
+          color: "text.primary",
+          textDecoration: "none",
+          "&:hover": { textDecoration: "underline" },
+        }}
+      >
+        {displayName}
+      </Typography>
+      {hasCoObservers && (
+        <Tooltip title={`With ${coObserverNames}`}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "primary.main",
+              cursor: "pointer",
+              "&:hover": { textDecoration: "underline" },
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            +{coObservers.length} other{coObservers.length > 1 ? "s" : ""}
+          </Typography>
+        </Tooltip>
+      )}
+      {handle && (
+        <Typography variant="body2" color="text.disabled">
+          {handle}
+        </Typography>
+      )}
+    </Stack>
+  );
+
   return (
-    <Box
-      onClick={handleCardClick}
+    <Card
       sx={{
-        display: "flex",
-        gap: 1,
-        p: 1.5,
-        bgcolor: "background.paper",
-        borderRadius: 0.5,
-        mb: 1,
+        mb: 1.5,
         mx: { xs: 0.5, sm: 1 },
-        cursor: "pointer",
-        color: "inherit",
-        borderBottom: 1,
-        borderColor: "divider",
-        "&:hover": {
-          bgcolor: "action.hover",
-        },
         "&:first-of-type": {
-          mt: 1,
+          mt: 1.5,
         },
       }}
     >
-      {hasCoObservers ? (
-        <Tooltip title={`With ${coObserverNames}`} placement="top">
-          <AvatarGroup
-            max={3}
-            sx={{
-              "& .MuiAvatar-root": { width: 36, height: 36, border: "2px solid", borderColor: "background.paper" },
-            }}
-          >
-            <Avatar src={owner.avatar} alt={displayName} />
-            {coObservers.slice(0, 2).map((co) => (
-              <Avatar
-                key={co.did}
-                src={co.avatar}
-                alt={co.displayName || co.handle || co.did}
-              />
-            ))}
-          </AvatarGroup>
-        </Tooltip>
-      ) : (
-        <Avatar
-          src={owner.avatar}
-          alt={displayName}
-          sx={{ width: 40, height: 40 }}
-        />
-      )}
-
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap">
-          <Typography
-            component={Link}
-            to={`/profile/${encodeURIComponent(owner.did)}`}
-            onClick={(e) => e.stopPropagation()}
-            sx={{
-              fontWeight: 600,
-              color: "text.primary",
-              textDecoration: "none",
-              "&:hover": { textDecoration: "underline" },
-            }}
-          >
-            {displayName}
-          </Typography>
-          {hasCoObservers && (
-            <Tooltip title={`With ${coObserverNames}`}>
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "primary.main",
-                  cursor: "pointer",
-                  "&:hover": { textDecoration: "underline" },
-                }}
+      <CardActionArea onClick={handleCardClick} component="div">
+        <CardHeader
+          avatar={avatarEl}
+          title={titleEl}
+          subheader={timeAgo}
+          subheaderTypographyProps={{ variant: "body2", color: "text.disabled" }}
+          action={
+            <>
+              <IconButton
+                size="small"
+                onClick={handleMenuOpen}
+                aria-label="More options"
+                sx={{ color: "text.disabled" }}
+              >
+                <MoreVertIcon fontSize="small" />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                open={menuOpen}
+                onClose={handleMenuClose}
                 onClick={(e) => e.stopPropagation()}
+                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                transformOrigin={{ vertical: "top", horizontal: "right" }}
               >
-                +{coObservers.length} other{coObservers.length > 1 ? "s" : ""}
-              </Typography>
-            </Tooltip>
-          )}
-          {handle && (
-            <Typography variant="body2" color="text.disabled">
-              {handle}
-            </Typography>
-          )}
-          <Typography variant="body2" color="text.disabled">
-            {timeAgo}
-          </Typography>
-          <Box sx={{ ml: "auto" }}>
-            <IconButton
-              size="small"
-              onClick={handleMenuOpen}
-              aria-label="More options"
-              sx={{ color: "text.disabled" }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={menuOpen}
-              onClose={handleMenuClose}
-              onClick={(e) => e.stopPropagation()}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-            >
-              {isOwnPost && onEdit && (
-                <MenuItem onClick={handleEditClick}>Edit</MenuItem>
-              )}
-              {isOwnPost && onDelete && (
-                <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-                  Delete
-                </MenuItem>
-              )}
-              <MenuItem
-                component="a"
-                href={pdslsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
-                View on AT Protocol
-              </MenuItem>
-            </Menu>
-          </Box>
-        </Stack>
-
-        {/* Species display - show multiple if multi-subject */}
-        {observation.subjects && observation.subjects.length > 1 ? (
-          <Stack spacing={0.25} sx={{ my: 0.5 }}>
-            {observation.subjects.slice(0, 3).map((subject, idx) => (
-              <Box
-                key={subject.index}
-                sx={{
-                  fontSize: idx === 0 ? "1.1rem" : "0.9rem",
-                  opacity: idx === 0 ? 1 : 0.8,
-                }}
-              >
-                {subject.communityId ? (
-                  <TaxonLink
-                    name={subject.communityId}
-                    kingdom={taxonomy.kingdom}
-                    rank="species"
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                ) : (
-                  <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>
-                    Unknown
-                  </Typography>
+                {isOwnPost && onEdit && (
+                  <MenuItem onClick={handleEditClick}>Edit</MenuItem>
                 )}
-              </Box>
-            ))}
-            {observation.subjects.length > 3 && (
-              <Typography variant="caption" color="text.disabled">
-                +{observation.subjects.length - 3} more
-              </Typography>
-            )}
-          </Stack>
-        ) : (
-          <Box sx={{ my: 0.5, fontSize: "1.1rem" }}>
-            {species ? (
-              <TaxonLink
-                name={species}
-                kingdom={taxonomy.kingdom}
-                rank={taxonomy.taxonRank || "species"}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
-                Unidentified
-              </Typography>
-            )}
-          </Box>
-        )}
-
-        {observation.occurrenceRemarks && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ lineHeight: 1.4, my: 0.5 }}
-          >
-            {observation.occurrenceRemarks.length > REMARKS_TRUNCATE_LENGTH && !remarksExpanded ? (
-              <>
-                {observation.occurrenceRemarks.slice(0, REMARKS_TRUNCATE_LENGTH).trimEnd()}…{" "}
-                <Box
-                  component="span"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setRemarksExpanded(true);
-                  }}
-                  sx={{
-                    color: "primary.main",
-                    cursor: "pointer",
-                    "&:hover": { textDecoration: "underline" },
-                  }}
+                {isOwnPost && onDelete && (
+                  <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
+                    Delete
+                  </MenuItem>
+                )}
+                <MenuItem
+                  component="a"
+                  href={pdslsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  Read more
-                </Box>
-              </>
-            ) : (
-              observation.occurrenceRemarks
-            )}
-          </Typography>
-        )}
-
-        {observation.verbatimLocality && (
-          <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-            {observation.verbatimLocality}
-          </Typography>
-        )}
+                  View on AT Protocol
+                </MenuItem>
+              </Menu>
+            </>
+          }
+        />
 
         {imageUrl && (
           <CardMedia
@@ -322,14 +240,98 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
             alt={species || "Observation photo"}
             loading="lazy"
             sx={{
-              mt: 1,
-              borderRadius: 0.5,
               maxHeight: 280,
               objectFit: "cover",
             }}
           />
         )}
-      </Box>
-    </Box>
+
+        <CardContent sx={{ "&:last-child": { pb: 1.5 } }}>
+          {/* Species display - show multiple if multi-subject */}
+          {observation.subjects && observation.subjects.length > 1 ? (
+            <Stack spacing={0.25}>
+              {observation.subjects.slice(0, 3).map((subject, idx) => (
+                <Box
+                  key={subject.index}
+                  sx={{
+                    fontSize: idx === 0 ? "1.1rem" : "0.9rem",
+                    opacity: idx === 0 ? 1 : 0.8,
+                  }}
+                >
+                  {subject.communityId ? (
+                    <TaxonLink
+                      name={subject.communityId}
+                      kingdom={taxonomy.kingdom}
+                      rank="species"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  ) : (
+                    <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>
+                      Unknown
+                    </Typography>
+                  )}
+                </Box>
+              ))}
+              {observation.subjects.length > 3 && (
+                <Typography variant="caption" color="text.disabled">
+                  +{observation.subjects.length - 3} more
+                </Typography>
+              )}
+            </Stack>
+          ) : (
+            <Box sx={{ fontSize: "1.1rem" }}>
+              {species ? (
+                <TaxonLink
+                  name={species}
+                  kingdom={taxonomy.kingdom}
+                  rank={taxonomy.taxonRank || "species"}
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                  Unidentified
+                </Typography>
+              )}
+            </Box>
+          )}
+
+          {observation.occurrenceRemarks && (
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{ lineHeight: 1.4, mt: 0.5 }}
+            >
+              {observation.occurrenceRemarks.length > REMARKS_TRUNCATE_LENGTH && !remarksExpanded ? (
+                <>
+                  {observation.occurrenceRemarks.slice(0, REMARKS_TRUNCATE_LENGTH).trimEnd()}…{" "}
+                  <Box
+                    component="span"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRemarksExpanded(true);
+                    }}
+                    sx={{
+                      color: "primary.main",
+                      cursor: "pointer",
+                      "&:hover": { textDecoration: "underline" },
+                    }}
+                  >
+                    Read more
+                  </Box>
+                </>
+              ) : (
+                observation.occurrenceRemarks
+              )}
+            </Typography>
+          )}
+
+          {observation.verbatimLocality && (
+            <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
+              {observation.verbatimLocality}
+            </Typography>
+          )}
+        </CardContent>
+      </CardActionArea>
+    </Card>
   );
 }

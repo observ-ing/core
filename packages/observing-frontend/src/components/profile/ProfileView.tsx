@@ -11,6 +11,10 @@ import {
   CircularProgress,
   Stack,
   Chip,
+  List,
+  ListItemButton,
+  ListItemText,
+  ListItemAvatar,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -201,41 +205,45 @@ export function ProfileView() {
       </Tabs>
 
       {/* Feed */}
-      <Box sx={{ flex: 1 }}>
+      <List disablePadding sx={{ flex: 1 }}>
         {(activeTab === "all" || activeTab === "observations") &&
           occurrences.map((occ) => (
-            <Box
+            <ListItemButton
               key={occ.uri}
               component={Link}
               to={getObservationUrl(occ.uri)}
               sx={{
-                display: "block",
-                p: 2,
                 borderBottom: 1,
                 borderColor: "divider",
-                textDecoration: "none",
-                color: "inherit",
-                "&:hover": { bgcolor: "rgba(255, 255, 255, 0.03)" },
+                alignItems: "flex-start",
+                gap: 2,
               }}
             >
-              <Chip label="Observation" size="small" sx={{ mb: 1 }} />
-              <Stack direction="row" spacing={2} alignItems="flex-start">
-                <Box sx={{ flex: 1 }}>
-                  <Typography
-                    sx={{
-                      fontStyle: "italic",
-                      color: "primary.main",
-                      fontWeight: 500,
-                    }}
-                  >
-                    {occ.communityId || occ.scientificName || "Unknown species"}
-                  </Typography>
-                  <Typography variant="caption" color="text.disabled">
+              <ListItemText
+                primary={
+                  <>
+                    <Chip label="Observation" size="small" sx={{ mb: 0.5 }} />
+                    <Typography
+                      sx={{
+                        fontStyle: "italic",
+                        color: "primary.main",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {occ.communityId || occ.scientificName || "Unknown species"}
+                    </Typography>
+                  </>
+                }
+                secondary={
+                  <>
                     {formatTimeAgo(new Date(occ.createdAt))}
                     {occ.verbatimLocality && ` · ${occ.verbatimLocality}`}
-                  </Typography>
-                </Box>
-                {occ.images[0] && (
+                  </>
+                }
+                secondaryTypographyProps={{ variant: "caption", color: "text.disabled" }}
+              />
+              {occ.images[0] && (
+                <ListItemAvatar sx={{ minWidth: "auto", mt: 1 }}>
                   <Box
                     component="img"
                     src={getImageUrl(occ.images[0])}
@@ -248,47 +256,51 @@ export function ProfileView() {
                       objectFit: "cover",
                     }}
                   />
-                )}
-              </Stack>
-            </Box>
+                </ListItemAvatar>
+              )}
+            </ListItemButton>
           ))}
 
         {(activeTab === "all" || activeTab === "identifications") &&
           identifications.map((id) => (
-            <Box
+            <ListItemButton
               key={id.uri}
               component={Link}
               to={getObservationUrl(id.subject_uri)}
               sx={{
-                display: "block",
-                p: 2,
                 borderBottom: 1,
                 borderColor: "divider",
-                textDecoration: "none",
-                color: "inherit",
-                "&:hover": { bgcolor: "rgba(255, 255, 255, 0.03)" },
               }}
             >
-              <Chip label="Identification" size="small" sx={{ mb: 1 }} />
-              <Typography
-                sx={{
-                  fontStyle: "italic",
-                  color: "primary.main",
-                  fontWeight: 500,
-                }}
-              >
-                {id.scientific_name}
-              </Typography>
-              {id.identification_remarks && (
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {id.identification_remarks}
-                </Typography>
-              )}
-              <Typography variant="caption" color="text.disabled">
-                {formatTimeAgo(new Date(id.date_identified))}
-                {id.is_agreement && " · Agrees"}
-              </Typography>
-            </Box>
+              <ListItemText
+                primary={
+                  <>
+                    <Chip label="Identification" size="small" sx={{ mb: 0.5 }} />
+                    <Typography
+                      sx={{
+                        fontStyle: "italic",
+                        color: "primary.main",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {id.scientific_name}
+                    </Typography>
+                    {id.identification_remarks && (
+                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                        {id.identification_remarks}
+                      </Typography>
+                    )}
+                  </>
+                }
+                secondary={
+                  <>
+                    {formatTimeAgo(new Date(id.date_identified))}
+                    {id.is_agreement && " · Agrees"}
+                  </>
+                }
+                secondaryTypographyProps={{ variant: "caption", color: "text.disabled" }}
+              />
+            </ListItemButton>
           ))}
 
         {isLoading && occurrences.length === 0 && identifications.length === 0 && (
@@ -318,7 +330,7 @@ export function ProfileView() {
             </Button>
           </Box>
         )}
-      </Box>
+      </List>
     </Container>
   );
 }

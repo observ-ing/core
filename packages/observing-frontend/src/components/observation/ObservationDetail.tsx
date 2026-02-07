@@ -15,6 +15,11 @@ import {
   Chip,
   Menu,
   MenuItem,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemAvatar,
+  ListItemText,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -333,101 +338,104 @@ export function ObservationDetail() {
       {/* Content */}
       <Box sx={{ p: 3 }}>
         {/* Observer */}
-        <Stack
-          direction="row"
-          spacing={1.5}
-          alignItems="center"
+        <ListItem
           component={Link}
           to={`/profile/${encodeURIComponent(observation.observer.did)}`}
           sx={{
             textDecoration: "none",
             color: "inherit",
-            "&:hover": { bgcolor: "rgba(255, 255, 255, 0.03)" },
-            p: 1,
-            mx: -1,
+            "&:hover": { bgcolor: "action.hover" },
+            mx: -2,
             borderRadius: 1,
           }}
         >
-          <Avatar src={observation.observer.avatar} alt={displayName} />
-          <Box>
-            <Typography fontWeight={600}>{displayName}</Typography>
-            {handle && (
-              <Typography variant="body2" color="text.disabled">
-                {handle}
-              </Typography>
-            )}
-          </Box>
-        </Stack>
+          <ListItemAvatar>
+            <Avatar src={observation.observer.avatar} alt={displayName} />
+          </ListItemAvatar>
+          <ListItemText
+            primary={displayName}
+            primaryTypographyProps={{ fontWeight: 600 }}
+            secondary={handle || undefined}
+            secondaryTypographyProps={{ color: "text.disabled" }}
+          />
+        </ListItem>
 
         {/* Observation Details (shared across all subjects) */}
-        <Box sx={{ mt: 2 }}>
-          <Stack spacing={2}>
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <CalendarTodayIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                <Typography variant="caption" color="text.secondary">
-                  Observed
-                </Typography>
-              </Stack>
-              <Typography>{formatDate(observation.eventDate)}</Typography>
-            </Box>
+        <List disablePadding sx={{ mt: 1 }}>
+          <ListItem disableGutters alignItems="flex-start">
+            <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+              <CalendarTodayIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Observed"
+              primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
+              secondary={formatDate(observation.eventDate)}
+              secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
+            />
+          </ListItem>
 
-            {observation.verbatimLocality && (
-              <Box>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <LocationOnIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
-                    Location
-                  </Typography>
-                </Stack>
-                <Typography>{observation.verbatimLocality}</Typography>
-              </Box>
-            )}
+          {observation.verbatimLocality && (
+            <ListItem disableGutters alignItems="flex-start">
+              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                <LocationOnIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Location"
+                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
+                secondary={observation.verbatimLocality}
+                secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
+              />
+            </ListItem>
+          )}
 
-            <Box>
-              <Stack direction="row" alignItems="center" spacing={0.5}>
-                <MyLocationIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                <Typography variant="caption" color="text.secondary">
-                  Coordinates
-                </Typography>
-              </Stack>
-              <Typography>
-                {observation.location.latitude.toFixed(5)},{" "}
-                {observation.location.longitude.toFixed(5)}
-                {observation.location.uncertaintyMeters && (
-                  <Typography
-                    component="span"
-                    variant="body2"
-                    color="text.disabled"
-                  >
-                    {" "}
-                    (±{observation.location.uncertaintyMeters}m)
-                  </Typography>
-                )}
-              </Typography>
-              <Box sx={{ mt: 1 }}>
-                <LocationMap
-                  latitude={observation.location.latitude}
-                  longitude={observation.location.longitude}
-                  uncertaintyMeters={observation.location.uncertaintyMeters}
-                />
-              </Box>
-            </Box>
+          <ListItem disableGutters alignItems="flex-start">
+            <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+              <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+            </ListItemIcon>
+            <ListItemText
+              primary="Coordinates"
+              primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
+              secondary={
+                <>
+                  {observation.location.latitude.toFixed(5)},{" "}
+                  {observation.location.longitude.toFixed(5)}
+                  {observation.location.uncertaintyMeters && (
+                    <Typography
+                      component="span"
+                      variant="body2"
+                      color="text.disabled"
+                    >
+                      {" "}
+                      (±{observation.location.uncertaintyMeters}m)
+                    </Typography>
+                  )}
+                </>
+              }
+              secondaryTypographyProps={{ variant: "body1", color: "text.primary", component: "div" }}
+            />
+          </ListItem>
+          <Box sx={{ ml: 4.5, mb: 1 }}>
+            <LocationMap
+              latitude={observation.location.latitude}
+              longitude={observation.location.longitude}
+              uncertaintyMeters={observation.location.uncertaintyMeters}
+            />
+          </Box>
 
-            {observation.occurrenceRemarks && (
-              <Box>
-                <Stack direction="row" alignItems="center" spacing={0.5}>
-                  <NotesIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
-                    Notes
-                  </Typography>
-                </Stack>
-                <Typography>{observation.occurrenceRemarks}</Typography>
-              </Box>
-            )}
-
-          </Stack>
-        </Box>
+          {observation.occurrenceRemarks && (
+            <ListItem disableGutters alignItems="flex-start">
+              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                <NotesIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+              </ListItemIcon>
+              <ListItemText
+                primary="Notes"
+                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
+                secondary={observation.occurrenceRemarks}
+                secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
+              />
+            </ListItem>
+          )}
+        </List>
 
         {/* Subject-specific content (identification) */}
         <Box sx={{ mt: 3 }}>

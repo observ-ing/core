@@ -12,6 +12,8 @@ import {
   Chip,
   Divider,
   Link as MuiLink,
+  List,
+  ListItem,
   Accordion,
   AccordionSummary,
   AccordionDetails,
@@ -232,9 +234,9 @@ export function TaxonDetail() {
               </Typography>
             </AccordionSummary>
             <AccordionDetails sx={{ pl: 1 }}>
-              <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
+              <List disablePadding>
                 {taxon.ancestors.map((ancestor, idx) => (
-                  <Box component="li" key={ancestor.id} sx={{ pl: idx * 2.5 }}>
+                  <ListItem key={ancestor.id} disableGutters disablePadding sx={{ pl: idx * 2.5 }}>
                     <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                       {idx > 0 && (
                         <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
@@ -252,10 +254,10 @@ export function TaxonDetail() {
                         {ancestor.rank}
                       </Typography>
                     </Box>
-                  </Box>
+                  </ListItem>
                 ))}
                 {/* Current taxon */}
-                <Box component="li" sx={{ pl: taxon.ancestors.length * 2.5 }}>
+                <ListItem disableGutters disablePadding sx={{ pl: taxon.ancestors.length * 2.5 }}>
                   <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                     {taxon.ancestors.length > 0 && (
                       <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
@@ -275,10 +277,10 @@ export function TaxonDetail() {
                       {taxon.rank}
                     </Typography>
                   </Box>
-                </Box>
+                </ListItem>
                 {/* Children */}
                 {taxon.children.map((child) => (
-                  <Box component="li" key={child.id} sx={{ pl: (taxon.ancestors.length + 1) * 2.5 }}>
+                  <ListItem key={child.id} disableGutters disablePadding sx={{ pl: (taxon.ancestors.length + 1) * 2.5 }}>
                     <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                       <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └
@@ -294,9 +296,9 @@ export function TaxonDetail() {
                         {child.rank}
                       </Typography>
                     </Box>
-                  </Box>
+                  </ListItem>
                 ))}
-              </Box>
+              </List>
             </AccordionDetails>
           </Accordion>
         )}
