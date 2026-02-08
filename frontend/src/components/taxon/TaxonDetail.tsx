@@ -26,6 +26,7 @@ import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/
 import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
@@ -43,6 +44,8 @@ export function TaxonDetail() {
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
+
+  usePageTitle(taxon?.scientificName || "Taxon");
 
   // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
   const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;

@@ -31,6 +31,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
 import { fetchObservation, getImageUrl, deleteIdentification, likeObservation, unlikeObservation } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
@@ -59,6 +60,8 @@ export function ObservationDetail() {
   const [likeCount, setLikeCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+
+  usePageTitle(observation?.communityId || observation?.scientificName || "Observation");
 
   // Reconstruct AT URI from route params
   const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;

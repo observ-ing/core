@@ -2,6 +2,7 @@ import { useEffect, useRef, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Box, Container, Typography, Button, CircularProgress } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
@@ -14,6 +15,7 @@ interface FeedViewProps {
 }
 
 export function FeedView({ tab = "home" }: FeedViewProps) {
+  usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { observations, isLoading, currentTab, hasMore, homeFeedMeta } =

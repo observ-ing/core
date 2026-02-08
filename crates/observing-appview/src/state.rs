@@ -87,7 +87,7 @@ pub fn create_oauth_client(
     } else {
         let config = atrium_oauth::OAuthClientConfig {
             client_metadata: atrium_oauth::AtprotoLocalhostClientMetadata {
-                redirect_uris: Some(vec![format!("http://localhost:{port}/oauth/callback")]),
+                redirect_uris: Some(vec![format!("http://127.0.0.1:{port}/oauth/callback")]),
                 scopes: Some(scopes),
             },
             keys: None,

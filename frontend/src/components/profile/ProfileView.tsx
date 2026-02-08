@@ -28,6 +28,7 @@ import type {
 } from "../../services/types";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
 import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton } from "../common/Skeletons";
+import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "all" | "observations" | "identifications";
 
@@ -41,6 +42,8 @@ export function ProfileView() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("all");
+
+  usePageTitle(data?.profile.displayName || data?.profile.handle || "Profile");
 
   const loadData = useCallback(
     async (loadMore = false) => {

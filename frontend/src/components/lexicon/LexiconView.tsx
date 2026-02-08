@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { usePageTitle } from "../../hooks/usePageTitle";
 import {
   Box,
   Typography,
@@ -262,6 +263,7 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
 }
 
 export function LexiconView() {
+  usePageTitle("Lexicons");
   return (
     <Box sx={{ maxWidth: 960, mx: "auto", p: { xs: 2, md: 3 } }}>
       <Typography variant="h4" fontWeight={700} gutterBottom>
