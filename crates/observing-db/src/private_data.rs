@@ -51,8 +51,7 @@ pub async fn get(
 
 /// Delete private location data for an occurrence
 pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM occurrence_private_data WHERE uri = $1")
-        .bind(uri)
+    sqlx::query!("DELETE FROM occurrence_private_data WHERE uri = $1", uri)
         .execute(executor)
         .await?;
     Ok(())

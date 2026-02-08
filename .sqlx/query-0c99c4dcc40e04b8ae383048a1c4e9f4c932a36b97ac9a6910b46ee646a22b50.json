@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM occurrence_private_data WHERE uri = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0c99c4dcc40e04b8ae383048a1c4e9f4c932a36b97ac9a6910b46ee646a22b50"
+}
