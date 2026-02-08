@@ -111,5 +111,5 @@ images:
 
 substitutions:
   _REGION: us-central1
-  _PUBLIC_URL: https://observing-appview-378013734384.us-central1.run.app
+  _PUBLIC_URL: https://observ.ing
   _TAXONOMY_URL: https://observing-taxonomy-378013734384.us-central1.run.app
