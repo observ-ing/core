@@ -10,14 +10,10 @@ import {
   Button,
   CircularProgress,
   Stack,
-  Chip,
   Card,
   CardActionArea,
   CardMedia,
   CardContent,
-  List,
-  ListItemButton,
-  ListItemText,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -30,7 +26,7 @@ import type {
   Identification,
 } from "../../services/types";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
-import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton, ProfileObservationCardSkeleton } from "../common/Skeletons";
+import { ProfileHeaderSkeleton, ProfileObservationCardSkeleton, ProfileIdentificationCardSkeleton } from "../common/Skeletons";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "all" | "observations" | "identifications";
@@ -286,59 +282,88 @@ export function ProfileView() {
         </Box>
       )}
 
-      {/* Identifications List */}
+      {/* Identifications Grid */}
       {(activeTab === "all" || activeTab === "identifications") && (
-        <List disablePadding>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(2, 1fr)",
+              sm: "repeat(3, 1fr)",
+            },
+            gap: 1.5,
+            p: 1.5,
+          }}
+        >
           {identifications.map((id) => (
-            <ListItemButton
-              key={id.uri}
-              component={Link}
-              to={getObservationUrl(id.subject_uri)}
-              sx={{
-                borderBottom: 1,
-                borderColor: "divider",
-              }}
-            >
-              <ListItemText
-                primary={
-                  <>
-                    <Chip label="Identification" size="small" sx={{ mb: 0.5 }} />
+            <Card key={id.uri} sx={{ display: "flex", flexDirection: "column" }}>
+              <CardActionArea
+                component={Link}
+                to={getObservationUrl(id.subject_uri)}
+                sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
+              >
+                <Box
+                  sx={{
+                    py: 3,
+                    px: 1.5,
+                    bgcolor: "action.hover",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textAlign: "center",
+                  }}
+                >
+                  <FingerprintIcon sx={{ fontSize: 28, color: "secondary.main", mb: 1 }} />
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontStyle: "italic",
+                      color: "primary.main",
+                      fontWeight: 500,
+                    }}
+                  >
+                    {id.scientific_name}
+                  </Typography>
+                  {id.vernacular_name && (
+                    <Typography variant="caption" color="text.secondary">
+                      {id.vernacular_name}
+                    </Typography>
+                  )}
+                </Box>
+                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
+                  {id.identification_remarks && (
                     <Typography
+                      variant="caption"
+                      color="text.secondary"
                       sx={{
-                        fontStyle: "italic",
-                        color: "primary.main",
-                        fontWeight: 500,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                        mb: 0.5,
                       }}
                     >
-                      {id.scientific_name}
+                      {id.identification_remarks}
                     </Typography>
-                    {id.identification_remarks && (
-                      <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                        {id.identification_remarks}
-                      </Typography>
-                    )}
-                  </>
-                }
-                secondary={
-                  <>
+                  )}
+                  <Typography variant="caption" color="text.disabled" noWrap>
                     {formatTimeAgo(new Date(id.date_identified))}
                     {id.is_agreement && " · Agrees"}
-                  </>
-                }
-                secondaryTypographyProps={{ variant: "caption", color: "text.disabled" }}
-              />
-            </ListItemButton>
+                  </Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
           ))}
-        </List>
-      )}
 
-      {isLoading && occurrences.length === 0 && identifications.length === 0 &&
-        activeTab === "identifications" && (
-        <>
-          {[1, 2, 3].map((i) => (
-            <ProfileFeedItemSkeleton key={i} />
-          ))}
-        </>
+          {isLoading && identifications.length === 0 && (
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <ProfileIdentificationCardSkeleton key={i} />
+              ))}
+            </>
+          )}
+        </Box>
       )}
 
       {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
