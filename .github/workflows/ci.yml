@@ -139,7 +139,7 @@ jobs:
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
       REGION: us-central1
-      PUBLIC_URL: https://observing-appview-378013734384.us-central1.run.app
+      PUBLIC_URL: https://observ.ing
       MEDIA_PROXY_URL: https://observing-media-proxy-378013734384.us-central1.run.app
       TAXONOMY_URL: https://observing-taxonomy-378013734384.us-central1.run.app
     steps:
