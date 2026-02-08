@@ -70,19 +70,20 @@ pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<IdentificationRow>, sqlx::Error> {
-    sqlx::query_as::<_, IdentificationRow>(
+    sqlx::query_as!(
+        IdentificationRow,
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_qualifier, taxon_id, identification_remarks,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
         FROM identifications
         WHERE subject_uri = $1
         ORDER BY subject_index, date_identified DESC
         "#,
+        occurrence_uri,
     )
-    .bind(occurrence_uri)
     .fetch_all(executor)
     .await
 }
@@ -93,20 +94,21 @@ pub async fn get_for_subject(
     occurrence_uri: &str,
     subject_index: i32,
 ) -> Result<Vec<IdentificationRow>, sqlx::Error> {
-    sqlx::query_as::<_, IdentificationRow>(
+    sqlx::query_as!(
+        IdentificationRow,
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_qualifier, taxon_id, identification_remarks,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
         FROM identifications
         WHERE subject_uri = $1 AND subject_index = $2
         ORDER BY date_identified DESC
         "#,
+        occurrence_uri,
+        subject_index,
     )
-    .bind(occurrence_uri)
-    .bind(subject_index)
     .fetch_all(executor)
     .await
 }
@@ -116,19 +118,20 @@ pub async fn get_subjects(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<SubjectInfo>, sqlx::Error> {
-    sqlx::query_as::<_, SubjectInfo>(
+    sqlx::query_as!(
+        SubjectInfo,
         r#"
         SELECT
             subject_index,
-            COUNT(*) as identification_count,
+            COUNT(*) as "identification_count!",
             MAX(date_identified) as latest_identification
         FROM identifications
         WHERE subject_uri = $1
         GROUP BY subject_index
         ORDER BY subject_index
         "#,
+        occurrence_uri,
     )
-    .bind(occurrence_uri)
     .fetch_all(executor)
     .await
 }

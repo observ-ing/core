@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            subject_index,\n            COUNT(*) as \"identification_count!\",\n            MAX(date_identified) as latest_identification\n        FROM identifications\n        WHERE subject_uri = $1\n        GROUP BY subject_index\n        ORDER BY subject_index\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "subject_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "identification_count!",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "latest_identification",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      null
+    ]
+  },
+  "hash": "71725d36683b90feee0f4f3900529a2409a257f0bace6573efccdef2e3416a95"
+}
