@@ -31,6 +31,7 @@ import {
 import { useAppSelector, useAppDispatch } from "../../store";
 import { logout } from "../../store/authSlice";
 import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlice";
+import logoSvg from "../../assets/logo.svg";
 
 export const DRAWER_WIDTH = 240;
 
@@ -107,17 +108,25 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
       {/* Logo */}
-      <Box sx={{ p: 2, display: "flex", alignItems: "center" }}>
+      <Box
+        component={Link}
+        to="/"
+        onClick={isMobile ? onMobileClose : undefined}
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          gap: 1,
+          textDecoration: "none",
+          "&:hover": { opacity: 0.8 },
+        }}
+      >
+        <img src={logoSvg} alt="" width={28} height={28} />
         <Typography
-          component={Link}
-          to="/"
           variant="h6"
-          onClick={isMobile ? onMobileClose : undefined}
           sx={{
             fontWeight: 700,
             color: "primary.main",
-            textDecoration: "none",
-            "&:hover": { opacity: 0.8 },
           }}
         >
           Observ.ing

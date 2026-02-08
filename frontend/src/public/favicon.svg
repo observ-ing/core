@@ -1,12 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <defs>
-    <linearGradient id="leafGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#4caf50"/>
-      <stop offset="100%" style="stop-color:#2e7d32"/>
-    </linearGradient>
-  </defs>
-  <path fill="url(#leafGrad)" d="M16 2C8 2 4 10 4 16c0 8 6 14 12 14 2 0 4-2 4-4 0-1-.5-2-1-2.5-.5-.5-1-1-1-2 0-1.5 1.5-3 3-3h4c4 0 7-3 7-7C32 6 25 2 16 2z"/>
-  <circle fill="#fff" cx="10" cy="12" r="2"/>
-  <circle fill="#fff" cx="16" cy="9" r="2"/>
-  <circle fill="#fff" cx="22" cy="12" r="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 6 20 20">
+  <g transform="translate(16,16) rotate(-45)">
+    <path d="M-12,0 Q0,-14 12,0" fill="#4CAF50"/>
+    <path d="M-12,0 Q0,14 12,0" fill="#2E7D32"/>
+    <circle cx="0" cy="0" r="4" fill="white"/>
+    <circle cx="0" cy="0" r="2" fill="#1B5E20"/>
+  </g>
 </svg>
