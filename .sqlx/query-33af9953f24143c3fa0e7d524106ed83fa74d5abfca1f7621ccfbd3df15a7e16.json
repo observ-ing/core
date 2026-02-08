@@ -1,0 +1,130 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            uri, cid, did,\n            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,\n            subject_a_taxon_name, subject_a_kingdom,\n            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,\n            subject_b_taxon_name, subject_b_kingdom,\n            interaction_type, direction, confidence, comment, created_at, indexed_at\n        FROM interactions\n        WHERE uri = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "subject_a_occurrence_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_a_occurrence_cid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "subject_a_subject_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "subject_a_taxon_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "subject_a_kingdom",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "subject_b_occurrence_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "subject_b_occurrence_cid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "subject_b_subject_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 11,
+        "name": "subject_b_taxon_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "subject_b_kingdom",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "interaction_type",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "direction",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "confidence",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "comment",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 18,
+        "name": "indexed_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "33af9953f24143c3fa0e7d524106ed83fa74d5abfca1f7621ccfbd3df15a7e16"
+}

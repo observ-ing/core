@@ -71,7 +71,8 @@ pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<InteractionRow>, sqlx::Error> {
-    sqlx::query_as::<_, InteractionRow>(
+    sqlx::query_as!(
+        InteractionRow,
         r#"
         SELECT
             uri, cid, did,
@@ -84,8 +85,8 @@ pub async fn get_for_occurrence(
         WHERE subject_a_occurrence_uri = $1 OR subject_b_occurrence_uri = $1
         ORDER BY created_at DESC
         "#,
+        occurrence_uri,
     )
-    .bind(occurrence_uri)
     .fetch_all(executor)
     .await
 }
@@ -96,7 +97,8 @@ pub async fn get_by_type(
     interaction_type: &str,
     limit: i64,
 ) -> Result<Vec<InteractionRow>, sqlx::Error> {
-    sqlx::query_as::<_, InteractionRow>(
+    sqlx::query_as!(
+        InteractionRow,
         r#"
         SELECT
             uri, cid, did,
@@ -110,9 +112,9 @@ pub async fn get_by_type(
         ORDER BY created_at DESC
         LIMIT $2
         "#,
+        interaction_type,
+        limit,
     )
-    .bind(interaction_type)
-    .bind(limit)
     .fetch_all(executor)
     .await
 }
@@ -122,7 +124,8 @@ pub async fn get(
     executor: impl sqlx::PgExecutor<'_>,
     uri: &str,
 ) -> Result<Option<InteractionRow>, sqlx::Error> {
-    sqlx::query_as::<_, InteractionRow>(
+    sqlx::query_as!(
+        InteractionRow,
         r#"
         SELECT
             uri, cid, did,
@@ -134,8 +137,8 @@ pub async fn get(
         FROM interactions
         WHERE uri = $1
         "#,
+        uri,
     )
-    .bind(uri)
     .fetch_optional(executor)
     .await
 }
