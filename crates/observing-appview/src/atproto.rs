@@ -44,13 +44,6 @@ struct CreateRecordRequest<'a> {
 }
 
 #[derive(Serialize)]
-struct DeleteRecordRequest<'a> {
-    did: &'a str,
-    collection: &'a str,
-    rkey: &'a str,
-}
-
-#[derive(Serialize)]
 struct UploadBlobRequest<'a> {
     did: &'a str,
     data: &'a str, // base64
@@ -117,36 +110,6 @@ impl InternalAgentClient {
         resp.json()
             .await
             .map_err(|e| format!("Failed to parse response: {e}"))
-    }
-
-    pub async fn delete_record(
-        &self,
-        did: &str,
-        collection: &str,
-        rkey: &str,
-    ) -> Result<(), String> {
-        let body = DeleteRecordRequest {
-            did,
-            collection,
-            rkey,
-        };
-        let req = self
-            .client
-            .post(format!("{}/internal/agent/delete-record", self.base_url))
-            .json(&body);
-        let resp = self
-            .add_secret(req)
-            .send()
-            .await
-            .map_err(|e| format!("Internal agent request failed: {e}"))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            error!(%status, %body, "Internal agent delete-record failed");
-            return Err(format!("Internal agent returned {status}"));
-        }
-        Ok(())
     }
 
     pub async fn upload_blob(
