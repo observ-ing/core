@@ -25,18 +25,10 @@ async fn main() -> Result<()> {
     let env_filter =
         EnvFilter::from_default_env().add_directive("observing_media_proxy=info".parse()?);
 
-    // Use JSON format for GCP Cloud Logging when LOG_FORMAT=json
-    if std::env::var("LOG_FORMAT")
-        .map(|v| v == "json")
-        .unwrap_or(false)
-    {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(tracing_stackdriver::layer())
-            .init();
-    } else {
-        tracing_subscriber::fmt().with_env_filter(env_filter).init();
-    };
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_stackdriver::layer())
+        .init();
 
     info!("Starting Observ.ing Media Proxy (Rust)...");
 

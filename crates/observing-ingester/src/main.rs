@@ -28,18 +28,10 @@ async fn main() -> Result<()> {
     let env_filter =
         EnvFilter::from_default_env().add_directive("observing_ingester=info".parse()?);
 
-    // Use JSON format for GCP Cloud Logging when LOG_FORMAT=json
-    if std::env::var("LOG_FORMAT")
-        .map(|v| v == "json")
-        .unwrap_or(false)
-    {
-        tracing_subscriber::registry()
-            .with(env_filter)
-            .with(tracing_stackdriver::layer())
-            .init();
-    } else {
-        tracing_subscriber::fmt().with_env_filter(env_filter).init();
-    };
+    tracing_subscriber::registry()
+        .with(env_filter)
+        .with(tracing_stackdriver::layer())
+        .init();
 
     info!("Starting Observ.ing Ingester (Rust)...");
 
@@ -103,8 +95,8 @@ async fn main() -> Result<()> {
                 }
             }
             if let Some(ref lp) = state.last_processed {
-                let lag_ms = (Utc::now() - lp.time).num_milliseconds();
-                info!(lag_ms, "ingester_lag");
+                let lag_secs = (Utc::now() - lp.time).num_seconds();
+                info!(lag_secs, "ingester lag: {}s behind", lag_secs);
             }
         }
     });
