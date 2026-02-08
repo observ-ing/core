@@ -1,0 +1,43 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO occurrences (\n            uri, cid, did, scientific_name, event_date, location,\n            coordinate_uncertainty_meters,\n            continent, country, country_code, state_province, county, municipality, locality, water_body,\n            verbatim_locality, occurrence_remarks, associated_media, recorded_by,\n            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\", family, genus,\n            created_at\n        ) VALUES (\n            $1, $2, $3, $4, $5,\n            ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,\n            $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20,\n            $21, $22, $23, $24, $25, $26, $27, $28, $29, $30\n        )\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = $2,\n            scientific_name = $4,\n            event_date = $5,\n            location = ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,\n            coordinate_uncertainty_meters = $8,\n            continent = COALESCE($9, occurrences.continent),\n            country = COALESCE($10, occurrences.country),\n            country_code = COALESCE($11, occurrences.country_code),\n            state_province = COALESCE($12, occurrences.state_province),\n            county = COALESCE($13, occurrences.county),\n            municipality = COALESCE($14, occurrences.municipality),\n            locality = COALESCE($15, occurrences.locality),\n            water_body = COALESCE($16, occurrences.water_body),\n            verbatim_locality = $17,\n            occurrence_remarks = $18,\n            associated_media = COALESCE($19, occurrences.associated_media),\n            recorded_by = COALESCE($20, occurrences.recorded_by),\n            taxon_id = COALESCE($21, occurrences.taxon_id),\n            taxon_rank = COALESCE($22, occurrences.taxon_rank),\n            vernacular_name = COALESCE($23, occurrences.vernacular_name),\n            kingdom = COALESCE($24, occurrences.kingdom),\n            phylum = COALESCE($25, occurrences.phylum),\n            class = COALESCE($26, occurrences.class),\n            \"order\" = COALESCE($27, occurrences.\"order\"),\n            family = COALESCE($28, occurrences.family),\n            genus = COALESCE($29, occurrences.genus),\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Float8",
+        "Float8",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "17f1c86b229493f8f2ec933f8752066d11cc40d50b8567df22d397a1fa7a9c1b"
+}
