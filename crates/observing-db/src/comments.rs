@@ -39,8 +39,7 @@ pub async fn upsert(
 
 /// Delete a comment
 pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM comments WHERE uri = $1")
-        .bind(uri)
+    sqlx::query!("DELETE FROM comments WHERE uri = $1", uri)
         .execute(executor)
         .await?;
     Ok(())
