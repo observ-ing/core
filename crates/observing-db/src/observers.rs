@@ -97,15 +97,16 @@ pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<ObserverRow>, sqlx::Error> {
-    sqlx::query_as::<_, ObserverRow>(
+    sqlx::query_as!(
+        ObserverRow,
         r#"
         SELECT observer_did as did, role, added_at
         FROM occurrence_observers
         WHERE occurrence_uri = $1
         ORDER BY role ASC, added_at ASC
         "#,
+        occurrence_uri,
     )
-    .bind(occurrence_uri)
     .fetch_all(executor)
     .await
 }
