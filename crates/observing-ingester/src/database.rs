@@ -428,5 +428,54 @@ impl Database {
 
 #[cfg(test)]
 mod tests {
-    // Integration tests would require a test database
+    use super::*;
+    use chrono::{Datelike, Timelike};
+
+    #[test]
+    fn test_parse_datetime_utc() {
+        let dt = parse_datetime("2024-01-15T12:00:00Z").unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.month(), 1);
+        assert_eq!(dt.day(), 15);
+        assert_eq!(dt.hour(), 12);
+    }
+
+    #[test]
+    fn test_parse_datetime_with_offset() {
+        let dt = parse_datetime("2024-01-15T12:00:00+05:00").unwrap();
+        assert_eq!(dt.hour(), 7);
+    }
+
+    #[test]
+    fn test_parse_datetime_with_millis() {
+        let dt = parse_datetime("2024-06-15T08:30:45.123Z").unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.minute(), 30);
+    }
+
+    #[test]
+    fn test_parse_datetime_invalid() {
+        assert!(parse_datetime("").is_none());
+        assert!(parse_datetime("not a date").is_none());
+        assert!(parse_datetime("2024-01-15").is_none());
+    }
+
+    #[test]
+    fn test_parse_naive_datetime_utc() {
+        let dt = parse_naive_datetime("2024-01-15T12:00:00Z").unwrap();
+        assert_eq!(dt.year(), 2024);
+        assert_eq!(dt.hour(), 12);
+    }
+
+    #[test]
+    fn test_parse_naive_datetime_converts_to_utc() {
+        let dt = parse_naive_datetime("2024-01-15T12:00:00+05:00").unwrap();
+        assert_eq!(dt.hour(), 7);
+    }
+
+    #[test]
+    fn test_parse_naive_datetime_invalid() {
+        assert!(parse_naive_datetime("").is_none());
+        assert!(parse_naive_datetime("garbage").is_none());
+    }
 }
