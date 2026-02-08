@@ -1,9 +1,7 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use chrono::Utc;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_db::types::UpsertOccurrenceParams;
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -518,6 +516,9 @@ pub async fn create_occurrence(
         rv
     };
 
+    // Clone record_value before it's consumed by create_record
+    let record_value_for_db = record_value.clone();
+
     // Create AT Protocol record
     let resp = state
         .agent
@@ -534,45 +535,16 @@ pub async fn create_occurrence(
 
     info!(uri = %uri, "Created occurrence");
 
-    // Immediate DB upsert for visibility
-    let params = UpsertOccurrenceParams {
-        uri: uri.clone(),
-        cid: cid.clone(),
-        did: user.did.clone(),
-        scientific_name: body.scientific_name.clone(),
-        event_date: chrono::DateTime::parse_from_rfc3339(event_date_str)
-            .map(|d| d.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now()),
-        longitude: body.longitude,
-        latitude: body.latitude,
-        coordinate_uncertainty_meters: body.coordinate_uncertainty_in_meters,
-        continent: geo.as_ref().and_then(|g| g.continent.clone()),
-        country: geo.as_ref().and_then(|g| g.country.clone()),
-        country_code: geo.as_ref().and_then(|g| g.country_code.clone()),
-        state_province: geo.as_ref().and_then(|g| g.state_province.clone()),
-        county: geo.as_ref().and_then(|g| g.county.clone()),
-        municipality: geo.as_ref().and_then(|g| g.municipality.clone()),
-        locality: geo.as_ref().and_then(|g| g.locality.clone()),
-        water_body: geo.as_ref().and_then(|g| g.water_body.clone()),
-        verbatim_locality: None,
-        occurrence_remarks: body.notes.clone(),
-        associated_media: None,
-        recorded_by: body
-            .recorded_by
-            .as_ref()
-            .map(|r| serde_json::to_string(r).unwrap_or_default()),
-        taxon_id,
-        taxon_rank,
-        vernacular_name,
-        kingdom,
-        phylum,
-        class,
-        order,
-        family,
-        genus,
-        created_at: Utc::now(),
-    };
-    let _ = observing_db::occurrences::upsert(&state.pool, &params).await;
+    // Immediate DB upsert for visibility — uses the same shared conversion
+    // as the ingester so field mapping is always consistent.
+    if let Ok(params) = observing_db::processing::occurrence_from_json(
+        &record_value_for_db,
+        uri.clone(),
+        cid.clone(),
+        user.did.clone(),
+    ) {
+        let _ = observing_db::occurrences::upsert(&state.pool, &params).await;
+    }
 
     // Save private location data
     let _ =

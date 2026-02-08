@@ -9,6 +9,8 @@ pub mod oauth;
 pub mod observers;
 pub mod occurrences;
 pub mod private_data;
+#[cfg(feature = "processing")]
+pub mod processing;
 pub mod types;
 
 pub use sqlx::postgres::PgPool;

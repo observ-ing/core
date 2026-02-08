@@ -5,6 +5,10 @@ edition = "2021"
 description = "Shared database layer for Observ.ing services"
 license = "AGPL-3.0-only"
 
+[features]
+default = []
+processing = ["observing-lexicons"]
+
 [dependencies]
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono", "json", "migrate"] }
@@ -21,3 +25,6 @@ tracing = "0.1"
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
+
+# Optional: AT Protocol lexicon types for record processing
+observing-lexicons = { path = "../observing-lexicons", optional = true }

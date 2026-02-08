@@ -2419,6 +2419,7 @@ name = "observing-db"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "observing-lexicons",
  "serde",
  "serde_json",
  "sqlx",

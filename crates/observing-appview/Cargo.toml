@@ -7,7 +7,7 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # Internal crates
-observing-db = { path = "../observing-db" }
+observing-db = { path = "../observing-db", features = ["processing"] }
 observing-identity = { path = "../observing-identity" }
 observing-geocoding = { path = "../observing-geocoding" }
 observing-lexicons = { path = "../observing-lexicons" }
