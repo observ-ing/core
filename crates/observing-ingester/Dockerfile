@@ -40,6 +40,7 @@ COPY .sqlx ./.sqlx
 # Copy real source code
 COPY crates/observing-ingester/src crates/observing-ingester/src
 COPY crates/observing-db/src crates/observing-db/src
+COPY crates/observing-db/migrations crates/observing-db/migrations
 COPY crates/observing-lexicons/src crates/observing-lexicons/src
 
 # Build for release with offline SQLx

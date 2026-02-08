@@ -49,6 +49,7 @@ RUN cargo build --release -p observing-appview && \
 # Copy real source code
 COPY crates/observing-appview/src crates/observing-appview/src
 COPY crates/observing-db/src crates/observing-db/src
+COPY crates/observing-db/migrations crates/observing-db/migrations
 COPY crates/observing-identity/src crates/observing-identity/src
 COPY crates/observing-geocoding/src crates/observing-geocoding/src
 COPY crates/observing-lexicons/src crates/observing-lexicons/src

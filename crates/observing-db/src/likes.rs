@@ -26,8 +26,7 @@ pub async fn create(
 
 /// Delete a like by URI
 pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM likes WHERE uri = $1")
-        .bind(uri)
+    sqlx::query!("DELETE FROM likes WHERE uri = $1", uri)
         .execute(executor)
         .await?;
     Ok(())
