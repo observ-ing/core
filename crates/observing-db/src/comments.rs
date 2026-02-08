@@ -50,19 +50,19 @@ pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<CommentRow>, sqlx::Error> {
-    // Note: kept as runtime query_as because CommentRow uses DateTime<Utc>
-    // but the DB column is TIMESTAMP (not TIMESTAMPTZ)
-    sqlx::query_as::<_, CommentRow>(
+    sqlx::query_as!(
+        CommentRow,
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, body,
-            reply_to_uri, reply_to_cid, created_at
+            reply_to_uri, reply_to_cid,
+            created_at as "created_at: chrono::DateTime<chrono::Utc>"
         FROM comments
         WHERE subject_uri = $1
         ORDER BY created_at ASC
         "#,
+        occurrence_uri,
     )
-    .bind(occurrence_uri)
     .fetch_all(executor)
     .await
 }
