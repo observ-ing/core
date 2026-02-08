@@ -9,18 +9,22 @@ use observing_lexicons::org_rwell::test::comment::Comment;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct CreateCommentRequest {
     occurrence_uri: String,
     occurrence_cid: String,
     body: String,
+    #[ts(optional)]
     reply_to_uri: Option<String>,
+    #[ts(optional)]
     reply_to_cid: Option<String>,
 }
 

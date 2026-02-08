@@ -13,6 +13,9 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgr
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
+# TypeScript type generation
+ts-rs = { workspace = true }
+
 # Logging
 tracing = "0.1"
 

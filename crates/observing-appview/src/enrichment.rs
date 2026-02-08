@@ -5,123 +5,170 @@ use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, Occurre
 use observing_identity::{IdentityResolver, Profile};
 use serde::Serialize;
 use sqlx::PgPool;
+use ts_rs::TS;
 
 use crate::taxonomy_client::TaxonomyClient;
 
 /// Enriched occurrence ready for API response
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Occurrence", export_to = "bindings/")]
 pub struct OccurrenceResponse {
     pub uri: String,
     pub cid: String,
     pub observer: ProfileSummary,
     pub observers: Vec<ObserverInfo>,
+    #[ts(optional)]
     pub scientific_name: Option<String>,
+    #[ts(optional)]
     pub community_id: Option<String>,
+    #[ts(optional)]
     pub effective_taxonomy: Option<EffectiveTaxonomy>,
     pub subjects: Vec<SubjectResponse>,
     pub event_date: String,
     pub location: LocationResponse,
+    #[ts(optional)]
     pub verbatim_locality: Option<String>,
+    #[ts(optional)]
     pub occurrence_remarks: Option<String>,
+    #[ts(optional)]
     pub taxon_id: Option<String>,
+    #[ts(optional)]
     pub taxon_rank: Option<String>,
+    #[ts(optional)]
     pub vernacular_name: Option<String>,
+    #[ts(optional)]
     pub kingdom: Option<String>,
+    #[ts(optional)]
     pub phylum: Option<String>,
+    #[ts(optional)]
     pub class: Option<String>,
+    #[ts(optional)]
     pub order: Option<String>,
+    #[ts(optional)]
     pub family: Option<String>,
+    #[ts(optional)]
     pub genus: Option<String>,
     pub images: Vec<String>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub like_count: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub viewer_has_liked: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Profile", export_to = "bindings/")]
 pub struct ProfileSummary {
     pub did: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub handle: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub avatar: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Observer", export_to = "bindings/")]
 pub struct ObserverInfo {
     pub did: String,
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub handle: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub display_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub avatar: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Location", export_to = "bindings/")]
 pub struct LocationResponse {
     pub latitude: f64,
     pub longitude: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub uncertainty_meters: Option<i32>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub continent: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub country: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub country_code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub state_province: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub county: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub municipality: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub locality: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub water_body: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Subject", export_to = "bindings/")]
 pub struct SubjectResponse {
     #[serde(rename = "index")]
     pub subject_index: i32,
+    #[ts(type = "number")]
     pub identification_count: i64,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct EffectiveTaxonomy {
     pub scientific_name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub vernacular_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub kingdom: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub phylum: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub class: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub order: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub family: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
     pub genus: Option<String>,
 }
 
 /// Enriched identification with profile info
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Identification", export_to = "bindings/")]
 pub struct EnrichedIdentification {
     #[serde(flatten)]
     pub row: IdentificationRow,
@@ -129,8 +176,9 @@ pub struct EnrichedIdentification {
 }
 
 /// Enriched comment with profile info
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "Comment", export_to = "bindings/")]
 pub struct EnrichedComment {
     #[serde(flatten)]
     pub row: CommentRow,
@@ -138,8 +186,9 @@ pub struct EnrichedComment {
 }
 
 /// Enriched interaction with profile info
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct EnrichedInteraction {
     #[serde(flatten)]
     pub row: InteractionRow,

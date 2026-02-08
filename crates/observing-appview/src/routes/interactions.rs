@@ -9,6 +9,7 @@ use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionS
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::auth;
 use crate::enrichment;
@@ -28,24 +29,34 @@ pub async fn get_for_occurrence(
 
 // --- Write handlers ---
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct InteractionSubjectRequest {
+    #[ts(optional)]
     occurrence_uri: Option<String>,
+    #[ts(optional)]
     occurrence_cid: Option<String>,
+    #[ts(optional)]
     subject_index: Option<i32>,
+    #[ts(optional)]
     taxon_name: Option<String>,
+    #[ts(optional)]
     kingdom: Option<String>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct CreateInteractionRequest {
     subject_a: InteractionSubjectRequest,
     subject_b: InteractionSubjectRequest,
     interaction_type: String,
+    #[ts(optional)]
     direction: Option<String>,
+    #[ts(optional)]
     confidence: Option<String>,
+    #[ts(optional)]
     comment: Option<String>,
 }
 

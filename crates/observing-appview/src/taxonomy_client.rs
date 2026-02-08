@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
 use tracing::error;
+use ts_rs::TS;
 
 /// HTTP client for the taxonomy Rust service
 pub struct TaxonomyClient {
@@ -10,58 +11,87 @@ pub struct TaxonomyClient {
     base_url: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, rename = "TaxaResult", export_to = "bindings/")]
 pub struct TaxonResult {
     pub id: String,
     pub scientific_name: String,
+    #[ts(optional)]
     pub common_name: Option<String>,
+    #[ts(optional)]
     pub photo_url: Option<String>,
     pub rank: String,
+    #[ts(optional)]
     pub kingdom: Option<String>,
+    #[ts(optional)]
     pub phylum: Option<String>,
+    #[ts(optional)]
     pub class: Option<String>,
+    #[ts(optional)]
     pub order: Option<String>,
+    #[ts(optional)]
     pub family: Option<String>,
+    #[ts(optional)]
     pub genus: Option<String>,
+    #[ts(optional)]
     pub species: Option<String>,
     pub source: String,
+    #[ts(optional)]
     pub conservation_status: Option<ConservationStatus>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bindings/")]
 pub struct ConservationStatus {
     pub category: String,
     pub source: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct TaxonDetail {
     pub id: String,
     pub scientific_name: String,
+    #[ts(optional)]
     pub common_name: Option<String>,
+    #[ts(optional)]
     pub photo_url: Option<String>,
     pub rank: String,
+    #[ts(optional)]
     pub kingdom: Option<String>,
+    #[ts(optional)]
     pub phylum: Option<String>,
+    #[ts(optional)]
     pub class: Option<String>,
+    #[ts(optional)]
     pub order: Option<String>,
+    #[ts(optional)]
     pub family: Option<String>,
+    #[ts(optional)]
     pub genus: Option<String>,
+    #[ts(optional)]
     pub species: Option<String>,
     pub source: String,
+    #[ts(optional)]
     pub conservation_status: Option<ConservationStatus>,
+    #[ts(optional)]
     pub description: Option<String>,
+    #[ts(optional)]
     pub wikidata_id: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bindings/")]
 pub struct ValidateResponse {
     pub valid: bool,
     #[serde(rename = "matchedName")]
+    #[ts(optional)]
     pub matched_name: Option<String>,
+    #[ts(optional)]
     pub taxon: Option<TaxonResult>,
+    #[ts(optional)]
     pub suggestions: Option<Vec<TaxonResult>>,
 }
 

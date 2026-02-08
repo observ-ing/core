@@ -2,5 +2,8 @@
 resolver = "2"
 members = ["crates/*"]
 
+[workspace.dependencies]
+ts-rs = { version = "12", features = ["chrono-impl", "serde-json-impl"] }
+
 [profile.release]
 debug = true

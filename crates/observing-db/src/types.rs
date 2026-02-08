@@ -1,6 +1,7 @@
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use ts_rs::TS;
 
 /// Occurrence row returned from SELECT queries
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
@@ -50,7 +51,7 @@ pub struct OccurrenceRow {
 }
 
 /// Identification row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
 pub struct IdentificationRow {
     pub uri: String,
     pub cid: String,
@@ -59,29 +60,44 @@ pub struct IdentificationRow {
     pub subject_cid: String,
     pub subject_index: i32,
     pub scientific_name: String,
+    #[ts(optional)]
     pub taxon_rank: Option<String>,
+    #[ts(optional)]
     pub identification_qualifier: Option<String>,
+    #[ts(optional)]
     pub taxon_id: Option<String>,
+    #[ts(optional)]
     pub identification_remarks: Option<String>,
+    #[ts(optional)]
     pub identification_verification_status: Option<String>,
+    #[ts(optional)]
     pub type_status: Option<String>,
+    #[ts(optional)]
     pub is_agreement: Option<bool>,
     pub date_identified: DateTime<Utc>,
     // Darwin Core taxonomy
+    #[ts(optional)]
     pub vernacular_name: Option<String>,
+    #[ts(optional)]
     pub kingdom: Option<String>,
+    #[ts(optional)]
     pub phylum: Option<String>,
+    #[ts(optional)]
     pub class: Option<String>,
     #[sqlx(rename = "order")]
     #[serde(rename = "order")]
+    #[ts(optional)]
     pub order_: Option<String>,
+    #[ts(optional)]
     pub family: Option<String>,
+    #[ts(optional)]
     pub genus: Option<String>,
+    #[ts(optional)]
     pub confidence: Option<String>,
 }
 
 /// Comment row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
 pub struct CommentRow {
     pub uri: String,
     pub cid: String,
@@ -89,7 +105,9 @@ pub struct CommentRow {
     pub subject_uri: String,
     pub subject_cid: String,
     pub body: String,
+    #[ts(optional)]
     pub reply_to_uri: Option<String>,
+    #[ts(optional)]
     pub reply_to_cid: Option<String>,
     pub created_at: DateTime<Utc>,
 }
@@ -106,29 +124,42 @@ pub struct LikeRow {
 }
 
 /// Interaction row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
 pub struct InteractionRow {
     pub uri: String,
     pub cid: String,
     pub did: String,
     // Subject A
+    #[ts(optional)]
     pub subject_a_occurrence_uri: Option<String>,
+    #[ts(optional)]
     pub subject_a_occurrence_cid: Option<String>,
+    #[ts(optional)]
     pub subject_a_subject_index: Option<i32>,
+    #[ts(optional)]
     pub subject_a_taxon_name: Option<String>,
+    #[ts(optional)]
     pub subject_a_kingdom: Option<String>,
     // Subject B
+    #[ts(optional)]
     pub subject_b_occurrence_uri: Option<String>,
+    #[ts(optional)]
     pub subject_b_occurrence_cid: Option<String>,
+    #[ts(optional)]
     pub subject_b_subject_index: Option<i32>,
+    #[ts(optional)]
     pub subject_b_taxon_name: Option<String>,
+    #[ts(optional)]
     pub subject_b_kingdom: Option<String>,
     // Interaction details
     pub interaction_type: String,
     pub direction: String,
+    #[ts(optional)]
     pub confidence: Option<String>,
+    #[ts(optional)]
     pub comment: Option<String>,
     pub created_at: DateTime<Utc>,
+    #[ts(optional)]
     pub indexed_at: Option<DateTime<Utc>>,
 }
 

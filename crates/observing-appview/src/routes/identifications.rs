@@ -9,6 +9,7 @@ use observing_lexicons::org_rwell::test::identification::Identification;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::atproto::AtUri;
 use crate::auth;
@@ -36,16 +37,22 @@ pub async fn get_for_occurrence(
 
 // --- Write handlers ---
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct CreateIdentificationRequest {
     occurrence_uri: String,
     occurrence_cid: String,
+    #[ts(optional)]
     subject_index: Option<i32>,
     taxon_name: String,
+    #[ts(optional)]
     taxon_rank: Option<String>,
+    #[ts(optional)]
     comment: Option<String>,
+    #[ts(optional)]
     is_agreement: Option<bool>,
+    #[ts(optional)]
     confidence: Option<String>,
 }
 

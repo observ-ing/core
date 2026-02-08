@@ -8,6 +8,7 @@ use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::atproto::AtUri;
 use crate::auth;
@@ -299,30 +300,47 @@ async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>,
 
 // --- Write handlers ---
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct CreateOccurrenceRequest {
+    #[ts(optional)]
     scientific_name: Option<String>,
     latitude: f64,
     longitude: f64,
+    #[ts(optional)]
     coordinate_uncertainty_in_meters: Option<i32>,
+    #[ts(optional)]
     notes: Option<String>,
+    #[ts(optional)]
     event_date: Option<String>,
+    #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
+    #[ts(optional)]
     taxon_id: Option<String>,
+    #[ts(optional)]
     taxon_rank: Option<String>,
+    #[ts(optional)]
     vernacular_name: Option<String>,
+    #[ts(optional)]
     kingdom: Option<String>,
+    #[ts(optional)]
     phylum: Option<String>,
+    #[ts(optional)]
     class: Option<String>,
+    #[ts(optional)]
     order: Option<String>,
+    #[ts(optional)]
     family: Option<String>,
+    #[ts(optional)]
     genus: Option<String>,
+    #[ts(optional)]
     recorded_by: Option<Vec<String>>,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct ImageUpload {
     data: String, // base64
     mime_type: String,

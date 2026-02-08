@@ -11,14 +11,16 @@ use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
+use ts_rs::TS;
 
 use crate::atproto::AtUri;
 use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct CreateLikeRequest {
     occurrence_uri: String,
     occurrence_cid: String,
@@ -88,8 +90,9 @@ pub async fn create_like(
     })))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct DeleteLikeRequest {
     occurrence_uri: String,
 }
