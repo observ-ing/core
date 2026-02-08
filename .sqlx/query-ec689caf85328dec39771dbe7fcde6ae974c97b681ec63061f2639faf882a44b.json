@@ -1,0 +1,218 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            continent, country, country_code, state_province, county, municipality, locality, water_body,\n            verbatim_locality, occurrence_remarks,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source,\n            NULL::text as observer_role\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "cid",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "scientific_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "event_date",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "latitude!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 6,
+        "name": "longitude!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 7,
+        "name": "coordinate_uncertainty_meters",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 8,
+        "name": "continent",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "country",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 10,
+        "name": "country_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 11,
+        "name": "state_province",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 12,
+        "name": "county",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 13,
+        "name": "municipality",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 14,
+        "name": "locality",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 15,
+        "name": "water_body",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 16,
+        "name": "verbatim_locality",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 17,
+        "name": "occurrence_remarks",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "associated_media",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 19,
+        "name": "recorded_by",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 20,
+        "name": "taxon_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 21,
+        "name": "taxon_rank",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 22,
+        "name": "vernacular_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 23,
+        "name": "kingdom",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 24,
+        "name": "phylum",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 25,
+        "name": "class",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 26,
+        "name": "order_",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 27,
+        "name": "family",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 28,
+        "name": "genus",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 29,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 30,
+        "name": "distance_meters",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 31,
+        "name": "source",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 32,
+        "name": "observer_role",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      null,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "ec689caf85328dec39771dbe7fcde6ae974c97b681ec63061f2639faf882a44b"
+}

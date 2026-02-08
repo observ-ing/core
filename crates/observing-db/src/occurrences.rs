@@ -98,17 +98,18 @@ pub async fn get(
     executor: impl sqlx::PgExecutor<'_>,
     uri: &str,
 ) -> Result<Option<OccurrenceRow>, sqlx::Error> {
-    sqlx::query_as::<_, OccurrenceRow>(
+    sqlx::query_as!(
+        OccurrenceRow,
         r#"
         SELECT
             uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
+            ST_Y(location::geometry) as "latitude!",
+            ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
             continent, country, country_code, state_province, county, municipality, locality, water_body,
             verbatim_locality, occurrence_remarks,
             associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             NULL::float8 as distance_meters,
             NULL::text as source,
@@ -116,8 +117,8 @@ pub async fn get(
         FROM occurrences
         WHERE uri = $1
         "#,
+        uri,
     )
-    .bind(uri)
     .fetch_optional(executor)
     .await
 }
@@ -131,17 +132,18 @@ pub async fn get_nearby(
     limit: i64,
     offset: i64,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
-    sqlx::query_as::<_, OccurrenceRow>(
+    sqlx::query_as!(
+        OccurrenceRow,
         r#"
         SELECT
             uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
+            ST_Y(location::geometry) as "latitude!",
+            ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
             continent, country, country_code, state_province, county, municipality, locality, water_body,
             verbatim_locality, occurrence_remarks,
             associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
             NULL::text as source,
@@ -155,12 +157,12 @@ pub async fn get_nearby(
         ORDER BY distance_meters
         LIMIT $4 OFFSET $5
         "#,
+        lat,
+        lng,
+        radius_meters,
+        limit,
+        offset,
     )
-    .bind(lat)
-    .bind(lng)
-    .bind(radius_meters)
-    .bind(limit)
-    .bind(offset)
     .fetch_all(executor)
     .await
 }
@@ -174,17 +176,18 @@ pub async fn get_by_bounding_box(
     max_lng: f64,
     limit: i64,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
-    sqlx::query_as::<_, OccurrenceRow>(
+    sqlx::query_as!(
+        OccurrenceRow,
         r#"
         SELECT
             uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
+            ST_Y(location::geometry) as "latitude!",
+            ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
             continent, country, country_code, state_province, county, municipality, locality, water_body,
             verbatim_locality, occurrence_remarks,
             associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             NULL::float8 as distance_meters,
             NULL::text as source,
@@ -193,12 +196,12 @@ pub async fn get_by_bounding_box(
         WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
         LIMIT $5
         "#,
+        min_lng,
+        min_lat,
+        max_lng,
+        max_lat,
+        limit,
     )
-    .bind(min_lng)
-    .bind(min_lat)
-    .bind(max_lng)
-    .bind(max_lat)
-    .bind(limit)
     .fetch_all(executor)
     .await
 }
@@ -210,43 +213,45 @@ pub async fn get_feed(
     cursor: Option<&str>,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     if let Some(cursor) = cursor {
-        sqlx::query_as::<_, OccurrenceRow>(
+        sqlx::query_as!(
+            OccurrenceRow,
             r#"
             SELECT
                 uri, cid, did, scientific_name, event_date,
-                ST_Y(location::geometry) as latitude,
-                ST_X(location::geometry) as longitude,
+                ST_Y(location::geometry) as "latitude!",
+                ST_X(location::geometry) as "longitude!",
                 coordinate_uncertainty_meters,
                 continent, country, country_code, state_province, county, municipality, locality, water_body,
                 verbatim_locality, occurrence_remarks,
                 associated_media, recorded_by,
-                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order" as order_, family, genus,
                 created_at,
                 NULL::float8 as distance_meters,
                 NULL::text as source,
                 NULL::text as observer_role
             FROM occurrences
-            WHERE created_at < $2
+            WHERE created_at < ($2::text)::timestamptz
             ORDER BY created_at DESC
             LIMIT $1
             "#,
+            limit,
+            cursor,
         )
-        .bind(limit)
-        .bind(cursor)
         .fetch_all(executor)
         .await
     } else {
-        sqlx::query_as::<_, OccurrenceRow>(
+        sqlx::query_as!(
+            OccurrenceRow,
             r#"
             SELECT
                 uri, cid, did, scientific_name, event_date,
-                ST_Y(location::geometry) as latitude,
-                ST_X(location::geometry) as longitude,
+                ST_Y(location::geometry) as "latitude!",
+                ST_X(location::geometry) as "longitude!",
                 coordinate_uncertainty_meters,
                 continent, country, country_code, state_province, county, municipality, locality, water_body,
                 verbatim_locality, occurrence_remarks,
                 associated_media, recorded_by,
-                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order" as order_, family, genus,
                 created_at,
                 NULL::float8 as distance_meters,
                 NULL::text as source,
@@ -255,8 +260,8 @@ pub async fn get_feed(
             ORDER BY created_at DESC
             LIMIT $1
             "#,
+            limit,
         )
-        .bind(limit)
         .fetch_all(executor)
         .await
     }
