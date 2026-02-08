@@ -5,7 +5,7 @@ pub async fn upsert(
     executor: impl sqlx::PgExecutor<'_>,
     p: &UpsertOccurrenceParams,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO occurrences (
             uri, cid, did, scientific_name, event_date, location,
@@ -49,37 +49,37 @@ pub async fn upsert(
             genus = $29,
             indexed_at = NOW()
         "#,
+        p.uri,
+        p.cid,
+        p.did,
+        p.scientific_name as _,
+        p.event_date,
+        p.longitude,
+        p.latitude,
+        p.coordinate_uncertainty_meters as _,
+        p.continent as _,
+        p.country as _,
+        p.country_code as _,
+        p.state_province as _,
+        p.county as _,
+        p.municipality as _,
+        p.locality as _,
+        p.water_body as _,
+        p.verbatim_locality as _,
+        p.occurrence_remarks as _,
+        p.associated_media as _,
+        p.recorded_by as _,
+        p.taxon_id as _,
+        p.taxon_rank as _,
+        p.vernacular_name as _,
+        p.kingdom as _,
+        p.phylum as _,
+        p.class as _,
+        p.order as _,
+        p.family as _,
+        p.genus as _,
+        p.created_at,
     )
-    .bind(&p.uri)
-    .bind(&p.cid)
-    .bind(&p.did)
-    .bind(&p.scientific_name)
-    .bind(p.event_date)
-    .bind(p.longitude)
-    .bind(p.latitude)
-    .bind(p.coordinate_uncertainty_meters)
-    .bind(&p.continent)
-    .bind(&p.country)
-    .bind(&p.country_code)
-    .bind(&p.state_province)
-    .bind(&p.county)
-    .bind(&p.municipality)
-    .bind(&p.locality)
-    .bind(&p.water_body)
-    .bind(&p.verbatim_locality)
-    .bind(&p.occurrence_remarks)
-    .bind(&p.associated_media)
-    .bind(&p.recorded_by)
-    .bind(&p.taxon_id)
-    .bind(&p.taxon_rank)
-    .bind(&p.vernacular_name)
-    .bind(&p.kingdom)
-    .bind(&p.phylum)
-    .bind(&p.class)
-    .bind(&p.order)
-    .bind(&p.family)
-    .bind(&p.genus)
-    .bind(p.created_at)
     .execute(executor)
     .await?;
     Ok(())
@@ -87,8 +87,7 @@ pub async fn upsert(
 
 /// Delete an occurrence
 pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM occurrences WHERE uri = $1")
-        .bind(uri)
+    sqlx::query!("DELETE FROM occurrences WHERE uri = $1", uri)
         .execute(executor)
         .await?;
     Ok(())
