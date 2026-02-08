@@ -11,10 +11,13 @@ import {
   CircularProgress,
   Stack,
   Chip,
+  Card,
+  CardActionArea,
+  CardMedia,
+  CardContent,
   List,
   ListItemButton,
   ListItemText,
-  ListItemAvatar,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
@@ -27,7 +30,7 @@ import type {
   Identification,
 } from "../../services/types";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
-import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton } from "../common/Skeletons";
+import { ProfileHeaderSkeleton, ProfileFeedItemSkeleton, ProfileObservationCardSkeleton } from "../common/Skeletons";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "all" | "observations" | "identifications";
@@ -207,65 +210,86 @@ export function ProfileView() {
         <Tab label="IDs" value="identifications" />
       </Tabs>
 
-      {/* Feed */}
-      <List disablePadding sx={{ flex: 1 }}>
-        {(activeTab === "all" || activeTab === "observations") &&
-          occurrences.map((occ) => (
-            <ListItemButton
-              key={occ.uri}
-              component={Link}
-              to={getObservationUrl(occ.uri)}
-              sx={{
-                borderBottom: 1,
-                borderColor: "divider",
-                alignItems: "flex-start",
-                gap: 2,
-              }}
-            >
-              <ListItemText
-                primary={
-                  <>
-                    <Chip label="Observation" size="small" sx={{ mb: 0.5 }} />
-                    <Typography
-                      sx={{
-                        fontStyle: "italic",
-                        color: "primary.main",
-                        fontWeight: 500,
-                      }}
-                    >
-                      {occ.communityId || occ.scientificName || "Unknown species"}
+      {/* Observations Grid */}
+      {(activeTab === "all" || activeTab === "observations") && (
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "repeat(2, 1fr)",
+              sm: "repeat(3, 1fr)",
+            },
+            gap: 1.5,
+            p: 1.5,
+          }}
+        >
+          {occurrences.map((occ) => (
+            <Card key={occ.uri} sx={{ display: "flex", flexDirection: "column" }}>
+              <CardActionArea
+                component={Link}
+                to={getObservationUrl(occ.uri)}
+                sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
+              >
+                {occ.images[0] ? (
+                  <CardMedia
+                    component="img"
+                    image={getImageUrl(occ.images[0])}
+                    alt={occ.communityId || occ.scientificName || "Observation"}
+                    loading="lazy"
+                    sx={{ aspectRatio: "1", objectFit: "cover" }}
+                  />
+                ) : (
+                  <Box
+                    sx={{
+                      aspectRatio: "1",
+                      bgcolor: "action.hover",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Typography color="text.disabled" variant="body2">
+                      No image
                     </Typography>
-                  </>
-                }
-                secondary={
-                  <>
+                  </Box>
+                )}
+                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontStyle: "italic",
+                      color: "primary.main",
+                      fontWeight: 500,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {occ.communityId || occ.scientificName || "Unknown species"}
+                  </Typography>
+                  <Typography variant="caption" color="text.disabled" noWrap>
                     {formatTimeAgo(new Date(occ.createdAt))}
                     {occ.verbatimLocality && ` · ${occ.verbatimLocality}`}
-                  </>
-                }
-                secondaryTypographyProps={{ variant: "caption", color: "text.disabled" }}
-              />
-              {occ.images[0] && (
-                <ListItemAvatar sx={{ minWidth: "auto", mt: 1 }}>
-                  <Box
-                    component="img"
-                    src={getImageUrl(occ.images[0])}
-                    alt=""
-                    loading="lazy"
-                    sx={{
-                      width: 60,
-                      height: 60,
-                      borderRadius: 1,
-                      objectFit: "cover",
-                    }}
-                  />
-                </ListItemAvatar>
-              )}
-            </ListItemButton>
+                  </Typography>
+                </CardContent>
+              </CardActionArea>
+            </Card>
           ))}
 
-        {(activeTab === "all" || activeTab === "identifications") &&
-          identifications.map((id) => (
+          {isLoading && occurrences.length === 0 && (
+            <>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <ProfileObservationCardSkeleton key={i} />
+              ))}
+            </>
+          )}
+        </Box>
+      )}
+
+      {/* Identifications List */}
+      {(activeTab === "all" || activeTab === "identifications") && (
+        <List disablePadding>
+          {identifications.map((id) => (
             <ListItemButton
               key={id.uri}
               component={Link}
@@ -305,35 +329,37 @@ export function ProfileView() {
               />
             </ListItemButton>
           ))}
+        </List>
+      )}
 
-        {isLoading && occurrences.length === 0 && identifications.length === 0 && (
-          <>
-            {[1, 2, 3].map((i) => (
-              <ProfileFeedItemSkeleton key={i} />
-            ))}
-          </>
-        )}
+      {isLoading && occurrences.length === 0 && identifications.length === 0 &&
+        activeTab === "identifications" && (
+        <>
+          {[1, 2, 3].map((i) => (
+            <ProfileFeedItemSkeleton key={i} />
+          ))}
+        </>
+      )}
 
-        {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
-          <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-            <CircularProgress color="primary" size={24} />
-          </Box>
-        )}
+      {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
+        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
+          <CircularProgress color="primary" size={24} />
+        </Box>
+      )}
 
-        {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
-          <Box sx={{ p: 4, textAlign: "center" }}>
-            <Typography color="text.secondary">No activity yet</Typography>
-          </Box>
-        )}
+      {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
+        <Box sx={{ p: 4, textAlign: "center" }}>
+          <Typography color="text.secondary">No activity yet</Typography>
+        </Box>
+      )}
 
-        {hasMore && !isLoading && (
-          <Box sx={{ p: 2, textAlign: "center" }}>
-            <Button variant="outlined" onClick={() => loadData(true)}>
-              Load more
-            </Button>
-          </Box>
-        )}
-      </List>
+      {hasMore && !isLoading && (
+        <Box sx={{ p: 2, textAlign: "center" }}>
+          <Button variant="outlined" onClick={() => loadData(true)}>
+            Load more
+          </Button>
+        </Box>
+      )}
     </Container>
   );
 }
