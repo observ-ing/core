@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (occurrence_uri, observer_did) DO UPDATE SET role = $3\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fff5a1f0fa2a2b6a053eb0e2c974f378837a876336d72fb519c580d1c17841b2"
+}

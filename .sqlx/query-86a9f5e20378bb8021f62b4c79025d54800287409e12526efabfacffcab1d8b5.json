@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM occurrence_observers WHERE occurrence_uri = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "86a9f5e20378bb8021f62b4c79025d54800287409e12526efabfacffcab1d8b5"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)\n                VALUES ($1, $2, 'co-observer')\n                ON CONFLICT (occurrence_uri, observer_did) DO NOTHING\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "57b6005967253290d8d07df99e8fe3b6906c2524c44aa5f77c9add886ceb76a7"
+}

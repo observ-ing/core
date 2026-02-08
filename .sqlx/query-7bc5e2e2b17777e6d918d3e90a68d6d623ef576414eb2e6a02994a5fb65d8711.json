@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        DELETE FROM occurrence_observers\n        WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'co-observer'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7bc5e2e2b17777e6d918d3e90a68d6d623ef576414eb2e6a02994a5fb65d8711"
+}

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT 1 as exists_ FROM occurrence_observers\n        WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'owner'\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists_",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "fd4897477b920b5d006c631d15a920817f8301e4b016d14a67c9b8441c62c31e"
+}

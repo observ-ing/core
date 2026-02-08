@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)\n        VALUES ($1, $2, 'owner')\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "028b84aeae2bd3ba8b9f44ad9a5f112fe1343be4a1a1ee40ce32087a1d1cae37"
+}

@@ -11,35 +11,37 @@ pub async fn sync(
     let mut tx = pool.begin().await?;
 
     // Delete existing observers
-    sqlx::query("DELETE FROM occurrence_observers WHERE occurrence_uri = $1")
-        .bind(occurrence_uri)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query!(
+        "DELETE FROM occurrence_observers WHERE occurrence_uri = $1",
+        occurrence_uri
+    )
+    .execute(&mut *tx)
+    .await?;
 
     // Insert owner
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
         VALUES ($1, $2, 'owner')
         "#,
+        occurrence_uri,
+        owner_did,
     )
-    .bind(occurrence_uri)
-    .bind(owner_did)
     .execute(&mut *tx)
     .await?;
 
     // Insert co-observers
     for did in co_observer_dids {
         if did != owner_did {
-            sqlx::query(
+            sqlx::query!(
                 r#"
                 INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
                 VALUES ($1, $2, 'co-observer')
                 ON CONFLICT (occurrence_uri, observer_did) DO NOTHING
                 "#,
+                occurrence_uri,
+                did.as_str(),
             )
-            .bind(occurrence_uri)
-            .bind(did)
             .execute(&mut *tx)
             .await?;
         }
@@ -56,16 +58,16 @@ pub async fn add(
     observer_did: &str,
     role: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
         VALUES ($1, $2, $3)
         ON CONFLICT (occurrence_uri, observer_did) DO UPDATE SET role = $3
         "#,
+        occurrence_uri,
+        observer_did,
+        role,
     )
-    .bind(occurrence_uri)
-    .bind(observer_did)
-    .bind(role)
     .execute(executor)
     .await?;
     Ok(())
@@ -77,14 +79,14 @@ pub async fn remove(
     occurrence_uri: &str,
     observer_did: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         DELETE FROM occurrence_observers
         WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'co-observer'
         "#,
+        occurrence_uri,
+        observer_did,
     )
-    .bind(occurrence_uri)
-    .bind(observer_did)
     .execute(executor)
     .await?;
     Ok(())
@@ -114,14 +116,14 @@ pub async fn is_owner(
     occurrence_uri: &str,
     did: &str,
 ) -> Result<bool, sqlx::Error> {
-    let row: Option<(i32,)> = sqlx::query_as(
+    let row = sqlx::query!(
         r#"
         SELECT 1 as exists_ FROM occurrence_observers
         WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'owner'
         "#,
+        occurrence_uri,
+        did,
     )
-    .bind(occurrence_uri)
-    .bind(did)
     .fetch_optional(executor)
     .await?;
     Ok(row.is_some())
