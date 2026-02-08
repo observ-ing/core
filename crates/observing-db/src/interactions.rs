@@ -5,7 +5,7 @@ pub async fn upsert(
     executor: impl sqlx::PgExecutor<'_>,
     p: &UpsertInteractionParams,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO interactions (
             uri, cid, did,
@@ -34,25 +34,25 @@ pub async fn upsert(
             comment = EXCLUDED.comment,
             indexed_at = NOW()
         "#,
+        p.uri,
+        p.cid,
+        p.did,
+        p.subject_a_occurrence_uri as _,
+        p.subject_a_occurrence_cid as _,
+        p.subject_a_subject_index,
+        p.subject_a_taxon_name as _,
+        p.subject_a_kingdom as _,
+        p.subject_b_occurrence_uri as _,
+        p.subject_b_occurrence_cid as _,
+        p.subject_b_subject_index,
+        p.subject_b_taxon_name as _,
+        p.subject_b_kingdom as _,
+        p.interaction_type,
+        p.direction,
+        p.confidence as _,
+        p.comment as _,
+        p.created_at,
     )
-    .bind(&p.uri)
-    .bind(&p.cid)
-    .bind(&p.did)
-    .bind(&p.subject_a_occurrence_uri)
-    .bind(&p.subject_a_occurrence_cid)
-    .bind(p.subject_a_subject_index)
-    .bind(&p.subject_a_taxon_name)
-    .bind(&p.subject_a_kingdom)
-    .bind(&p.subject_b_occurrence_uri)
-    .bind(&p.subject_b_occurrence_cid)
-    .bind(p.subject_b_subject_index)
-    .bind(&p.subject_b_taxon_name)
-    .bind(&p.subject_b_kingdom)
-    .bind(&p.interaction_type)
-    .bind(&p.direction)
-    .bind(&p.confidence)
-    .bind(&p.comment)
-    .bind(p.created_at)
     .execute(executor)
     .await?;
     Ok(())
