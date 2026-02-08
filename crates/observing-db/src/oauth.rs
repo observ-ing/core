@@ -5,12 +5,13 @@ pub async fn get_state(
     executor: impl sqlx::PgExecutor<'_>,
     key: &str,
 ) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> =
-        sqlx::query_as("SELECT value FROM oauth_state WHERE key = $1 AND expires_at > NOW()")
-            .bind(key)
-            .fetch_optional(executor)
-            .await?;
-    Ok(row.map(|r| r.0))
+    let row = sqlx::query!(
+        "SELECT value FROM oauth_state WHERE key = $1 AND expires_at > NOW()",
+        key
+    )
+    .fetch_optional(executor)
+    .await?;
+    Ok(row.map(|r| r.value))
 }
 
 /// Set OAuth state with TTL (in milliseconds)
@@ -20,16 +21,17 @@ pub async fn set_state(
     value: &str,
     ttl_ms: i64,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    let ttl_str = ttl_ms.to_string();
+    sqlx::query!(
         r#"
         INSERT INTO oauth_state (key, value, expires_at)
         VALUES ($1, $2, NOW() + ($3 || ' milliseconds')::interval)
         ON CONFLICT (key) DO UPDATE SET value = $2, expires_at = NOW() + ($3 || ' milliseconds')::interval
         "#,
+        key,
+        value,
+        ttl_str,
     )
-    .bind(key)
-    .bind(value)
-    .bind(ttl_ms.to_string())
     .execute(executor)
     .await?;
     Ok(())
@@ -61,11 +63,10 @@ pub async fn get_session(
     executor: impl sqlx::PgExecutor<'_>,
     key: &str,
 ) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> = sqlx::query_as("SELECT value FROM oauth_sessions WHERE key = $1")
-        .bind(key)
+    let row = sqlx::query!("SELECT value FROM oauth_sessions WHERE key = $1", key)
         .fetch_optional(executor)
         .await?;
-    Ok(row.map(|r| r.0))
+    Ok(row.map(|r| r.value))
 }
 
 /// Set OAuth session value
@@ -74,15 +75,15 @@ pub async fn set_session(
     key: &str,
     value: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO oauth_sessions (key, value)
         VALUES ($1, $2)
         ON CONFLICT (key) DO UPDATE SET value = $2
         "#,
+        key,
+        value,
     )
-    .bind(key)
-    .bind(value)
     .execute(executor)
     .await?;
     Ok(())
