@@ -22,5 +22,5 @@
   },
   "references": [],
   "include": ["scripts/**/*"],
-  "exclude": ["node_modules", "dist", "packages"]
+  "exclude": ["node_modules", "dist", "frontend"]
 }

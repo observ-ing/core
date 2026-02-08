@@ -4,7 +4,6 @@ FROM node:24-slim AS frontend-builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY frontend/package.json frontend/
 
 RUN npm ci
 
