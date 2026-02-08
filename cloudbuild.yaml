@@ -112,7 +112,7 @@ steps:
       - '--image=gcr.io/$PROJECT_ID/observing-media-proxy'
       - '--region=$_REGION'
       - '--allow-unauthenticated'
-      - '--set-env-vars=RUST_LOG=observing_media_proxy=info,LOG_FORMAT=json'
+      - '--set-env-vars=RUST_LOG=observing_media_proxy=info'
     waitFor: ['push-media-proxy']
 
   - id: 'deploy-taxonomy'
@@ -125,7 +125,7 @@ steps:
       - '--image=gcr.io/$PROJECT_ID/observing-taxonomy'
       - '--region=$_REGION'
       - '--allow-unauthenticated'
-      - '--set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json'
+      - '--set-env-vars=RUST_LOG=observing_taxonomy=info'
     waitFor: ['push-taxonomy']
 
 images:
