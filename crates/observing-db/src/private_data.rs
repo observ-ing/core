@@ -33,18 +33,19 @@ pub async fn get(
     executor: impl sqlx::PgExecutor<'_>,
     uri: &str,
 ) -> Result<Option<OccurrencePrivateDataRow>, sqlx::Error> {
-    sqlx::query_as::<_, OccurrencePrivateDataRow>(
+    sqlx::query_as!(
+        OccurrencePrivateDataRow,
         r#"
         SELECT
-            ST_Y(exact_location::geometry) as exact_latitude,
-            ST_X(exact_location::geometry) as exact_longitude,
+            ST_Y(exact_location::geometry) as "exact_latitude!",
+            ST_X(exact_location::geometry) as "exact_longitude!",
             geoprivacy,
             effective_geoprivacy
         FROM occurrence_private_data
         WHERE uri = $1
         "#,
+        uri,
     )
-    .bind(uri)
     .fetch_optional(executor)
     .await
 }
