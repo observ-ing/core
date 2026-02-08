@@ -20,6 +20,7 @@ import {
   ListItemIcon,
   ListItemAvatar,
   ListItemText,
+  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -321,22 +322,26 @@ export function ObservationDetail() {
 
       {/* Like button */}
       <Stack direction="row" alignItems="center" sx={{ px: 3, pb: 1 }}>
-        <IconButton
-          size="small"
-          onClick={handleLikeToggle}
-          disabled={!user}
-          aria-label={liked ? "Unlike" : "Like"}
-          sx={{
-            color: liked ? "error.main" : "text.disabled",
-            ml: -0.5,
-          }}
-        >
-          {liked ? (
-            <FavoriteIcon fontSize="small" />
-          ) : (
-            <FavoriteBorderIcon fontSize="small" />
-          )}
-        </IconButton>
+        <Tooltip title={!user ? "Log in to like" : ""}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={handleLikeToggle}
+              disabled={!user}
+              aria-label={liked ? "Unlike" : "Like"}
+              sx={{
+                color: liked ? "error.main" : "text.disabled",
+                ml: -0.5,
+              }}
+            >
+              {liked ? (
+                <FavoriteIcon fontSize="small" />
+              ) : (
+                <FavoriteBorderIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
         {likeCount > 0 && (
           <Typography variant="body2" color="text.secondary" sx={{ ml: -0.25 }}>
             {likeCount}

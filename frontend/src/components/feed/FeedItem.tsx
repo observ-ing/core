@@ -359,21 +359,25 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
         </CardContent>
       </CardActionArea>
       <CardActions disableSpacing sx={{ pt: 0 }}>
-        <IconButton
-          size="small"
-          onClick={handleLikeToggle}
-          disabled={!currentUser}
-          aria-label={liked ? "Unlike" : "Like"}
-          sx={{
-            color: liked ? "error.main" : "text.disabled",
-          }}
-        >
-          {liked ? (
-            <FavoriteIcon fontSize="small" />
-          ) : (
-            <FavoriteBorderIcon fontSize="small" />
-          )}
-        </IconButton>
+        <Tooltip title={!currentUser ? "Log in to like" : ""}>
+          <span>
+            <IconButton
+              size="small"
+              onClick={handleLikeToggle}
+              disabled={!currentUser}
+              aria-label={liked ? "Unlike" : "Like"}
+              sx={{
+                color: liked ? "error.main" : "text.disabled",
+              }}
+            >
+              {liked ? (
+                <FavoriteIcon fontSize="small" />
+              ) : (
+                <FavoriteBorderIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
+        </Tooltip>
         {likeCount > 0 && (
           <Typography variant="body2" color="text.secondary">
             {likeCount}
