@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import {
@@ -27,6 +27,7 @@ import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink } from "../common/TaxonLink";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
@@ -46,6 +47,18 @@ export function TaxonDetail() {
   const [hasMore, setHasMore] = useState(true);
 
   usePageTitle(taxon?.scientificName || "Taxon");
+
+  // Collect all taxon names for batch thumbnail fetch
+  const thumbnailNames = useMemo(() => {
+    if (!taxon) return [];
+    const names = [
+      ...taxon.ancestors.map((a: { name: string }) => a.name),
+      taxon.scientificName,
+      ...taxon.children.map((c: { scientificName: string }) => c.scientificName),
+    ];
+    return names;
+  }, [taxon]);
+  const thumbnails = useWikidataThumbnails(thumbnailNames, 44);
 
   // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
   const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
@@ -246,7 +259,7 @@ export function TaxonDetail() {
                           └
                         </Typography>
                       )}
-                      <WikiTaxonThumbnail name={ancestor.name} size={22} />
+                      <WikiTaxonThumbnail src={thumbnails.get(ancestor.name)} size={22} />
                       <TaxonLink
                         name={ancestor.name}
                         kingdom={taxon.kingdom}
@@ -267,7 +280,7 @@ export function TaxonDetail() {
                         └
                       </Typography>
                     )}
-                    <WikiTaxonThumbnail name={taxon.scientificName} size={22} />
+                    <WikiTaxonThumbnail src={thumbnails.get(taxon.scientificName)} size={22} />
                     <Typography
                       sx={{
                         fontWeight: 700,
@@ -288,7 +301,7 @@ export function TaxonDetail() {
                       <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └
                       </Typography>
-                      <WikiTaxonThumbnail name={child.scientificName} size={22} />
+                      <WikiTaxonThumbnail src={thumbnails.get(child.scientificName)} size={22} />
                       <TaxonLink
                         name={child.scientificName}
                         kingdom={taxon.kingdom}
