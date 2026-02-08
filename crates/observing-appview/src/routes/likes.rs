@@ -114,14 +114,36 @@ pub async fn delete_like(
     )
     .await?;
 
-    // Try to delete from AT Protocol too
+    // Try to delete from AT Protocol too (non-fatal: local DB is already updated)
     if let Some(ref uri) = like_uri {
         if let Some(at_uri) = AtUri::parse(uri) {
-            // Non-fatal: local DB is already updated
-            let _ = state
-                .agent
-                .delete_record(&user.did, &at_uri.collection, &at_uri.rkey)
-                .await;
+            if let Ok(did_parsed) = atrium_api::types::string::Did::new(user.did.clone()) {
+                if let Ok(session) = state.oauth_client.restore(&did_parsed).await {
+                    let agent = atrium_api::agent::Agent::new(session);
+                    if let (Ok(collection), Ok(rkey)) =
+                        (at_uri.collection.parse(), at_uri.rkey.parse())
+                    {
+                        let _ = agent
+                            .api
+                            .com
+                            .atproto
+                            .repo
+                            .delete_record(
+                                atrium_api::com::atproto::repo::delete_record::InputData {
+                                    collection,
+                                    repo: atrium_api::types::string::AtIdentifier::Did(
+                                        did_parsed,
+                                    ),
+                                    rkey,
+                                    swap_commit: None,
+                                    swap_record: None,
+                                }
+                                .into(),
+                            )
+                            .await;
+                    }
+                }
+            }
         }
     }
 

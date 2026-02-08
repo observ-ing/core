@@ -644,11 +644,36 @@ pub async fn delete_occurrence_catch_all(
         ));
     }
 
-    state
-        .agent
-        .delete_record(&user.did, &at_uri.collection, &at_uri.rkey)
+    // Restore OAuth session and delete the AT Protocol record directly
+    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
+        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
+    let session = state
+        .oauth_client
+        .restore(&did_parsed)
         .await
-        .map_err(AppError::Internal)?;
+        .map_err(|e| AppError::Internal(format!("Failed to restore session: {e}")))?;
+    let agent = atrium_api::agent::Agent::new(session);
+    agent
+        .api
+        .com
+        .atproto
+        .repo
+        .delete_record(
+            atrium_api::com::atproto::repo::delete_record::InputData {
+                collection: at_uri.collection.parse().map_err(|e| {
+                    AppError::Internal(format!("Invalid collection: {e}"))
+                })?,
+                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
+                rkey: at_uri.rkey.parse().map_err(|e| {
+                    AppError::Internal(format!("Invalid rkey: {e}"))
+                })?,
+                swap_commit: None,
+                swap_record: None,
+            }
+            .into(),
+        )
+        .await
+        .map_err(|e| AppError::Internal(format!("Failed to delete record: {e}")))?;
 
     let _ = observing_db::occurrences::delete(&state.pool, uri).await;
 
