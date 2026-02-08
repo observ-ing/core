@@ -279,3 +279,80 @@ pub struct Media {
     pub creator: Option<String>,
     pub license: Option<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_iucn_category_from_str_valid() {
+        assert_eq!("EX".parse::<IucnCategory>().unwrap(), IucnCategory::EX);
+        assert_eq!("EW".parse::<IucnCategory>().unwrap(), IucnCategory::EW);
+        assert_eq!("CR".parse::<IucnCategory>().unwrap(), IucnCategory::CR);
+        assert_eq!("EN".parse::<IucnCategory>().unwrap(), IucnCategory::EN);
+        assert_eq!("VU".parse::<IucnCategory>().unwrap(), IucnCategory::VU);
+        assert_eq!("NT".parse::<IucnCategory>().unwrap(), IucnCategory::NT);
+        assert_eq!("LC".parse::<IucnCategory>().unwrap(), IucnCategory::LC);
+        assert_eq!("DD".parse::<IucnCategory>().unwrap(), IucnCategory::DD);
+        assert_eq!("NE".parse::<IucnCategory>().unwrap(), IucnCategory::NE);
+    }
+
+    #[test]
+    fn test_iucn_category_from_str_invalid() {
+        assert!("XX".parse::<IucnCategory>().is_err());
+        assert!("".parse::<IucnCategory>().is_err());
+    }
+
+    #[test]
+    fn test_iucn_category_case_sensitive() {
+        assert!("ex".parse::<IucnCategory>().is_err());
+        assert!("Cr".parse::<IucnCategory>().is_err());
+    }
+
+    #[test]
+    fn test_v2_name_usage_key_as_number() {
+        let json = r#"{"key": 12345}"#;
+        let usage: V2NameUsage = serde_json::from_str(json).unwrap();
+        assert_eq!(usage.key, Some(12345));
+    }
+
+    #[test]
+    fn test_v2_name_usage_key_as_string() {
+        let json = r#"{"key": "67890"}"#;
+        let usage: V2NameUsage = serde_json::from_str(json).unwrap();
+        assert_eq!(usage.key, Some(67890));
+    }
+
+    #[test]
+    fn test_v2_name_usage_key_as_null() {
+        let json = r#"{"key": null}"#;
+        let usage: V2NameUsage = serde_json::from_str(json).unwrap();
+        assert_eq!(usage.key, None);
+    }
+
+    #[test]
+    fn test_v2_name_usage_full() {
+        let json = r#"{
+            "key": 2480528,
+            "name": "Quercus alba",
+            "canonicalName": "Quercus alba",
+            "rank": "SPECIES",
+            "kingdom": "Plantae",
+            "family": "Fagaceae",
+            "genus": "Quercus"
+        }"#;
+        let usage: V2NameUsage = serde_json::from_str(json).unwrap();
+        assert_eq!(usage.key, Some(2480528));
+        assert_eq!(usage.name.as_deref(), Some("Quercus alba"));
+        assert_eq!(usage.kingdom.as_deref(), Some("Plantae"));
+        assert_eq!(usage.family.as_deref(), Some("Fagaceae"));
+    }
+
+    #[test]
+    fn test_iucn_category_roundtrip() {
+        let cat = IucnCategory::CR;
+        let json = serde_json::to_string(&cat).unwrap();
+        let back: IucnCategory = serde_json::from_str(&json).unwrap();
+        assert_eq!(back, IucnCategory::CR);
+    }
+}
