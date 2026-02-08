@@ -46,8 +46,7 @@ crates/
 └── gbif-api/              # GBIF API client (Rust)
 
 packages/
-├── observing-frontend/    # Web UI (Vite + React + MapLibre GL)
-└── observing-lexicon/     # Lexicon TypeScript type generation
+└── observing-frontend/    # Web UI (Vite + React + MapLibre GL)
 ```
 
 ## Components

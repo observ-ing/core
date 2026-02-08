@@ -9,14 +9,12 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w observing-lexicon -w observing-frontend",
-    "generate-types": "node scripts/generate-types.js",
+    "build": "npm run build -w observing-frontend",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "frontend:dev": "npm run dev --workspace=observing-frontend",
     "frontend:build": "npm run build --workspace=observing-frontend"
   },
   "devDependencies": {
-    "@atproto/lex": "^0.0.14",
     "@types/node": "^20.10.0",
     "dotenv": "^17.2.3",
     "tsx": "^4.7.0",
