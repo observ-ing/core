@@ -79,7 +79,7 @@ flowchart TB
 
 | Component | File |
 |-----------|------|
-| Create Modal | `packages/observing-frontend/src/components/modals/UploadModal.tsx` |
+| Create Modal | `frontend/src/components/modals/UploadModal.tsx` |
 | Occurrence Routes | `crates/observing-appview/src/routes/occurrences.rs` |
 | OAuth Routes | `crates/observing-appview/src/routes/oauth.rs` |
 | Data Enrichment | `crates/observing-appview/src/enrichment.rs` |

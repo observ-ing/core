@@ -4,13 +4,11 @@ FROM node:24-slim AS frontend-builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-COPY packages/observing-lexicon/package.json packages/observing-lexicon/
-COPY packages/observing-frontend/package.json packages/observing-frontend/
+COPY frontend/package.json frontend/
 
 RUN npm ci
 
-COPY packages/observing-lexicon/ packages/observing-lexicon/
-COPY packages/observing-frontend/ packages/observing-frontend/
+COPY frontend/ frontend/
 
 RUN npm run build
 

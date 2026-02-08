@@ -11,16 +11,16 @@ export default defineConfig({
   publicDir: path.resolve(__dirname, "src/public"),
   resolve: {
     alias: {
-      "@lexicons": path.resolve(__dirname, "../../lexicons"),
+      "@lexicons": path.resolve(__dirname, "../lexicons"),
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../../dist/public"),
+    outDir: path.resolve(__dirname, "../dist/public"),
     emptyOutDir: true,
   },
   server: {
     fs: {
-      allow: [path.resolve(__dirname, "../../lexicons"), "."],
+      allow: [path.resolve(__dirname, "../lexicons"), "."],
     },
     proxy: {
       "/api": "http://localhost:3000",

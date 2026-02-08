@@ -27,7 +27,7 @@ jobs:
       - name: Check generated TypeScript bindings
         run: |
           cargo test -p observing-appview -- export_bindings
-          git diff --exit-code packages/observing-frontend/src/bindings/
+          git diff --exit-code frontend/src/bindings/
 
   build:
     runs-on: ubuntu-latest

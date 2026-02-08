@@ -45,8 +45,7 @@ crates/
 ├── observing-taxonomy/    # GBIF taxonomy resolver service (Rust)
 └── gbif-api/              # GBIF API client (Rust)
 
-packages/
-└── observing-frontend/    # Web UI (Vite + React + MapLibre GL)
+frontend/                  # Web UI (Vite + React + MapLibre GL)
 ```
 
 ## Components
@@ -94,7 +93,7 @@ Rust taxonomy resolution service.
 - **Wikidata** - Species image and metadata enrichment
 - **Caching** - In-memory cache for frequently accessed taxa
 
-### Frontend (`packages/observing-frontend/`)
+### Frontend (`frontend/`)
 
 Vite + React SPA.
 
