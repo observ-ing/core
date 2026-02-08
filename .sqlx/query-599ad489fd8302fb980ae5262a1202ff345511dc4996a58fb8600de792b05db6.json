@@ -1,0 +1,33 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO identifications (\n            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n            taxon_rank, identification_remarks, taxon_id, is_agreement, date_identified,\n            vernacular_name, kingdom, phylum, class, \"order\", family, genus, confidence\n        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = $2,\n            subject_index = $6,\n            scientific_name = $7,\n            taxon_rank = $8,\n            identification_remarks = $9,\n            taxon_id = $10,\n            is_agreement = $11,\n            vernacular_name = $13,\n            kingdom = $14,\n            phylum = $15,\n            class = $16,\n            \"order\" = $17,\n            family = $18,\n            genus = $19,\n            confidence = $20,\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "599ad489fd8302fb980ae5262a1202ff345511dc4996a58fb8600de792b05db6"
+}

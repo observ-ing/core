@@ -3,7 +3,7 @@ use sqlx::PgPool;
 
 /// Upsert an identification record and refresh the community ID materialized view
 pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
@@ -28,27 +28,27 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
             confidence = $20,
             indexed_at = NOW()
         "#,
+        p.uri,
+        p.cid,
+        p.did,
+        p.subject_uri,
+        p.subject_cid,
+        p.subject_index,
+        p.scientific_name,
+        p.taxon_rank as _,
+        p.identification_remarks as _,
+        p.taxon_id as _,
+        p.is_agreement,
+        chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(p.date_identified, chrono::Utc),
+        p.vernacular_name as _,
+        p.kingdom as _,
+        p.phylum as _,
+        p.class as _,
+        p.order as _,
+        p.family as _,
+        p.genus as _,
+        p.confidence as _,
     )
-    .bind(&p.uri)
-    .bind(&p.cid)
-    .bind(&p.did)
-    .bind(&p.subject_uri)
-    .bind(&p.subject_cid)
-    .bind(p.subject_index)
-    .bind(&p.scientific_name)
-    .bind(&p.taxon_rank)
-    .bind(&p.identification_remarks)
-    .bind(&p.taxon_id)
-    .bind(p.is_agreement)
-    .bind(p.date_identified)
-    .bind(&p.vernacular_name)
-    .bind(&p.kingdom)
-    .bind(&p.phylum)
-    .bind(&p.class)
-    .bind(&p.order)
-    .bind(&p.family)
-    .bind(&p.genus)
-    .bind(&p.confidence)
     .execute(pool)
     .await?;
 
