@@ -1,8 +1,10 @@
 use crate::types::{OccurrenceRow, UpsertOccurrenceParams};
-use sqlx::PgPool;
 
 /// Upsert an occurrence record
-pub async fn upsert(pool: &PgPool, p: &UpsertOccurrenceParams) -> Result<(), sqlx::Error> {
+pub async fn upsert(
+    executor: impl sqlx::PgExecutor<'_>,
+    p: &UpsertOccurrenceParams,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO occurrences (
@@ -78,22 +80,25 @@ pub async fn upsert(pool: &PgPool, p: &UpsertOccurrenceParams) -> Result<(), sql
     .bind(&p.family)
     .bind(&p.genus)
     .bind(p.created_at)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Delete an occurrence
-pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
+pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM occurrences WHERE uri = $1")
         .bind(uri)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
 
 /// Get a single occurrence by URI
-pub async fn get(pool: &PgPool, uri: &str) -> Result<Option<OccurrenceRow>, sqlx::Error> {
+pub async fn get(
+    executor: impl sqlx::PgExecutor<'_>,
+    uri: &str,
+) -> Result<Option<OccurrenceRow>, sqlx::Error> {
     sqlx::query_as::<_, OccurrenceRow>(
         r#"
         SELECT
@@ -114,13 +119,13 @@ pub async fn get(pool: &PgPool, uri: &str) -> Result<Option<OccurrenceRow>, sqlx
         "#,
     )
     .bind(uri)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }
 
 /// Get occurrences nearby a point
 pub async fn get_nearby(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     lat: f64,
     lng: f64,
     radius_meters: f64,
@@ -157,13 +162,13 @@ pub async fn get_nearby(
     .bind(radius_meters)
     .bind(limit)
     .bind(offset)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get occurrences within a bounding box
 pub async fn get_by_bounding_box(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     min_lat: f64,
     min_lng: f64,
     max_lat: f64,
@@ -195,13 +200,13 @@ pub async fn get_by_bounding_box(
     .bind(max_lng)
     .bind(max_lat)
     .bind(limit)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get occurrences feed (chronological, cursor-based)
 pub async fn get_feed(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     limit: i64,
     cursor: Option<&str>,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
@@ -229,7 +234,7 @@ pub async fn get_feed(
         )
         .bind(limit)
         .bind(cursor)
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await
     } else {
         sqlx::query_as::<_, OccurrenceRow>(
@@ -253,7 +258,7 @@ pub async fn get_feed(
             "#,
         )
         .bind(limit)
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await
     }
 }

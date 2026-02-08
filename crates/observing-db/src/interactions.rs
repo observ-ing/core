@@ -1,8 +1,10 @@
 use crate::types::{InteractionRow, UpsertInteractionParams};
-use sqlx::PgPool;
 
 /// Upsert an interaction record
-pub async fn upsert(pool: &PgPool, p: &UpsertInteractionParams) -> Result<(), sqlx::Error> {
+pub async fn upsert(
+    executor: impl sqlx::PgExecutor<'_>,
+    p: &UpsertInteractionParams,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO interactions (
@@ -51,23 +53,23 @@ pub async fn upsert(pool: &PgPool, p: &UpsertInteractionParams) -> Result<(), sq
     .bind(&p.confidence)
     .bind(&p.comment)
     .bind(p.created_at)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Delete an interaction
-pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
+pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM interactions WHERE uri = $1")
         .bind(uri)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
 
 /// Get interactions for an occurrence (as either subject A or B)
 pub async fn get_for_occurrence(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<InteractionRow>, sqlx::Error> {
     sqlx::query_as::<_, InteractionRow>(
@@ -85,13 +87,13 @@ pub async fn get_for_occurrence(
         "#,
     )
     .bind(occurrence_uri)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get interactions by type
 pub async fn get_by_type(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     interaction_type: &str,
     limit: i64,
 ) -> Result<Vec<InteractionRow>, sqlx::Error> {
@@ -112,12 +114,15 @@ pub async fn get_by_type(
     )
     .bind(interaction_type)
     .bind(limit)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get a single interaction by URI
-pub async fn get(pool: &PgPool, uri: &str) -> Result<Option<InteractionRow>, sqlx::Error> {
+pub async fn get(
+    executor: impl sqlx::PgExecutor<'_>,
+    uri: &str,
+) -> Result<Option<InteractionRow>, sqlx::Error> {
     sqlx::query_as::<_, InteractionRow>(
         r#"
         SELECT
@@ -132,6 +137,6 @@ pub async fn get(pool: &PgPool, uri: &str) -> Result<Option<InteractionRow>, sql
         "#,
     )
     .bind(uri)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }

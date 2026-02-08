@@ -68,7 +68,7 @@ pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
 
 /// Get all identifications for an occurrence
 pub async fn get_for_occurrence(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<IdentificationRow>, sqlx::Error> {
     sqlx::query_as::<_, IdentificationRow>(
@@ -84,13 +84,13 @@ pub async fn get_for_occurrence(
         "#,
     )
     .bind(occurrence_uri)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get identifications for a specific subject within an occurrence
 pub async fn get_for_subject(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
     subject_index: i32,
 ) -> Result<Vec<IdentificationRow>, sqlx::Error> {
@@ -108,13 +108,13 @@ pub async fn get_for_subject(
     )
     .bind(occurrence_uri)
     .bind(subject_index)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get subject info (aggregated) for an occurrence
 pub async fn get_subjects(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<SubjectInfo>, sqlx::Error> {
     sqlx::query_as::<_, SubjectInfo>(
@@ -130,13 +130,13 @@ pub async fn get_subjects(
         "#,
     )
     .bind(occurrence_uri)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Get the community ID (winning taxon) for an occurrence/subject
 pub async fn get_community_id(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
     subject_index: i32,
 ) -> Result<Option<String>, sqlx::Error> {
@@ -151,15 +151,17 @@ pub async fn get_community_id(
     )
     .bind(occurrence_uri)
     .bind(subject_index)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await?;
     Ok(row.map(|r| r.0))
 }
 
 /// Refresh the community IDs materialized view
-pub async fn refresh_community_ids(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn refresh_community_ids(
+    executor: impl sqlx::PgExecutor<'_>,
+) -> Result<(), sqlx::Error> {
     sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }

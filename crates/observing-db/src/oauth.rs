@@ -1,20 +1,21 @@
-use sqlx::PgPool;
-
 // OAuth state methods (for PKCE flow, short-lived)
 
 /// Get OAuth state value (only if not expired)
-pub async fn get_state(pool: &PgPool, key: &str) -> Result<Option<String>, sqlx::Error> {
+pub async fn get_state(
+    executor: impl sqlx::PgExecutor<'_>,
+    key: &str,
+) -> Result<Option<String>, sqlx::Error> {
     let row: Option<(String,)> =
         sqlx::query_as("SELECT value FROM oauth_state WHERE key = $1 AND expires_at > NOW()")
             .bind(key)
-            .fetch_optional(pool)
+            .fetch_optional(executor)
             .await?;
     Ok(row.map(|r| r.0))
 }
 
 /// Set OAuth state with TTL (in milliseconds)
 pub async fn set_state(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     key: &str,
     value: &str,
     ttl_ms: i64,
@@ -29,24 +30,29 @@ pub async fn set_state(
     .bind(key)
     .bind(value)
     .bind(ttl_ms.to_string())
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Delete OAuth state
-pub async fn delete_state(pool: &PgPool, key: &str) -> Result<(), sqlx::Error> {
+pub async fn delete_state(
+    executor: impl sqlx::PgExecutor<'_>,
+    key: &str,
+) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM oauth_state WHERE key = $1")
         .bind(key)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
 
 /// Clean up expired OAuth state entries
-pub async fn cleanup_expired_state(pool: &PgPool) -> Result<(), sqlx::Error> {
+pub async fn cleanup_expired_state(
+    executor: impl sqlx::PgExecutor<'_>,
+) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM oauth_state WHERE expires_at < NOW()")
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
@@ -54,16 +60,23 @@ pub async fn cleanup_expired_state(pool: &PgPool) -> Result<(), sqlx::Error> {
 // OAuth session methods (stores AT Protocol client session as JSON)
 
 /// Get OAuth session value
-pub async fn get_session(pool: &PgPool, key: &str) -> Result<Option<String>, sqlx::Error> {
+pub async fn get_session(
+    executor: impl sqlx::PgExecutor<'_>,
+    key: &str,
+) -> Result<Option<String>, sqlx::Error> {
     let row: Option<(String,)> = sqlx::query_as("SELECT value FROM oauth_sessions WHERE key = $1")
         .bind(key)
-        .fetch_optional(pool)
+        .fetch_optional(executor)
         .await?;
     Ok(row.map(|r| r.0))
 }
 
 /// Set OAuth session value
-pub async fn set_session(pool: &PgPool, key: &str, value: &str) -> Result<(), sqlx::Error> {
+pub async fn set_session(
+    executor: impl sqlx::PgExecutor<'_>,
+    key: &str,
+    value: &str,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO oauth_sessions (key, value)
@@ -73,16 +86,19 @@ pub async fn set_session(pool: &PgPool, key: &str, value: &str) -> Result<(), sq
     )
     .bind(key)
     .bind(value)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Delete OAuth session
-pub async fn delete_session(pool: &PgPool, key: &str) -> Result<(), sqlx::Error> {
+pub async fn delete_session(
+    executor: impl sqlx::PgExecutor<'_>,
+    key: &str,
+) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM oauth_sessions WHERE key = $1")
         .bind(key)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }

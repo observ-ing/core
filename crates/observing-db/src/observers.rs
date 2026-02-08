@@ -51,7 +51,7 @@ pub async fn sync(
 
 /// Add a single observer to an occurrence
 pub async fn add(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
     observer_did: &str,
     role: &str,
@@ -66,14 +66,14 @@ pub async fn add(
     .bind(occurrence_uri)
     .bind(observer_did)
     .bind(role)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Remove a co-observer from an occurrence (owners cannot be removed this way)
 pub async fn remove(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
     observer_did: &str,
 ) -> Result<(), sqlx::Error> {
@@ -85,14 +85,14 @@ pub async fn remove(
     )
     .bind(occurrence_uri)
     .bind(observer_did)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Get all observers for an occurrence
 pub async fn get_for_occurrence(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<ObserverRow>, sqlx::Error> {
     sqlx::query_as::<_, ObserverRow>(
@@ -104,12 +104,16 @@ pub async fn get_for_occurrence(
         "#,
     )
     .bind(occurrence_uri)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }
 
 /// Check if a user is the owner of an occurrence
-pub async fn is_owner(pool: &PgPool, occurrence_uri: &str, did: &str) -> Result<bool, sqlx::Error> {
+pub async fn is_owner(
+    executor: impl sqlx::PgExecutor<'_>,
+    occurrence_uri: &str,
+    did: &str,
+) -> Result<bool, sqlx::Error> {
     let row: Option<(i32,)> = sqlx::query_as(
         r#"
         SELECT 1 as exists_ FROM occurrence_observers
@@ -118,7 +122,7 @@ pub async fn is_owner(pool: &PgPool, occurrence_uri: &str, did: &str) -> Result<
     )
     .bind(occurrence_uri)
     .bind(did)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await?;
     Ok(row.is_some())
 }

@@ -1,8 +1,10 @@
 use crate::types::{CommentRow, UpsertCommentParams};
-use sqlx::PgPool;
 
 /// Upsert a comment record
-pub async fn upsert(pool: &PgPool, p: &UpsertCommentParams) -> Result<(), sqlx::Error> {
+pub async fn upsert(
+    executor: impl sqlx::PgExecutor<'_>,
+    p: &UpsertCommentParams,
+) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"
         INSERT INTO comments (
@@ -30,23 +32,23 @@ pub async fn upsert(pool: &PgPool, p: &UpsertCommentParams) -> Result<(), sqlx::
     .bind(&p.reply_to_uri)
     .bind(&p.reply_to_cid)
     .bind(p.created_at)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Delete a comment
-pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
+pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM comments WHERE uri = $1")
         .bind(uri)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
 
 /// Get all comments for an occurrence
 pub async fn get_for_occurrence(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<CommentRow>, sqlx::Error> {
     sqlx::query_as::<_, CommentRow>(
@@ -60,6 +62,6 @@ pub async fn get_for_occurrence(
         "#,
     )
     .bind(occurrence_uri)
-    .fetch_all(pool)
+    .fetch_all(executor)
     .await
 }

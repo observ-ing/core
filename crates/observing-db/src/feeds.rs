@@ -6,7 +6,7 @@ use sqlx::{PgPool, Postgres, QueryBuilder};
 
 /// Get the explore feed with optional filters
 pub async fn get_explore_feed(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     options: &ExploreFeedOptions,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(
@@ -70,7 +70,7 @@ pub async fn get_explore_feed(
     qb.push_bind(limit);
 
     qb.build_query_as::<OccurrenceRow>()
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await
 }
 
@@ -227,7 +227,7 @@ pub async fn get_profile_feed(
 
 /// Get the home feed (followed users + nearby occurrences)
 pub async fn get_home_feed(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     followed_dids: &[String],
     options: &HomeFeedOptions,
 ) -> Result<HomeFeedResult, sqlx::Error> {
@@ -310,7 +310,7 @@ pub async fn get_home_feed(
 
     let rows = qb
         .build_query_as::<OccurrenceRow>()
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await?;
 
     let mut followed_count = 0;
@@ -332,7 +332,7 @@ pub async fn get_home_feed(
 
 /// Get occurrences matching a taxon by name and rank
 pub async fn get_occurrences_by_taxon(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     taxon_name: &str,
     taxon_rank: &str,
     options: &TaxonOccurrenceOptions,
@@ -377,13 +377,13 @@ pub async fn get_occurrences_by_taxon(
     qb.push_bind(limit);
 
     qb.build_query_as::<OccurrenceRow>()
-        .fetch_all(pool)
+        .fetch_all(executor)
         .await
 }
 
 /// Count occurrences matching a taxon
 pub async fn count_occurrences_by_taxon(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     taxon_name: &str,
     taxon_rank: &str,
     kingdom: Option<&str>,
@@ -401,7 +401,7 @@ pub async fn count_occurrences_by_taxon(
         }
     }
 
-    let (count,): (i64,) = qb.build_query_as().fetch_one(pool).await?;
+    let (count,): (i64,) = qb.build_query_as().fetch_one(executor).await?;
     Ok(count)
 }
 

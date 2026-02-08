@@ -1,9 +1,8 @@
 use crate::types::OccurrencePrivateDataRow;
-use sqlx::PgPool;
 
 /// Save private location data for an occurrence
 pub async fn save(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     uri: &str,
     lat: f64,
     lng: f64,
@@ -24,14 +23,14 @@ pub async fn save(
     .bind(lng)
     .bind(lat)
     .bind(geoprivacy)
-    .execute(pool)
+    .execute(executor)
     .await?;
     Ok(())
 }
 
 /// Get private location data for an occurrence
 pub async fn get(
-    pool: &PgPool,
+    executor: impl sqlx::PgExecutor<'_>,
     uri: &str,
 ) -> Result<Option<OccurrencePrivateDataRow>, sqlx::Error> {
     sqlx::query_as::<_, OccurrencePrivateDataRow>(
@@ -46,15 +45,15 @@ pub async fn get(
         "#,
     )
     .bind(uri)
-    .fetch_optional(pool)
+    .fetch_optional(executor)
     .await
 }
 
 /// Delete private location data for an occurrence
-pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
+pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM occurrence_private_data WHERE uri = $1")
         .bind(uri)
-        .execute(pool)
+        .execute(executor)
         .await?;
     Ok(())
 }
