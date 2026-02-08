@@ -341,4 +341,98 @@ mod tests {
         assert!(TaxonomicHierarchy::is_more_specific("genus", "family"));
         assert!(!TaxonomicHierarchy::is_more_specific("kingdom", "species"));
     }
+
+    #[test]
+    fn test_taxonomic_hierarchy_same_rank() {
+        assert!(!TaxonomicHierarchy::is_more_specific("species", "species"));
+    }
+
+    #[test]
+    fn test_taxonomic_hierarchy_unknown_rank() {
+        // Unknown ranks default to level 0 (most specific)
+        assert_eq!(TaxonomicHierarchy::rank_level("unknown"), 0);
+        assert_eq!(TaxonomicHierarchy::rank_level("subspecies"), 0);
+    }
+
+    #[test]
+    fn test_cross_kingdom_homonym() {
+        // Same scientific name in different kingdoms should be treated as separate taxa
+        let ids = vec![
+            make_id(
+                "user1",
+                "Morus alba",
+                Some("Plantae"),
+                false,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Morus alba",
+                Some("Animalia"),
+                false,
+                "2024-01-02 12:00:00",
+            ),
+        ];
+        let result = calculate(&ids).unwrap();
+        // Each taxon has 1 vote, so no consensus, but should still return a result
+        assert_eq!(result.identification_count, 2);
+        assert_eq!(result.agreement_count, 1);
+        assert!(!result.is_research_grade);
+    }
+
+    #[test]
+    fn test_split_vote_not_research_grade() {
+        // 2 users, different taxa: 50% < 2/3 threshold
+        let ids = vec![
+            make_id(
+                "user1",
+                "Quercus alba",
+                Some("Plantae"),
+                false,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Quercus rubra",
+                Some("Plantae"),
+                false,
+                "2024-01-02 12:00:00",
+            ),
+        ];
+        let result = calculate(&ids).unwrap();
+        assert_eq!(result.identification_count, 2);
+        assert!(!result.is_research_grade);
+        assert_eq!(result.confidence, 0.5);
+    }
+
+    #[test]
+    fn test_two_of_three_is_research_grade() {
+        // 2/3 = 0.666... >= RESEARCH_GRADE_THRESHOLD
+        let ids = vec![
+            make_id(
+                "user1",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-01 12:00:00",
+            ),
+            make_id(
+                "user2",
+                "Quercus alba",
+                Some("Plantae"),
+                true,
+                "2024-01-02 12:00:00",
+            ),
+            make_id(
+                "user3",
+                "Quercus rubra",
+                Some("Plantae"),
+                false,
+                "2024-01-03 12:00:00",
+            ),
+        ];
+        let result = calculate(&ids).unwrap();
+        assert_eq!(result.scientific_name, "Quercus alba");
+        assert!(result.is_research_grade);
+    }
 }
