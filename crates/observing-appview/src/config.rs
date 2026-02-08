@@ -12,6 +12,8 @@ pub struct Config {
     pub ts_appview_url: String,
     /// Optional secret for internal agent RPC
     pub internal_secret: Option<String>,
+    /// Public URL for production OAuth (e.g. "https://observ.ing")
+    pub public_url: Option<String>,
 }
 
 impl Config {
@@ -69,6 +71,8 @@ impl Config {
 
         let internal_secret = env::var("INTERNAL_SECRET").ok();
 
+        let public_url = env::var("PUBLIC_URL").ok();
+
         Self {
             port,
             database_url,
@@ -77,6 +81,7 @@ impl Config {
             taxonomy_service_url,
             ts_appview_url,
             internal_secret,
+            public_url,
         }
     }
 }

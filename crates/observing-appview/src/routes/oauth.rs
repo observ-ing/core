@@ -1,4 +1,5 @@
 use axum::extract::{Query, State};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
 use serde::Deserialize;
@@ -79,10 +80,16 @@ pub async fn callback(
                     info!(did = %did_str, "OAuth callback successful");
 
                     // Set session_did cookie and redirect to /
+                    let secure = if state.public_url.is_some() {
+                        "; Secure; SameSite=Lax"
+                    } else {
+                        ""
+                    };
                     let cookie = format!(
-                        "session_did={}; HttpOnly; Path=/; Max-Age={}",
+                        "session_did={}; HttpOnly; Path=/; Max-Age={}{}",
                         did_str,
                         14 * 24 * 60 * 60, // 14 days
+                        secure,
                     );
                     (
                         [(axum::http::header::SET_COOKIE, cookie)],
@@ -126,6 +133,28 @@ pub async fn logout(cookies: axum_extra::extract::CookieJar) -> Response {
         Json(json!({ "success": true })),
     )
         .into_response()
+}
+
+/// GET /oauth/client-metadata.json
+/// Serves OAuth client metadata for AT Protocol authorization servers.
+pub async fn client_metadata(State(state): State<AppState>) -> Response {
+    let Some(ref public_url) = state.public_url else {
+        return (StatusCode::NOT_FOUND, "Not available in development mode").into_response();
+    };
+
+    Json(json!({
+        "client_id": format!("{public_url}/oauth/client-metadata.json"),
+        "client_name": "Observ.ing",
+        "client_uri": public_url,
+        "redirect_uris": [format!("{public_url}/oauth/callback")],
+        "scope": "atproto transition:generic",
+        "grant_types": ["authorization_code", "refresh_token"],
+        "response_types": ["code"],
+        "token_endpoint_auth_method": "none",
+        "application_type": "web",
+        "dpop_bound_access_tokens": true
+    }))
+    .into_response()
 }
 
 /// GET /oauth/me

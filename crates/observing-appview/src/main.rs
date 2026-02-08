@@ -46,7 +46,8 @@ async fn main() {
         .expect("Failed to connect to database");
 
     // Create OAuth client
-    let oauth_client = state::create_oauth_client(pool.clone(), "127.0.0.1", config.port);
+    let oauth_client =
+        state::create_oauth_client(pool.clone(), config.public_url.as_deref(), config.port);
 
     let state = AppState {
         pool,
@@ -59,6 +60,7 @@ async fn main() {
         )),
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
+        public_url: config.public_url.clone(),
     };
 
     // CORS
@@ -84,6 +86,7 @@ async fn main() {
         // Health
         .route("/health", get(routes::health::health))
         // OAuth
+        .route("/oauth/client-metadata.json", get(routes::oauth::client_metadata))
         .route("/oauth/login", get(routes::oauth::login))
         .route("/oauth/callback", get(routes::oauth::callback))
         .route("/oauth/logout", post(routes::oauth::logout))
