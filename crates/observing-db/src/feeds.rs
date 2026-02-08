@@ -2,79 +2,14 @@ use crate::types::{
     ExploreFeedOptions, HomeFeedOptions, HomeFeedResult, IdentificationRow, OccurrenceRow,
     ProfileCounts, ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
 };
-use sqlx::PgPool;
+use sqlx::{PgPool, Postgres, QueryBuilder};
 
 /// Get the explore feed with optional filters
 pub async fn get_explore_feed(
     pool: &PgPool,
     options: &ExploreFeedOptions,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
-    let mut conditions: Vec<String> = Vec::new();
-    let mut param_index: usize = 1;
-
-    // We build a dynamic query since the number of parameters varies
-    // We'll collect bind values and apply them dynamically
-    // Using a simpler approach with format strings for the WHERE clause
-    // and binding via positional arguments
-
-    // Since sqlx doesn't support dynamic query building easily with query_as,
-    // we'll build the SQL string and use sqlx::query with manual row mapping
-    let mut bind_values: Vec<BindValue> = Vec::new();
-
-    if let Some(ref taxon) = options.taxon {
-        conditions.push(format!("scientific_name ILIKE ${param_index}"));
-        bind_values.push(BindValue::String(format!("{taxon}%")));
-        param_index += 1;
-    }
-
-    if let Some(ref kingdom) = options.kingdom {
-        conditions.push(format!("kingdom = ${param_index}"));
-        bind_values.push(BindValue::String(kingdom.clone()));
-        param_index += 1;
-    }
-
-    if let Some(ref start_date) = options.start_date {
-        conditions.push(format!("event_date >= ${param_index}"));
-        bind_values.push(BindValue::String(start_date.clone()));
-        param_index += 1;
-    }
-
-    if let Some(ref end_date) = options.end_date {
-        conditions.push(format!("event_date <= ${param_index}"));
-        bind_values.push(BindValue::String(end_date.clone()));
-        param_index += 1;
-    }
-
-    if let (Some(lat), Some(lng)) = (options.lat, options.lng) {
-        let radius = options.radius.unwrap_or(10000.0);
-        conditions.push(format!(
-            "ST_DWithin(location, ST_SetSRID(ST_MakePoint(${}, ${}), 4326)::geography, ${})",
-            param_index,
-            param_index + 1,
-            param_index + 2
-        ));
-        bind_values.push(BindValue::Float(lng));
-        bind_values.push(BindValue::Float(lat));
-        bind_values.push(BindValue::Float(radius));
-        param_index += 3;
-    }
-
-    if let Some(ref cursor) = options.cursor {
-        conditions.push(format!("created_at < ${param_index}"));
-        bind_values.push(BindValue::String(cursor.clone()));
-        param_index += 1;
-    }
-
-    let where_clause = if conditions.is_empty() {
-        String::new()
-    } else {
-        format!("WHERE {}", conditions.join(" AND "))
-    };
-
-    let limit = options.limit.unwrap_or(20);
-    let limit_param = format!("${param_index}");
-
-    let sql = format!(
+    let mut qb = QueryBuilder::<Postgres>::new(
         r#"
         SELECT
             uri, cid, did, scientific_name, event_date,
@@ -90,24 +25,53 @@ pub async fn get_explore_feed(
             NULL::text as source,
             NULL::text as observer_role
         FROM occurrences
-        {where_clause}
-        ORDER BY created_at DESC
-        LIMIT {limit_param}
+        WHERE TRUE
         "#,
     );
 
-    let mut query = sqlx::query_as::<_, OccurrenceRow>(&sql);
-    for val in &bind_values {
-        query = match val {
-            BindValue::String(s) => query.bind(s),
-            BindValue::Float(f) => query.bind(f),
-            BindValue::StringVec(v) => query.bind(v),
-            BindValue::Int(i) => query.bind(i),
-        };
+    if let Some(ref taxon) = options.taxon {
+        qb.push(" AND scientific_name ILIKE ");
+        qb.push_bind(format!("{taxon}%"));
     }
-    query = query.bind(limit);
 
-    query.fetch_all(pool).await
+    if let Some(ref kingdom) = options.kingdom {
+        qb.push(" AND kingdom = ");
+        qb.push_bind(kingdom.clone());
+    }
+
+    if let Some(ref start_date) = options.start_date {
+        qb.push(" AND event_date >= ");
+        qb.push_bind(start_date.clone());
+    }
+
+    if let Some(ref end_date) = options.end_date {
+        qb.push(" AND event_date <= ");
+        qb.push_bind(end_date.clone());
+    }
+
+    if let (Some(lat), Some(lng)) = (options.lat, options.lng) {
+        let radius = options.radius.unwrap_or(10000.0);
+        qb.push(" AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(");
+        qb.push_bind(lng);
+        qb.push(", ");
+        qb.push_bind(lat);
+        qb.push("), 4326)::geography, ");
+        qb.push_bind(radius);
+        qb.push(")");
+    }
+
+    if let Some(ref cursor) = options.cursor {
+        qb.push(" AND created_at < ");
+        qb.push_bind(cursor.clone());
+    }
+
+    let limit = options.limit.unwrap_or(20);
+    qb.push(" ORDER BY created_at DESC LIMIT ");
+    qb.push_bind(limit);
+
+    qb.build_query_as::<OccurrenceRow>()
+        .fetch_all(pool)
+        .await
 }
 
 /// Get the profile feed for a user
@@ -281,81 +245,51 @@ pub async fn get_home_feed(
         });
     }
 
-    // Build dynamic query with CTEs
-    let mut ctes: Vec<String> = Vec::new();
-    let mut union_parts: Vec<String> = Vec::new();
-    let mut bind_values: Vec<BindValue> = Vec::new();
-    let mut param_index: usize = 1;
+    let mut qb = QueryBuilder::<Postgres>::new("WITH ");
 
     if has_follows {
-        bind_values.push(BindValue::StringVec(followed_dids.to_vec()));
-        let follows_cursor = if let Some(ref cursor) = options.cursor {
-            param_index += 1;
-            bind_values.push(BindValue::String(cursor.clone()));
-            format!("AND created_at < ${param_index}")
-        } else {
-            String::new()
-        };
-        param_index += 1; // for the $1 (follows array)
-
-        ctes.push(format!(
-            "follows_feed AS (
-                SELECT *, 'follows'::text as source
-                FROM occurrences
-                WHERE did = ANY($1) {follows_cursor}
-            )"
-        ));
-        union_parts.push("SELECT * FROM follows_feed".to_string());
+        qb.push("follows_feed AS (SELECT *, 'follows'::text as source FROM occurrences WHERE did = ANY(");
+        qb.push_bind(followed_dids.to_vec());
+        qb.push(")");
+        if let Some(ref cursor) = options.cursor {
+            qb.push(" AND created_at < ");
+            qb.push_bind(cursor.clone());
+        }
+        qb.push(")");
     }
 
     if has_location {
-        let lng_idx = param_index;
-        let lat_idx = param_index + 1;
-        let radius_idx = param_index + 2;
-        param_index += 3;
-
-        bind_values.push(BindValue::Float(options.lng.unwrap()));
-        bind_values.push(BindValue::Float(options.lat.unwrap()));
-        bind_values.push(BindValue::Float(nearby_radius));
-
-        let nearby_cursor = if let Some(ref cursor) = options.cursor {
-            if !has_follows {
-                param_index += 1;
-                bind_values.push(BindValue::String(cursor.clone()));
-                format!("AND created_at < ${param_index}")
-            } else {
-                "AND created_at < $2".to_string()
-            }
-        } else {
-            String::new()
-        };
-
-        ctes.push(format!(
-            "nearby_feed AS (
-                SELECT *, 'nearby'::text as source
-                FROM occurrences
-                WHERE ST_DWithin(
-                    location,
-                    ST_SetSRID(ST_MakePoint(${lng_idx}, ${lat_idx}), 4326)::geography,
-                    ${radius_idx}
-                ) {nearby_cursor}
-            )"
-        ));
-        union_parts.push("SELECT * FROM nearby_feed".to_string());
+        if has_follows {
+            qb.push(", ");
+        }
+        qb.push("nearby_feed AS (SELECT *, 'nearby'::text as source FROM occurrences WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(");
+        qb.push_bind(options.lng.unwrap());
+        qb.push(", ");
+        qb.push_bind(options.lat.unwrap());
+        qb.push("), 4326)::geography, ");
+        qb.push_bind(nearby_radius);
+        qb.push(")");
+        if let Some(ref cursor) = options.cursor {
+            qb.push(" AND created_at < ");
+            qb.push_bind(cursor.clone());
+        }
+        qb.push(")");
     }
 
-    param_index += 1;
-    bind_values.push(BindValue::Int(limit));
+    qb.push(", combined AS (SELECT DISTINCT ON (uri) * FROM (");
+    if has_follows {
+        qb.push("SELECT * FROM follows_feed");
+    }
+    if has_follows && has_location {
+        qb.push(" UNION ALL ");
+    }
+    if has_location {
+        qb.push("SELECT * FROM nearby_feed");
+    }
+    qb.push(") sub ORDER BY uri, created_at DESC) ");
 
-    let sql = format!(
+    qb.push(
         r#"
-        WITH {ctes},
-        combined AS (
-            SELECT DISTINCT ON (uri) * FROM (
-                {unions}
-            ) sub
-            ORDER BY uri, created_at DESC
-        )
         SELECT
             uri, cid, did, scientific_name, event_date,
             ST_Y(location::geometry) as latitude,
@@ -370,23 +304,14 @@ pub async fn get_home_feed(
             NULL::text as observer_role
         FROM combined
         ORDER BY created_at DESC
-        LIMIT ${param_index}
-        "#,
-        ctes = ctes.join(", "),
-        unions = union_parts.join(" UNION ALL "),
+        LIMIT "#,
     );
+    qb.push_bind(limit);
 
-    let mut query = sqlx::query_as::<_, OccurrenceRow>(&sql);
-    for val in &bind_values {
-        query = match val {
-            BindValue::String(s) => query.bind(s),
-            BindValue::Float(f) => query.bind(f),
-            BindValue::StringVec(v) => query.bind(v),
-            BindValue::Int(i) => query.bind(i),
-        };
-    }
-
-    let rows = query.fetch_all(pool).await?;
+    let rows = qb
+        .build_query_as::<OccurrenceRow>()
+        .fetch_all(pool)
+        .await?;
 
     let mut followed_count = 0;
     let mut nearby_count = 0;
@@ -415,75 +340,7 @@ pub async fn get_occurrences_by_taxon(
     let limit = options.limit.unwrap_or(20);
     let rank_lower = taxon_rank.to_lowercase();
 
-    let mut conditions: Vec<String> = Vec::new();
-    let mut bind_values: Vec<BindValue> = Vec::new();
-    let mut param_index: usize = 1;
-
-    match rank_lower.as_str() {
-        "species" | "subspecies" | "variety" => {
-            conditions.push(format!("scientific_name = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "genus" => {
-            conditions.push(format!(
-                "(genus = ${} OR scientific_name ILIKE ${})",
-                param_index,
-                param_index + 1
-            ));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            bind_values.push(BindValue::String(format!("{taxon_name} %")));
-            param_index += 2;
-        }
-        "family" => {
-            conditions.push(format!("family = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "order" => {
-            conditions.push(format!("\"order\" = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "class" => {
-            conditions.push(format!("class = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "phylum" => {
-            conditions.push(format!("phylum = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "kingdom" => {
-            conditions.push(format!("kingdom = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        _ => {
-            conditions.push(format!("scientific_name = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-    }
-
-    if let Some(ref kingdom) = options.kingdom {
-        if rank_lower != "kingdom" {
-            conditions.push(format!("kingdom = ${param_index}"));
-            bind_values.push(BindValue::String(kingdom.clone()));
-            param_index += 1;
-        }
-    }
-
-    if let Some(ref cursor) = options.cursor {
-        conditions.push(format!("created_at < ${param_index}"));
-        bind_values.push(BindValue::String(cursor.clone()));
-        param_index += 1;
-    }
-
-    let where_clause = conditions.join(" AND ");
-
-    let sql = format!(
+    let mut qb = QueryBuilder::<Postgres>::new(
         r#"
         SELECT
             uri, cid, did, scientific_name, event_date,
@@ -499,24 +356,29 @@ pub async fn get_occurrences_by_taxon(
             NULL::text as source,
             NULL::text as observer_role
         FROM occurrences
-        WHERE {where_clause}
-        ORDER BY created_at DESC
-        LIMIT ${param_index}
-        "#,
+        WHERE "#,
     );
 
-    let mut query = sqlx::query_as::<_, OccurrenceRow>(&sql);
-    for val in &bind_values {
-        query = match val {
-            BindValue::String(s) => query.bind(s),
-            BindValue::Float(f) => query.bind(f),
-            BindValue::StringVec(v) => query.bind(v),
-            BindValue::Int(i) => query.bind(i),
-        };
-    }
-    query = query.bind(limit);
+    push_taxon_filter(&mut qb, &rank_lower, taxon_name);
 
-    query.fetch_all(pool).await
+    if let Some(ref kingdom) = options.kingdom {
+        if rank_lower != "kingdom" {
+            qb.push(" AND kingdom = ");
+            qb.push_bind(kingdom.clone());
+        }
+    }
+
+    if let Some(ref cursor) = options.cursor {
+        qb.push(" AND created_at < ");
+        qb.push_bind(cursor.clone());
+    }
+
+    qb.push(" ORDER BY created_at DESC LIMIT ");
+    qb.push_bind(limit);
+
+    qb.build_query_as::<OccurrenceRow>()
+        .fetch_all(pool)
+        .await
 }
 
 /// Count occurrences matching a taxon
@@ -527,86 +389,59 @@ pub async fn count_occurrences_by_taxon(
     kingdom: Option<&str>,
 ) -> Result<i64, sqlx::Error> {
     let rank_lower = taxon_rank.to_lowercase();
-    let mut conditions: Vec<String> = Vec::new();
-    let mut bind_values: Vec<BindValue> = Vec::new();
-    let mut param_index: usize = 1;
 
-    match rank_lower.as_str() {
-        "species" | "subspecies" | "variety" => {
-            conditions.push(format!("scientific_name = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "genus" => {
-            conditions.push(format!(
-                "(genus = ${} OR scientific_name ILIKE ${})",
-                param_index,
-                param_index + 1
-            ));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            bind_values.push(BindValue::String(format!("{taxon_name} %")));
-            param_index += 2;
-        }
-        "family" => {
-            conditions.push(format!("family = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "order" => {
-            conditions.push(format!("\"order\" = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "class" => {
-            conditions.push(format!("class = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "phylum" => {
-            conditions.push(format!("phylum = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        "kingdom" => {
-            conditions.push(format!("kingdom = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-        _ => {
-            conditions.push(format!("scientific_name = ${param_index}"));
-            bind_values.push(BindValue::String(taxon_name.to_string()));
-            param_index += 1;
-        }
-    }
+    let mut qb = QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM occurrences WHERE ");
+
+    push_taxon_filter(&mut qb, &rank_lower, taxon_name);
 
     if let Some(kingdom) = kingdom {
         if rank_lower != "kingdom" {
-            conditions.push(format!("kingdom = ${param_index}"));
-            bind_values.push(BindValue::String(kingdom.to_string()));
+            qb.push(" AND kingdom = ");
+            qb.push_bind(kingdom.to_string());
         }
     }
 
-    let where_clause = conditions.join(" AND ");
-    let sql = format!("SELECT COUNT(*) as count FROM occurrences WHERE {where_clause}");
-
-    let mut query = sqlx::query_scalar::<_, i64>(&sql);
-    for val in &bind_values {
-        query = match val {
-            BindValue::String(s) => query.bind(s),
-            BindValue::Float(f) => query.bind(f),
-            BindValue::StringVec(v) => query.bind(v),
-            BindValue::Int(i) => query.bind(i),
-        };
-    }
-
-    query.fetch_one(pool).await
+    let (count,): (i64,) = qb.build_query_as().fetch_one(pool).await?;
+    Ok(count)
 }
 
-/// Helper enum for dynamic query building
-#[derive(Debug, Clone)]
-enum BindValue {
-    String(String),
-    Float(f64),
-    StringVec(Vec<String>),
-    Int(i64),
+/// Push the appropriate taxon filter condition onto a query builder
+fn push_taxon_filter(qb: &mut QueryBuilder<'_, Postgres>, rank_lower: &str, taxon_name: &str) {
+    match rank_lower {
+        "species" | "subspecies" | "variety" => {
+            qb.push("scientific_name = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+        "genus" => {
+            qb.push("(genus = ");
+            qb.push_bind(taxon_name.to_string());
+            qb.push(" OR scientific_name ILIKE ");
+            qb.push_bind(format!("{taxon_name} %"));
+            qb.push(")");
+        }
+        "family" => {
+            qb.push("family = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+        "order" => {
+            qb.push(r#""order" = "#);
+            qb.push_bind(taxon_name.to_string());
+        }
+        "class" => {
+            qb.push("class = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+        "phylum" => {
+            qb.push("phylum = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+        "kingdom" => {
+            qb.push("kingdom = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+        _ => {
+            qb.push("scientific_name = ");
+            qb.push_bind(taxon_name.to_string());
+        }
+    }
 }
