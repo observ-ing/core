@@ -48,9 +48,7 @@ pub async fn delete_state(
 }
 
 /// Clean up expired OAuth state entries
-pub async fn cleanup_expired_state(
-    executor: impl sqlx::PgExecutor<'_>,
-) -> Result<(), sqlx::Error> {
+pub async fn cleanup_expired_state(executor: impl sqlx::PgExecutor<'_>) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM oauth_state WHERE expires_at < NOW()")
         .execute(executor)
         .await?;

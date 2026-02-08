@@ -157,9 +157,7 @@ pub async fn get_community_id(
 }
 
 /// Refresh the community IDs materialized view
-pub async fn refresh_community_ids(
-    executor: impl sqlx::PgExecutor<'_>,
-) -> Result<(), sqlx::Error> {
+pub async fn refresh_community_ids(executor: impl sqlx::PgExecutor<'_>) -> Result<(), sqlx::Error> {
     sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
         .execute(executor)
         .await?;
