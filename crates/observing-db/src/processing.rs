@@ -85,9 +85,8 @@ pub fn occurrence_from_json(
         }
     };
 
-    let event_date = parse_datetime(&record.event_date.to_string()).ok_or_else(|| {
-        ProcessingError::InvalidField("missing valid eventDate".into())
-    })?;
+    let event_date = parse_datetime(&record.event_date.to_string())
+        .ok_or_else(|| ProcessingError::InvalidField("missing valid eventDate".into()))?;
 
     let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(event_date);
 
@@ -210,8 +209,7 @@ pub fn interaction_from_json(
     let record: Interaction<'_> =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
-    let created_at =
-        parse_datetime(&record.created_at.to_string()).unwrap_or(fallback_time);
+    let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(fallback_time);
 
     Ok(UpsertInteractionParams {
         uri,
@@ -228,16 +226,8 @@ pub fn interaction_from_json(
             .as_ref()
             .map(|o| o.cid.to_string()),
         subject_a_subject_index: record.subject_a.subject_index.unwrap_or(0) as i32,
-        subject_a_taxon_name: record
-            .subject_a
-            .taxon_name
-            .as_ref()
-            .map(|s| s.to_string()),
-        subject_a_kingdom: record
-            .subject_a
-            .kingdom
-            .as_ref()
-            .map(|s| s.to_string()),
+        subject_a_taxon_name: record.subject_a.taxon_name.as_ref().map(|s| s.to_string()),
+        subject_a_kingdom: record.subject_a.kingdom.as_ref().map(|s| s.to_string()),
         subject_b_occurrence_uri: record
             .subject_b
             .occurrence
@@ -249,16 +239,8 @@ pub fn interaction_from_json(
             .as_ref()
             .map(|o| o.cid.to_string()),
         subject_b_subject_index: record.subject_b.subject_index.unwrap_or(0) as i32,
-        subject_b_taxon_name: record
-            .subject_b
-            .taxon_name
-            .as_ref()
-            .map(|s| s.to_string()),
-        subject_b_kingdom: record
-            .subject_b
-            .kingdom
-            .as_ref()
-            .map(|s| s.to_string()),
+        subject_b_taxon_name: record.subject_b.taxon_name.as_ref().map(|s| s.to_string()),
+        subject_b_kingdom: record.subject_b.kingdom.as_ref().map(|s| s.to_string()),
         interaction_type: record.interaction_type.as_ref().to_string(),
         direction: record.direction.to_string(),
         confidence: record.confidence.map(|s| s.to_string()),

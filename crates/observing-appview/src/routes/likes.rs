@@ -131,9 +131,7 @@ pub async fn delete_like(
                             .delete_record(
                                 atrium_api::com::atproto::repo::delete_record::InputData {
                                     collection,
-                                    repo: atrium_api::types::string::AtIdentifier::Did(
-                                        did_parsed,
-                                    ),
+                                    repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
                                     rkey,
                                     swap_commit: None,
                                     swap_record: None,
