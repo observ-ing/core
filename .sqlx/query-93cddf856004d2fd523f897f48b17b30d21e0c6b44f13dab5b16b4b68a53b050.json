@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT subject_uri FROM likes WHERE subject_uri = ANY($1) AND did = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "subject_uri",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "93cddf856004d2fd523f897f48b17b30d21e0c6b44f13dab5b16b4b68a53b050"
+}

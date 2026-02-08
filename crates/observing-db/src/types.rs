@@ -229,19 +229,6 @@ pub struct SubjectInfo {
     pub latest_identification: Option<DateTime<Utc>>,
 }
 
-/// Like count for a subject
-#[derive(Debug, Clone, FromRow)]
-pub struct LikeCount {
-    pub subject_uri: String,
-    pub count: i32,
-}
-
-/// Subject URI for user like status checks
-#[derive(Debug, Clone, FromRow)]
-pub struct UserLikeStatus {
-    pub subject_uri: String,
-}
-
 /// Parameters for upserting an occurrence
 #[derive(Debug, Clone)]
 pub struct UpsertOccurrenceParams {

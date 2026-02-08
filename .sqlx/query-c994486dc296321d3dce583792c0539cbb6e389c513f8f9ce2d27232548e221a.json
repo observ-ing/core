@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ON CONFLICT (subject_uri, did) DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c994486dc296321d3dce583792c0539cbb6e389c513f8f9ce2d27232548e221a"
+}
