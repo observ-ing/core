@@ -8,7 +8,7 @@ pub async fn save(
     lng: f64,
     geoprivacy: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO occurrence_private_data (uri, exact_location, geoprivacy, effective_geoprivacy)
         VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4, $4)
@@ -18,11 +18,11 @@ pub async fn save(
             effective_geoprivacy = $4,
             updated_at = NOW()
         "#,
+        uri,
+        lng,
+        lat,
+        geoprivacy,
     )
-    .bind(uri)
-    .bind(lng)
-    .bind(lat)
-    .bind(geoprivacy)
     .execute(executor)
     .await?;
     Ok(())
