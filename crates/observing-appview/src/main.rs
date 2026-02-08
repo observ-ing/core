@@ -86,7 +86,10 @@ async fn main() {
         // Health
         .route("/health", get(routes::health::health))
         // OAuth
-        .route("/oauth/client-metadata.json", get(routes::oauth::client_metadata))
+        .route(
+            "/oauth/client-metadata.json",
+            get(routes::oauth::client_metadata),
+        )
         .route("/oauth/login", get(routes::oauth::login))
         .route("/oauth/callback", get(routes::oauth::callback))
         .route("/oauth/logout", post(routes::oauth::logout))

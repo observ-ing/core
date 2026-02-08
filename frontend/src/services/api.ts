@@ -115,7 +115,7 @@ export async function fetchHomeFeed(
 export async function fetchProfileFeed(
   did: string,
   cursor?: string,
-  type?: "observations" | "identifications" | "all"
+  type?: "observations" | "identifications"
 ): Promise<ProfileFeedResponse> {
   const params = new URLSearchParams({ limit: "20" });
   if (cursor) params.set("cursor", cursor);

@@ -29,7 +29,7 @@ import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
 import { ProfileHeaderSkeleton, ProfileObservationCardSkeleton, ProfileIdentificationCardSkeleton } from "../common/Skeletons";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
-type ProfileTab = "all" | "observations" | "identifications";
+type ProfileTab = "observations" | "identifications";
 
 export function ProfileView() {
   const { did } = useParams<{ did: string }>();
@@ -40,7 +40,7 @@ export function ProfileView() {
   const [hasMore, setHasMore] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ProfileTab>("all");
+  const [activeTab, setActiveTab] = useState<ProfileTab>("observations");
 
   usePageTitle(data?.profile.displayName || data?.profile.handle || "Profile");
 
@@ -201,13 +201,12 @@ export function ProfileView() {
           "& .MuiTab-root": { flex: 1, minWidth: 0 },
         }}
       >
-        <Tab label="All" value="all" />
         <Tab label="Observations" value="observations" />
         <Tab label="IDs" value="identifications" />
       </Tabs>
 
       {/* Observations Grid */}
-      {(activeTab === "all" || activeTab === "observations") && (
+      {activeTab === "observations" && (
         <Box
           sx={{
             display: "grid",
@@ -283,7 +282,7 @@ export function ProfileView() {
       )}
 
       {/* Identifications Grid */}
-      {(activeTab === "all" || activeTab === "identifications") && (
+      {activeTab === "identifications" && (
         <Box
           sx={{
             display: "grid",

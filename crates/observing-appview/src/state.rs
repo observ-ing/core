@@ -38,11 +38,7 @@ pub struct AppState {
 /// When `public_url` is provided (production), uses `AtprotoClientMetadata`
 /// with the public URL for redirect URIs. Otherwise falls back to
 /// `AtprotoLocalhostClientMetadata` for local development.
-pub fn create_oauth_client(
-    pool: PgPool,
-    public_url: Option<&str>,
-    port: u16,
-) -> OAuthClientType {
+pub fn create_oauth_client(pool: PgPool, public_url: Option<&str>, port: u16) -> OAuthClientType {
     let http_client = Arc::new(DefaultHttpClient::default());
 
     let resolver = atrium_oauth::OAuthResolverConfig {
