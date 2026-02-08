@@ -5,7 +5,7 @@ pub async fn upsert(
     executor: impl sqlx::PgExecutor<'_>,
     p: &UpsertCommentParams,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query(
+    sqlx::query!(
         r#"
         INSERT INTO comments (
             uri, cid, did, subject_uri, subject_cid, body,
@@ -22,16 +22,16 @@ pub async fn upsert(
             created_at = EXCLUDED.created_at,
             indexed_at = NOW()
         "#,
+        p.uri,
+        p.cid,
+        p.did,
+        p.subject_uri,
+        p.subject_cid,
+        p.body,
+        p.reply_to_uri as _,
+        p.reply_to_cid as _,
+        p.created_at,
     )
-    .bind(&p.uri)
-    .bind(&p.cid)
-    .bind(&p.did)
-    .bind(&p.subject_uri)
-    .bind(&p.subject_cid)
-    .bind(&p.body)
-    .bind(&p.reply_to_uri)
-    .bind(&p.reply_to_cid)
-    .bind(p.created_at)
     .execute(executor)
     .await?;
     Ok(())
@@ -50,6 +50,8 @@ pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
 ) -> Result<Vec<CommentRow>, sqlx::Error> {
+    // Note: kept as runtime query_as because CommentRow uses DateTime<Utc>
+    // but the DB column is TIMESTAMP (not TIMESTAMPTZ)
     sqlx::query_as::<_, CommentRow>(
         r#"
         SELECT
