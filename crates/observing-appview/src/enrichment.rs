@@ -502,3 +502,146 @@ pub async fn enrich_interactions(
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Utc;
+    use serde_json::json;
+
+    fn make_row(media: Option<serde_json::Value>) -> OccurrenceRow {
+        OccurrenceRow {
+            uri: "at://did:plc:test/org.rwell.test.occurrence/1".into(),
+            cid: "cid".into(),
+            did: "did:plc:test".into(),
+            scientific_name: None,
+            event_date: Utc::now(),
+            latitude: 0.0,
+            longitude: 0.0,
+            coordinate_uncertainty_meters: None,
+            continent: None,
+            country: None,
+            country_code: None,
+            state_province: None,
+            county: None,
+            municipality: None,
+            locality: None,
+            water_body: None,
+            verbatim_locality: None,
+            occurrence_remarks: None,
+            associated_media: media,
+            recorded_by: None,
+            taxon_id: None,
+            taxon_rank: None,
+            vernacular_name: None,
+            kingdom: None,
+            phylum: None,
+            class: None,
+            order_: None,
+            family: None,
+            genus: None,
+            created_at: Utc::now(),
+            distance_meters: None,
+            source: None,
+            observer_role: None,
+        }
+    }
+
+    #[test]
+    fn test_extract_images_no_media() {
+        let row = make_row(None);
+        assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_extract_images_non_array() {
+        let row = make_row(Some(json!("not an array")));
+        assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_extract_images_empty_array() {
+        let row = make_row(Some(json!([])));
+        assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_extract_images_with_link() {
+        let row = make_row(Some(json!([
+            {"image": {"ref": {"$link": "bafkreiabc123"}, "mimeType": "image/jpeg"}}
+        ])));
+        let images = extract_images(&row);
+        assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreiabc123"]);
+    }
+
+    #[test]
+    fn test_extract_images_with_string_ref() {
+        let row = make_row(Some(json!([
+            {"image": {"ref": "bafkreixyz789", "mimeType": "image/jpeg"}}
+        ])));
+        let images = extract_images(&row);
+        assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreixyz789"]);
+    }
+
+    #[test]
+    fn test_extract_images_multiple() {
+        let row = make_row(Some(json!([
+            {"image": {"ref": {"$link": "cid1"}, "mimeType": "image/jpeg"}},
+            {"image": {"ref": {"$link": "cid2"}, "mimeType": "image/png"}}
+        ])));
+        let images = extract_images(&row);
+        assert_eq!(images.len(), 2);
+        assert!(images.contains(&"/media/blob/did:plc:test/cid1".to_string()));
+        assert!(images.contains(&"/media/blob/did:plc:test/cid2".to_string()));
+    }
+
+    #[test]
+    fn test_extract_images_missing_image_field() {
+        let row = make_row(Some(json!([
+            {"notImage": {"ref": {"$link": "cid1"}}}
+        ])));
+        assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_extract_images_missing_ref_field() {
+        let row = make_row(Some(json!([
+            {"image": {"mimeType": "image/jpeg"}}
+        ])));
+        assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_profile_summary_found() {
+        let mut profiles = HashMap::new();
+        profiles.insert(
+            "did:plc:alice".to_string(),
+            Arc::new(Profile {
+                did: "did:plc:alice".to_string(),
+                handle: "alice.bsky.social".to_string(),
+                display_name: Some("Alice".to_string()),
+                description: None,
+                avatar: Some("https://cdn.example.com/avatar.jpg".to_string()),
+                banner: None,
+                followers_count: None,
+                follows_count: None,
+                posts_count: None,
+            }),
+        );
+        let summary = profile_summary("did:plc:alice", &profiles);
+        assert_eq!(summary.did, "did:plc:alice");
+        assert_eq!(summary.handle.as_deref(), Some("alice.bsky.social"));
+        assert_eq!(summary.display_name.as_deref(), Some("Alice"));
+        assert!(summary.avatar.is_some());
+    }
+
+    #[test]
+    fn test_profile_summary_not_found() {
+        let profiles = HashMap::new();
+        let summary = profile_summary("did:plc:unknown", &profiles);
+        assert_eq!(summary.did, "did:plc:unknown");
+        assert!(summary.handle.is_none());
+        assert!(summary.display_name.is_none());
+        assert!(summary.avatar.is_none());
+    }
+}
