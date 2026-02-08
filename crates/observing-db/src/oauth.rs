@@ -40,8 +40,7 @@ pub async fn delete_state(
     executor: impl sqlx::PgExecutor<'_>,
     key: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM oauth_state WHERE key = $1")
-        .bind(key)
+    sqlx::query!("DELETE FROM oauth_state WHERE key = $1", key)
         .execute(executor)
         .await?;
     Ok(())
@@ -49,7 +48,7 @@ pub async fn delete_state(
 
 /// Clean up expired OAuth state entries
 pub async fn cleanup_expired_state(executor: impl sqlx::PgExecutor<'_>) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM oauth_state WHERE expires_at < NOW()")
+    sqlx::query!("DELETE FROM oauth_state WHERE expires_at < NOW()")
         .execute(executor)
         .await?;
     Ok(())
@@ -94,8 +93,7 @@ pub async fn delete_session(
     executor: impl sqlx::PgExecutor<'_>,
     key: &str,
 ) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM oauth_sessions WHERE key = $1")
-        .bind(key)
+    sqlx::query!("DELETE FROM oauth_sessions WHERE key = $1", key)
         .execute(executor)
         .await?;
     Ok(())
