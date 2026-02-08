@@ -6,6 +6,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::identification::Identification;
+use observing_db::types::Confidence;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -52,7 +53,7 @@ pub struct CreateIdentificationRequest {
     comment: Option<String>,
     #[ts(optional)]
     is_agreement: Option<bool>,
-    #[ts(optional)]
+    #[ts(optional, as = "Option<Confidence>")]
     confidence: Option<String>,
 }
 

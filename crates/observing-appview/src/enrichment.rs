@@ -1,7 +1,9 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
-use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, OccurrenceRow};
+use observing_db::types::{
+    CommentRow, IdentificationRow, InteractionRow, ObserverRole, OccurrenceRow,
+};
 use observing_identity::{IdentityResolver, Profile};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -80,6 +82,7 @@ pub struct ProfileSummary {
 #[ts(export, rename = "Observer", export_to = "bindings/")]
 pub struct ObserverInfo {
     pub did: String,
+    #[ts(as = "ObserverRole")]
     pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]

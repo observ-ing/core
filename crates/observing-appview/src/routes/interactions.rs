@@ -6,6 +6,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionSubject};
+use observing_db::types::{Confidence, InteractionDirection};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -52,9 +53,9 @@ pub struct CreateInteractionRequest {
     subject_a: InteractionSubjectRequest,
     subject_b: InteractionSubjectRequest,
     interaction_type: String,
-    #[ts(optional)]
+    #[ts(optional, as = "Option<InteractionDirection>")]
     direction: Option<String>,
-    #[ts(optional)]
+    #[ts(optional, as = "Option<Confidence>")]
     confidence: Option<String>,
     #[ts(optional)]
     comment: Option<String>,

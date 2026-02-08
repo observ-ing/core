@@ -29,6 +29,9 @@ export type { CreateLikeRequest } from "../bindings/CreateLikeRequest";
 export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
 export type { InteractionSubjectRequest } from "../bindings/InteractionSubjectRequest";
 export type { CreateInteractionRequest } from "../bindings/CreateInteractionRequest";
+export type { ObserverRole } from "../bindings/ObserverRole";
+export type { Confidence } from "../bindings/Confidence";
+export type { InteractionDirection } from "../bindings/InteractionDirection";
 
 // Subject extends the generated type with communityId (populated client-side)
 import type { Subject as GeneratedSubject } from "../bindings/Subject";

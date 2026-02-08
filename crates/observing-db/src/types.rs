@@ -3,6 +3,35 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
 
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bindings/")]
+pub enum ObserverRole {
+    #[serde(rename = "owner")]
+    Owner,
+    #[serde(rename = "co-observer")]
+    CoObserver,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bindings/")]
+pub enum Confidence {
+    #[serde(rename = "low")]
+    Low,
+    #[serde(rename = "medium")]
+    Medium,
+    #[serde(rename = "high")]
+    High,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export, export_to = "bindings/")]
+pub enum InteractionDirection {
+    AtoB,
+    BtoA,
+    #[serde(rename = "bidirectional")]
+    Bidirectional,
+}
+
 /// Occurrence row returned from SELECT queries
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct OccurrenceRow {
@@ -92,7 +121,7 @@ pub struct IdentificationRow {
     pub family: Option<String>,
     #[ts(optional)]
     pub genus: Option<String>,
-    #[ts(optional)]
+    #[ts(optional, as = "Option<Confidence>")]
     pub confidence: Option<String>,
 }
 
@@ -153,8 +182,9 @@ pub struct InteractionRow {
     pub subject_b_kingdom: Option<String>,
     // Interaction details
     pub interaction_type: String,
+    #[ts(as = "InteractionDirection")]
     pub direction: String,
-    #[ts(optional)]
+    #[ts(optional, as = "Option<Confidence>")]
     pub confidence: Option<String>,
     #[ts(optional)]
     pub comment: Option<String>,

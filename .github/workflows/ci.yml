@@ -40,7 +40,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - name: Check generated TypeScript bindings
         run: |
-          TS_RS_EXPORT_DIR=packages/observing-frontend/src cargo test -p observing-appview -- export_bindings
+          cargo test -p observing-appview -- export_bindings
           git diff --exit-code packages/observing-frontend/src/bindings/
 
   build:
