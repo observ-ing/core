@@ -58,8 +58,7 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
 
 /// Delete an identification and refresh the community ID materialized view
 pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
-    sqlx::query("DELETE FROM identifications WHERE uri = $1")
-        .bind(uri)
+    sqlx::query!("DELETE FROM identifications WHERE uri = $1", uri)
         .execute(pool)
         .await?;
     refresh_community_ids(pool).await?;
@@ -140,7 +139,7 @@ pub async fn get_community_id(
     occurrence_uri: &str,
     subject_index: i32,
 ) -> Result<Option<String>, sqlx::Error> {
-    let row: Option<(String,)> = sqlx::query_as(
+    let row = sqlx::query!(
         r#"
         SELECT scientific_name
         FROM community_ids
@@ -148,17 +147,17 @@ pub async fn get_community_id(
         ORDER BY id_count DESC
         LIMIT 1
         "#,
+        occurrence_uri,
+        subject_index,
     )
-    .bind(occurrence_uri)
-    .bind(subject_index)
     .fetch_optional(executor)
     .await?;
-    Ok(row.map(|r| r.0))
+    Ok(row.and_then(|r| r.scientific_name))
 }
 
 /// Refresh the community IDs materialized view
 pub async fn refresh_community_ids(executor: impl sqlx::PgExecutor<'_>) -> Result<(), sqlx::Error> {
-    sqlx::query("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
+    sqlx::query!("REFRESH MATERIALIZED VIEW CONCURRENTLY community_ids")
         .execute(executor)
         .await?;
     Ok(())

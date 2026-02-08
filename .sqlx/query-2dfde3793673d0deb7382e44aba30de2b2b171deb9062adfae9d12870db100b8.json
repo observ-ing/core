@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT scientific_name\n        FROM community_ids\n        WHERE occurrence_uri = $1 AND subject_index = $2\n        ORDER BY id_count DESC\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "scientific_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int4"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "2dfde3793673d0deb7382e44aba30de2b2b171deb9062adfae9d12870db100b8"
+}
