@@ -13,7 +13,11 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 
 # Copy all crate manifests
+COPY crates/at-uri-parser/Cargo.toml crates/at-uri-parser/
+COPY crates/atproto-blob-resolver/Cargo.toml crates/atproto-blob-resolver/
+COPY crates/file-blob-cache/Cargo.toml crates/file-blob-cache/
 COPY crates/gbif-api/Cargo.toml crates/gbif-api/
+COPY crates/jetstream-client/Cargo.toml crates/jetstream-client/
 COPY crates/observing-appview/Cargo.toml crates/observing-appview/
 COPY crates/observing-db/Cargo.toml crates/observing-db/
 COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
@@ -24,7 +28,7 @@ COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
+RUN for crate in at-uri-parser atproto-blob-resolver file-blob-cache gbif-api jetstream-client observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
         mkdir -p crates/$crate/src && \
         echo "fn main() {}" > crates/$crate/src/main.rs && \
         echo "" > crates/$crate/src/lib.rs; \
@@ -32,12 +36,13 @@ RUN for crate in gbif-api observing-appview observing-db observing-geocoding obs
 
 # Build dependencies only (this layer will be cached)
 RUN cargo build --release -p observing-ingester && \
-    rm -rf crates/observing-ingester/src crates/observing-db/src crates/observing-lexicons/src
+    rm -rf crates/jetstream-client/src crates/observing-ingester/src crates/observing-db/src crates/observing-lexicons/src
 
 # Copy SQLx query cache for offline compilation
 COPY .sqlx ./.sqlx
 
 # Copy real source code
+COPY crates/jetstream-client/src crates/jetstream-client/src
 COPY crates/observing-ingester/src crates/observing-ingester/src
 COPY crates/observing-db/src crates/observing-db/src
 COPY crates/observing-db/migrations crates/observing-db/migrations
@@ -45,7 +50,7 @@ COPY crates/observing-lexicons/src crates/observing-lexicons/src
 
 # Build for release with offline SQLx
 ENV SQLX_OFFLINE=true
-RUN touch crates/observing-ingester/src/main.rs crates/observing-db/src/lib.rs crates/observing-lexicons/src/lib.rs && \
+RUN touch crates/jetstream-client/src/lib.rs crates/observing-ingester/src/main.rs crates/observing-db/src/lib.rs crates/observing-lexicons/src/lib.rs && \
     cargo build --release -p observing-ingester
 
 # Runtime stage

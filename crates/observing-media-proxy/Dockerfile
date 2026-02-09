@@ -13,7 +13,11 @@ WORKDIR /app
 COPY Cargo.toml Cargo.lock ./
 
 # Copy all crate manifests
+COPY crates/at-uri-parser/Cargo.toml crates/at-uri-parser/
+COPY crates/atproto-blob-resolver/Cargo.toml crates/atproto-blob-resolver/
+COPY crates/file-blob-cache/Cargo.toml crates/file-blob-cache/
 COPY crates/gbif-api/Cargo.toml crates/gbif-api/
+COPY crates/jetstream-client/Cargo.toml crates/jetstream-client/
 COPY crates/observing-appview/Cargo.toml crates/observing-appview/
 COPY crates/observing-db/Cargo.toml crates/observing-db/
 COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
@@ -24,20 +28,22 @@ COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN for crate in gbif-api observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
+RUN for crate in at-uri-parser atproto-blob-resolver file-blob-cache gbif-api jetstream-client observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
         mkdir -p crates/$crate/src && \
         echo "fn main() {}" > crates/$crate/src/main.rs && \
         echo "" > crates/$crate/src/lib.rs; \
     done
 
 # Build dependencies only (this layer will be cached)
-RUN cargo build --release -p observing-media-proxy && rm -rf crates/observing-media-proxy/src
+RUN cargo build --release -p observing-media-proxy && rm -rf crates/atproto-blob-resolver/src crates/file-blob-cache/src crates/observing-media-proxy/src
 
 # Copy real source code for media proxy
+COPY crates/atproto-blob-resolver/src crates/atproto-blob-resolver/src
+COPY crates/file-blob-cache/src crates/file-blob-cache/src
 COPY crates/observing-media-proxy/src crates/observing-media-proxy/src
 
 # Build for release (touch to invalidate cache for main.rs)
-RUN touch crates/observing-media-proxy/src/main.rs && cargo build --release -p observing-media-proxy
+RUN touch crates/atproto-blob-resolver/src/lib.rs crates/file-blob-cache/src/lib.rs crates/observing-media-proxy/src/main.rs && cargo build --release -p observing-media-proxy
 
 # Runtime stage
 FROM debian:bookworm-slim
