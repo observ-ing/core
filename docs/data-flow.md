@@ -75,6 +75,8 @@ flowchart TB
 
 **Key insight**: Writes go through AT Protocol (user's PDS), then get indexed via the firehose. The appview also does a direct DB insert for immediate visibility (bypasses ingester latency). Reads come directly from PostgreSQL.
 
+**Shared processing**: Both the appview and ingester use the same `observing_db::processing` module to convert AT Protocol record JSON into database params, ensuring consistent field mapping. SQL upserts use `COALESCE` on enrichment fields (geocoding, taxonomy, media) so the ingester's later write cannot overwrite data the appview enriched.
+
 ### Key Files
 
 | Component | File |
@@ -86,16 +88,17 @@ flowchart TB
 | Firehose | `crates/observing-ingester/src/firehose.rs` |
 | Ingester DB Ops | `crates/observing-ingester/src/database.rs` |
 | Shared DB Layer | `crates/observing-db/src/` |
+| Shared Record Processing | `crates/observing-db/src/processing.rs` |
 
 ### Data Transformations by Stage
 
 | Stage | Input | Output | Transformation |
 |-------|-------|--------|----------------|
 | Frontend | User form input + files | JSON + Base64 images | Image encoding, form serialization |
-| AppView | JSON request | AT Protocol record | Blob upload, GBIF lookup, geocoding |
+| AppView | JSON request | AT Protocol record | Blob upload, GBIF lookup, geocoding, shared record processing |
 | PDS | Record JSON | URI + CID | Cryptographic signing, storage |
 | Jetstream | PDS events | Filtered JSON stream | Collection filtering |
-| Ingester | JSON events | SQL statements | Field extraction, validation |
+| Ingester | JSON events | SQL statements | Shared record processing, COALESCE-protected upsert |
 | Database | SQL | Stored rows | PostGIS point encoding, indexing |
 
 ## Services
@@ -164,7 +167,7 @@ flowchart TB
    ▼
 5. Ingester receives create event
    │
-   ├─▶ UPSERT to `occurrences` table
+   ├─▶ UPSERT to `occurrences` table (COALESCE preserves enriched fields)
    ├─▶ SYNC `occurrence_observers` table
    │
    ▼

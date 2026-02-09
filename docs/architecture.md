@@ -69,6 +69,7 @@ Unified Rust/Axum server handling all backend concerns:
 - **AT Protocol Client** - Record create/update/delete, blob upload via internal RPC
 - **Static Files** - Serves the built React frontend
 - **Data Enrichment** - Profile resolution, community IDs, image URLs, effective taxonomy
+- **Record Processing** - Uses shared `observing-db` processing module for consistent record-to-DB conversion
 
 ### Ingester (`crates/observing-ingester/`)
 
@@ -76,6 +77,7 @@ Rust service that monitors the AT Protocol firehose.
 
 - **Firehose** - WebSocket client subscribing to the AT Protocol relay
 - **Event Processing** - Handles occurrence, identification, comment, interaction, and like records
+- **Record Processing** - Uses shared `observing-db` processing module (same conversion logic as appview)
 - **Built with** - Tokio, SQLx
 
 ### Media Proxy (`crates/observing-media-proxy/`)
@@ -107,6 +109,7 @@ Vite + React SPA.
 - `crates/observing-appview/src/routes/` - REST API endpoint handlers
 - `crates/observing-appview/src/enrichment.rs` - Response enrichment (profiles, community IDs)
 - `crates/observing-db/src/` - PostgreSQL + PostGIS database layer
+- `crates/observing-db/src/processing.rs` - Shared record conversion (AT Protocol JSON → DB params)
 - `crates/observing-appview/src/routes/oauth.rs` - OAuth authentication
 - `scripts/generate-rust-types.sh` - Lexicon → Rust type generator (jacquard-codegen)
 - `cloudbuild.yaml` - Multi-service Cloud Build config
