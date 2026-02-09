@@ -41,7 +41,6 @@ urlencoding = "2"
 futures = "0.3"
 
 [dev-dependencies]
-tokio-test = "0.4"
 tower = { version = "0.5", features = ["util"] }
 
 [[bin]]
