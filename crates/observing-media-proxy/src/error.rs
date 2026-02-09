@@ -6,8 +6,7 @@ use std::fmt;
 pub enum MediaProxyError {
     #[allow(dead_code)]
     Cache(String),
-    Fetch(Box<reqwest::Error>),
-    DidResolution(String),
+    BlobResolver(atproto_blob_resolver::BlobResolverError),
     Io(Box<std::io::Error>),
     Config(String),
 }
@@ -16,8 +15,7 @@ impl fmt::Display for MediaProxyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             MediaProxyError::Cache(msg) => write!(f, "Cache error: {}", msg),
-            MediaProxyError::Fetch(err) => write!(f, "Fetch error: {}", err),
-            MediaProxyError::DidResolution(msg) => write!(f, "DID resolution error: {}", msg),
+            MediaProxyError::BlobResolver(err) => write!(f, "Blob resolver error: {}", err),
             MediaProxyError::Io(err) => write!(f, "IO error: {}", err),
             MediaProxyError::Config(msg) => write!(f, "Configuration error: {}", msg),
         }
@@ -27,28 +25,22 @@ impl fmt::Display for MediaProxyError {
 impl std::error::Error for MediaProxyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            MediaProxyError::Fetch(err) => Some(err.as_ref()),
+            MediaProxyError::BlobResolver(err) => Some(err),
             MediaProxyError::Io(err) => Some(err.as_ref()),
             _ => None,
         }
     }
 }
 
-impl From<reqwest::Error> for MediaProxyError {
-    fn from(err: reqwest::Error) -> Self {
-        MediaProxyError::Fetch(Box::new(err))
+impl From<atproto_blob_resolver::BlobResolverError> for MediaProxyError {
+    fn from(err: atproto_blob_resolver::BlobResolverError) -> Self {
+        MediaProxyError::BlobResolver(err)
     }
 }
 
 impl From<std::io::Error> for MediaProxyError {
     fn from(err: std::io::Error) -> Self {
         MediaProxyError::Io(Box::new(err))
-    }
-}
-
-impl From<serde_json::Error> for MediaProxyError {
-    fn from(err: serde_json::Error) -> Self {
-        MediaProxyError::DidResolution(err.to_string())
     }
 }
 
@@ -71,12 +63,13 @@ mod tests {
     }
 
     #[test]
-    fn test_did_resolution_error_display() {
-        let err = MediaProxyError::DidResolution("invalid DID format".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "DID resolution error: invalid DID format"
+    fn test_blob_resolver_error_display() {
+        let err = MediaProxyError::BlobResolver(
+            atproto_blob_resolver::BlobResolverError::DidResolution(
+                "invalid DID format".to_string(),
+            ),
         );
+        assert!(format!("{}", err).contains("invalid DID format"));
     }
 
     #[test]

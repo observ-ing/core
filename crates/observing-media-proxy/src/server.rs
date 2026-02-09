@@ -2,8 +2,8 @@
 //!
 //! Provides /health, /blob/:did/:cid, and /thumb/:did/:cid endpoints.
 
+use atproto_blob_resolver::BlobResolver;
 use crate::cache::BlobCache;
-use crate::proxy::BlobFetcher;
 use crate::types::HealthResponse;
 use axum::{
     body::Body,
@@ -22,12 +22,12 @@ use tracing::{error, info, warn};
 /// Shared state for the HTTP server
 pub struct ServerState {
     pub cache: BlobCache,
-    pub fetcher: BlobFetcher,
+    pub fetcher: BlobResolver,
     pub started_at: DateTime<Utc>,
 }
 
 impl ServerState {
-    pub fn new(cache: BlobCache, fetcher: BlobFetcher) -> Self {
+    pub fn new(cache: BlobCache, fetcher: BlobResolver) -> Self {
         Self {
             cache,
             fetcher,
@@ -185,7 +185,7 @@ mod tests {
 
     fn create_test_state(cache_dir: PathBuf) -> SharedState {
         let cache = BlobCache::new(cache_dir, 1024 * 1024, 3600);
-        let fetcher = BlobFetcher::new();
+        let fetcher = BlobResolver::new();
         Arc::new(ServerState::new(cache, fetcher))
     }
 
@@ -263,7 +263,7 @@ mod tests {
     fn test_server_state_new() {
         let dir = tempdir().unwrap();
         let cache = BlobCache::new(dir.path().to_path_buf(), 1024, 3600);
-        let fetcher = BlobFetcher::new();
+        let fetcher = BlobResolver::new();
         let state = ServerState::new(cache, fetcher);
 
         // started_at should be close to now

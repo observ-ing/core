@@ -126,6 +126,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 
 [[package]]
+name = "atproto-blob-resolver"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "urlencoding",
+]
+
+[[package]]
 name = "atrium-api"
 version = "0.25.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2501,10 +2513,10 @@ dependencies = [
 name = "observing-media-proxy"
 version = "0.1.0"
 dependencies = [
+ "atproto-blob-resolver",
  "axum",
  "chrono",
  "hex",
- "reqwest 0.13.2",
  "serde",
  "serde_json",
  "sha2",
@@ -2517,7 +2529,6 @@ dependencies = [
  "tracing-stackdriver",
  "tracing-subscriber",
  "url",
- "urlencoding",
 ]
 
 [[package]]

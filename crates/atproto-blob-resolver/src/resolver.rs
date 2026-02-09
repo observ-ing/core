@@ -1,17 +1,17 @@
-//! PDS resolution and blob fetching
+//! DID resolution and blob fetching from AT Protocol PDS servers
 
-use crate::error::{MediaProxyError, Result};
+use crate::error::{BlobResolverError, Result};
 use crate::types::PlcDirectoryResponse;
 use reqwest::Client;
 use tracing::{debug, warn};
 
-/// HTTP client for fetching blobs from PDS servers
-pub struct BlobFetcher {
+/// Resolves AT Protocol DIDs to PDS endpoints and fetches blobs
+pub struct BlobResolver {
     client: Client,
 }
 
-impl BlobFetcher {
-    /// Create a new blob fetcher
+impl BlobResolver {
+    /// Create a new blob resolver
     pub fn new() -> Self {
         Self {
             client: Client::new(),
@@ -30,7 +30,7 @@ impl BlobFetcher {
             return self.resolve_web_did(did);
         }
 
-        Err(MediaProxyError::DidResolution(format!(
+        Err(BlobResolverError::DidResolution(format!(
             "Unsupported DID method: {}",
             did
         )))
@@ -44,7 +44,7 @@ impl BlobFetcher {
         let response = self.client.get(&url).send().await?;
 
         if !response.status().is_success() {
-            return Err(MediaProxyError::DidResolution(format!(
+            return Err(BlobResolverError::DidResolution(format!(
                 "PLC directory returned status {}",
                 response.status()
             )));
@@ -62,7 +62,9 @@ impl BlobFetcher {
                     .map(|s| s.service_endpoint)
             })
             .ok_or_else(|| {
-                MediaProxyError::DidResolution("No PDS service found in DID document".to_string())
+                BlobResolverError::DidResolution(
+                    "No PDS service found in DID document".to_string(),
+                )
             })?;
 
         debug!(did, pds_url = %pds_url, "Resolved PDS URL");
@@ -73,7 +75,9 @@ impl BlobFetcher {
     fn resolve_web_did(&self, did: &str) -> Result<String> {
         let domain = did
             .strip_prefix("did:web:")
-            .ok_or_else(|| MediaProxyError::DidResolution("Invalid did:web format".to_string()))?
+            .ok_or_else(|| {
+                BlobResolverError::DidResolution("Invalid did:web format".to_string())
+            })?
             .replace("%3A", ":");
 
         let url = format!("https://{}", domain);
@@ -101,7 +105,7 @@ impl BlobFetcher {
 
         if !response.status().is_success() {
             warn!(status = %response.status(), url = %url, "Failed to fetch blob");
-            return Err(MediaProxyError::DidResolution(format!(
+            return Err(BlobResolverError::DidResolution(format!(
                 "PDS returned status {}",
                 response.status()
             )));
@@ -126,7 +130,7 @@ impl BlobFetcher {
     }
 }
 
-impl Default for BlobFetcher {
+impl Default for BlobResolver {
     fn default() -> Self {
         Self::new()
     }
@@ -138,33 +142,33 @@ mod tests {
 
     #[test]
     fn test_resolve_web_did() {
-        let fetcher = BlobFetcher::new();
+        let resolver = BlobResolver::new();
 
         // Simple domain
-        let result = fetcher.resolve_web_did("did:web:example.com");
+        let result = resolver.resolve_web_did("did:web:example.com");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "https://example.com");
 
         // Domain with port (URL encoded colon)
-        let result = fetcher.resolve_web_did("did:web:example.com%3A8080");
+        let result = resolver.resolve_web_did("did:web:example.com%3A8080");
         assert!(result.is_ok());
         assert_eq!(result.unwrap(), "https://example.com:8080");
     }
 
     #[test]
     fn test_resolve_web_did_invalid() {
-        let fetcher = BlobFetcher::new();
+        let resolver = BlobResolver::new();
 
         // Invalid prefix
-        let result = fetcher.resolve_web_did("did:plc:abc123");
+        let result = resolver.resolve_web_did("did:plc:abc123");
         assert!(result.is_err());
     }
 
     #[tokio::test]
     async fn test_resolve_pds_url_unsupported_method() {
-        let fetcher = BlobFetcher::new();
+        let resolver = BlobResolver::new();
 
-        let result = fetcher.resolve_pds_url("did:key:abc123").await;
+        let result = resolver.resolve_pds_url("did:key:abc123").await;
         assert!(result.is_err());
         assert!(result
             .unwrap_err()

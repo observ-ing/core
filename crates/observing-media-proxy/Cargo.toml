@@ -13,8 +13,8 @@ tokio = { version = "1", features = ["full"] }
 axum = "0.8"
 tower-http = { version = "0.6", features = ["cors"] }
 
-# HTTP client
-reqwest = { version = "0.13", features = ["json"] }
+# AT Protocol blob resolution
+atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -34,7 +34,6 @@ hex = "0.4"
 
 # URL parsing
 url = "2"
-urlencoding = "2"
 
 [dev-dependencies]
 tokio-test = "0.4"

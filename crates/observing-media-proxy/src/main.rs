@@ -5,13 +5,12 @@
 
 mod cache;
 mod error;
-mod proxy;
 mod server;
 mod types;
 
+use atproto_blob_resolver::BlobResolver;
 use crate::cache::BlobCache;
 use crate::error::{MediaProxyError, Result};
-use crate::proxy::BlobFetcher;
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::MediaProxyConfig;
 use std::path::PathBuf;
@@ -50,7 +49,7 @@ async fn main() -> Result<()> {
     );
     cache.init().await?;
 
-    let fetcher = BlobFetcher::new();
+    let fetcher = BlobResolver::new();
 
     // Create shared state
     let state: SharedState = Arc::new(ServerState::new(cache, fetcher));
