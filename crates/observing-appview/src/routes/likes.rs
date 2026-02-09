@@ -60,19 +60,14 @@ pub async fn create_like(
     // Restore OAuth session and create record directly
     let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
         .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state
-        .oauth_client
-        .restore(&did_parsed)
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, "Failed to restore OAuth session");
-            AppError::Unauthorized
-        })?;
+    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
+        tracing::warn!(error = %e, "Failed to restore OAuth session");
+        AppError::Unauthorized
+    })?;
     let agent = atrium_api::agent::Agent::new(session);
 
-    let record_unknown: atrium_api::types::Unknown =
-        serde_json::from_value(record_value)
-            .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?;
+    let record_unknown: atrium_api::types::Unknown = serde_json::from_value(record_value)
+        .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?;
 
     let output = agent
         .api
