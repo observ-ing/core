@@ -102,6 +102,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "at-uri-parser"
+version = "0.1.0"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2411,6 +2418,7 @@ name = "observing-appview"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "at-uri-parser",
  "atrium-api",
  "atrium-common",
  "atrium-identity",
@@ -2425,7 +2433,6 @@ dependencies = [
  "observing-geocoding",
  "observing-identity",
  "observing-lexicons",
- "regex",
  "reqwest 0.12.28",
  "serde",
  "serde_json",

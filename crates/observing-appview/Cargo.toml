@@ -11,6 +11,7 @@ observing-db = { path = "../observing-db", features = ["processing"] }
 observing-identity = { path = "../observing-identity" }
 observing-geocoding = { path = "../observing-geocoding" }
 observing-lexicons = { path = "../observing-lexicons" }
+at-uri-parser = { path = "../at-uri-parser" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.9"
@@ -43,9 +44,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "regis
 
 # Time
 chrono = { version = "0.4", features = ["serde"] }
-
-# Regex for AT URI parsing
-regex = "1"
 
 # Base64 for blob uploads
 base64 = "0.22"

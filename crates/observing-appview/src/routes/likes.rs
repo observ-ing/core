@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::atproto::AtUri;
+use at_uri_parser::AtUri;
 use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
