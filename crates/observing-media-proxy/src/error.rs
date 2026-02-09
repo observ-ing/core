@@ -64,11 +64,10 @@ mod tests {
 
     #[test]
     fn test_blob_resolver_error_display() {
-        let err = MediaProxyError::BlobResolver(
-            atproto_blob_resolver::BlobResolverError::DidResolution(
+        let err =
+            MediaProxyError::BlobResolver(atproto_blob_resolver::BlobResolverError::DidResolution(
                 "invalid DID format".to_string(),
-            ),
-        );
+            ));
         assert!(format!("{}", err).contains("invalid DID format"));
     }
 

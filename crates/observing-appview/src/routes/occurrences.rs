@@ -8,11 +8,11 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use at_uri_parser::AtUri;
 use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use at_uri_parser::AtUri;
 
 fn session_did(cookies: &axum_extra::extract::CookieJar) -> Option<String> {
     cookies.get("session_did").map(|c| c.value().to_string())

@@ -13,10 +13,10 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use at_uri_parser::AtUri;
 use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
+use at_uri_parser::AtUri;
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]

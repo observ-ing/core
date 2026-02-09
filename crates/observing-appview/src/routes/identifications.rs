@@ -12,11 +12,11 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use at_uri_parser::AtUri;
 use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use at_uri_parser::AtUri;
 
 pub async fn get_for_occurrence(
     State(state): State<AppState>,

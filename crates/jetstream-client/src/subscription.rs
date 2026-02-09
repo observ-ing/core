@@ -255,10 +255,7 @@ mod tests {
     fn test_build_url_with_collections() {
         let (tx, _rx) = mpsc::channel(10);
         let config = JetstreamConfig {
-            wanted_collections: vec![
-                "app.example.foo".to_string(),
-                "app.example.bar".to_string(),
-            ],
+            wanted_collections: vec!["app.example.foo".to_string(), "app.example.bar".to_string()],
             ..Default::default()
         };
         let sub = JetstreamSubscription::new(config, tx);
@@ -375,10 +372,7 @@ mod tests {
                 assert_eq!(commit.collection, "app.example.record");
                 assert_eq!(commit.rkey, "123");
                 assert_eq!(commit.operation, "create");
-                assert_eq!(
-                    commit.uri,
-                    "at://did:plc:abc123/app.example.record/123"
-                );
+                assert_eq!(commit.uri, "at://did:plc:abc123/app.example.record/123");
             }
             _ => panic!("Expected Commit event"),
         }

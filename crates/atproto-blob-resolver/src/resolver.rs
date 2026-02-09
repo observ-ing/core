@@ -62,9 +62,7 @@ impl BlobResolver {
                     .map(|s| s.service_endpoint)
             })
             .ok_or_else(|| {
-                BlobResolverError::DidResolution(
-                    "No PDS service found in DID document".to_string(),
-                )
+                BlobResolverError::DidResolution("No PDS service found in DID document".to_string())
             })?;
 
         debug!(did, pds_url = %pds_url, "Resolved PDS URL");
@@ -75,9 +73,7 @@ impl BlobResolver {
     fn resolve_web_did(&self, did: &str) -> Result<String> {
         let domain = did
             .strip_prefix("did:web:")
-            .ok_or_else(|| {
-                BlobResolverError::DidResolution("Invalid did:web format".to_string())
-            })?
+            .ok_or_else(|| BlobResolverError::DidResolution("Invalid did:web format".to_string()))?
             .replace("%3A", ":");
 
         let url = format!("https://{}", domain);

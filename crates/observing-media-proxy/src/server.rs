@@ -2,9 +2,8 @@
 //!
 //! Provides /health, /blob/:did/:cid, and /thumb/:did/:cid endpoints.
 
-use atproto_blob_resolver::BlobResolver;
-use file_blob_cache::BlobCache;
 use crate::types::HealthResponse;
+use atproto_blob_resolver::BlobResolver;
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -14,6 +13,7 @@ use axum::{
     Router,
 };
 use chrono::{DateTime, Utc};
+use file_blob_cache::BlobCache;
 use serde::Serialize;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;

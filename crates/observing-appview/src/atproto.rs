@@ -119,4 +119,3 @@ impl InternalAgentClient {
             .map_err(|e| format!("Failed to parse response: {e}"))
     }
 }
-
