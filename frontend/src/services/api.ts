@@ -268,6 +268,9 @@ export async function deleteObservation(uri: string): Promise<{ success: boolean
   );
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Session expired, please log in again");
+    }
     const error = await response.json();
     throw new Error(error.error || "Failed to delete observation");
   }
@@ -285,6 +288,9 @@ export async function deleteIdentification(uri: string): Promise<{ success: bool
   );
 
   if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Session expired, please log in again");
+    }
     const error = await response.json();
     throw new Error(error.error || "Failed to delete identification");
   }

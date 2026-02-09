@@ -8,11 +8,14 @@ import {
   Paper,
   Chip,
   IconButton,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
+import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification, Profile } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
+import { getPdslsUrl } from "../../lib/utils";
 
 interface ObserverInitialId {
   scientificName: string;
@@ -72,6 +75,15 @@ export function IdentificationHistory({
   onDeleteIdentification,
 }: IdentificationHistoryProps) {
   const [deletingUri, setDeletingUri] = useState<string | null>(null);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<Record<string, HTMLElement | null>>({});
+
+  const handleMenuOpen = (uri: string, event: React.MouseEvent<HTMLElement>) => {
+    setMenuAnchorEl((prev) => ({ ...prev, [uri]: event.currentTarget }));
+  };
+
+  const handleMenuClose = (uri: string) => {
+    setMenuAnchorEl((prev) => ({ ...prev, [uri]: null }));
+  };
   // Filter identifications by subject index and sort oldest first
   const filteredIds = identifications
     .filter((id) => id.subject_index === subjectIndex)
@@ -252,28 +264,50 @@ export function IdentificationHistory({
                   </Typography>
                 )}
               </Box>
-              {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
+              <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
                 <IconButton
                   size="small"
-                  onClick={async () => {
-                    setDeletingUri(id.uri);
-                    try {
-                      await onDeleteIdentification(id.uri);
-                    } finally {
-                      setDeletingUri(null);
-                    }
-                  }}
-                  disabled={deletingUri === id.uri}
-                  sx={{
-                    color: "text.disabled",
-                    alignSelf: "flex-start",
-                    mt: 0.5,
-                    "&:hover": { color: "error.main" },
-                  }}
+                  onClick={(e) => handleMenuOpen(id.uri, e)}
+                  aria-label="More options"
+                  sx={{ color: "text.disabled", p: 0.5 }}
                 >
-                  <DeleteOutlineIcon fontSize="small" />
+                  <MoreVertIcon fontSize="small" />
                 </IconButton>
-              )}
+                <Menu
+                  anchorEl={menuAnchorEl[id.uri]}
+                  open={Boolean(menuAnchorEl[id.uri])}
+                  onClose={() => handleMenuClose(id.uri)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
+                    component="a"
+                    href={getPdslsUrl(id.uri)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => handleMenuClose(id.uri)}
+                  >
+                    View on AT Protocol
+                  </MenuItem>
+                  {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
+                    <MenuItem
+                      onClick={async () => {
+                        handleMenuClose(id.uri);
+                        setDeletingUri(id.uri);
+                        try {
+                          await onDeleteIdentification(id.uri);
+                        } finally {
+                          setDeletingUri(null);
+                        }
+                      }}
+                      disabled={deletingUri === id.uri}
+                      sx={{ color: "error.main" }}
+                    >
+                      Delete
+                    </MenuItem>
+                  )}
+                </Menu>
+              </Box>
             </Stack>
           </Box>
           );

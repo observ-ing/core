@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
+import { checkAuth } from "../../store/authSlice";
 import { deleteObservation } from "../../services/api";
 
 export function DeleteConfirmDialog() {
@@ -52,13 +53,12 @@ export function DeleteConfirmDialog() {
         window.location.reload();
       }
     } catch (error) {
-      dispatch(
-        addToast({
-          message:
-            error instanceof Error ? error.message : "Failed to delete observation",
-          type: "error",
-        })
-      );
+      const message =
+        error instanceof Error ? error.message : "Failed to delete observation";
+      dispatch(addToast({ message, type: "error" }));
+      if (message.includes("Session expired")) {
+        dispatch(checkAuth());
+      }
     } finally {
       setIsDeleting(false);
     }

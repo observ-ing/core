@@ -34,6 +34,7 @@ import { fetchObservation, getImageUrl, deleteIdentification, likeObservation, u
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
+import { checkAuth } from "../../store/authSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
@@ -538,9 +539,18 @@ export function ObservationDetail() {
               kingdom={taxonomy.kingdom}
               currentUserDid={user?.did}
               onDeleteIdentification={async (uri) => {
-                await deleteIdentification(uri);
-                dispatch(addToast({ message: "Identification deleted", type: "success" }));
-                await handleIdentificationSuccess();
+                try {
+                  await deleteIdentification(uri);
+                  dispatch(addToast({ message: "Identification deleted", type: "success" }));
+                  await handleIdentificationSuccess();
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : "Failed to delete identification";
+                  dispatch(addToast({ message, type: "error" }));
+                  if (message.includes("Session expired")) {
+                    dispatch(checkAuth());
+                  }
+                  throw error;
+                }
               }}
               observerInitialId={observation.scientificName ? {
                 scientificName: observation.scientificName,

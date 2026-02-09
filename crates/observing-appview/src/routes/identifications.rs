@@ -179,7 +179,10 @@ pub async fn delete_identification(
         .oauth_client
         .restore(&did_parsed)
         .await
-        .map_err(|e| AppError::Internal(format!("Failed to restore session: {e}")))?;
+        .map_err(|e| {
+            tracing::warn!(error = %e, "Failed to restore OAuth session");
+            AppError::Unauthorized
+        })?;
     let agent = atrium_api::agent::Agent::new(session);
     agent
         .api
@@ -203,7 +206,14 @@ pub async fn delete_identification(
             .into(),
         )
         .await
-        .map_err(|e| AppError::Internal(format!("Failed to delete record: {e}")))?;
+        .map_err(|e| {
+            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
+                tracing::warn!(error = %e, "AT Protocol authentication failed (session expired)");
+                AppError::Unauthorized
+            } else {
+                AppError::Internal(format!("Failed to delete record: {e}"))
+            }
+        })?;
 
     // Delete from local DB (refreshes community IDs)
     let _ = observing_db::identifications::delete(&state.pool, &uri).await;
