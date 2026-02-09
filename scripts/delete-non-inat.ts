@@ -35,7 +35,7 @@ async function main() {
       repo: did,
       collection: COLLECTION,
       limit: 100,
-      cursor,
+      ...(cursor !== undefined && { cursor }),
     });
 
     for (const rec of resp.data.records) {

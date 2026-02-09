@@ -47,22 +47,22 @@ function extractTaxonomyFromAncestors(
     for (const a of ancestors) {
       switch (a.rank) {
         case "kingdom":
-          result.kingdom = a.name;
+          result["kingdom"] = a.name;
           break;
         case "phylum":
-          result.phylum = a.name;
+          result["phylum"] = a.name;
           break;
         case "class":
-          result.class = a.name;
+          result["class"] = a.name;
           break;
         case "order":
-          result.order = a.name;
+          result["order"] = a.name;
           break;
         case "family":
-          result.family = a.name;
+          result["family"] = a.name;
           break;
         case "genus":
-          result.genus = a.name;
+          result["genus"] = a.name;
           break;
       }
     }
@@ -118,7 +118,10 @@ async function main() {
       `iNaturalist API error: ${resp.status} ${resp.statusText}`,
     );
   }
-  const data = await resp.json();
+  const data = (await resp.json()) as {
+    total_results: number;
+    results: any[];
+  };
   console.log(
     `Found ${data.total_results} total, processing ${data.results.length}`,
   );
@@ -197,21 +200,21 @@ async function main() {
       createdAt: new Date(obs.created_at).toISOString(),
     };
 
-    if (taxon?.name) record.scientificName = taxon.name;
-    if (taxon?.rank) record.taxonRank = taxon.rank;
-    if (taxon?.id) record.taxonId = `inat:${taxon.id}`;
+    if (taxon?.name) record["scientificName"] = taxon.name;
+    if (taxon?.rank) record["taxonRank"] = taxon.rank;
+    if (taxon?.id) record["taxonId"] = `inat:${taxon.id}`;
     if (taxon?.preferred_common_name)
-      record.vernacularName = taxon.preferred_common_name;
-    if (taxonomy.kingdom) record.kingdom = taxonomy.kingdom;
-    if (taxonomy.phylum) record.phylum = taxonomy.phylum;
-    if (taxonomy.class) record.class = taxonomy.class;
-    if (taxonomy.order) record.order = taxonomy.order;
-    if (taxonomy.family) record.family = taxonomy.family;
-    if (taxonomy.genus) record.genus = taxonomy.genus;
-    if (obs.place_guess) record.verbatimLocality = obs.place_guess;
-    if (obs.description) record.notes = obs.description;
-    if (license) record.license = license;
-    if (blobs.length > 0) record.blobs = blobs;
+      record["vernacularName"] = taxon.preferred_common_name;
+    if (taxonomy["kingdom"]) record["kingdom"] = taxonomy["kingdom"];
+    if (taxonomy["phylum"]) record["phylum"] = taxonomy["phylum"];
+    if (taxonomy["class"]) record["class"] = taxonomy["class"];
+    if (taxonomy["order"]) record["order"] = taxonomy["order"];
+    if (taxonomy["family"]) record["family"] = taxonomy["family"];
+    if (taxonomy["genus"]) record["genus"] = taxonomy["genus"];
+    if (obs.place_guess) record["verbatimLocality"] = obs.place_guess;
+    if (obs.description) record["notes"] = obs.description;
+    if (license) record["license"] = license;
+    if (blobs.length > 0) record["blobs"] = blobs;
 
     // Create the record on the PDS
     try {
