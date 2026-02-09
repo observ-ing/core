@@ -3,7 +3,7 @@
 //! Provides /health, /blob/:did/:cid, and /thumb/:did/:cid endpoints.
 
 use atproto_blob_resolver::BlobResolver;
-use crate::cache::BlobCache;
+use file_blob_cache::BlobCache;
 use crate::types::HealthResponse;
 use axum::{
     body::Body,

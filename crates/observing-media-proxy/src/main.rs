@@ -3,13 +3,12 @@
 //! This service proxies and caches image blobs from various PDS servers
 //! for performant frontend loading.
 
-mod cache;
 mod error;
 mod server;
 mod types;
 
 use atproto_blob_resolver::BlobResolver;
-use crate::cache::BlobCache;
+use file_blob_cache::BlobCache;
 use crate::error::{MediaProxyError, Result};
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::MediaProxyConfig;

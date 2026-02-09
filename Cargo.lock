@@ -1109,6 +1109,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "file-blob-cache"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "hex",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "find-msvc-tools"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2523,10 +2537,9 @@ dependencies = [
  "atproto-blob-resolver",
  "axum",
  "chrono",
- "hex",
+ "file-blob-cache",
  "serde",
  "serde_json",
- "sha2",
  "tempfile",
  "tokio",
  "tokio-test",

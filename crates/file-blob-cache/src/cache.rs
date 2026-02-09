@@ -1,6 +1,5 @@
 //! File-based blob caching with in-memory metadata
 
-use crate::error::Result;
 use crate::types::{CacheEntry, CacheStats};
 use chrono::Utc;
 use sha2::{Digest, Sha256};
@@ -45,7 +44,7 @@ impl BlobCache {
     }
 
     /// Initialize the cache by ensuring the cache directory exists
-    pub async fn init(&self) -> Result<()> {
+    pub async fn init(&self) -> std::io::Result<()> {
         fs::create_dir_all(&self.cache_dir).await?;
         info!(cache_dir = ?self.cache_dir, "Cache initialized");
         Ok(())
@@ -97,7 +96,13 @@ impl BlobCache {
     }
 
     /// Store a blob in the cache
-    pub async fn put(&self, did: &str, cid: &str, data: &[u8], content_type: &str) -> Result<()> {
+    pub async fn put(
+        &self,
+        did: &str,
+        cid: &str,
+        data: &[u8],
+        content_type: &str,
+    ) -> std::io::Result<()> {
         let key = Self::cache_key(did, cid);
         let size = data.len() as u64;
 
