@@ -497,14 +497,66 @@ describe("api", () => {
       );
     });
 
-    it("throws on error", async () => {
+    it("throws session expired on 401", async () => {
       mockFetch.mockResolvedValue({
         ok: false,
-        json: () => Promise.resolve({ error: "Unauthorized" }),
+        status: 401,
       });
 
       await expect(api.deleteObservation("at://test")).rejects.toThrow(
-        "Unauthorized"
+        "Session expired, please log in again"
+      );
+    });
+
+    it("throws on error", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "Server error" }),
+      });
+
+      await expect(api.deleteObservation("at://test")).rejects.toThrow(
+        "Server error"
+      );
+    });
+  });
+
+  describe("deleteIdentification", () => {
+    it("deletes identification", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ success: true }),
+      });
+
+      const result = await api.deleteIdentification("at://test/id/123");
+
+      expect(result).toEqual({ success: true });
+      expect(mockFetch).toHaveBeenCalledWith(
+        "/api/identifications/at%3A%2F%2Ftest%2Fid%2F123",
+        { method: "DELETE", credentials: "include" }
+      );
+    });
+
+    it("throws session expired on 401", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 401,
+      });
+
+      await expect(api.deleteIdentification("at://test")).rejects.toThrow(
+        "Session expired, please log in again"
+      );
+    });
+
+    it("throws on error", async () => {
+      mockFetch.mockResolvedValue({
+        ok: false,
+        status: 500,
+        json: () => Promise.resolve({ error: "Server error" }),
+      });
+
+      await expect(api.deleteIdentification("at://test")).rejects.toThrow(
+        "Server error"
       );
     });
   });

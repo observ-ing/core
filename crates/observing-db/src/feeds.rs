@@ -63,6 +63,7 @@ pub async fn get_explore_feed(
     if let Some(ref cursor) = options.cursor {
         qb.push(" AND created_at < ");
         qb.push_bind(cursor.clone());
+        qb.push("::timestamptz");
     }
 
     let limit = options.limit.unwrap_or(20);
@@ -131,7 +132,7 @@ pub async fn get_profile_feed(
                     COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role
                 FROM occurrences o
                 LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1
-                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < $3
+                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < $3::timestamptz
                 ORDER BY o.uri, o.created_at DESC
                 LIMIT $2
                 "#,
@@ -187,7 +188,7 @@ pub async fn get_profile_feed(
                     identification_verification_status, type_status, is_agreement, date_identified,
                     vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
                 FROM identifications
-                WHERE did = $1 AND date_identified < $3
+                WHERE did = $1 AND date_identified < $3::timestamptz
                 ORDER BY date_identified DESC
                 LIMIT $2
                 "#,
@@ -254,6 +255,7 @@ pub async fn get_home_feed(
         if let Some(ref cursor) = options.cursor {
             qb.push(" AND created_at < ");
             qb.push_bind(cursor.clone());
+            qb.push("::timestamptz");
         }
         qb.push(")");
     }
@@ -272,6 +274,7 @@ pub async fn get_home_feed(
         if let Some(ref cursor) = options.cursor {
             qb.push(" AND created_at < ");
             qb.push_bind(cursor.clone());
+            qb.push("::timestamptz");
         }
         qb.push(")");
     }
@@ -371,6 +374,7 @@ pub async fn get_occurrences_by_taxon(
     if let Some(ref cursor) = options.cursor {
         qb.push(" AND created_at < ");
         qb.push_bind(cursor.clone());
+        qb.push("::timestamptz");
     }
 
     qb.push(" ORDER BY created_at DESC LIMIT ");
