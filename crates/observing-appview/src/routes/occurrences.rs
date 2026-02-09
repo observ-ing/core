@@ -619,14 +619,10 @@ pub async fn delete_occurrence_catch_all(
     // Restore OAuth session and delete the AT Protocol record directly
     let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
         .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state
-        .oauth_client
-        .restore(&did_parsed)
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, "Failed to restore OAuth session");
-            AppError::Unauthorized
-        })?;
+    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
+        tracing::warn!(error = %e, "Failed to restore OAuth session");
+        AppError::Unauthorized
+    })?;
     let agent = atrium_api::agent::Agent::new(session);
     agent
         .api
