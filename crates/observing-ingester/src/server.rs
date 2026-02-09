@@ -2,7 +2,7 @@
 //!
 //! Provides /health, /api/stats, and / (dashboard) endpoints.
 
-use crate::types::{CommitTimingInfo, IngesterStats, RecentEvent};
+use crate::types::{IngesterStats, RecentEvent};
 use axum::{
     extract::State,
     response::{Html, Json},
@@ -10,6 +10,7 @@ use axum::{
     Router,
 };
 use chrono::{DateTime, Utc};
+use jetstream_client::TimingInfo;
 use serde::Serialize;
 use std::collections::VecDeque;
 use std::sync::Arc;
@@ -25,7 +26,7 @@ pub struct ServerState {
     pub started_at: DateTime<Utc>,
     pub stats: IngesterStats,
     pub recent_events: VecDeque<RecentEvent>,
-    pub last_processed: Option<CommitTimingInfo>,
+    pub last_processed: Option<TimingInfo>,
 }
 
 impl ServerState {
@@ -466,7 +467,7 @@ mod tests {
         let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
         {
             let mut s = state.write().await;
-            s.last_processed = Some(CommitTimingInfo {
+            s.last_processed = Some(TimingInfo {
                 seq: 555,
                 time: Utc::now(),
             });

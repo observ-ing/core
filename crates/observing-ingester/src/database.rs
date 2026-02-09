@@ -4,9 +4,7 @@
 //! and uses `observing-db` for SQL execution.
 
 use crate::error::Result;
-use crate::types::{
-    CommentEvent, IdentificationEvent, InteractionEvent, LikeEvent, OccurrenceEvent,
-};
+use jetstream_client::CommitInfo;
 use observing_db::processing;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
@@ -35,26 +33,26 @@ impl Database {
     }
 
     /// Upsert an occurrence record
-    pub async fn upsert_occurrence(&self, event: &OccurrenceEvent) -> Result<()> {
-        debug!("Upserting occurrence: {}", event.uri);
+    pub async fn upsert_occurrence(&self, commit: &CommitInfo) -> Result<()> {
+        debug!("Upserting occurrence: {}", commit.uri);
 
-        let record_json = match &event.record {
+        let record_json = match &commit.record {
             Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping occurrence without record");
+                warn!(uri = %commit.uri, "Skipping occurrence without record");
                 return Ok(());
             }
         };
 
         let params = match processing::occurrence_from_json(
             record_json,
-            event.uri.clone(),
-            event.cid.clone(),
-            event.did.clone(),
+            commit.uri.clone(),
+            commit.cid.clone(),
+            commit.did.clone(),
         ) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %event.uri, error = %e, "Failed to process occurrence record");
+                warn!(uri = %commit.uri, error = %e, "Failed to process occurrence record");
                 return Ok(());
             }
         };
@@ -62,8 +60,8 @@ impl Database {
         observing_db::occurrences::upsert(&self.pool, &params).await?;
 
         // Sync occurrence_observers
-        let co_observers = processing::extract_co_observers(record_json, &event.did);
-        observing_db::observers::sync(&self.pool, &event.uri, &event.did, &co_observers).await?;
+        let co_observers = processing::extract_co_observers(record_json, &commit.did);
+        observing_db::observers::sync(&self.pool, &commit.uri, &commit.did, &co_observers).await?;
 
         Ok(())
     }
@@ -76,27 +74,27 @@ impl Database {
     }
 
     /// Upsert an identification record
-    pub async fn upsert_identification(&self, event: &IdentificationEvent) -> Result<()> {
-        debug!("Upserting identification: {}", event.uri);
+    pub async fn upsert_identification(&self, commit: &CommitInfo) -> Result<()> {
+        debug!("Upserting identification: {}", commit.uri);
 
-        let record_json = match &event.record {
+        let record_json = match &commit.record {
             Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping identification without record");
+                warn!(uri = %commit.uri, "Skipping identification without record");
                 return Ok(());
             }
         };
 
         let params = match processing::identification_from_json(
             record_json,
-            event.uri.clone(),
-            event.cid.clone(),
-            event.did.clone(),
-            event.time,
+            commit.uri.clone(),
+            commit.cid.clone(),
+            commit.did.clone(),
+            commit.time,
         ) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %event.uri, error = %e, "Failed to process identification record");
+                warn!(uri = %commit.uri, error = %e, "Failed to process identification record");
                 return Ok(());
             }
         };
@@ -113,27 +111,27 @@ impl Database {
     }
 
     /// Upsert a comment record
-    pub async fn upsert_comment(&self, event: &CommentEvent) -> Result<()> {
-        debug!("Upserting comment: {}", event.uri);
+    pub async fn upsert_comment(&self, commit: &CommitInfo) -> Result<()> {
+        debug!("Upserting comment: {}", commit.uri);
 
-        let record_json = match &event.record {
+        let record_json = match &commit.record {
             Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping comment without record");
+                warn!(uri = %commit.uri, "Skipping comment without record");
                 return Ok(());
             }
         };
 
         let params = match processing::comment_from_json(
             record_json,
-            event.uri.clone(),
-            event.cid.clone(),
-            event.did.clone(),
-            event.time,
+            commit.uri.clone(),
+            commit.cid.clone(),
+            commit.did.clone(),
+            commit.time,
         ) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %event.uri, error = %e, "Failed to process comment record");
+                warn!(uri = %commit.uri, error = %e, "Failed to process comment record");
                 return Ok(());
             }
         };
@@ -150,27 +148,27 @@ impl Database {
     }
 
     /// Upsert an interaction record
-    pub async fn upsert_interaction(&self, event: &InteractionEvent) -> Result<()> {
-        debug!("Upserting interaction: {}", event.uri);
+    pub async fn upsert_interaction(&self, commit: &CommitInfo) -> Result<()> {
+        debug!("Upserting interaction: {}", commit.uri);
 
-        let record_json = match &event.record {
+        let record_json = match &commit.record {
             Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping interaction without record");
+                warn!(uri = %commit.uri, "Skipping interaction without record");
                 return Ok(());
             }
         };
 
         let params = match processing::interaction_from_json(
             record_json,
-            event.uri.clone(),
-            event.cid.clone(),
-            event.did.clone(),
-            event.time,
+            commit.uri.clone(),
+            commit.cid.clone(),
+            commit.did.clone(),
+            commit.time,
         ) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %event.uri, error = %e, "Failed to process interaction record");
+                warn!(uri = %commit.uri, error = %e, "Failed to process interaction record");
                 return Ok(());
             }
         };
@@ -187,27 +185,27 @@ impl Database {
     }
 
     /// Upsert a like record
-    pub async fn upsert_like(&self, event: &LikeEvent) -> Result<()> {
-        debug!("Upserting like: {}", event.uri);
+    pub async fn upsert_like(&self, commit: &CommitInfo) -> Result<()> {
+        debug!("Upserting like: {}", commit.uri);
 
-        let record_json = match &event.record {
+        let record_json = match &commit.record {
             Some(v) => v,
             None => {
-                warn!(uri = %event.uri, "Skipping like without record");
+                warn!(uri = %commit.uri, "Skipping like without record");
                 return Ok(());
             }
         };
 
         let params = match processing::like_from_json(
             record_json,
-            event.uri.clone(),
-            event.cid.clone(),
-            event.did.clone(),
-            event.time,
+            commit.uri.clone(),
+            commit.cid.clone(),
+            commit.did.clone(),
+            commit.time,
         ) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %event.uri, error = %e, "Failed to process like record");
+                warn!(uri = %commit.uri, error = %e, "Failed to process like record");
                 return Ok(());
             }
         };

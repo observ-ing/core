@@ -9,9 +9,8 @@ license = "AGPL-3.0-only"
 # Async runtime
 tokio = { version = "1", features = ["full"] }
 
-# WebSocket
-tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
-futures-util = "0.3"
+# Jetstream client
+jetstream-client = { path = "../jetstream-client" }
 
 # Database
 sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }

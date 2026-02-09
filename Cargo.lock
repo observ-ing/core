@@ -1937,6 +1937,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "jetstream-client"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "futures-util",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-tungstenite",
+ "tracing",
+]
+
+[[package]]
 name = "jni"
 version = "0.21.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2457,7 +2470,7 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "chrono",
- "futures-util",
+ "jetstream-client",
  "observing-db",
  "observing-lexicons",
  "serde",
@@ -2465,7 +2478,6 @@ dependencies = [
  "sqlx",
  "tokio",
  "tokio-test",
- "tokio-tungstenite",
  "tower",
  "tower-http",
  "tracing",

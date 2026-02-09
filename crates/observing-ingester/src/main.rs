@@ -5,16 +5,18 @@
 
 mod database;
 mod error;
-mod firehose;
 mod server;
 mod types;
 
 use crate::database::Database;
 use crate::error::{IngesterError, Result};
-use crate::firehose::{FirehoseConfig, FirehoseEvent, FirehoseSubscription};
 use crate::server::{start_server, ServerState, SharedState};
-use crate::types::{IngesterConfig, RecentEvent};
+use crate::types::{
+    IngesterConfig, RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION,
+    INTERACTION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+};
 use chrono::Utc;
+use jetstream_client::{JetstreamConfig, JetstreamEvent, JetstreamSubscription};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
@@ -58,7 +60,7 @@ async fn main() -> Result<()> {
     let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
 
     // Create channel for firehose events
-    let (event_tx, mut event_rx) = mpsc::channel::<FirehoseEvent>(1000);
+    let (event_tx, mut event_rx) = mpsc::channel::<JetstreamEvent>(1000);
 
     // Spawn HTTP server
     let http_state = state.clone();
@@ -70,12 +72,19 @@ async fn main() -> Result<()> {
     });
 
     // Spawn firehose subscription
-    let firehose_config = FirehoseConfig {
+    let jetstream_config = JetstreamConfig {
         relay: config.relay_url.clone(),
         cursor,
+        wanted_collections: vec![
+            OCCURRENCE_COLLECTION.to_string(),
+            IDENTIFICATION_COLLECTION.to_string(),
+            COMMENT_COLLECTION.to_string(),
+            INTERACTION_COLLECTION.to_string(),
+            LIKE_COLLECTION.to_string(),
+        ],
     };
     tokio::spawn(async move {
-        let mut subscription = FirehoseSubscription::new(firehose_config, event_tx);
+        let mut subscription = JetstreamSubscription::new(jetstream_config, event_tx);
         if let Err(e) = subscription.run().await {
             error!("Firehose error: {}", e);
         }
@@ -104,140 +113,104 @@ async fn main() -> Result<()> {
     // Process firehose events
     while let Some(event) = event_rx.recv().await {
         match event {
-            FirehoseEvent::Connected => {
+            JetstreamEvent::Connected => {
                 info!("Connected to firehose");
                 state.write().await.connected = true;
             }
-            FirehoseEvent::Disconnected => {
+            JetstreamEvent::Disconnected => {
                 warn!("Disconnected from firehose");
                 state.write().await.connected = false;
             }
-            FirehoseEvent::Error(e) => {
+            JetstreamEvent::Error(e) => {
                 error!("Firehose error: {}", e);
                 state.write().await.stats.errors += 1;
             }
-            FirehoseEvent::Commit(timing) => {
+            JetstreamEvent::TimingUpdate(timing) => {
                 let mut s = state.write().await;
                 s.cursor = Some(timing.seq);
                 s.last_processed = Some(timing);
             }
-            FirehoseEvent::Occurrence(event) => {
-                let action = event.action.clone();
-                let uri = event.uri.clone();
+            JetstreamEvent::Commit(commit) => {
+                let collection = commit.collection.as_str();
+                let action = commit.operation.clone();
+                let uri = commit.uri.clone();
+                let time = commit.time;
 
-                let result = if action == "delete" {
-                    db.delete_occurrence(&uri).await
-                } else {
-                    db.upsert_occurrence(&event).await
+                let (result, event_type) = match collection {
+                    OCCURRENCE_COLLECTION => {
+                        let r = if action == "delete" {
+                            db.delete_occurrence(&uri).await
+                        } else {
+                            db.upsert_occurrence(&commit).await
+                        };
+                        (r, "occurrence")
+                    }
+                    IDENTIFICATION_COLLECTION => {
+                        let r = if action == "delete" {
+                            db.delete_identification(&uri).await
+                        } else {
+                            db.upsert_identification(&commit).await
+                        };
+                        (r, "identification")
+                    }
+                    COMMENT_COLLECTION => {
+                        let r = if action == "delete" {
+                            db.delete_comment(&uri).await
+                        } else {
+                            db.upsert_comment(&commit).await
+                        };
+                        (r, "comment")
+                    }
+                    INTERACTION_COLLECTION => {
+                        let r = if action == "delete" {
+                            db.delete_interaction(&uri).await
+                        } else {
+                            db.upsert_interaction(&commit).await
+                        };
+                        (r, "interaction")
+                    }
+                    LIKE_COLLECTION => {
+                        // Filter: only process likes whose subject is an occurrence
+                        let is_occurrence_like = commit
+                            .record
+                            .as_ref()
+                            .and_then(|r| r.get("subject"))
+                            .and_then(|s| s.get("uri"))
+                            .and_then(|u| u.as_str())
+                            .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
+
+                        if is_occurrence_like || action == "delete" {
+                            let r = if action == "delete" {
+                                db.delete_like(&uri).await
+                            } else {
+                                db.upsert_like(&commit).await
+                            };
+                            (r, "like")
+                        } else {
+                            continue;
+                        }
+                    }
+                    _ => continue,
                 };
 
                 let mut s = state.write().await;
                 if let Err(e) = result {
-                    error!("Database error for occurrence {}: {}", uri, e);
+                    error!("Database error for {} {}: {}", event_type, uri, e);
                     s.stats.errors += 1;
                 } else {
-                    s.stats.occurrences += 1;
+                    match event_type {
+                        "occurrence" => s.stats.occurrences += 1,
+                        "identification" => s.stats.identifications += 1,
+                        "comment" => s.stats.comments += 1,
+                        "interaction" => s.stats.interactions += 1,
+                        "like" => s.stats.likes += 1,
+                        _ => {}
+                    }
                     s.add_recent_event(RecentEvent {
-                        event_type: "occurrence".to_string(),
+                        event_type: event_type.to_string(),
                         action,
                         uri,
-                        time: event.time,
-                    });
-                }
-            }
-            FirehoseEvent::Identification(event) => {
-                let action = event.action.clone();
-                let uri = event.uri.clone();
-
-                let result = if action == "delete" {
-                    db.delete_identification(&uri).await
-                } else {
-                    db.upsert_identification(&event).await
-                };
-
-                let mut s = state.write().await;
-                if let Err(e) = result {
-                    error!("Database error for identification {}: {}", uri, e);
-                    s.stats.errors += 1;
-                } else {
-                    s.stats.identifications += 1;
-                    s.add_recent_event(RecentEvent {
-                        event_type: "identification".to_string(),
-                        action,
-                        uri,
-                        time: event.time,
-                    });
-                }
-            }
-            FirehoseEvent::Comment(event) => {
-                let action = event.action.clone();
-                let uri = event.uri.clone();
-
-                let result = if action == "delete" {
-                    db.delete_comment(&uri).await
-                } else {
-                    db.upsert_comment(&event).await
-                };
-
-                let mut s = state.write().await;
-                if let Err(e) = result {
-                    error!("Database error for comment {}: {}", uri, e);
-                    s.stats.errors += 1;
-                } else {
-                    s.stats.comments += 1;
-                    s.add_recent_event(RecentEvent {
-                        event_type: "comment".to_string(),
-                        action,
-                        uri,
-                        time: event.time,
-                    });
-                }
-            }
-            FirehoseEvent::Interaction(event) => {
-                let action = event.action.clone();
-                let uri = event.uri.clone();
-
-                let result = if action == "delete" {
-                    db.delete_interaction(&uri).await
-                } else {
-                    db.upsert_interaction(&event).await
-                };
-
-                let mut s = state.write().await;
-                if let Err(e) = result {
-                    error!("Database error for interaction {}: {}", uri, e);
-                    s.stats.errors += 1;
-                } else {
-                    s.stats.interactions += 1;
-                    s.add_recent_event(RecentEvent {
-                        event_type: "interaction".to_string(),
-                        action,
-                        uri,
-                        time: event.time,
-                    });
-                }
-            }
-            FirehoseEvent::Like(event) => {
-                let action = event.action.clone();
-                let uri = event.uri.clone();
-
-                let result = if action == "delete" {
-                    db.delete_like(&uri).await
-                } else {
-                    db.upsert_like(&event).await
-                };
-
-                let mut s = state.write().await;
-                if let Err(e) = result {
-                    error!("Database error for like {}: {}", uri, e);
-                    s.stats.errors += 1;
-                } else {
-                    s.stats.likes += 1;
-                    s.add_recent_event(RecentEvent {
-                        event_type: "like".to_string(),
-                        action,
-                        uri,
-                        time: event.time,
+                        time,
                     });
                 }
             }
