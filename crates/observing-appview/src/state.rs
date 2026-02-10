@@ -1,5 +1,5 @@
 use observing_geocoding::GeocodingService;
-use observing_identity::IdentityResolver;
+use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 

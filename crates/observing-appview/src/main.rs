@@ -51,7 +51,7 @@ async fn main() {
 
     let state = AppState {
         pool,
-        resolver: Arc::new(observing_identity::IdentityResolver::new()),
+        resolver: Arc::new(atproto_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
         geocoding: Arc::new(observing_geocoding::GeocodingService::new()),
         agent: Arc::new(atproto::InternalAgentClient::new(

@@ -1,8 +1,8 @@
 [package]
-name = "observing-identity"
+name = "atproto-identity"
 version = "0.1.0"
 edition = "2021"
-description = "AT Protocol identity resolution and profile caching for Observ.ing"
+description = "AT Protocol identity resolution and profile caching"
 license = "AGPL-3.0-only"
 
 [dependencies]

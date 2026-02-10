@@ -1,92 +1,20 @@
-use moka::future::Cache;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+
+use moka::future::Cache;
+use reqwest::Client;
 use tracing::{debug, error};
+
+use crate::types::{
+    DidDocument, FollowsResponse, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse,
+    ResolveResult,
+};
 
 const DEFAULT_SERVICE_URL: &str = "https://public.api.bsky.app";
 const CACHE_TTL_SECS: u64 = 300; // 5 minutes
 const FOLLOWS_CACHE_TTL_SECS: u64 = 60; // 1 minute
 const BATCH_SIZE: usize = 25;
-
-/// AT Protocol profile
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Profile {
-    pub did: String,
-    pub handle: String,
-    pub display_name: Option<String>,
-    pub description: Option<String>,
-    pub avatar: Option<String>,
-    pub banner: Option<String>,
-    pub followers_count: Option<u64>,
-    pub follows_count: Option<u64>,
-    pub posts_count: Option<u64>,
-}
-
-/// Result of resolving a handle or DID
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ResolveResult {
-    pub did: String,
-    pub handle: Option<String>,
-    pub pds_endpoint: Option<String>,
-}
-
-/// DID Document
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DidDocument {
-    #[allow(dead_code)]
-    id: String,
-    also_known_as: Option<Vec<String>>,
-    service: Option<Vec<DidService>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DidService {
-    id: String,
-    #[allow(dead_code)]
-    r#type: String,
-    service_endpoint: String,
-}
-
-/// Bluesky API response types
-#[derive(Debug, Deserialize)]
-struct ResolveHandleResponse {
-    did: String,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ProfileResponse {
-    did: String,
-    handle: String,
-    display_name: Option<String>,
-    description: Option<String>,
-    avatar: Option<String>,
-    banner: Option<String>,
-    followers_count: Option<u64>,
-    follows_count: Option<u64>,
-    posts_count: Option<u64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct ProfilesResponse {
-    profiles: Vec<ProfileResponse>,
-}
-
-#[derive(Debug, Deserialize)]
-struct FollowsResponse {
-    follows: Vec<FollowEntry>,
-    cursor: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct FollowEntry {
-    did: String,
-}
 
 /// Resolves AT Protocol identities (handles ↔ DIDs) and fetches profiles
 pub struct IdentityResolver {
@@ -309,11 +237,8 @@ impl IdentityResolver {
     }
 
     /// Batch resolve multiple DIDs/handles to profiles
-    pub async fn get_profiles(
-        &self,
-        actors: &[String],
-    ) -> std::collections::HashMap<String, Arc<Profile>> {
-        let mut results = std::collections::HashMap::new();
+    pub async fn get_profiles(&self, actors: &[String]) -> HashMap<String, Arc<Profile>> {
+        let mut results = HashMap::new();
         let mut to_fetch = Vec::new();
 
         // Check cache first

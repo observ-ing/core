@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
+use atproto_identity::{IdentityResolver, Profile};
 use observing_db::types::{
     CommentRow, IdentificationRow, InteractionRow, ObserverRole, OccurrenceRow,
 };
-use observing_identity::{IdentityResolver, Profile};
 use serde::Serialize;
 use sqlx::PgPool;
 use ts_rs::TS;
