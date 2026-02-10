@@ -10,9 +10,11 @@ pub async fn get_explore_feed(
     executor: impl sqlx::PgExecutor<'_>,
     options: &ExploreFeedOptions,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
-    let mut qb = QueryBuilder::<Postgres>::new(
-        concat!("SELECT ", occurrence_columns!(), " FROM occurrences WHERE TRUE"),
-    );
+    let mut qb = QueryBuilder::<Postgres>::new(concat!(
+        "SELECT ",
+        occurrence_columns!(),
+        " FROM occurrences WHERE TRUE"
+    ));
 
     if let Some(ref taxon) = options.taxon {
         qb.push(" AND scientific_name ILIKE ");
@@ -332,9 +334,11 @@ pub async fn get_occurrences_by_taxon(
     let limit = options.limit.unwrap_or(20);
     let rank_lower = taxon_rank.to_lowercase();
 
-    let mut qb = QueryBuilder::<Postgres>::new(
-        concat!("SELECT ", occurrence_columns!(), " FROM occurrences WHERE "),
-    );
+    let mut qb = QueryBuilder::<Postgres>::new(concat!(
+        "SELECT ",
+        occurrence_columns!(),
+        " FROM occurrences WHERE "
+    ));
 
     push_taxon_filter(&mut qb, &rank_lower, taxon_name);
 
