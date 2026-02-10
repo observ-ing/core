@@ -12,6 +12,7 @@ import {
   Typography,
   IconButton,
   Tooltip,
+  Skeleton,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
@@ -46,6 +47,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
+  const isAuthLoading = useAppSelector((state) => state.auth.isLoading);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
 
   const navItems = [
@@ -216,7 +218,23 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </Tooltip>
           </Box>
 
-          {user ? (
+          {isAuthLoading ? (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1.5,
+                p: 1,
+                borderRadius: 2,
+              }}
+            >
+              <Skeleton variant="circular" width={36} height={36} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Skeleton variant="text" width="70%" />
+                <Skeleton variant="text" width="50%" sx={{ fontSize: "0.75rem" }} />
+              </Box>
+            </Box>
+          ) : user ? (
             <Box
               sx={{
                 display: "flex",
