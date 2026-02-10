@@ -206,7 +206,6 @@ pub async fn get_geojson(
                 },
                 "properties": {
                     "uri": row.uri,
-                    "scientificName": row.scientific_name,
                     "eventDate": row.event_date.to_rfc3339(),
                 }
             })
@@ -302,8 +301,6 @@ async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>,
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateOccurrenceRequest {
-    #[ts(optional)]
-    scientific_name: Option<String>,
     latitude: f64,
     longitude: f64,
     #[ts(optional)]
@@ -314,24 +311,6 @@ pub struct CreateOccurrenceRequest {
     event_date: Option<String>,
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
-    #[ts(optional)]
-    taxon_id: Option<String>,
-    #[ts(optional)]
-    taxon_rank: Option<String>,
-    #[ts(optional)]
-    vernacular_name: Option<String>,
-    #[ts(optional)]
-    kingdom: Option<String>,
-    #[ts(optional)]
-    phylum: Option<String>,
-    #[ts(optional)]
-    class: Option<String>,
-    #[ts(optional)]
-    order: Option<String>,
-    #[ts(optional)]
-    family: Option<String>,
-    #[ts(optional)]
-    genus: Option<String>,
     #[ts(optional)]
     recorded_by: Option<Vec<String>>,
 }
@@ -369,53 +348,6 @@ pub async fn create_occurrence(
                 .map_err(AppError::Internal)?;
             if let Some(blob) = blob_resp.blob {
                 blobs.push(json!({ "image": blob, "alt": "" }));
-            }
-        }
-    }
-
-    // Validate taxonomy via GBIF if needed
-    let mut taxon_id = body.taxon_id.clone();
-    let mut taxon_rank = body.taxon_rank.clone();
-    let mut vernacular_name = body.vernacular_name.clone();
-    let mut kingdom = body.kingdom.clone();
-    let mut phylum = body.phylum.clone();
-    let mut class = body.class.clone();
-    let mut order = body.order.clone();
-    let mut family = body.family.clone();
-    let mut genus = body.genus.clone();
-
-    if body.scientific_name.is_some() && taxon_id.is_none() {
-        if let Some(validation) = state
-            .taxonomy
-            .validate(body.scientific_name.as_deref().unwrap())
-            .await
-        {
-            if let Some(ref t) = validation.taxon {
-                taxon_id = Some(t.id.clone());
-                if taxon_rank.is_none() {
-                    taxon_rank = Some(t.rank.clone());
-                }
-                if vernacular_name.is_none() {
-                    vernacular_name = t.common_name.clone();
-                }
-                if kingdom.is_none() {
-                    kingdom = t.kingdom.clone();
-                }
-                if phylum.is_none() {
-                    phylum = t.phylum.clone();
-                }
-                if class.is_none() {
-                    class = t.class.clone();
-                }
-                if order.is_none() {
-                    order = t.order.clone();
-                }
-                if family.is_none() {
-                    family = t.family.clone();
-                }
-                if genus.is_none() {
-                    genus = t.genus.clone();
-                }
             }
         }
     }
@@ -493,18 +425,8 @@ pub async fn create_occurrence(
             .event_date(event_date)
             .location(location)
             .created_at(now)
-            .maybe_scientific_name(body.scientific_name.as_deref().map(Into::into))
             .maybe_notes(body.notes.as_deref().map(Into::into))
             .maybe_recorded_by(recorded_by_cowstrs)
-            .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
-            .maybe_taxon_rank(taxon_rank.as_deref().map(Into::into))
-            .maybe_vernacular_name(vernacular_name.as_deref().map(Into::into))
-            .maybe_kingdom(kingdom.as_deref().map(Into::into))
-            .maybe_phylum(phylum.as_deref().map(Into::into))
-            .maybe_class(class.as_deref().map(Into::into))
-            .maybe_order(order.as_deref().map(Into::into))
-            .maybe_family(family.as_deref().map(Into::into))
-            .maybe_genus(genus.as_deref().map(Into::into))
             .build();
 
         let mut rv =

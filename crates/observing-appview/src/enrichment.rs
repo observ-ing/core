@@ -21,8 +21,6 @@ pub struct OccurrenceResponse {
     pub observer: ProfileSummary,
     pub observers: Vec<ObserverInfo>,
     #[ts(optional)]
-    pub scientific_name: Option<String>,
-    #[ts(optional)]
     pub community_id: Option<String>,
     #[ts(optional)]
     pub effective_taxonomy: Option<EffectiveTaxonomy>,
@@ -33,24 +31,6 @@ pub struct OccurrenceResponse {
     pub verbatim_locality: Option<String>,
     #[ts(optional)]
     pub occurrence_remarks: Option<String>,
-    #[ts(optional)]
-    pub taxon_id: Option<String>,
-    #[ts(optional)]
-    pub taxon_rank: Option<String>,
-    #[ts(optional)]
-    pub vernacular_name: Option<String>,
-    #[ts(optional)]
-    pub kingdom: Option<String>,
-    #[ts(optional)]
-    pub phylum: Option<String>,
-    #[ts(optional)]
-    pub class: Option<String>,
-    #[ts(optional)]
-    pub order: Option<String>,
-    #[ts(optional)]
-    pub family: Option<String>,
-    #[ts(optional)]
-    pub genus: Option<String>,
     pub images: Vec<String>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -354,7 +334,6 @@ pub async fn enrich_occurrences(
             cid: row.cid.clone(),
             observer: profile_summary(&row.did, &profiles),
             observers: observer_infos,
-            scientific_name: row.scientific_name.clone(),
             community_id,
             effective_taxonomy,
             subjects,
@@ -374,15 +353,6 @@ pub async fn enrich_occurrences(
             },
             verbatim_locality: row.verbatim_locality.clone(),
             occurrence_remarks: row.occurrence_remarks.clone(),
-            taxon_id: row.taxon_id.clone(),
-            taxon_rank: row.taxon_rank.clone(),
-            vernacular_name: row.vernacular_name.clone(),
-            kingdom: row.kingdom.clone(),
-            phylum: row.phylum.clone(),
-            class: row.class.clone(),
-            order: row.order_.clone(),
-            family: row.family.clone(),
-            genus: row.genus.clone(),
             images,
             created_at: row.created_at.to_rfc3339(),
             like_count: Some(*like_counts.get(&row.uri).unwrap_or(&0)),

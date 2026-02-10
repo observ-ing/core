@@ -8,4 +8,4 @@ import type { Subject } from "./Subject";
 /**
  * Enriched occurrence ready for API response
  */
-export type Occurrence = { uri: string, cid: string, observer: Profile, observers: Array<Observer>, scientificName?: string, communityId?: string, effectiveTaxonomy?: EffectiveTaxonomy, subjects: Array<Subject>, eventDate: string, location: Location, verbatimLocality?: string, occurrenceRemarks?: string, taxonId?: string, taxonRank?: string, vernacularName?: string, kingdom?: string, phylum?: string, class?: string, order?: string, family?: string, genus?: string, images: Array<string>, createdAt: string, likeCount?: number, viewerHasLiked?: boolean, };
+export type Occurrence = { uri: string, cid: string, observer: Profile, observers: Array<Observer>, communityId?: string, effectiveTaxonomy?: EffectiveTaxonomy, subjects: Array<Subject>, eventDate: string, location: Location, verbatimLocality?: string, occurrenceRemarks?: string, images: Array<string>, createdAt: string, likeCount?: number, viewerHasLiked?: boolean, };
