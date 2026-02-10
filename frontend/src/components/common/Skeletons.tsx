@@ -1,4 +1,4 @@
-import { Box, Card, Skeleton, Stack } from "@mui/material";
+import { Box, Card, Divider, Skeleton, Stack } from "@mui/material";
 
 /**
  * Skeleton loader matching FeedItem layout
@@ -56,16 +56,19 @@ export function ProfileHeaderSkeleton() {
     <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
       <Stack direction="row" spacing={2} alignItems="center">
         <Skeleton variant="circular" width={80} height={80} />
-        <Box sx={{ flex: 1 }}>
-          <Skeleton variant="text" width="50%" height={32} />
-          <Skeleton variant="text" width="30%" height={20} />
+        <Box>
+          <Skeleton variant="text" width={180} height={32} />
+          <Skeleton variant="text" width={120} height={20} />
         </Box>
       </Stack>
-      <Stack direction="row" spacing={4} sx={{ mt: 2 }}>
+      <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
         {[1, 2, 3].map((i) => (
-          <Box key={i} sx={{ textAlign: "center", flex: 1 }}>
-            <Skeleton variant="text" width="60%" height={28} sx={{ mx: "auto" }} />
-            <Skeleton variant="text" width="80%" height={16} sx={{ mx: "auto" }} />
+          <Box key={i} sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
+            <Skeleton variant="text" width="50%" height={28} sx={{ mx: "auto" }} />
+            <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
+              <Skeleton variant="circular" width={14} height={14} />
+              <Skeleton variant="text" width="50%" height={16} />
+            </Stack>
           </Box>
         ))}
       </Stack>
@@ -75,31 +78,6 @@ export function ProfileHeaderSkeleton() {
         height={32}
         sx={{ borderRadius: 1, mt: 2 }}
       />
-    </Box>
-  );
-}
-
-/**
- * Skeleton for profile feed items
- */
-export function ProfileFeedItemSkeleton() {
-  return (
-    <Box
-      sx={{
-        display: "block",
-        p: 2,
-        borderBottom: 1,
-        borderColor: "divider",
-      }}
-    >
-      <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 4, mb: 1 }} />
-      <Stack direction="row" spacing={2} alignItems="flex-start">
-        <Box sx={{ flex: 1 }}>
-          <Skeleton variant="text" width="60%" height={24} />
-          <Skeleton variant="text" width="40%" height={16} />
-        </Box>
-        <Skeleton variant="rectangular" width={60} height={60} sx={{ borderRadius: 1 }} />
-      </Stack>
     </Box>
   );
 }
@@ -128,6 +106,7 @@ export function ProfileIdentificationCardSkeleton() {
       <Box sx={{ py: 3, px: 1.5, bgcolor: "action.hover", display: "flex", flexDirection: "column", alignItems: "center" }}>
         <Skeleton variant="circular" width={28} height={28} sx={{ mb: 1 }} />
         <Skeleton variant="text" width="60%" height={20} />
+        <Skeleton variant="text" width="40%" height={16} />
       </Box>
       <Box sx={{ p: 1.5 }}>
         <Skeleton variant="text" width="50%" height={16} />
@@ -141,51 +120,57 @@ export function ProfileIdentificationCardSkeleton() {
  */
 export function TaxonDetailSkeleton() {
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Scientific name */}
-      <Skeleton variant="text" width="60%" height={36} />
-      {/* Common name */}
-      <Skeleton variant="text" width="40%" height={28} sx={{ mt: 0.5 }} />
+    <Box>
+      {/* Header */}
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1 }} />
+        <Skeleton variant="text" width={60} height={24} />
+      </Box>
 
-      {/* Chips */}
-      <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 4 }} />
-        <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 4 }} />
-      </Stack>
+      {/* Main content */}
+      <Box sx={{ p: 3 }}>
+        {/* Scientific name */}
+        <Skeleton variant="text" width="60%" height={36} />
+        {/* Common name */}
+        <Skeleton variant="text" width="40%" height={28} sx={{ mt: 0.5 }} />
 
-      {/* Stats */}
-      <Skeleton variant="text" width="50%" height={20} sx={{ mt: 2 }} />
+        {/* Chips */}
+        <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+          <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 4 }} />
+          <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 4 }} />
+        </Stack>
 
-      {/* Classification section */}
-      <Box sx={{ mt: 3 }}>
-        <Skeleton variant="text" width={100} height={16} />
-        <Stack direction="row" spacing={0.5} flexWrap="wrap" sx={{ mt: 0.5, gap: 0.5 }}>
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} variant="rectangular" width={70} height={24} sx={{ borderRadius: 4 }} />
-          ))}
+        {/* Stats */}
+        <Skeleton variant="text" width="50%" height={20} sx={{ mt: 2 }} />
+
+        {/* Classification accordion */}
+        <Skeleton variant="rectangular" height={48} sx={{ borderRadius: 1, mt: 3 }} />
+
+        {/* Media accordion */}
+        <Skeleton variant="rectangular" height={48} sx={{ borderRadius: 1, mt: 0.5 }} />
+
+        {/* External links */}
+        <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
+          <Skeleton variant="rectangular" width={130} height={32} sx={{ borderRadius: 1 }} />
+          <Skeleton variant="rectangular" width={150} height={32} sx={{ borderRadius: 1 }} />
         </Stack>
       </Box>
 
-      {/* Media gallery */}
-      <Box sx={{ mt: 3 }}>
-        <Skeleton variant="text" width={60} height={16} />
-        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} variant="rectangular" width={150} height={100} sx={{ borderRadius: 1, flexShrink: 0 }} />
-          ))}
-        </Stack>
+      {/* Observations section */}
+      <Divider />
+      <Box sx={{ px: 3, py: 2 }}>
+        <Skeleton variant="text" width={160} height={20} />
       </Box>
-
-      {/* Description */}
-      <Box sx={{ mt: 3 }}>
-        <Skeleton variant="text" width={80} height={16} />
-        <Skeleton variant="text" width="100%" height={20} sx={{ mt: 1 }} />
-        <Skeleton variant="text" width="90%" height={20} />
-        <Skeleton variant="text" width="70%" height={20} />
-      </Box>
-
-      {/* Button */}
-      <Skeleton variant="rectangular" width={120} height={32} sx={{ borderRadius: 1, mt: 3 }} />
+      <FeedItemSkeleton />
+      <FeedItemSkeleton />
     </Box>
   );
 }
@@ -196,47 +181,72 @@ export function TaxonDetailSkeleton() {
 export function ObservationDetailSkeleton() {
   return (
     <Box>
-      {/* Image skeleton */}
+      {/* Header */}
+      <Box
+        sx={{
+          p: 1.5,
+          borderBottom: 1,
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+        }}
+      >
+        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1 }} />
+        <Skeleton variant="text" width={100} height={24} />
+      </Box>
+
+      {/* Species header */}
+      <Box sx={{ px: 3, pt: 2, pb: 1 }}>
+        <Skeleton variant="text" width="40%" height={32} />
+        <Skeleton variant="text" width="25%" height={20} />
+      </Box>
+
+      {/* Like button */}
+      <Box sx={{ px: 3, pb: 1 }}>
+        <Skeleton variant="circular" width={28} height={28} />
+      </Box>
+
+      {/* Image */}
       <Skeleton
         variant="rectangular"
-        height={300}
-        sx={{ width: "100%" }}
+        height={400}
+        sx={{ width: "100%", bgcolor: "grey.800" }}
       />
 
-      {/* Content skeleton */}
+      {/* Content */}
       <Box sx={{ p: 3 }}>
         {/* Observer */}
-        <Stack direction="row" spacing={1.5} alignItems="center" sx={{ mb: 3 }}>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mx: -2, px: 2, py: 1 }}>
           <Skeleton variant="circular" width={40} height={40} />
           <Box>
             <Skeleton variant="text" width={120} height={20} />
             <Skeleton variant="text" width={80} height={16} />
           </Box>
-        </Stack>
+        </Box>
 
-        {/* Details */}
-        <Stack spacing={2}>
-          {[1, 2, 3, 4].map((i) => (
-            <Box key={i}>
-              <Skeleton variant="text" width={80} height={14} sx={{ mb: 0.5 }} />
-              <Skeleton variant="text" width={i === 3 ? "50%" : "70%"} height={20} />
+        {/* Details as list items */}
+        <Box sx={{ mt: 1 }}>
+          {[1, 2, 3].map((i) => (
+            <Box key={i} sx={{ display: "flex", alignItems: "flex-start", py: 0.75 }}>
+              <Box sx={{ minWidth: 36, mt: 0.5 }}>
+                <Skeleton variant="circular" width={18} height={18} />
+              </Box>
+              <Box>
+                <Skeleton variant="text" width={60} height={14} />
+                <Skeleton variant="text" width={i === 2 ? 180 : 140} height={20} />
+              </Box>
             </Box>
           ))}
-        </Stack>
+        </Box>
 
-        {/* Map placeholder */}
+        {/* Map */}
         <Skeleton
           variant="rectangular"
           height={200}
-          sx={{ borderRadius: 2, mt: 2 }}
+          sx={{ borderRadius: 2, ml: 4.5, mb: 1 }}
         />
 
-        {/* Species */}
-        <Box sx={{ mt: 3 }}>
-          <Skeleton variant="text" width="40%" height={32} />
-        </Box>
-
-        {/* Identification panel placeholder */}
+        {/* Identification section */}
         <Skeleton
           variant="rectangular"
           height={100}
