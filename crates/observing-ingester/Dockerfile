@@ -20,15 +20,15 @@ COPY crates/gbif-api/Cargo.toml crates/gbif-api/
 COPY crates/jetstream-client/Cargo.toml crates/jetstream-client/
 COPY crates/observing-appview/Cargo.toml crates/observing-appview/
 COPY crates/observing-db/Cargo.toml crates/observing-db/
-COPY crates/observing-geocoding/Cargo.toml crates/observing-geocoding/
-COPY crates/observing-identity/Cargo.toml crates/observing-identity/
+COPY crates/nominatim-client/Cargo.toml crates/nominatim-client/
+COPY crates/atproto-identity/Cargo.toml crates/atproto-identity/
 COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
 COPY crates/observing-lexicons/Cargo.toml crates/observing-lexicons/
 COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
 COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
 
 # Create dummy sources to cache dependencies
-RUN for crate in at-uri-parser atproto-blob-resolver file-blob-cache gbif-api jetstream-client observing-appview observing-db observing-geocoding observing-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
+RUN for crate in at-uri-parser atproto-blob-resolver file-blob-cache gbif-api jetstream-client observing-appview observing-db nominatim-client atproto-identity observing-ingester observing-lexicons observing-media-proxy observing-taxonomy; do \
         mkdir -p crates/$crate/src && \
         echo "fn main() {}" > crates/$crate/src/main.rs && \
         echo "" > crates/$crate/src/lib.rs; \
