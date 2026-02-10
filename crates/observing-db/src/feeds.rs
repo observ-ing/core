@@ -1,3 +1,4 @@
+use crate::occurrence_columns;
 use crate::types::{
     ExploreFeedOptions, HomeFeedOptions, HomeFeedResult, IdentificationRow, OccurrenceRow,
     ProfileCounts, ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
@@ -10,23 +11,7 @@ pub async fn get_explore_feed(
     options: &ExploreFeedOptions,
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(
-        r#"
-        SELECT
-            uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
-            coordinate_uncertainty_meters,
-            continent, country, country_code, state_province, county, municipality, locality, water_body,
-            verbatim_locality, occurrence_remarks,
-            associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
-            created_at,
-            NULL::float8 as distance_meters,
-            NULL::text as source,
-            NULL::text as observer_role
-        FROM occurrences
-        WHERE TRUE
-        "#,
+        concat!("SELECT ", occurrence_columns!(), " FROM occurrences WHERE TRUE"),
     );
 
     if let Some(ref taxon) = options.taxon {
@@ -115,45 +100,47 @@ pub async fn get_profile_feed(
         ProfileFeedType::Observations | ProfileFeedType::All
     ) {
         occurrences = if let Some(ref cursor) = options.cursor {
-            sqlx::query_as::<_, OccurrenceRow>(
+            sqlx::query_as!(
+                OccurrenceRow,
                 r#"
                 SELECT DISTINCT ON (o.uri)
                     o.uri, o.cid, o.did, o.scientific_name, o.event_date,
-                    ST_Y(o.location::geometry) as latitude,
-                    ST_X(o.location::geometry) as longitude,
+                    ST_Y(o.location::geometry) as "latitude!",
+                    ST_X(o.location::geometry) as "longitude!",
                     o.coordinate_uncertainty_meters,
                     o.continent, o.country, o.country_code, o.state_province, o.county, o.municipality, o.locality, o.water_body,
                     o.verbatim_locality, o.occurrence_remarks,
                     o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order", o.family, o.genus,
+                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
                     o.created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source,
                     COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role
                 FROM occurrences o
                 LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1
-                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < $3::timestamptz
+                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < ($3::text)::timestamptz
                 ORDER BY o.uri, o.created_at DESC
                 LIMIT $2
                 "#,
+                did,
+                limit,
+                cursor.as_str(),
             )
-            .bind(did)
-            .bind(limit)
-            .bind(cursor.as_str())
             .fetch_all(pool)
             .await?
         } else {
-            sqlx::query_as::<_, OccurrenceRow>(
+            sqlx::query_as!(
+                OccurrenceRow,
                 r#"
                 SELECT DISTINCT ON (o.uri)
                     o.uri, o.cid, o.did, o.scientific_name, o.event_date,
-                    ST_Y(o.location::geometry) as latitude,
-                    ST_X(o.location::geometry) as longitude,
+                    ST_Y(o.location::geometry) as "latitude!",
+                    ST_X(o.location::geometry) as "longitude!",
                     o.coordinate_uncertainty_meters,
                     o.continent, o.country, o.country_code, o.state_province, o.county, o.municipality, o.locality, o.water_body,
                     o.verbatim_locality, o.occurrence_remarks,
                     o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order", o.family, o.genus,
+                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
                     o.created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source,
@@ -164,9 +151,9 @@ pub async fn get_profile_feed(
                 ORDER BY o.uri, o.created_at DESC
                 LIMIT $2
                 "#,
+                did,
+                limit,
             )
-            .bind(did)
-            .bind(limit)
             .fetch_all(pool)
             .await?
         };
@@ -180,40 +167,42 @@ pub async fn get_profile_feed(
         ProfileFeedType::Identifications | ProfileFeedType::All
     ) {
         identifications = if let Some(ref cursor) = options.cursor {
-            sqlx::query_as::<_, IdentificationRow>(
+            sqlx::query_as!(
+                IdentificationRow,
                 r#"
                 SELECT
                     uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id, identification_remarks,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
+                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
                 FROM identifications
-                WHERE did = $1 AND date_identified < $3::timestamptz
+                WHERE did = $1 AND date_identified < ($3::text)::timestamptz
                 ORDER BY date_identified DESC
                 LIMIT $2
                 "#,
+                did,
+                limit,
+                cursor.as_str(),
             )
-            .bind(did)
-            .bind(limit)
-            .bind(cursor.as_str())
             .fetch_all(pool)
             .await?
         } else {
-            sqlx::query_as::<_, IdentificationRow>(
+            sqlx::query_as!(
+                IdentificationRow,
                 r#"
                 SELECT
                     uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id, identification_remarks,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
+                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
                 FROM identifications
                 WHERE did = $1
                 ORDER BY date_identified DESC
                 LIMIT $2
                 "#,
+                did,
+                limit,
             )
-            .bind(did)
-            .bind(limit)
             .fetch_all(pool)
             .await?
         };
@@ -344,22 +333,7 @@ pub async fn get_occurrences_by_taxon(
     let rank_lower = taxon_rank.to_lowercase();
 
     let mut qb = QueryBuilder::<Postgres>::new(
-        r#"
-        SELECT
-            uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
-            coordinate_uncertainty_meters,
-            continent, country, country_code, state_province, county, municipality, locality, water_body,
-            verbatim_locality, occurrence_remarks,
-            associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
-            created_at,
-            NULL::float8 as distance_meters,
-            NULL::text as source,
-            NULL::text as observer_role
-        FROM occurrences
-        WHERE "#,
+        concat!("SELECT ", occurrence_columns!(), " FROM occurrences WHERE "),
     );
 
     push_taxon_filter(&mut qb, &rank_lower, taxon_name);

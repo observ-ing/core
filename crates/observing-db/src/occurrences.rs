@@ -1,5 +1,31 @@
 use crate::types::{OccurrenceRow, UpsertOccurrenceParams};
 
+/// Standard SELECT columns for OccurrenceRow in QueryBuilder (runtime) queries.
+/// Does not include the SELECT keyword or FROM clause.
+/// Use with `concat!` for compile-time string composition:
+/// ```ignore
+/// concat!("SELECT ", occurrence_columns!(), " FROM occurrences WHERE TRUE")
+/// ```
+#[macro_export]
+macro_rules! occurrence_columns {
+    () => {
+        r#"
+    uri, cid, did, scientific_name, event_date,
+    ST_Y(location::geometry) as latitude,
+    ST_X(location::geometry) as longitude,
+    coordinate_uncertainty_meters,
+    continent, country, country_code, state_province, county, municipality, locality, water_body,
+    verbatim_locality, occurrence_remarks,
+    associated_media, recorded_by,
+    taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
+    created_at,
+    NULL::float8 as distance_meters,
+    NULL::text as source,
+    NULL::text as observer_role
+"#
+    };
+}
+
 /// Upsert an occurrence record
 pub async fn upsert(
     executor: impl sqlx::PgExecutor<'_>,
