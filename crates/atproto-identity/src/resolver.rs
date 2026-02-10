@@ -7,8 +7,8 @@ use reqwest::Client;
 use tracing::{debug, error};
 
 use crate::types::{
-    DidDocument, FollowsResponse, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse,
-    ResolveResult,
+    DidDocument, FollowsResponse, Profile, ProfileResponse, ProfilesResponse,
+    ResolveHandleResponse, ResolveResult,
 };
 
 const DEFAULT_SERVICE_URL: &str = "https://public.api.bsky.app";

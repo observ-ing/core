@@ -1,5 +1,5 @@
-use nominatim_client::NominatimClient;
 use atproto_identity::IdentityResolver;
+use nominatim_client::NominatimClient;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
