@@ -53,7 +53,7 @@ async fn main() {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
-        geocoding: Arc::new(observing_geocoding::GeocodingService::new()),
+        geocoding: Arc::new(nominatim_client::NominatimClient::new()),
         agent: Arc::new(atproto::InternalAgentClient::new(
             &config.ts_appview_url,
             config.internal_secret.clone(),

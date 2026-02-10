@@ -2379,6 +2379,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "nominatim-client"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "moka",
+ "reqwest 0.12.28",
+ "serde",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "nu-ansi-term"
 version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2456,8 +2468,8 @@ dependencies = [
  "chrono",
  "hickory-resolver",
  "jacquard-common",
+ "nominatim-client",
  "observing-db",
- "observing-geocoding",
  "observing-lexicons",
  "reqwest 0.12.28",
  "serde",
@@ -2483,18 +2495,6 @@ dependencies = [
  "sqlx",
  "tracing",
  "ts-rs",
-]
-
-[[package]]
-name = "observing-geocoding"
-version = "0.1.0"
-dependencies = [
- "lazy_static",
- "moka",
- "reqwest 0.12.28",
- "serde",
- "tokio",
- "tracing",
 ]
 
 [[package]]

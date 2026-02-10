@@ -9,7 +9,7 @@ license = "AGPL-3.0-only"
 # Internal crates
 observing-db = { path = "../observing-db", features = ["processing"] }
 atproto-identity = { path = "../atproto-identity" }
-observing-geocoding = { path = "../observing-geocoding" }
+nominatim-client = { path = "../nominatim-client" }
 observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
 

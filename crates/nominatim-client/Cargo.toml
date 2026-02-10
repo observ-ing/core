@@ -1,8 +1,8 @@
 [package]
-name = "observing-geocoding"
+name = "nominatim-client"
 version = "0.1.0"
 edition = "2021"
-description = "Nominatim reverse geocoding with caching for Observ.ing"
+description = "Nominatim reverse geocoding client with rate limiting and caching"
 license = "AGPL-3.0-only"
 
 [dependencies]

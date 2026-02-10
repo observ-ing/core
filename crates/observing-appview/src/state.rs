@@ -1,4 +1,4 @@
-use observing_geocoding::GeocodingService;
+use nominatim_client::NominatimClient;
 use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
@@ -26,7 +26,7 @@ pub struct AppState {
     pub pool: PgPool,
     pub resolver: Arc<IdentityResolver>,
     pub taxonomy: Arc<TaxonomyClient>,
-    pub geocoding: Arc<GeocodingService>,
+    pub geocoding: Arc<NominatimClient>,
     pub agent: Arc<InternalAgentClient>,
     pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
