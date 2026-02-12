@@ -32,37 +32,37 @@ pub mod aspect_ratio_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Width;
         type Height;
+        type Width;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Width = Unset;
         type Height = Unset;
-    }
-    ///State transition - sets the `width` field to Set
-    pub struct SetWidth<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetWidth<S> {}
-    impl<S: State> State for SetWidth<S> {
-        type Width = Set<members::width>;
-        type Height = S::Height;
+        type Width = Unset;
     }
     ///State transition - sets the `height` field to Set
     pub struct SetHeight<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetHeight<S> {}
     impl<S: State> State for SetHeight<S> {
-        type Width = S::Width;
         type Height = Set<members::height>;
+        type Width = S::Width;
+    }
+    ///State transition - sets the `width` field to Set
+    pub struct SetWidth<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetWidth<S> {}
+    impl<S: State> State for SetWidth<S> {
+        type Height = S::Height;
+        type Width = Set<members::width>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `width` field
-        pub struct width(());
         ///Marker type for the `height` field
         pub struct height(());
+        ///Marker type for the `width` field
+        pub struct width(());
     }
 }
 
@@ -132,8 +132,8 @@ where
 impl<'a, S> AspectRatioBuilder<'a, S>
 where
     S: aspect_ratio_state::State,
-    S::Width: aspect_ratio_state::IsSet,
     S::Height: aspect_ratio_state::IsSet,
+    S::Width: aspect_ratio_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> AspectRatio<'a> {
@@ -1329,51 +1329,51 @@ pub mod occurrence_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type CreatedAt;
         type EventDate;
         type Location;
-        type CreatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type CreatedAt = Unset;
         type EventDate = Unset;
         type Location = Unset;
-        type CreatedAt = Unset;
-    }
-    ///State transition - sets the `event_date` field to Set
-    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventDate<S> {}
-    impl<S: State> State for SetEventDate<S> {
-        type EventDate = Set<members::event_date>;
-        type Location = S::Location;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `location` field to Set
-    pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLocation<S> {}
-    impl<S: State> State for SetLocation<S> {
-        type EventDate = S::EventDate;
-        type Location = Set<members::location>;
-        type CreatedAt = S::CreatedAt;
     }
     ///State transition - sets the `created_at` field to Set
     pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
     impl<S: State> State for SetCreatedAt<S> {
+        type CreatedAt = Set<members::created_at>;
         type EventDate = S::EventDate;
         type Location = S::Location;
-        type CreatedAt = Set<members::created_at>;
+    }
+    ///State transition - sets the `event_date` field to Set
+    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetEventDate<S> {}
+    impl<S: State> State for SetEventDate<S> {
+        type CreatedAt = S::CreatedAt;
+        type EventDate = Set<members::event_date>;
+        type Location = S::Location;
+    }
+    ///State transition - sets the `location` field to Set
+    pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetLocation<S> {}
+    impl<S: State> State for SetLocation<S> {
+        type CreatedAt = S::CreatedAt;
+        type EventDate = S::EventDate;
+        type Location = Set<members::location>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
         ///Marker type for the `event_date` field
         pub struct event_date(());
         ///Marker type for the `location` field
         pub struct location(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
     }
 }
 
@@ -1560,9 +1560,9 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 impl<'a, S> OccurrenceBuilder<'a, S>
 where
     S: occurrence_state::State,
+    S::CreatedAt: occurrence_state::IsSet,
     S::EventDate: occurrence_state::IsSet,
     S::Location: occurrence_state::IsSet,
-    S::CreatedAt: occurrence_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Occurrence<'a> {

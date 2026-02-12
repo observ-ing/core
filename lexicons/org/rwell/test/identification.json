@@ -8,7 +8,7 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "taxonName", "createdAt"],
+        "required": ["subject", "taxon", "createdAt"],
         "properties": {
           "subject": {
             "type": "ref",
@@ -22,61 +22,19 @@
             "maximum": 99,
             "default": 0
           },
-          "taxonName": {
-            "type": "string",
-            "description": "The scientific name being proposed for the observation.",
-            "maxLength": 256
-          },
-          "taxonRank": {
-            "type": "string",
-            "description": "The taxonomic rank of the identification (e.g., species, genus, family).",
-            "knownValues": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
-            "default": "species",
-            "maxLength": 32
+          "taxon": {
+            "type": "ref",
+            "ref": "#taxon",
+            "description": "The taxonomic determination being proposed (Darwin Core Taxon class)."
           },
           "taxonId": {
             "type": "string",
             "description": "[DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source.",
             "maxLength": 64
           },
-          "vernacularName": {
-            "type": "string",
-            "description": "Common name for the taxon in the identifier's language.",
-            "maxLength": 256
-          },
-          "kingdom": {
-            "type": "string",
-            "description": "Taxonomic kingdom (e.g., Animalia, Plantae).",
-            "maxLength": 64
-          },
-          "phylum": {
-            "type": "string",
-            "description": "Taxonomic phylum.",
-            "maxLength": 64
-          },
-          "class": {
-            "type": "string",
-            "description": "Taxonomic class.",
-            "maxLength": 64
-          },
-          "order": {
-            "type": "string",
-            "description": "Taxonomic order.",
-            "maxLength": 64
-          },
-          "family": {
-            "type": "string",
-            "description": "Taxonomic family.",
-            "maxLength": 64
-          },
-          "genus": {
-            "type": "string",
-            "description": "Taxonomic genus.",
-            "maxLength": 64
-          },
           "comment": {
             "type": "string",
-            "description": "Explanation or reasoning for this identification.",
+            "description": "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
             "maxLength": 3000
           },
           "isAgreement": {
@@ -93,8 +51,67 @@
           "createdAt": {
             "type": "string",
             "format": "datetime",
-            "description": "Timestamp when this identification was created."
+            "description": "Timestamp when this identification was created (Darwin Core dwc:dateIdentified)."
           }
+        }
+      }
+    },
+    "taxon": {
+      "type": "object",
+      "description": "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
+      "required": ["scientificName"],
+      "properties": {
+        "scientificName": {
+          "type": "string",
+          "description": "The full scientific name (Darwin Core dwc:scientificName).",
+          "maxLength": 256
+        },
+        "scientificNameAuthorship": {
+          "type": "string",
+          "description": "The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).",
+          "maxLength": 256
+        },
+        "taxonRank": {
+          "type": "string",
+          "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
+          "knownValues": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
+          "default": "species",
+          "maxLength": 32
+        },
+        "vernacularName": {
+          "type": "string",
+          "description": "Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).",
+          "maxLength": 256
+        },
+        "kingdom": {
+          "type": "string",
+          "description": "Taxonomic kingdom (Darwin Core dwc:kingdom).",
+          "maxLength": 64
+        },
+        "phylum": {
+          "type": "string",
+          "description": "Taxonomic phylum (Darwin Core dwc:phylum).",
+          "maxLength": 64
+        },
+        "class": {
+          "type": "string",
+          "description": "Taxonomic class (Darwin Core dwc:class).",
+          "maxLength": 64
+        },
+        "order": {
+          "type": "string",
+          "description": "Taxonomic order (Darwin Core dwc:order).",
+          "maxLength": 64
+        },
+        "family": {
+          "type": "string",
+          "description": "Taxonomic family (Darwin Core dwc:family).",
+          "maxLength": 64
+        },
+        "genus": {
+          "type": "string",
+          "description": "Taxonomic genus (Darwin Core dwc:genus).",
+          "maxLength": 64
         }
       }
     }

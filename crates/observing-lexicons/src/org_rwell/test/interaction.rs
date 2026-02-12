@@ -5,7 +5,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
-/// A subject in an interaction - can reference an existing occurrence or just specify a taxon name.
+/// A subject in an interaction - can reference an existing occurrence or just specify a taxon.
 #[jacquard_derive::lexicon]
 #[derive(
     serde::Serialize,
@@ -19,10 +19,6 @@
 )]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionSubject<'a> {
-    /// Taxonomic kingdom to disambiguate homonyms.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub kingdom: std::option::Option<jacquard_common::CowStr<'a>>,
     /// Reference to an existing occurrence record.
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
@@ -32,10 +28,10 @@ pub struct InteractionSubject<'a> {
     /// Index of the subject within the occurrence (for multi-subject observations).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     pub subject_index: std::option::Option<i64>,
-    /// Scientific name of the organism (for unobserved subjects or to override occurrence ID).
+    /// Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
-    pub taxon_name: std::option::Option<jacquard_common::CowStr<'a>>,
+    pub taxon: std::option::Option<crate::org_rwell::test::identification::Taxon<'a>>,
 }
 
 fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<
@@ -53,7 +49,7 @@ fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::Lexi
                 ::jacquard_lexicon::lexicon::LexUserType::Object(::jacquard_lexicon::lexicon::LexObject {
                     description: Some(
                         ::jacquard_common::CowStr::new_static(
-                            "A subject in an interaction - can reference an existing occurrence or just specify a taxon name.",
+                            "A subject in an interaction - can reference an existing occurrence or just specify a taxon.",
                         ),
                     ),
                     required: None,
@@ -61,25 +57,6 @@ fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::Lexi
                     properties: {
                         #[allow(unused_mut)]
                         let mut map = ::std::collections::BTreeMap::new();
-                        map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("kingdom"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                description: Some(
-                                    ::jacquard_common::CowStr::new_static(
-                                        "Taxonomic kingdom to disambiguate homonyms.",
-                                    ),
-                                ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
-                            }),
-                        );
                         map.insert(
                             ::jacquard_common::smol_str::SmolStr::new_static(
                                 "occurrence",
@@ -105,24 +82,12 @@ fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::Lexi
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "taxonName",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                description: Some(
-                                    ::jacquard_common::CowStr::new_static(
-                                        "Scientific name of the organism (for unobserved subjects or to override occurrence ID).",
-                                    ),
+                            ::jacquard_common::smol_str::SmolStr::new_static("taxon"),
+                            ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
+                                description: None,
+                                r#ref: ::jacquard_common::CowStr::new_static(
+                                    "org.rwell.test.identification#taxon",
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: Some(256usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
                             }),
                         );
                         map
@@ -303,18 +268,6 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
     fn validate(
         &self,
     ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.kingdom {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "kingdom",
-                    ),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.subject_index {
             if *value > 99i64 {
                 return Err(::jacquard_lexicon::validation::ConstraintError::Maximum {
@@ -334,18 +287,6 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
                     ),
                     min: 0i64,
                     actual: *value,
-                });
-            }
-        }
-        if let Some(ref value) = self.taxon_name {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_name",
-                    ),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
                 });
             }
         }
@@ -400,85 +341,85 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SubjectB;
-        type Direction;
-        type CreatedAt;
         type SubjectA;
         type InteractionType;
+        type Direction;
+        type CreatedAt;
+        type SubjectB;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SubjectB = Unset;
-        type Direction = Unset;
-        type CreatedAt = Unset;
         type SubjectA = Unset;
         type InteractionType = Unset;
-    }
-    ///State transition - sets the `subject_b` field to Set
-    pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjectB<S> {}
-    impl<S: State> State for SetSubjectB<S> {
-        type SubjectB = Set<members::subject_b>;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-    }
-    ///State transition - sets the `direction` field to Set
-    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDirection<S> {}
-    impl<S: State> State for SetDirection<S> {
-        type SubjectB = S::SubjectB;
-        type Direction = Set<members::direction>;
-        type CreatedAt = S::CreatedAt;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type SubjectB = S::SubjectB;
-        type Direction = S::Direction;
-        type CreatedAt = Set<members::created_at>;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
+        type Direction = Unset;
+        type CreatedAt = Unset;
+        type SubjectB = Unset;
     }
     ///State transition - sets the `subject_a` field to Set
     pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectA<S> {}
     impl<S: State> State for SetSubjectA<S> {
-        type SubjectB = S::SubjectB;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
         type SubjectA = Set<members::subject_a>;
         type InteractionType = S::InteractionType;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
     }
     ///State transition - sets the `interaction_type` field to Set
     pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetInteractionType<S> {}
     impl<S: State> State for SetInteractionType<S> {
-        type SubjectB = S::SubjectB;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
         type SubjectA = S::SubjectA;
         type InteractionType = Set<members::interaction_type>;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
+    }
+    ///State transition - sets the `direction` field to Set
+    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetDirection<S> {}
+    impl<S: State> State for SetDirection<S> {
+        type SubjectA = S::SubjectA;
+        type InteractionType = S::InteractionType;
+        type Direction = Set<members::direction>;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type SubjectA = S::SubjectA;
+        type InteractionType = S::InteractionType;
+        type Direction = S::Direction;
+        type CreatedAt = Set<members::created_at>;
+        type SubjectB = S::SubjectB;
+    }
+    ///State transition - sets the `subject_b` field to Set
+    pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetSubjectB<S> {}
+    impl<S: State> State for SetSubjectB<S> {
+        type SubjectA = S::SubjectA;
+        type InteractionType = S::InteractionType;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = Set<members::subject_b>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject_b` field
-        pub struct subject_b(());
-        ///Marker type for the `direction` field
-        pub struct direction(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
         ///Marker type for the `subject_a` field
         pub struct subject_a(());
         ///Marker type for the `interaction_type` field
         pub struct interaction_type(());
+        ///Marker type for the `direction` field
+        pub struct direction(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
+        ///Marker type for the `subject_b` field
+        pub struct subject_b(());
     }
 }
 
@@ -652,11 +593,11 @@ where
 impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
-    S::SubjectB: interaction_state::IsSet,
-    S::Direction: interaction_state::IsSet,
-    S::CreatedAt: interaction_state::IsSet,
     S::SubjectA: interaction_state::IsSet,
     S::InteractionType: interaction_state::IsSet,
+    S::Direction: interaction_state::IsSet,
+    S::CreatedAt: interaction_state::IsSet,
+    S::SubjectB: interaction_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Interaction<'a> {

@@ -306,7 +306,7 @@ export async function submitIdentification(data: {
   occurrenceUri: string;
   occurrenceCid: string;
   subjectIndex?: number;
-  taxonName: string;
+  scientificName: string;
   taxonRank?: string;
   comment?: string;
   isAgreement?: boolean;
@@ -441,14 +441,14 @@ export async function submitInteraction(data: {
     occurrenceUri?: string;
     occurrenceCid?: string;
     subjectIndex?: number;
-    taxonName?: string;
+    scientificName?: string;
     kingdom?: string;
   };
   subjectB: {
     occurrenceUri?: string;
     occurrenceCid?: string;
     subjectIndex?: number;
-    taxonName?: string;
+    scientificName?: string;
     kingdom?: string;
   };
   interactionType: string;

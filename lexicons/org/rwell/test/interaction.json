@@ -65,7 +65,7 @@
     },
     "interactionSubject": {
       "type": "object",
-      "description": "A subject in an interaction - can reference an existing occurrence or just specify a taxon name.",
+      "description": "A subject in an interaction - can reference an existing occurrence or just specify a taxon.",
       "properties": {
         "occurrence": {
           "type": "ref",
@@ -79,15 +79,10 @@
           "maximum": 99,
           "default": 0
         },
-        "taxonName": {
-          "type": "string",
-          "description": "Scientific name of the organism (for unobserved subjects or to override occurrence ID).",
-          "maxLength": 256
-        },
-        "kingdom": {
-          "type": "string",
-          "description": "Taxonomic kingdom to disambiguate homonyms.",
-          "maxLength": 64
+        "taxon": {
+          "type": "ref",
+          "ref": "org.rwell.test.identification#taxon",
+          "description": "Taxonomic information for the organism (for unobserved subjects or to specify the taxon)."
         }
       }
     }

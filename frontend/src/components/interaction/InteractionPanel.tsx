@@ -137,10 +137,10 @@ export function InteractionPanel({
           occurrenceUri: observation.uri,
           occurrenceCid: observation.cid,
           subjectIndex: subjectAIndex,
-          taxonName: selectedSubject?.communityId || observation.communityId || observation.scientificName,
+          scientificName: selectedSubject?.communityId || observation.communityId || observation.scientificName,
         },
         subjectB: {
-          taxonName: subjectBTaxon.trim(),
+          scientificName: subjectBTaxon.trim(),
           kingdom: subjectBKingdom || undefined,
         },
         interactionType,

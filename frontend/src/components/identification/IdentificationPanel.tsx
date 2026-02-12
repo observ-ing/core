@@ -74,7 +74,7 @@ export function IdentificationPanel({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         subjectIndex,
-        taxonName: currentId,
+        scientificName: currentId,
         isAgreement: true,
         confidence: "high",
       });
@@ -104,7 +104,7 @@ export function IdentificationPanel({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         subjectIndex: targetSubjectIndex,
-        taxonName: taxonName.trim(),
+        scientificName: taxonName.trim(),
         comment: comment.trim() || undefined,
         confidence,
         isAgreement: false,

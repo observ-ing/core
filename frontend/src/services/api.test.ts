@@ -579,7 +579,7 @@ describe("api", () => {
       const result = await api.submitIdentification({
         occurrenceUri: "at://occ",
         occurrenceCid: "cidocc",
-        taxonName: "Quercus alba",
+        scientificName: "Quercus alba",
         taxonRank: "species",
         isAgreement: true,
         confidence: "high",
@@ -604,7 +604,7 @@ describe("api", () => {
         api.submitIdentification({
           occurrenceUri: "at://occ",
           occurrenceCid: "cid",
-          taxonName: "",
+          scientificName: "",
         })
       ).rejects.toThrow("Missing taxon");
     });

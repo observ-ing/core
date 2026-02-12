@@ -17,7 +17,7 @@ interface IdentificationInput {
   /** Index of the subject within the occurrence (for multi-subject observations) */
   subjectIndex?: number;
   /** The proposed scientific name */
-  taxonName: string;
+  scientificName: string;
   /** Taxonomic rank */
   taxonRank?: TaxonRank;
   /** Comment explaining the identification */
@@ -71,8 +71,10 @@ export class IdentificationService {
         cid: input.occurrenceCid,
       },
       subjectIndex: input.subjectIndex ?? 0,
-      taxonName: input.taxonName,
-      taxonRank: input.taxonRank || "species",
+      taxon: {
+        scientificName: input.scientificName,
+        taxonRank: input.taxonRank || "species",
+      },
       comment: input.comment,
       isAgreement: input.isAgreement || false,
       confidence: input.confidence || "medium",
@@ -104,7 +106,7 @@ export class IdentificationService {
       occurrenceUri,
       occurrenceCid,
       subjectIndex,
-      taxonName: currentTaxonName,
+      scientificName: currentTaxonName,
       isAgreement: true,
       confidence: "high",
     });
@@ -128,7 +130,7 @@ export class IdentificationService {
       occurrenceUri,
       occurrenceCid,
       subjectIndex: options.subjectIndex ?? 0,
-      taxonName,
+      scientificName: taxonName,
       taxonRank: options.taxonRank,
       comment: options.comment,
       isAgreement: false,
@@ -179,8 +181,7 @@ export class IdentificationService {
     const existingRecord = existing.data.value as {
       $type: string;
       subject: { uri: string; cid: string };
-      taxonName: string;
-      taxonRank?: string;
+      taxon: { scientificName: string; taxonRank?: string };
       comment?: string;
       isAgreement?: boolean;
       confidence?: string;
@@ -190,8 +191,11 @@ export class IdentificationService {
     // Merge updates
     const updatedRecord = {
       ...existingRecord,
-      taxonName: updates.taxonName || existingRecord.taxonName,
-      taxonRank: updates.taxonRank || existingRecord.taxonRank,
+      taxon: {
+        ...existingRecord.taxon,
+        scientificName: updates.scientificName || existingRecord.taxon.scientificName,
+        taxonRank: updates.taxonRank || existingRecord.taxon.taxonRank,
+      },
       comment: updates.comment !== undefined ? updates.comment : existingRecord.comment,
       confidence: updates.confidence || existingRecord.confidence,
     };
@@ -237,12 +241,12 @@ export class IdentificationService {
       throw new Error("Occurrence CID is required");
     }
 
-    if (!input.taxonName || input.taxonName.trim().length === 0) {
-      throw new Error("Taxon name is required");
+    if (!input.scientificName || input.scientificName.trim().length === 0) {
+      throw new Error("Scientific name is required");
     }
 
-    if (input.taxonName.length > 256) {
-      throw new Error("Taxon name too long (max 256 characters)");
+    if (input.scientificName.length > 256) {
+      throw new Error("Scientific name too long (max 256 characters)");
     }
 
     if (input.comment && input.comment.length > 3000) {

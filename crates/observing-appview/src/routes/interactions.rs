@@ -6,6 +6,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
 use observing_db::types::{Confidence, InteractionDirection};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use observing_lexicons::org_rwell::test::identification::Taxon;
 use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionSubject};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -41,7 +42,7 @@ pub struct InteractionSubjectRequest {
     #[ts(optional)]
     subject_index: Option<i32>,
     #[ts(optional)]
-    taxon_name: Option<String>,
+    scientific_name: Option<String>,
     #[ts(optional)]
     kingdom: Option<String>,
 }
@@ -80,11 +81,16 @@ fn build_interaction_subject(
         _ => None,
     };
 
-    Ok(InteractionSubject {
+    let taxon = req.scientific_name.as_deref().map(|name| Taxon {
+        scientific_name: name.into(),
         kingdom: req.kingdom.as_deref().map(Into::into),
+        ..Default::default()
+    });
+
+    Ok(InteractionSubject {
         occurrence,
         subject_index: req.subject_index.map(|i| i as i64),
-        taxon_name: req.taxon_name.as_deref().map(Into::into),
+        taxon,
         extra_data: None,
     })
 }

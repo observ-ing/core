@@ -16,7 +16,8 @@
 import { AtpAgent } from "@atproto/api";
 
 const INAT_API = "https://api.inaturalist.org/v1";
-const COLLECTION = "org.rwell.test.occurrence";
+const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
+const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
 
 const LICENSE_MAP: Record<string, string> = {
   "cc0": "CC0-1.0",
@@ -185,9 +186,9 @@ async function main() {
       ? LICENSE_MAP[obs.license_code]
       : undefined;
 
-    // Build the AT Protocol record
-    const record: Record<string, any> = {
-      $type: COLLECTION,
+    // Build the occurrence record (no taxonomy — that goes on identification)
+    const occurrenceRecord: Record<string, any> = {
+      $type: OCCURRENCE_COLLECTION,
       eventDate: new Date(eventDate).toISOString(),
       location: {
         decimalLatitude: String(lat),
@@ -200,33 +201,58 @@ async function main() {
       createdAt: new Date(obs.created_at).toISOString(),
     };
 
-    if (taxon?.name) record["scientificName"] = taxon.name;
-    if (taxon?.rank) record["taxonRank"] = taxon.rank;
-    if (taxon?.id) record["taxonId"] = `inat:${taxon.id}`;
-    if (taxon?.preferred_common_name)
-      record["vernacularName"] = taxon.preferred_common_name;
-    if (taxonomy["kingdom"]) record["kingdom"] = taxonomy["kingdom"];
-    if (taxonomy["phylum"]) record["phylum"] = taxonomy["phylum"];
-    if (taxonomy["class"]) record["class"] = taxonomy["class"];
-    if (taxonomy["order"]) record["order"] = taxonomy["order"];
-    if (taxonomy["family"]) record["family"] = taxonomy["family"];
-    if (taxonomy["genus"]) record["genus"] = taxonomy["genus"];
-    if (obs.place_guess) record["verbatimLocality"] = obs.place_guess;
-    if (obs.description) record["notes"] = obs.description;
-    if (license) record["license"] = license;
-    if (blobs.length > 0) record["blobs"] = blobs;
+    if (obs.place_guess) occurrenceRecord["verbatimLocality"] = obs.place_guess;
+    if (obs.description) occurrenceRecord["notes"] = obs.description;
+    if (license) occurrenceRecord["license"] = license;
+    if (blobs.length > 0) occurrenceRecord["blobs"] = blobs;
 
-    // Create the record on the PDS
+    // Create the occurrence record on the PDS
     try {
       const createResp = await agent.com.atproto.repo.createRecord({
         repo: did,
-        collection: COLLECTION,
-        record,
+        collection: OCCURRENCE_COLLECTION,
+        record: occurrenceRecord,
       });
       created++;
       console.log(
-        `  Created: ${taxon?.name || "Unknown"} @ ${obs.place_guess || "Unknown"} → ${createResp.data.uri}`,
+        `  Created occurrence: ${taxon?.name || "Unknown"} @ ${obs.place_guess || "Unknown"} → ${createResp.data.uri}`,
       );
+
+      // Create an identification record if we have taxon info
+      if (taxon?.name) {
+        const taxonObj: Record<string, string> = {
+          scientificName: taxon.name,
+        };
+        if (taxon.rank) taxonObj["taxonRank"] = taxon.rank;
+        if (taxon.preferred_common_name)
+          taxonObj["vernacularName"] = taxon.preferred_common_name;
+        if (taxonomy["kingdom"]) taxonObj["kingdom"] = taxonomy["kingdom"];
+        if (taxonomy["phylum"]) taxonObj["phylum"] = taxonomy["phylum"];
+        if (taxonomy["class"]) taxonObj["class"] = taxonomy["class"];
+        if (taxonomy["order"]) taxonObj["order"] = taxonomy["order"];
+        if (taxonomy["family"]) taxonObj["family"] = taxonomy["family"];
+        if (taxonomy["genus"]) taxonObj["genus"] = taxonomy["genus"];
+
+        const identRecord = {
+          $type: IDENTIFICATION_COLLECTION,
+          subject: {
+            uri: createResp.data.uri,
+            cid: createResp.data.cid,
+          },
+          subjectIndex: 0,
+          taxon: taxonObj,
+          isAgreement: false,
+          confidence: "high",
+          createdAt: new Date(obs.created_at).toISOString(),
+        };
+
+        await agent.com.atproto.repo.createRecord({
+          repo: did,
+          collection: IDENTIFICATION_COLLECTION,
+          record: identRecord,
+        });
+        console.log(`  Created identification: ${taxon.name}`);
+      }
     } catch (err: any) {
       console.error(`  Error creating record for obs ${obs.id}:`, err.message);
     }

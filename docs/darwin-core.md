@@ -36,18 +36,29 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 }
 ```
 
-> **Note:** Taxonomy fields (`scientificName`, `taxonId`, `taxonRank`, `vernacularName`, `kingdom`, `phylum`, `class`, `order`, `family`, `genus`) are deprecated in occurrence records. Species identification should be provided via separate `org.rwell.test.identification` records, which allows users to submit observations without knowing the species and enables community identification.
+> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `org.rwell.test.identification` records, which allows users to submit observations without knowing the species and enables community identification.
 
 ### Fields
 
 | Observ.ing Field | GBIF / Darwin Core | Status | Description |
 |--------------|-------------------|--------|-------------|
-| `scientificName` | dwc:scientificName | ⚠️ | **DEPRECATED** - Use identification records instead. Optional legacy field. |
 | `eventDate` | dwc:eventDate | ✅ | Date-time of the occurrence (ISO 8601) |
 | `location.decimalLatitude` | dwc:decimalLatitude | ✅ | Geographic latitude in decimal degrees (stored as string) |
 | `location.decimalLongitude` | dwc:decimalLongitude | ✅ | Geographic longitude in decimal degrees (stored as string) |
 | `location.coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | ✅ | Uncertainty radius in meters |
 | `location.geodeticDatum` | dwc:geodeticDatum | ✅ | Spatial reference system (defaults to WGS84) |
+| `location.continent` | dwc:continent | ✅ | Continent name |
+| `location.country` | dwc:country | ✅ | Country name |
+| `location.countryCode` | dwc:countryCode | ✅ | ISO 3166-1 alpha-2 country code |
+| `location.stateProvince` | dwc:stateProvince | ✅ | State/province name |
+| `location.county` | dwc:county | ✅ | County name |
+| `location.municipality` | dwc:municipality | ✅ | Municipality name |
+| `location.locality` | dwc:locality | ✅ | Specific locality description |
+| `location.waterBody` | dwc:waterBody | ✅ | Name of water body |
+| `location.minimumElevationInMeters` | dwc:minimumElevationInMeters | ✅ | Lower elevation bound |
+| `location.maximumElevationInMeters` | dwc:maximumElevationInMeters | ✅ | Upper elevation bound |
+| `location.minimumDepthInMeters` | dwc:minimumDepthInMeters | ✅ | Lower depth bound |
+| `location.maximumDepthInMeters` | dwc:maximumDepthInMeters | ✅ | Upper depth bound |
 | `verbatimLocality` | dwc:verbatimLocality | ✅ | Original textual description of the place |
 | `notes` | dwc:occurrenceRemarks | ✅ | Notes about the occurrence |
 | `blobs` | dwc:associatedMedia | ✅ | Array of image references |
@@ -66,36 +77,13 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | — | dwc:degreeOfEstablishment | ❌ | Degree of establishment in location |
 | — | dwc:pathway | ❌ | Means of introduction |
 | — | dwc:habitat | ❌ | Habitat description |
-| `location.continent` | dwc:continent | ✅ | Continent name |
-| `location.country` | dwc:country | ✅ | Country name |
-| `location.countryCode` | dwc:countryCode | ✅ | ISO 3166-1 alpha-2 country code |
-| `location.stateProvince` | dwc:stateProvince | ✅ | State/province name |
-| `location.county` | dwc:county | ✅ | County name |
-| `location.municipality` | dwc:municipality | ✅ | Municipality name |
-| `location.locality` | dwc:locality | ✅ | Specific locality description |
-| `location.waterBody` | dwc:waterBody | ✅ | Name of water body |
-| `location.minimumElevationInMeters` | dwc:minimumElevationInMeters | ✅ | Lower elevation bound |
-| `location.maximumElevationInMeters` | dwc:maximumElevationInMeters | ✅ | Upper elevation bound |
-| `location.minimumDepthInMeters` | dwc:minimumDepthInMeters | ✅ | Lower depth bound |
-| `location.maximumDepthInMeters` | dwc:maximumDepthInMeters | ✅ | Upper depth bound |
-| `kingdom` | dwc:kingdom | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `phylum` | dwc:phylum | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `class` | dwc:class | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `order` | dwc:order | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `family` | dwc:family | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `genus` | dwc:genus | ⚠️ | **DEPRECATED** - Use identification records instead |
-| — | dwc:specificEpithet | ❌ | Species epithet |
-| — | dwc:infraspecificEpithet | ❌ | Subspecies/variety epithet |
-| `vernacularName` | dwc:vernacularName | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `taxonId` | dwc:taxonID | ⚠️ | **DEPRECATED** - Use identification records instead |
-| `taxonRank` | dwc:taxonRank | ⚠️ | **DEPRECATED** - Use identification records instead |
 | — | dwc:samplingProtocol | ❌ | Method used for sampling |
 | — | dwc:samplingEffort | ❌ | Effort expended during sampling |
 | — | dwc:eventRemarks | ❌ | Notes about the sampling event |
 
 ## org.rwell.test.identification
 
-A taxonomic determination (dwc:Identification) for an occurrence.
+A taxonomic determination (dwc:Identification) for an occurrence. The identification record contains both Identification-class fields and an embedded Taxon object (dwc:Taxon) following the same structure as [GBIF's Identification History extension](https://rs.gbif.org/extension/dwc/identification.xml).
 
 ### Example
 
@@ -105,16 +93,18 @@ A taxonomic determination (dwc:Identification) for an occurrence.
     "uri": "at://did:plc:abc.../org.rwell.test.occurrence/123",
     "cid": "bafyrei..."
   },
-  "taxonName": "Eschscholzia californica",
-  "taxonRank": "species",
-  "taxonId": "gbif:3084746",
-  "vernacularName": "California Poppy",
-  "kingdom": "Plantae",
-  "phylum": "Tracheophyta",
-  "class": "Magnoliopsida",
-  "order": "Ranunculales",
-  "family": "Papaveraceae",
-  "genus": "Eschscholzia",
+  "taxon": {
+    "scientificName": "Eschscholzia californica",
+    "scientificNameAuthorship": "Cham.",
+    "taxonRank": "species",
+    "vernacularName": "California Poppy",
+    "kingdom": "Plantae",
+    "phylum": "Tracheophyta",
+    "class": "Magnoliopsida",
+    "order": "Ranunculales",
+    "family": "Papaveraceae",
+    "genus": "Eschscholzia"
+  },
   "comment": "Distinctive orange petals and feathery leaves",
   "isAgreement": false,
   "confidence": "high",
@@ -122,37 +112,46 @@ A taxonomic determination (dwc:Identification) for an occurrence.
 }
 ```
 
-### Fields
+### Identification Fields
 
 | Observ.ing Field | GBIF / Darwin Core | Status | Description |
 |--------------|-------------------|--------|-------------|
-| `taxonName` | dwc:scientificName | ✅ | The scientific name being proposed |
-| `taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
-| `comment` | dwc:identificationRemarks | ✅ | Notes about the identification |
-| `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made |
 | `subject` | — | ✅ | AT Protocol strong reference to the occurrence (Observ.ing-specific) |
 | `subjectIndex` | — | ✅ | Index when multiple organisms in one observation (Observ.ing-specific) |
+| `comment` | dwc:identificationRemarks | ✅ | Notes about the identification |
 | `isAgreement` | — | ✅ | Whether ID agrees with community consensus (Observ.ing-specific) |
 | `confidence` | — | ✅ | Identifier's confidence level: low/medium/high (Observ.ing-specific) |
+| `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made |
 | (AT Protocol URI) | dwc:identificationID | ⚠️ | AT URI serves as identifier |
 | (DID) | dwc:identifiedBy | ⚠️ | Derived from AT Protocol identity |
 | — | dwc:identificationQualifier | ❌ | Qualifier like "cf." or "aff." |
-| `taxonId` | dwc:taxonID | ✅ | External taxon ID (e.g., gbif:2878688) |
-| — | dwc:scientificNameAuthorship | ❌ | Authorship of the scientific name |
 | — | dwc:identificationVerificationStatus | ❌ | Verification status |
 | — | dwc:identificationReferences | ❌ | References used for identification |
 | — | dwc:typeStatus | ❌ | Type specimen status |
-| `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom |
-| `phylum` | dwc:phylum | ✅ | Taxonomic phylum |
-| `class` | dwc:class | ✅ | Taxonomic class |
-| `order` | dwc:order | ✅ | Taxonomic order |
-| `family` | dwc:family | ✅ | Taxonomic family |
-| `genus` | dwc:genus | ✅ | Taxonomic genus |
-| `vernacularName` | dwc:vernacularName | ✅ | Common name |
+
+### Taxon Fields (embedded `#taxon` object)
+
+| Observ.ing Field | GBIF / Darwin Core | Status | Description |
+|--------------|-------------------|--------|-------------|
+| `taxon.scientificName` | dwc:scientificName | ✅ | The full scientific name |
+| `taxon.scientificNameAuthorship` | dwc:scientificNameAuthorship | ✅ | Authorship of the scientific name |
+| `taxon.taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
+| `taxon.vernacularName` | dwc:vernacularName | ✅ | Common name |
+| `taxon.kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom |
+| `taxon.phylum` | dwc:phylum | ✅ | Taxonomic phylum |
+| `taxon.class` | dwc:class | ✅ | Taxonomic class |
+| `taxon.order` | dwc:order | ✅ | Taxonomic order |
+| `taxon.family` | dwc:family | ✅ | Taxonomic family |
+| `taxon.genus` | dwc:genus | ✅ | Taxonomic genus |
+| `taxonId` | dwc:taxonID | ⚠️ | DEPRECATED — External taxon ID (e.g., gbif:2878688) |
+| — | dwc:specificEpithet | ❌ | Species epithet |
+| — | dwc:infraspecificEpithet | ❌ | Subspecies/variety epithet |
 
 ## References
 
 - [Darwin Core Quick Reference](https://dwc.tdwg.org/terms/)
 - [Darwin Core Occurrence](https://dwc.tdwg.org/terms/#occurrence)
-- [Darwin Core Identification](https://dwc.tdwg.org/terms/#identification)
+- [Darwin Core Identification](https://dwc.tdwg.org/list/#identification)
+- [Darwin Core Taxon](https://dwc.tdwg.org/list/#taxon)
+- [GBIF Identification History Extension](https://rs.gbif.org/extension/dwc/identification.xml)
 - [GBIF Occurrence Download Fields](https://www.gbif.org/developer/occurrence)

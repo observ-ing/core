@@ -21,8 +21,7 @@ describe('IdentificationService', () => {
                 value: {
                   $type: 'org.rwell.test.identification',
                   subject: { uri: 'at://did:plc:test/org.rwell.test.occurrence/1', cid: 'subject-cid' },
-                  taxonName: 'Quercus alba',
-                  taxonRank: 'species',
+                  taxon: { scientificName: 'Quercus alba', taxonRank: 'species' },
                   createdAt: '2024-01-01T00:00:00Z'
                 }
               }
@@ -44,7 +43,7 @@ describe('IdentificationService', () => {
     const validInput = {
       occurrenceUri: 'at://did:plc:test/org.rwell.test.occurrence/1',
       occurrenceCid: 'bafyrei123',
-      taxonName: 'Quercus alba'
+      scientificName: 'Quercus alba'
     }
 
     describe('occurrenceUri validation', () => {
@@ -87,41 +86,41 @@ describe('IdentificationService', () => {
       })
     })
 
-    describe('taxonName validation', () => {
-      it('throws if taxonName is missing', async () => {
+    describe('scientificName validation', () => {
+      it('throws if scientificName is missing', async () => {
         await expect(
-          service.identify({ ...validInput, taxonName: '' })
-        ).rejects.toThrow('Taxon name is required')
+          service.identify({ ...validInput, scientificName: '' })
+        ).rejects.toThrow('Scientific name is required')
       })
 
-      it('throws if taxonName is whitespace only', async () => {
+      it('throws if scientificName is whitespace only', async () => {
         await expect(
-          service.identify({ ...validInput, taxonName: '   ' })
-        ).rejects.toThrow('Taxon name is required')
+          service.identify({ ...validInput, scientificName: '   ' })
+        ).rejects.toThrow('Scientific name is required')
       })
 
-      it('throws if taxonName exceeds 256 characters', async () => {
+      it('throws if scientificName exceeds 256 characters', async () => {
         const longName = 'A'.repeat(257)
         await expect(
-          service.identify({ ...validInput, taxonName: longName })
-        ).rejects.toThrow('Taxon name too long (max 256 characters)')
+          service.identify({ ...validInput, scientificName: longName })
+        ).rejects.toThrow('Scientific name too long (max 256 characters)')
       })
 
-      it('accepts taxonName at exactly 256 characters', async () => {
+      it('accepts scientificName at exactly 256 characters', async () => {
         const maxName = 'A'.repeat(256)
-        await service.identify({ ...validInput, taxonName: maxName })
+        await service.identify({ ...validInput, scientificName: maxName })
 
         expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled()
       })
 
       it('accepts typical species name', async () => {
-        await service.identify({ ...validInput, taxonName: 'Homo sapiens' })
+        await service.identify({ ...validInput, scientificName: 'Homo sapiens' })
 
         expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled()
       })
 
       it('accepts subspecies with three parts', async () => {
-        await service.identify({ ...validInput, taxonName: 'Canis lupus familiaris' })
+        await service.identify({ ...validInput, scientificName: 'Canis lupus familiaris' })
 
         expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled()
       })
@@ -159,7 +158,7 @@ describe('IdentificationService', () => {
         noSessionService.identify({
           occurrenceUri: 'at://did:plc:test/org.rwell.test.occurrence/1',
           occurrenceCid: 'bafyrei123',
-          taxonName: 'Quercus alba'
+          scientificName: 'Quercus alba'
         })
       ).rejects.toThrow('Not logged in')
     })
@@ -168,7 +167,7 @@ describe('IdentificationService', () => {
       const result = await service.identify({
         occurrenceUri: 'at://did:plc:test/org.rwell.test.occurrence/1',
         occurrenceCid: 'bafyrei123',
-        taxonName: 'Quercus alba'
+        scientificName: 'Quercus alba'
       })
 
       expect(result).toEqual({
@@ -181,7 +180,7 @@ describe('IdentificationService', () => {
       await service.identify({
         occurrenceUri: 'at://did:plc:test/org.rwell.test.occurrence/1',
         occurrenceCid: 'bafyrei123',
-        taxonName: 'Quercus alba',
+        scientificName: 'Quercus alba',
         taxonRank: 'species',
         comment: 'Distinctive bark pattern',
         isAgreement: true,
@@ -198,8 +197,10 @@ describe('IdentificationService', () => {
               uri: 'at://did:plc:test/org.rwell.test.occurrence/1',
               cid: 'bafyrei123'
             },
-            taxonName: 'Quercus alba',
-            taxonRank: 'species',
+            taxon: {
+              scientificName: 'Quercus alba',
+              taxonRank: 'species',
+            },
             comment: 'Distinctive bark pattern',
             isAgreement: true,
             confidence: 'high'
@@ -212,13 +213,15 @@ describe('IdentificationService', () => {
       await service.identify({
         occurrenceUri: 'at://did:plc:test/org.rwell.test.occurrence/1',
         occurrenceCid: 'bafyrei123',
-        taxonName: 'Quercus alba'
+        scientificName: 'Quercus alba'
       })
 
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxonRank: 'species', // default
+            taxon: expect.objectContaining({
+              taxonRank: 'species', // default
+            }),
             isAgreement: false, // default
             confidence: 'medium' // default
           })
@@ -238,7 +241,9 @@ describe('IdentificationService', () => {
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxonName: 'Quercus alba',
+            taxon: expect.objectContaining({
+              scientificName: 'Quercus alba',
+            }),
             isAgreement: true,
             confidence: 'high'
           })
@@ -258,7 +263,9 @@ describe('IdentificationService', () => {
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxonName: 'Quercus rubra',
+            taxon: expect.objectContaining({
+              scientificName: 'Quercus rubra',
+            }),
             isAgreement: false
           })
         })
@@ -280,8 +287,10 @@ describe('IdentificationService', () => {
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxonName: 'Quercus rubra',
-            taxonRank: 'species',
+            taxon: expect.objectContaining({
+              scientificName: 'Quercus rubra',
+              taxonRank: 'species',
+            }),
             comment: 'Red oak based on leaf shape',
             confidence: 'high'
           })
@@ -318,7 +327,7 @@ describe('IdentificationService', () => {
 
       await expect(
         noSessionService.update('at://did:plc:test/org.rwell.test.identification/abc123', {
-          taxonName: 'Quercus rubra'
+          scientificName: 'Quercus rubra'
         })
       ).rejects.toThrow('Not logged in')
     })
@@ -326,7 +335,7 @@ describe('IdentificationService', () => {
     it('fetches existing record and updates it', async () => {
       const result = await service.update(
         'at://did:plc:test/org.rwell.test.identification/abc123',
-        { taxonName: 'Quercus rubra' }
+        { scientificName: 'Quercus rubra' }
       )
 
       expect(mockAgent.com!.atproto.repo.getRecord).toHaveBeenCalledWith({
@@ -340,7 +349,9 @@ describe('IdentificationService', () => {
           collection: 'org.rwell.test.identification',
           rkey: 'abc123',
           record: expect.objectContaining({
-            taxonName: 'Quercus rubra'
+            taxon: expect.objectContaining({
+              scientificName: 'Quercus rubra'
+            })
           })
         })
       )
@@ -359,8 +370,10 @@ describe('IdentificationService', () => {
       expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxonName: 'Quercus alba', // preserved from existing
-            taxonRank: 'species', // preserved from existing
+            taxon: expect.objectContaining({
+              scientificName: 'Quercus alba', // preserved from existing
+              taxonRank: 'species', // preserved from existing
+            }),
             comment: 'New comment' // updated
           })
         })
@@ -430,8 +443,8 @@ describe('IdentificationService', () => {
 
     it('returns records from response', async () => {
       const mockRecords = [
-        { uri: 'at://test/1', cid: 'cid1', value: { taxonName: 'Species A' } },
-        { uri: 'at://test/2', cid: 'cid2', value: { taxonName: 'Species B' } }
+        { uri: 'at://test/1', cid: 'cid1', value: { taxon: { scientificName: 'Species A' } } },
+        { uri: 'at://test/2', cid: 'cid2', value: { taxon: { scientificName: 'Species B' } } }
       ]
       vi.mocked(mockAgent.com!.atproto.repo.listRecords).mockResolvedValueOnce({
         data: { records: mockRecords }

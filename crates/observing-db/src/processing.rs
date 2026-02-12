@@ -152,19 +152,19 @@ pub fn identification_from_json(
         subject_uri: record.subject.uri.to_string(),
         subject_cid: record.subject.cid.to_string(),
         subject_index: record.subject_index.unwrap_or(0) as i32,
-        scientific_name: record.taxon_name.to_string(),
-        taxon_rank: record.taxon_rank.map(|s| s.to_string()),
+        scientific_name: record.taxon.scientific_name.to_string(),
+        taxon_rank: record.taxon.taxon_rank.map(|s| s.to_string()),
         taxon_id: record.taxon_id.map(|s| s.to_string()),
         identification_remarks: record.comment.map(|s| s.to_string()),
         is_agreement: record.is_agreement.unwrap_or(false),
         date_identified,
-        vernacular_name: record.vernacular_name.map(|s| s.to_string()),
-        kingdom: record.kingdom.map(|s| s.to_string()),
-        phylum: record.phylum.map(|s| s.to_string()),
-        class: record.class.map(|s| s.to_string()),
-        order: record.order.map(|s| s.to_string()),
-        family: record.family.map(|s| s.to_string()),
-        genus: record.genus.map(|s| s.to_string()),
+        vernacular_name: record.taxon.vernacular_name.map(|s| s.to_string()),
+        kingdom: record.taxon.kingdom.map(|s| s.to_string()),
+        phylum: record.taxon.phylum.map(|s| s.to_string()),
+        class: record.taxon.class.map(|s| s.to_string()),
+        order: record.taxon.order.map(|s| s.to_string()),
+        family: record.taxon.family.map(|s| s.to_string()),
+        genus: record.taxon.genus.map(|s| s.to_string()),
         confidence: record.confidence.map(|s| s.to_string()),
     })
 }
@@ -226,8 +226,8 @@ pub fn interaction_from_json(
             .as_ref()
             .map(|o| o.cid.to_string()),
         subject_a_subject_index: record.subject_a.subject_index.unwrap_or(0) as i32,
-        subject_a_taxon_name: record.subject_a.taxon_name.as_ref().map(|s| s.to_string()),
-        subject_a_kingdom: record.subject_a.kingdom.as_ref().map(|s| s.to_string()),
+        subject_a_taxon_name: record.subject_a.taxon.as_ref().map(|t| t.scientific_name.to_string()),
+        subject_a_kingdom: record.subject_a.taxon.as_ref().and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
         subject_b_occurrence_uri: record
             .subject_b
             .occurrence
@@ -239,8 +239,8 @@ pub fn interaction_from_json(
             .as_ref()
             .map(|o| o.cid.to_string()),
         subject_b_subject_index: record.subject_b.subject_index.unwrap_or(0) as i32,
-        subject_b_taxon_name: record.subject_b.taxon_name.as_ref().map(|s| s.to_string()),
-        subject_b_kingdom: record.subject_b.kingdom.as_ref().map(|s| s.to_string()),
+        subject_b_taxon_name: record.subject_b.taxon.as_ref().map(|t| t.scientific_name.to_string()),
+        subject_b_kingdom: record.subject_b.taxon.as_ref().and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
         interaction_type: record.interaction_type.as_ref().to_string(),
         direction: record.direction.to_string(),
         confidence: record.confidence.map(|s| s.to_string()),

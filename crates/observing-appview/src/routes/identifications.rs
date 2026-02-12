@@ -6,7 +6,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
 use observing_db::types::Confidence;
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
-use observing_lexicons::org_rwell::test::identification::Identification;
+use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
@@ -46,7 +46,7 @@ pub struct CreateIdentificationRequest {
     occurrence_cid: String,
     #[ts(optional)]
     subject_index: Option<i32>,
-    taxon_name: String,
+    scientific_name: String,
     #[ts(optional)]
     taxon_rank: Option<String>,
     #[ts(optional)]
@@ -66,9 +66,9 @@ pub async fn create_identification(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.taxon_name.is_empty() || body.taxon_name.len() > 256 {
+    if body.scientific_name.is_empty() || body.scientific_name.len() > 256 {
         return Err(AppError::BadRequest(
-            "Taxon name must be 1-256 characters".into(),
+            "Scientific name must be 1-256 characters".into(),
         ));
     }
 
@@ -83,7 +83,7 @@ pub async fn create_identification(
     let mut family = None;
     let mut genus = None;
 
-    if let Some(validation) = state.taxonomy.validate(&body.taxon_name).await {
+    if let Some(validation) = state.taxonomy.validate(&body.scientific_name).await {
         if let Some(ref t) = validation.taxon {
             taxon_id = Some(t.id.clone());
             if taxon_rank.is_none() {
@@ -110,23 +110,28 @@ pub async fn create_identification(
         )
         .build();
 
+    let taxon = Taxon {
+        scientific_name: (&*body.scientific_name).into(),
+        taxon_rank: taxon_rank.as_deref().map(Into::into),
+        vernacular_name: vernacular_name.as_deref().map(Into::into),
+        kingdom: kingdom.as_deref().map(Into::into),
+        phylum: phylum.as_deref().map(Into::into),
+        class: class.as_deref().map(Into::into),
+        order: order.as_deref().map(Into::into),
+        family: family.as_deref().map(Into::into),
+        genus: genus.as_deref().map(Into::into),
+        ..Default::default()
+    };
+
     let record = Identification::new()
-        .taxon_name(&body.taxon_name)
+        .taxon(taxon)
         .created_at(Datetime::now())
         .subject(subject)
         .subject_index(body.subject_index.map(|i| i as i64))
         .is_agreement(body.is_agreement.unwrap_or(false))
-        .maybe_taxon_rank(taxon_rank.as_deref().map(Into::into))
         .maybe_comment(body.comment.as_deref().map(Into::into))
         .maybe_confidence(body.confidence.as_deref().map(Into::into))
         .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
-        .maybe_vernacular_name(vernacular_name.as_deref().map(Into::into))
-        .maybe_kingdom(kingdom.as_deref().map(Into::into))
-        .maybe_phylum(phylum.as_deref().map(Into::into))
-        .maybe_class(class.as_deref().map(Into::into))
-        .maybe_order(order.as_deref().map(Into::into))
-        .maybe_family(family.as_deref().map(Into::into))
-        .maybe_genus(genus.as_deref().map(Into::into))
         .build();
 
     let mut record_value =
