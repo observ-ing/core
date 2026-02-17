@@ -8,10 +8,6 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     pub media_proxy_url: String,
     pub taxonomy_service_url: String,
-    /// URL of the TypeScript appview for internal agent RPC (transitional)
-    pub ts_appview_url: String,
-    /// Optional secret for internal agent RPC
-    pub internal_secret: Option<String>,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
 }
@@ -66,11 +62,6 @@ impl Config {
         let taxonomy_service_url = env::var("TAXONOMY_SERVICE_URL")
             .unwrap_or_else(|_| "http://localhost:3003".to_string());
 
-        let ts_appview_url =
-            env::var("TS_APPVIEW_URL").unwrap_or_else(|_| "http://localhost:3000".to_string());
-
-        let internal_secret = env::var("INTERNAL_SECRET").ok();
-
         let public_url = env::var("PUBLIC_URL").ok();
 
         Self {
@@ -79,8 +70,6 @@ impl Config {
             cors_origins,
             media_proxy_url,
             taxonomy_service_url,
-            ts_appview_url,
-            internal_secret,
             public_url,
         }
     }

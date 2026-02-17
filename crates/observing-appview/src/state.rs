@@ -3,7 +3,6 @@ use nominatim_client::NominatimClient;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
-use crate::atproto::InternalAgentClient;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
 use crate::taxonomy_client::TaxonomyClient;
@@ -27,7 +26,6 @@ pub struct AppState {
     pub resolver: Arc<IdentityResolver>,
     pub taxonomy: Arc<TaxonomyClient>,
     pub geocoding: Arc<NominatimClient>,
-    pub agent: Arc<InternalAgentClient>,
     pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
     pub public_url: Option<String>,

@@ -1,4 +1,3 @@
-mod atproto;
 mod auth;
 mod config;
 mod enrichment;
@@ -54,10 +53,6 @@ async fn main() {
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
         geocoding: Arc::new(nominatim_client::NominatimClient::new()),
-        agent: Arc::new(atproto::InternalAgentClient::new(
-            &config.ts_appview_url,
-            config.internal_secret.clone(),
-        )),
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
         public_url: config.public_url.clone(),
