@@ -320,6 +320,9 @@ pub struct CreateOccurrenceRequest {
 #[ts(export, export_to = "bindings/")]
 pub struct ImageUpload {
     data: String, // base64
+    // Deserialized from frontend but not sent to PDS — atrium's upload_blob
+    // uses */* encoding and the PDS infers the MIME type from the bytes.
+    #[allow(dead_code)]
     mime_type: String,
 }
 
@@ -337,18 +340,34 @@ pub async fn create_occurrence(
         return Err(AppError::BadRequest("Invalid coordinates".into()));
     }
 
+    // Restore OAuth session for AT Protocol operations
+    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
+        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
+    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
+        tracing::warn!(error = %e, "Failed to restore OAuth session");
+        AppError::Unauthorized
+    })?;
+    let agent = atrium_api::agent::Agent::new(session);
+
     // Upload blobs
     let mut blobs = Vec::new();
     if let Some(images) = &body.images {
+        use base64::Engine;
         for img in images {
-            let blob_resp = state
-                .agent
-                .upload_blob(&user.did, &img.data, &img.mime_type)
+            let bytes = base64::engine::general_purpose::STANDARD
+                .decode(&img.data)
+                .map_err(|e| AppError::BadRequest(format!("Invalid base64 image data: {e}")))?;
+            let blob_resp = agent
+                .api
+                .com
+                .atproto
+                .repo
+                .upload_blob(bytes)
                 .await
-                .map_err(AppError::Internal)?;
-            if let Some(blob) = blob_resp.blob {
-                blobs.push(json!({ "image": blob, "alt": "" }));
-            }
+                .map_err(|e| AppError::Internal(format!("Failed to upload blob: {e}")))?;
+            let blob_value = serde_json::to_value(&blob_resp.blob)
+                .map_err(|e| AppError::Internal(format!("Failed to serialize blob: {e}")))?;
+            blobs.push(json!({ "image": blob_value, "alt": "" }));
         }
     }
 
@@ -442,18 +461,40 @@ pub async fn create_occurrence(
     let record_value_for_db = record_value.clone();
 
     // Create AT Protocol record
-    let resp = state
-        .agent
-        .create_record(&user.did, Occurrence::NSID, record_value, None)
+    let resp = agent
+        .api
+        .com
+        .atproto
+        .repo
+        .create_record(
+            atrium_api::com::atproto::repo::create_record::InputData {
+                collection: Occurrence::NSID
+                    .parse()
+                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
+                record: serde_json::from_value(record_value)
+                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
+                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
+                rkey: None,
+                swap_commit: None,
+                validate: None,
+            }
+            .into(),
+        )
         .await
-        .map_err(AppError::Internal)?;
+        .map_err(|e| {
+            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
+                tracing::warn!(
+                    error = %e,
+                    "AT Protocol authentication failed (session expired)"
+                );
+                AppError::Unauthorized
+            } else {
+                AppError::Internal(format!("Failed to create record: {e}"))
+            }
+        })?;
 
-    let uri = resp
-        .uri
-        .ok_or_else(|| AppError::Internal("No URI in response".into()))?;
-    let cid = resp
-        .cid
-        .ok_or_else(|| AppError::Internal("No CID in response".into()))?;
+    let uri = resp.uri.to_string();
+    let cid = resp.cid.as_ref().to_string();
 
     info!(uri = %uri, "Created occurrence");
 

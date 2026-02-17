@@ -81,24 +81,51 @@ pub async fn create_comment(
         serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
     record_value["$type"] = json!(Comment::NSID);
 
-    let resp = state
-        .agent
-        .create_record(&user.did, Comment::NSID, record_value, None)
+    // Restore OAuth session and create the AT Protocol record directly
+    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
+        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
+    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
+        tracing::warn!(error = %e, "Failed to restore OAuth session");
+        AppError::Unauthorized
+    })?;
+    let agent = atrium_api::agent::Agent::new(session);
+    let resp = agent
+        .api
+        .com
+        .atproto
+        .repo
+        .create_record(
+            atrium_api::com::atproto::repo::create_record::InputData {
+                collection: Comment::NSID
+                    .parse()
+                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
+                record: serde_json::from_value(record_value)
+                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
+                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
+                rkey: None,
+                swap_commit: None,
+                validate: None,
+            }
+            .into(),
+        )
         .await
-        .map_err(AppError::Internal)?;
+        .map_err(|e| {
+            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
+                tracing::warn!(
+                    error = %e,
+                    "AT Protocol authentication failed (session expired)"
+                );
+                AppError::Unauthorized
+            } else {
+                AppError::Internal(format!("Failed to create record: {e}"))
+            }
+        })?;
 
-    let uri = resp
-        .uri
-        .ok_or_else(|| AppError::Internal("No URI in response".into()))?;
-    let cid = resp
-        .cid
-        .ok_or_else(|| AppError::Internal("No CID in response".into()))?;
-
-    info!(uri = %uri, "Created comment");
+    info!(uri = %resp.uri, "Created comment");
 
     Ok(Json(json!({
         "success": true,
-        "uri": uri,
-        "cid": cid,
+        "uri": resp.uri,
+        "cid": resp.cid.as_ref(),
     })))
 }
