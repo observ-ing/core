@@ -68,8 +68,7 @@ pub const ALL_COLLECTIONS: &[(&str, &str)] = &[
 /// Resolve a comma-separated list of short collection names to full NSIDs.
 /// Returns an error string if any name is unrecognized.
 pub fn resolve_collection_names(names: &str) -> std::result::Result<Vec<String>, String> {
-    let known: std::collections::HashMap<&str, &str> =
-        ALL_COLLECTIONS.iter().copied().collect();
+    let known: std::collections::HashMap<&str, &str> = ALL_COLLECTIONS.iter().copied().collect();
     let mut result = Vec::new();
     for name in names.split(',') {
         let name = name.trim();
@@ -116,8 +115,7 @@ mod tests {
 
     #[test]
     fn test_resolve_collection_names_multiple() {
-        let result =
-            resolve_collection_names("occurrence,identification,comment").unwrap();
+        let result = resolve_collection_names("occurrence,identification,comment").unwrap();
         assert_eq!(
             result,
             vec![
@@ -130,8 +128,7 @@ mod tests {
 
     #[test]
     fn test_resolve_collection_names_with_whitespace() {
-        let result =
-            resolve_collection_names("occurrence , like").unwrap();
+        let result = resolve_collection_names("occurrence , like").unwrap();
         assert_eq!(result, vec![OCCURRENCE_COLLECTION, LIKE_COLLECTION]);
     }
 

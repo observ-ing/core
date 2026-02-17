@@ -12,9 +12,8 @@ use crate::database::Database;
 use crate::error::{IngesterError, Result};
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::{
-    resolve_collection_names, IngesterConfig, RecentEvent, ALL_COLLECTIONS,
-    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
-    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+    resolve_collection_names, IngesterConfig, RecentEvent, ALL_COLLECTIONS, COMMENT_COLLECTION,
+    IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::Utc;
 use clap::Parser;
@@ -89,8 +88,7 @@ async fn main() -> Result<()> {
     });
 
     // Build set of enabled collections for filtering commits
-    let enabled_collections: HashSet<String> =
-        config.collections.iter().cloned().collect();
+    let enabled_collections: HashSet<String> = config.collections.iter().cloned().collect();
 
     // Spawn firehose subscription
     let jetstream_config = JetstreamConfig {
@@ -284,8 +282,7 @@ fn load_config(cli: &Cli) -> Result<IngesterConfig> {
         .unwrap_or(8080);
 
     let collections = match &cli.collections {
-        Some(names) => resolve_collection_names(names)
-            .map_err(IngesterError::Config)?,
+        Some(names) => resolve_collection_names(names).map_err(IngesterError::Config)?,
         None => ALL_COLLECTIONS
             .iter()
             .map(|(_, nsid)| nsid.to_string())
