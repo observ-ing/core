@@ -364,9 +364,7 @@ pub async fn create_occurrence(
                 .repo
                 .upload_blob(bytes)
                 .await
-                .map_err(|e| {
-                    AppError::Internal(format!("Failed to upload blob: {e}"))
-                })?;
+                .map_err(|e| AppError::Internal(format!("Failed to upload blob: {e}")))?;
             let blob_value = serde_json::to_value(&blob_resp.blob)
                 .map_err(|e| AppError::Internal(format!("Failed to serialize blob: {e}")))?;
             blobs.push(json!({ "image": blob_value, "alt": "" }));
@@ -474,9 +472,7 @@ pub async fn create_occurrence(
                     .parse()
                     .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
                 record: serde_json::from_value(record_value)
-                    .map_err(|e| {
-                        AppError::Internal(format!("Failed to convert record: {e}"))
-                    })?,
+                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
                 repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
                 rkey: None,
                 swap_commit: None,

@@ -148,9 +148,7 @@ pub async fn create_interaction(
                     .parse()
                     .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
                 record: serde_json::from_value(record_value)
-                    .map_err(|e| {
-                        AppError::Internal(format!("Failed to convert record: {e}"))
-                    })?,
+                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
                 repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
                 rkey: None,
                 swap_commit: None,
