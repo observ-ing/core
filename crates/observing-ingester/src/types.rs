@@ -30,6 +30,8 @@ pub struct IngesterConfig {
     pub database_url: String,
     pub cursor: Option<i64>,
     pub port: u16,
+    /// Full NSIDs of collections to subscribe to
+    pub collections: Vec<String>,
 }
 
 impl Default for IngesterConfig {
@@ -39,6 +41,10 @@ impl Default for IngesterConfig {
             database_url: String::new(),
             cursor: None,
             port: 8080,
+            collections: ALL_COLLECTIONS
+                .iter()
+                .map(|(_, nsid)| nsid.to_string())
+                .collect(),
         }
     }
 }
@@ -49,6 +55,41 @@ pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
 pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
 pub const INTERACTION_COLLECTION: &str = "org.rwell.test.interaction";
 pub const LIKE_COLLECTION: &str = "app.bsky.feed.like";
+
+/// All known collection short names and their full NSIDs.
+pub const ALL_COLLECTIONS: &[(&str, &str)] = &[
+    ("occurrence", OCCURRENCE_COLLECTION),
+    ("identification", IDENTIFICATION_COLLECTION),
+    ("comment", COMMENT_COLLECTION),
+    ("interaction", INTERACTION_COLLECTION),
+    ("like", LIKE_COLLECTION),
+];
+
+/// Resolve a comma-separated list of short collection names to full NSIDs.
+/// Returns an error string if any name is unrecognized.
+pub fn resolve_collection_names(names: &str) -> std::result::Result<Vec<String>, String> {
+    let known: std::collections::HashMap<&str, &str> =
+        ALL_COLLECTIONS.iter().copied().collect();
+    let mut result = Vec::new();
+    for name in names.split(',') {
+        let name = name.trim();
+        if name.is_empty() {
+            continue;
+        }
+        match known.get(name) {
+            Some(nsid) => result.push(nsid.to_string()),
+            None => {
+                let valid: Vec<&str> = ALL_COLLECTIONS.iter().map(|(n, _)| *n).collect();
+                return Err(format!(
+                    "unknown collection '{}'; valid names: {}",
+                    name,
+                    valid.join(", ")
+                ));
+            }
+        }
+    }
+    Ok(result)
+}
 
 #[cfg(test)]
 mod tests {
@@ -64,6 +105,47 @@ mod tests {
         assert_eq!(config.port, 8080);
         assert!(config.cursor.is_none());
         assert!(config.database_url.is_empty());
+        assert_eq!(config.collections.len(), ALL_COLLECTIONS.len());
+    }
+
+    #[test]
+    fn test_resolve_collection_names_single() {
+        let result = resolve_collection_names("occurrence").unwrap();
+        assert_eq!(result, vec![OCCURRENCE_COLLECTION]);
+    }
+
+    #[test]
+    fn test_resolve_collection_names_multiple() {
+        let result =
+            resolve_collection_names("occurrence,identification,comment").unwrap();
+        assert_eq!(
+            result,
+            vec![
+                OCCURRENCE_COLLECTION,
+                IDENTIFICATION_COLLECTION,
+                COMMENT_COLLECTION,
+            ]
+        );
+    }
+
+    #[test]
+    fn test_resolve_collection_names_with_whitespace() {
+        let result =
+            resolve_collection_names("occurrence , like").unwrap();
+        assert_eq!(result, vec![OCCURRENCE_COLLECTION, LIKE_COLLECTION]);
+    }
+
+    #[test]
+    fn test_resolve_collection_names_unknown() {
+        let err = resolve_collection_names("occurrence,bogus").unwrap_err();
+        assert!(err.contains("unknown collection 'bogus'"));
+        assert!(err.contains("valid names:"));
+    }
+
+    #[test]
+    fn test_resolve_collection_names_empty() {
+        let result = resolve_collection_names("").unwrap();
+        assert!(result.is_empty());
     }
 
     #[test]

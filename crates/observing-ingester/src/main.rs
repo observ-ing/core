@@ -12,17 +12,30 @@ use crate::database::Database;
 use crate::error::{IngesterError, Result};
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::{
-    IngesterConfig, RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION,
-    INTERACTION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+    resolve_collection_names, IngesterConfig, RecentEvent, ALL_COLLECTIONS,
+    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
+    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::Utc;
+use clap::Parser;
 use jetstream_client::{JetstreamConfig, JetstreamEvent, JetstreamSubscription};
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{mpsc, RwLock};
 use tokio::time::interval;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
+
+#[derive(Parser)]
+#[command(about = "Observ.ing AT Protocol firehose ingester")]
+struct Cli {
+    /// Comma-separated list of collections to subscribe to.
+    /// Valid names: occurrence, identification, comment, interaction, like.
+    /// Defaults to all collections.
+    #[arg(long, value_name = "NAMES")]
+    collections: Option<String>,
+}
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,10 +50,14 @@ async fn main() -> Result<()> {
 
     info!("Starting Observ.ing Ingester (Rust)...");
 
+    // Parse CLI args
+    let cli = Cli::parse();
+
     // Load configuration from environment
-    let config = load_config()?;
+    let config = load_config(&cli)?;
     info!("Relay: {}", config.relay_url);
     info!("Port: {}", config.port);
+    info!("Collections: {:?}", config.collections);
 
     // Connect to database
     let db = Database::connect(&config.database_url).await?;
@@ -71,17 +88,15 @@ async fn main() -> Result<()> {
         }
     });
 
+    // Build set of enabled collections for filtering commits
+    let enabled_collections: HashSet<String> =
+        config.collections.iter().cloned().collect();
+
     // Spawn firehose subscription
     let jetstream_config = JetstreamConfig {
         relay: config.relay_url.clone(),
         cursor,
-        wanted_collections: vec![
-            OCCURRENCE_COLLECTION.to_string(),
-            IDENTIFICATION_COLLECTION.to_string(),
-            COMMENT_COLLECTION.to_string(),
-            INTERACTION_COLLECTION.to_string(),
-            LIKE_COLLECTION.to_string(),
-        ],
+        wanted_collections: config.collections.clone(),
     };
     tokio::spawn(async move {
         let mut subscription = JetstreamSubscription::new(jetstream_config, event_tx);
@@ -132,6 +147,9 @@ async fn main() -> Result<()> {
             }
             JetstreamEvent::Commit(commit) => {
                 let collection = commit.collection.as_str();
+                if !enabled_collections.contains(collection) {
+                    continue;
+                }
                 let action = commit.operation.clone();
                 let uri = commit.uri.clone();
                 let time = commit.time;
@@ -220,7 +238,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn load_config() -> Result<IngesterConfig> {
+fn load_config(cli: &Cli) -> Result<IngesterConfig> {
     // Support both DATABASE_URL and separate DB_* environment variables
     // (for compatibility with Cloud SQL socket connections)
     let database_url = if let Ok(url) = std::env::var("DATABASE_URL") {
@@ -265,10 +283,20 @@ fn load_config() -> Result<IngesterConfig> {
         .and_then(|s| s.parse::<u16>().ok())
         .unwrap_or(8080);
 
+    let collections = match &cli.collections {
+        Some(names) => resolve_collection_names(names)
+            .map_err(IngesterError::Config)?,
+        None => ALL_COLLECTIONS
+            .iter()
+            .map(|(_, nsid)| nsid.to_string())
+            .collect(),
+    };
+
     Ok(IngesterConfig {
         relay_url,
         database_url,
         cursor,
         port,
+        collections,
     })
 }
