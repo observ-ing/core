@@ -15,16 +15,14 @@
     PartialEq,
     Eq,
     jacquard_derive::IntoStatic,
-    Default
+    Default,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionSubject<'a> {
     /// Reference to an existing occurrence record.
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
-    pub occurrence: std::option::Option<
-        crate::com_atproto::repo::strong_ref::StrongRef<'a>,
-    >,
+    pub occurrence: std::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
     /// Index of the subject within the occurrence (for multi-subject observations).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     pub subject_index: std::option::Option<i64>,
@@ -34,9 +32,7 @@ pub struct InteractionSubject<'a> {
     pub taxon: std::option::Option<crate::org_rwell::test::identification::Taxon<'a>>,
 }
 
-fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<
-    'static,
-> {
+fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
     ::jacquard_lexicon::lexicon::LexiconDoc {
         lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
         id: ::jacquard_common::CowStr::new_static("org.rwell.test.interaction"),
@@ -297,13 +293,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
 /// Species interaction documenting ecological relationship between organisms.
 #[jacquard_derive::lexicon]
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Interaction<'a> {
@@ -333,7 +323,7 @@ pub struct Interaction<'a> {
 
 pub mod interaction_state {
 
-    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
+    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -432,12 +422,8 @@ pub struct InteractionBuilder<'a, S: interaction_state::State> {
         ::core::option::Option<jacquard_common::types::string::Datetime>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<
-            crate::org_rwell::test::interaction::InteractionSubject<'a>,
-        >,
-        ::core::option::Option<
-            crate::org_rwell::test::interaction::InteractionSubject<'a>,
-        >,
+        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
+        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
     ),
     _phantom: ::core::marker::PhantomData<&'a ()>,
 }
@@ -462,10 +448,7 @@ impl<'a> InteractionBuilder<'a, interaction_state::Empty> {
 
 impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.0 = value.into();
         self
     }
@@ -478,18 +461,12 @@ impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
 
 impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
     /// Set the `confidence` field (optional)
-    pub fn confidence(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn confidence(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.1 = value.into();
         self
     }
     /// Set the `confidence` field to an Option value (optional)
-    pub fn maybe_confidence(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_confidence(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.1 = value;
         self
     }
@@ -648,13 +625,7 @@ impl<'a> Interaction<'a> {
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionGetRecordOutput<'a> {
@@ -711,9 +682,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Interaction<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 3000usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "comment",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
                     max: 3000usize,
                     actual: <str>::len(value.as_ref()),
                 });
