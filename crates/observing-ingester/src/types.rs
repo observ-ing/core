@@ -54,7 +54,7 @@ pub const OCCURRENCE_COLLECTION: &str = "org.rwell.test.occurrence";
 pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
 pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
 pub const INTERACTION_COLLECTION: &str = "org.rwell.test.interaction";
-pub const LIKE_COLLECTION: &str = "app.bsky.feed.like";
+pub const LIKE_COLLECTION: &str = "org.rwell.test.like";
 
 /// All known collection short names and their full NSIDs.
 pub const ALL_COLLECTIONS: &[(&str, &str)] = &[
@@ -175,6 +175,6 @@ mod tests {
         assert_eq!(IDENTIFICATION_COLLECTION, "org.rwell.test.identification");
         assert_eq!(COMMENT_COLLECTION, "org.rwell.test.comment");
         assert_eq!(INTERACTION_COLLECTION, "org.rwell.test.interaction");
-        assert_eq!(LIKE_COLLECTION, "app.bsky.feed.like");
+        assert_eq!(LIKE_COLLECTION, "org.rwell.test.like");
     }
 }
