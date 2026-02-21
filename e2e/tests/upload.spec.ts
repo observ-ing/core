@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
-  MOCK_USER,
+  getTestUser,
 } from "../fixtures/auth";
 
 const FAB = 'button[aria-label="Create actions"]';
@@ -62,7 +62,7 @@ authTest.describe("Upload Modal - Logged In", () => {
       await page.goto("/");
       await openUploadModal(page);
       await authExpect(
-        page.getByText(`@${MOCK_USER.handle}`).first(),
+        page.getByText(`@${getTestUser().handle}`).first(),
       ).toBeVisible();
     },
   );

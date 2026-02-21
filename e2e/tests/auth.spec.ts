@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
-  MOCK_USER,
+  getTestUser,
 } from "../fixtures/auth";
 
 test.describe("Authentication - Logged Out", () => {
@@ -56,9 +56,10 @@ authTest.describe("Authentication - Logged In", () => {
   authTest(
     "logged in user sees their handle and logout button",
     async ({ authenticatedPage: page }) => {
+      const user = getTestUser();
       await page.goto("/");
       await authExpect(
-        page.getByText(`@${MOCK_USER.handle}`).first(),
+        page.getByText(`@${user.handle}`).first(),
       ).toBeVisible({ timeout: 5000 });
       await authExpect(
         page.getByRole("button", { name: "Log out" }).first(),
@@ -68,11 +69,14 @@ authTest.describe("Authentication - Logged In", () => {
 
   // TC-AUTH-003: User display
   authTest(
-    "logged in user sees display name in sidebar",
+    "logged in user sees display name or handle in sidebar",
     async ({ authenticatedPage: page }) => {
       await page.goto("/");
+      // Sidebar shows displayName if set, otherwise handle
+      const user = getTestUser();
+      const expectedName = user.displayName || user.handle;
       await authExpect(
-        page.getByText(MOCK_USER.displayName).first(),
+        page.getByText(expectedName).first(),
       ).toBeVisible({ timeout: 5000 });
     },
   );
@@ -81,6 +85,7 @@ authTest.describe("Authentication - Logged In", () => {
   authTest("clicking Log out clears user session", async ({
     authenticatedPage: page,
   }) => {
+    const user = getTestUser();
     await page.route("**/oauth/logout", (route) =>
       route.fulfill({
         status: 200,
@@ -95,14 +100,14 @@ authTest.describe("Authentication - Logged In", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          user: loggedOut ? null : MOCK_USER,
+          user: loggedOut ? null : user,
         }),
       });
     });
 
     await page.goto("/");
     await authExpect(
-      page.getByText(`@${MOCK_USER.handle}`).first(),
+      page.getByText(`@${user.handle}`).first(),
     ).toBeVisible({ timeout: 5000 });
 
     loggedOut = true;

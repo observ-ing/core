@@ -2,53 +2,56 @@ import { test, expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
-  MOCK_USER,
+  getTestUser,
 } from "../fixtures/auth";
 
-const MOCK_FEED_RESPONSE = JSON.stringify({
-  occurrences: [
-    {
-      uri: `at://${MOCK_USER.did}/org.observ.ing.occurrence/test123`,
-      cid: "bafytest",
-      observer: {
-        did: MOCK_USER.did,
-        handle: MOCK_USER.handle,
-        displayName: MOCK_USER.displayName,
-      },
-      observers: [
-        {
-          did: MOCK_USER.did,
-          handle: MOCK_USER.handle,
-          displayName: MOCK_USER.displayName,
-          role: "owner",
+function buildMockFeedResponse() {
+  const user = getTestUser();
+  return JSON.stringify({
+    occurrences: [
+      {
+        uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
+        cid: "bafytest",
+        observer: {
+          did: user.did,
+          handle: user.handle,
+          displayName: user.displayName || user.handle,
         },
-      ],
-      communityId: "Quercus alba",
-      effectiveTaxonomy: {
-        scientificName: "Quercus alba",
-        kingdom: "Plantae",
-        taxonRank: "species",
+        observers: [
+          {
+            did: user.did,
+            handle: user.handle,
+            displayName: user.displayName || user.handle,
+            role: "owner",
+          },
+        ],
+        communityId: "Quercus alba",
+        effectiveTaxonomy: {
+          scientificName: "Quercus alba",
+          kingdom: "Plantae",
+          taxonRank: "species",
+        },
+        subjects: [],
+        images: [],
+        eventDate: "2024-01-01",
+        location: { latitude: 0, longitude: 0 },
+        createdAt: new Date().toISOString(),
+        likeCount: 0,
+        viewerHasLiked: false,
       },
-      subjects: [],
-      images: [],
-      eventDate: "2024-01-01",
-      location: { latitude: 0, longitude: 0 },
-      createdAt: new Date().toISOString(),
-      likeCount: 0,
-      viewerHasLiked: false,
-    },
-  ],
-  cursor: null,
-});
+    ],
+    cursor: null,
+  });
+}
 
 async function mockOwnObservationFeed(page: any) {
+  const body = buildMockFeedResponse();
   const handler = (route: any) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: MOCK_FEED_RESPONSE,
+      body,
     });
-  // Mock all feed endpoints (home feed for authenticated, explore for fallback)
   await page.route("**/api/feeds/home*", handler);
   await page.route("**/api/feeds/explore*", handler);
   await page.route("**/api/occurrences/feed*", handler);

@@ -1,54 +1,37 @@
 import { test as base, type Page } from "@playwright/test";
+import { readFileSync } from "fs";
+import { resolve } from "path";
 
-export const MOCK_USER = {
-  did: "did:plc:test123",
-  handle: "testuser.bsky.social",
-  displayName: "Test User",
-  avatar: "",
-};
+const AUTH_FILE = resolve("playwright/.auth/user.json");
+const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
+
+let _testUser: Record<string, string> | null = null;
 
 /**
- * Sets up a page that appears authenticated to the frontend.
- *
- * Strategy:
- * - By default, intercepts GET /oauth/me to return a mock user.
- *   The frontend Redux auth slice trusts this response, so the UI
- *   renders as if logged in (FAB visible, like buttons enabled, etc.).
- * - If TEST_SESSION_COOKIE env var is set, uses a real session cookie
- *   instead of mocking, enabling full integration testing.
+ * Lazily loads user info written by auth.setup.ts.
+ * Deferred because test modules are imported before the setup project runs.
  */
-async function setupAuth(page: Page, context: any) {
-  const realCookie = process.env.TEST_SESSION_COOKIE;
-  if (realCookie) {
-    await context.addCookies([
-      {
-        name: "session_did",
-        value: realCookie,
-        domain: "localhost",
-        path: "/",
-      },
-    ]);
-  } else {
-    await page.route("**/oauth/me", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ user: MOCK_USER }),
-      }),
-    );
-    // The mock session isn't valid on the backend, so /api/feeds/home
-    // will fail. Redirect home feed requests to the explore feed instead.
-    await page.route("**/api/feeds/home*", (route) => {
-      const url = route.request().url().replace("/api/feeds/home", "/api/feeds/explore");
-      return route.continue({ url });
-    });
+export function getTestUser() {
+  if (!_testUser) {
+    _testUser = JSON.parse(readFileSync(USER_INFO_FILE, "utf-8"));
   }
+  return _testUser;
 }
 
+/**
+ * Provides an authenticated page for tests.
+ *
+ * Creates a new browser context with the storageState saved by auth.setup.ts.
+ * Requires BLUESKY_TEST_EMAIL and BLUESKY_TEST_PASSWORD to be set.
+ */
 export const test = base.extend<{ authenticatedPage: Page }>({
-  authenticatedPage: async ({ page, context }, use) => {
-    await setupAuth(page, context);
-    await use(page);
+  authenticatedPage: async ({ browser }, use) => {
+    const context = await browser.newContext({
+      storageState: AUTH_FILE,
+    });
+    const authPage = await context.newPage();
+    await use(authPage);
+    await context.close();
   },
 });
 

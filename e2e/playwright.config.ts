@@ -8,13 +8,21 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: "html",
   use: {
-    baseURL: "http://localhost:3000",
+    // Must use 127.0.0.1 (not localhost) because AT Protocol OAuth
+    // redirects to http://127.0.0.1:3000/oauth/callback, and the
+    // session_did cookie is set for the 127.0.0.1 domain.
+    baseURL: "http://127.0.0.1:3000",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
   projects: [
     {
+      name: "setup",
+      testMatch: /auth\.setup\.ts/,
+    },
+    {
       name: "chromium",
+      dependencies: ["setup"],
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {

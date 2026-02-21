@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
-  MOCK_USER,
 } from "../fixtures/auth";
 
 test.describe("Likes - Logged Out", () => {
