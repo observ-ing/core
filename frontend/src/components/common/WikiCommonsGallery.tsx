@@ -16,6 +16,28 @@ interface CommonsImage {
   license?: string;
 }
 
+const HTML_ENTITIES: Record<string, string> = {
+  "&amp;": "&",
+  "&lt;": "<",
+  "&gt;": ">",
+  "&quot;": '"',
+  "&#39;": "'",
+  "&apos;": "'",
+  "&nbsp;": " ",
+};
+
+/** Strip HTML tags and decode HTML entities (e.g. &amp; → &) */
+export function decodeHtmlText(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/&(?:#(\d+)|#x([0-9a-fA-F]+)|(\w+));/g, (match, dec, hex, named) => {
+      if (dec) return String.fromCodePoint(Number(dec));
+      if (hex) return String.fromCodePoint(parseInt(hex, 16));
+      return HTML_ENTITIES[`&${named};`] ?? match;
+    })
+    .trim();
+}
+
 async function fetchCommonsImages(
   taxonName: string,
   limit: number,
@@ -47,8 +69,7 @@ async function fetchCommonsImages(
       const info = p.imageinfo[0];
       const meta = info.extmetadata || {};
       const artistHtml = meta.Artist?.value || "";
-      // Strip HTML tags from artist name
-      const artist = artistHtml.replace(/<[^>]*>/g, "").trim();
+      const artist = decodeHtmlText(artistHtml);
       return {
         thumbUrl: info.thumburl,
         pageUrl: info.descriptionurl,
