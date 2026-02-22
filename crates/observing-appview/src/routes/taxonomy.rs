@@ -117,8 +117,14 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
         kingdom: Some(kingdom),
     };
 
-    let rows =
-        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options).await?;
+    let rows = observing_db::feeds::get_occurrences_by_taxon(
+        &state.pool,
+        &name,
+        &rank,
+        &options,
+        &state.hidden_dids,
+    )
+    .await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -190,8 +196,14 @@ pub async fn get_taxon_occurrences_by_id(
         kingdom,
     };
 
-    let rows =
-        observing_db::feeds::get_occurrences_by_taxon(&state.pool, &name, &rank, &options).await?;
+    let rows = observing_db::feeds::get_occurrences_by_taxon(
+        &state.pool,
+        &name,
+        &rank,
+        &options,
+        &state.hidden_dids,
+    )
+    .await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(

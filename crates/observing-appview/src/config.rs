@@ -10,6 +10,8 @@ pub struct Config {
     pub taxonomy_service_url: String,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
+    /// DIDs to hide from all feeds (e.g. test accounts)
+    pub hidden_dids: Vec<String>,
 }
 
 impl Config {
@@ -64,6 +66,10 @@ impl Config {
 
         let public_url = env::var("PUBLIC_URL").ok();
 
+        let hidden_dids = env::var("HIDDEN_DIDS")
+            .map(|s| parse_hidden_dids(&s))
+            .unwrap_or_default();
+
         Self {
             port,
             database_url,
@@ -71,6 +77,57 @@ impl Config {
             media_proxy_url,
             taxonomy_service_url,
             public_url,
+            hidden_dids,
         }
+    }
+}
+
+/// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
+fn parse_hidden_dids(input: &str) -> Vec<String> {
+    input
+        .split(',')
+        .map(|d| d.trim().to_string())
+        .filter(|d| !d.is_empty())
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_hidden_dids_single() {
+        let result = parse_hidden_dids("did:plc:abc123");
+        assert_eq!(result, vec!["did:plc:abc123"]);
+    }
+
+    #[test]
+    fn test_parse_hidden_dids_multiple() {
+        let result = parse_hidden_dids("did:plc:abc,did:plc:def,did:plc:ghi");
+        assert_eq!(result, vec!["did:plc:abc", "did:plc:def", "did:plc:ghi"]);
+    }
+
+    #[test]
+    fn test_parse_hidden_dids_with_whitespace() {
+        let result = parse_hidden_dids("  did:plc:abc , did:plc:def  ");
+        assert_eq!(result, vec!["did:plc:abc", "did:plc:def"]);
+    }
+
+    #[test]
+    fn test_parse_hidden_dids_empty_string() {
+        let result = parse_hidden_dids("");
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_parse_hidden_dids_trailing_comma() {
+        let result = parse_hidden_dids("did:plc:abc,");
+        assert_eq!(result, vec!["did:plc:abc"]);
+    }
+
+    #[test]
+    fn test_parse_hidden_dids_only_commas() {
+        let result = parse_hidden_dids(",,,");
+        assert!(result.is_empty());
     }
 }

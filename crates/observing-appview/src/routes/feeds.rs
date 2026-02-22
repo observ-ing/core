@@ -46,7 +46,8 @@ pub async fn get_explore(
         end_date: params.end_date.clone(),
     };
 
-    let rows = observing_db::feeds::get_explore_feed(&state.pool, &options).await?;
+    let rows =
+        observing_db::feeds::get_explore_feed(&state.pool, &options, &state.hidden_dids).await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -107,7 +108,13 @@ pub async fn get_home(
         nearby_radius: params.nearby_radius,
     };
 
-    let result = observing_db::feeds::get_home_feed(&state.pool, &followed_dids, &options).await?;
+    let result = observing_db::feeds::get_home_feed(
+        &state.pool,
+        &followed_dids,
+        &options,
+        &state.hidden_dids,
+    )
+    .await?;
 
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
