@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Route, type Request } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
@@ -71,7 +71,7 @@ authTest.describe("Observation Edit - Logged In", () => {
         occurrences: [otherUserObs],
         cursor: null,
       });
-      const handler = (route: any) =>
+      const handler = (route: Route) =>
         route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -189,7 +189,7 @@ authTest.describe("Observation Edit - Logged In", () => {
       ).toBeVisible({ timeout: 5000 });
 
       const putRequest = page.waitForRequest(
-        (req: any) =>
+        (req: Request) =>
           req.method() === "PUT" &&
           req.url().includes("/api/occurrences"),
       );

@@ -1,11 +1,12 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Request } from "@playwright/test";
+import type { Expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
 } from "../fixtures/auth";
 
 /** Navigate from the feed to the first observation's detail page. */
-async function navigateToDetail(page: any, expectFn: any) {
+async function navigateToDetail(page: Page, expectFn: Expect) {
   await page.goto("/");
   const card = page
     .locator(".MuiCard-root .MuiCardActionArea-root")
@@ -84,7 +85,7 @@ authTest.describe("Comments - Logged In", () => {
         .fill("This is a test comment");
 
       const postRequest = page.waitForRequest(
-        (req: any) =>
+        (req: Request) =>
           req.method() === "POST" && req.url().includes("/api/comments"),
       );
       await page.getByRole("button", { name: "Post" }).click();

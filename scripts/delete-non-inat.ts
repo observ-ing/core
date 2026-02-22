@@ -39,18 +39,22 @@ async function main() {
     });
 
     for (const rec of resp.data.records) {
-      const val = rec.value as any;
+      const val = rec.value as Record<string, unknown>;
       const rkey = rec.uri.split("/").pop()!;
 
-      if (val.taxonId && val.taxonId.startsWith("inat:")) {
+      const taxonId = val["taxonId"] as string | undefined;
+      const scientificName = val["scientificName"] as string | undefined;
+      const verbatimLocality = val["verbatimLocality"] as string | undefined;
+
+      if (taxonId && taxonId.startsWith("inat:")) {
         toKeep.push(
-          `  KEEP: ${val.scientificName || "Unknown"} (${val.taxonId})`,
+          `  KEEP: ${scientificName || "Unknown"} (${taxonId})`,
         );
       } else {
         toDelete.push({
           uri: rec.uri,
           rkey,
-          name: val.scientificName || val.verbatimLocality || "Unknown",
+          name: scientificName || verbatimLocality || "Unknown",
         });
       }
     }

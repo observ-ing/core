@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import { type Page, type Request } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
@@ -17,7 +17,7 @@ function muiSelect(page: Page, label: string) {
 }
 
 /** Navigate from the feed to the first observation's detail page. */
-async function navigateToDetail(page: any) {
+async function navigateToDetail(page: Page) {
   await page.goto("/");
   const card = page
     .locator(".MuiCard-root .MuiCardActionArea-root")
@@ -38,7 +38,7 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
 
       const postRequest = page.waitForRequest(
-        (req: any) =>
+        (req: Request) =>
           req.method() === "POST" &&
           req.url().includes("/api/identifications"),
       );
@@ -83,7 +83,7 @@ authTest.describe("Identification - Logged In", () => {
       await speciesInput.fill("Quercus rubra");
 
       const postRequest = page.waitForRequest(
-        (req: any) =>
+        (req: Request) =>
           req.method() === "POST" &&
           req.url().includes("/api/identifications"),
       );

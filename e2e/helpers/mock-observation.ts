@@ -1,10 +1,11 @@
+import { type Page, type Route } from "@playwright/test";
 import { getTestUser } from "../fixtures/auth";
 
 /**
  * Builds a mock observation object for API responses.
  * Matches the Occurrence type from the Rust-generated bindings.
  */
-export function buildMockObservation(overrides: Record<string, any> = {}) {
+export function buildMockObservation(overrides: Record<string, unknown> = {}) {
   const user = getTestUser();
   return {
     uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
@@ -46,7 +47,7 @@ export function buildMockObservation(overrides: Record<string, any> = {}) {
 /**
  * Builds a full observation detail API response including identifications and comments.
  */
-function buildMockObservationResponse(overrides: Record<string, any> = {}) {
+function buildMockObservationResponse(overrides: Record<string, unknown> = {}) {
   const {
     identifications = [],
     comments = [],
@@ -65,11 +66,11 @@ function buildMockObservationResponse(overrides: Record<string, any> = {}) {
  * Intercepts GET /api/occurrences/* and returns the mocked response.
  */
 export async function mockObservationDetailRoute(
-  page: any,
-  overrides: Record<string, any> = {},
+  page: Page,
+  overrides: Record<string, unknown> = {},
 ) {
   const response = buildMockObservationResponse(overrides);
-  await page.route("**/api/occurrences/*", (route: any) => {
+  await page.route("**/api/occurrences/*", (route: Route) => {
     if (route.request().method() === "GET") {
       return route.fulfill({
         status: 200,
@@ -86,10 +87,10 @@ export async function mockObservationDetailRoute(
  * Sets up page.route() mock for the interactions API endpoint.
  */
 export async function mockInteractionsRoute(
-  page: any,
-  interactions: any[] = [],
+  page: Page,
+  interactions: unknown[] = [],
 ) {
-  await page.route("**/api/interactions/occurrence/*", (route: any) => {
+  await page.route("**/api/interactions/occurrence/*", (route: Route) => {
     return route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -102,14 +103,14 @@ export async function mockInteractionsRoute(
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
 export async function mockOwnObservationFeed(
-  page: any,
-  overrides: Record<string, any> = {},
+  page: Page,
+  overrides: Record<string, unknown> = {},
 ) {
   const body = JSON.stringify({
     occurrences: [buildMockObservation(overrides)],
     cursor: null,
   });
-  const handler = (route: any) =>
+  const handler = (route: Route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",

@@ -10,7 +10,8 @@
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "frontend:dev": "vite -c frontend/vite.config.ts",
     "frontend:build": "npm run build",
-    "test:e2e": "playwright test --config=e2e/playwright.config.ts"
+    "test:e2e": "playwright test --config=e2e/playwright.config.ts",
+    "lint:no-any": "! grep -rn --include='*.ts' --include='*.tsx' -E ':\\s*any\\b|as any\\b|<any>|any\\[\\]' frontend/src/ scripts/ e2e/"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

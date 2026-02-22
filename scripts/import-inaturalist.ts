@@ -34,8 +34,49 @@ interface Ancestor {
   rank_level: number;
 }
 
+interface InatIdentification {
+  taxon?: {
+    ancestors?: Ancestor[];
+    name?: string;
+    rank?: string;
+    preferred_common_name?: string;
+  };
+}
+
+interface InatPhoto {
+  id: number;
+  url?: string;
+  attribution?: string;
+  original_dimensions?: { width: number; height: number };
+}
+
+interface InatObservation {
+  id: number;
+  geojson?: { coordinates?: [number, number] };
+  time_observed_at?: string;
+  observed_on?: string;
+  created_at: string;
+  photos?: InatPhoto[];
+  taxon?: {
+    name?: string;
+    rank?: string;
+    preferred_common_name?: string;
+  };
+  identifications?: InatIdentification[];
+  place_guess?: string;
+  description?: string;
+  license_code?: string;
+  positional_accuracy?: number;
+}
+
+interface BlobRef {
+  image: unknown;
+  alt: string;
+  aspectRatio?: { width: number; height: number };
+}
+
 function extractTaxonomyFromAncestors(
-  identifications: any[],
+  identifications: InatIdentification[],
 ): Record<string, string> {
   const result: Record<string, string> = {};
   if (!identifications?.length) return result;
@@ -121,7 +162,7 @@ async function main() {
   }
   const data = (await resp.json()) as {
     total_results: number;
-    results: any[];
+    results: InatObservation[];
   };
   console.log(
     `Found ${data.total_results} total, processing ${data.results.length}`,
@@ -147,7 +188,7 @@ async function main() {
     }
 
     // Upload photos as blobs
-    const blobs: any[] = [];
+    const blobs: BlobRef[] = [];
     if (obs.photos?.length) {
       for (const photo of obs.photos.slice(0, 10)) {
         const imageUrl = photo.url?.replace("/square.", "/original.");
@@ -179,7 +220,7 @@ async function main() {
 
     // Extract taxonomy
     const taxon = obs.taxon;
-    const taxonomy = extractTaxonomyFromAncestors(obs.identifications);
+    const taxonomy = extractTaxonomyFromAncestors(obs.identifications ?? []);
 
     // Map license
     const license = obs.license_code
@@ -187,7 +228,7 @@ async function main() {
       : undefined;
 
     // Build the occurrence record (no taxonomy — that goes on identification)
-    const occurrenceRecord: Record<string, any> = {
+    const occurrenceRecord: Record<string, unknown> = {
       $type: OCCURRENCE_COLLECTION,
       eventDate: new Date(eventDate).toISOString(),
       location: {
@@ -253,8 +294,8 @@ async function main() {
         });
         console.log(`  Created identification: ${taxon.name}`);
       }
-    } catch (err: any) {
-      console.error(`  Error creating record for obs ${obs.id}:`, err.message);
+    } catch (err: unknown) {
+      console.error(`  Error creating record for obs ${obs.id}:`, err instanceof Error ? err.message : err);
     }
 
     // Small delay to be respectful to the PDS

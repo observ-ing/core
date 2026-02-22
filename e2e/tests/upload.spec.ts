@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
@@ -17,7 +17,7 @@ test.describe("Upload Modal - Logged Out", () => {
 });
 
 authTest.describe("Upload Modal - Logged In", () => {
-  async function openUploadModal(page: any) {
+  async function openUploadModal(page: Page) {
     const fab = page.locator(FAB);
     await authExpect(fab).toBeVisible({ timeout: 5000 });
     await fab.click();

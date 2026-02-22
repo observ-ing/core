@@ -9,6 +9,16 @@ import {
   CircularProgress,
 } from "@mui/material";
 
+interface WikiMediaImageInfo {
+  thumburl?: string;
+  descriptionurl?: string;
+  extmetadata?: Record<string, { value?: string }>;
+}
+
+interface WikiMediaPage {
+  imageinfo?: WikiMediaImageInfo[];
+}
+
 interface CommonsImage {
   thumbUrl: string;
   pageUrl: string;
@@ -63,19 +73,23 @@ async function fetchCommonsImages(
   const pages = infoData?.query?.pages;
   if (!pages) return [];
 
-  return Object.values(pages)
-    .filter((p: any) => p.imageinfo?.[0]?.thumburl)
-    .map((p: any) => {
+  return Object.values(pages as Record<string, WikiMediaPage>)
+    .filter((p): p is WikiMediaPage & { imageinfo: [WikiMediaImageInfo, ...WikiMediaImageInfo[]] } =>
+      Boolean(p.imageinfo?.[0]?.thumburl),
+    )
+    .map((p) => {
       const info = p.imageinfo[0];
-      const meta = info.extmetadata || {};
-      const artistHtml = meta.Artist?.value || "";
+      const meta = info.extmetadata ?? {};
+      const artistHtml = meta["Artist"]?.value ?? "";
       const artist = decodeHtmlText(artistHtml);
-      return {
-        thumbUrl: info.thumburl,
-        pageUrl: info.descriptionurl,
-        artist: artist || undefined,
-        license: meta.LicenseShortName?.value || undefined,
+      const result: CommonsImage = {
+        thumbUrl: info.thumburl!,
+        pageUrl: info.descriptionurl ?? "",
       };
+      if (artist) result.artist = artist;
+      const license = meta["LicenseShortName"]?.value;
+      if (license) result.license = license;
+      return result;
     });
 }
 

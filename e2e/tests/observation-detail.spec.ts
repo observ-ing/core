@@ -1,7 +1,7 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 
 /** Navigate from the feed to the first observation's detail page. */
-async function navigateToDetail(page: any) {
+async function navigateToDetail(page: Page) {
   await page.goto("/");
   const card = page
     .locator(".MuiCard-root .MuiCardActionArea-root")
