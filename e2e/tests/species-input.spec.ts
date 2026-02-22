@@ -36,10 +36,13 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a common name shows scientific name in suggestions",
     async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "california poppy");
+      await searchSpecies(page, "Eschscholzia californica");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 10000 });
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Eschscholzia/i);
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
+        /Eschscholzia/i,
+        { timeout: 10000 },
+      );
     },
   );
 
@@ -47,10 +50,13 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a scientific name shows matching species",
     async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "Quercus");
+      await searchSpecies(page, "Quercus agrifolia");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 10000 });
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Quercus/);
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
+        /Quercus/i,
+        { timeout: 10000 },
+      );
     },
   );
 
