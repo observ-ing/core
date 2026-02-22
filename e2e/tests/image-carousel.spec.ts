@@ -3,12 +3,15 @@ import {
   mockObservationDetailRoute,
   mockInteractionsRoute,
 } from "../helpers/mock-observation";
+import type { Occurrence } from "../../frontend/src/services/types";
 
 const TEST_DID = "did:plc:testuser123";
 const TEST_RKEY = "obs456";
 const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
 
-function observationOverrides(imageOverrides: Record<string, any> = {}) {
+function observationOverrides(
+  extra: Partial<Occurrence> = {},
+): Partial<Occurrence> {
   return {
     uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
     observer: {
@@ -17,7 +20,7 @@ function observationOverrides(imageOverrides: Record<string, any> = {}) {
       displayName: "Nature Lover",
     },
     observers: [],
-    ...imageOverrides,
+    ...extra,
   };
 }
 
@@ -165,7 +168,6 @@ test.describe("Image Carousel", () => {
         scientificName: "Falco peregrinus",
         vernacularName: "Peregrine Falcon",
         kingdom: "Animalia",
-        taxonRank: "species",
       },
     }));
     await mockInteractionsRoute(page);

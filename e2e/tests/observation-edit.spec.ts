@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Route } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
@@ -71,7 +71,7 @@ authTest.describe("Observation Edit - Logged In", () => {
         occurrences: [otherUserObs],
         cursor: null,
       });
-      const handler = (route: any) =>
+      const handler = (route: Route) =>
         route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -100,7 +100,6 @@ authTest.describe("Observation Edit - Logged In", () => {
     "clicking Edit opens upload modal in edit mode",
     async ({ authenticatedPage: page }) => {
       await mockOwnObservationFeed(page, {
-        scientificName: "Quercus alba",
         occurrenceRemarks: "Found near the meadow",
         eventDate: "2024-06-15",
       });
@@ -125,7 +124,6 @@ authTest.describe("Observation Edit - Logged In", () => {
     "edit modal pre-populates species and notes",
     async ({ authenticatedPage: page }) => {
       await mockOwnObservationFeed(page, {
-        scientificName: "Quercus alba",
         occurrenceRemarks: "Found near the meadow",
         eventDate: "2024-06-15",
       });
@@ -156,7 +154,6 @@ authTest.describe("Observation Edit - Logged In", () => {
     "submitting edit sends PUT request",
     async ({ authenticatedPage: page }) => {
       await mockOwnObservationFeed(page, {
-        scientificName: "Quercus alba",
         occurrenceRemarks: "Original notes",
         eventDate: "2024-06-15",
         location: { latitude: 37.7749, longitude: -122.4194 },
@@ -189,7 +186,7 @@ authTest.describe("Observation Edit - Logged In", () => {
       ).toBeVisible({ timeout: 5000 });
 
       const putRequest = page.waitForRequest(
-        (req: any) =>
+        (req) =>
           req.method() === "PUT" &&
           req.url().includes("/api/occurrences"),
       );
