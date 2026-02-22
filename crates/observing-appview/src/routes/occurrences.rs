@@ -1,7 +1,11 @@
+use std::str::FromStr;
+
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::Datetime;
+use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -313,6 +317,8 @@ pub struct CreateOccurrenceRequest {
     images: Option<Vec<ImageUpload>>,
     #[ts(optional)]
     recorded_by: Option<Vec<String>>,
+    #[ts(optional)]
+    scientific_name: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -517,6 +523,109 @@ pub async fn create_occurrence(
     // Sync observers
     let co_observers = body.recorded_by.unwrap_or_default();
     let _ = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await;
+
+    // Auto-create first identification if a scientific name was provided
+    if let Some(ref scientific_name) = body.scientific_name {
+        if !scientific_name.is_empty() {
+            let mut taxon_id = None;
+            let mut taxon_rank = None;
+            let mut vernacular_name = None;
+            let mut kingdom = None;
+            let mut phylum = None;
+            let mut class = None;
+            let mut order = None;
+            let mut family = None;
+            let mut genus = None;
+
+            if let Some(validation) = state.taxonomy.validate(scientific_name).await {
+                if let Some(ref t) = validation.taxon {
+                    taxon_id = Some(t.id.clone());
+                    taxon_rank = Some(t.rank.clone());
+                    vernacular_name = t.common_name.clone();
+                    kingdom = t.kingdom.clone();
+                    phylum = t.phylum.clone();
+                    class = t.class.clone();
+                    order = t.order.clone();
+                    family = t.family.clone();
+                    genus = t.genus.clone();
+                }
+            }
+
+            let subject = StrongRef::new()
+                .uri(JAtUri::from_str(&uri).expect("just-created URI must be valid"))
+                .cid(JCid::from_str(&cid).expect("just-created CID must be valid"))
+                .build();
+
+            let taxon = Taxon {
+                scientific_name: scientific_name.as_str().into(),
+                taxon_rank: taxon_rank.as_deref().map(Into::into),
+                vernacular_name: vernacular_name.as_deref().map(Into::into),
+                kingdom: kingdom.as_deref().map(Into::into),
+                phylum: phylum.as_deref().map(Into::into),
+                class: class.as_deref().map(Into::into),
+                order: order.as_deref().map(Into::into),
+                family: family.as_deref().map(Into::into),
+                genus: genus.as_deref().map(Into::into),
+                ..Default::default()
+            };
+
+            let id_record = Identification::new()
+                .taxon(taxon)
+                .created_at(Datetime::now())
+                .subject(subject)
+                .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
+                .build();
+
+            let mut id_value =
+                serde_json::to_value(&id_record).map_err(|e| AppError::Internal(e.to_string()))?;
+            id_value["$type"] = json!(Identification::NSID);
+
+            let id_value_for_db = id_value.clone();
+
+            match agent
+                .api
+                .com
+                .atproto
+                .repo
+                .create_record(
+                    atrium_api::com::atproto::repo::create_record::InputData {
+                        collection: Identification::NSID
+                            .parse()
+                            .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
+                        record: serde_json::from_value(id_value).map_err(|e| {
+                            AppError::Internal(format!("Failed to convert record: {e}"))
+                        })?,
+                        repo: atrium_api::types::string::AtIdentifier::Did(
+                            atrium_api::types::string::Did::new(user.did.clone())
+                                .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?,
+                        ),
+                        rkey: None,
+                        swap_commit: None,
+                        validate: None,
+                    }
+                    .into(),
+                )
+                .await
+            {
+                Ok(id_resp) => {
+                    info!(uri = %id_resp.uri, "Auto-created identification for occurrence");
+                    // Immediate DB sync for the identification
+                    if let Ok(params) = observing_db::processing::identification_from_json(
+                        &id_value_for_db,
+                        id_resp.uri.to_string(),
+                        id_resp.cid.as_ref().to_string(),
+                        user.did.clone(),
+                        chrono::Utc::now(),
+                    ) {
+                        let _ = observing_db::identifications::upsert(&state.pool, &params).await;
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to auto-create identification");
+                }
+            }
+        }
+    }
 
     Ok(Json(json!({
         "success": true,
