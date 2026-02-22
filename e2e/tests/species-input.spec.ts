@@ -63,7 +63,7 @@ authTest.describe("Species Input", () => {
       await authExpect(option).toBeVisible({ timeout: 5000 });
       await option.click();
       await authExpect(speciesInput).not.toHaveValue("");
-      await authExpect(popper).not.toBeVisible();
+      await authExpect(page.locator(".MuiAutocomplete-popper")).not.toBeVisible();
     },
   );
 });
