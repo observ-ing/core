@@ -2,7 +2,7 @@
 
 ## Google Cloud Run
 
-Services deployed via `cloudbuild.yaml`:
+Services deployed via GitHub Actions (`.github/workflows/ci.yml`):
 
 | Service | Dockerfile | Public | Cloud SQL | Notes |
 |---------|------------|--------|-----------|-------|
@@ -13,17 +13,9 @@ Services deployed via `cloudbuild.yaml`:
 
 All services are Rust binaries.
 
-## Manual Deploy
-
-```bash
-gcloud builds submit --config cloudbuild.yaml
-```
-
-Builds run in parallel (`waitFor: ['-']`), then push, then deploy.
-
 ## Automatic Deploy
 
-Push to `main` triggers deployment after CI checks pass. See `.github/workflows/deploy.yml`.
+Push to `main` triggers deployment after CI checks pass. See `.github/workflows/ci.yml`.
 
 ## Environment Variables
 
@@ -42,7 +34,7 @@ DB_PASSWORD=...
 ### Ingester
 
 ```bash
-RELAY_URL=wss://bsky.network
+JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe
 ```
 
 ### Media Proxy
@@ -59,7 +51,7 @@ PORT=3000
 PUBLIC_URL=https://your-domain.run.app
 TAXONOMY_SERVICE_URL=https://observing-taxonomy-xxx.run.app
 MEDIA_PROXY_URL=https://observing-media-proxy-xxx.run.app
-TS_APPVIEW_URL=http://localhost:3000  # Internal agent RPC target
+HIDDEN_DIDS=did:plc:abc123  # Comma-separated DIDs to hide from feeds
 ```
 
 ### Taxonomy
