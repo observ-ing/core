@@ -1,5 +1,7 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
+  Badge,
   Drawer,
   List,
   ListItem,
@@ -19,6 +21,7 @@ import {
 import {
   Home,
   Explore,
+  Notifications as NotificationsIcon,
   Person,
   DarkMode,
   LightMode,
@@ -32,6 +35,7 @@ import {
 import { useAppSelector, useAppDispatch } from "../../store";
 import { logout } from "../../store/authSlice";
 import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlice";
+import { fetchUnreadCount } from "../../services/api";
 import logoSvg from "../../assets/logo.svg";
 
 export const DRAWER_WIDTH = 240;
@@ -49,12 +53,41 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   const user = useAppSelector((state) => state.auth.user);
   const isAuthLoading = useAppSelector((state) => state.auth.isLoading);
   const themeMode = useAppSelector((state) => state.ui.themeMode);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Poll unread count when logged in
+  useEffect(() => {
+    if (!user) {
+      setUnreadCount(0);
+      return;
+    }
+    const poll = () => {
+      fetchUnreadCount()
+        .then((data) => setUnreadCount(data.count))
+        .catch(() => {});
+    };
+    poll();
+    intervalRef.current = setInterval(poll, 30_000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [user]);
 
   const navItems = [
     { label: "Home", icon: <Home />, path: "/" },
     { label: "Explore", icon: <Explore />, path: "/explore" },
     ...(user
       ? [
+          {
+            label: "Notifications",
+            icon: (
+              <Badge badgeContent={unreadCount} color="error" max={99}>
+                <NotificationsIcon />
+              </Badge>
+            ),
+            path: "/notifications",
+          },
           {
             label: "Profile",
             icon: <Person />,

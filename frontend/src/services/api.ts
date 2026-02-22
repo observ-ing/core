@@ -9,6 +9,7 @@ import type {
   ExploreFeedResponse,
   HomeFeedResponse,
   ProfileFeedResponse,
+  NotificationsResponse,
 } from "./types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
@@ -507,6 +508,53 @@ export async function likeObservation(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to like observation");
+  }
+
+  return response.json();
+}
+
+// ============================================================================
+// Notification API Functions
+// ============================================================================
+
+export async function fetchNotifications(
+  cursor?: string
+): Promise<NotificationsResponse> {
+  const params = new URLSearchParams({ limit: "20" });
+  if (cursor) params.set("cursor", cursor);
+
+  const response = await fetch(`${API_BASE}/api/notifications?${params}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to load notifications");
+  }
+
+  return response.json();
+}
+
+export async function fetchUnreadCount(): Promise<{ count: number }> {
+  const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    throw new Error("Failed to fetch unread count");
+  }
+
+  return response.json();
+}
+
+export async function markNotificationRead(
+  id?: number
+): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/notifications/read`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(id !== undefined ? { id } : {}),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to mark notification read");
   }
 
   return response.json();

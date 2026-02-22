@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT id, recipient_did, actor_did, kind, subject_uri, reference_uri,\n                   read, created_at as \"created_at: DateTime<Utc>\"\n            FROM notifications\n            WHERE recipient_did = $1\n            ORDER BY id DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "recipient_did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "reference_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "read",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "9059eb0504085c822cd850aed8c16dbd9e2e0fccf727c6252fa11c839ac4d791"
+}

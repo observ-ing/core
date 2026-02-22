@@ -9,6 +9,39 @@ use observing_db::processing;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
 
+/// Look up the occurrence owner and create a notification (skips self-notifications)
+async fn notify_occurrence_owner(
+    pool: &PgPool,
+    actor_did: &str,
+    kind: &str,
+    subject_uri: &str,
+    reference_uri: &str,
+) {
+    let owner = sqlx::query_scalar!("SELECT did FROM occurrences WHERE uri = $1", subject_uri)
+        .fetch_optional(pool)
+        .await;
+    match owner {
+        Ok(Some(owner_did)) => {
+            if let Err(e) = observing_db::notifications::create(
+                pool,
+                &owner_did,
+                actor_did,
+                kind,
+                subject_uri,
+                reference_uri,
+            )
+            .await
+            {
+                warn!(error = %e, "Failed to create notification");
+            }
+        }
+        Ok(None) => {}
+        Err(e) => {
+            warn!(error = %e, "Failed to look up occurrence owner for notification");
+        }
+    }
+}
+
 /// Database connection and operations
 pub struct Database {
     pool: PgPool,
@@ -100,6 +133,14 @@ impl Database {
         };
 
         observing_db::identifications::upsert(&self.pool, &params).await?;
+        notify_occurrence_owner(
+            &self.pool,
+            &commit.did,
+            "identification",
+            &params.subject_uri,
+            &commit.uri,
+        )
+        .await;
         Ok(())
     }
 
@@ -137,6 +178,14 @@ impl Database {
         };
 
         observing_db::comments::upsert(&self.pool, &params).await?;
+        notify_occurrence_owner(
+            &self.pool,
+            &commit.did,
+            "comment",
+            &params.subject_uri,
+            &commit.uri,
+        )
+        .await;
         Ok(())
     }
 
@@ -211,6 +260,14 @@ impl Database {
         };
 
         observing_db::likes::create(&self.pool, &params).await?;
+        notify_occurrence_owner(
+            &self.pool,
+            &commit.did,
+            "like",
+            &params.subject_uri,
+            &commit.uri,
+        )
+        .await;
         Ok(())
     }
 
