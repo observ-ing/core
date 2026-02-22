@@ -9,12 +9,19 @@ use sqlx::{PgPool, Postgres, QueryBuilder};
 pub async fn get_explore_feed(
     executor: impl sqlx::PgExecutor<'_>,
     options: &ExploreFeedOptions,
+    hidden_dids: &[String],
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     let mut qb = QueryBuilder::<Postgres>::new(concat!(
         "SELECT ",
         occurrence_columns!(),
         " FROM occurrences WHERE TRUE"
     ));
+
+    if !hidden_dids.is_empty() {
+        qb.push(" AND did != ALL(");
+        qb.push_bind(hidden_dids.to_vec());
+        qb.push(")");
+    }
 
     if let Some(ref taxon) = options.taxon {
         qb.push(" AND scientific_name ILIKE ");
@@ -222,6 +229,7 @@ pub async fn get_home_feed(
     executor: impl sqlx::PgExecutor<'_>,
     followed_dids: &[String],
     options: &HomeFeedOptions,
+    hidden_dids: &[String],
 ) -> Result<HomeFeedResult, sqlx::Error> {
     let limit = options.limit.unwrap_or(20);
     let nearby_radius = options.nearby_radius.unwrap_or(50000.0);
@@ -243,6 +251,11 @@ pub async fn get_home_feed(
         qb.push("follows_feed AS (SELECT *, 'follows'::text as source FROM occurrences WHERE did = ANY(");
         qb.push_bind(followed_dids.to_vec());
         qb.push(")");
+        if !hidden_dids.is_empty() {
+            qb.push(" AND did != ALL(");
+            qb.push_bind(hidden_dids.to_vec());
+            qb.push(")");
+        }
         if let Some(ref cursor) = options.cursor {
             qb.push(" AND created_at < ");
             qb.push_bind(cursor.clone());
@@ -262,6 +275,11 @@ pub async fn get_home_feed(
         qb.push("), 4326)::geography, ");
         qb.push_bind(nearby_radius);
         qb.push(")");
+        if !hidden_dids.is_empty() {
+            qb.push(" AND did != ALL(");
+            qb.push_bind(hidden_dids.to_vec());
+            qb.push(")");
+        }
         if let Some(ref cursor) = options.cursor {
             qb.push(" AND created_at < ");
             qb.push_bind(cursor.clone());
@@ -330,6 +348,7 @@ pub async fn get_occurrences_by_taxon(
     taxon_name: &str,
     taxon_rank: &str,
     options: &TaxonOccurrenceOptions,
+    hidden_dids: &[String],
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     let limit = options.limit.unwrap_or(20);
     let rank_lower = taxon_rank.to_lowercase();
@@ -341,6 +360,12 @@ pub async fn get_occurrences_by_taxon(
     ));
 
     push_taxon_filter(&mut qb, &rank_lower, taxon_name);
+
+    if !hidden_dids.is_empty() {
+        qb.push(" AND did != ALL(");
+        qb.push_bind(hidden_dids.to_vec());
+        qb.push(")");
+    }
 
     if let Some(ref kingdom) = options.kingdom {
         if rank_lower != "kingdom" {

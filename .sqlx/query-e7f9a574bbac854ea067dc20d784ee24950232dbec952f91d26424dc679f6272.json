@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                continent, country, country_code, state_province, county, municipality, locality, water_body,\n                verbatim_locality, occurrence_remarks,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source,\n                NULL::text as observer_role\n            FROM occurrences\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                continent, country, country_code, state_province, county, municipality, locality, water_body,\n                verbatim_locality, occurrence_remarks,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source,\n                NULL::text as observer_role\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -171,7 +171,9 @@
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Int8",
+        "Text",
+        "TextArray"
       ]
     },
     "nullable": [
@@ -210,5 +212,5 @@
       null
     ]
   },
-  "hash": "46f306f50d6973c4b67ffaea56bbd6c7d6b9fa6192c05a8830edf264757d23e6"
+  "hash": "e7f9a574bbac854ea067dc20d784ee24950232dbec952f91d26424dc679f6272"
 }
