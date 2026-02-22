@@ -126,25 +126,29 @@ jobs:
           cache: 'npm'
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - run: npm ci
-      - name: Run database migrations
-        run: psql $DATABASE_URL -f crates/observing-db/migrations/20240101000000_initial.sql
+      - name: Run database migrations and seed
+        run: |
+          psql $DATABASE_URL -f crates/observing-db/migrations/20240101000000_initial.sql
+          psql $DATABASE_URL -f e2e/seed.sql
       - name: Build frontend
         run: npm run build
-      - name: Build appview
-        run: cargo build -p observing-appview
+      - name: Build appview and taxonomy service
+        run: cargo build -p observing-appview -p observing-taxonomy
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
-      - name: Start appview
-        run: cargo run -p observing-appview &
+      - name: Start services
+        run: |
+          cargo run -p observing-taxonomy &
+          cargo run -p observing-appview &
         env:
           PORT: 3000
-      - name: Wait for appview
+      - name: Wait for services
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://127.0.0.1:3000/health && exit 0
+            curl -sf http://127.0.0.1:3003/health 2>/dev/null && curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
             sleep 2
           done
-          echo "Appview failed to start"
+          echo "Services failed to start"
           exit 1
       - name: Run e2e tests
         run: npm run test:e2e
