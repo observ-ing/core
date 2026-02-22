@@ -152,6 +152,12 @@ authTest.describe("Upload Modal - Logged In", () => {
       await option.click();
     }
 
+    // Set location via the "Use My Location" button (geolocation mocked in fixture)
+    const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
+    await useLocationBtn.scrollIntoViewIfNeeded();
+    await useLocationBtn.click();
+    await page.waitForTimeout(1000);
+
     const submitButton = page.getByRole("button", { name: /Submit/i });
     if (await submitButton.isEnabled()) {
       await submitButton.click();
@@ -210,6 +216,12 @@ authTest.describe("Upload Modal - Logged In", () => {
     });
 
     // Wait for the image preview to appear
+    await page.waitForTimeout(1000);
+
+    // Set location via the "Use My Location" button (geolocation mocked in fixture)
+    const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
+    await useLocationBtn.scrollIntoViewIfNeeded();
+    await useLocationBtn.click();
     await page.waitForTimeout(1000);
 
     const submitButton = page.getByRole("button", { name: /Submit/i });
