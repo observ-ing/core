@@ -143,4 +143,70 @@ authTest.describe("Upload Modal - Logged In", () => {
       await page.waitForTimeout(1000);
     }
   });
+
+  // TC-UPLOAD-020: Large image upload exceeds old 2MB body limit
+  authTest("submitting a large image sends a payload exceeding 2MB", async ({
+    authenticatedPage: page,
+  }) => {
+    let requestBodySize = 0;
+
+    await page.route("**/api/occurrences", (route) => {
+      if (route.request().method() === "POST") {
+        requestBodySize = route.request().postDataBuffer()?.length ?? 0;
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            uri: "at://did:plc:test123/org.observ.ing.occurrence/large123",
+            cid: "bafylarge",
+          }),
+        });
+      }
+      return route.continue();
+    });
+
+    await page.goto("/");
+    await openUploadModal(page);
+
+    // Generate a ~3MB JPEG in the browser and attach it to the file input
+    const largeImageBuffer = await page.evaluate(async () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 3000;
+      canvas.height = 3000;
+      const ctx = canvas.getContext("2d")!;
+      // Fill with noisy data so JPEG compression can't shrink it too much
+      for (let y = 0; y < canvas.height; y += 2) {
+        for (let x = 0; x < canvas.width; x += 2) {
+          ctx.fillStyle = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
+          ctx.fillRect(x, y, 2, 2);
+        }
+      }
+      const blob = await new Promise<Blob>((resolve) =>
+        canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.95),
+      );
+      const arrayBuffer = await blob.arrayBuffer();
+      return Array.from(new Uint8Array(arrayBuffer));
+    });
+
+    const buffer = Buffer.from(largeImageBuffer);
+    // Sanity check: the generated image should be well over 2MB
+    authExpect(buffer.length).toBeGreaterThan(2 * 1024 * 1024);
+
+    const fileInput = page.getByRole("dialog").locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: "large-photo.jpg",
+      mimeType: "image/jpeg",
+      buffer,
+    });
+
+    // Wait for the image preview to appear
+    await page.waitForTimeout(1000);
+
+    const submitButton = page.getByRole("button", { name: /Submit/i });
+    await submitButton.click();
+    await page.waitForTimeout(2000);
+
+    // The base64-encoded body should exceed the old 2MB limit
+    authExpect(requestBodySize).toBeGreaterThan(2 * 1024 * 1024);
+  });
 });
