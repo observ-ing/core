@@ -55,13 +55,13 @@ authTest.describe("Interactions - Logged In", () => {
         page.getByLabel("Other organism (Subject B)"),
       ).toBeVisible({ timeout: 10000 });
       await authExpect(
-        page.getByRole("combobox", { name: "Interaction Type" }),
+        page.getByRole("combobox", { name: /Interaction Type/ }),
       ).toBeVisible();
       await authExpect(
-        page.getByRole("combobox", { name: "Direction" }),
+        page.getByRole("combobox", { name: /Direction/ }),
       ).toBeVisible();
       await authExpect(
-        page.getByRole("combobox", { name: "Confidence" }),
+        page.getByRole("combobox", { name: /Confidence/ }),
       ).toBeVisible();
     },
   );

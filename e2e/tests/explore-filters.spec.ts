@@ -21,20 +21,25 @@ test.describe("Explore Filters", () => {
 
     // Click to expand
     await filtersHeader.click();
-    await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
+    await expect(
+      page.getByRole("combobox", { name: /Kingdom/ }),
+    ).toBeVisible({ timeout: 5000 });
     await expect(page.getByLabel("Taxon")).toBeVisible();
 
     // Click to collapse
     await filtersHeader.click();
-    await expect(page.getByLabel("Kingdom")).not.toBeVisible({ timeout: 5000 });
+    await expect(
+      page.getByRole("combobox", { name: /Kingdom/ }),
+    ).not.toBeVisible({ timeout: 5000 });
   });
 
   // TC-FILTER-003: Kingdom dropdown options
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
+    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
-    await page.getByLabel("Kingdom").click();
+    await kingdomSelect.click();
     await expect(
       page.getByRole("option", { name: "All Kingdoms" }),
     ).toBeVisible();
@@ -66,10 +71,11 @@ test.describe("Explore Filters", () => {
     page,
   }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
+    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom
-    await page.getByLabel("Kingdom").click();
+    await kingdomSelect.click();
     await page.getByRole("option", { name: "Plants" }).click();
 
     // Click Apply Filters and verify the API request includes kingdom
@@ -85,10 +91,11 @@ test.describe("Explore Filters", () => {
   // TC-FILTER-006: Clear button resets filters
   test("Clear button resets all filters", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
+    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom first
-    await page.getByLabel("Kingdom").click();
+    await kingdomSelect.click();
     await page.getByRole("option", { name: "Plants" }).click();
 
     // Clear should be enabled now
@@ -103,10 +110,11 @@ test.describe("Explore Filters", () => {
   // TC-FILTER-007: Active filter count badge
   test("active filter count badge updates", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
+    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select kingdom to get 1 active filter
-    await page.getByLabel("Kingdom").click();
+    await kingdomSelect.click();
     await page.getByRole("option", { name: "Plants" }).click();
 
     // Apply and check badge

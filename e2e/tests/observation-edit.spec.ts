@@ -77,10 +77,11 @@ authTest.describe("Observation Edit - Logged In", () => {
           contentType: "application/json",
           body,
         });
+      await page.route("**/api/feeds/home*", handler);
       await page.route("**/api/feeds/explore*", handler);
       await page.route("**/api/occurrences/feed*", handler);
 
-      await page.goto("/explore");
+      await page.goto("/");
       const moreButton = page.getByLabel("More options").first();
       await authExpect(moreButton).toBeVisible({ timeout: 15000 });
       await moreButton.click();

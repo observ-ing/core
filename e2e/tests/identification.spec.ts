@@ -52,7 +52,7 @@ authTest.describe("Identification - Logged In", () => {
       });
       await authExpect(page.getByLabel("Comment (optional)")).toBeVisible();
       await authExpect(
-        page.getByRole("combobox", { name: "Confidence" }),
+        page.getByRole("combobox", { name: /Confidence/ }),
       ).toBeVisible();
     },
   );
