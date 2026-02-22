@@ -25,6 +25,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
@@ -118,17 +119,6 @@ export function UploadModal() {
       } else if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
         setLng(currentLocation.lng.toFixed(6));
-      } else {
-        navigator.geolocation?.getCurrentPosition(
-          (position) => {
-            setLat(position.coords.latitude.toFixed(6));
-            setLng(position.coords.longitude.toFixed(6));
-          },
-          () => {
-            setLat("37.7749");
-            setLng("-122.4194");
-          }
-        );
       }
     }
   }, [isOpen, currentLocation, editingObservation]);
@@ -749,7 +739,7 @@ export function UploadModal() {
           }}
         />
 
-        {lat && lng && (
+        {lat && lng ? (
           <LocationPicker
             latitude={parseFloat(lat)}
             longitude={parseFloat(lng)}
@@ -757,6 +747,39 @@ export function UploadModal() {
             uncertaintyMeters={uncertaintyMeters}
             onUncertaintyChange={setUncertaintyMeters}
           />
+        ) : (
+          <Button
+            fullWidth
+            variant="outlined"
+            startIcon={<MyLocationIcon />}
+            onClick={() => {
+              navigator.geolocation?.getCurrentPosition(
+                (position) => {
+                  setLat(position.coords.latitude.toFixed(6));
+                  setLng(position.coords.longitude.toFixed(6));
+                },
+                () => {
+                  dispatch(
+                    addToast({
+                      message: "Could not get your location. Use the map to set it manually.",
+                      type: "error",
+                    })
+                  );
+                }
+              );
+            }}
+            sx={{
+              mt: 2,
+              borderStyle: "dashed",
+              color: "text.disabled",
+              "&:hover": {
+                borderColor: "primary.main",
+                color: "primary.main",
+              },
+            }}
+          >
+            Use My Location
+          </Button>
         )}
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>

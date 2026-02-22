@@ -28,6 +28,8 @@ export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ browser }, use) => {
     const context = await browser.newContext({
       storageState: AUTH_FILE,
+      geolocation: { latitude: 37.7749, longitude: -122.4194 },
+      permissions: ["geolocation"],
     });
     const authPage = await context.newPage();
     await use(authPage);
