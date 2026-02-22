@@ -5,21 +5,30 @@ import {
 
 const FAB = 'button[aria-label="Create actions"]';
 
-/** Type into the species input, wait for typing to finish, then wait for
- *  the final debounced taxa search response. Using a two-step approach avoids
- *  capturing an early response from a partial query. */
+/** Type into the species input and wait for the taxa search response that
+ *  matches the full query. Filters by query-param length so we skip early
+ *  responses triggered by partial (debounced) input. */
 async function searchSpecies(
   page: import("@playwright/test").Page,
   query: string,
 ) {
   const speciesInput = page.getByLabel(/Species/i);
   await speciesInput.click();
-  await speciesInput.pressSequentially(query, { delay: 50 });
-  // Wait for the debounced search triggered by the final keystroke
-  await page.waitForResponse(
-    (r) => r.url().includes("/api/taxa/search") && r.status() === 200,
-    { timeout: 10000 },
-  );
+  await Promise.all([
+    page.waitForResponse(
+      (r) => {
+        if (!r.url().includes("/api/taxa/search")) return false;
+        try {
+          const q = new URL(r.url()).searchParams.get("q") || "";
+          return q.length >= query.length;
+        } catch {
+          return false;
+        }
+      },
+      { timeout: 15000 },
+    ),
+    speciesInput.pressSequentially(query, { delay: 50 }),
+  ]);
   return speciesInput;
 }
 
