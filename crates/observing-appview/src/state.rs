@@ -29,6 +29,8 @@ pub struct AppState {
     pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
     pub public_url: Option<String>,
+    /// DIDs to hide from all feeds (e.g. test accounts)
+    pub hidden_dids: Vec<String>,
 }
 
 /// Create an OAuthClient.

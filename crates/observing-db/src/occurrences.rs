@@ -157,6 +157,7 @@ pub async fn get_nearby(
     radius_meters: f64,
     limit: i64,
     offset: i64,
+    hidden_dids: &[String],
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     sqlx::query_as!(
         OccurrenceRow,
@@ -180,6 +181,7 @@ pub async fn get_nearby(
             ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
             $3
         )
+        AND did != ALL($6)
         ORDER BY distance_meters
         LIMIT $4 OFFSET $5
         "#,
@@ -188,6 +190,7 @@ pub async fn get_nearby(
         radius_meters,
         limit,
         offset,
+        hidden_dids,
     )
     .fetch_all(executor)
     .await
@@ -201,6 +204,7 @@ pub async fn get_by_bounding_box(
     max_lat: f64,
     max_lng: f64,
     limit: i64,
+    hidden_dids: &[String],
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     sqlx::query_as!(
         OccurrenceRow,
@@ -220,6 +224,7 @@ pub async fn get_by_bounding_box(
             NULL::text as observer_role
         FROM occurrences
         WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
+        AND did != ALL($6)
         LIMIT $5
         "#,
         min_lng,
@@ -227,6 +232,7 @@ pub async fn get_by_bounding_box(
         max_lng,
         max_lat,
         limit,
+        hidden_dids,
     )
     .fetch_all(executor)
     .await
@@ -237,6 +243,7 @@ pub async fn get_feed(
     executor: impl sqlx::PgExecutor<'_>,
     limit: i64,
     cursor: Option<&str>,
+    hidden_dids: &[String],
 ) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
     if let Some(cursor) = cursor {
         sqlx::query_as!(
@@ -257,11 +264,13 @@ pub async fn get_feed(
                 NULL::text as observer_role
             FROM occurrences
             WHERE created_at < ($2::text)::timestamptz
+            AND did != ALL($3)
             ORDER BY created_at DESC
             LIMIT $1
             "#,
             limit,
             cursor,
+            hidden_dids,
         )
         .fetch_all(executor)
         .await
@@ -283,10 +292,12 @@ pub async fn get_feed(
                 NULL::text as source,
                 NULL::text as observer_role
             FROM occurrences
+            WHERE did != ALL($2)
             ORDER BY created_at DESC
             LIMIT $1
             "#,
             limit,
+            hidden_dids,
         )
         .fetch_all(executor)
         .await

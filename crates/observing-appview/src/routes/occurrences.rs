@@ -46,8 +46,16 @@ pub async fn get_nearby(
     let limit = params.limit.unwrap_or(100).min(1000);
     let offset = params.offset.unwrap_or(0);
 
-    let rows =
-        observing_db::occurrences::get_nearby(&state.pool, lat, lng, radius, limit, offset).await?;
+    let rows = observing_db::occurrences::get_nearby(
+        &state.pool,
+        lat,
+        lng,
+        radius,
+        limit,
+        offset,
+        &state.hidden_dids,
+    )
+    .await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -85,8 +93,13 @@ pub async fn get_feed(
 ) -> Result<Json<Value>, AppError> {
     let limit = params.limit.unwrap_or(20).min(100);
 
-    let rows =
-        observing_db::occurrences::get_feed(&state.pool, limit, params.cursor.as_deref()).await?;
+    let rows = observing_db::occurrences::get_feed(
+        &state.pool,
+        limit,
+        params.cursor.as_deref(),
+        &state.hidden_dids,
+    )
+    .await?;
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -145,6 +158,7 @@ pub async fn get_bbox(
         max_lat,
         max_lng,
         limit,
+        &state.hidden_dids,
     )
     .await?;
 
@@ -196,6 +210,7 @@ pub async fn get_geojson(
         max_lat,
         max_lng,
         10000,
+        &state.hidden_dids,
     )
     .await?;
 
