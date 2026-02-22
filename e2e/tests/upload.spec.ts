@@ -96,6 +96,21 @@ authTest.describe("Upload Modal - Logged In", () => {
     ).toBeVisible({ timeout: 5000 });
   });
 
+  // TC-UPLOAD-017: Observation date picker
+  authTest("upload modal shows observation date picker defaulting to today", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/");
+    await openUploadModal(page);
+    const dateInput = page.getByLabel("Observation date");
+    await authExpect(dateInput).toBeVisible();
+    const value = await dateInput.inputValue();
+    // Date input uses local time, so compare with local date
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    authExpect(value.startsWith(today)).toBeTruthy();
+  });
+
   // TC-UPLOAD-016: Invalid image file type
   authTest("file input only accepts image types", async ({
     authenticatedPage: page,

@@ -21,8 +21,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  FormControlLabel,
-  Checkbox,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -62,6 +60,11 @@ const LICENSE_OPTIONS = [
   { value: "CC-BY-NC-SA-4.0", label: "CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)" },
 ];
 
+function toDatetimeLocal(date: Date): string {
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
@@ -84,8 +87,7 @@ export function UploadModal() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [coObservers, setCoObservers] = useState<string[]>([]);
   const [coObserverInput, setCoObserverInput] = useState("");
-  const [photoDate, setPhotoDate] = useState<Date | null>(null);
-  const [usePhotoDate, setUsePhotoDate] = useState(false);
+  const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -98,6 +100,9 @@ export function UploadModal() {
       if (editingObservation) {
         setSpecies(editingObservation.scientificName || "");
         setNotes(editingObservation.occurrenceRemarks || "");
+        if (editingObservation.eventDate) {
+          setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
+        }
         if (editingObservation.location) {
           setLat(editingObservation.location.latitude.toFixed(6));
           setLng(editingObservation.location.longitude.toFixed(6));
@@ -139,8 +144,7 @@ export function UploadModal() {
     setExistingImages([]);
     setCoObservers([]);
     setCoObserverInput("");
-    setPhotoDate(null);
-    setUsePhotoDate(false);
+    setObservationDate(toDatetimeLocal(new Date()));
     setUncertaintyMeters(50);
   };
 
@@ -243,8 +247,13 @@ export function UploadModal() {
         const parsed = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
-          setPhotoDate(date);
-          setUsePhotoDate(true);
+          setObservationDate(toDatetimeLocal(date));
+          dispatch(
+            addToast({
+              message: "Date extracted from photo EXIF data",
+              type: "success",
+            })
+          );
         }
       }
     } catch (error) {
@@ -335,7 +344,7 @@ export function UploadModal() {
           coordinateUncertaintyInMeters: uncertaintyMeters,
           notes: notes || undefined,
           license,
-          eventDate: editingObservation.eventDate || new Date().toISOString(),
+          eventDate: new Date(observationDate).toISOString(),
           recordedBy: coObservers.length > 0 ? coObservers : undefined,
           images: imageData.length > 0 ? imageData : undefined,
           retainedBlobCids,
@@ -352,9 +361,7 @@ export function UploadModal() {
           })
         );
       } else {
-        const eventDate = usePhotoDate && photoDate
-          ? photoDate.toISOString()
-          : new Date().toISOString();
+        const eventDate = new Date(observationDate).toISOString();
 
         const result = await submitObservation({
           scientificName: species.trim() || undefined,
@@ -730,23 +737,17 @@ export function UploadModal() {
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
 
-        {photoDate && (
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={usePhotoDate}
-                onChange={(e) => setUsePhotoDate(e.target.checked)}
-                size="small"
-              />
-            }
-            label={
-              <Typography variant="body2">
-                Use photo date: {photoDate.toLocaleDateString()} {photoDate.toLocaleTimeString()}
-              </Typography>
-            }
-            sx={{ mt: 1 }}
-          />
-        )}
+        <TextField
+          fullWidth
+          label="Observation date"
+          type="datetime-local"
+          value={observationDate}
+          onChange={(e) => setObservationDate(e.target.value)}
+          margin="normal"
+          slotProps={{
+            inputLabel: { shrink: true },
+          }}
+        />
 
         {lat && lng && (
           <LocationPicker
