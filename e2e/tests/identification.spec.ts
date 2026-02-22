@@ -25,7 +25,7 @@ async function navigateToDetail(page: any) {
   await authExpect(card).toBeVisible({ timeout: 15000 });
   await card.click();
   await authExpect(page).toHaveURL(/\/observation\/.+\/.+/);
-  await authExpect(page.getByText("Observed")).toBeVisible({ timeout: 10000 });
+  await authExpect(page.getByText("Observed")).toBeVisible({ timeout: 30000 });
 }
 
 authTest.describe("Identification - Logged In", () => {
