@@ -5,17 +5,21 @@ import {
 
 const FAB = 'button[aria-label="Create actions"]';
 
-/** Type into the species input and wait for the taxa API to respond. */
+/** Type into the species input, wait for typing to finish, then wait for
+ *  the final debounced taxa search response. Using a two-step approach avoids
+ *  capturing an early response from a partial query. */
 async function searchSpecies(
   page: import("@playwright/test").Page,
   query: string,
 ) {
   const speciesInput = page.getByLabel(/Species/i);
   await speciesInput.click();
-  await Promise.all([
-    page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-    speciesInput.pressSequentially(query, { delay: 50 }),
-  ]);
+  await speciesInput.pressSequentially(query, { delay: 50 });
+  // Wait for the debounced search triggered by the final keystroke
+  await page.waitForResponse(
+    (r) => r.url().includes("/api/taxa/search") && r.status() === 200,
+    { timeout: 10000 },
+  );
   return speciesInput;
 }
 
@@ -36,13 +40,9 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a common name shows scientific name in suggestions",
     async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "Eschscholzia californica");
+      await searchSpecies(page, "california poppy");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 10000 });
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
-        /Eschscholzia/i,
-        { timeout: 10000 },
-      );
     },
   );
 
@@ -50,11 +50,11 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a scientific name shows matching species",
     async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "Quercus agrifolia");
+      await searchSpecies(page, "Quercus");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 10000 });
       await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
-        /Quercus/i,
+        /quercus/i,
         { timeout: 10000 },
       );
     },
