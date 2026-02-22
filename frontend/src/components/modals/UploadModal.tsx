@@ -209,11 +209,15 @@ export function UploadModal() {
       const lngRef = tags.GPSLongitudeRef;
 
       if (gpsLat && gpsLng) {
-        let latitude = gpsLat.description;
-        let longitude = gpsLng.description;
+        // description may be a number or string depending on browser/ExifReader version
+        let latitude = typeof gpsLat.description === "number"
+          ? gpsLat.description
+          : parseFloat(String(gpsLat.description));
+        let longitude = typeof gpsLng.description === "number"
+          ? gpsLng.description
+          : parseFloat(String(gpsLng.description));
 
-        // Handle numeric values directly from description
-        if (typeof latitude === "number" && typeof longitude === "number") {
+        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
           // Apply hemisphere signs
           if (latRef?.value?.[0] === "S") latitude = -Math.abs(latitude);
           if (lngRef?.value?.[0] === "W") longitude = -Math.abs(longitude);
@@ -739,7 +743,7 @@ export function UploadModal() {
           }}
         />
 
-        {lat && lng ? (
+        {lat && lng && Number.isFinite(parseFloat(lat)) && Number.isFinite(parseFloat(lng)) ? (
           <LocationPicker
             latitude={parseFloat(lat)}
             longitude={parseFloat(lng)}

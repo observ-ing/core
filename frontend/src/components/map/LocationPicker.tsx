@@ -177,10 +177,13 @@ export function LocationPicker({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
+    const safeLat = Number.isFinite(latitude) ? latitude : 0;
+    const safeLng = Number.isFinite(longitude) ? longitude : 0;
+
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
       style: mapStyle,
-      center: [longitude, latitude],
+      center: [safeLng, safeLat],
       zoom: 12,
     });
 
