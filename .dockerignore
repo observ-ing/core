@@ -1,7 +1,14 @@
+target
 node_modules
 dist
 .git
 .github
+.claude
+.playwright-mcp
+playwright
+playwright-report
+e2e
 *.md
 .env*
+.DS_Store
 cache
