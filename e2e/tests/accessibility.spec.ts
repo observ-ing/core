@@ -65,9 +65,13 @@ authTest.describe("Accessibility - Authenticated", () => {
       await page.waitForTimeout(500);
 
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
+      await speciesInput.click();
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.pressSequentially("quercus", { delay: 50 }),
+      ]);
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 10000 });
 
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("Enter");

@@ -90,10 +90,14 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
     const speciesInput = page.getByLabel(/Species/i);
-    await speciesInput.fill("quercus");
+    await speciesInput.click();
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+      speciesInput.pressSequentially("quercus", { delay: 50 }),
+    ]);
     await authExpect(
-      page.locator(".MuiAutocomplete-popper"),
-    ).toBeVisible({ timeout: 5000 });
+      page.locator(".MuiAutocomplete-option").first(),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   // TC-UPLOAD-017: Observation date picker

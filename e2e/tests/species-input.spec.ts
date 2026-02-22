@@ -5,6 +5,20 @@ import {
 
 const FAB = 'button[aria-label="Create actions"]';
 
+/** Type into the species input and wait for the taxa API to respond. */
+async function searchSpecies(
+  page: import("@playwright/test").Page,
+  query: string,
+) {
+  const speciesInput = page.getByLabel(/Species/i);
+  await speciesInput.click();
+  await Promise.all([
+    page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+    speciesInput.pressSequentially(query, { delay: 50 }),
+  ]);
+  return speciesInput;
+}
+
 authTest.describe("Species Input", () => {
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
     await page.goto("/");
@@ -22,11 +36,10 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a common name shows scientific name in suggestions",
     async ({ authenticatedPage: page }) => {
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("california poppy");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await authExpect(popper).toContainText(/Eschscholzia/i);
+      await searchSpecies(page, "california poppy");
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Eschscholzia/i);
     },
   );
 
@@ -34,11 +47,10 @@ authTest.describe("Species Input", () => {
   authTest(
     "typing a scientific name shows matching species",
     async ({ authenticatedPage: page }) => {
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("Quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await authExpect(popper).toContainText(/Quercus/);
+      await searchSpecies(page, "Quercus");
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Quercus/);
     },
   );
 
@@ -46,10 +58,9 @@ authTest.describe("Species Input", () => {
   authTest(
     "lowercase scientific name still finds results",
     async ({ authenticatedPage: page }) => {
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus alba");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
+      await searchSpecies(page, "quercus alba");
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 10000 });
     },
   );
 
@@ -57,13 +68,12 @@ authTest.describe("Species Input", () => {
   authTest(
     "selecting an autocomplete suggestion populates the input",
     async ({ authenticatedPage: page }) => {
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await page.locator(".MuiAutocomplete-option").first().click();
+      const speciesInput = await searchSpecies(page, "quercus");
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await option.click();
       await authExpect(speciesInput).not.toHaveValue("");
-      await authExpect(popper).not.toBeVisible();
+      await authExpect(page.locator(".MuiAutocomplete-popper")).not.toBeVisible();
     },
   );
 });
