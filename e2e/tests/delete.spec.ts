@@ -2,60 +2,8 @@ import { test, expect } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
-  getTestUser,
 } from "../fixtures/auth";
-
-function buildMockFeedResponse() {
-  const user = getTestUser();
-  return JSON.stringify({
-    occurrences: [
-      {
-        uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
-        cid: "bafytest",
-        observer: {
-          did: user.did,
-          handle: user.handle,
-          displayName: user.displayName || user.handle,
-        },
-        observers: [
-          {
-            did: user.did,
-            handle: user.handle,
-            displayName: user.displayName || user.handle,
-            role: "owner",
-          },
-        ],
-        communityId: "Quercus alba",
-        effectiveTaxonomy: {
-          scientificName: "Quercus alba",
-          kingdom: "Plantae",
-          taxonRank: "species",
-        },
-        subjects: [],
-        images: [],
-        eventDate: "2024-01-01",
-        location: { latitude: 0, longitude: 0 },
-        createdAt: new Date().toISOString(),
-        likeCount: 0,
-        viewerHasLiked: false,
-      },
-    ],
-    cursor: null,
-  });
-}
-
-async function mockOwnObservationFeed(page: any) {
-  const body = buildMockFeedResponse();
-  const handler = (route: any) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body,
-    });
-  await page.route("**/api/feeds/home*", handler);
-  await page.route("**/api/feeds/explore*", handler);
-  await page.route("**/api/occurrences/feed*", handler);
-}
+import { mockOwnObservationFeed } from "../helpers/mock-observation";
 
 test.describe("Delete Observation - Logged Out", () => {
   // TC-DELETE-002: Delete option hidden for others' observations
