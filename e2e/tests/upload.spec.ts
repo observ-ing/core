@@ -158,4 +158,65 @@ authTest.describe("Upload Modal - Logged In", () => {
       await page.waitForTimeout(1000);
     }
   });
+
+  // TC-UPLOAD-020: Large image upload exceeds old 2MB body limit
+  authTest("submitting a large image sends a payload exceeding 2MB", async ({
+    authenticatedPage: page,
+  }) => {
+    let requestBodySize = 0;
+
+    await page.route("**/api/occurrences", (route) => {
+      if (route.request().method() === "POST") {
+        requestBodySize = route.request().postDataBuffer()?.length ?? 0;
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            uri: "at://did:plc:test123/org.observ.ing.occurrence/large123",
+            cid: "bafylarge",
+          }),
+        });
+      }
+      return route.continue();
+    });
+
+    // Build a ~3MB valid JPEG entirely in Node to avoid OOM from
+    // serializing large arrays across the browser↔Node boundary.
+    // Minimal JPEG: SOI + APP0 + DQT + SOF0 + DHT + SOS + padding + EOI
+    const targetSize = 3 * 1024 * 1024;
+    // Minimal valid JPEG (1x1 white pixel) — the structure doesn't matter
+    // since we only need the frontend to accept it as image/jpeg.
+    const header = Buffer.from([
+      0xff, 0xd8, // SOI
+      0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, // APP0/JFIF
+    ]);
+    const trailer = Buffer.from([0xff, 0xd9]); // EOI
+    // Fill the middle with random data (not 0xFF to avoid accidental markers)
+    const padding = Buffer.alloc(targetSize - header.length - trailer.length);
+    for (let i = 0; i < padding.length; i++) {
+      padding[i] = Math.floor(Math.random() * 0xfe);
+    }
+    const buffer = Buffer.concat([header, padding, trailer]);
+
+    await page.goto("/");
+    await openUploadModal(page);
+
+    const fileInput = page.getByRole("dialog").locator('input[type="file"]');
+    await fileInput.setInputFiles({
+      name: "large-photo.jpg",
+      mimeType: "image/jpeg",
+      buffer,
+    });
+
+    // Wait for the image preview to appear
+    await page.waitForTimeout(1000);
+
+    const submitButton = page.getByRole("button", { name: /Submit/i });
+    await submitButton.click();
+    await page.waitForTimeout(2000);
+
+    // The base64-encoded body should exceed the old 2MB limit
+    authExpect(requestBodySize).toBeGreaterThan(2 * 1024 * 1024);
+  });
 });
