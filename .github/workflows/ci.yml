@@ -138,10 +138,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
-          cargo run -p observing-taxonomy &
-          cargo run -p observing-appview &
-        env:
-          PORT: 3000
+          ./target/debug/observing-taxonomy &
+          PORT=3000 ./target/debug/observing-appview &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
