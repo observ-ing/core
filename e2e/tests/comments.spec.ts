@@ -32,7 +32,6 @@ authTest.describe("Comments - Logged In", () => {
     "Add button opens comment form",
     async ({ authenticatedPage: page }) => {
       await navigateToDetail(page, authExpect);
-      // The "Add" button in the Discussion section
       const addBtn = page
         .locator("text=Discussion")
         .locator("..")
@@ -67,21 +66,10 @@ authTest.describe("Comments - Logged In", () => {
     },
   );
 
-  // TC-CMT-004: Post comment sends POST
+  // TC-CMT-004: Post comment hits real API
   authTest(
     "posting comment sends POST with body text",
     async ({ authenticatedPage: page }) => {
-      await page.route("**/api/comments", (route) => {
-        if (route.request().method() === "POST") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-        return route.continue();
-      });
-
       await navigateToDetail(page, authExpect);
       const addBtn = page
         .locator("text=Discussion")

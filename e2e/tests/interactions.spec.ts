@@ -60,21 +60,10 @@ authTest.describe("Interactions - Logged In", () => {
     },
   );
 
-  // TC-INT-004: Submit interaction sends POST
+  // TC-INT-004: Submit interaction hits real API
   authTest(
     "submitting interaction sends POST with correct data",
     async ({ authenticatedPage: page }) => {
-      await page.route("**/api/interactions", (route) => {
-        if (route.request().method() === "POST") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-        return route.continue();
-      });
-
       await navigateToDetail(page, authExpect);
       const interactionSection = page
         .locator("text=Species Interactions")

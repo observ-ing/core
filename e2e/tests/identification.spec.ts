@@ -20,17 +20,6 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "Agree button sends POST with isAgreement true",
     async ({ authenticatedPage: page }) => {
-      await page.route("**/api/identifications", (route) => {
-        if (route.request().method() === "POST") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-        return route.continue();
-      });
-
       await navigateToDetail(page);
       const agreeBtn = page.getByRole("button", { name: "Agree" });
       await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
@@ -68,17 +57,6 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "submitting different ID sends POST with new scientificName",
     async ({ authenticatedPage: page }) => {
-      await page.route("**/api/identifications", (route) => {
-        if (route.request().method() === "POST") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-        return route.continue();
-      });
-
       await navigateToDetail(page);
       const suggestBtn = page.getByRole("button", {
         name: "Suggest Different ID",
