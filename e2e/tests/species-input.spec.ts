@@ -24,9 +24,9 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
       await speciesInput.fill("california poppy");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await authExpect(popper).toContainText(/Eschscholzia/i);
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 5000 });
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Eschscholzia/i);
     },
   );
 
@@ -36,9 +36,9 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
       await speciesInput.fill("Quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await authExpect(popper).toContainText(/Quercus/);
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 5000 });
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Quercus/);
     },
   );
 
@@ -48,8 +48,8 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
       await speciesInput.fill("quercus alba");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 5000 });
     },
   );
 
@@ -59,9 +59,9 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
       await speciesInput.fill("quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
-      await page.locator(".MuiAutocomplete-option").first().click();
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 5000 });
+      await option.click();
       await authExpect(speciesInput).not.toHaveValue("");
       await authExpect(popper).not.toBeVisible();
     },

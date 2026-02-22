@@ -92,7 +92,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     const speciesInput = page.getByLabel(/Species/i);
     await speciesInput.fill("quercus");
     await authExpect(
-      page.locator(".MuiAutocomplete-popper"),
+      page.locator(".MuiAutocomplete-option").first(),
     ).toBeVisible({ timeout: 5000 });
   });
 

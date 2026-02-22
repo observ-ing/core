@@ -66,8 +66,8 @@ authTest.describe("Accessibility - Authenticated", () => {
 
       const speciesInput = page.getByLabel(/Species/i);
       await speciesInput.fill("quercus");
-      const popper = page.locator(".MuiAutocomplete-popper");
-      await authExpect(popper).toBeVisible({ timeout: 5000 });
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await authExpect(option).toBeVisible({ timeout: 5000 });
 
       await page.keyboard.press("ArrowDown");
       await page.keyboard.press("Enter");
