@@ -47,9 +47,13 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
       await suggestBtn.click();
 
-      await authExpect(page.getByLabel("Species Name")).toBeVisible();
+      await authExpect(page.getByLabel("Species Name")).toBeVisible({
+        timeout: 10000,
+      });
       await authExpect(page.getByLabel("Comment (optional)")).toBeVisible();
-      await authExpect(page.getByLabel("Confidence")).toBeVisible();
+      await authExpect(
+        page.getByRole("combobox", { name: "Confidence" }),
+      ).toBeVisible();
     },
   );
 

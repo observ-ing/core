@@ -4,7 +4,10 @@ import {
   expect as authExpect,
   getTestUser,
 } from "../fixtures/auth";
-import { mockOwnObservationFeed } from "../helpers/mock-observation";
+import {
+  buildMockObservation,
+  mockOwnObservationFeed,
+} from "../helpers/mock-observation";
 
 test.describe("Observation Edit - Logged Out", () => {
   // TC-EDIT-002: Edit menu item hidden for others' observations
@@ -47,7 +50,36 @@ authTest.describe("Observation Edit - Logged In", () => {
   authTest(
     "more menu hides Edit for others' observations",
     async ({ authenticatedPage: page }) => {
-      // Use a feed with observations from a different user (no mock = real data)
+      // Mock a feed with an observation owned by a different user
+      const otherUserObs = buildMockObservation({
+        uri: "at://did:plc:otheruser/org.observ.ing.occurrence/other123",
+        observer: {
+          did: "did:plc:otheruser",
+          handle: "other.bsky.social",
+          displayName: "Other User",
+        },
+        observers: [
+          {
+            did: "did:plc:otheruser",
+            handle: "other.bsky.social",
+            displayName: "Other User",
+            role: "owner",
+          },
+        ],
+      });
+      const body = JSON.stringify({
+        occurrences: [otherUserObs],
+        cursor: null,
+      });
+      const handler = (route: any) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body,
+        });
+      await page.route("**/api/feeds/explore*", handler);
+      await page.route("**/api/occurrences/feed*", handler);
+
       await page.goto("/explore");
       const moreButton = page.getByLabel("More options").first();
       await authExpect(moreButton).toBeVisible({ timeout: 15000 });

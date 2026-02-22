@@ -55,7 +55,9 @@ test.describe("Observation Detail - Display", () => {
   // TC-DETAIL-005: Discussion section
   test("shows discussion section", async ({ page }) => {
     await navigateToDetail(page);
-    await expect(page.getByText("Discussion")).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Discussion" }),
+    ).toBeVisible();
   });
 
   // TC-DETAIL-006: Species interactions section

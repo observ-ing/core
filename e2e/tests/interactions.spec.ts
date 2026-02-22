@@ -43,20 +43,26 @@ authTest.describe("Interactions - Logged In", () => {
     "Add button opens interaction form",
     async ({ authenticatedPage: page }) => {
       await navigateToDetail(page, authExpect);
-      const interactionSection = page
-        .locator("text=Species Interactions")
-        .locator("..")
-        .locator("..");
-      const addBtn = interactionSection.getByRole("button", { name: "Add" });
+      // Find the Add button near the Species Interactions heading
+      const addBtn = page
+        .getByRole("heading", { name: "Species Interactions" })
+        .locator("xpath=ancestor::div[1]")
+        .getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
 
       await authExpect(
         page.getByLabel("Other organism (Subject B)"),
+      ).toBeVisible({ timeout: 10000 });
+      await authExpect(
+        page.getByRole("combobox", { name: "Interaction Type" }),
       ).toBeVisible();
-      await authExpect(page.getByLabel("Interaction Type")).toBeVisible();
-      await authExpect(page.getByLabel("Direction")).toBeVisible();
-      await authExpect(page.getByLabel("Confidence")).toBeVisible();
+      await authExpect(
+        page.getByRole("combobox", { name: "Direction" }),
+      ).toBeVisible();
+      await authExpect(
+        page.getByRole("combobox", { name: "Confidence" }),
+      ).toBeVisible();
     },
   );
 
@@ -65,11 +71,10 @@ authTest.describe("Interactions - Logged In", () => {
     "submitting interaction sends POST with correct data",
     async ({ authenticatedPage: page }) => {
       await navigateToDetail(page, authExpect);
-      const interactionSection = page
-        .locator("text=Species Interactions")
-        .locator("..")
-        .locator("..");
-      const addBtn = interactionSection.getByRole("button", { name: "Add" });
+      const addBtn = page
+        .getByRole("heading", { name: "Species Interactions" })
+        .locator("xpath=ancestor::div[1]")
+        .getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
 
@@ -96,16 +101,15 @@ authTest.describe("Interactions - Logged In", () => {
     "Cancel closes the interaction form",
     async ({ authenticatedPage: page }) => {
       await navigateToDetail(page, authExpect);
-      const interactionSection = page
-        .locator("text=Species Interactions")
-        .locator("..")
-        .locator("..");
-      const addBtn = interactionSection.getByRole("button", { name: "Add" });
+      const addBtn = page
+        .getByRole("heading", { name: "Species Interactions" })
+        .locator("xpath=ancestor::div[1]")
+        .getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
       await authExpect(
         page.getByLabel("Other organism (Subject B)"),
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 10000 });
 
       await page.getByRole("button", { name: "Cancel" }).click();
       await authExpect(

@@ -9,12 +9,14 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-001: Filter panel visible
   test("filter panel is visible on explore tab", async ({ page }) => {
-    await expect(page.getByText("Filters")).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole("heading", { name: "Filters" }),
+    ).toBeVisible({ timeout: 10000 });
   });
 
   // TC-FILTER-002: Expand/collapse
   test("clicking expands and collapses filter panel", async ({ page }) => {
-    const filtersHeader = page.getByText("Filters");
+    const filtersHeader = page.getByRole("heading", { name: "Filters" });
     await expect(filtersHeader).toBeVisible({ timeout: 10000 });
 
     // Click to expand
@@ -29,7 +31,7 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-003: Kingdom dropdown options
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
-    await page.getByText("Filters").click();
+    await page.getByRole("heading", { name: "Filters" }).click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
     await page.getByLabel("Kingdom").click();
@@ -49,7 +51,7 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-004: Taxon search autocomplete shows suggestions
   test("taxon search autocomplete shows suggestions", async ({ page }) => {
-    await page.getByText("Filters").click();
+    await page.getByRole("heading", { name: "Filters" }).click();
     const taxonInput = page.getByLabel("Taxon");
     await expect(taxonInput).toBeVisible({ timeout: 5000 });
     await taxonInput.fill("Quercus");
@@ -63,7 +65,7 @@ test.describe("Explore Filters", () => {
   test("Apply Filters button dispatches filtered feed request", async ({
     page,
   }) => {
-    await page.getByText("Filters").click();
+    await page.getByRole("heading", { name: "Filters" }).click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom
@@ -82,7 +84,7 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-006: Clear button resets filters
   test("Clear button resets all filters", async ({ page }) => {
-    await page.getByText("Filters").click();
+    await page.getByRole("heading", { name: "Filters" }).click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom first
@@ -100,7 +102,7 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-007: Active filter count badge
   test("active filter count badge updates", async ({ page }) => {
-    await page.getByText("Filters").click();
+    await page.getByRole("heading", { name: "Filters" }).click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
     // Select kingdom to get 1 active filter
