@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { Box, useTheme } from "@mui/material";
+import { Box, Typography, useTheme } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
@@ -19,8 +19,11 @@ export function LocationMap({
   const map = useRef<maplibregl.Map | null>(null);
   const theme = useTheme();
 
+  const validCoords =
+    Number.isFinite(latitude) && Number.isFinite(longitude);
+
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current || !validCoords) return;
 
     // Clean up any existing map (handles theme changes)
     if (map.current) {
@@ -95,7 +98,30 @@ export function LocationMap({
       mapInstance.remove();
       map.current = null;
     };
-  }, [latitude, longitude, uncertaintyMeters]);
+  }, [latitude, longitude, uncertaintyMeters, validCoords]);
+
+  if (!validCoords) {
+    return (
+      <Box
+        sx={{
+          width: "100%",
+          height: 200,
+          borderRadius: 1,
+          overflow: "hidden",
+          border: 1,
+          borderColor: "divider",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          bgcolor: "action.hover",
+        }}
+      >
+        <Typography variant="body2" color="text.secondary">
+          Location unavailable
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box
