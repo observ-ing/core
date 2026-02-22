@@ -4,10 +4,7 @@ import {
   expect as authExpect,
   getTestUser,
 } from "../fixtures/auth";
-import {
-  mockOwnObservationFeed,
-  mockInteractionsRoute,
-} from "../helpers/mock-observation";
+import { mockOwnObservationFeed } from "../helpers/mock-observation";
 
 test.describe("Observation Edit - Logged Out", () => {
   // TC-EDIT-002: Edit menu item hidden for others' observations

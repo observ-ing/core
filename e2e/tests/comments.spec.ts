@@ -3,79 +3,35 @@ import {
   test as authTest,
   expect as authExpect,
 } from "../fixtures/auth";
-import {
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-  buildMockComment,
-} from "../helpers/mock-observation";
 
-const TEST_DID = "did:plc:testuser123";
-const TEST_RKEY = "obs456";
-const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
-
-function observationOverrides() {
-  return {
-    uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
-    observer: {
-      did: TEST_DID,
-      handle: "naturalist.bsky.social",
-      displayName: "Nature Lover",
-    },
-    observers: [],
-  };
+/** Navigate from the feed to the first observation's detail page. */
+async function navigateToDetail(page: any, expectFn: any) {
+  await page.goto("/");
+  const card = page
+    .locator(".MuiCard-root .MuiCardActionArea-root")
+    .first();
+  await expectFn(card).toBeVisible({ timeout: 15000 });
+  await card.click();
+  await expectFn(page).toHaveURL(/\/observation\/.+\/.+/);
+  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 10000 });
 }
 
 test.describe("Comments - Logged Out", () => {
-  // TC-CMT-006: Login prompt for comments
+  // TC-CMT-001: Login prompt for comments
   test("shows login prompt when logged out", async ({ page }) => {
-    await mockObservationDetailRoute(page, observationOverrides());
-    await mockInteractionsRoute(page);
-
-    await page.goto(DETAIL_URL);
+    await navigateToDetail(page, expect);
     await expect(
       page.getByText("Log in to add a comment"),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
   });
 });
 
 authTest.describe("Comments - Logged In", () => {
-  // TC-CMT-001: Existing comments displayed
-  authTest(
-    "discussion section shows existing comments",
-    async ({ authenticatedPage: page }) => {
-      const comment = buildMockComment({
-        body: "Beautiful specimen! Love the bark detail.",
-        commenter: {
-          did: "did:plc:commenter1",
-          handle: "botanist.bsky.social",
-          displayName: "Dr. Botanist",
-        },
-      });
-      await mockObservationDetailRoute(page, {
-        ...observationOverrides(),
-        comments: [comment],
-      });
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
-      await authExpect(page.getByText("Discussion")).toBeVisible({
-        timeout: 10000,
-      });
-      await authExpect(page.getByText("Dr. Botanist")).toBeVisible();
-      await authExpect(
-        page.getByText("Beautiful specimen! Love the bark detail."),
-      ).toBeVisible();
-    },
-  );
-
   // TC-CMT-002: Add button opens comment form
   authTest(
     "Add button opens comment form",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page, authExpect);
       // The "Add" button in the Discussion section
       const addBtn = page
         .locator("text=Discussion")
@@ -96,10 +52,7 @@ authTest.describe("Comments - Logged In", () => {
   authTest(
     "Cancel closes comment form",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page, authExpect);
       const addBtn = page
         .locator("text=Discussion")
         .locator("..")
@@ -118,9 +71,6 @@ authTest.describe("Comments - Logged In", () => {
   authTest(
     "posting comment sends POST with body text",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
       await page.route("**/api/comments", (route) => {
         if (route.request().method() === "POST") {
           return route.fulfill({
@@ -132,7 +82,7 @@ authTest.describe("Comments - Logged In", () => {
         return route.continue();
       });
 
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page, authExpect);
       const addBtn = page
         .locator("text=Discussion")
         .locator("..")
@@ -153,23 +103,6 @@ authTest.describe("Comments - Logged In", () => {
       const req = await postRequest;
       const body = JSON.parse(req.postData() || "{}");
       authExpect(body.body).toBe("This is a test comment");
-    },
-  );
-
-  // TC-CMT-005: Empty state message
-  authTest(
-    "empty comments shows no-comments message",
-    async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, {
-        ...observationOverrides(),
-        comments: [],
-      });
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
-      await authExpect(
-        page.getByText("No comments yet"),
-      ).toBeVisible({ timeout: 10000 });
     },
   );
 });

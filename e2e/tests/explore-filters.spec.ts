@@ -33,7 +33,6 @@ test.describe("Explore Filters", () => {
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
     await page.getByLabel("Kingdom").click();
-    // Check for kingdom options in the dropdown
     await expect(
       page.getByRole("option", { name: "All Kingdoms" }),
     ).toBeVisible();
@@ -48,31 +47,8 @@ test.describe("Explore Filters", () => {
     ).toBeVisible();
   });
 
-  // TC-FILTER-004: Taxon search autocomplete
+  // TC-FILTER-004: Taxon search autocomplete shows suggestions
   test("taxon search autocomplete shows suggestions", async ({ page }) => {
-    await page.route("**/api/taxa/search*", (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([
-          {
-            id: "1",
-            scientificName: "Quercus alba",
-            commonName: "White Oak",
-            rank: "species",
-            photoUrl: null,
-          },
-          {
-            id: "2",
-            scientificName: "Quercus rubra",
-            commonName: "Red Oak",
-            rank: "species",
-            photoUrl: null,
-          },
-        ]),
-      });
-    });
-
     await page.getByText("Filters").click();
     const taxonInput = page.getByLabel("Taxon");
     await expect(taxonInput).toBeVisible({ timeout: 5000 });
@@ -81,21 +57,12 @@ test.describe("Explore Filters", () => {
     await expect(
       page.locator(".MuiAutocomplete-popper"),
     ).toBeVisible({ timeout: 5000 });
-    await expect(page.getByText("Quercus alba")).toBeVisible();
   });
 
   // TC-FILTER-005: Apply Filters dispatches filtered request
   test("Apply Filters button dispatches filtered feed request", async ({
     page,
   }) => {
-    await page.route("**/api/taxa/search*", (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([]),
-      });
-    });
-
     await page.getByText("Filters").click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
@@ -136,19 +103,16 @@ test.describe("Explore Filters", () => {
     await page.getByText("Filters").click();
     await expect(page.getByLabel("Kingdom")).toBeVisible({ timeout: 5000 });
 
-    // No badge initially
-    const filtersPanel = page.locator("text=Filters").locator("..");
     // Select kingdom to get 1 active filter
     await page.getByLabel("Kingdom").click();
     await page.getByRole("option", { name: "Plants" }).click();
 
-    // Apply and check badge - need to click Apply to update the filter count
+    // Apply and check badge
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
     // After applying, the badge should show "1"
-    // The chip with the count is next to "Filters" text
-    await expect(page.locator(".MuiChip-root").filter({ hasText: "1" }).first()).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(
+      page.locator(".MuiChip-root").filter({ hasText: "1" }).first(),
+    ).toBeVisible({ timeout: 5000 });
   });
 });

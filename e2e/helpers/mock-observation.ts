@@ -46,7 +46,7 @@ export function buildMockObservation(overrides: Record<string, any> = {}) {
 /**
  * Builds a full observation detail API response including identifications and comments.
  */
-export function buildMockObservationResponse(overrides: Record<string, any> = {}) {
+function buildMockObservationResponse(overrides: Record<string, any> = {}) {
   const {
     identifications = [],
     comments = [],
@@ -99,23 +99,16 @@ export async function mockInteractionsRoute(
 }
 
 /**
- * Builds a mock feed response containing an observation owned by the test user.
- */
-export function buildMockFeedResponse(overrides: Record<string, any> = {}) {
-  return JSON.stringify({
-    occurrences: [buildMockObservation(overrides)],
-    cursor: null,
-  });
-}
-
-/**
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
 export async function mockOwnObservationFeed(
   page: any,
   overrides: Record<string, any> = {},
 ) {
-  const body = buildMockFeedResponse(overrides);
+  const body = JSON.stringify({
+    occurrences: [buildMockObservation(overrides)],
+    cursor: null,
+  });
   const handler = (route: any) =>
     route.fulfill({
       status: 200,
@@ -125,85 +118,4 @@ export async function mockOwnObservationFeed(
   await page.route("**/api/feeds/home*", handler);
   await page.route("**/api/feeds/explore*", handler);
   await page.route("**/api/occurrences/feed*", handler);
-}
-
-/**
- * Builds a mock identification object.
- */
-export function buildMockIdentification(overrides: Record<string, any> = {}) {
-  const user = getTestUser();
-  return {
-    identifier: {
-      did: user.did,
-      handle: user.handle,
-      displayName: user.displayName || user.handle,
-    },
-    uri: `at://${user.did}/org.observ.ing.identification/id123`,
-    cid: "bafyidtest",
-    did: user.did,
-    subject_uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
-    subject_cid: "bafytest",
-    subject_index: 0,
-    scientific_name: "Quercus alba",
-    is_agreement: true,
-    date_identified: new Date().toISOString(),
-    confidence: "high",
-    kingdom: "Plantae",
-    ...overrides,
-  };
-}
-
-/**
- * Builds a mock comment object.
- */
-export function buildMockComment(overrides: Record<string, any> = {}) {
-  const user = getTestUser();
-  return {
-    commenter: {
-      did: user.did,
-      handle: user.handle,
-      displayName: user.displayName || user.handle,
-    },
-    uri: `at://${user.did}/org.observ.ing.comment/cmt123`,
-    cid: "bafycmttest",
-    did: user.did,
-    subject_uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
-    subject_cid: "bafytest",
-    body: "Great observation! The bark pattern is very distinctive.",
-    created_at: new Date().toISOString(),
-    ...overrides,
-  };
-}
-
-/**
- * Builds a mock interaction response object.
- */
-export function buildMockInteraction(overrides: Record<string, any> = {}) {
-  const user = getTestUser();
-  return {
-    uri: `at://${user.did}/org.observ.ing.interaction/int123`,
-    cid: "bafyinttest",
-    did: user.did,
-    subject_a_occurrence_uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
-    subject_a_occurrence_cid: "bafytest",
-    subject_a_subject_index: 0,
-    subject_a_taxon_name: "Quercus alba",
-    subject_a_kingdom: "Plantae",
-    subject_b_occurrence_uri: null,
-    subject_b_occurrence_cid: null,
-    subject_b_subject_index: 0,
-    subject_b_taxon_name: "Andricus quercuscalifornicus",
-    subject_b_kingdom: "Animalia",
-    interaction_type: "parasitism",
-    direction: "BtoA",
-    confidence: "high",
-    comment: "Oak gall visible on branch",
-    created_at: new Date().toISOString(),
-    creator: {
-      did: user.did,
-      handle: user.handle,
-      displayName: user.displayName || user.handle,
-    },
-    ...overrides,
-  };
 }

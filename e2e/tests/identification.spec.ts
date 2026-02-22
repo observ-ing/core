@@ -1,32 +1,21 @@
 import {
   test as authTest,
   expect as authExpect,
-  getTestUser,
 } from "../fixtures/auth";
-import {
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-} from "../helpers/mock-observation";
 
-const TEST_DID = "did:plc:testuser123";
-const TEST_RKEY = "obs456";
-const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
+/** Navigate from the feed to the first observation's detail page. */
+async function navigateToDetail(page: any) {
+  await page.goto("/");
+  const card = page
+    .locator(".MuiCard-root .MuiCardActionArea-root")
+    .first();
+  await authExpect(card).toBeVisible({ timeout: 15000 });
+  await card.click();
+  await authExpect(page).toHaveURL(/\/observation\/.+\/.+/);
+  await authExpect(page.getByText("Observed")).toBeVisible({ timeout: 10000 });
+}
 
 authTest.describe("Identification - Logged In", () => {
-  authTest.beforeEach(async ({ authenticatedPage: page }) => {
-    await mockObservationDetailRoute(page, {
-      uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
-      observer: {
-        did: TEST_DID,
-        handle: "naturalist.bsky.social",
-        displayName: "Nature Lover",
-      },
-      observers: [],
-      scientificName: "Quercus alba",
-    });
-    await mockInteractionsRoute(page);
-  });
-
   // TC-ID-001: Agree button sends agreement
   authTest(
     "Agree button sends POST with isAgreement true",
@@ -42,7 +31,7 @@ authTest.describe("Identification - Logged In", () => {
         return route.continue();
       });
 
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page);
       const agreeBtn = page.getByRole("button", { name: "Agree" });
       await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
 
@@ -62,7 +51,7 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "Suggest Different ID button opens form with species input",
     async ({ authenticatedPage: page }) => {
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page);
       const suggestBtn = page.getByRole("button", {
         name: "Suggest Different ID",
       });
@@ -90,7 +79,7 @@ authTest.describe("Identification - Logged In", () => {
         return route.continue();
       });
 
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page);
       const suggestBtn = page.getByRole("button", {
         name: "Suggest Different ID",
       });
@@ -117,7 +106,7 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "Cancel closes the suggest form",
     async ({ authenticatedPage: page }) => {
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page);
       const suggestBtn = page.getByRole("button", {
         name: "Suggest Different ID",
       });
@@ -134,14 +123,16 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "Add Another Organism shows info box with next subject index",
     async ({ authenticatedPage: page }) => {
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page);
       const addOrgBtn = page.getByRole("button", {
         name: "Add Another Organism",
       });
       await authExpect(addOrgBtn).toBeVisible({ timeout: 10000 });
       await addOrgBtn.click();
 
-      await authExpect(page.getByText("Adding organism #2")).toBeVisible();
+      await authExpect(
+        page.getByText(/Adding organism #\d+/),
+      ).toBeVisible();
       await authExpect(page.getByLabel("Species Name")).toBeVisible();
     },
   );

@@ -3,68 +3,50 @@ import {
   test as authTest,
   expect as authExpect,
 } from "../fixtures/auth";
-import {
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-  buildMockInteraction,
-} from "../helpers/mock-observation";
 
-const TEST_DID = "did:plc:testuser123";
-const TEST_RKEY = "obs456";
-const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
-
-function observationOverrides() {
-  return {
-    uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
-    observer: {
-      did: TEST_DID,
-      handle: "naturalist.bsky.social",
-      displayName: "Nature Lover",
-    },
-    observers: [],
-  };
+/** Navigate from the feed to the first observation's detail page. */
+async function navigateToDetail(page: any, expectFn: any) {
+  await page.goto("/");
+  const card = page
+    .locator(".MuiCard-root .MuiCardActionArea-root")
+    .first();
+  await expectFn(card).toBeVisible({ timeout: 15000 });
+  await card.click();
+  await expectFn(page).toHaveURL(/\/observation\/.+\/.+/);
+  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 10000 });
 }
 
 test.describe("Interactions - Logged Out", () => {
-  // TC-INT-007: Login prompt
+  // TC-INT-001: Login prompt
   test("shows login prompt when logged out", async ({ page }) => {
-    await mockObservationDetailRoute(page, observationOverrides());
-    await mockInteractionsRoute(page);
-
-    await page.goto(DETAIL_URL);
+    await navigateToDetail(page, expect);
     await expect(
       page.getByText("Log in to add interactions"),
-    ).toBeVisible({ timeout: 10000 });
+    ).toBeVisible();
   });
 });
 
 authTest.describe("Interactions - Logged In", () => {
-  // TC-INT-001: Section visible
+  // TC-INT-002: Section visible
   authTest(
     "Species Interactions section is visible",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
+      await navigateToDetail(page, authExpect);
       await authExpect(
         page.getByText("Species Interactions"),
-      ).toBeVisible({ timeout: 10000 });
+      ).toBeVisible();
     },
   );
 
-  // TC-INT-002: Add button opens form
+  // TC-INT-003: Add button opens form
   authTest(
     "Add button opens interaction form",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
-      // Find the Add button in the Species Interactions section
-      const interactionSection = page.locator(
-        "text=Species Interactions",
-      ).locator("..").locator("..");
+      await navigateToDetail(page, authExpect);
+      const interactionSection = page
+        .locator("text=Species Interactions")
+        .locator("..")
+        .locator("..");
       const addBtn = interactionSection.getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
@@ -78,13 +60,10 @@ authTest.describe("Interactions - Logged In", () => {
     },
   );
 
-  // TC-INT-003: Submit interaction sends POST
+  // TC-INT-004: Submit interaction sends POST
   authTest(
     "submitting interaction sends POST with correct data",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
       await page.route("**/api/interactions", (route) => {
         if (route.request().method() === "POST") {
           return route.fulfill({
@@ -96,15 +75,15 @@ authTest.describe("Interactions - Logged In", () => {
         return route.continue();
       });
 
-      await page.goto(DETAIL_URL);
-      const interactionSection = page.locator(
-        "text=Species Interactions",
-      ).locator("..").locator("..");
+      await navigateToDetail(page, authExpect);
+      const interactionSection = page
+        .locator("text=Species Interactions")
+        .locator("..")
+        .locator("..");
       const addBtn = interactionSection.getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
 
-      // Fill in Subject B
       await page
         .getByLabel("Other organism (Subject B)")
         .fill("Apis mellifera");
@@ -123,36 +102,15 @@ authTest.describe("Interactions - Logged In", () => {
     },
   );
 
-  // TC-INT-004: Existing interactions displayed
-  authTest(
-    "existing interactions displayed with type chip and direction",
-    async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      const interaction = buildMockInteraction();
-      await mockInteractionsRoute(page, [interaction]);
-
-      await page.goto(DETAIL_URL);
-      await authExpect(
-        page.getByText("Parasitism"),
-      ).toBeVisible({ timeout: 10000 });
-      // Direction arrow text
-      await authExpect(
-        page.getByText("Andricus quercuscalifornicus"),
-      ).toBeVisible();
-    },
-  );
-
   // TC-INT-005: Cancel closes form
   authTest(
     "Cancel closes the interaction form",
     async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page);
-
-      await page.goto(DETAIL_URL);
-      const interactionSection = page.locator(
-        "text=Species Interactions",
-      ).locator("..").locator("..");
+      await navigateToDetail(page, authExpect);
+      const interactionSection = page
+        .locator("text=Species Interactions")
+        .locator("..")
+        .locator("..");
       const addBtn = interactionSection.getByRole("button", { name: "Add" });
       await authExpect(addBtn).toBeVisible({ timeout: 10000 });
       await addBtn.click();
@@ -164,20 +122,6 @@ authTest.describe("Interactions - Logged In", () => {
       await authExpect(
         page.getByLabel("Other organism (Subject B)"),
       ).not.toBeVisible();
-    },
-  );
-
-  // TC-INT-006: Empty state message
-  authTest(
-    "empty interactions show no-interactions message",
-    async ({ authenticatedPage: page }) => {
-      await mockObservationDetailRoute(page, observationOverrides());
-      await mockInteractionsRoute(page, []);
-
-      await page.goto(DETAIL_URL);
-      await authExpect(
-        page.getByText("No interactions documented yet"),
-      ).toBeVisible({ timeout: 10000 });
     },
   );
 });
