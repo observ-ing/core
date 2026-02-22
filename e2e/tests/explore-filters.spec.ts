@@ -1,4 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
+
+/**
+ * MUI v7 Select doesn't link labels via aria-labelledby.
+ * Find by traversing from the label to the parent FormControl.
+ */
+function muiSelect(page: Page, label: string) {
+  return page
+    .locator(".MuiFormControl-root", {
+      has: page.locator("label", { hasText: label }),
+    })
+    .getByRole("combobox");
+}
 
 test.describe("Explore Filters", () => {
   test.beforeEach(async ({ page }) => {
@@ -21,22 +33,18 @@ test.describe("Explore Filters", () => {
 
     // Click to expand
     await filtersHeader.click();
-    await expect(
-      page.getByRole("combobox", { name: /Kingdom/ }),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(muiSelect(page, "Kingdom")).toBeVisible({ timeout: 5000 });
     await expect(page.getByLabel("Taxon")).toBeVisible();
 
     // Click to collapse
     await filtersHeader.click();
-    await expect(
-      page.getByRole("combobox", { name: /Kingdom/ }),
-    ).not.toBeVisible({ timeout: 5000 });
+    await expect(muiSelect(page, "Kingdom")).not.toBeVisible({ timeout: 5000 });
   });
 
   // TC-FILTER-003: Kingdom dropdown options
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    const kingdomSelect = muiSelect(page, "Kingdom");
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     await kingdomSelect.click();
@@ -71,7 +79,7 @@ test.describe("Explore Filters", () => {
     page,
   }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    const kingdomSelect = muiSelect(page, "Kingdom");
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom
@@ -91,7 +99,7 @@ test.describe("Explore Filters", () => {
   // TC-FILTER-006: Clear button resets filters
   test("Clear button resets all filters", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    const kingdomSelect = muiSelect(page, "Kingdom");
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select a kingdom first
@@ -110,7 +118,7 @@ test.describe("Explore Filters", () => {
   // TC-FILTER-007: Active filter count badge
   test("active filter count badge updates", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = page.getByRole("combobox", { name: /Kingdom/ });
+    const kingdomSelect = muiSelect(page, "Kingdom");
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     // Select kingdom to get 1 active filter

@@ -1,8 +1,20 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import {
   test as authTest,
   expect as authExpect,
 } from "../fixtures/auth";
+
+/**
+ * MUI v7 Select doesn't link labels via aria-labelledby.
+ * Find by traversing from the label to the parent FormControl.
+ */
+function muiSelect(page: Page, label: string) {
+  return page
+    .locator(".MuiFormControl-root", {
+      has: page.locator("label", { hasText: label }),
+    })
+    .getByRole("combobox");
+}
 
 /** Navigate from the feed to the first observation's detail page. */
 async function navigateToDetail(page: any, expectFn: any) {
@@ -54,15 +66,9 @@ authTest.describe("Interactions - Logged In", () => {
       await authExpect(
         page.getByLabel("Other organism (Subject B)"),
       ).toBeVisible({ timeout: 10000 });
-      await authExpect(
-        page.getByRole("combobox", { name: /Interaction Type/ }),
-      ).toBeVisible();
-      await authExpect(
-        page.getByRole("combobox", { name: /Direction/ }),
-      ).toBeVisible();
-      await authExpect(
-        page.getByRole("combobox", { name: /Confidence/ }),
-      ).toBeVisible();
+      await authExpect(muiSelect(page, "Interaction Type")).toBeVisible();
+      await authExpect(muiSelect(page, "Direction")).toBeVisible();
+      await authExpect(muiSelect(page, "Confidence")).toBeVisible();
     },
   );
 

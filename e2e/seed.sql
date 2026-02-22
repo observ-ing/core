@@ -28,7 +28,7 @@ VALUES
    '[]'::jsonb);
 
 -- Add observer entries so the feed enrichment can find them
-INSERT INTO occurrence_observers (uri, did, role)
+INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
 VALUES
   ('at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/org.observ.ing.occurrence/seed001', 'did:plc:jh6n3ntljfhhtr4jbvrm3k5b', 'owner'),
   ('at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/org.observ.ing.occurrence/seed002', 'did:plc:jh6n3ntljfhhtr4jbvrm3k5b', 'owner'),
