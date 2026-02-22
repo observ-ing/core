@@ -10,7 +10,7 @@ async function navigateToDetail(page: any) {
   await card.click();
   await expect(page).toHaveURL(/\/observation\/.+\/.+/);
   // Wait for detail page content to render
-  await expect(page.getByText("Observed")).toBeVisible({ timeout: 30000 });
+  await expect(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
 }
 
 test.describe("Observation Detail - Display", () => {

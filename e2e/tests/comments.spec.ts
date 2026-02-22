@@ -13,7 +13,7 @@ async function navigateToDetail(page: any, expectFn: any) {
   await expectFn(card).toBeVisible({ timeout: 15000 });
   await card.click();
   await expectFn(page).toHaveURL(/\/observation\/.+\/.+/);
-  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 30000 });
+  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
 }
 
 test.describe("Comments - Logged Out", () => {
