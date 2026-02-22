@@ -104,10 +104,7 @@ mod tests {
     #[test]
     fn test_parse_hidden_dids_multiple() {
         let result = parse_hidden_dids("did:plc:abc,did:plc:def,did:plc:ghi");
-        assert_eq!(
-            result,
-            vec!["did:plc:abc", "did:plc:def", "did:plc:ghi"]
-        );
+        assert_eq!(result, vec!["did:plc:abc", "did:plc:def", "did:plc:ghi"]);
     }
 
     #[test]
