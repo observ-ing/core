@@ -23,7 +23,10 @@ authTest.describe("Species Input", () => {
     "typing a common name shows scientific name in suggestions",
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("california poppy");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.fill("california poppy"),
+      ]);
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 5000 });
       await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Eschscholzia/i);
@@ -35,7 +38,10 @@ authTest.describe("Species Input", () => {
     "typing a scientific name shows matching species",
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("Quercus");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.fill("Quercus"),
+      ]);
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 5000 });
       await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/Quercus/);
@@ -47,7 +53,10 @@ authTest.describe("Species Input", () => {
     "lowercase scientific name still finds results",
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus alba");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.fill("quercus alba"),
+      ]);
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 5000 });
     },
@@ -58,7 +67,10 @@ authTest.describe("Species Input", () => {
     "selecting an autocomplete suggestion populates the input",
     async ({ authenticatedPage: page }) => {
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.fill("quercus"),
+      ]);
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 5000 });
       await option.click();

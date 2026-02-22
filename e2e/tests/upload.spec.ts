@@ -90,7 +90,10 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
     const speciesInput = page.getByLabel(/Species/i);
-    await speciesInput.fill("quercus");
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+      speciesInput.fill("quercus"),
+    ]);
     await authExpect(
       page.locator(".MuiAutocomplete-option").first(),
     ).toBeVisible({ timeout: 5000 });

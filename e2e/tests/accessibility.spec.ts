@@ -65,7 +65,10 @@ authTest.describe("Accessibility - Authenticated", () => {
       await page.waitForTimeout(500);
 
       const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.fill("quercus");
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.fill("quercus"),
+      ]);
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 5000 });
 
