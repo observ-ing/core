@@ -210,8 +210,15 @@ export async function submitObservation(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to submit");
+    let message = "Failed to submit";
+    try {
+      const error = await response.json();
+      message = error.error || message;
+    } catch {
+      const text = await response.text().catch(() => "");
+      message = text || `Request failed (${response.status})`;
+    }
+    throw new Error(message);
   }
 
   return response.json();
