@@ -47,9 +47,10 @@ test.describe("Observation Detail - Display", () => {
   // TC-DETAIL-004: Identification history section
   test("shows identification history section", async ({ page }) => {
     await navigateToDetail(page);
-    await expect(
-      page.getByText("Identification History"),
-    ).toBeVisible();
+    // Shows either the heading (when IDs exist) or the empty-state prompt
+    const heading = page.getByText("Identification History");
+    const emptyState = page.getByText("No identifications yet");
+    await expect(heading.or(emptyState)).toBeVisible();
   });
 
   // TC-DETAIL-005: Discussion section
