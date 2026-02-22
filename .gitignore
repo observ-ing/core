@@ -41,3 +41,8 @@ src/frontend/dist/
 coverage
 
 target
+
+# Playwright
+playwright/.auth/
+playwright-report/
+test-results/
