@@ -165,35 +165,27 @@ authTest.describe("Upload Modal - Logged In", () => {
       return route.continue();
     });
 
+    // Build a ~3MB valid JPEG entirely in Node to avoid OOM from
+    // serializing large arrays across the browser↔Node boundary.
+    // Minimal JPEG: SOI + APP0 + DQT + SOF0 + DHT + SOS + padding + EOI
+    const targetSize = 3 * 1024 * 1024;
+    // Minimal valid JPEG (1x1 white pixel) — the structure doesn't matter
+    // since we only need the frontend to accept it as image/jpeg.
+    const header = Buffer.from([
+      0xff, 0xd8, // SOI
+      0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01,
+      0x01, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, // APP0/JFIF
+    ]);
+    const trailer = Buffer.from([0xff, 0xd9]); // EOI
+    // Fill the middle with random data (not 0xFF to avoid accidental markers)
+    const padding = Buffer.alloc(targetSize - header.length - trailer.length);
+    for (let i = 0; i < padding.length; i++) {
+      padding[i] = Math.floor(Math.random() * 0xfe);
+    }
+    const buffer = Buffer.concat([header, padding, trailer]);
+
     await page.goto("/");
     await openUploadModal(page);
-
-    // Generate a ~8MB JPEG in the browser and attach it to the file input
-    const largeImageBuffer = await page.evaluate(async () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = 5000;
-      canvas.height = 5000;
-      const ctx = canvas.getContext("2d")!;
-      // Fill every pixel with random noise so JPEG compression can't shrink it
-      const imageData = ctx.createImageData(canvas.width, canvas.height);
-      const data = imageData.data;
-      for (let i = 0; i < data.length; i += 4) {
-        data[i] = Math.random() * 255;
-        data[i + 1] = Math.random() * 255;
-        data[i + 2] = Math.random() * 255;
-        data[i + 3] = 255;
-      }
-      ctx.putImageData(imageData, 0, 0);
-      const blob = await new Promise<Blob>((resolve) =>
-        canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.98),
-      );
-      const arrayBuffer = await blob.arrayBuffer();
-      return Array.from(new Uint8Array(arrayBuffer));
-    });
-
-    const buffer = Buffer.from(largeImageBuffer);
-    // Sanity check: the generated image should be well over 5MB
-    authExpect(buffer.length).toBeGreaterThan(5 * 1024 * 1024);
 
     const fileInput = page.getByRole("dialog").locator('input[type="file"]');
     await fileInput.setInputFiles({
