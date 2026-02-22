@@ -168,29 +168,32 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
 
-    // Generate a ~3MB JPEG in the browser and attach it to the file input
+    // Generate a ~8MB JPEG in the browser and attach it to the file input
     const largeImageBuffer = await page.evaluate(async () => {
       const canvas = document.createElement("canvas");
-      canvas.width = 3000;
-      canvas.height = 3000;
+      canvas.width = 5000;
+      canvas.height = 5000;
       const ctx = canvas.getContext("2d")!;
-      // Fill with noisy data so JPEG compression can't shrink it too much
-      for (let y = 0; y < canvas.height; y += 2) {
-        for (let x = 0; x < canvas.width; x += 2) {
-          ctx.fillStyle = `rgb(${Math.random() * 255},${Math.random() * 255},${Math.random() * 255})`;
-          ctx.fillRect(x, y, 2, 2);
-        }
+      // Fill every pixel with random noise so JPEG compression can't shrink it
+      const imageData = ctx.createImageData(canvas.width, canvas.height);
+      const data = imageData.data;
+      for (let i = 0; i < data.length; i += 4) {
+        data[i] = Math.random() * 255;
+        data[i + 1] = Math.random() * 255;
+        data[i + 2] = Math.random() * 255;
+        data[i + 3] = 255;
       }
+      ctx.putImageData(imageData, 0, 0);
       const blob = await new Promise<Blob>((resolve) =>
-        canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.95),
+        canvas.toBlob((b) => resolve(b!), "image/jpeg", 0.98),
       );
       const arrayBuffer = await blob.arrayBuffer();
       return Array.from(new Uint8Array(arrayBuffer));
     });
 
     const buffer = Buffer.from(largeImageBuffer);
-    // Sanity check: the generated image should be well over 2MB
-    authExpect(buffer.length).toBeGreaterThan(2 * 1024 * 1024);
+    // Sanity check: the generated image should be well over 5MB
+    authExpect(buffer.length).toBeGreaterThan(5 * 1024 * 1024);
 
     const fileInput = page.getByRole("dialog").locator('input[type="file"]');
     await fileInput.setInputFiles({
