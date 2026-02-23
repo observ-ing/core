@@ -272,10 +272,15 @@ export function UploadModal() {
     fileInputRef.current?.click();
   };
 
+  const latestSpeciesQuery = useRef("");
+
   const handleSpeciesSearch = useCallback(async (value: string) => {
+    latestSpeciesQuery.current = value;
     if (value.length >= 2) {
       const results = await searchTaxa(value);
-      setSuggestions(results.slice(0, 5));
+      if (latestSpeciesQuery.current === value) {
+        setSuggestions(results.slice(0, 5));
+      }
     } else {
       setSuggestions([]);
     }
