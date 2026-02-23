@@ -1,4 +1,4 @@
-import { createTheme, Theme, PaletteMode } from "@mui/material/styles";
+import { createTheme, type Theme, type PaletteMode } from "@mui/material/styles";
 
 const sharedConfig = {
   typography: {

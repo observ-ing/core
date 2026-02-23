@@ -5,7 +5,7 @@
  * org.rwell.test.identification records to the user's repo.
  */
 
-import { AtpAgent } from "@atproto/api";
+import type { AtpAgent } from "@atproto/api";
 
 const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
 
@@ -177,8 +177,8 @@ export class IdentificationService {
     }
 
     // Extract rkey from URI
-    const parts = identificationUri.split("/");
-    const rkey = parts[parts.length - 1]!;
+    const rkey = identificationUri.split("/").at(-1);
+    if (!rkey) throw new Error("Invalid identification URI");
 
     await this.agent.com.atproto.repo.deleteRecord({
       repo: this.agent.session.did,
@@ -199,8 +199,8 @@ export class IdentificationService {
     }
 
     // Get the existing record
-    const parts = identificationUri.split("/");
-    const rkey = parts[parts.length - 1]!;
+    const rkey = identificationUri.split("/").at(-1);
+    if (!rkey) throw new Error("Invalid identification URI");
 
     const existing = await this.agent.com.atproto.repo.getRecord({
       repo: this.agent.session.did,

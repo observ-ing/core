@@ -104,8 +104,8 @@ export function ExploreFilterPanel() {
       newFilters.radius = radius;
     }
     if (kingdom) newFilters.kingdom = kingdom;
-    if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0]!;
-    if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0]!;
+    if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0] ?? "";
+    if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
 
     dispatch(setFilters(newFilters));
     dispatch(loadInitialFeed());

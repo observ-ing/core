@@ -49,7 +49,8 @@ function createCircleGeoJSON(
 
     coords.push([lng + lngOffset, lat + latOffset]);
   }
-  coords.push(coords[0]!); // Close the polygon
+  const first = coords[0];
+  if (first) coords.push(first); // Close the polygon
 
   return {
     type: "FeatureCollection",
@@ -393,7 +394,7 @@ export function LocationPicker({
             step={0.01}
             marks={SLIDER_MARKS}
             onChange={(_, value) => {
-              const meters = sliderToValue(typeof value === "number" ? value : value[0]!);
+              const meters = sliderToValue(typeof value === "number" ? value : (value[0] ?? 0));
               onUncertaintyChange(meters);
               // Update circle immediately
               // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
