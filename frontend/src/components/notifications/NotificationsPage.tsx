@@ -148,11 +148,9 @@ export function NotificationsPage() {
               >
                 <ListItemAvatar>
                   <Avatar
-                    src={
-                      n.actor?.avatar
-                        ? getImageUrl(n.actor.avatar)
-                        : undefined
-                    }
+                    {...(n.actor?.avatar
+                      ? { src: getImageUrl(n.actor.avatar) }
+                      : {})}
                     sx={{ width: 40, height: 40 }}
                   />
                 </ListItemAvatar>
