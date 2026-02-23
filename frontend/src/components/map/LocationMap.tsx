@@ -160,7 +160,8 @@ function createCircleGeoJSON(
 
     coords.push([lng + lngOffset, lat + latOffset]);
   }
-  coords.push(coords[0]!); // Close the polygon
+  const first = coords[0];
+  if (first) coords.push(first); // Close the polygon
 
   return {
     type: "FeatureCollection",

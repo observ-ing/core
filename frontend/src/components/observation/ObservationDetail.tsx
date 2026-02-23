@@ -78,7 +78,8 @@ export function ObservationDetail() {
       setLoading(true);
       setError(null);
 
-      const result = await fetchObservation(atUri!);
+      if (!atUri) return;
+      const result = await fetchObservation(atUri);
       if (result?.occurrence) {
         setObservation(result.occurrence);
         setLiked(result.occurrence.viewerHasLiked ?? false);
@@ -342,7 +343,7 @@ export function ObservationDetail() {
         <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
-            src={getImageUrl(observation.images[activeImageIndex]!)}
+            src={getImageUrl(observation.images[activeImageIndex] ?? "")}
             alt={species}
             sx={{
               width: "100%",

@@ -8,7 +8,7 @@
  * 4. Write org.rwell.test.occurrence record to the user's repo
  */
 
-import { AtpAgent, BlobRef } from "@atproto/api";
+import type { AtpAgent, BlobRef } from "@atproto/api";
 
 const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
 
@@ -87,9 +87,13 @@ export class OccurrenceUploader {
       createdAt: new Date().toISOString(),
     };
 
+    if (!this.agent.session) {
+      throw new Error("Not logged in");
+    }
+
     // Write to repo
     const response = await this.agent.com.atproto.repo.createRecord({
-      repo: this.agent.session!.did,
+      repo: this.agent.session.did,
       collection: OCCURRENCE_COLLECTION,
       record,
     });
@@ -106,10 +110,13 @@ export class OccurrenceUploader {
   private async uploadImages(files: File[]): Promise<BlobRef[]> {
     const blobRefs: BlobRef[] = [];
 
+    // Sequential uploads required — PDS rate limits
     for (const file of files) {
+      // eslint-disable-next-line no-await-in-loop
       const arrayBuffer = await file.arrayBuffer();
       const uint8Array = new Uint8Array(arrayBuffer);
 
+      // eslint-disable-next-line no-await-in-loop
       const response = await this.agent.uploadBlob(uint8Array, {
         encoding: file.type,
       });

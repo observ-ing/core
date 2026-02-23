@@ -1,10 +1,10 @@
 import {
   useState,
   useEffect,
-  FormEvent,
+  type FormEvent,
   useCallback,
   useRef,
-  ChangeEvent,
+  type ChangeEvent,
 } from "react";
 import {
   Box,
@@ -260,7 +260,8 @@ export function UploadModal() {
   const handleRemoveImage = (index: number) => {
     setImages((prev) => {
       const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index]!.preview);
+      const removed = newImages[index];
+      if (removed) URL.revokeObjectURL(removed.preview);
       newImages.splice(index, 1);
       return newImages;
     });
@@ -295,12 +296,14 @@ export function UploadModal() {
 
   // Poll for observation to appear in database after AT Protocol submission
   const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
+    // Sequential polling by design
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      // eslint-disable-next-line no-await-in-loop
       const result = await fetchObservation(uri);
       if (result?.occurrence) {
         return true;
       }
-      // Wait 1 second between attempts
+      // eslint-disable-next-line no-await-in-loop
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     return false;
@@ -319,22 +322,19 @@ export function UploadModal() {
     setIsSubmitting(true);
 
     try {
-      const imageData: Array<{ data: string; mimeType: string }> = [];
-      for (const img of images) {
-        const base64 = await fileToBase64(img.file);
-        imageData.push({
-          data: base64,
+      const imageData = await Promise.all(
+        images.map(async (img) => ({
+          data: await fileToBase64(img.file),
           mimeType: img.file.type,
-        });
-      }
+        }))
+      );
 
       let observationUri: string;
 
       if (isEditMode && editingObservation) {
         // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
         const retainedBlobCids = existingImages.map((url) => {
-          const parts = url.split("/");
-          return parts[parts.length - 1]!;
+          return url.split("/").at(-1) ?? "";
         });
 
         const trimmedSpecies = species.trim();
@@ -414,7 +414,11 @@ export function UploadModal() {
           reject(new Error("Expected string result"));
           return;
         }
-        const base64 = reader.result.split(",")[1]!;
+        const base64 = reader.result.split(",")[1];
+        if (!base64) {
+          reject(new Error("Invalid data URL format"));
+          return;
+        }
         resolve(base64);
       };
       reader.onerror = reject;

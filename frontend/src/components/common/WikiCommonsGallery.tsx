@@ -16,6 +16,14 @@ interface CommonsImage {
   license?: string | undefined;
 }
 
+interface WikiPage {
+  imageinfo?: Array<{
+    thumburl?: string;
+    descriptionurl?: string;
+    extmetadata?: Record<string, { value?: string }>;
+  }>;
+}
+
 const HTML_ENTITIES: Record<string, string> = {
   "&amp;": "&",
   "&lt;": "<",
@@ -60,21 +68,21 @@ async function fetchCommonsImages(
   );
   if (!infoResp.ok) return [];
   const infoData = await infoResp.json();
-  const pages = infoData?.query?.pages;
+  const pages: Record<string, WikiPage> | undefined = infoData?.query?.pages;
   if (!pages) return [];
 
   return Object.values(pages)
-    .filter((p: any) => p.imageinfo?.[0]?.thumburl)
-    .map((p: any) => {
-      const info = p.imageinfo[0];
-      const meta = info.extmetadata || {};
-      const artistHtml = meta.Artist?.value || "";
+    .filter((p) => p.imageinfo?.[0]?.thumburl)
+    .map((p) => {
+      const info = p.imageinfo?.[0];
+      const meta = info?.extmetadata ?? {};
+      const artistHtml = meta["Artist"]?.value ?? "";
       const artist = decodeHtmlText(artistHtml);
       return {
-        thumbUrl: info.thumburl,
-        pageUrl: info.descriptionurl,
+        thumbUrl: info?.thumburl ?? "",
+        pageUrl: info?.descriptionurl ?? "",
         artist: artist || undefined,
-        license: meta.LicenseShortName?.value || undefined,
+        license: meta["LicenseShortName"]?.value || undefined,
       };
     });
 }

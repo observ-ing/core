@@ -62,7 +62,9 @@ export function getPdslsUrl(atUri: string): string {
 export function parseAtUri(atUri: string): { did: string; collection: string; rkey: string } | null {
   const match = atUri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
   if (!match) return null;
-  return { did: match[1]!, collection: match[2]!, rkey: match[3]! };
+  const [, did, collection, rkey] = match;
+  if (!did || !collection || !rkey) return null;
+  return { did, collection, rkey };
 }
 
 /**

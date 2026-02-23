@@ -81,7 +81,7 @@ export function TaxonDetail() {
         result = await fetchTaxon(lookupKingdom, lookupName);
       } else {
         // Single param: either a kingdom name or a legacy ID
-        result = await fetchTaxon(lookupId || lookupKingdom!);
+        result = await fetchTaxon(lookupId ?? lookupKingdom ?? "");
       }
 
       if (result) {
@@ -92,7 +92,7 @@ export function TaxonDetail() {
           if (lookupKingdom && lookupName) {
             obsResult = await fetchTaxonObservations(lookupKingdom, lookupName);
           } else {
-            obsResult = await fetchTaxonObservations(lookupId || lookupKingdom!);
+            obsResult = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "");
           }
           setObservations(obsResult.occurrences);
           setCursor(obsResult.cursor);
@@ -127,7 +127,7 @@ export function TaxonDetail() {
       if (lookupKingdom && lookupName) {
         result = await fetchTaxonObservations(lookupKingdom, lookupName, cursor);
       } else {
-        result = await fetchTaxonObservations(lookupId || lookupKingdom!, undefined, cursor);
+        result = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "", undefined, cursor);
       }
       setObservations((prev) => [...prev, ...result.occurrences]);
       setCursor(result.cursor);
@@ -341,7 +341,7 @@ export function TaxonDetail() {
             </AccordionSummary>
             <AccordionDetails>
               {taxon.descriptions.slice(0, 2).map((d, idx) => (
-                <Box key={idx} sx={{ mb: idx < taxon.descriptions!.length - 1 ? 2 : 0 }}>
+                <Box key={idx} sx={{ mb: idx < (taxon.descriptions?.length ?? 0) - 1 ? 2 : 0 }}>
                   <Typography
                     variant="body2"
                     component="div"
@@ -353,6 +353,7 @@ export function TaxonDetail() {
                       "& p": { m: 0 },
                       "& em, & i": { fontStyle: "italic" },
                     }}
+                    // eslint-disable-next-line react/no-danger -- sanitized with DOMPurify
                     dangerouslySetInnerHTML={{
                       __html: DOMPurify.sanitize(d.description, {
                         ALLOWED_TAGS: ["p", "br", "em", "i", "strong", "b", "a"],

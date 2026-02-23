@@ -1,4 +1,4 @@
-import { useState, FormEvent, useCallback } from "react";
+import { useState, type FormEvent, useCallback } from "react";
 import {
   Box,
   Typography,

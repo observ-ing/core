@@ -1,4 +1,4 @@
-import { createSlice, PayloadAction } from "@reduxjs/toolkit";
+import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { PaletteMode } from "@mui/material";
 import type { Occurrence } from "../services/types";
 
