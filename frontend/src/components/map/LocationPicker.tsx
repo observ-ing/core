@@ -49,7 +49,7 @@ function createCircleGeoJSON(
 
     coords.push([lng + lngOffset, lat + latOffset]);
   }
-  coords.push(coords[0]); // Close the polygon
+  coords.push(coords[0]!); // Close the polygon
 
   return {
     type: "FeatureCollection",
@@ -307,7 +307,7 @@ export function LocationPicker({
         filterOptions={(x) => x}
         renderInput={(params) => (
           <TextField
-            {...params}
+            {...(params as object)}
             size="small"
             placeholder="Search for a place..."
             InputProps={{

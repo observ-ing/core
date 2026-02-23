@@ -60,15 +60,9 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
     : "";
   const timeAgo = formatTimeAgo(new Date(observation.createdAt));
 
-  // Use effectiveTaxonomy (preferred) or fall back to legacy fields
-  const taxonomy = observation.effectiveTaxonomy || {
-    scientificName: observation.scientificName,
-    taxonId: observation.taxonId,
-    taxonRank: observation.taxonRank,
-    kingdom: observation.kingdom,
-  };
+  const taxonomy = observation.effectiveTaxonomy;
   const species =
-    observation.communityId || taxonomy.scientificName || undefined;
+    observation.communityId || taxonomy?.scientificName || undefined;
 
   const imageUrl = observation.images[0]
     ? getImageUrl(observation.images[0])
@@ -144,11 +138,11 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           "& .MuiAvatar-root": { width: 36, height: 36, border: "2px solid", borderColor: "background.paper" },
         }}
       >
-        <Avatar src={owner.avatar} alt={displayName} />
+        <Avatar {...(owner.avatar ? { src: owner.avatar } : {})} alt={displayName} />
         {coObservers.slice(0, 2).map((co) => (
           <Avatar
             key={co.did}
-            src={co.avatar}
+            {...(co.avatar ? { src: co.avatar } : {})}
             alt={co.displayName || co.handle || co.did}
           />
         ))}
@@ -158,7 +152,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
     <Avatar
       component={Link}
       to={`/profile/${encodeURIComponent(owner.did)}`}
-      src={owner.avatar}
+      {...(owner.avatar ? { src: owner.avatar } : {})}
       alt={displayName}
       onClick={(e) => e.stopPropagation()}
       sx={{ width: 40, height: 40, cursor: "pointer" }}
@@ -287,7 +281,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
                   {subject.communityId ? (
                     <TaxonLink
                       name={subject.communityId}
-                      kingdom={taxonomy.kingdom}
+                      kingdom={taxonomy?.kingdom}
                       rank="species"
                       onClick={(e) => e.stopPropagation()}
                     />
@@ -309,8 +303,8 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
               {species ? (
                 <TaxonLink
                   name={species}
-                  kingdom={taxonomy.kingdom}
-                  rank={taxonomy.taxonRank || "species"}
+                  kingdom={taxonomy?.kingdom}
+                  rank="species"
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (

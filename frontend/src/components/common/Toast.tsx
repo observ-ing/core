@@ -15,23 +15,25 @@ export function ToastContainer() {
     }
   };
 
+  if (!currentToast) {
+    return null;
+  }
+
   return (
     <Snackbar
-      open={!!currentToast}
+      open
       autoHideDuration={3000}
       onClose={handleClose}
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       sx={{ bottom: { xs: 80, sm: 24 } }}
     >
-      {currentToast ? (
-        <Alert
-          onClose={handleClose}
-          severity={currentToast.type === "error" ? "error" : "success"}
-          sx={{ minWidth: 200 }}
-        >
-          {currentToast.message}
-        </Alert>
-      ) : undefined}
+      <Alert
+        onClose={handleClose}
+        severity={currentToast.type === "error" ? "error" : "success"}
+        sx={{ minWidth: 200 }}
+      >
+        {currentToast.message}
+      </Alert>
     </Snackbar>
   );
 }

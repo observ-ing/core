@@ -137,7 +137,7 @@ export function CommentSection({
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
                 <RouterLink to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}>
                   <Avatar
-                    src={comment.commenter?.avatar}
+                    {...(comment.commenter?.avatar ? { src: comment.commenter.avatar } : {})}
                     sx={{ width: 32, height: 32 }}
                   >
                     {(comment.commenter?.displayName || comment.commenter?.handle || "?")[0]}
