@@ -1,10 +1,26 @@
+import type { Page, Route } from "@playwright/test";
 import { getTestUser } from "../fixtures/auth";
+import type {
+  Occurrence,
+  Identification,
+  Comment,
+  FeedResponse,
+} from "../../frontend/src/services/types";
+import type { EnrichedInteraction } from "../../frontend/src/bindings/EnrichedInteraction";
+
+/** Occurrence overrides plus optional detail-level fields */
+type MockDetailOverrides = Partial<Occurrence> & {
+  identifications?: Identification[];
+  comments?: Comment[];
+};
 
 /**
  * Builds a mock observation object for API responses.
- * Matches the Occurrence type from the Rust-generated bindings.
+ * Validated against the Rust-generated Occurrence type.
  */
-export function buildMockObservation(overrides: Record<string, any> = {}) {
+export function buildMockObservation(
+  overrides: Partial<Occurrence> = {},
+): Occurrence {
   const user = getTestUser();
   return {
     uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
@@ -13,7 +29,6 @@ export function buildMockObservation(overrides: Record<string, any> = {}) {
       did: user.did,
       handle: user.handle,
       displayName: user.displayName || user.handle,
-      avatar: undefined,
     },
     observers: [
       {
@@ -28,7 +43,6 @@ export function buildMockObservation(overrides: Record<string, any> = {}) {
       scientificName: "Quercus alba",
       vernacularName: "White Oak",
       kingdom: "Plantae",
-      taxonRank: "species",
     },
     subjects: [{ index: 0, identificationCount: 1 }],
     images: [],
@@ -46,7 +60,7 @@ export function buildMockObservation(overrides: Record<string, any> = {}) {
 /**
  * Builds a full observation detail API response including identifications and comments.
  */
-function buildMockObservationResponse(overrides: Record<string, any> = {}) {
+function buildMockObservationResponse(overrides: MockDetailOverrides = {}) {
   const {
     identifications = [],
     comments = [],
@@ -65,11 +79,11 @@ function buildMockObservationResponse(overrides: Record<string, any> = {}) {
  * Intercepts GET /api/occurrences/* and returns the mocked response.
  */
 export async function mockObservationDetailRoute(
-  page: any,
-  overrides: Record<string, any> = {},
+  page: Page,
+  overrides: MockDetailOverrides = {},
 ) {
   const response = buildMockObservationResponse(overrides);
-  await page.route("**/api/occurrences/*", (route: any) => {
+  await page.route("**/api/occurrences/*", (route: Route) => {
     if (route.request().method() === "GET") {
       return route.fulfill({
         status: 200,
@@ -86,10 +100,10 @@ export async function mockObservationDetailRoute(
  * Sets up page.route() mock for the interactions API endpoint.
  */
 export async function mockInteractionsRoute(
-  page: any,
-  interactions: any[] = [],
+  page: Page,
+  interactions: EnrichedInteraction[] = [],
 ) {
-  await page.route("**/api/interactions/occurrence/*", (route: any) => {
+  await page.route("**/api/interactions/occurrence/*", (route: Route) => {
     return route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -102,14 +116,14 @@ export async function mockInteractionsRoute(
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
 export async function mockOwnObservationFeed(
-  page: any,
-  overrides: Record<string, any> = {},
+  page: Page,
+  overrides: Partial<Occurrence> = {},
 ) {
-  const body = JSON.stringify({
+  const feedResponse: FeedResponse = {
     occurrences: [buildMockObservation(overrides)],
-    cursor: null,
-  });
-  const handler = (route: any) =>
+  };
+  const body = JSON.stringify(feedResponse);
+  const handler = (route: Route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",

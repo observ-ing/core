@@ -21,11 +21,13 @@
   },
   "overrides": [
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "e2e/**/*.ts", "scripts/**/*.ts"],
       "rules": {
         "typescript/consistent-type-assertions": "off",
         "typescript/no-explicit-any": "off",
-        "typescript/no-non-null-assertion": "off"
+        "typescript/no-non-null-assertion": "off",
+        "typescript/consistent-type-imports": "off",
+        "no-await-in-loop": "off"
       }
     }
   ]

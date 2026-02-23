@@ -5,17 +5,23 @@ import { resolve } from "path";
 const AUTH_FILE = resolve("playwright/.auth/user.json");
 const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
 
-let _testUser: Record<string, string> | null = null;
+export interface TestUser {
+  did: string;
+  handle: string;
+  displayName?: string;
+}
+
+let _testUser: TestUser | null = null;
 
 /**
  * Lazily loads user info written by auth.setup.ts.
  * Deferred because test modules are imported before the setup project runs.
  */
-export function getTestUser() {
+export function getTestUser(): TestUser {
   if (!_testUser) {
     _testUser = JSON.parse(readFileSync(USER_INFO_FILE, "utf-8"));
   }
-  return _testUser;
+  return _testUser!;
 }
 
 /**
