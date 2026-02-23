@@ -18,6 +18,7 @@ import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
 import { NotFound } from "./components/common/NotFound";
 import { LexiconView } from "./components/lexicon/LexiconView";
+import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -77,6 +78,7 @@ function AppContent() {
             <Route path="/explore" element={<FeedView tab="explore" />} />
             <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
             <Route path="/profile/:did" element={<ProfileView />} />
+            <Route path="/notifications" element={<NotificationsPage />} />
             <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
             <Route path="/taxon/:id" element={<TaxonDetail />} />
             <Route path="/lexicons" element={<LexiconView />} />

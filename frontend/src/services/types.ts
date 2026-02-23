@@ -230,3 +230,30 @@ export interface OccurrenceDetailResponse {
 
 export type ViewMode = "feed" | "map";
 export type FeedTab = "home" | "explore";
+
+// ============================================================================
+// Notification Types
+// ============================================================================
+
+export interface NotificationActor {
+  did: string;
+  handle?: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+export interface Notification {
+  id: number;
+  actorDid: string;
+  kind: "comment" | "identification" | "like";
+  subjectUri: string;
+  referenceUri?: string;
+  read: boolean;
+  createdAt: string;
+  actor?: NotificationActor;
+}
+
+export interface NotificationsResponse {
+  notifications: Notification[];
+  cursor?: string;
+}

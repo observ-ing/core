@@ -147,6 +147,16 @@ async fn main() {
             "/api/interactions/occurrence/{*uri}",
             get(routes::interactions::get_for_occurrence),
         )
+        // Notifications
+        .route("/api/notifications", get(routes::notifications::list))
+        .route(
+            "/api/notifications/unread-count",
+            get(routes::notifications::unread_count),
+        )
+        .route(
+            "/api/notifications/read",
+            post(routes::notifications::mark_read),
+        )
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))

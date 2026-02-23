@@ -5,6 +5,7 @@ pub mod identifications;
 pub mod interactions;
 pub mod likes;
 pub mod migrate;
+pub mod notifications;
 pub mod oauth;
 pub mod observers;
 pub mod occurrences;
