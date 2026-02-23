@@ -1,9 +1,9 @@
 import { Box } from "@mui/material";
 
-interface WikiTaxonThumbnailProps {
+export interface WikiTaxonThumbnailProps {
   /** Pre-resolved thumbnail URL (from batch Wikidata fetch). */
-  src?: string;
-  size?: number;
+  src?: string | undefined;
+  size?: number | undefined;
 }
 
 export function WikiTaxonThumbnail({

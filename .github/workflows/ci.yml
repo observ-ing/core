@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
 
 jobs:
   # Node.js jobs
@@ -228,7 +229,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=$MEDIA_PROXY_URL,TAXONOMY_SERVICE_URL=$TAXONOMY_URL \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=$MEDIA_PROXY_URL,TAXONOMY_SERVICE_URL=$TAXONOMY_URL,HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
             --set-secrets=DB_PASSWORD=observing-db-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT

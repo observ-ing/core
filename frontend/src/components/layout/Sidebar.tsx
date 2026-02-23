@@ -279,7 +279,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               }}
             >
               <Avatar
-                src={user.avatar}
+                {...(user.avatar ? { src: user.avatar } : {})}
                 sx={{ width: 36, height: 36 }}
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -12,8 +12,8 @@ import {
 interface CommonsImage {
   thumbUrl: string;
   pageUrl: string;
-  artist?: string;
-  license?: string;
+  artist?: string | undefined;
+  license?: string | undefined;
 }
 
 const HTML_ENTITIES: Record<string, string> = {

@@ -65,7 +65,7 @@ export function DeleteConfirmDialog() {
   };
 
   const species =
-    observation?.communityId || observation?.scientificName || "Unidentified";
+    observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Unidentified";
 
   return (
     <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>

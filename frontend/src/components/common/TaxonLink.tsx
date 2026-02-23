@@ -2,15 +2,15 @@ import { Link } from "react-router-dom";
 import { Chip, Typography } from "@mui/material";
 import { nameToSlug } from "../../lib/taxonSlug";
 
-interface TaxonLinkProps {
+export interface TaxonLinkProps {
   /** The taxon name to display */
   name: string;
   /** @deprecated Use kingdom prop instead. GBIF taxon ID (e.g., "gbif:3084746") for direct linking */
-  taxonId?: string;
+  taxonId?: string | undefined;
   /** Kingdom for building the taxon URL (e.g., "Plantae", "Animalia") */
-  kingdom?: string;
+  kingdom?: string | undefined;
   /** Taxonomic rank (e.g., "species", "genus", "family") */
-  rank?: string;
+  rank?: string | undefined;
   /** Display variant: text (default) or chip */
   variant?: "text" | "chip";
   /** Whether to italicize the name (default: true for species/genus, false otherwise) */

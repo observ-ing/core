@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   Box,
   Paper,
@@ -79,10 +79,15 @@ export function ExploreFilterPanel() {
   ].filter(Boolean).length;
 
   // Taxon search handler
+  const latestTaxonQuery = useRef("");
+
   const handleTaxonSearch = useCallback(async (query: string) => {
+    latestTaxonQuery.current = query;
     if (query.length >= 2) {
       const results = await searchTaxa(query);
-      setTaxonSuggestions(results.slice(0, 5));
+      if (latestTaxonQuery.current === query) {
+        setTaxonSuggestions(results.slice(0, 5));
+      }
     } else {
       setTaxonSuggestions([]);
     }
@@ -99,8 +104,8 @@ export function ExploreFilterPanel() {
       newFilters.radius = radius;
     }
     if (kingdom) newFilters.kingdom = kingdom;
-    if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0];
-    if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0];
+    if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0]!;
+    if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0]!;
 
     dispatch(setFilters(newFilters));
     dispatch(loadInitialFeed());
@@ -186,7 +191,7 @@ export function ExploreFilterPanel() {
             filterOptions={(x) => x}
             renderInput={(params) => (
               <TextField
-                {...params}
+                {...(params as object)}
                 size="small"
                 label="Taxon"
                 placeholder="Search species..."

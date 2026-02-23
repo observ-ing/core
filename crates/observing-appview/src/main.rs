@@ -57,6 +57,7 @@ async fn main() {
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
         public_url: config.public_url.clone(),
+        hidden_dids: config.hidden_dids.clone(),
     };
 
     // CORS

@@ -59,11 +59,11 @@ interface InteractionPanelProps {
   observation: {
     uri: string;
     cid: string;
-    scientificName?: string;
-    communityId?: string;
+    scientificName?: string | undefined;
+    communityId?: string | undefined;
   };
   subjects: Subject[];
-  onSuccess?: () => void;
+  onSuccess?: (() => void) | undefined;
 }
 
 export function InteractionPanel({
@@ -132,21 +132,23 @@ export function InteractionPanel({
     try {
       const selectedSubject = subjects.find((s) => s.index === subjectAIndex) || subjects[0];
 
+      const subjectAName = selectedSubject?.communityId || observation.communityId || observation.scientificName;
+      const trimmedComment = comment.trim();
       await submitInteraction({
         subjectA: {
           occurrenceUri: observation.uri,
           occurrenceCid: observation.cid,
           subjectIndex: subjectAIndex,
-          scientificName: selectedSubject?.communityId || observation.communityId || observation.scientificName,
+          ...(subjectAName ? { scientificName: subjectAName } : {}),
         },
         subjectB: {
           scientificName: subjectBTaxon.trim(),
-          kingdom: subjectBKingdom || undefined,
+          ...(subjectBKingdom ? { kingdom: subjectBKingdom } : {}),
         },
         interactionType,
         direction,
         confidence,
-        comment: comment.trim() || undefined,
+        ...(trimmedComment ? { comment: trimmedComment } : {}),
       });
 
       // Reset form
@@ -256,8 +258,8 @@ export function InteractionPanel({
                 {interaction.creator && (
                   <>
                     <Avatar
-                      src={interaction.creator.avatar}
-                      alt={interaction.creator.displayName || interaction.creator.handle}
+                      {...(interaction.creator.avatar ? { src: interaction.creator.avatar } : {})}
+                      alt={interaction.creator.displayName || interaction.creator.handle || ""}
                       sx={{ width: 20, height: 20 }}
                     />
                     <Typography variant="caption" color="text.secondary">

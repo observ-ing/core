@@ -63,7 +63,7 @@ export function ObservationDetail() {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
-  usePageTitle(observation?.communityId || observation?.scientificName || "Observation");
+  usePageTitle(observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Observation");
 
   // Reconstruct AT URI from route params
   const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
@@ -209,24 +209,12 @@ export function ObservationDetail() {
   // Find the current subject's data
   const currentSubject = observation.subjects?.find((s) => s.index === selectedSubject);
 
-  // Get taxonomy from effectiveTaxonomy (preferred), falling back to legacy fields
-  const taxonomy = observation.effectiveTaxonomy || {
-    scientificName: observation.scientificName,
-    vernacularName: observation.vernacularName,
-    kingdom: observation.kingdom,
-    phylum: observation.phylum,
-    class: observation.class,
-    order: observation.order,
-    family: observation.family,
-    genus: observation.genus,
-    taxonId: observation.taxonId,
-    taxonRank: observation.taxonRank,
-  };
+  const taxonomy = observation.effectiveTaxonomy;
 
   const species =
     currentSubject?.communityId ||
     observation.communityId ||
-    taxonomy.scientificName ||
+    taxonomy?.scientificName ||
     undefined;
 
   // Check if there are multiple subjects
@@ -306,15 +294,15 @@ export function ObservationDetail() {
         {species ? (
           <TaxonLink
             name={species}
-            kingdom={taxonomy.kingdom}
-            rank={taxonomy.taxonRank || "species"}
+            kingdom={taxonomy?.kingdom}
+            rank="species"
           />
         ) : (
           <Typography variant="h5" sx={{ fontWeight: 600, fontStyle: "italic", color: "text.secondary" }}>
             Unidentified
           </Typography>
         )}
-        {taxonomy.vernacularName && (
+        {taxonomy?.vernacularName && (
           <Typography variant="body1" color="text.secondary">
             {taxonomy.vernacularName}
           </Typography>
@@ -355,7 +343,7 @@ export function ObservationDetail() {
         <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
           <Box
             component="img"
-            src={getImageUrl(observation.images[activeImageIndex])}
+            src={getImageUrl(observation.images[activeImageIndex]!)}
             alt={species}
             sx={{
               width: "100%",
@@ -409,7 +397,7 @@ export function ObservationDetail() {
           }}
         >
           <ListItemAvatar>
-            <Avatar src={observation.observer.avatar} alt={displayName} />
+            <Avatar {...(observation.observer.avatar ? { src: observation.observer.avatar } : {})} alt={displayName} />
           </ListItemAvatar>
           <ListItemText
             primary={displayName}
@@ -536,7 +524,7 @@ export function ObservationDetail() {
             <IdentificationHistory
               identifications={identifications}
               subjectIndex={selectedSubject}
-              kingdom={taxonomy.kingdom}
+              kingdom={taxonomy?.kingdom}
               currentUserDid={user?.did}
               onDeleteIdentification={async (uri) => {
                 try {
@@ -552,8 +540,8 @@ export function ObservationDetail() {
                   throw error;
                 }
               }}
-              observerInitialId={observation.scientificName ? {
-                scientificName: observation.scientificName,
+              observerInitialId={taxonomy?.scientificName ? {
+                scientificName: taxonomy.scientificName,
                 observer: observation.observer,
                 date: observation.createdAt,
                 kingdom: taxonomy.kingdom,
@@ -563,7 +551,7 @@ export function ObservationDetail() {
                   observation={{
                     uri: observation.uri,
                     cid: observation.cid,
-                    scientificName: observation.scientificName,
+                    scientificName: taxonomy?.scientificName,
                     communityId: currentSubject?.communityId || observation.communityId,
                   }}
                   subjectIndex={selectedSubject}
@@ -583,7 +571,7 @@ export function ObservationDetail() {
             observation={{
               uri: observation.uri,
               cid: observation.cid,
-              scientificName: observation.scientificName,
+              scientificName: taxonomy?.scientificName,
               communityId: currentSubject?.communityId || observation.communityId,
             }}
             subjects={observation.subjects || [{ index: 0, identificationCount: 0 }]}
