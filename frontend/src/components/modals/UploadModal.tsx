@@ -99,7 +99,7 @@ export function UploadModal() {
   useEffect(() => {
     if (isOpen) {
       if (editingObservation) {
-        setSpecies(editingObservation.scientificName || "");
+        setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
         setNotes(editingObservation.occurrenceRemarks || "");
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
