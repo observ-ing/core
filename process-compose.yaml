@@ -24,7 +24,7 @@ processes:
         condition: process_healthy
 
   frontend:
-    command: npm run frontend:dev
+    command: npm run dev
     depends_on:
       appview:
         condition: process_healthy

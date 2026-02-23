@@ -39,7 +39,7 @@ export PORT=3000
 npm install
 
 # Build frontend
-npm run frontend:build
+npm run build
 
 # Typecheck frontend
 npx tsc
@@ -102,14 +102,14 @@ cargo run -p observing-media-proxy
 cargo run -p observing-taxonomy
 
 # Frontend dev server
-npm run frontend:dev
+npm run dev
 ```
 
 ### After Frontend Changes
 
 Rebuild and restart:
 ```bash
-npm run frontend:build && process-compose process restart appview
+npm run build && process-compose process restart appview
 ```
 
 The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.

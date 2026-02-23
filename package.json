@@ -8,8 +8,7 @@
   "scripts": {
     "build": "vite build -c frontend/vite.config.ts",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
-    "frontend:dev": "vite -c frontend/vite.config.ts",
-    "frontend:build": "npm run build",
+    "dev": "vite -c frontend/vite.config.ts",
     "lint": "oxlint frontend/src",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts"
   },
