@@ -301,7 +301,7 @@ export function IdentificationPanel({
               label="Confidence"
               onChange={(e) => setConfidence(toConfidence(e.target.value))}
             >
-              <MenuItem value="high">High - I'm sure</MenuItem>
+              <MenuItem value="high">{"High - I'm sure"}</MenuItem>
               <MenuItem value="medium">Medium</MenuItem>
               <MenuItem value="low">Low - Best guess</MenuItem>
             </Select>
@@ -325,7 +325,7 @@ export function IdentificationPanel({
                   </Typography>
                   <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
                     This creates a new organism in this observation. Use this when multiple
-                    species are visible (e.g., a butterfly AND the flower it's on).
+                    {"species are visible (e.g., a butterfly AND the flower it's on)."}
                   </Typography>
                 </Box>
               </Stack>

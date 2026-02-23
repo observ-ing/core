@@ -255,7 +255,7 @@ export function IdentificationHistory({
                 </Box>
                 {id.identification_remarks && (
                   <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    "{id.identification_remarks}"
+                    {`"${id.identification_remarks}"`}
                   </Typography>
                 )}
                 {getConfidenceLabel(id.confidence) && (

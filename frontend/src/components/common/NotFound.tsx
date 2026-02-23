@@ -48,7 +48,7 @@ export function NotFound() {
         Page not found
       </Typography>
       <Typography variant="body2" color="text.disabled" sx={{ mb: 4, maxWidth: 300 }}>
-        The page you're looking for doesn't exist or has been moved.
+        {"The page you're looking for doesn't exist or has been moved."}
       </Typography>
       <Stack direction="row" spacing={2}>
         <Button
