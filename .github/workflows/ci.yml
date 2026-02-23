@@ -129,7 +129,7 @@ jobs:
       - run: npm ci
       - name: Run database migrations and seed
         run: |
-          psql $DATABASE_URL -f crates/observing-db/migrations/20240101000000_initial.sql
+          for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
           psql $DATABASE_URL -f e2e/seed.sql
       - name: Build frontend
         run: npm run build
