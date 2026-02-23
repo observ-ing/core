@@ -58,6 +58,18 @@ async fn main() -> Result<()> {
     info!("Port: {}", config.port);
     info!("Collections: {:?}", config.collections);
 
+    // Create shared state for HTTP server
+    let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
+
+    // Spawn HTTP server immediately so Cloud Run health checks pass
+    let http_state = state.clone();
+    let http_port = config.port;
+    tokio::spawn(async move {
+        if let Err(e) = start_server(http_state, http_port).await {
+            error!("HTTP server error: {}", e);
+        }
+    });
+
     // Connect to database
     let db = Database::connect(&config.database_url).await?;
     db.migrate().await?;
@@ -72,20 +84,8 @@ async fn main() -> Result<()> {
         info!("Starting from current firehose position (no cursor)");
     }
 
-    // Create shared state for HTTP server
-    let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
-
     // Create channel for firehose events
     let (event_tx, mut event_rx) = mpsc::channel::<JetstreamEvent>(1000);
-
-    // Spawn HTTP server
-    let http_state = state.clone();
-    let http_port = config.port;
-    tokio::spawn(async move {
-        if let Err(e) = start_server(http_state, http_port).await {
-            error!("HTTP server error: {}", e);
-        }
-    });
 
     // Build set of enabled collections for filtering commits
     let enabled_collections: HashSet<String> = config.collections.iter().cloned().collect();
