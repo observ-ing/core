@@ -94,7 +94,7 @@ function PropertyTable({
   required,
 }: {
   properties: Record<string, LexiconProperty>;
-  required?: string[];
+  required?: string[] | undefined;
 }) {
   const requiredSet = new Set(required ?? []);
 
@@ -232,7 +232,7 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
 }
 
 function LexiconCard({ schema }: { schema: LexiconSchema }) {
-  const mainDef = schema.defs.main;
+  const mainDef = schema.defs["main"];
   const otherDefs = Object.entries(schema.defs).filter(([k]) => k !== "main");
 
   return (

@@ -99,7 +99,7 @@ export function UploadModal() {
   useEffect(() => {
     if (isOpen) {
       if (editingObservation) {
-        setSpecies(editingObservation.scientificName || "");
+        setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
         setNotes(editingObservation.occurrenceRemarks || "");
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
@@ -219,8 +219,8 @@ export function UploadModal() {
 
         if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
           // Apply hemisphere signs
-          if (latRef?.value?.[0] === "S") latitude = -Math.abs(latitude);
-          if (lngRef?.value?.[0] === "W") longitude = -Math.abs(longitude);
+          if ((latRef?.value as string[] | undefined)?.[0] === "S") latitude = -Math.abs(latitude);
+          if ((lngRef?.value as string[] | undefined)?.[0] === "W") longitude = -Math.abs(longitude);
 
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
@@ -258,7 +258,7 @@ export function UploadModal() {
   const handleRemoveImage = (index: number) => {
     setImages((prev) => {
       const newImages = [...prev];
-      URL.revokeObjectURL(newImages[index].preview);
+      URL.revokeObjectURL(newImages[index]!.preview);
       newImages.splice(index, 1);
       return newImages;
     });
@@ -327,20 +327,21 @@ export function UploadModal() {
         // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
         const retainedBlobCids = existingImages.map((url) => {
           const parts = url.split("/");
-          return parts[parts.length - 1];
+          return parts[parts.length - 1]!;
         });
 
+        const trimmedSpecies = species.trim();
         const result = await updateObservation({
           uri: editingObservation.uri,
-          scientificName: species.trim() || undefined,
+          ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
-          notes: notes || undefined,
+          ...(notes ? { notes } : {}),
           license,
           eventDate: new Date(observationDate).toISOString(),
-          recordedBy: coObservers.length > 0 ? coObservers : undefined,
-          images: imageData.length > 0 ? imageData : undefined,
+          ...(coObservers.length > 0 ? { recordedBy: coObservers } : {}),
+          ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
         });
 
@@ -357,16 +358,17 @@ export function UploadModal() {
       } else {
         const eventDate = new Date(observationDate).toISOString();
 
+        const trimmedSpecies2 = species.trim();
         const result = await submitObservation({
-          scientificName: species.trim() || undefined,
+          ...(trimmedSpecies2 ? { scientificName: trimmedSpecies2 } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
-          notes: notes || undefined,
+          ...(notes ? { notes } : {}),
           license,
           eventDate,
-          images: imageData.length > 0 ? imageData : undefined,
-          recordedBy: coObservers.length > 0 ? coObservers : undefined,
+          ...(imageData.length > 0 ? { images: imageData } : {}),
+          ...(coObservers.length > 0 ? { recordedBy: coObservers } : {}),
         });
 
         // Wait for the observation to be processed by the ingester
@@ -402,7 +404,7 @@ export function UploadModal() {
       const reader = new FileReader();
       reader.onload = () => {
         const result = reader.result as string;
-        const base64 = result.split(",")[1];
+        const base64 = result.split(",")[1]!;
         resolve(base64);
       };
       reader.onerror = reject;
@@ -449,7 +451,7 @@ export function UploadModal() {
           filterOptions={(x) => x}
           renderInput={(params) => (
             <TextField
-              {...params}
+              {...(params as object)}
               fullWidth
               label="Species (optional)"
               placeholder="e.g. Eschscholzia californica - leave blank if unknown"

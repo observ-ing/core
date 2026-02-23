@@ -3,7 +3,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
@@ -14,13 +14,10 @@
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
     "noEmit": true,
+    "jsx": "react-jsx",
     "skipLibCheck": true
   },
-  "references": [],
-  "include": ["scripts/**/*"],
-  "exclude": ["node_modules", "dist", "frontend"]
+  "include": ["scripts/**/*", "frontend/src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

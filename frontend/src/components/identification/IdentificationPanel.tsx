@@ -28,13 +28,13 @@ interface IdentificationPanelProps {
   observation: {
     uri: string;
     cid: string;
-    scientificName?: string;
-    communityId?: string;
+    scientificName?: string | undefined;
+    communityId?: string | undefined;
   };
-  subjectIndex?: number;
+  subjectIndex?: number | undefined;
   /** Number of existing subjects in this observation (used to calculate next available index) */
-  existingSubjectCount?: number;
-  onSuccess?: () => void;
+  existingSubjectCount?: number | undefined;
+  onSuccess?: (() => void) | undefined;
 }
 
 export function IdentificationPanel({
@@ -100,12 +100,13 @@ export function IdentificationPanel({
 
     setIsSubmitting(true);
     try {
+      const trimmedComment = comment.trim();
       await submitIdentification({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         subjectIndex: targetSubjectIndex,
         scientificName: taxonName.trim(),
-        comment: comment.trim() || undefined,
+        ...(trimmedComment ? { comment: trimmedComment } : {}),
         confidence,
         isAgreement: false,
       });
@@ -203,7 +204,7 @@ export function IdentificationPanel({
             size="small"
             renderInput={(params) => (
               <TextField
-                {...params}
+                {...(params as object)}
                 fullWidth
                 label="Species Name"
                 placeholder="Search by common or scientific name..."

@@ -122,7 +122,7 @@ export function ProfileView() {
       <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Avatar
-            src={profile?.avatar}
+            {...(profile?.avatar ? { src: profile.avatar } : {})}
             alt={profile?.displayName || profile?.handle || did}
             sx={{ width: 80, height: 80 }}
           />
@@ -229,7 +229,7 @@ export function ProfileView() {
                   <CardMedia
                     component="img"
                     image={getImageUrl(occ.images[0])}
-                    alt={occ.communityId || occ.scientificName || "Observation"}
+                    alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
                     loading="lazy"
                     sx={{ aspectRatio: "1", objectFit: "cover" }}
                   />
@@ -260,7 +260,7 @@ export function ProfileView() {
                       whiteSpace: "nowrap",
                     }}
                   >
-                    {occ.communityId || occ.scientificName || "Unknown species"}
+                    {occ.communityId || occ.effectiveTaxonomy?.scientificName || "Unknown species"}
                   </Typography>
                   <Typography variant="caption" color="text.disabled" noWrap>
                     {formatTimeAgo(new Date(occ.createdAt))}

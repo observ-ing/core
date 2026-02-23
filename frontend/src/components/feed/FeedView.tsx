@@ -108,7 +108,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                 }}
               >
                 {observations.map((obs) => {
-                  const species = obs.communityId || obs.scientificName;
+                  const species = obs.communityId || obs.effectiveTaxonomy?.scientificName;
                   return (
                     <Card key={obs.uri} sx={{ display: "flex", flexDirection: "column" }}>
                       <CardActionArea

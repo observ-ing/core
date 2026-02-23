@@ -4,10 +4,10 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
 
-interface LocationMapProps {
+export interface LocationMapProps {
   latitude: number;
   longitude: number;
-  uncertaintyMeters?: number;
+  uncertaintyMeters?: number | undefined;
 }
 
 export function LocationMap({
@@ -160,7 +160,7 @@ function createCircleGeoJSON(
 
     coords.push([lng + lngOffset, lat + latOffset]);
   }
-  coords.push(coords[0]); // Close the polygon
+  coords.push(coords[0]!); // Close the polygon
 
   return {
     type: "FeatureCollection",

@@ -21,22 +21,22 @@ interface ObserverInitialId {
   scientificName: string;
   observer: Profile;
   date: string;
-  kingdom?: string;
+  kingdom?: string | undefined;
 }
 
-interface IdentificationHistoryProps {
+export interface IdentificationHistoryProps {
   identifications: Identification[];
-  subjectIndex?: number;
+  subjectIndex?: number | undefined;
   /** Fallback kingdom to use if identification doesn't have kingdom data */
-  kingdom?: string;
+  kingdom?: string | undefined;
   /** Observer's original scientificName from the observation payload */
-  observerInitialId?: ObserverInitialId;
+  observerInitialId?: ObserverInitialId | undefined;
   /** Optional content rendered at the bottom of the panel (e.g. login prompt, add ID form) */
-  footer?: React.ReactNode;
+  footer?: React.ReactNode | undefined;
   /** Current user's DID, used to show delete button on own identifications */
-  currentUserDid?: string;
+  currentUserDid?: string | undefined;
   /** Called when an identification is deleted */
-  onDeleteIdentification?: (uri: string) => Promise<void>;
+  onDeleteIdentification?: ((uri: string) => Promise<void>) | undefined;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -169,7 +169,7 @@ export function IdentificationHistory({
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <RouterLink to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}>
                 <Avatar
-                  src={observerInitialId.observer.avatar}
+                  {...(observerInitialId.observer.avatar ? { src: observerInitialId.observer.avatar } : {})}
                   sx={{ width: 32, height: 32 }}
                 >
                   {(observerInitialId.observer.displayName || observerInitialId.observer.handle || "?")[0]}
@@ -220,7 +220,7 @@ export function IdentificationHistory({
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
                 <Avatar
-                  src={id.identifier?.avatar}
+                  {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
                   sx={{ width: 32, height: 32 }}
                 >
                   {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
