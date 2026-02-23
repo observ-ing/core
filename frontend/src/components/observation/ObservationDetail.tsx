@@ -7,7 +7,6 @@ import {
   Avatar,
   Button,
   Stack,
-  Paper,
   IconButton,
   ButtonBase,
   Tabs,
@@ -84,8 +83,8 @@ export function ObservationDetail() {
         setObservation(result.occurrence);
         setLiked(result.occurrence.viewerHasLiked ?? false);
         setLikeCount(result.occurrence.likeCount ?? 0);
-        setIdentifications((result as { identifications?: Identification[] }).identifications || []);
-        setComments((result as { comments?: Comment[] }).comments || []);
+        setIdentifications(result.identifications || []);
+        setComments(result.comments || []);
       } else {
         setError("Observation not found");
       }
@@ -108,8 +107,8 @@ export function ObservationDetail() {
       const result = await fetchObservation(atUri);
       if (result?.occurrence) {
         setObservation(result.occurrence);
-        setIdentifications((result as { identifications?: Identification[] }).identifications || []);
-        setComments((result as { comments?: Comment[] }).comments || []);
+        setIdentifications(result.identifications || []);
+        setComments(result.comments || []);
       }
     }
   };
@@ -118,7 +117,7 @@ export function ObservationDetail() {
     if (atUri) {
       const result = await fetchObservation(atUri);
       if (result) {
-        setComments((result as { comments?: Comment[] }).comments || []);
+        setComments(result.comments || []);
       }
     }
   };

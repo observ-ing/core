@@ -10,6 +10,7 @@ import type {
   HomeFeedResponse,
   ProfileFeedResponse,
   NotificationsResponse,
+  OccurrenceDetailResponse,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -134,7 +135,7 @@ export async function fetchProfileFeed(
 
 export async function fetchObservation(
   uri: string
-): Promise<{ occurrence: Occurrence } | null> {
+): Promise<OccurrenceDetailResponse | null> {
   try {
     const url = `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`;
     const response = await fetch(url);

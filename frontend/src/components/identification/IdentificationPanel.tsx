@@ -81,7 +81,7 @@ export function IdentificationPanel({
       dispatch(addToast({ message: "Your agreement has been recorded!", type: "success" }));
       onSuccess?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${(error as Error).message}`, type: "error" }));
+      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
     } finally {
       setIsSubmitting(false);
     }
@@ -121,11 +121,14 @@ export function IdentificationPanel({
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${(error as Error).message}`, type: "error" }));
+      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const toConfidence = (v: string): ConfidenceLevel =>
+    v === "low" || v === "medium" || v === "high" ? v : "medium";
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -202,15 +205,19 @@ export function IdentificationPanel({
             }}
             filterOptions={(x) => x}
             size="small"
-            renderInput={(params) => (
-              <TextField
-                {...(params as object)}
-                fullWidth
-                label="Species Name"
-                placeholder="Search by common or scientific name..."
-                margin="normal"
-              />
-            )}
+            renderInput={(params) => {
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+              const p = params as object;
+              return (
+                <TextField
+                  {...p}
+                  fullWidth
+                  label="Species Name"
+                  placeholder="Search by common or scientific name..."
+                  margin="normal"
+                />
+              );
+            }}
             renderOption={(props, option) => {
               const { key, ...otherProps } = props;
               return (
@@ -292,7 +299,7 @@ export function IdentificationPanel({
             <Select
               value={confidence}
               label="Confidence"
-              onChange={(e) => setConfidence(e.target.value as ConfidenceLevel)}
+              onChange={(e) => setConfidence(toConfidence(e.target.value))}
             >
               <MenuItem value="high">High - I'm sure</MenuItem>
               <MenuItem value="medium">Medium</MenuItem>

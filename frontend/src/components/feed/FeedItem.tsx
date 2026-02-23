@@ -102,7 +102,8 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on interactive elements (links, buttons)
-    const target = e.target as HTMLElement;
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
     if (target.closest('a, button')) {
       return;
     }

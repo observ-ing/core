@@ -115,6 +115,7 @@ export function LocationPicker({
 
     // Update uncertainty circle
     const effectiveRadius = radius ?? uncertaintyMeters;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
     const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
     if (source) {
       source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
@@ -305,9 +306,12 @@ export function LocationPicker({
         }}
         loading={isSearching}
         filterOptions={(x) => x}
-        renderInput={(params) => (
+        renderInput={(params) => {
+          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- MUI Autocomplete params incompatible with exactOptionalPropertyTypes
+          const spreadParams = params as object;
+          return (
           <TextField
-            {...(params as object)}
+            {...spreadParams}
             size="small"
             placeholder="Search for a place..."
             InputProps={{
@@ -320,7 +324,8 @@ export function LocationPicker({
             }}
             sx={{ mb: 1 }}
           />
-        )}
+          );
+        }}
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           return (
@@ -388,9 +393,10 @@ export function LocationPicker({
             step={0.01}
             marks={SLIDER_MARKS}
             onChange={(_, value) => {
-              const meters = sliderToValue(value as number);
+              const meters = sliderToValue(typeof value === "number" ? value : value[0]!);
               onUncertaintyChange(meters);
               // Update circle immediately
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
               const source = map.current?.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
               if (source) {
                 source.setData(createCircleGeoJSON(parseFloat(lngInput), parseFloat(latInput), meters));

@@ -89,6 +89,12 @@ export function InteractionPanel({
   const [confidence, setConfidence] = useState<"low" | "medium" | "high">("medium");
   const [comment, setComment] = useState("");
 
+  const toDirection = (v: string): "AtoB" | "BtoA" | "bidirectional" =>
+    v === "AtoB" || v === "BtoA" || v === "bidirectional" ? v : "AtoB";
+
+  const toConfidence = (v: string): "low" | "medium" | "high" =>
+    v === "low" || v === "medium" || v === "high" ? v : "medium";
+
   useEffect(() => {
     loadInteractions();
   }, [observation.uri]);
@@ -404,7 +410,7 @@ export function InteractionPanel({
               <Select
                 value={direction}
                 label="Direction"
-                onChange={(e) => setDirection(e.target.value as typeof direction)}
+                onChange={(e) => setDirection(toDirection(e.target.value))}
               >
                 {DIRECTION_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
@@ -420,7 +426,7 @@ export function InteractionPanel({
               <Select
                 value={confidence}
                 label="Confidence"
-                onChange={(e) => setConfidence(e.target.value as typeof confidence)}
+                onChange={(e) => setConfidence(toConfidence(e.target.value))}
               >
                 {CONFIDENCE_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>

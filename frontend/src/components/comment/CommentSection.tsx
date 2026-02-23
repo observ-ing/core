@@ -69,7 +69,7 @@ export function CommentSection({
       setShowForm(false);
       onCommentAdded?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${(error as Error).message}`, type: "error" }));
+      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
     } finally {
       setIsSubmitting(false);
     }
