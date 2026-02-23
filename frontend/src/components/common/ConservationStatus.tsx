@@ -32,7 +32,7 @@ export function ConservationStatus({
   showLabel = false,
   size = "md",
 }: ConservationStatusProps) {
-  const info = CATEGORY_INFO[status.category];
+  const info = CATEGORY_INFO[status.category as IUCNCategory];
   if (!info) return null;
 
   const needsDarkText = ["VU", "NT", "LC", "DD", "NE"].includes(status.category);

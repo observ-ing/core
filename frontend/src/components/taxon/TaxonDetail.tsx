@@ -52,9 +52,9 @@ export function TaxonDetail() {
   const thumbnailNames = useMemo(() => {
     if (!taxon) return [];
     const names = [
-      ...taxon.ancestors.map((a: { name: string }) => a.name),
+      ...(taxon.ancestors ?? []).map((a) => a.name),
       taxon.scientificName,
-      ...taxon.children.map((c: { scientificName: string }) => c.scientificName),
+      ...(taxon.children ?? []).map((c) => c.scientificName),
     ];
     return names;
   }, [taxon]);
@@ -242,7 +242,7 @@ export function TaxonDetail() {
         </Typography>
 
         {/* Taxonomy Tree */}
-        {(taxon.ancestors.length > 0 || taxon.children.length > 0) && (
+        {((taxon.ancestors?.length ?? 0) > 0 || (taxon.children?.length ?? 0) > 0) && (
           <Accordion defaultExpanded sx={{ mt: 3 }}>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
@@ -251,7 +251,7 @@ export function TaxonDetail() {
             </AccordionSummary>
             <AccordionDetails sx={{ pl: 1 }}>
               <List disablePadding>
-                {taxon.ancestors.map((ancestor, idx) => (
+                {(taxon.ancestors ?? []).map((ancestor, idx) => (
                   <ListItem key={ancestor.id} disableGutters disablePadding sx={{ pl: idx * 2.5 }}>
                     <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                       {idx > 0 && (
@@ -273,9 +273,9 @@ export function TaxonDetail() {
                   </ListItem>
                 ))}
                 {/* Current taxon */}
-                <ListItem disableGutters disablePadding sx={{ pl: taxon.ancestors.length * 2.5 }}>
+                <ListItem disableGutters disablePadding sx={{ pl: (taxon.ancestors?.length ?? 0) * 2.5 }}>
                   <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
-                    {taxon.ancestors.length > 0 && (
+                    {(taxon.ancestors?.length ?? 0) > 0 && (
                       <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └
                       </Typography>
@@ -295,8 +295,8 @@ export function TaxonDetail() {
                   </Box>
                 </ListItem>
                 {/* Children */}
-                {taxon.children.map((child) => (
-                  <ListItem key={child.id} disableGutters disablePadding sx={{ pl: (taxon.ancestors.length + 1) * 2.5 }}>
+                {(taxon.children ?? []).map((child) => (
+                  <ListItem key={child.id} disableGutters disablePadding sx={{ pl: ((taxon.ancestors?.length ?? 0) + 1) * 2.5 }}>
                     <Box sx={{ display: "flex", alignItems: "center", py: 0.3, gap: 0.75 }}>
                       <Typography component="span" sx={{ color: "text.disabled", fontSize: "0.85rem", userSelect: "none" }}>
                         └

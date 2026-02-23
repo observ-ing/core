@@ -15,17 +15,17 @@ interface IdentificationInput {
   /** CID of the occurrence being identified */
   occurrenceCid: string;
   /** Index of the subject within the occurrence (for multi-subject observations) */
-  subjectIndex?: number;
+  subjectIndex?: number | undefined;
   /** The proposed scientific name */
   scientificName: string;
   /** Taxonomic rank */
-  taxonRank?: TaxonRank;
+  taxonRank?: TaxonRank | undefined;
   /** Comment explaining the identification */
-  comment?: string;
+  comment?: string | undefined;
   /** Whether this is an agreement with existing ID */
-  isAgreement?: boolean;
+  isAgreement?: boolean | undefined;
   /** Confidence level */
-  confidence?: ConfidenceLevel;
+  confidence?: ConfidenceLevel | undefined;
 }
 
 type TaxonRank =
@@ -131,10 +131,10 @@ export class IdentificationService {
       occurrenceCid,
       subjectIndex: options.subjectIndex ?? 0,
       scientificName: taxonName,
-      taxonRank: options.taxonRank,
-      comment: options.comment,
+      ...(options.taxonRank ? { taxonRank: options.taxonRank } : {}),
+      ...(options.comment ? { comment: options.comment } : {}),
       isAgreement: false,
-      confidence: options.confidence,
+      ...(options.confidence ? { confidence: options.confidence } : {}),
     });
   }
 
@@ -148,7 +148,7 @@ export class IdentificationService {
 
     // Extract rkey from URI
     const parts = identificationUri.split("/");
-    const rkey = parts[parts.length - 1];
+    const rkey = parts[parts.length - 1]!;
 
     await this.agent.com.atproto.repo.deleteRecord({
       repo: this.agent.session.did,
@@ -170,7 +170,7 @@ export class IdentificationService {
 
     // Get the existing record
     const parts = identificationUri.split("/");
-    const rkey = parts[parts.length - 1];
+    const rkey = parts[parts.length - 1]!;
 
     const existing = await this.agent.com.atproto.repo.getRecord({
       repo: this.agent.session.did,
@@ -192,12 +192,11 @@ export class IdentificationService {
     const updatedRecord = {
       ...existingRecord,
       taxon: {
-        ...existingRecord.taxon,
-        scientificName: updates.scientificName || existingRecord.taxon.scientificName,
-        taxonRank: updates.taxonRank || existingRecord.taxon.taxonRank,
+        scientificName: updates.scientificName ?? existingRecord.taxon.scientificName,
+        ...(updates.taxonRank ? { taxonRank: updates.taxonRank } : existingRecord.taxon.taxonRank ? { taxonRank: existingRecord.taxon.taxonRank } : {}),
       },
-      comment: updates.comment !== undefined ? updates.comment : existingRecord.comment,
-      confidence: updates.confidence || existingRecord.confidence,
+      ...(updates.comment !== undefined ? { comment: updates.comment } : existingRecord.comment ? { comment: existingRecord.comment } : {}),
+      ...(updates.confidence ? { confidence: updates.confidence } : existingRecord.confidence ? { confidence: existingRecord.confidence } : {}),
     };
 
     const response = await this.agent.com.atproto.repo.putRecord({
@@ -357,8 +356,9 @@ export function createIdentificationUI(
     }
 
     try {
+      const trimmedComment = commentInput.value.trim();
       await service.suggestId(occurrence.uri, occurrence.cid, taxonInput.value.trim(), {
-        comment: commentInput.value.trim() || undefined,
+        ...(trimmedComment ? { comment: trimmedComment } : {}),
         confidence: confidenceSelect.value as ConfidenceLevel,
       });
       showToast?.("Your identification has been submitted!", "success");
