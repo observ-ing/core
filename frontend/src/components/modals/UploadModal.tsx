@@ -219,8 +219,10 @@ export function UploadModal() {
 
         if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
           // Apply hemisphere signs
-          if ((latRef?.value as string[] | undefined)?.[0] === "S") latitude = -Math.abs(latitude);
-          if ((lngRef?.value as string[] | undefined)?.[0] === "W") longitude = -Math.abs(longitude);
+          const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
+          const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
+          if (latRefValue === "S") latitude = -Math.abs(latitude);
+          if (lngRefValue === "W") longitude = -Math.abs(longitude);
 
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
@@ -408,8 +410,11 @@ export function UploadModal() {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = () => {
-        const result = reader.result as string;
-        const base64 = result.split(",")[1]!;
+        if (typeof reader.result !== "string") {
+          reject(new Error("Expected string result"));
+          return;
+        }
+        const base64 = reader.result.split(",")[1]!;
         resolve(base64);
       };
       reader.onerror = reject;
@@ -454,15 +459,19 @@ export function UploadModal() {
             }
           }}
           filterOptions={(x) => x}
-          renderInput={(params) => (
+          renderInput={(params) => {
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- MUI Autocomplete params incompatible with exactOptionalPropertyTypes
+            const spreadParams = params as object;
+            return (
             <TextField
-              {...(params as object)}
+              {...spreadParams}
               fullWidth
               label="Species (optional)"
               placeholder="e.g. Eschscholzia californica - leave blank if unknown"
               margin="normal"
             />
-          )}
+            );
+          }}
           renderOption={(props, option) => {
             const { key, ...otherProps } = props;
             return (

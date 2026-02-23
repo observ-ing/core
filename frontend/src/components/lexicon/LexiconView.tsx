@@ -62,9 +62,13 @@ interface LexiconSchema {
   defs: Record<string, LexiconDef>;
 }
 
-// Parse and sort lexicons by ID
+function hasDefault(mod: unknown): mod is { default: LexiconSchema } {
+  return mod != null && typeof mod === "object" && "default" in mod;
+}
+
 const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
-  .map((mod) => (mod as { default: LexiconSchema }).default)
+  .filter(hasDefault)
+  .map((mod) => mod.default)
   .sort((a, b) => a.id.localeCompare(b.id));
 
 const isInHouse = (schema: LexiconSchema) =>

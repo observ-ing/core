@@ -137,7 +137,9 @@ export function WikiCommonsGallery({
                 loading="lazy"
                 style={{ borderRadius: 4, display: "block", width: "100%" }}
                 onError={(e) => {
-                  (e.target as HTMLImageElement).style.display = "none";
+                  if (e.target instanceof HTMLImageElement) {
+                    e.target.style.display = "none";
+                  }
                 }}
               />
             </MuiLink>

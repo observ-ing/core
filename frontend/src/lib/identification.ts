@@ -41,6 +41,36 @@ type TaxonRank =
 
 type ConfidenceLevel = "low" | "medium" | "high";
 
+const CONFIDENCE_LEVELS: ReadonlySet<string> = new Set<ConfidenceLevel>(["low", "medium", "high"]);
+
+function isConfidenceLevel(value: string): value is ConfidenceLevel {
+  return CONFIDENCE_LEVELS.has(value);
+}
+
+interface IdentificationRecord {
+  $type: string;
+  subject: { uri: string; cid: string };
+  taxon: { scientificName: string; taxonRank?: string };
+  comment?: string;
+  isAgreement?: boolean;
+  confidence?: string;
+  createdAt: string;
+}
+
+function assertIdentificationRecord(value: unknown): asserts value is IdentificationRecord {
+  const v = value;
+  if (
+    typeof v !== "object" ||
+    v === null ||
+    !("$type" in v) ||
+    !("subject" in v) ||
+    !("taxon" in v) ||
+    !("createdAt" in v)
+  ) {
+    throw new Error("Invalid identification record");
+  }
+}
+
 interface IdentificationResult {
   uri: string;
   cid: string;
@@ -178,15 +208,9 @@ export class IdentificationService {
       rkey,
     });
 
-    const existingRecord = existing.data.value as {
-      $type: string;
-      subject: { uri: string; cid: string };
-      taxon: { scientificName: string; taxonRank?: string };
-      comment?: string;
-      isAgreement?: boolean;
-      confidence?: string;
-      createdAt: string;
-    };
+    const existingValue = existing.data.value;
+    assertIdentificationRecord(existingValue);
+    const existingRecord = existingValue;
 
     // Merge updates
     const updatedRecord = {
@@ -333,7 +357,7 @@ export function createIdentificationUI(
       showToast?.("Your agreement has been recorded!", "success");
       onSuccess?.();
     } catch (error) {
-      showToast?.(`Error: ${(error as Error).message}`, "error");
+      showToast?.(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   });
 
@@ -346,9 +370,13 @@ export function createIdentificationUI(
   });
 
   submitBtn?.addEventListener("click", async () => {
-    const taxonInput = container.querySelector("#taxon-input") as HTMLInputElement;
-    const commentInput = container.querySelector("#comment-input") as HTMLTextAreaElement;
-    const confidenceSelect = container.querySelector("#confidence-select") as HTMLSelectElement;
+    const taxonInput = container.querySelector<HTMLInputElement>("#taxon-input");
+    const commentInput = container.querySelector<HTMLTextAreaElement>("#comment-input");
+    const confidenceSelect = container.querySelector<HTMLSelectElement>("#confidence-select");
+
+    if (!taxonInput || !commentInput || !confidenceSelect) {
+      return;
+    }
 
     if (!taxonInput.value.trim()) {
       showToast?.("Please enter a species name", "error");
@@ -359,13 +387,13 @@ export function createIdentificationUI(
       const trimmedComment = commentInput.value.trim();
       await service.suggestId(occurrence.uri, occurrence.cid, taxonInput.value.trim(), {
         ...(trimmedComment ? { comment: trimmedComment } : {}),
-        confidence: confidenceSelect.value as ConfidenceLevel,
+        confidence: isConfidenceLevel(confidenceSelect.value) ? confidenceSelect.value : "medium",
       });
       showToast?.("Your identification has been submitted!", "success");
       suggestForm?.classList.add("hidden");
       onSuccess?.();
     } catch (error) {
-      showToast?.(`Error: ${(error as Error).message}`, "error");
+      showToast?.(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
     }
   });
 }

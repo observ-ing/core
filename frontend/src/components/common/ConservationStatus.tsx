@@ -12,7 +12,7 @@ interface ConservationStatusProps {
   size?: "sm" | "md";
 }
 
-const CATEGORY_INFO: Record<IUCNCategory, { label: string; color: string }> = {
+const CATEGORY_INFO: Record<string, { label: string; color: string }> = {
   EX: { label: "Extinct", color: "#000000" },
   EW: { label: "Extinct in the Wild", color: "#542344" },
   CR: { label: "Critically Endangered", color: "#d81e05" },
@@ -32,7 +32,7 @@ export function ConservationStatus({
   showLabel = false,
   size = "md",
 }: ConservationStatusProps) {
-  const info = CATEGORY_INFO[status.category as IUCNCategory];
+  const info = CATEGORY_INFO[status.category];
   if (!info) return null;
 
   const needsDarkText = ["VU", "NT", "LC", "DD", "NE"].includes(status.category);

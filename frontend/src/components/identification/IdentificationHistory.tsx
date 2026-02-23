@@ -258,9 +258,9 @@ export function IdentificationHistory({
                     "{id.identification_remarks}"
                   </Typography>
                 )}
-                {getConfidenceLabel((id as Identification & { confidence?: string }).confidence) && (
+                {getConfidenceLabel(id.confidence) && (
                   <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                    {getConfidenceLabel((id as Identification & { confidence?: string }).confidence)}
+                    {getConfidenceLabel(id.confidence)}
                   </Typography>
                 )}
               </Box>

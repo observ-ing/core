@@ -1,5 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Box,
   Container,
@@ -29,7 +29,6 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const { observations, isLoading, currentTab, hasMore, homeFeedMeta } =
     useAppSelector((state) => state.feed);
   const contentRef = useRef<HTMLDivElement>(null);

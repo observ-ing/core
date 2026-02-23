@@ -1,6 +1,32 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import type { Occurrence, FeedTab, FeedFilters } from "../services/types";
+import type {
+  Occurrence,
+  FeedTab,
+  FeedFilters,
+  ExploreFeedResponse,
+  HomeFeedResponse,
+} from "../services/types";
 import * as api from "../services/api";
+
+type HomeFeedMeta = {
+  followedCount: number;
+  nearbyCount: number;
+  totalFollows: number;
+};
+
+function isHomeFeedMeta(value: unknown): value is HomeFeedMeta {
+  return (
+    value != null &&
+    typeof value === "object" &&
+    "followedCount" in value &&
+    "nearbyCount" in value &&
+    "totalFollows" in value
+  );
+}
+
+interface ThunkApiConfig {
+  state: { feed: FeedState; auth: { user: unknown } };
+}
 
 interface FeedState {
   observations: Occurrence[];
@@ -11,11 +37,7 @@ interface FeedState {
   filters: FeedFilters;
   isAuthenticated: boolean;
   userLocation: { lat: number; lng: number } | null;
-  homeFeedMeta: {
-    followedCount: number;
-    nearbyCount: number;
-    totalFollows: number;
-  } | null;
+  homeFeedMeta: HomeFeedMeta | null;
 }
 
 const initialState: FeedState = {
@@ -30,10 +52,12 @@ const initialState: FeedState = {
   homeFeedMeta: null,
 };
 
-export const loadFeed = createAsyncThunk(
-  "feed/loadFeed",
-  async (_, { getState }) => {
-    const state = getState() as { feed: FeedState; auth: { user: unknown } };
+export const loadFeed = createAsyncThunk<
+  ExploreFeedResponse | HomeFeedResponse,
+  void,
+  ThunkApiConfig
+>("feed/loadFeed", async (_, { getState }) => {
+    const state = getState();
     const { currentTab, cursor, filters, userLocation } = state.feed;
     const isAuthenticated = !!state.auth?.user;
 
@@ -48,10 +72,12 @@ export const loadFeed = createAsyncThunk(
   }
 );
 
-export const loadInitialFeed = createAsyncThunk(
-  "feed/loadInitialFeed",
-  async (_, { getState }) => {
-    const state = getState() as { feed: FeedState; auth: { user: unknown } };
+export const loadInitialFeed = createAsyncThunk<
+  ExploreFeedResponse | HomeFeedResponse,
+  void,
+  ThunkApiConfig
+>("feed/loadInitialFeed", async (_, { getState }) => {
+    const state = getState();
     const { currentTab, filters, userLocation } = state.feed;
     const isAuthenticated = !!state.auth?.user;
 
@@ -108,12 +134,8 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && action.payload.meta && "followedCount" in action.payload.meta) {
-          state.homeFeedMeta = action.payload.meta as {
-            followedCount: number;
-            nearbyCount: number;
-            totalFollows: number;
-          };
+        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
+          state.homeFeedMeta = action.payload.meta;
         }
       })
       .addCase(loadFeed.rejected, (state) => {
@@ -129,12 +151,8 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && action.payload.meta && "followedCount" in action.payload.meta) {
-          state.homeFeedMeta = action.payload.meta as {
-            followedCount: number;
-            nearbyCount: number;
-            totalFollows: number;
-          };
+        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
+          state.homeFeedMeta = action.payload.meta;
         }
       })
       .addCase(loadInitialFeed.rejected, (state) => {

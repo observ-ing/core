@@ -20,7 +20,7 @@ const sharedConfig = {
 };
 
 const darkPalette = {
-  mode: "dark" as PaletteMode,
+  mode: "dark" as const,
   primary: {
     main: "#22c55e",
     dark: "#16a34a",
@@ -48,7 +48,7 @@ const darkPalette = {
 };
 
 const lightPalette = {
-  mode: "light" as PaletteMode,
+  mode: "light" as const,
   primary: {
     main: "#15803d",
     dark: "#166534",
@@ -81,13 +81,9 @@ const createAppTheme = (mode: PaletteMode): Theme => {
   const borderColor = isDark ? "#333" : "#e5e5e5";
   const surfaceColor = isDark ? "#1a1a1a" : "#ffffff";
   const skeletonColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
-  const skeletonHighlight = isDark ? "rgba(255, 255, 255, 0.12)" : "rgba(0, 0, 0, 0.1)";
   const cardShadow = isDark
     ? "0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16)"
     : "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)";
-  const cardHoverShadow = isDark
-    ? "0 4px 12px rgba(0, 0, 0, 0.32), 0 2px 4px rgba(0, 0, 0, 0.24)"
-    : "0 4px 12px rgba(0, 0, 0, 0.12), 0 2px 4px rgba(0, 0, 0, 0.08)";
 
   return createTheme({
     palette,
