@@ -33,7 +33,7 @@ interface NominatimResult {
 function createCircleGeoJSON(
   lng: number,
   lat: number,
-  radiusMeters: number
+  radiusMeters: number,
 ): GeoJSON.FeatureCollection {
   const points = 64;
   const coords: [number, number][] = [];
@@ -103,25 +103,28 @@ export function LocationPicker({
   const [lngInput, setLngInput] = useState(longitude.toFixed(6));
   const theme = useTheme();
 
-  const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
-    if (!map.current) return;
+  const updateMarker = useCallback(
+    (lng: number, lat: number, radius?: number) => {
+      if (!map.current) return;
 
-    if (marker.current) {
-      marker.current.setLngLat([lng, lat]);
-    } else {
-      marker.current = new maplibregl.Marker({ color: "#22c55e" })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-    }
+      if (marker.current) {
+        marker.current.setLngLat([lng, lat]);
+      } else {
+        marker.current = new maplibregl.Marker({ color: "#22c55e" })
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
 
-    // Update uncertainty circle
-    const effectiveRadius = radius ?? uncertaintyMeters;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
-    const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
-    }
-  }, [uncertaintyMeters]);
+      // Update uncertainty circle
+      const effectiveRadius = radius ?? uncertaintyMeters;
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
+      const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
+      }
+    },
+    [uncertaintyMeters],
+  );
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
@@ -133,7 +136,7 @@ export function LocationPicker({
       setLatInput(lat.toFixed(6));
       setLngInput(lng.toFixed(6));
     },
-    [onChange, updateMarker]
+    [onChange, updateMarker],
   );
 
   // Search Nominatim
@@ -154,7 +157,7 @@ export function LocationPicker({
             headers: {
               "User-Agent": "Observ.ing/1.0",
             },
-          }
+          },
         );
         if (response.ok) {
           const data: NominatimResult[] = await response.json();
@@ -191,7 +194,7 @@ export function LocationPicker({
 
     mapInstance.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right"
+      "bottom-right",
     );
 
     mapInstance.on("load", () => {
@@ -294,9 +297,7 @@ export function LocationPicker({
       <Autocomplete
         freeSolo
         options={searchResults}
-        getOptionLabel={(option) =>
-          typeof option === "string" ? option : option.display_name
-        }
+        getOptionLabel={(option) => (typeof option === "string" ? option : option.display_name)}
         inputValue={searchQuery}
         onInputChange={(_, value) => setSearchQuery(value)}
         onChange={(_, value) => {
@@ -311,31 +312,26 @@ export function LocationPicker({
           // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- MUI Autocomplete params incompatible with exactOptionalPropertyTypes
           const spreadParams = params as object;
           return (
-          <TextField
-            {...spreadParams}
-            size="small"
-            placeholder="Search for a place..."
-            InputProps={{
-              ...params.InputProps,
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ mb: 1 }}
-          />
+            <TextField
+              {...spreadParams}
+              size="small"
+              placeholder="Search for a place..."
+              InputProps={{
+                ...params.InputProps,
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ mb: 1 }}
+            />
           );
         }}
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           return (
-            <Box
-              component="li"
-              key={key}
-              {...otherProps}
-              sx={{ fontSize: "0.875rem" }}
-            >
+            <Box component="li" key={key} {...otherProps} sx={{ fontSize: "0.875rem" }}>
               {option.display_name}
             </Box>
           );
@@ -374,18 +370,17 @@ export function LocationPicker({
         />
       </Stack>
 
-      <Typography
-        variant="caption"
-        color="text.disabled"
-        sx={{ display: "block", mt: 0.5 }}
-      >
+      <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
         Search, click map, or enter coordinates
       </Typography>
 
       {onUncertaintyChange && (
         <Box sx={{ mt: 2 }}>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-            Coordinate Uncertainty: {uncertaintyMeters >= 1000 ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km` : `${uncertaintyMeters}m`}
+            Coordinate Uncertainty:{" "}
+            {uncertaintyMeters >= 1000
+              ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km`
+              : `${uncertaintyMeters}m`}
           </Typography>
           <Slider
             value={valueToSlider(uncertaintyMeters)}
@@ -398,15 +393,21 @@ export function LocationPicker({
               onUncertaintyChange(meters);
               // Update circle immediately
               // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
-              const source = map.current?.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+              const source = map.current?.getSource("uncertainty") as
+                | maplibregl.GeoJSONSource
+                | undefined;
               if (source) {
-                source.setData(createCircleGeoJSON(parseFloat(lngInput), parseFloat(latInput), meters));
+                source.setData(
+                  createCircleGeoJSON(parseFloat(lngInput), parseFloat(latInput), meters),
+                );
               }
             }}
             valueLabelDisplay="auto"
             valueLabelFormat={(value) => {
               const meters = sliderToValue(value);
-              return meters >= 1000 ? `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)}km` : `${meters}m`;
+              return meters >= 1000
+                ? `${(meters / 1000).toFixed(meters >= 10000 ? 0 : 1)}km`
+                : `${meters}m`;
             }}
             sx={{
               "& .MuiSlider-markLabel": {

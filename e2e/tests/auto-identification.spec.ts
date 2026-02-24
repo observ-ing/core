@@ -1,7 +1,4 @@
-import {
-  test as authTest,
-  expect as authExpect,
-} from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 const FAB = 'button[aria-label="Create actions"]';
 
@@ -58,14 +55,12 @@ authTest.describe("Auto-Identification on Upload", () => {
       // The selected species scientific name should appear in the ID history
       // selectedSpecies may contain "Scientific Name\nCommon Name", extract first line
       const scientificName = selectedSpecies.split("\n")[0].trim();
-      await authExpect(
-        page.getByText(scientificName, { exact: false }).first(),
-      ).toBeVisible({ timeout: 5000 });
+      await authExpect(page.getByText(scientificName, { exact: false }).first()).toBeVisible({
+        timeout: 5000,
+      });
 
       // Community ID should reflect the auto-created identification
-      await authExpect(
-        page.getByText("Community ID"),
-      ).toBeVisible({ timeout: 5000 });
+      await authExpect(page.getByText("Community ID")).toBeVisible({ timeout: 5000 });
 
       // Cleanup: delete the observation to avoid polluting the test account
       const url = page.url();

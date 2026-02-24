@@ -18,9 +18,7 @@ type MockDetailOverrides = Partial<Occurrence> & {
  * Builds a mock observation object for API responses.
  * Validated against the Rust-generated Occurrence type.
  */
-export function buildMockObservation(
-  overrides: Partial<Occurrence> = {},
-): Occurrence {
+export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occurrence {
   const user = getTestUser();
   return {
     uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
@@ -61,11 +59,7 @@ export function buildMockObservation(
  * Builds a full observation detail API response including identifications and comments.
  */
 function buildMockObservationResponse(overrides: MockDetailOverrides = {}) {
-  const {
-    identifications = [],
-    comments = [],
-    ...occurrenceOverrides
-  } = overrides;
+  const { identifications = [], comments = [], ...occurrenceOverrides } = overrides;
 
   return {
     occurrence: buildMockObservation(occurrenceOverrides),
@@ -78,10 +72,7 @@ function buildMockObservationResponse(overrides: MockDetailOverrides = {}) {
  * Sets up page.route() mock for the observation detail API endpoint.
  * Intercepts GET /api/occurrences/* and returns the mocked response.
  */
-export async function mockObservationDetailRoute(
-  page: Page,
-  overrides: MockDetailOverrides = {},
-) {
+export async function mockObservationDetailRoute(page: Page, overrides: MockDetailOverrides = {}) {
   const response = buildMockObservationResponse(overrides);
   await page.route("**/api/occurrences/*", (route: Route) => {
     if (route.request().method() === "GET") {
@@ -99,10 +90,7 @@ export async function mockObservationDetailRoute(
 /**
  * Sets up page.route() mock for the interactions API endpoint.
  */
-export async function mockInteractionsRoute(
-  page: Page,
-  interactions: EnrichedInteraction[] = [],
-) {
+export async function mockInteractionsRoute(page: Page, interactions: EnrichedInteraction[] = []) {
   await page.route("**/api/interactions/occurrence/*", (route: Route) => {
     return route.fulfill({
       status: 200,
@@ -115,10 +103,7 @@ export async function mockInteractionsRoute(
 /**
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
-export async function mockOwnObservationFeed(
-  page: Page,
-  overrides: Partial<Occurrence> = {},
-) {
+export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occurrence> = {}) {
   const feedResponse: FeedResponse = {
     occurrences: [buildMockObservation(overrides)],
   };

@@ -1,11 +1,4 @@
-import {
-  useState,
-  useEffect,
-  type FormEvent,
-  useCallback,
-  useRef,
-  type ChangeEvent,
-} from "react";
+import { useState, useEffect, type FormEvent, useCallback, useRef, type ChangeEvent } from "react";
 import {
   Box,
   Typography,
@@ -69,9 +62,7 @@ function toDatetimeLocal(date: Date): string {
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
-  const editingObservation = useAppSelector(
-    (state) => state.ui.editingObservation
-  );
+  const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
@@ -111,9 +102,9 @@ export function UploadModal() {
             setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
           }
         }
-        const coObserverDids = editingObservation.observers
-          ?.filter((o) => o.role === "co-observer")
-          .map((o) => o.did) || [];
+        const coObserverDids =
+          editingObservation.observers?.filter((o) => o.role === "co-observer").map((o) => o.did) ||
+          [];
         setCoObservers(coObserverDids);
         setExistingImages(editingObservation.images || []);
       } else if (currentLocation) {
@@ -159,7 +150,7 @@ export function UploadModal() {
           addToast({
             message: `Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`,
             type: "error",
-          })
+          }),
         );
         continue;
       }
@@ -169,7 +160,7 @@ export function UploadModal() {
           addToast({
             message: `File too large: ${file.name}. Max size is 10MB.`,
             type: "error",
-          })
+          }),
         );
         continue;
       }
@@ -179,7 +170,7 @@ export function UploadModal() {
           addToast({
             message: `Maximum ${MAX_IMAGES} images allowed.`,
             type: "error",
-          })
+          }),
         );
         break;
       }
@@ -210,12 +201,14 @@ export function UploadModal() {
 
       if (gpsLat && gpsLng) {
         // description may be a number or string depending on browser/ExifReader version
-        let latitude = typeof gpsLat.description === "number"
-          ? gpsLat.description
-          : parseFloat(String(gpsLat.description));
-        let longitude = typeof gpsLng.description === "number"
-          ? gpsLng.description
-          : parseFloat(String(gpsLng.description));
+        let latitude =
+          typeof gpsLat.description === "number"
+            ? gpsLat.description
+            : parseFloat(String(gpsLat.description));
+        let longitude =
+          typeof gpsLng.description === "number"
+            ? gpsLng.description
+            : parseFloat(String(gpsLng.description));
 
         if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
           // Apply hemisphere signs
@@ -230,7 +223,7 @@ export function UploadModal() {
             addToast({
               message: "Location extracted from photo EXIF data",
               type: "success",
-            })
+            }),
           );
         }
       }
@@ -248,7 +241,7 @@ export function UploadModal() {
             addToast({
               message: "Date extracted from photo EXIF data",
               type: "success",
-            })
+            }),
           );
         }
       }
@@ -313,9 +306,7 @@ export function UploadModal() {
     e.preventDefault();
 
     if (!lat || !lng) {
-      dispatch(
-        addToast({ message: "Please provide a location", type: "error" })
-      );
+      dispatch(addToast({ message: "Please provide a location", type: "error" }));
       return;
     }
 
@@ -326,7 +317,7 @@ export function UploadModal() {
         images.map(async (img) => ({
           data: await fileToBase64(img.file),
           mimeType: img.file.type,
-        }))
+        })),
       );
 
       let observationUri: string;
@@ -360,7 +351,7 @@ export function UploadModal() {
           addToast({
             message: "Observation updated successfully!",
             type: "success",
-          })
+          }),
         );
       } else {
         const eventDate = new Date(observationDate).toISOString();
@@ -388,7 +379,7 @@ export function UploadModal() {
               ? "Observation submitted successfully!"
               : "Observation submitted! It may take a moment to appear.",
             type: "success",
-          })
+          }),
         );
       }
 
@@ -399,7 +390,7 @@ export function UploadModal() {
         addToast({
           message: `Failed to ${isEditMode ? "update" : "submit"}: ${error instanceof Error ? error.message : "Unknown error"}`,
           type: "error",
-        })
+        }),
       );
     } finally {
       setIsSubmitting(false);
@@ -447,9 +438,7 @@ export function UploadModal() {
         <Autocomplete
           freeSolo
           options={suggestions}
-          getOptionLabel={(option) =>
-            typeof option === "string" ? option : option.scientificName
-          }
+          getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
           inputValue={species}
           onInputChange={(_, value) => {
             setSpecies(value);
@@ -467,13 +456,13 @@ export function UploadModal() {
             // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- MUI Autocomplete params incompatible with exactOptionalPropertyTypes
             const spreadParams = params as object;
             return (
-            <TextField
-              {...spreadParams}
-              fullWidth
-              label="Species (optional)"
-              placeholder="e.g. Eschscholzia californica - leave blank if unknown"
-              margin="normal"
-            />
+              <TextField
+                {...spreadParams}
+                fullWidth
+                label="Species (optional)"
+                placeholder="e.g. Eschscholzia californica - leave blank if unknown"
+                margin="normal"
+              />
             );
           }}
           renderOption={(props, option) => {
@@ -787,9 +776,9 @@ export function UploadModal() {
                     addToast({
                       message: "Could not get your location. Use the map to set it manually.",
                       type: "error",
-                    })
+                    }),
                   );
-                }
+                },
               );
             }}
             sx={{

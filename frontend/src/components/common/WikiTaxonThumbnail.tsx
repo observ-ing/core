@@ -6,10 +6,7 @@ export interface WikiTaxonThumbnailProps {
   size?: number | undefined;
 }
 
-export function WikiTaxonThumbnail({
-  src,
-  size = 24,
-}: WikiTaxonThumbnailProps) {
+export function WikiTaxonThumbnail({ src, size = 24 }: WikiTaxonThumbnailProps) {
   if (!src) {
     return (
       <Box

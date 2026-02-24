@@ -14,11 +14,7 @@ import {
   ListItemButton,
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import {
-  fetchNotifications,
-  markNotificationRead,
-  getImageUrl,
-} from "../../services/api";
+import { fetchNotifications, markNotificationRead, getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
 
@@ -31,26 +27,23 @@ export function NotificationsPage() {
   const [hasMore, setHasMore] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = useCallback(
-    async (loadCursor?: string) => {
-      setIsLoading(true);
-      try {
-        const data = await fetchNotifications(loadCursor);
-        if (loadCursor) {
-          setNotifications((prev) => [...prev, ...data.notifications]);
-        } else {
-          setNotifications(data.notifications);
-        }
-        setCursor(data.cursor ?? undefined);
-        setHasMore(data.notifications.length === 20);
-      } catch {
-        // ignore
-      } finally {
-        setIsLoading(false);
+  const loadNotifications = useCallback(async (loadCursor?: string) => {
+    setIsLoading(true);
+    try {
+      const data = await fetchNotifications(loadCursor);
+      if (loadCursor) {
+        setNotifications((prev) => [...prev, ...data.notifications]);
+      } else {
+        setNotifications(data.notifications);
       }
-    },
-    []
-  );
+      setCursor(data.cursor ?? undefined);
+      setHasMore(data.notifications.length === 20);
+    } catch {
+      // ignore
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     loadNotifications();
@@ -80,7 +73,7 @@ export function NotificationsPage() {
     if (!notification.read) {
       await markNotificationRead(notification.id);
       setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
       );
     }
     navigate(getObservationUrl(notification.subjectUri));
@@ -102,10 +95,7 @@ export function NotificationsPage() {
   const hasUnread = notifications.some((n) => !n.read);
 
   return (
-    <Box
-      ref={contentRef}
-      sx={{ flex: 1, overflow: "auto", height: "100%" }}
-    >
+    <Box ref={contentRef} sx={{ flex: 1, overflow: "auto", height: "100%" }}>
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <Box
           sx={{
@@ -142,26 +132,17 @@ export function NotificationsPage() {
                 mb: 0.5,
               }}
             >
-              <ListItemButton
-                onClick={() => handleClick(n)}
-                sx={{ borderRadius: 2, py: 1.5 }}
-              >
+              <ListItemButton onClick={() => handleClick(n)} sx={{ borderRadius: 2, py: 1.5 }}>
                 <ListItemAvatar>
                   <Avatar
-                    {...(n.actor?.avatar
-                      ? { src: getImageUrl(n.actor.avatar) }
-                      : {})}
+                    {...(n.actor?.avatar ? { src: getImageUrl(n.actor.avatar) } : {})}
                     sx={{ width: 40, height: 40 }}
                   />
                 </ListItemAvatar>
                 <ListItemText
                   primary={
                     <>
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        fontWeight={600}
-                      >
+                      <Typography component="span" variant="body2" fontWeight={600}>
                         @{n.actor?.handle || n.actorDid}
                       </Typography>{" "}
                       <Typography component="span" variant="body2">

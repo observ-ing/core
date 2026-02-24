@@ -64,11 +64,14 @@ describe("uiSlice", () => {
       }),
     });
 
-    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({
-      matches: false,
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-    }));
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }),
+    );
   });
 
   afterEach(() => {
@@ -253,11 +256,14 @@ describe("uiSlice", () => {
       store.dispatch(setThemeMode("system"));
 
       // Change system preference to dark
-      vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({
-        matches: true, // dark mode
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }));
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockReturnValue({
+          matches: true, // dark mode
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }),
+      );
 
       store.dispatch(updateSystemTheme());
 
@@ -268,11 +274,14 @@ describe("uiSlice", () => {
       const store = createTestStore();
       store.dispatch(setThemeMode("light"));
 
-      vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({
-        matches: true, // dark mode
-        addEventListener: vi.fn(),
-        removeEventListener: vi.fn(),
-      }));
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockReturnValue({
+          matches: true, // dark mode
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }),
+      );
 
       store.dispatch(updateSystemTheme());
 

@@ -22,7 +22,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -31,6 +32,10 @@
 }
 
 /* Smooth transitions for interactive elements */
-a, button, [role="button"] {
-  transition: opacity 0.15s ease, transform 0.15s ease;
+a,
+button,
+[role="button"] {
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }

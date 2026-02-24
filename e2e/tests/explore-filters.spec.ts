@@ -21,9 +21,7 @@ test.describe("Explore Filters", () => {
 
   // TC-FILTER-001: Filter panel visible
   test("filter panel is visible on explore tab", async ({ page }) => {
-    await expect(
-      page.getByRole("heading", { name: "Filters" }),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("heading", { name: "Filters" })).toBeVisible({ timeout: 10000 });
   });
 
   // TC-FILTER-002: Expand/collapse
@@ -48,18 +46,10 @@ test.describe("Explore Filters", () => {
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
 
     await kingdomSelect.click();
-    await expect(
-      page.getByRole("option", { name: "All Kingdoms" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("option", { name: "Animals" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("option", { name: "Plants" }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("option", { name: "Fungi" }),
-    ).toBeVisible();
+    await expect(page.getByRole("option", { name: "All Kingdoms" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Animals" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Plants" })).toBeVisible();
+    await expect(page.getByRole("option", { name: "Fungi" })).toBeVisible();
   });
 
   // TC-FILTER-004: Taxon search autocomplete shows suggestions
@@ -69,15 +59,11 @@ test.describe("Explore Filters", () => {
     await expect(taxonInput).toBeVisible({ timeout: 5000 });
     await taxonInput.fill("Quercus");
 
-    await expect(
-      page.locator(".MuiAutocomplete-popper"),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".MuiAutocomplete-popper")).toBeVisible({ timeout: 5000 });
   });
 
   // TC-FILTER-005: Apply Filters dispatches filtered request
-  test("Apply Filters button dispatches filtered feed request", async ({
-    page,
-  }) => {
+  test("Apply Filters button dispatches filtered feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const kingdomSelect = muiSelect(page, "Kingdom");
     await expect(kingdomSelect).toBeVisible({ timeout: 5000 });
@@ -88,9 +74,7 @@ test.describe("Explore Filters", () => {
 
     // Click Apply Filters and verify the API request includes kingdom
     const feedRequest = page.waitForRequest(
-      (req) =>
-        req.url().includes("/api/feeds/explore") &&
-        req.url().includes("kingdom=Plantae"),
+      (req) => req.url().includes("/api/feeds/explore") && req.url().includes("kingdom=Plantae"),
     );
     await page.getByRole("button", { name: "Apply Filters" }).click();
     await feedRequest;
@@ -129,8 +113,8 @@ test.describe("Explore Filters", () => {
     await page.getByRole("button", { name: "Apply Filters" }).click();
 
     // After applying, the badge should show "1"
-    await expect(
-      page.locator(".MuiChip-root").filter({ hasText: "1" }).first(),
-    ).toBeVisible({ timeout: 5000 });
+    await expect(page.locator(".MuiChip-root").filter({ hasText: "1" }).first()).toBeVisible({
+      timeout: 5000,
+    });
   });
 });

@@ -29,8 +29,9 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const { observations, isLoading, currentTab, hasMore, homeFeedMeta } =
-    useAppSelector((state) => state.feed);
+  const { observations, isLoading, currentTab, hasMore, homeFeedMeta } = useAppSelector(
+    (state) => state.feed,
+  );
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Sync route tab with store
@@ -57,14 +58,14 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
     (occurrence: Occurrence) => {
       dispatch(openEditModal(occurrence));
     },
-    [dispatch]
+    [dispatch],
   );
 
   const handleDelete = useCallback(
     (occurrence: Occurrence) => {
       dispatch(openDeleteConfirm(occurrence));
     },
-    [dispatch]
+    [dispatch],
   );
 
   return (
@@ -113,7 +114,12 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                       <CardActionArea
                         component={Link}
                         to={getObservationUrl(obs.uri)}
-                        sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
+                        sx={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "stretch",
+                        }}
                       >
                         {obs.images[0] ? (
                           <CardMedia
@@ -189,13 +195,16 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
             <>
               <Box>
                 {observations.map((obs) => (
-                  <FeedItem key={obs.uri} observation={obs} onEdit={handleEdit} onDelete={handleDelete} />
+                  <FeedItem
+                    key={obs.uri}
+                    observation={obs}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </Box>
 
-              {isLoading && observations.length === 0 && (
-                <FeedSkeletonList count={3} />
-              )}
+              {isLoading && observations.length === 0 && <FeedSkeletonList count={3} />}
 
               {isLoading && observations.length > 0 && (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
@@ -210,16 +219,11 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   </Typography>
                   {homeFeedMeta && homeFeedMeta.totalFollows > 0 && (
                     <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-                      You follow {homeFeedMeta.totalFollows} people, but none have
-                      posted observations.
+                      You follow {homeFeedMeta.totalFollows} people, but none have posted
+                      observations.
                     </Typography>
                   )}
-                  <Button
-                    variant="outlined"
-                    color="primary"
-                    component={Link}
-                    to="/explore"
-                  >
+                  <Button variant="outlined" color="primary" component={Link} to="/explore">
                     Browse all observations
                   </Button>
                 </Box>

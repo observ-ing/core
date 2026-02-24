@@ -141,9 +141,7 @@ describe("api", () => {
 
       await api.fetchFeed("abc123");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/occurrences/feed?limit=20&cursor=abc123"
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/occurrences/feed?limit=20&cursor=abc123");
     });
 
     it("throws on error response", async () => {
@@ -181,16 +179,14 @@ describe("api", () => {
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&lat=40.7128&lng=-74.006&radius=50"
+        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&lat=40.7128&lng=-74.006&radius=50",
       );
     });
 
     it("throws on error", async () => {
       mockFetch.mockResolvedValue({ ok: false });
 
-      await expect(api.fetchExploreFeed()).rejects.toThrow(
-        "Failed to load explore feed"
-      );
+      await expect(api.fetchExploreFeed()).rejects.toThrow("Failed to load explore feed");
     });
   });
 
@@ -218,24 +214,20 @@ describe("api", () => {
 
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/feeds/home?limit=20&cursor=cursor&lat=40&lng=-74&nearbyRadius=100",
-        { credentials: "include" }
+        { credentials: "include" },
       );
     });
 
     it("throws authentication error on 401", async () => {
       mockFetch.mockResolvedValue({ ok: false, status: 401 });
 
-      await expect(api.fetchHomeFeed()).rejects.toThrow(
-        "Authentication required"
-      );
+      await expect(api.fetchHomeFeed()).rejects.toThrow("Authentication required");
     });
 
     it("throws generic error on other failures", async () => {
       mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
-      await expect(api.fetchHomeFeed()).rejects.toThrow(
-        "Failed to load home feed"
-      );
+      await expect(api.fetchHomeFeed()).rejects.toThrow("Failed to load home feed");
     });
   });
 
@@ -248,9 +240,7 @@ describe("api", () => {
 
       await api.fetchProfileFeed("did:plc:test123");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/profiles/did%3Aplc%3Atest123/feed?limit=20"
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/profiles/did%3Aplc%3Atest123/feed?limit=20");
     });
 
     it("includes cursor and type", async () => {
@@ -262,7 +252,7 @@ describe("api", () => {
       await api.fetchProfileFeed("did:plc:test", "cursor123", "identifications");
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/profiles/did%3Aplc%3Atest/feed?limit=20&cursor=cursor123&type=identifications"
+        "/api/profiles/did%3Aplc%3Atest/feed?limit=20&cursor=cursor123&type=identifications",
       );
     });
 
@@ -270,7 +260,7 @@ describe("api", () => {
       mockFetch.mockResolvedValue({ ok: false });
 
       await expect(api.fetchProfileFeed("did:plc:test")).rejects.toThrow(
-        "Failed to load profile feed"
+        "Failed to load profile feed",
       );
     });
   });
@@ -324,7 +314,7 @@ describe("api", () => {
 
       expect(result).toEqual(mockData);
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/occurrences/geojson?minLat=40&minLng=-75&maxLat=41&maxLng=-74"
+        "/api/occurrences/geojson?minLat=40&minLng=-75&maxLat=41&maxLng=-74",
       );
     });
 
@@ -337,7 +327,7 @@ describe("api", () => {
           minLng: -75,
           maxLat: 41,
           maxLng: -74,
-        })
+        }),
       ).rejects.toThrow("Failed to load observations");
     });
   });
@@ -353,8 +343,7 @@ describe("api", () => {
     it("searches taxa by query", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
-        json: () =>
-          Promise.resolve({ results: [{ id: 1, name: "Quercus alba" }] }),
+        json: () => Promise.resolve({ results: [{ id: 1, name: "Quercus alba" }] }),
       });
 
       const result = await api.searchTaxa("Quercus");
@@ -418,7 +407,7 @@ describe("api", () => {
           latitude: 999,
           longitude: -74,
           eventDate: "2024-01-15",
-        })
+        }),
       ).rejects.toThrow("Invalid coordinates");
     });
 
@@ -434,7 +423,7 @@ describe("api", () => {
           latitude: 40,
           longitude: -74,
           eventDate: "2024-01-15",
-        })
+        }),
       ).rejects.toThrow("Failed to submit");
     });
   });
@@ -476,7 +465,7 @@ describe("api", () => {
           latitude: 40,
           longitude: -74,
           eventDate: "2024-01-15",
-        })
+        }),
       ).rejects.toThrow("Not found");
     });
   });
@@ -493,7 +482,7 @@ describe("api", () => {
       expect(result).toEqual({ success: true });
       expect(mockFetch).toHaveBeenCalledWith(
         "/api/occurrences/at%3A%2F%2Ftest%2Foccurrence%2F123",
-        { method: "DELETE", credentials: "include" }
+        { method: "DELETE", credentials: "include" },
       );
     });
 
@@ -504,7 +493,7 @@ describe("api", () => {
       });
 
       await expect(api.deleteObservation("at://test")).rejects.toThrow(
-        "Session expired, please log in again"
+        "Session expired, please log in again",
       );
     });
 
@@ -515,9 +504,7 @@ describe("api", () => {
         json: () => Promise.resolve({ error: "Server error" }),
       });
 
-      await expect(api.deleteObservation("at://test")).rejects.toThrow(
-        "Server error"
-      );
+      await expect(api.deleteObservation("at://test")).rejects.toThrow("Server error");
     });
   });
 
@@ -531,10 +518,10 @@ describe("api", () => {
       const result = await api.deleteIdentification("at://test/id/123");
 
       expect(result).toEqual({ success: true });
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/identifications/at%3A%2F%2Ftest%2Fid%2F123",
-        { method: "DELETE", credentials: "include" }
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/identifications/at%3A%2F%2Ftest%2Fid%2F123", {
+        method: "DELETE",
+        credentials: "include",
+      });
     });
 
     it("throws session expired on 401", async () => {
@@ -544,7 +531,7 @@ describe("api", () => {
       });
 
       await expect(api.deleteIdentification("at://test")).rejects.toThrow(
-        "Session expired, please log in again"
+        "Session expired, please log in again",
       );
     });
 
@@ -555,9 +542,7 @@ describe("api", () => {
         json: () => Promise.resolve({ error: "Server error" }),
       });
 
-      await expect(api.deleteIdentification("at://test")).rejects.toThrow(
-        "Server error"
-      );
+      await expect(api.deleteIdentification("at://test")).rejects.toThrow("Server error");
     });
   });
 
@@ -605,7 +590,7 @@ describe("api", () => {
           occurrenceUri: "at://occ",
           occurrenceCid: "cid",
           scientificName: "",
-        })
+        }),
       ).rejects.toThrow("Missing taxon");
     });
   });
@@ -656,7 +641,7 @@ describe("api", () => {
           occurrenceUri: "at://occ",
           occurrenceCid: "cid",
           body: "Test",
-        })
+        }),
       ).rejects.toThrow("Failed to submit comment");
     });
   });
@@ -705,9 +690,7 @@ describe("api", () => {
       const result = await api.fetchTaxonObservations("123");
 
       expect(result).toEqual(mockData);
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/taxa/123/occurrences?limit=20"
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/123/occurrences?limit=20");
     });
 
     it("includes cursor", async () => {
@@ -718,16 +701,14 @@ describe("api", () => {
 
       await api.fetchTaxonObservations("123", undefined, "cursor456");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/taxa/123/occurrences?limit=20&cursor=cursor456"
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/123/occurrences?limit=20&cursor=cursor456");
     });
 
     it("throws on error", async () => {
       mockFetch.mockResolvedValue({ ok: false });
 
       await expect(api.fetchTaxonObservations("123")).rejects.toThrow(
-        "Failed to fetch taxon observations"
+        "Failed to fetch taxon observations",
       );
     });
   });

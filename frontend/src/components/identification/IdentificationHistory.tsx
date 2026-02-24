@@ -94,7 +94,10 @@ export function IdentificationHistory({
   const latestByUser = new Map<string, Identification>();
   for (const id of filteredIds) {
     const existing = latestByUser.get(id.did);
-    if (!existing || new Date(id.date_identified).getTime() > new Date(existing.date_identified).getTime()) {
+    if (
+      !existing ||
+      new Date(id.date_identified).getTime() > new Date(existing.date_identified).getTime()
+    ) {
       if (existing) supersededUris.add(existing.uri);
       latestByUser.set(id.did, id);
     } else {
@@ -106,8 +109,8 @@ export function IdentificationHistory({
   const showObserverInitialId = observerInitialId && subjectIndex === 0;
 
   // Observer's initial ID is superseded if they have any later identification
-  const observerInitialIdSuperseded = showObserverInitialId &&
-    filteredIds.some((id) => id.did === observerInitialId.observer.did);
+  const observerInitialIdSuperseded =
+    showObserverInitialId && filteredIds.some((id) => id.did === observerInitialId.observer.did);
 
   if (filteredIds.length === 0 && !showObserverInitialId) {
     return (
@@ -169,10 +172,16 @@ export function IdentificationHistory({
             <Stack direction="row" spacing={1.5} alignItems="flex-start">
               <RouterLink to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}>
                 <Avatar
-                  {...(observerInitialId.observer.avatar ? { src: observerInitialId.observer.avatar } : {})}
+                  {...(observerInitialId.observer.avatar
+                    ? { src: observerInitialId.observer.avatar }
+                    : {})}
                   sx={{ width: 32, height: 32 }}
                 >
-                  {(observerInitialId.observer.displayName || observerInitialId.observer.handle || "?")[0]}
+                  {
+                    (observerInitialId.observer.displayName ||
+                      observerInitialId.observer.handle ||
+                      "?")[0]
+                  }
                 </Avatar>
               </RouterLink>
               <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -182,7 +191,9 @@ export function IdentificationHistory({
                     style={{ textDecoration: "none" }}
                   >
                     <Typography variant="body2" fontWeight="medium" color="text.primary">
-                      {observerInitialId.observer.displayName || observerInitialId.observer.handle || "Unknown"}
+                      {observerInitialId.observer.displayName ||
+                        observerInitialId.observer.handle ||
+                        "Unknown"}
                     </Typography>
                   </RouterLink>
                   <Typography variant="caption" color="text.secondary">
@@ -190,7 +201,12 @@ export function IdentificationHistory({
                   </Typography>
                   <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                 </Stack>
-                <Box sx={{ mt: 0.5, textDecoration: observerInitialIdSuperseded ? "line-through" : "none" }}>
+                <Box
+                  sx={{
+                    mt: 0.5,
+                    textDecoration: observerInitialIdSuperseded ? "line-through" : "none",
+                  }}
+                >
                   <TaxonLink
                     name={observerInitialId.scientificName}
                     kingdom={observerInitialId.kingdom || kingdom}
@@ -204,112 +220,118 @@ export function IdentificationHistory({
         {filteredIds.map((id) => {
           const isSuperseded = supersededUris.has(id.uri);
           return (
-          <Box
-            key={id.uri}
-            sx={{
-              pl: 2,
-              borderLeft: 3,
-              borderColor: isSuperseded ? "text.disabled" : id.is_agreement ? "success.main" : "primary.main",
-              transition: "background-color 0.2s ease",
-              borderRadius: "0 4px 4px 0",
-              py: 1,
-              opacity: isSuperseded ? 0.5 : 1,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
-                <Avatar
-                  {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
-                  sx={{ width: 32, height: 32 }}
-                >
-                  {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
-                </Avatar>
-              </RouterLink>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <RouterLink
-                    to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
-                    style={{ textDecoration: "none" }}
+            <Box
+              key={id.uri}
+              sx={{
+                pl: 2,
+                borderLeft: 3,
+                borderColor: isSuperseded
+                  ? "text.disabled"
+                  : id.is_agreement
+                    ? "success.main"
+                    : "primary.main",
+                transition: "background-color 0.2s ease",
+                borderRadius: "0 4px 4px 0",
+                py: 1,
+                opacity: isSuperseded ? 0.5 : 1,
+                "&:hover": { bgcolor: "action.hover" },
+              }}
+            >
+              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+                <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
+                  <Avatar
+                    {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
+                    sx={{ width: 32, height: 32 }}
                   >
-                    <Typography variant="body2" fontWeight="medium" color="text.primary">
-                      {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
-                    </Typography>
-                  </RouterLink>
-                  <Typography variant="caption" color="text.secondary">
-                    {formatRelativeTime(id.date_identified)}
-                  </Typography>
-                  {isSuperseded && (
-                    <Chip label="Superseded" size="small" variant="outlined" />
-                  )}
-                  {!isSuperseded && id.is_agreement && (
-                    <Chip label="Agrees" size="small" color="success" variant="outlined" />
-                  )}
-                </Stack>
-                <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
-                  <TaxonLink
-                    name={id.scientific_name}
-                    kingdom={id.kingdom || kingdom}
-                    rank={id.taxon_rank || "species"}
-                  />
-                </Box>
-                {id.identification_remarks && (
-                  <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                    "{id.identification_remarks}"
-                  </Typography>
-                )}
-                {getConfidenceLabel(id.confidence) && (
-                  <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
-                    {getConfidenceLabel(id.confidence)}
-                  </Typography>
-                )}
-              </Box>
-              <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
-                <IconButton
-                  size="small"
-                  onClick={(e) => handleMenuOpen(id.uri, e)}
-                  aria-label="More options"
-                  sx={{ color: "text.disabled", p: 0.5 }}
-                >
-                  <MoreVertIcon fontSize="small" />
-                </IconButton>
-                <Menu
-                  anchorEl={menuAnchorEl[id.uri]}
-                  open={Boolean(menuAnchorEl[id.uri])}
-                  onClose={() => handleMenuClose(id.uri)}
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  transformOrigin={{ vertical: "top", horizontal: "right" }}
-                >
-                  <MenuItem
-                    component="a"
-                    href={getPdslsUrl(id.uri)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={() => handleMenuClose(id.uri)}
-                  >
-                    View on AT Protocol
-                  </MenuItem>
-                  {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
-                    <MenuItem
-                      onClick={async () => {
-                        handleMenuClose(id.uri);
-                        setDeletingUri(id.uri);
-                        try {
-                          await onDeleteIdentification(id.uri);
-                        } finally {
-                          setDeletingUri(null);
-                        }
-                      }}
-                      disabled={deletingUri === id.uri}
-                      sx={{ color: "error.main" }}
+                    {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
+                  </Avatar>
+                </RouterLink>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                    <RouterLink
+                      to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
+                      style={{ textDecoration: "none" }}
                     >
-                      Delete
-                    </MenuItem>
+                      <Typography variant="body2" fontWeight="medium" color="text.primary">
+                        {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
+                      </Typography>
+                    </RouterLink>
+                    <Typography variant="caption" color="text.secondary">
+                      {formatRelativeTime(id.date_identified)}
+                    </Typography>
+                    {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
+                    {!isSuperseded && id.is_agreement && (
+                      <Chip label="Agrees" size="small" color="success" variant="outlined" />
+                    )}
+                  </Stack>
+                  <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
+                    <TaxonLink
+                      name={id.scientific_name}
+                      kingdom={id.kingdom || kingdom}
+                      rank={id.taxon_rank || "species"}
+                    />
+                  </Box>
+                  {id.identification_remarks && (
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                      "{id.identification_remarks}"
+                    </Typography>
                   )}
-                </Menu>
-              </Box>
-            </Stack>
-          </Box>
+                  {getConfidenceLabel(id.confidence) && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block", mt: 0.5 }}
+                    >
+                      {getConfidenceLabel(id.confidence)}
+                    </Typography>
+                  )}
+                </Box>
+                <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
+                  <IconButton
+                    size="small"
+                    onClick={(e) => handleMenuOpen(id.uri, e)}
+                    aria-label="More options"
+                    sx={{ color: "text.disabled", p: 0.5 }}
+                  >
+                    <MoreVertIcon fontSize="small" />
+                  </IconButton>
+                  <Menu
+                    anchorEl={menuAnchorEl[id.uri]}
+                    open={Boolean(menuAnchorEl[id.uri])}
+                    onClose={() => handleMenuClose(id.uri)}
+                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                    transformOrigin={{ vertical: "top", horizontal: "right" }}
+                  >
+                    <MenuItem
+                      component="a"
+                      href={getPdslsUrl(id.uri)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={() => handleMenuClose(id.uri)}
+                    >
+                      View on AT Protocol
+                    </MenuItem>
+                    {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
+                      <MenuItem
+                        onClick={async () => {
+                          handleMenuClose(id.uri);
+                          setDeletingUri(id.uri);
+                          try {
+                            await onDeleteIdentification(id.uri);
+                          } finally {
+                            setDeletingUri(null);
+                          }
+                        }}
+                        disabled={deletingUri === id.uri}
+                        sx={{ color: "error.main" }}
+                      >
+                        Delete
+                      </MenuItem>
+                    )}
+                  </Menu>
+                </Box>
+              </Stack>
+            </Box>
           );
         })}
       </Stack>

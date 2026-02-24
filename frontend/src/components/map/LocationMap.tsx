@@ -10,17 +10,12 @@ export interface LocationMapProps {
   uncertaintyMeters?: number | undefined;
 }
 
-export function LocationMap({
-  latitude,
-  longitude,
-  uncertaintyMeters,
-}: LocationMapProps) {
+export function LocationMap({ latitude, longitude, uncertaintyMeters }: LocationMapProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const theme = useTheme();
 
-  const validCoords =
-    Number.isFinite(latitude) && Number.isFinite(longitude);
+  const validCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
 
   useEffect(() => {
     if (!mapContainer.current || !validCoords) return;
@@ -42,7 +37,7 @@ export function LocationMap({
 
     mapInstance.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right"
+      "bottom-right",
     );
 
     mapInstance.on("load", () => {
@@ -87,7 +82,7 @@ export function LocationMap({
             [longitude - lngOffset, latitude - latOffset],
             [longitude + lngOffset, latitude + latOffset],
           ],
-          { padding: 40, maxZoom: 18 }
+          { padding: 40, maxZoom: 18 },
         );
       }
     });
@@ -144,7 +139,7 @@ export function LocationMap({
 function createCircleGeoJSON(
   lng: number,
   lat: number,
-  radiusMeters: number
+  radiusMeters: number,
 ): GeoJSON.FeatureCollection {
   const points = 64;
   const coords: [number, number][] = [];

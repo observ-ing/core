@@ -20,7 +20,7 @@ const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
 const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
 
 const LICENSE_MAP: Record<string, string> = {
-  "cc0": "CC0-1.0",
+  cc0: "CC0-1.0",
   "cc-by": "CC-BY-4.0",
   "cc-by-nc": "CC-BY-NC-4.0",
   "cc-by-sa": "CC-BY-SA-4.0",
@@ -34,9 +34,7 @@ interface Ancestor {
   rank_level: number;
 }
 
-function extractTaxonomyFromAncestors(
-  identifications: any[],
-): Record<string, string> {
+function extractTaxonomyFromAncestors(identifications: any[]): Record<string, string> {
   const result: Record<string, string> = {};
   if (!identifications?.length) return result;
 
@@ -72,9 +70,7 @@ function extractTaxonomyFromAncestors(
   return result;
 }
 
-async function downloadImage(
-  url: string,
-): Promise<{ data: Uint8Array; mimeType: string } | null> {
+async function downloadImage(url: string): Promise<{ data: Uint8Array; mimeType: string } | null> {
   try {
     const resp = await fetch(url);
     if (!resp.ok) return null;
@@ -96,9 +92,7 @@ async function main() {
     console.error("");
     console.error("Arguments:");
     console.error("  inat_username    iNaturalist username");
-    console.error(
-      "  atp_handle       AT Protocol handle (e.g. alice.bsky.social)",
-    );
+    console.error("  atp_handle       AT Protocol handle (e.g. alice.bsky.social)");
     console.error("  atp_app_password AT Protocol app password");
     process.exit(1);
   }
@@ -115,17 +109,13 @@ async function main() {
   console.log(`Fetching observations for ${inatUsername}...`);
   const resp = await fetch(url);
   if (!resp.ok) {
-    throw new Error(
-      `iNaturalist API error: ${resp.status} ${resp.statusText}`,
-    );
+    throw new Error(`iNaturalist API error: ${resp.status} ${resp.statusText}`);
   }
   const data = (await resp.json()) as {
     total_results: number;
     results: any[];
   };
-  console.log(
-    `Found ${data.total_results} total, processing ${data.results.length}`,
-  );
+  console.log(`Found ${data.total_results} total, processing ${data.results.length}`);
 
   let created = 0;
   let skipped = 0;
@@ -182,9 +172,7 @@ async function main() {
     const taxonomy = extractTaxonomyFromAncestors(obs.identifications);
 
     // Map license
-    const license = obs.license_code
-      ? LICENSE_MAP[obs.license_code]
-      : undefined;
+    const license = obs.license_code ? LICENSE_MAP[obs.license_code] : undefined;
 
     // Build the occurrence record (no taxonomy — that goes on identification)
     const occurrenceRecord: Record<string, any> = {
@@ -224,8 +212,7 @@ async function main() {
           scientificName: taxon.name,
         };
         if (taxon.rank) taxonObj["taxonRank"] = taxon.rank;
-        if (taxon.preferred_common_name)
-          taxonObj["vernacularName"] = taxon.preferred_common_name;
+        if (taxon.preferred_common_name) taxonObj["vernacularName"] = taxon.preferred_common_name;
         if (taxonomy["kingdom"]) taxonObj["kingdom"] = taxonomy["kingdom"];
         if (taxonomy["phylum"]) taxonObj["phylum"] = taxonomy["phylum"];
         if (taxonomy["class"]) taxonObj["class"] = taxonomy["class"];
