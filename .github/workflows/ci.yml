@@ -90,14 +90,11 @@ jobs:
           components: rustfmt
       - run: cargo fmt --all -- --check
 
-  rust-audit:
+  rust-deny:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: taiki-e/cache-cargo-install-action@v3
-        with:
-          tool: cargo-audit
-      - run: cargo audit --file Cargo.lock --ignore RUSTSEC-2023-0071
+      - uses: EmbarkStudios/cargo-deny-action@v2
 
   rust-clippy:
     runs-on: ubuntu-latest
@@ -192,7 +189,7 @@ jobs:
   # Build Docker images in parallel with caching
   build-images:
     runs-on: ubuntu-latest
-    needs: [npm-audit, fmt, lint, check-ts-bindings, typecheck-scripts, build, rust-fmt, rust-audit, rust-clippy, rust-sqlx, rust-test, e2e]
+    needs: [npm-audit, fmt, lint, check-ts-bindings, typecheck-scripts, build, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-test, e2e]
     if: github.event_name == 'push'
     env:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
