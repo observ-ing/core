@@ -85,9 +85,7 @@ impl IdentityResolver {
                         };
 
                         // Get PDS endpoint
-                        if let Some(endpoint) = self.get_pds_endpoint(&data.did).await {
-                            result.pds_endpoint = Some(endpoint);
-                        }
+                        result.pds_endpoint = self.get_pds_endpoint(&data.did).await;
 
                         // Cache by both handle and DID
                         self.identity_cache

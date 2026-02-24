@@ -88,28 +88,22 @@ impl GbifClient {
 
     /// Validate a scientific name
     pub async fn validate(&self, name: &str) -> Result<ValidationResult> {
-        let gbif_match = match self.api.match_name(name, None).await? {
-            Some(m) => m,
-            None => {
-                return Ok(ValidationResult {
-                    valid: false,
-                    matched_name: None,
-                    taxon: None,
-                    suggestions: Some(vec![]),
-                })
-            }
+        let Some(gbif_match) = self.api.match_name(name, None).await? else {
+            return Ok(ValidationResult {
+                valid: false,
+                matched_name: None,
+                taxon: None,
+                suggestions: Some(vec![]),
+            });
         };
 
-        let usage = match &gbif_match.usage {
-            Some(u) => u,
-            None => {
-                return Ok(ValidationResult {
-                    valid: false,
-                    matched_name: None,
-                    taxon: None,
-                    suggestions: Some(vec![]),
-                })
-            }
+        let Some(usage) = &gbif_match.usage else {
+            return Ok(ValidationResult {
+                valid: false,
+                matched_name: None,
+                taxon: None,
+                suggestions: Some(vec![]),
+            });
         };
 
         let match_type = gbif_match
