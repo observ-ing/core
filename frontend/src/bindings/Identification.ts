@@ -5,4 +5,29 @@ import type { Profile } from "./Profile";
 /**
  * Enriched identification with profile info
  */
-export type Identification = { identifier: Profile, uri: string, cid: string, did: string, subject_uri: string, subject_cid: string, subject_index: number, scientific_name: string, taxon_rank?: string, identification_qualifier?: string, taxon_id?: string, identification_remarks?: string, identification_verification_status?: string, type_status?: string, is_agreement?: boolean, date_identified: string, vernacular_name?: string, kingdom?: string, phylum?: string, class?: string, order?: string, family?: string, genus?: string, confidence?: Confidence, };
+export type Identification = {
+  identifier: Profile;
+  uri: string;
+  cid: string;
+  did: string;
+  subject_uri: string;
+  subject_cid: string;
+  subject_index: number;
+  scientific_name: string;
+  taxon_rank?: string;
+  identification_qualifier?: string;
+  taxon_id?: string;
+  identification_remarks?: string;
+  identification_verification_status?: string;
+  type_status?: string;
+  is_agreement?: boolean;
+  date_identified: string;
+  vernacular_name?: string;
+  kingdom?: string;
+  phylum?: string;
+  class?: string;
+  order?: string;
+  family?: string;
+  genus?: string;
+  confidence?: Confidence;
+};

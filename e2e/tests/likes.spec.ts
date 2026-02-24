@@ -1,8 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  test as authTest,
-  expect as authExpect,
-} from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 test.describe("Likes - Logged Out", () => {
   // TC-LIKE-001: Like button visible on feed items
@@ -24,9 +21,7 @@ test.describe("Likes - Logged Out", () => {
 
 authTest.describe("Likes - Logged In", () => {
   // TC-LIKE-003: Like an observation from feed
-  authTest("clicking like button fills the heart", async ({
-    authenticatedPage: page,
-  }) => {
+  authTest("clicking like button fills the heart", async ({ authenticatedPage: page }) => {
     // Mock the like API
     await page.route("**/api/likes", (route) => {
       if (route.request().method() === "POST") {
@@ -46,21 +41,14 @@ authTest.describe("Likes - Logged In", () => {
     await authExpect(likeButton).toBeEnabled();
     await likeButton.click();
     // After clicking, button should change to "Unlike"
-    await authExpect(
-      page.getByRole("button", { name: "Unlike" }).first(),
-    ).toBeVisible();
+    await authExpect(page.getByRole("button", { name: "Unlike" }).first()).toBeVisible();
   });
 
   // TC-LIKE-004: Unlike an observation from feed
-  authTest("clicking unlike button unfills the heart", async ({
-    authenticatedPage: page,
-  }) => {
+  authTest("clicking unlike button unfills the heart", async ({ authenticatedPage: page }) => {
     // Mock like and unlike APIs
     await page.route("**/api/likes", (route) => {
-      if (
-        route.request().method() === "POST" ||
-        route.request().method() === "DELETE"
-      ) {
+      if (route.request().method() === "POST" || route.request().method() === "DELETE") {
         return route.fulfill({
           status: 200,
           contentType: "application/json",
@@ -79,9 +67,7 @@ authTest.describe("Likes - Logged In", () => {
     await authExpect(unlikeButton).toBeVisible();
     await unlikeButton.click();
     // Should revert to Like
-    await authExpect(
-      page.getByRole("button", { name: "Like" }).first(),
-    ).toBeVisible();
+    await authExpect(page.getByRole("button", { name: "Like" }).first()).toBeVisible();
   });
 
   // TC-LIKE-009: Like button click does not navigate

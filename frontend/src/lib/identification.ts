@@ -130,7 +130,7 @@ export class IdentificationService {
     occurrenceUri: string,
     occurrenceCid: string,
     currentTaxonName: string,
-    subjectIndex: number = 0
+    subjectIndex: number = 0,
   ): Promise<IdentificationResult> {
     return this.identify({
       occurrenceUri,
@@ -154,7 +154,7 @@ export class IdentificationService {
       taxonRank?: TaxonRank;
       comment?: string;
       confidence?: ConfidenceLevel;
-    } = {}
+    } = {},
   ): Promise<IdentificationResult> {
     return this.identify({
       occurrenceUri,
@@ -192,7 +192,7 @@ export class IdentificationService {
    */
   async update(
     identificationUri: string,
-    updates: Partial<Omit<IdentificationInput, "occurrenceUri" | "occurrenceCid">>
+    updates: Partial<Omit<IdentificationInput, "occurrenceUri" | "occurrenceCid">>,
   ): Promise<IdentificationResult> {
     if (!this.agent.session) {
       throw new Error("Not logged in");
@@ -217,10 +217,22 @@ export class IdentificationService {
       ...existingRecord,
       taxon: {
         scientificName: updates.scientificName ?? existingRecord.taxon.scientificName,
-        ...(updates.taxonRank ? { taxonRank: updates.taxonRank } : existingRecord.taxon.taxonRank ? { taxonRank: existingRecord.taxon.taxonRank } : {}),
+        ...(updates.taxonRank
+          ? { taxonRank: updates.taxonRank }
+          : existingRecord.taxon.taxonRank
+            ? { taxonRank: existingRecord.taxon.taxonRank }
+            : {}),
       },
-      ...(updates.comment !== undefined ? { comment: updates.comment } : existingRecord.comment ? { comment: existingRecord.comment } : {}),
-      ...(updates.confidence ? { confidence: updates.confidence } : existingRecord.confidence ? { confidence: existingRecord.confidence } : {}),
+      ...(updates.comment !== undefined
+        ? { comment: updates.comment }
+        : existingRecord.comment
+          ? { comment: existingRecord.comment }
+          : {}),
+      ...(updates.confidence
+        ? { confidence: updates.confidence }
+        : existingRecord.confidence
+          ? { confidence: existingRecord.confidence }
+          : {}),
     };
 
     const response = await this.agent.com.atproto.repo.putRecord({
@@ -240,7 +252,7 @@ export class IdentificationService {
    * Get all identifications by the current user
    */
   async getMyIdentifications(
-    limit = 50
+    limit = 50,
   ): Promise<Array<{ uri: string; cid: string; value: unknown }>> {
     if (!this.agent.session) {
       throw new Error("Not logged in");
@@ -296,7 +308,7 @@ export function createIdentificationUI(
   },
   service: IdentificationService,
   onSuccess?: () => void,
-  showToast?: (message: string, type: "success" | "error") => void
+  showToast?: (message: string, type: "success" | "error") => void,
 ): void {
   container.innerHTML = `
     <div class="identification-panel">
@@ -352,7 +364,7 @@ export function createIdentificationUI(
       await service.agree(
         occurrence.uri,
         occurrence.cid,
-        occurrence.communityId || occurrence.scientificName
+        occurrence.communityId || occurrence.scientificName,
       );
       showToast?.("Your agreement has been recorded!", "success");
       onSuccess?.();

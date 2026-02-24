@@ -9,6 +9,8 @@
     "build": "vite build -c frontend/vite.config.ts",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "dev": "vite -c frontend/vite.config.ts",
+    "fmt": "oxfmt frontend/src e2e scripts",
+    "fmt:check": "oxfmt --check frontend/src e2e scripts",
     "lint": "oxlint frontend/src",
     "test:e2e": "playwright test --config=e2e/playwright.config.ts"
   },
@@ -37,6 +39,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
     "dotenv": "^17.2.3",
+    "oxfmt": "^0.35.0",
     "oxlint": "^1.49.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.0",

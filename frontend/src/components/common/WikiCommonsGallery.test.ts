@@ -15,9 +15,7 @@ describe("decodeHtmlText", () => {
   });
 
   it("strips HTML tags and decodes entities", () => {
-    expect(
-      decodeHtmlText('<a href="https://example.com">John &amp; Jane</a>'),
-    ).toBe("John & Jane");
+    expect(decodeHtmlText('<a href="https://example.com">John &amp; Jane</a>')).toBe("John & Jane");
   });
 
   it("returns empty string for empty input", () => {

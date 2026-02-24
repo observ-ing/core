@@ -240,7 +240,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Theme & User */}
         <Box sx={{ p: 2 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+          <Box
+            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}
+          >
             <Typography variant="caption" color="text.secondary">
               {getThemeTooltip()}
             </Typography>
@@ -342,10 +344,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         <MenuIcon />
       </IconButton>
 
-      <Box
-        component="nav"
-        sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}
-      >
+      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
         {/* Mobile drawer */}
         <Drawer
           variant="temporary"

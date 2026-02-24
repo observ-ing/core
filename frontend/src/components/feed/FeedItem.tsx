@@ -51,22 +51,14 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const coObservers = observers.filter((o) => o.role === "co-observer");
   const hasCoObservers = coObservers.length > 0;
 
-  const displayName =
-    owner.displayName ||
-    owner.handle ||
-    owner.did.slice(0, 20);
-  const handle = owner.handle
-    ? `@${owner.handle}`
-    : "";
+  const displayName = owner.displayName || owner.handle || owner.did.slice(0, 20);
+  const handle = owner.handle ? `@${owner.handle}` : "";
   const timeAgo = formatTimeAgo(new Date(observation.createdAt));
 
   const taxonomy = observation.effectiveTaxonomy;
-  const species =
-    observation.communityId || taxonomy?.scientificName || undefined;
+  const species = observation.communityId || taxonomy?.scientificName || undefined;
 
-  const imageUrl = observation.images[0]
-    ? getImageUrl(observation.images[0])
-    : "";
+  const imageUrl = observation.images[0] ? getImageUrl(observation.images[0]) : "";
 
   const observationUrl = getObservationUrl(observation.uri);
   const pdslsUrl = getPdslsUrl(observation.uri);
@@ -104,7 +96,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
     // Don't navigate if clicking on interactive elements (links, buttons)
     const target = e.target;
     if (!(target instanceof HTMLElement)) return;
-    if (target.closest('a, button')) {
+    if (target.closest("a, button")) {
       return;
     }
     navigate(observationUrl);
@@ -136,7 +128,12 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       <AvatarGroup
         max={3}
         sx={{
-          "& .MuiAvatar-root": { width: 36, height: 36, border: "2px solid", borderColor: "background.paper" },
+          "& .MuiAvatar-root": {
+            width: 36,
+            height: 36,
+            border: "2px solid",
+            borderColor: "background.paper",
+          },
         }}
       >
         <Avatar {...(owner.avatar ? { src: owner.avatar } : {})} alt={displayName} />
@@ -232,9 +229,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
                 anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
                 transformOrigin={{ vertical: "top", horizontal: "right" }}
               >
-                {isOwnPost && onEdit && (
-                  <MenuItem onClick={handleEditClick}>Edit</MenuItem>
-                )}
+                {isOwnPost && onEdit && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
                 {isOwnPost && onDelete && (
                   <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
                     Delete
@@ -317,12 +312,9 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           )}
 
           {observation.occurrenceRemarks && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{ lineHeight: 1.4, mt: 0.5 }}
-            >
-              {observation.occurrenceRemarks.length > REMARKS_TRUNCATE_LENGTH && !remarksExpanded ? (
+            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 0.5 }}>
+              {observation.occurrenceRemarks.length > REMARKS_TRUNCATE_LENGTH &&
+              !remarksExpanded ? (
                 <>
                   {observation.occurrenceRemarks.slice(0, REMARKS_TRUNCATE_LENGTH).trimEnd()}…{" "}
                   <Box
@@ -365,11 +357,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
                 color: liked ? "error.main" : "text.disabled",
               }}
             >
-              {liked ? (
-                <FavoriteIcon fontSize="small" />
-              ) : (
-                <FavoriteBorderIcon fontSize="small" />
-              )}
+              {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
             </IconButton>
           </span>
         </Tooltip>

@@ -6,4 +6,25 @@ import type { Profile } from "./Profile";
 /**
  * Enriched interaction with profile info
  */
-export type EnrichedInteraction = { creator: Profile, uri: string, cid: string, did: string, subject_a_occurrence_uri?: string, subject_a_occurrence_cid?: string, subject_a_subject_index?: number, subject_a_taxon_name?: string, subject_a_kingdom?: string, subject_b_occurrence_uri?: string, subject_b_occurrence_cid?: string, subject_b_subject_index?: number, subject_b_taxon_name?: string, subject_b_kingdom?: string, interaction_type: string, direction: InteractionDirection, confidence?: Confidence, comment?: string, created_at: string, indexed_at?: string, };
+export type EnrichedInteraction = {
+  creator: Profile;
+  uri: string;
+  cid: string;
+  did: string;
+  subject_a_occurrence_uri?: string;
+  subject_a_occurrence_cid?: string;
+  subject_a_subject_index?: number;
+  subject_a_taxon_name?: string;
+  subject_a_kingdom?: string;
+  subject_b_occurrence_uri?: string;
+  subject_b_occurrence_cid?: string;
+  subject_b_subject_index?: number;
+  subject_b_taxon_name?: string;
+  subject_b_kingdom?: string;
+  interaction_type: string;
+  direction: InteractionDirection;
+  confidence?: Confidence;
+  comment?: string;
+  created_at: string;
+  indexed_at?: string;
+};

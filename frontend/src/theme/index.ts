@@ -2,8 +2,7 @@ import { createTheme, type Theme, type PaletteMode } from "@mui/material/styles"
 
 const sharedConfig = {
   typography: {
-    fontFamily:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif',
+    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif',
     h1: { fontSize: "1.5rem", fontWeight: 700, letterSpacing: "-0.02em" },
     h2: { fontSize: "1.25rem", fontWeight: 700, letterSpacing: "-0.01em" },
     h3: { fontSize: "1.1rem", fontWeight: 700 },

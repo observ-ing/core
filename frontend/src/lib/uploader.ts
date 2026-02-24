@@ -73,8 +73,7 @@ export class OccurrenceUploader {
       location: {
         decimalLatitude: data.location.decimalLatitude,
         decimalLongitude: data.location.decimalLongitude,
-        coordinateUncertaintyInMeters:
-          data.location.coordinateUncertaintyInMeters,
+        coordinateUncertaintyInMeters: data.location.coordinateUncertaintyInMeters,
         geodeticDatum: data.location.geodeticDatum || "WGS84",
       },
       verbatimLocality: data.verbatimLocality,
@@ -237,11 +236,7 @@ export class OccurrenceUploader {
   /**
    * Compress an image for upload
    */
-  async compressImage(
-    file: File,
-    maxWidth = 2048,
-    quality = 0.85,
-  ): Promise<File> {
+  async compressImage(file: File, maxWidth = 2048, quality = 0.85): Promise<File> {
     return new Promise((resolve, reject) => {
       const img = new Image();
       const canvas = document.createElement("canvas");

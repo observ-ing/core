@@ -66,11 +66,7 @@ interface InteractionPanelProps {
   onSuccess?: (() => void) | undefined;
 }
 
-export function InteractionPanel({
-  observation,
-  subjects,
-  onSuccess,
-}: InteractionPanelProps) {
+export function InteractionPanel({ observation, subjects, onSuccess }: InteractionPanelProps) {
   const user = useAppSelector((state) => state.auth.user);
   const [interactions, setInteractions] = useState<InteractionResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -138,7 +134,8 @@ export function InteractionPanel({
     try {
       const selectedSubject = subjects.find((s) => s.index === subjectAIndex) || subjects[0];
 
-      const subjectAName = selectedSubject?.communityId || observation.communityId || observation.scientificName;
+      const subjectAName =
+        selectedSubject?.communityId || observation.communityId || observation.scientificName;
       const trimmedComment = comment.trim();
       await submitInteraction({
         subjectA: {
@@ -202,7 +199,17 @@ export function InteractionPanel({
   }
 
   return (
-    <Paper elevation={0} sx={{ mt: 3, p: 2.5, bgcolor: "background.paper", borderRadius: 2, border: 1, borderColor: "divider" }}>
+    <Paper
+      elevation={0}
+      sx={{
+        mt: 3,
+        p: 2.5,
+        bgcolor: "background.paper",
+        borderRadius: 2,
+        border: 1,
+        borderColor: "divider",
+      }}
+    >
       <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
         <LinkIcon fontSize="small" sx={{ color: "primary.main" }} />
         <Typography variant="subtitle2" fontWeight={600}>
@@ -243,7 +250,7 @@ export function InteractionPanel({
                   {getDirectionLabel(
                     interaction.direction,
                     interaction.subject_a_taxon_name || "Subject A",
-                    interaction.subject_b_taxon_name || "Subject B"
+                    interaction.subject_b_taxon_name || "Subject B",
                   )}
                 </Typography>
                 {interaction.confidence && (

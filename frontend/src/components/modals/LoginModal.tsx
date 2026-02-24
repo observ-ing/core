@@ -53,11 +53,7 @@ export function LoginModal() {
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
             Observ.ing uses the{" "}
-            <Link
-              href="https://atproto.com"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <Link href="https://atproto.com" target="_blank" rel="noopener noreferrer">
               AT Protocol
             </Link>
             . You can log in with any compatible service, including Bluesky.

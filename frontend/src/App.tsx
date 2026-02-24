@@ -58,8 +58,8 @@ function AppContent() {
           },
         }}
       >
-        <strong>Pre-release:</strong> This is an early alpha. The database may
-        be wiped at any time without notice.
+        <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any time
+        without notice.
       </Alert>
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
         <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />
