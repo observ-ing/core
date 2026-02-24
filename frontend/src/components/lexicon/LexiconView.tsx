@@ -71,8 +71,7 @@ const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
   .map((mod) => mod.default)
   .sort((a, b) => a.id.localeCompare(b.id));
 
-const isInHouse = (schema: LexiconSchema) =>
-  schema.id.startsWith("org.rwell.test.");
+const isInHouse = (schema: LexiconSchema) => schema.id.startsWith("org.rwell.test.");
 
 const inHouseLexicons = allLexicons.filter(isInHouse);
 const externalLexicons = allLexicons.filter((s) => !isInHouse(s));
@@ -131,7 +130,13 @@ function PropertyTable({
                     {name}
                   </Typography>
                   {requiredSet.has(name) && (
-                    <Chip label="required" size="small" color="primary" variant="outlined" sx={{ height: 20, fontSize: "0.65rem" }} />
+                    <Chip
+                      label="required"
+                      size="small"
+                      color="primary"
+                      variant="outlined"
+                      sx={{ height: 20, fontSize: "0.65rem" }}
+                    />
                   )}
                 </Box>
               </TableCell>
@@ -146,14 +151,26 @@ function PropertyTable({
                 {prop.enum && (
                   <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                     {prop.enum.map((v) => (
-                      <Chip key={v} label={v} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.6rem" }} />
+                      <Chip
+                        key={v}
+                        label={v}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: "0.6rem" }}
+                      />
                     ))}
                   </Box>
                 )}
                 {prop.knownValues && (
                   <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
                     {prop.knownValues.map((v) => (
-                      <Chip key={v} label={v} size="small" variant="outlined" sx={{ height: 18, fontSize: "0.6rem" }} />
+                      <Chip
+                        key={v}
+                        label={v}
+                        size="small"
+                        variant="outlined"
+                        sx={{ height: 18, fontSize: "0.6rem" }}
+                      />
                     ))}
                   </Box>
                 )}
@@ -195,22 +212,12 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
         onClick={() => setOpen(!open)}
       >
-        <IconButton size="small">
-          {open ? <ExpandLess /> : <ExpandMore />}
-        </IconButton>
-        <Typography
-          variant="subtitle2"
-          component="code"
-          sx={{ fontFamily: "monospace" }}
-        >
+        <IconButton size="small">{open ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        <Typography variant="subtitle2" component="code" sx={{ fontFamily: "monospace" }}>
           #{name}
         </Typography>
         {def.type && (
-          <Chip
-            label={def.type}
-            size="small"
-            sx={{ ml: 1, height: 20, fontSize: "0.65rem" }}
-          />
+          <Chip label={def.type} size="small" sx={{ ml: 1, height: 20, fontSize: "0.65rem" }} />
         )}
         {def.key && (
           <Chip
@@ -242,11 +249,7 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
   return (
     <Card variant="outlined" sx={{ mb: 3 }}>
       <CardContent>
-        <Typography
-          variant="h6"
-          component="code"
-          sx={{ fontFamily: "monospace", fontWeight: 700 }}
-        >
+        <Typography variant="h6" component="code" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
           {schema.id}
         </Typography>
 
@@ -279,7 +282,11 @@ export function LexiconView() {
           AT Protocol
         </MuiLink>
         . All data is stored as records defined by these{" "}
-        <MuiLink href="https://atproto.com/guides/lexicon" target="_blank" rel="noopener noreferrer">
+        <MuiLink
+          href="https://atproto.com/guides/lexicon"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Lexicon
         </MuiLink>{" "}
         schemas, which follow{" "}

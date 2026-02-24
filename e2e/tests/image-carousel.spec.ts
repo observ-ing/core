@@ -1,17 +1,12 @@
 import { test, expect } from "@playwright/test";
-import {
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-} from "../helpers/mock-observation";
+import { mockObservationDetailRoute, mockInteractionsRoute } from "../helpers/mock-observation";
 import type { Occurrence } from "../../frontend/src/services/types";
 
 const TEST_DID = "did:plc:testuser123";
 const TEST_RKEY = "obs456";
 const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
 
-function observationOverrides(
-  extra: Partial<Occurrence> = {},
-): Partial<Occurrence> {
+function observationOverrides(extra: Partial<Occurrence> = {}): Partial<Occurrence> {
   return {
     uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
     observer: {
@@ -26,9 +21,7 @@ function observationOverrides(
 
 test.describe("Image Carousel", () => {
   // TC-IMG-001: Main image displayed
-  test("main image displayed for observation with images", async ({
-    page,
-  }) => {
+  test("main image displayed for observation with images", async ({ page }) => {
     // Mock image URLs to return a placeholder
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
@@ -41,9 +34,12 @@ test.describe("Image Carousel", () => {
       });
     });
 
-    await mockObservationDetailRoute(page, observationOverrides({
-      images: [`/media/blob/${TEST_DID}/bafyimg1`],
-    }));
+    await mockObservationDetailRoute(
+      page,
+      observationOverrides({
+        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+      }),
+    );
     await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
@@ -52,9 +48,7 @@ test.describe("Image Carousel", () => {
   });
 
   // TC-IMG-002: Multiple thumbnails shown
-  test("multiple thumbnails shown when observation has >1 image", async ({
-    page,
-  }) => {
+  test("multiple thumbnails shown when observation has >1 image", async ({ page }) => {
     await page.route("**/media/blob/**", (route) => {
       return route.fulfill({
         status: 200,
@@ -66,13 +60,16 @@ test.describe("Image Carousel", () => {
       });
     });
 
-    await mockObservationDetailRoute(page, observationOverrides({
-      images: [
-        `/media/blob/${TEST_DID}/bafyimg1`,
-        `/media/blob/${TEST_DID}/bafyimg2`,
-        `/media/blob/${TEST_DID}/bafyimg3`,
-      ],
-    }));
+    await mockObservationDetailRoute(
+      page,
+      observationOverrides({
+        images: [
+          `/media/blob/${TEST_DID}/bafyimg1`,
+          `/media/blob/${TEST_DID}/bafyimg2`,
+          `/media/blob/${TEST_DID}/bafyimg3`,
+        ],
+      }),
+    );
     await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
@@ -97,12 +94,12 @@ test.describe("Image Carousel", () => {
       });
     });
 
-    await mockObservationDetailRoute(page, observationOverrides({
-      images: [
-        `/media/blob/${TEST_DID}/bafyimg1`,
-        `/media/blob/${TEST_DID}/bafyimg2`,
-      ],
-    }));
+    await mockObservationDetailRoute(
+      page,
+      observationOverrides({
+        images: [`/media/blob/${TEST_DID}/bafyimg1`, `/media/blob/${TEST_DID}/bafyimg2`],
+      }),
+    );
     await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
@@ -135,9 +132,12 @@ test.describe("Image Carousel", () => {
       });
     });
 
-    await mockObservationDetailRoute(page, observationOverrides({
-      images: [`/media/blob/${TEST_DID}/bafyimg1`],
-    }));
+    await mockObservationDetailRoute(
+      page,
+      observationOverrides({
+        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+      }),
+    );
     await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
@@ -161,20 +161,21 @@ test.describe("Image Carousel", () => {
       });
     });
 
-    await mockObservationDetailRoute(page, observationOverrides({
-      images: [`/media/blob/${TEST_DID}/bafyimg1`],
-      communityId: "Falco peregrinus",
-      effectiveTaxonomy: {
-        scientificName: "Falco peregrinus",
-        vernacularName: "Peregrine Falcon",
-        kingdom: "Animalia",
-      },
-    }));
+    await mockObservationDetailRoute(
+      page,
+      observationOverrides({
+        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+        communityId: "Falco peregrinus",
+        effectiveTaxonomy: {
+          scientificName: "Falco peregrinus",
+          vernacularName: "Peregrine Falcon",
+          kingdom: "Animalia",
+        },
+      }),
+    );
     await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
-    await expect(
-      page.locator("img[alt='Falco peregrinus']"),
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("img[alt='Falco peregrinus']")).toBeVisible({ timeout: 10000 });
   });
 });

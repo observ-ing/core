@@ -1,8 +1,5 @@
 import { type Page } from "@playwright/test";
-import {
-  test as authTest,
-  expect as authExpect,
-} from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 /**
  * MUI v7 Select doesn't link labels via aria-labelledby.
@@ -19,9 +16,7 @@ function muiSelect(page: Page, label: string) {
 /** Navigate from the feed to the first observation's detail page. */
 async function navigateToDetail(page: any) {
   await page.goto("/");
-  const card = page
-    .locator(".MuiCard-root .MuiCardActionArea-root")
-    .first();
+  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
   await authExpect(card).toBeVisible({ timeout: 15000 });
   await card.click();
   await authExpect(page).toHaveURL(/\/observation\/.+\/.+/);
@@ -30,24 +25,19 @@ async function navigateToDetail(page: any) {
 
 authTest.describe("Identification - Logged In", () => {
   // TC-ID-001: Agree button sends agreement
-  authTest(
-    "Agree button sends POST with isAgreement true",
-    async ({ authenticatedPage: page }) => {
-      await navigateToDetail(page);
-      const agreeBtn = page.getByRole("button", { name: "Agree" });
-      await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
+  authTest("Agree button sends POST with isAgreement true", async ({ authenticatedPage: page }) => {
+    await navigateToDetail(page);
+    const agreeBtn = page.getByRole("button", { name: "Agree" });
+    await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
 
-      const postRequest = page.waitForRequest(
-        (req: any) =>
-          req.method() === "POST" &&
-          req.url().includes("/api/identifications"),
-      );
-      await agreeBtn.click();
-      const req = await postRequest;
-      const body = JSON.parse(req.postData() || "{}");
-      authExpect(body.isAgreement).toBe(true);
-    },
-  );
+    const postRequest = page.waitForRequest(
+      (req: any) => req.method() === "POST" && req.url().includes("/api/identifications"),
+    );
+    await agreeBtn.click();
+    const req = await postRequest;
+    const body = JSON.parse(req.postData() || "{}");
+    authExpect(body.isAgreement).toBe(true);
+  });
 
   // TC-ID-002: Suggest Different ID opens form
   authTest(
@@ -83,9 +73,7 @@ authTest.describe("Identification - Logged In", () => {
       await speciesInput.fill("Quercus rubra");
 
       const postRequest = page.waitForRequest(
-        (req: any) =>
-          req.method() === "POST" &&
-          req.url().includes("/api/identifications"),
+        (req: any) => req.method() === "POST" && req.url().includes("/api/identifications"),
       );
       await page.getByRole("button", { name: "Submit ID" }).click();
       const req = await postRequest;
@@ -96,21 +84,18 @@ authTest.describe("Identification - Logged In", () => {
   );
 
   // TC-ID-004: Cancel closes the suggest form
-  authTest(
-    "Cancel closes the suggest form",
-    async ({ authenticatedPage: page }) => {
-      await navigateToDetail(page);
-      const suggestBtn = page.getByRole("button", {
-        name: "Suggest Different ID",
-      });
-      await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
-      await suggestBtn.click();
-      await authExpect(page.getByLabel("Species Name")).toBeVisible();
+  authTest("Cancel closes the suggest form", async ({ authenticatedPage: page }) => {
+    await navigateToDetail(page);
+    const suggestBtn = page.getByRole("button", {
+      name: "Suggest Different ID",
+    });
+    await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
+    await suggestBtn.click();
+    await authExpect(page.getByLabel("Species Name")).toBeVisible();
 
-      await page.getByRole("button", { name: "Cancel" }).click();
-      await authExpect(page.getByLabel("Species Name")).not.toBeVisible();
-    },
-  );
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await authExpect(page.getByLabel("Species Name")).not.toBeVisible();
+  });
 
   // TC-ID-005: Add Another Organism shows info box
   authTest(
@@ -123,9 +108,7 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(addOrgBtn).toBeVisible({ timeout: 10000 });
       await addOrgBtn.click();
 
-      await authExpect(
-        page.getByText(/Adding organism #\d+/),
-      ).toBeVisible();
+      await authExpect(page.getByText(/Adding organism #\d+/)).toBeVisible();
       await authExpect(page.getByLabel("Species Name")).toBeVisible();
     },
   );

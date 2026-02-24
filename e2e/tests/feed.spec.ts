@@ -10,9 +10,7 @@ test.describe("Feed View", () => {
   });
 
   // TC-FEED-002: Feed item click
-  test("clicking a feed item navigates to observation detail", async ({
-    page,
-  }) => {
+  test("clicking a feed item navigates to observation detail", async ({ page }) => {
     await page.goto("/");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible({ timeout: 10000 });
@@ -48,16 +46,12 @@ test.describe("Feed View", () => {
   });
 
   // TC-FEED-007: Observer name links to profile
-  test("clicking observer name navigates to their profile", async ({
-    page,
-  }) => {
+  test("clicking observer name navigates to their profile", async ({ page }) => {
     await page.goto("/");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
     // Wait for enough cards to load so we can find one with a profile link
     await page.waitForTimeout(1000);
-    const profileLink = page
-      .locator('.MuiCard-root a[href*="/profile/"]')
-      .first();
+    const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await expect(profileLink).toBeVisible({ timeout: 5000 });
     await profileLink.click();
     await expect(page).toHaveURL(/\/profile\//);

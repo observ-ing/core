@@ -1,17 +1,11 @@
-import {
-  test as authTest,
-  expect as authExpect,
-} from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 const FAB = 'button[aria-label="Create actions"]';
 
 /** Type into the species input and wait for the taxa search response that
  *  matches the full query. Filters by query-param length so we skip early
  *  responses triggered by partial (debounced) input. */
-async function searchSpecies(
-  page: import("@playwright/test").Page,
-  query: string,
-) {
+async function searchSpecies(page: import("@playwright/test").Page, query: string) {
   const speciesInput = page.getByLabel(/Species/i);
   await speciesInput.click();
   await Promise.all([
@@ -62,22 +56,18 @@ authTest.describe("Species Input", () => {
       await searchSpecies(page, "Quercus");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible({ timeout: 10000 });
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
-        /quercus/i,
-        { timeout: 10000 },
-      );
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/quercus/i, {
+        timeout: 10000,
+      });
     },
   );
 
   // TC-SPECIES-005: Mixed case scientific name
-  authTest(
-    "lowercase scientific name still finds results",
-    async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "quercus alba");
-      const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
-    },
-  );
+  authTest("lowercase scientific name still finds results", async ({ authenticatedPage: page }) => {
+    await searchSpecies(page, "quercus alba");
+    const option = page.locator(".MuiAutocomplete-option").first();
+    await authExpect(option).toBeVisible({ timeout: 10000 });
+  });
 
   // TC-UPLOAD-007: Autocomplete selection
   authTest(

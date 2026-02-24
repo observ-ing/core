@@ -46,10 +46,7 @@ export function decodeHtmlText(html: string): string {
     .trim();
 }
 
-async function fetchCommonsImages(
-  taxonName: string,
-  limit: number,
-): Promise<CommonsImage[]> {
+async function fetchCommonsImages(taxonName: string, limit: number): Promise<CommonsImage[]> {
   const category = `Category:${taxonName.replace(/ /g, "_")}`;
 
   // Step 1: Get file names from the category
@@ -92,10 +89,7 @@ interface WikiCommonsGalleryProps {
   limit?: number;
 }
 
-export function WikiCommonsGallery({
-  taxonName,
-  limit = 12,
-}: WikiCommonsGalleryProps) {
+export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGalleryProps) {
   const [images, setImages] = useState<CommonsImage[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -134,11 +128,7 @@ export function WikiCommonsGallery({
       <ImageList variant="masonry" cols={3} gap={8} sx={{ m: 0 }}>
         {images.map((img, idx) => (
           <ImageListItem key={idx}>
-            <MuiLink
-              href={img.pageUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <MuiLink href={img.pageUrl} target="_blank" rel="noopener noreferrer">
               <img
                 src={img.thumbUrl}
                 alt={`Wikimedia Commons image ${idx + 1}`}
