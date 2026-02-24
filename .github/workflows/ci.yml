@@ -194,6 +194,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [npm-audit, fmt, lint, check-ts-bindings, typecheck-scripts, build, rust-fmt, rust-audit, rust-clippy, rust-sqlx, rust-test, e2e]
     if: github.event_name == 'push'
+    env:
+      REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
         include:
@@ -214,11 +216,13 @@ jobs:
 
       - uses: docker/setup-buildx-action@v3
 
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - uses: docker/login-action@v3
         with:
-          registry: gcr.io
-          username: _json_key
-          password: ${{ secrets.GCP_SA_KEY }}
+          registry: us-central1-docker.pkg.dev
 
       - name: Build and push ${{ matrix.service }}
         uses: docker/build-push-action@v6
@@ -226,7 +230,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
-          tags: gcr.io/${{ secrets.GCP_PROJECT_ID }}/observing-${{ matrix.service }}:latest
+          tags: ${{ env.REGISTRY }}/observing-${{ matrix.service }}:latest
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
@@ -238,6 +242,7 @@ jobs:
       url: ${{ steps.deploy-appview.outputs.url }}
     env:
       PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
       REGION: us-central1
       PUBLIC_URL: https://observ.ing
       MEDIA_PROXY_URL: https://observing-media-proxy-378013734384.us-central1.run.app
@@ -253,7 +258,7 @@ jobs:
         id: deploy-appview
         run: |
           URL=$(gcloud run deploy observing-appview \
-            --image=gcr.io/$PROJECT_ID/observing-appview:latest \
+            --image=$REGISTRY/observing-appview:latest \
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
@@ -265,7 +270,7 @@ jobs:
       - name: Deploy ingester
         run: |
           gcloud run deploy observing-ingester \
-            --image=gcr.io/$PROJECT_ID/observing-ingester:latest \
+            --image=$REGISTRY/observing-ingester:latest \
             --region=$REGION \
             --allow-unauthenticated \
             --cpu=1 \
@@ -280,7 +285,7 @@ jobs:
       - name: Deploy media-proxy
         run: |
           gcloud run deploy observing-media-proxy \
-            --image=gcr.io/$PROJECT_ID/observing-media-proxy:latest \
+            --image=$REGISTRY/observing-media-proxy:latest \
             --region=$REGION \
             --allow-unauthenticated \
             --set-env-vars=RUST_LOG=observing_media_proxy=info,LOG_FORMAT=json
@@ -288,7 +293,7 @@ jobs:
       - name: Deploy taxonomy
         run: |
           gcloud run deploy observing-taxonomy \
-            --image=gcr.io/$PROJECT_ID/observing-taxonomy:latest \
+            --image=$REGISTRY/observing-taxonomy:latest \
             --region=$REGION \
             --allow-unauthenticated \
             --set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json
