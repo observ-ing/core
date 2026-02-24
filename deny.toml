@@ -3,6 +3,10 @@ ignore = [
     # rsa crate timing sidechannel (Marvin Attack). No patched version available.
     # Transitive dependency — we don't use RSA decryption directly.
     { id = "RUSTSEC-2023-0071", reason = "no fix available, transitive dep only" },
+    # jacquard-common -> postcard -> heapless 0.7 -> atomic-polyfill (no postcard release with heapless 0.8 yet)
+    { id = "RUSTSEC-2023-0089", reason = "unmaintained, transitive dep via postcard" },
+    # jacquard-common -> langtag -> static-regular-grammar -> proc-macro-error
+    { id = "RUSTSEC-2024-0370", reason = "unmaintained, transitive dep via langtag" },
 ]
 
 [licenses]
