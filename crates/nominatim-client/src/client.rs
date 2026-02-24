@@ -144,30 +144,25 @@ fn parse_nominatim_response(data: &NominatimResponse) -> GeocodedLocation {
     }
 
     // State/province
-    result.state_province.clone_from(&addr.state);
+    result.state_province = addr.state.clone();
 
     // County
-    result.county.clone_from(&addr.county);
+    result.county = addr.county.clone();
 
     // Municipality - try city, then town, then village, then municipality
     result.municipality = addr
         .city
-        .clone()
-        .or_else(|| addr.town.clone())
-        .or_else(|| addr.village.clone())
-        .or_else(|| addr.municipality.clone());
+        .as_ref()
+        .or(addr.town.as_ref())
+        .or(addr.village.as_ref())
+        .or(addr.municipality.as_ref())
+        .cloned();
 
     // Locality - build from available detail
-    let mut locality_parts = Vec::new();
-    if let Some(ref suburb) = addr.suburb {
-        locality_parts.push(suburb.as_str());
-    }
-    if let Some(ref neighbourhood) = addr.neighbourhood {
-        locality_parts.push(neighbourhood.as_str());
-    }
-    if let Some(ref road) = addr.road {
-        locality_parts.push(road.as_str());
-    }
+    let locality_parts: Vec<&str> = [&addr.suburb, &addr.neighbourhood, &addr.road]
+        .into_iter()
+        .filter_map(|opt| opt.as_deref())
+        .collect();
     if !locality_parts.is_empty() {
         result.locality = Some(locality_parts.join(", "));
     }
@@ -175,12 +170,13 @@ fn parse_nominatim_response(data: &NominatimResponse) -> GeocodedLocation {
     // Water body
     result.water_body = addr
         .water
-        .clone()
-        .or_else(|| addr.bay.clone())
-        .or_else(|| addr.sea.clone())
-        .or_else(|| addr.ocean.clone())
-        .or_else(|| addr.lake.clone())
-        .or_else(|| addr.river.clone());
+        .as_ref()
+        .or(addr.bay.as_ref())
+        .or(addr.sea.as_ref())
+        .or(addr.ocean.as_ref())
+        .or(addr.lake.as_ref())
+        .or(addr.river.as_ref())
+        .cloned();
 
     result
 }
