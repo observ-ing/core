@@ -5,7 +5,7 @@ import { mockOwnObservationFeed } from "../helpers/mock-observation";
 test.describe("Delete Observation - Logged Out", () => {
   // TC-DELETE-002: Delete option hidden for others' observations
   test("more menu does not show Delete for non-owned observation", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     // Wait for real feed content (not skeletons)
     const moreButton = page.getByLabel("More options").first();
     await expect(moreButton).toBeVisible({ timeout: 15000 });

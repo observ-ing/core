@@ -1,12 +1,12 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Navigation", () => {
-  // TC-NAV-001: Home page load
-  test("home page loads with feed and header", async ({ page }) => {
+  // TC-NAV-001: Home page load — unauthenticated users see landing page
+  test("home page loads with landing page for unauthenticated users", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("link", { name: "Observ.ing" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "Home" }).first()).toBeVisible();
+    await expect(page.getByText("Observe nature.")).toBeVisible();
     await expect(page.getByRole("link", { name: "Explore" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
   });
 
   // TC-NAV-002: 404 page
@@ -24,7 +24,7 @@ test.describe("Navigation", () => {
 
   // TC-NAV-003: Observation detail page
   test("clicking a feed item navigates to observation detail", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     const feedCard = page.locator(".MuiCard-root").first();
     await expect(feedCard).toBeVisible({ timeout: 10000 });
     await feedCard.locator(".MuiCardActionArea-root").click();

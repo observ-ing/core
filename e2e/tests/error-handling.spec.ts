@@ -6,7 +6,7 @@ test.describe("Error Handling", () => {
   test("network error shows error state, not blank page", async ({ page }) => {
     await page.route("**/api/feeds/**", (route) => route.abort());
     await page.route("**/api/occurrences/**", (route) => route.abort());
-    await page.goto("/");
+    await page.goto("/explore");
     // Page should still render the app shell
     await expect(page.getByRole("link", { name: "Observ.ing" }).first()).toBeVisible();
   });

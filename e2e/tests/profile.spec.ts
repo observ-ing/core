@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 test.describe("Profile View", () => {
   // TC-PROFILE-002: Profile page from feed
   test("clicking observer name in feed navigates to profile", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     // Wait for real feed content (not skeletons) by waiting for a profile link
     const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await expect(profileLink).toBeVisible({ timeout: 15000 });
@@ -13,7 +13,7 @@ test.describe("Profile View", () => {
 
   // TC-PROFILE-003: Profile header display
   test("profile page shows avatar, display name, and handle", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
     const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await profileLink.click();
@@ -26,7 +26,7 @@ test.describe("Profile View", () => {
 
   // TC-PROFILE-004: Profile stats display
   test("profile page shows observation and ID counts", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
     const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await profileLink.click();
@@ -39,7 +39,7 @@ test.describe("Profile View", () => {
 
   // TC-PROFILE-005: Profile feed tabs
   test("profile has Observations and IDs tabs", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
     const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await profileLink.click();
@@ -49,7 +49,7 @@ test.describe("Profile View", () => {
   });
 
   test("clicking IDs tab switches content", async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/explore");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
     const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
     await profileLink.click();
