@@ -1,6 +1,5 @@
 import { test as authTest, expect as authExpect } from "../fixtures/auth";
-
-const FAB = 'button[aria-label="Create actions"]';
+import { openUploadModal } from "../helpers/navigation";
 
 authTest.describe("Auto-Identification on Upload", () => {
   // TC-AUTOID-001: Uploading with a species auto-creates the first identification
@@ -8,17 +7,7 @@ authTest.describe("Auto-Identification on Upload", () => {
     "observation uploaded with species shows auto-created identification",
     async ({ authenticatedPage: page }) => {
       await page.goto("/");
-
-      // Open upload modal
-      const fab = page.locator(FAB);
-      await authExpect(fab).toBeVisible({ timeout: 5000 });
-      await fab.click();
-      const newObsAction = page.getByRole("menuitem", {
-        name: "New Observation",
-      });
-      await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-      await newObsAction.click();
-      await page.waitForTimeout(500);
+      await openUploadModal(page);
 
       // Search and select a species
       const speciesInput = page.getByLabel(/Species/i);
@@ -28,7 +17,7 @@ authTest.describe("Auto-Identification on Upload", () => {
         speciesInput.pressSequentially("Quercus agrifolia", { delay: 50 }),
       ]);
       const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await authExpect(option).toBeVisible();
       const selectedSpecies = await option.innerText();
       await option.click();
 
@@ -38,7 +27,8 @@ authTest.describe("Auto-Identification on Upload", () => {
       });
       await useLocationBtn.scrollIntoViewIfNeeded();
       await useLocationBtn.click();
-      await page.waitForTimeout(1000);
+      // Wait for location text to appear instead of fixed delay
+      await page.getByText(/latitude|location|coordinates/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
 
       // Submit (real API, no mocking)
       const submitButton = page.getByRole("button", { name: /Submit/i });
@@ -50,17 +40,15 @@ authTest.describe("Auto-Identification on Upload", () => {
 
       // Verify identification history section appears with the auto-created ID
       const historyHeading = page.getByText("Identification History");
-      await authExpect(historyHeading).toBeVisible({ timeout: 15000 });
+      await authExpect(historyHeading).toBeVisible();
 
       // The selected species scientific name should appear in the ID history
       // selectedSpecies may contain "Scientific Name\nCommon Name", extract first line
       const scientificName = selectedSpecies.split("\n")[0].trim();
-      await authExpect(page.getByText(scientificName, { exact: false }).first()).toBeVisible({
-        timeout: 5000,
-      });
+      await authExpect(page.getByText(scientificName, { exact: false }).first()).toBeVisible();
 
       // Community ID should reflect the auto-created identification
-      await authExpect(page.getByText("Community ID")).toBeVisible({ timeout: 5000 });
+      await authExpect(page.getByText("Community ID")).toBeVisible();
 
       // Cleanup: delete the observation to avoid polluting the test account
       const url = page.url();
