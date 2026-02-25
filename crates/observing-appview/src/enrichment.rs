@@ -261,11 +261,7 @@ pub async fn enrich_occurrences(
 
     // Stage 3: Batch profile resolution
     let mut all_dids: HashSet<String> = rows.iter().map(|r| r.did.clone()).collect();
-    for observers in observers_by_uri.values() {
-        for o in observers {
-            all_dids.insert(o.did.clone());
-        }
-    }
+    all_dids.extend(observers_by_uri.values().flatten().map(|o| o.did.clone()));
     let dids_vec: Vec<String> = all_dids.into_iter().collect();
     let profiles = resolver.get_profiles(&dids_vec).await;
 

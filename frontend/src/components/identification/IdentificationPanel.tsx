@@ -64,8 +64,7 @@ export function IdentificationPanel({
   // Calculate the next available subject index for new organisms
   const nextSubjectIndex = existingSubjectCount;
 
-  const currentId =
-    observation.communityId || observation.scientificName || "Unknown";
+  const currentId = observation.communityId || observation.scientificName || "Unknown";
 
   const handleAgree = async () => {
     setIsSubmitting(true);
@@ -81,7 +80,12 @@ export function IdentificationPanel({
       dispatch(addToast({ message: "Your agreement has been recorded!", type: "success" }));
       onSuccess?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
+      dispatch(
+        addToast({
+          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          type: "error",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +125,12 @@ export function IdentificationPanel({
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
+      dispatch(
+        addToast({
+          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          type: "error",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -138,9 +147,7 @@ export function IdentificationPanel({
           <Typography variant="caption" color="text.secondary">
             Community ID
           </Typography>
-          <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>
-            {currentId}
-          </Typography>
+          <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>{currentId}</Typography>
         </Box>
       </Stack>
 
@@ -323,9 +330,14 @@ export function IdentificationPanel({
                   <Typography variant="body2" fontWeight="medium" color="primary.main">
                     Adding organism #{nextSubjectIndex + 1}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" component="p" sx={{ mt: 0.5 }}>
-                    This creates a new organism in this observation. Use this when multiple
-                    species are visible (e.g., a butterfly AND the flower it's on).
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    component="p"
+                    sx={{ mt: 0.5 }}
+                  >
+                    This creates a new organism in this observation. Use this when multiple species
+                    are visible (e.g., a butterfly AND the flower it's on).
                   </Typography>
                 </Box>
               </Stack>

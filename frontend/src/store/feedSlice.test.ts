@@ -216,7 +216,7 @@ describe("feedSlice", () => {
 
     it("sets isLoading during request", async () => {
       vi.mocked(api.fetchExploreFeed).mockImplementation(
-        () => new Promise(() => {}) // Never resolves
+        () => new Promise(() => {}), // Never resolves
       );
 
       const store = createTestStore({
@@ -331,9 +331,7 @@ describe("feedSlice", () => {
     });
 
     it("clears cursor on pending", () => {
-      vi.mocked(api.fetchExploreFeed).mockImplementation(
-        () => new Promise(() => {})
-      );
+      vi.mocked(api.fetchExploreFeed).mockImplementation(() => new Promise(() => {}));
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },

@@ -14,9 +14,7 @@ async function main() {
   const [atpHandle, atpPassword] = process.argv.slice(2);
 
   if (!atpHandle || !atpPassword) {
-    console.error(
-      "Usage: npx tsx scripts/delete-non-inat.ts <atp_handle> <atp_app_password>",
-    );
+    console.error("Usage: npx tsx scripts/delete-non-inat.ts <atp_handle> <atp_app_password>");
     process.exit(1);
   }
 
@@ -43,9 +41,7 @@ async function main() {
       const rkey = rec.uri.split("/").pop()!;
 
       if (val.taxonId && val.taxonId.startsWith("inat:")) {
-        toKeep.push(
-          `  KEEP: ${val.scientificName || "Unknown"} (${val.taxonId})`,
-        );
+        toKeep.push(`  KEEP: ${val.scientificName || "Unknown"} (${val.taxonId})`);
       } else {
         toDelete.push({
           uri: rec.uri,

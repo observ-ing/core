@@ -69,7 +69,12 @@ export function CommentSection({
       setShowForm(false);
       onCommentAdded?.();
     } catch (error) {
-      dispatch(addToast({ message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`, type: "error" }));
+      dispatch(
+        addToast({
+          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+          type: "error",
+        }),
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -92,11 +97,7 @@ export function CommentSection({
           Discussion
         </Typography>
         {comments.length > 0 && (
-          <Chip
-            label={comments.length}
-            size="small"
-            sx={{ height: 20, fontSize: "0.75rem" }}
-          />
+          <Chip label={comments.length} size="small" sx={{ height: 20, fontSize: "0.75rem" }} />
         )}
         {user && !showForm && (
           <Button
@@ -135,7 +136,9 @@ export function CommentSection({
               }}
             >
               <Stack direction="row" spacing={1.5} alignItems="flex-start">
-                <RouterLink to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}>
+                <RouterLink
+                  to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}
+                >
                   <Avatar
                     {...(comment.commenter?.avatar ? { src: comment.commenter.avatar } : {})}
                     sx={{ width: 32, height: 32 }}

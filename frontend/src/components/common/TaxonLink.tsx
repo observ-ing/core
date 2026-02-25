@@ -36,10 +36,7 @@ export function TaxonLink({
   const shouldItalicize =
     italic !== undefined
       ? italic
-      : rank === "species" ||
-        rank === "genus" ||
-        rank === "subspecies" ||
-        rank === "variety";
+      : rank === "species" || rank === "genus" || rank === "subspecies" || rank === "variety";
 
   // Build the URL using kingdom/name pattern with hyphenated slugs
   // All non-kingdom taxa require a kingdom prefix
@@ -73,9 +70,7 @@ export function TaxonLink({
       );
     }
     return (
-      <Typography sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}>
-        {name}
-      </Typography>
+      <Typography sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}>{name}</Typography>
     );
   }
 

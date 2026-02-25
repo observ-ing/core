@@ -44,7 +44,7 @@ const initialState: FeedState = {
   observations: [],
   cursor: undefined,
   isLoading: false,
-  currentTab: "explore",  // Default to explore to show all posts
+  currentTab: "explore", // Default to explore to show all posts
   hasMore: true,
   filters: {},
   isAuthenticated: false,
@@ -57,39 +57,37 @@ export const loadFeed = createAsyncThunk<
   void,
   ThunkApiConfig
 >("feed/loadFeed", async (_, { getState }) => {
-    const state = getState();
-    const { currentTab, cursor, filters, userLocation } = state.feed;
-    const isAuthenticated = !!state.auth?.user;
+  const state = getState();
+  const { currentTab, cursor, filters, userLocation } = state.feed;
+  const isAuthenticated = !!state.auth?.user;
 
-    if (currentTab === "home" && isAuthenticated) {
-      return api.fetchHomeFeed(
-        cursor,
-        userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined
-      );
-    }
-    // Fall back to explore for unauthenticated users or explore tab
-    return api.fetchExploreFeed(cursor, filters);
+  if (currentTab === "home" && isAuthenticated) {
+    return api.fetchHomeFeed(
+      cursor,
+      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
+    );
   }
-);
+  // Fall back to explore for unauthenticated users or explore tab
+  return api.fetchExploreFeed(cursor, filters);
+});
 
 export const loadInitialFeed = createAsyncThunk<
   ExploreFeedResponse | HomeFeedResponse,
   void,
   ThunkApiConfig
 >("feed/loadInitialFeed", async (_, { getState }) => {
-    const state = getState();
-    const { currentTab, filters, userLocation } = state.feed;
-    const isAuthenticated = !!state.auth?.user;
+  const state = getState();
+  const { currentTab, filters, userLocation } = state.feed;
+  const isAuthenticated = !!state.auth?.user;
 
-    if (currentTab === "home" && isAuthenticated) {
-      return api.fetchHomeFeed(
-        undefined,
-        userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined
-      );
-    }
-    return api.fetchExploreFeed(undefined, filters);
+  if (currentTab === "home" && isAuthenticated) {
+    return api.fetchHomeFeed(
+      undefined,
+      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
+    );
   }
-);
+  return api.fetchExploreFeed(undefined, filters);
+});
 
 const feedSlice = createSlice({
   name: "feed",
@@ -114,10 +112,7 @@ const feedSlice = createSlice({
       state.cursor = undefined;
       state.hasMore = true;
     },
-    setUserLocation: (
-      state,
-      action: PayloadAction<{ lat: number; lng: number } | null>
-    ) => {
+    setUserLocation: (state, action: PayloadAction<{ lat: number; lng: number } | null>) => {
       state.userLocation = action.payload;
     },
   },
@@ -127,10 +122,7 @@ const feedSlice = createSlice({
         state.isLoading = true;
       })
       .addCase(loadFeed.fulfilled, (state, action) => {
-        state.observations = [
-          ...state.observations,
-          ...action.payload.occurrences,
-        ];
+        state.observations = [...state.observations, ...action.payload.occurrences];
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;

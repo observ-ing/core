@@ -1,8 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  test as authTest,
-  expect as authExpect,
-} from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 const FAB = 'button[aria-label="Create actions"]';
 
@@ -29,53 +26,47 @@ test.describe("Accessibility", () => {
 
 authTest.describe("Accessibility - Authenticated", () => {
   // TC-A11Y-002: Modal escape key (upload modal)
-  authTest(
-    "pressing Escape closes upload modal",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      await page.locator(FAB).waitFor({ timeout: 5000 });
-      await page.locator(FAB).click();
-      const newObsAction = page.getByRole("menuitem", {
-        name: "New Observation",
-      });
-      await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-      await newObsAction.click();
-      await page.waitForTimeout(500);
-      // Verify modal is open by checking for the species input
-      await authExpect(page.getByLabel(/Species/i)).toBeVisible({
-        timeout: 5000,
-      });
-      await page.keyboard.press("Escape");
-      await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
-    },
-  );
+  authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await page.locator(FAB).waitFor({ timeout: 5000 });
+    await page.locator(FAB).click();
+    const newObsAction = page.getByRole("menuitem", {
+      name: "New Observation",
+    });
+    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
+    await newObsAction.click();
+    await page.waitForTimeout(500);
+    // Verify modal is open by checking for the species input
+    await authExpect(page.getByLabel(/Species/i)).toBeVisible({
+      timeout: 5000,
+    });
+    await page.keyboard.press("Escape");
+    await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
+  });
 
   // TC-A11Y-003: Autocomplete keyboard navigation
-  authTest(
-    "arrow keys navigate autocomplete suggestions",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      await page.locator(FAB).waitFor({ timeout: 5000 });
-      await page.locator(FAB).click();
-      const newObsAction = page.getByRole("menuitem", {
-        name: "New Observation",
-      });
-      await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-      await newObsAction.click();
-      await page.waitForTimeout(500);
+  authTest("arrow keys navigate autocomplete suggestions", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await page.locator(FAB).waitFor({ timeout: 5000 });
+    await page.locator(FAB).click();
+    const newObsAction = page.getByRole("menuitem", {
+      name: "New Observation",
+    });
+    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
+    await newObsAction.click();
+    await page.waitForTimeout(500);
 
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.click();
-      await Promise.all([
-        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-        speciesInput.pressSequentially("quercus", { delay: 50 }),
-      ]);
-      const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
+    const speciesInput = page.getByLabel(/Species/i);
+    await speciesInput.click();
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+      speciesInput.pressSequentially("quercus", { delay: 50 }),
+    ]);
+    const option = page.locator(".MuiAutocomplete-option").first();
+    await authExpect(option).toBeVisible({ timeout: 10000 });
 
-      await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
-      await authExpect(speciesInput).not.toHaveValue("quercus");
-    },
-  );
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await authExpect(speciesInput).not.toHaveValue("quercus");
+  });
 });

@@ -54,9 +54,7 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   await page.waitForURL(/127\.0\.0\.1/, { timeout: 30000 });
 
   // 9. Verify we're authenticated — the sidebar should show the test user
-  await expect(
-    page.getByText(`@${TEST_HANDLE}`).first(),
-  ).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(`@${TEST_HANDLE}`).first()).toBeVisible({ timeout: 10000 });
 
   // 10. Fetch user info from /oauth/me
   const userInfo = await page.evaluate(async () => {

@@ -40,7 +40,7 @@ export function DeleteConfirmDialog() {
         addToast({
           message: "Observation deleted successfully",
           type: "success",
-        })
+        }),
       );
       dispatch(closeDeleteConfirm());
 
@@ -53,8 +53,7 @@ export function DeleteConfirmDialog() {
         window.location.reload();
       }
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Failed to delete observation";
+      const message = error instanceof Error ? error.message : "Failed to delete observation";
       dispatch(addToast({ message, type: "error" }));
       if (message.includes("Session expired")) {
         dispatch(checkAuth());
@@ -72,12 +71,10 @@ export function DeleteConfirmDialog() {
       <DialogTitle>Delete Observation?</DialogTitle>
       <DialogContent>
         <Typography>
-          Are you sure you want to delete this observation of{" "}
-          <strong>{species}</strong>?
+          Are you sure you want to delete this observation of <strong>{species}</strong>?
         </Typography>
         <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-          This action cannot be undone. All identifications and comments will
-          also be deleted.
+          This action cannot be undone. All identifications and comments will also be deleted.
         </Typography>
       </DialogContent>
       <DialogActions sx={{ px: 3, pb: 2 }}>
@@ -89,9 +86,7 @@ export function DeleteConfirmDialog() {
           color="error"
           variant="contained"
           disabled={isDeleting}
-          startIcon={
-            isDeleting ? <CircularProgress size={16} color="inherit" /> : undefined
-          }
+          startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : undefined}
         >
           {isDeleting ? "Deleting..." : "Delete"}
         </Button>

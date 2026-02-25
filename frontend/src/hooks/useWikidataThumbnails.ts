@@ -7,10 +7,7 @@ const cache = new Map<string, string | null>();
  * Uses P225 (taxon name) to match taxa and P18 (image) to get images.
  * Returns a map of taxon name → thumbnail URL.
  */
-export function useWikidataThumbnails(
-  names: string[],
-  size: number = 48,
-): Map<string, string> {
+export function useWikidataThumbnails(names: string[], size: number = 48): Map<string, string> {
   const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
@@ -63,10 +60,7 @@ export function useWikidataThumbnails(
   return thumbnails;
 }
 
-async function fetchBatch(
-  names: string[],
-  size: number,
-): Promise<Map<string, string>> {
+async function fetchBatch(names: string[], size: number): Promise<Map<string, string>> {
   const results = new Map<string, string>();
 
   // Build SPARQL VALUES clause with escaped names

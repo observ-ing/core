@@ -8,12 +8,7 @@ interface ModalOverlayProps {
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl" | false;
 }
 
-export function ModalOverlay({
-  isOpen,
-  onClose,
-  children,
-  maxWidth = "sm",
-}: ModalOverlayProps) {
+export function ModalOverlay({ isOpen, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
   return (
     <Dialog
       open={isOpen}

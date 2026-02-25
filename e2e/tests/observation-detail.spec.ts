@@ -3,9 +3,7 @@ import { test, expect } from "@playwright/test";
 /** Navigate from the feed to the first observation's detail page. */
 async function navigateToDetail(page: any) {
   await page.goto("/");
-  const card = page
-    .locator(".MuiCard-root .MuiCardActionArea-root")
-    .first();
+  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
   await expect(card).toBeVisible({ timeout: 15000 });
   await card.click();
   await expect(page).toHaveURL(/\/observation\/.+\/.+/);
@@ -56,9 +54,7 @@ test.describe("Observation Detail - Display", () => {
   // TC-DETAIL-005: Discussion section
   test("shows discussion section", async ({ page }) => {
     await navigateToDetail(page);
-    await expect(
-      page.getByRole("heading", { name: "Discussion" }),
-    ).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Discussion" })).toBeVisible();
   });
 
   // TC-DETAIL-006: Species interactions section
@@ -70,22 +66,14 @@ test.describe("Observation Detail - Display", () => {
   // TC-DETAIL-007: Like button visible
   test("like button visible on detail page", async ({ page }) => {
     await navigateToDetail(page);
-    await expect(
-      page.getByRole("button", { name: "Like" }),
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: "Like" })).toBeVisible();
   });
 
   // TC-DETAIL-008: Logged-out user sees login prompts
-  test("logged-out user sees login prompts for ID and comments", async ({
-    page,
-  }) => {
+  test("logged-out user sees login prompts for ID and comments", async ({ page }) => {
     await navigateToDetail(page);
-    await expect(
-      page.getByText("Log in to add an identification"),
-    ).toBeVisible();
+    await expect(page.getByText("Log in to add an identification")).toBeVisible();
     await expect(page.getByText("Log in to add a comment")).toBeVisible();
-    await expect(
-      page.getByText("Log in to add interactions"),
-    ).toBeVisible();
+    await expect(page.getByText("Log in to add interactions")).toBeVisible();
   });
 });

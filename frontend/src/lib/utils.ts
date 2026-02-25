@@ -59,7 +59,9 @@ export function getPdslsUrl(atUri: string): string {
  * Parse an AT URI into its components
  * Format: at://did:plc:xxx/collection/rkey
  */
-export function parseAtUri(atUri: string): { did: string; collection: string; rkey: string } | null {
+export function parseAtUri(
+  atUri: string,
+): { did: string; collection: string; rkey: string } | null {
   const match = atUri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
   if (!match) return null;
   const [, did, collection, rkey] = match;

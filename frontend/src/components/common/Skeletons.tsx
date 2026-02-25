@@ -24,10 +24,7 @@ export function FeedItemSkeleton() {
           <Skeleton variant="text" width="15%" height={16} />
         </Box>
       </Box>
-      <Skeleton
-        variant="rectangular"
-        height={280}
-      />
+      <Skeleton variant="rectangular" height={280} />
       <Box sx={{ p: 2 }}>
         <Skeleton variant="text" width="45%" height={24} />
       </Box>
@@ -63,21 +60,32 @@ export function ProfileHeaderSkeleton() {
       </Stack>
       <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
         {[1, 2, 3].map((i) => (
-          <Box key={i} sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
+          <Box
+            key={i}
+            sx={{
+              textAlign: "center",
+              flex: 1,
+              bgcolor: "action.hover",
+              borderRadius: 2,
+              py: 1.5,
+              px: 1,
+            }}
+          >
             <Skeleton variant="text" width="50%" height={28} sx={{ mx: "auto" }} />
-            <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="center"
+              spacing={0.5}
+              sx={{ mt: 0.5 }}
+            >
               <Skeleton variant="circular" width={14} height={14} />
               <Skeleton variant="text" width="50%" height={16} />
             </Stack>
           </Box>
         ))}
       </Stack>
-      <Skeleton
-        variant="rectangular"
-        width={160}
-        height={32}
-        sx={{ borderRadius: 1, mt: 2 }}
-      />
+      <Skeleton variant="rectangular" width={160} height={32} sx={{ borderRadius: 1, mt: 2 }} />
     </Box>
   );
 }
@@ -103,7 +111,16 @@ export function ProfileObservationCardSkeleton() {
 export function ProfileIdentificationCardSkeleton() {
   return (
     <Card>
-      <Box sx={{ py: 3, px: 1.5, bgcolor: "action.hover", display: "flex", flexDirection: "column", alignItems: "center" }}>
+      <Box
+        sx={{
+          py: 3,
+          px: 1.5,
+          bgcolor: "action.hover",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+        }}
+      >
         <Skeleton variant="circular" width={28} height={28} sx={{ mb: 1 }} />
         <Skeleton variant="text" width="60%" height={20} />
         <Skeleton variant="text" width="40%" height={16} />
@@ -207,11 +224,7 @@ export function ObservationDetailSkeleton() {
       </Box>
 
       {/* Image */}
-      <Skeleton
-        variant="rectangular"
-        height={400}
-        sx={{ width: "100%", bgcolor: "grey.800" }}
-      />
+      <Skeleton variant="rectangular" height={400} sx={{ width: "100%", bgcolor: "grey.800" }} />
 
       {/* Content */}
       <Box sx={{ p: 3 }}>
@@ -240,18 +253,10 @@ export function ObservationDetailSkeleton() {
         </Box>
 
         {/* Map */}
-        <Skeleton
-          variant="rectangular"
-          height={200}
-          sx={{ borderRadius: 2, ml: 4.5, mb: 1 }}
-        />
+        <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, ml: 4.5, mb: 1 }} />
 
         {/* Identification section */}
-        <Skeleton
-          variant="rectangular"
-          height={100}
-          sx={{ borderRadius: 2, mt: 3 }}
-        />
+        <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2, mt: 3 }} />
       </Box>
     </Box>
   );

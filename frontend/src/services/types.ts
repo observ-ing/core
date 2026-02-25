@@ -126,16 +126,7 @@ export interface ProfileFeedResponse {
 // Taxonomy Types (frontend-only)
 // ============================================================================
 
-export type IUCNCategory =
-  | "EX"
-  | "EW"
-  | "CR"
-  | "EN"
-  | "VU"
-  | "NT"
-  | "LC"
-  | "DD"
-  | "NE";
+export type IUCNCategory = "EX" | "EW" | "CR" | "EN" | "VU" | "NT" | "LC" | "DD" | "NE";
 
 export interface TaxonAncestor {
   id: string;

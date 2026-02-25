@@ -51,9 +51,7 @@ export function ExploreFilterPanel() {
   // Local state for form fields
   const [taxonQuery, setTaxonQuery] = useState(filters.taxon || "");
   const [taxonSuggestions, setTaxonSuggestions] = useState<TaxaResult[]>([]);
-  const [selectedTaxon, setSelectedTaxon] = useState<string | null>(
-    filters.taxon || null
-  );
+  const [selectedTaxon, setSelectedTaxon] = useState<string | null>(filters.taxon || null);
 
   const [useLocation, setUseLocation] = useState(filters.lat !== undefined);
   const [lat, setLat] = useState(filters.lat ?? 37.7749);
@@ -63,20 +61,16 @@ export function ExploreFilterPanel() {
   const [kingdom, setKingdom] = useState(filters.kingdom || "");
 
   const [startDate, setStartDate] = useState<Date | null>(
-    filters.startDate ? new Date(filters.startDate) : null
+    filters.startDate ? new Date(filters.startDate) : null,
   );
   const [endDate, setEndDate] = useState<Date | null>(
-    filters.endDate ? new Date(filters.endDate) : null
+    filters.endDate ? new Date(filters.endDate) : null,
   );
 
   // Count active filters for badge
-  const activeFilterCount = [
-    selectedTaxon,
-    useLocation,
-    kingdom,
-    startDate,
-    endDate,
-  ].filter(Boolean).length;
+  const activeFilterCount = [selectedTaxon, useLocation, kingdom, startDate, endDate].filter(
+    Boolean,
+  ).length;
 
   // Taxon search handler
   const latestTaxonQuery = useRef("");
@@ -157,9 +151,7 @@ export function ExploreFilterPanel() {
             />
           )}
         </Stack>
-        <IconButton size="small">
-          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </IconButton>
+        <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
       </Box>
 
       {/* Collapsible filter content */}
@@ -180,8 +172,7 @@ export function ExploreFilterPanel() {
             }}
             onChange={(_, value) => {
               if (value) {
-                const name =
-                  typeof value === "string" ? value : value.scientificName;
+                const name = typeof value === "string" ? value : value.scientificName;
                 setSelectedTaxon(name);
                 setTaxonQuery(name);
               } else {
@@ -193,12 +184,7 @@ export function ExploreFilterPanel() {
               // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
               const p = params as object;
               return (
-                <TextField
-                  {...p}
-                  size="small"
-                  label="Taxon"
-                  placeholder="Search species..."
-                />
+                <TextField {...p} size="small" label="Taxon" placeholder="Search species..." />
               );
             }}
             renderOption={(props, option) => {
@@ -242,11 +228,7 @@ export function ExploreFilterPanel() {
           {/* Kingdom Dropdown */}
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
             <InputLabel>Kingdom</InputLabel>
-            <Select
-              value={kingdom}
-              label="Kingdom"
-              onChange={(e) => setKingdom(e.target.value)}
-            >
+            <Select value={kingdom} label="Kingdom" onChange={(e) => setKingdom(e.target.value)}>
               {KINGDOMS.map((k) => (
                 <MenuItem key={k.value} value={k.value}>
                   {k.label}
@@ -257,11 +239,7 @@ export function ExploreFilterPanel() {
 
           {/* Date Range */}
           <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Stack
-              direction={{ xs: "column", sm: "row" }}
-              spacing={1}
-              sx={{ mb: 2 }}
-            >
+            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
               <DatePicker
                 label="Start Date"
                 value={startDate}
@@ -279,12 +257,7 @@ export function ExploreFilterPanel() {
 
           {/* Location Filter */}
           <Box sx={{ mb: 2 }}>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              sx={{ mb: 1 }}
-            >
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
               <Typography variant="body2" color="text.secondary">
                 Location
               </Typography>
@@ -322,7 +295,7 @@ export function ExploreFilterPanel() {
                     () => {
                       // Default to San Francisco on error
                       setUseLocation(true);
-                    }
+                    },
                   );
                 }}
               >

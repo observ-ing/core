@@ -8,9 +8,7 @@ type ThemeMode = PaletteMode | "system";
 
 function getSystemTheme(): PaletteMode {
   if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches
-    ? "dark"
-    : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 function getStoredTheme(): ThemeMode {
@@ -84,10 +82,7 @@ const uiSlice = createSlice({
     closeDeleteConfirm: (state) => {
       state.deleteConfirmObservation = null;
     },
-    addToast: (
-      state,
-      action: PayloadAction<{ message: string; type: "success" | "error" }>
-    ) => {
+    addToast: (state, action: PayloadAction<{ message: string; type: "success" | "error" }>) => {
       state.toasts.push({
         id: Date.now().toString(),
         ...action.payload,
@@ -96,10 +91,7 @@ const uiSlice = createSlice({
     removeToast: (state, action: PayloadAction<string>) => {
       state.toasts = state.toasts.filter((t) => t.id !== action.payload);
     },
-    setCurrentLocation: (
-      state,
-      action: PayloadAction<{ lat: number; lng: number } | null>
-    ) => {
+    setCurrentLocation: (state, action: PayloadAction<{ lat: number; lng: number } | null>) => {
       state.currentLocation = action.payload;
     },
     setThemeMode: (state, action: PayloadAction<ThemeMode>) => {

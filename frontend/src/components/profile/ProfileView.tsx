@@ -20,13 +20,13 @@ import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
-import type {
-  ProfileFeedResponse,
-  Occurrence,
-  Identification,
-} from "../../services/types";
+import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
-import { ProfileHeaderSkeleton, ProfileObservationCardSkeleton, ProfileIdentificationCardSkeleton } from "../common/Skeletons";
+import {
+  ProfileHeaderSkeleton,
+  ProfileObservationCardSkeleton,
+  ProfileIdentificationCardSkeleton,
+} from "../common/Skeletons";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "observations" | "identifications";
@@ -52,11 +52,7 @@ export function ProfileView() {
       setError(null);
 
       try {
-        const response = await fetchProfileFeed(
-          did,
-          loadMore ? cursor : undefined,
-          activeTab
-        );
+        const response = await fetchProfileFeed(did, loadMore ? cursor : undefined, activeTab);
 
         if (!loadMore) {
           setData(response);
@@ -75,7 +71,7 @@ export function ProfileView() {
         setIsLoading(false);
       }
     },
-    [did, cursor, activeTab]
+    [did, cursor, activeTab],
   );
 
   useEffect(() => {
@@ -119,76 +115,119 @@ export function ProfileView() {
       {isLoading && !profile ? (
         <ProfileHeaderSkeleton />
       ) : (
-      <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Avatar
-            {...(profile?.avatar ? { src: profile.avatar } : {})}
-            alt={profile?.displayName || profile?.handle || did}
-            sx={{ width: 80, height: 80 }}
-          />
-          <Box>
-            <Typography variant="h5" fontWeight={600}>
-              {profile?.displayName || profile?.handle || did.slice(0, 20)}
-            </Typography>
-            {profile?.handle && (
-              <Typography color="text.disabled">@{profile.handle}</Typography>
-            )}
-          </Box>
-        </Stack>
-
-        {/* Stats */}
-        {counts && (
-          <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Typography variant="h6" fontWeight={700} color="primary.main">
-                {counts.observations.toLocaleString()}
+        <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
+          <Stack direction="row" spacing={2} alignItems="center">
+            <Avatar
+              {...(profile?.avatar ? { src: profile.avatar } : {})}
+              alt={profile?.displayName || profile?.handle || did}
+              sx={{ width: 80, height: 80 }}
+            />
+            <Box>
+              <Typography variant="h5" fontWeight={600}>
+                {profile?.displayName || profile?.handle || did.slice(0, 20)}
               </Typography>
-              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
-                <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                <Typography variant="caption" color="text.secondary">
-                  Observations
-                </Typography>
-              </Stack>
-            </Box>
-            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Typography variant="h6" fontWeight={700} color="secondary.main">
-                {counts.identifications.toLocaleString()}
-              </Typography>
-              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
-                <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                <Typography variant="caption" color="text.secondary">
-                  IDs
-                </Typography>
-              </Stack>
-            </Box>
-            <Box sx={{ textAlign: "center", flex: 1, bgcolor: "action.hover", borderRadius: 2, py: 1.5, px: 1 }}>
-              <Typography variant="h6" fontWeight={700} color="success.main">
-                {counts.species.toLocaleString()}
-              </Typography>
-              <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.5} sx={{ mt: 0.5 }}>
-                <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                <Typography variant="caption" color="text.secondary">
-                  Species
-                </Typography>
-              </Stack>
+              {profile?.handle && <Typography color="text.disabled">@{profile.handle}</Typography>}
             </Box>
           </Stack>
-        )}
 
-        {/* AT Protocol Link */}
-        <Button
-          component="a"
-          href={`https://pdsls.dev/at://${did}/org.rwell.test.occurrence`}
-          target="_blank"
-          rel="noopener noreferrer"
-          variant="outlined"
-          size="small"
-          endIcon={<OpenInNewIcon />}
-          sx={{ mt: 2 }}
-        >
-          View on AT Protocol
-        </Button>
-      </Box>
+          {/* Stats */}
+          {counts && (
+            <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  flex: 1,
+                  bgcolor: "action.hover",
+                  borderRadius: 2,
+                  py: 1.5,
+                  px: 1,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700} color="primary.main">
+                  {counts.observations.toLocaleString()}
+                </Typography>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="center"
+                  spacing={0.5}
+                  sx={{ mt: 0.5 }}
+                >
+                  <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Observations
+                  </Typography>
+                </Stack>
+              </Box>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  flex: 1,
+                  bgcolor: "action.hover",
+                  borderRadius: 2,
+                  py: 1.5,
+                  px: 1,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700} color="secondary.main">
+                  {counts.identifications.toLocaleString()}
+                </Typography>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="center"
+                  spacing={0.5}
+                  sx={{ mt: 0.5 }}
+                >
+                  <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    IDs
+                  </Typography>
+                </Stack>
+              </Box>
+              <Box
+                sx={{
+                  textAlign: "center",
+                  flex: 1,
+                  bgcolor: "action.hover",
+                  borderRadius: 2,
+                  py: 1.5,
+                  px: 1,
+                }}
+              >
+                <Typography variant="h6" fontWeight={700} color="success.main">
+                  {counts.species.toLocaleString()}
+                </Typography>
+                <Stack
+                  direction="row"
+                  alignItems="center"
+                  justifyContent="center"
+                  spacing={0.5}
+                  sx={{ mt: 0.5 }}
+                >
+                  <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+                  <Typography variant="caption" color="text.secondary">
+                    Species
+                  </Typography>
+                </Stack>
+              </Box>
+            </Stack>
+          )}
+
+          {/* AT Protocol Link */}
+          <Button
+            component="a"
+            href={`https://pdsls.dev/at://${did}/org.rwell.test.occurrence`}
+            target="_blank"
+            rel="noopener noreferrer"
+            variant="outlined"
+            size="small"
+            endIcon={<OpenInNewIcon />}
+            sx={{ mt: 2 }}
+          >
+            View on AT Protocol
+          </Button>
+        </Box>
       )}
 
       {/* Tabs */}
