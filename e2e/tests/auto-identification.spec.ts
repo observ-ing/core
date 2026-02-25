@@ -28,7 +28,11 @@ authTest.describe("Auto-Identification on Upload", () => {
       await useLocationBtn.scrollIntoViewIfNeeded();
       await useLocationBtn.click();
       // Wait for location text to appear instead of fixed delay
-      await page.getByText(/latitude|location|coordinates/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+      await page
+        .getByText(/latitude|location|coordinates/i)
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
 
       // Submit (real API, no mocking)
       const submitButton = page.getByRole("button", { name: /Submit/i });
@@ -45,7 +49,9 @@ authTest.describe("Auto-Identification on Upload", () => {
       // The selected species scientific name should appear in the ID history
       // selectedSpecies may contain "Scientific Name\nCommon Name", extract first line
       const scientificName = selectedSpecies.split("\n")[0].trim();
-      await authExpect(page.getByText(scientificName, { exact: false }).first()).toBeVisible();
+      await authExpect(
+        page.getByText(scientificName, { exact: false }).first(),
+      ).toBeVisible();
 
       // Community ID should reflect the auto-created identification
       await authExpect(page.getByText("Community ID")).toBeVisible();

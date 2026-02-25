@@ -1,5 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect, getTestUser } from "../fixtures/auth";
+import {
+  test as authTest,
+  expect as authExpect,
+  getTestUser,
+} from "../fixtures/auth";
 import { openUploadModal } from "../helpers/navigation";
 
 const FAB = 'button[aria-label="Create actions"]';
@@ -15,44 +19,61 @@ test.describe("Upload Modal - Logged Out", () => {
 
 authTest.describe("Upload Modal - Logged In", () => {
   // TC-UPLOAD-010: FAB visible when logged in
-  authTest("FAB button is visible when logged in", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await authExpect(page.locator(FAB)).toBeVisible();
-  });
+  authTest(
+    "FAB button is visible when logged in",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await authExpect(page.locator(FAB)).toBeVisible();
+    },
+  );
 
   // TC-UPLOAD-001: Open/close modal
-  authTest("clicking FAB opens upload modal", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await openUploadModal(page);
-  });
+  authTest(
+    "clicking FAB opens upload modal",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page);
+    },
+  );
 
-  authTest("clicking Cancel closes upload modal", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await openUploadModal(page);
-    await page.getByRole("button", { name: "Cancel" }).click();
-    await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
-  });
+  authTest(
+    "clicking Cancel closes upload modal",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page);
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
+    },
+  );
 
   // TC-UPLOAD-003: Authenticated mode banner
-  authTest("upload modal shows posting as handle", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await openUploadModal(page);
-    await authExpect(page.getByText(`@${getTestUser().handle}`).first()).toBeVisible();
-  });
+  authTest(
+    "upload modal shows posting as handle",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page);
+      await authExpect(
+        page.getByText(`@${getTestUser().handle}`).first(),
+      ).toBeVisible();
+    },
+  );
 
   // TC-UPLOAD-004: Quick species selection
-  authTest("quick species chips populate species input", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await openUploadModal(page);
-    const poppyChip = page.getByRole("button", {
-      name: /California Poppy/i,
-    });
-    if (await poppyChip.isVisible()) {
-      await poppyChip.click();
-      const speciesInput = page.getByLabel(/Species/i);
-      await authExpect(speciesInput).not.toHaveValue("");
-    }
-  });
+  authTest(
+    "quick species chips populate species input",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page);
+      const poppyChip = page.getByRole("button", {
+        name: /California Poppy/i,
+      });
+      if (await poppyChip.isVisible()) {
+        await poppyChip.click();
+        const speciesInput = page.getByLabel(/Species/i);
+        await authExpect(speciesInput).not.toHaveValue("");
+      }
+    },
+  );
 
   // TC-UPLOAD-005: Species autocomplete search
   authTest(
@@ -66,7 +87,9 @@ authTest.describe("Upload Modal - Logged In", () => {
         page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
         speciesInput.pressSequentially("quercus", { delay: 50 }),
       ]);
-      await authExpect(page.locator(".MuiAutocomplete-option").first()).toBeVisible();
+      await authExpect(
+        page.locator(".MuiAutocomplete-option").first(),
+      ).toBeVisible();
     },
   );
 
@@ -87,54 +110,73 @@ authTest.describe("Upload Modal - Logged In", () => {
   );
 
   // TC-UPLOAD-016: Invalid image file type
-  authTest("file input only accepts image types", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await openUploadModal(page);
-    // Scope to the dialog's file input (FAB has its own hidden file input)
-    const fileInput = page.getByRole("dialog").locator('input[type="file"]');
-    await authExpect(fileInput).toHaveAttribute("accept", /image/);
-  });
+  authTest(
+    "file input only accepts image types",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page);
+      // Scope to the dialog's file input (FAB has its own hidden file input)
+      const fileInput = page.getByRole("dialog").locator('input[type="file"]');
+      await authExpect(fileInput).toHaveAttribute("accept", /image/);
+    },
+  );
 
   // TC-UPLOAD-009: Submit observation (mocked)
-  authTest("submit button sends observation to API", async ({ authenticatedPage: page }) => {
-    await page.route("**/api/occurrences", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            uri: "at://did:plc:test123/org.observ.ing.occurrence/abc123",
-            cid: "bafytest",
-          }),
-        });
+  authTest(
+    "submit button sends observation to API",
+    async ({ authenticatedPage: page }) => {
+      await page.route("**/api/occurrences", (route) => {
+        if (route.request().method() === "POST") {
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({
+              uri: "at://did:plc:test123/org.observ.ing.occurrence/abc123",
+              cid: "bafytest",
+            }),
+          });
+        }
+        return route.continue();
+      });
+
+      await page.goto("/");
+      await openUploadModal(page);
+
+      const speciesInput = page.getByLabel(/Species/i);
+      await speciesInput.fill("Quercus alba");
+      const option = page.locator(".MuiAutocomplete-option").first();
+      if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await option.click();
       }
-      return route.continue();
-    });
 
-    await page.goto("/");
-    await openUploadModal(page);
+      // Set location via the "Use My Location" button (geolocation mocked in fixture)
+      const useLocationBtn = page.getByRole("button", {
+        name: /Use My Location/i,
+      });
+      await useLocationBtn.scrollIntoViewIfNeeded();
+      await useLocationBtn.click();
+      // Wait for location text to appear instead of fixed delay
+      await page
+        .getByText(/latitude|location|coordinates/i)
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
 
-    const speciesInput = page.getByLabel(/Species/i);
-    await speciesInput.fill("Quercus alba");
-    const option = page.locator(".MuiAutocomplete-option").first();
-    if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await option.click();
-    }
-
-    // Set location via the "Use My Location" button (geolocation mocked in fixture)
-    const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
-    await useLocationBtn.scrollIntoViewIfNeeded();
-    await useLocationBtn.click();
-    // Wait for location text to appear instead of fixed delay
-    await page.getByText(/latitude|location|coordinates/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
-
-    const submitButton = page.getByRole("button", { name: /Submit/i });
-    if (await submitButton.isEnabled()) {
-      await submitButton.click();
-      // Wait for the mocked API response
-      await page.waitForResponse((r) => r.url().includes("/api/occurrences") && r.request().method() === "POST", { timeout: 10_000 }).catch(() => {});
-    }
-  });
+      const submitButton = page.getByRole("button", { name: /Submit/i });
+      if (await submitButton.isEnabled()) {
+        await submitButton.click();
+        // Wait for the mocked API response
+        await page
+          .waitForResponse(
+            (r) =>
+              r.url().includes("/api/occurrences") &&
+              r.request().method() === "POST",
+            { timeout: 10_000 },
+          )
+          .catch(() => {});
+      }
+    },
+  );
 
   // TC-UPLOAD-020: Large image upload exceeds old 2MB body limit
   authTest(
@@ -204,20 +246,33 @@ authTest.describe("Upload Modal - Logged In", () => {
       });
 
       // Wait for the image preview to appear
-      await page.getByRole("dialog").locator("img").first().waitFor({ state: "visible", timeout: 10_000 }).catch(() => {});
+      await page
+        .getByRole("dialog")
+        .locator("img")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 })
+        .catch(() => {});
 
       // Set location via the "Use My Location" button (geolocation mocked in fixture)
-      const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
+      const useLocationBtn = page.getByRole("button", {
+        name: /Use My Location/i,
+      });
       await useLocationBtn.scrollIntoViewIfNeeded();
       await useLocationBtn.click();
       // Wait for location text to appear instead of fixed delay
-      await page.getByText(/latitude|location|coordinates/i).first().waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
+      await page
+        .getByText(/latitude|location|coordinates/i)
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
 
       const submitButton = page.getByRole("button", { name: /Submit/i });
       await submitButton.click();
       // Wait for the mocked API response instead of fixed delay
       await page.waitForResponse(
-        (r) => r.url().includes("/api/occurrences") && r.request().method() === "POST",
+        (r) =>
+          r.url().includes("/api/occurrences") &&
+          r.request().method() === "POST",
         { timeout: 15_000 },
       );
 
