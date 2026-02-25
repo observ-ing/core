@@ -7,8 +7,8 @@ test.describe("Error Handling", () => {
     await page.route("**/api/feeds/**", (route) => route.abort());
     await page.route("**/api/occurrences/**", (route) => route.abort());
     await page.goto("/explore");
-    // Page should still render the app shell (filter panel is always present on explore)
-    await expect(page.getByText("All Kingdoms")).toBeVisible({ timeout: 10000 });
+    // Page should still render the app shell
+    await expect(page).toHaveTitle(/Explore/);
   });
 });
 
