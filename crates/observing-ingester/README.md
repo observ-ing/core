@@ -42,30 +42,7 @@ cargo run --release
 
 ## Deploying to Cloud Run
 
-### Using gcloud directly
-
-```bash
-# Build and push to GCR
-gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/observing-ingester
-
-# Deploy to Cloud Run
-gcloud run deploy observing-ingester \
-  --image gcr.io/YOUR_PROJECT_ID/observing-ingester \
-  --region us-central1 \
-  --cpu 4 \
-  --memory 2Gi \
-  --min-instances 1 \
-  --max-instances 1 \
-  --timeout 3600 \
-  --set-env-vars "DATABASE_URL=your-db-url,RUST_LOG=observing_ingester=info" \
-  --allow-unauthenticated
-```
-
-### Using Cloud Build
-
-```bash
-gcloud builds submit --config cloudbuild.yaml
-```
+Deployment is handled automatically via CI. See `.github/workflows/ci.yml`.
 
 ## Docker
 
