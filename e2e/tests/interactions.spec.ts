@@ -15,7 +15,7 @@ function muiSelect(page: Page, label: string) {
 
 /** Navigate from the feed to the first observation's detail page. */
 async function navigateToDetail(page: any, expectFn: any) {
-  await page.goto("/");
+  await page.goto("/explore");
   const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
   await expectFn(card).toBeVisible({ timeout: 15000 });
   await card.click();

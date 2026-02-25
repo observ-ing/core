@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 /** Navigate from the feed to the first observation's detail page. */
 async function navigateToDetail(page: any) {
-  await page.goto("/");
+  await page.goto("/explore");
   const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
   await expect(card).toBeVisible({ timeout: 15000 });
   await card.click();
