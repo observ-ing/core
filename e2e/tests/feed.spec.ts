@@ -43,24 +43,28 @@ test.describe("Feed View", () => {
     await expect(cards.first()).toBeVisible({ timeout: 10000 });
   });
 
-  // TC-FEED-007: Observer name links to profile
+  // TC-FEED-007: Observer name links to profile (via detail page)
   test("clicking observer name navigates to their profile", async ({ page }) => {
     await page.goto("/explore");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
-    // Wait for enough cards to load so we can find one with a profile link
-    await page.waitForTimeout(1000);
-    const profileLink = page.locator('.MuiCard-root a[href*="/profile/"]').first();
-    await expect(profileLink).toBeVisible({ timeout: 5000 });
+    const firstCard = page.locator(".MuiCard-root").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.locator(".MuiCardActionArea-root").click();
+    await expect(page).toHaveURL(/\/observation\//);
+    // Detail page shows observer info with a profile link
+    const profileLink = page.locator('a[href*="/profile/"]').first();
+    await expect(profileLink).toBeVisible({ timeout: 15000 });
     await profileLink.click();
     await expect(page).toHaveURL(/\/profile\//);
   });
 
-  // TC-FEED-008: Observer avatar display
-  test("feed items show observer avatars", async ({ page }) => {
+  // TC-FEED-008: Observer avatar display (via detail page)
+  test("observation detail shows observer avatar", async ({ page }) => {
     await page.goto("/explore");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
-    await page.waitForTimeout(1000);
-    const avatar = page.locator(".MuiCard-root .MuiAvatar-root").first();
-    await expect(avatar).toBeVisible({ timeout: 5000 });
+    const firstCard = page.locator(".MuiCard-root").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.locator(".MuiCardActionArea-root").click();
+    await expect(page).toHaveURL(/\/observation\//);
+    const avatar = page.locator(".MuiAvatar-root").first();
+    await expect(avatar).toBeVisible({ timeout: 15000 });
   });
 });

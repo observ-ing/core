@@ -2,10 +2,13 @@ import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "../fixtures/auth";
 
 test.describe("Likes - Logged Out", () => {
-  // TC-LIKE-001: Like button visible on feed items
-  test("feed items show a heart icon", async ({ page }) => {
+  // TC-LIKE-001: Like button visible on detail page
+  test("detail page shows a heart icon", async ({ page }) => {
     await page.goto("/explore");
-    // Wait for actual feed content (not skeleton cards) by waiting for a Like button
+    const firstCard = page.locator(".MuiCard-root").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.locator(".MuiCardActionArea-root").click();
+    await expect(page).toHaveURL(/\/observation\//);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
     await expect(likeButton).toBeVisible({ timeout: 15000 });
   });
@@ -13,6 +16,10 @@ test.describe("Likes - Logged Out", () => {
   // TC-LIKE-002: Like button disabled when logged out
   test("like button is disabled when not logged in", async ({ page }) => {
     await page.goto("/explore");
+    const firstCard = page.locator(".MuiCard-root").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.locator(".MuiCardActionArea-root").click();
+    await expect(page).toHaveURL(/\/observation\//);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
     await expect(likeButton).toBeVisible({ timeout: 15000 });
     await expect(likeButton).toBeDisabled();

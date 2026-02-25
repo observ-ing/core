@@ -6,6 +6,10 @@ test.describe("Observation Edit - Logged Out", () => {
   // TC-EDIT-002: Edit menu item hidden for others' observations
   test("more menu does not show Edit for non-owned observation", async ({ page }) => {
     await page.goto("/explore");
+    const firstCard = page.locator(".MuiCard-root").first();
+    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await firstCard.locator(".MuiCardActionArea-root").click();
+    await expect(page).toHaveURL(/\/observation\//);
     const moreButton = page.getByLabel("More options").first();
     await expect(moreButton).toBeVisible({ timeout: 15000 });
     await moreButton.click();
