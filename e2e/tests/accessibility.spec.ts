@@ -1,7 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "../fixtures/auth";
-
-const FAB = 'button[aria-label="Create actions"]';
+import { openUploadModal } from "../helpers/navigation";
 
 test.describe("Accessibility", () => {
   // TC-A11Y-001: Keyboard navigation
@@ -28,18 +27,8 @@ authTest.describe("Accessibility - Authenticated", () => {
   // TC-A11Y-002: Modal escape key (upload modal)
   authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    await page.locator(FAB).waitFor({ timeout: 5000 });
-    await page.locator(FAB).click();
-    const newObsAction = page.getByRole("menuitem", {
-      name: "New Observation",
-    });
-    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-    await newObsAction.click();
-    await page.waitForTimeout(500);
-    // Verify modal is open by checking for the species input
-    await authExpect(page.getByLabel(/Species/i)).toBeVisible({
-      timeout: 5000,
-    });
+    await openUploadModal(page);
+    await authExpect(page.getByLabel(/Species/i)).toBeVisible();
     await page.keyboard.press("Escape");
     await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
   });
@@ -47,14 +36,7 @@ authTest.describe("Accessibility - Authenticated", () => {
   // TC-A11Y-003: Autocomplete keyboard navigation
   authTest("arrow keys navigate autocomplete suggestions", async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    await page.locator(FAB).waitFor({ timeout: 5000 });
-    await page.locator(FAB).click();
-    const newObsAction = page.getByRole("menuitem", {
-      name: "New Observation",
-    });
-    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-    await newObsAction.click();
-    await page.waitForTimeout(500);
+    await openUploadModal(page);
 
     const speciesInput = page.getByLabel(/Species/i);
     await speciesInput.click();
@@ -63,7 +45,7 @@ authTest.describe("Accessibility - Authenticated", () => {
       speciesInput.pressSequentially("quercus", { delay: 50 }),
     ]);
     const option = page.locator(".MuiAutocomplete-option").first();
-    await authExpect(option).toBeVisible({ timeout: 10000 });
+    await authExpect(option).toBeVisible();
 
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");

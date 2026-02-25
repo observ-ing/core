@@ -1,6 +1,5 @@
 import { test as authTest, expect as authExpect } from "../fixtures/auth";
-
-const FAB = 'button[aria-label="Create actions"]';
+import { openUploadModal } from "../helpers/navigation";
 
 /** Type into the species input and wait for the taxa search response that
  *  matches the full query. Filters by query-param length so we skip early
@@ -29,14 +28,7 @@ async function searchSpecies(page: import("@playwright/test").Page, query: strin
 authTest.describe("Species Input", () => {
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    await page.locator(FAB).waitFor({ timeout: 5000 });
-    await page.locator(FAB).click();
-    const newObsAction = page.getByRole("menuitem", {
-      name: "New Observation",
-    });
-    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-    await newObsAction.click();
-    await page.waitForTimeout(500);
+    await openUploadModal(page);
   });
 
   // TC-SPECIES-001: Common name autocomplete
@@ -45,7 +37,7 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "california poppy");
       const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await authExpect(option).toBeVisible();
     },
   );
 
@@ -55,10 +47,8 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "Quercus");
       const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/quercus/i, {
-        timeout: 10000,
-      });
+      await authExpect(option).toBeVisible();
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/quercus/i);
     },
   );
 
@@ -66,7 +56,7 @@ authTest.describe("Species Input", () => {
   authTest("lowercase scientific name still finds results", async ({ authenticatedPage: page }) => {
     await searchSpecies(page, "quercus alba");
     const option = page.locator(".MuiAutocomplete-option").first();
-    await authExpect(option).toBeVisible({ timeout: 10000 });
+    await authExpect(option).toBeVisible();
   });
 
   // TC-UPLOAD-007: Autocomplete selection
@@ -75,7 +65,7 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       const speciesInput = await searchSpecies(page, "quercus");
       const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible({ timeout: 10000 });
+      await authExpect(option).toBeVisible();
       await option.click();
       await authExpect(speciesInput).not.toHaveValue("");
       await authExpect(page.locator(".MuiAutocomplete-popper")).not.toBeVisible();
