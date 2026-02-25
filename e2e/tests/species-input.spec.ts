@@ -4,10 +4,7 @@ import { openUploadModal } from "../helpers/navigation";
 /** Type into the species input and wait for the taxa search response that
  *  matches the full query. Filters by query-param length so we skip early
  *  responses triggered by partial (debounced) input. */
-async function searchSpecies(
-  page: import("@playwright/test").Page,
-  query: string,
-) {
+async function searchSpecies(page: import("@playwright/test").Page, query: string) {
   const speciesInput = page.getByLabel(/Species/i);
   await speciesInput.click();
   await Promise.all([
@@ -51,21 +48,16 @@ authTest.describe("Species Input", () => {
       await searchSpecies(page, "Quercus");
       const option = page.locator(".MuiAutocomplete-option").first();
       await authExpect(option).toBeVisible();
-      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(
-        /quercus/i,
-      );
+      await authExpect(page.locator(".MuiAutocomplete-popper")).toContainText(/quercus/i);
     },
   );
 
   // TC-SPECIES-005: Mixed case scientific name
-  authTest(
-    "lowercase scientific name still finds results",
-    async ({ authenticatedPage: page }) => {
-      await searchSpecies(page, "quercus alba");
-      const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible();
-    },
-  );
+  authTest("lowercase scientific name still finds results", async ({ authenticatedPage: page }) => {
+    await searchSpecies(page, "quercus alba");
+    const option = page.locator(".MuiAutocomplete-option").first();
+    await authExpect(option).toBeVisible();
+  });
 
   // TC-UPLOAD-007: Autocomplete selection
   authTest(
@@ -76,9 +68,7 @@ authTest.describe("Species Input", () => {
       await authExpect(option).toBeVisible();
       await option.click();
       await authExpect(speciesInput).not.toHaveValue("");
-      await authExpect(
-        page.locator(".MuiAutocomplete-popper"),
-      ).not.toBeVisible();
+      await authExpect(page.locator(".MuiAutocomplete-popper")).not.toBeVisible();
     },
   );
 });

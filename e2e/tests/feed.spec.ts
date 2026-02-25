@@ -10,9 +10,7 @@ test.describe("Feed View", () => {
   });
 
   // TC-FEED-002: Feed item click
-  test("clicking a feed item navigates to observation detail", async ({
-    page,
-  }) => {
+  test("clicking a feed item navigates to observation detail", async ({ page }) => {
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible();
@@ -27,9 +25,7 @@ test.describe("Feed View", () => {
     const initialCount = await page.locator(".MuiCard-root").count();
     await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
     // Wait for network activity to settle after scroll-triggered fetch
-    await page
-      .waitForLoadState("networkidle", { timeout: 10_000 })
-      .catch(() => {});
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => {});
     const newCount = await page.locator(".MuiCard-root").count();
     expect(newCount).toBeGreaterThanOrEqual(initialCount);
   });
@@ -49,9 +45,7 @@ test.describe("Feed View", () => {
   });
 
   // TC-FEED-007: Observer name links to profile (via detail page)
-  test("clicking observer name navigates to their profile", async ({
-    page,
-  }) => {
+  test("clicking observer name navigates to their profile", async ({ page }) => {
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible();

@@ -16,7 +16,5 @@ export async function openUploadModal(page: Page) {
   await newObsAction.waitFor({ state: "visible", timeout: 5_000 });
   await newObsAction.click();
   // Wait for the modal content to actually render instead of a fixed delay
-  await page
-    .getByLabel(/Species/i)
-    .waitFor({ state: "visible", timeout: 10_000 });
+  await page.getByLabel(/Species/i).waitFor({ state: "visible", timeout: 10_000 });
 }

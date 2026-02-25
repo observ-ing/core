@@ -25,36 +25,30 @@ test.describe("Accessibility", () => {
 
 authTest.describe("Accessibility - Authenticated", () => {
   // TC-A11Y-002: Modal escape key (upload modal)
-  authTest(
-    "pressing Escape closes upload modal",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      await openUploadModal(page);
-      await authExpect(page.getByLabel(/Species/i)).toBeVisible();
-      await page.keyboard.press("Escape");
-      await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
-    },
-  );
+  authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await openUploadModal(page);
+    await authExpect(page.getByLabel(/Species/i)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
+  });
 
   // TC-A11Y-003: Autocomplete keyboard navigation
-  authTest(
-    "arrow keys navigate autocomplete suggestions",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      await openUploadModal(page);
+  authTest("arrow keys navigate autocomplete suggestions", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await openUploadModal(page);
 
-      const speciesInput = page.getByLabel(/Species/i);
-      await speciesInput.click();
-      await Promise.all([
-        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-        speciesInput.pressSequentially("quercus", { delay: 50 }),
-      ]);
-      const option = page.locator(".MuiAutocomplete-option").first();
-      await authExpect(option).toBeVisible();
+    const speciesInput = page.getByLabel(/Species/i);
+    await speciesInput.click();
+    await Promise.all([
+      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+      speciesInput.pressSequentially("quercus", { delay: 50 }),
+    ]);
+    const option = page.locator(".MuiAutocomplete-option").first();
+    await authExpect(option).toBeVisible();
 
-      await page.keyboard.press("ArrowDown");
-      await page.keyboard.press("Enter");
-      await authExpect(speciesInput).not.toHaveValue("quercus");
-    },
-  );
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await authExpect(speciesInput).not.toHaveValue("quercus");
+  });
 });

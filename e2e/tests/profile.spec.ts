@@ -21,9 +21,7 @@ test.describe("Profile View", () => {
   });
 
   // TC-PROFILE-003: Profile header display
-  test("profile page shows avatar, display name, and handle", async ({
-    page,
-  }) => {
+  test("profile page shows avatar, display name, and handle", async ({ page }) => {
     await navigateToProfile(page);
     await expect(page.locator(".MuiAvatar-root").first()).toBeVisible({
       timeout: 10000,
@@ -49,9 +47,6 @@ test.describe("Profile View", () => {
     await navigateToProfile(page);
     await page.getByRole("tab", { name: /IDs/i }).waitFor({ timeout: 10000 });
     await page.getByRole("tab", { name: /IDs/i }).click();
-    await expect(page.getByRole("tab", { name: /IDs/i })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
+    await expect(page.getByRole("tab", { name: /IDs/i })).toHaveAttribute("aria-selected", "true");
   });
 });
