@@ -96,9 +96,12 @@ pub async fn get_home(
     let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
     let limit = params.limit.unwrap_or(20).min(100);
 
-    // Get followed DIDs
-    let followed_dids = state.resolver.get_follows(&viewer).await;
+    // Get followed DIDs + always include the viewer's own DID
+    let mut followed_dids = state.resolver.get_follows(&viewer).await;
     let total_follows = followed_dids.len();
+    if !followed_dids.contains(&viewer) {
+        followed_dids.push(viewer.clone());
+    }
 
     let options = HomeFeedOptions {
         limit: Some(limit),
