@@ -13,13 +13,11 @@ const features = [
   },
   {
     title: "Open Source",
-    description:
-      "Every line of code is public. Audit it, fork it, improve it.",
+    description: "Every line of code is public. Audit it, fork it, improve it.",
   },
   {
     title: "Data Portability",
-    description:
-      "Export your observations in standard formats. No lock-in, no walled gardens.",
+    description: "Export your observations in standard formats. No lock-in, no walled gardens.",
   },
   {
     title: "Contribute to Science",
@@ -76,8 +74,8 @@ export function LandingPage() {
             color="text.secondary"
             sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, mb: 4, lineHeight: 1.6 }}
           >
-            A decentralized platform for biodiversity observations, built on the
-            AT Protocol. Record what you see, keep what you create.
+            A decentralized platform for biodiversity observations, built on the AT Protocol. Record
+            what you see, keep what you create.
           </Typography>
           <Box sx={{ display: "flex", gap: 2, justifyContent: "center", flexWrap: "wrap" }}>
             <Button
@@ -89,11 +87,7 @@ export function LandingPage() {
             >
               Explore
             </Button>
-            <Button
-              variant="contained"
-              size="large"
-              onClick={() => dispatch(openLoginModal())}
-            >
+            <Button variant="contained" size="large" onClick={() => dispatch(openLoginModal())}>
               Log in
             </Button>
           </Box>

@@ -64,14 +64,12 @@ function AppContent() {
             },
           }}
         >
-          <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any time
-          without notice.
+          <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any
+          time without notice.
         </Alert>
       )}
       <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {!showLanding && (
-          <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />
-        )}
+        {!showLanding && <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />}
         <Box
           component="main"
           sx={{
@@ -83,10 +81,7 @@ function AppContent() {
           }}
         >
           <Routes>
-            <Route
-              path="/"
-              element={showLanding ? <LandingPage /> : <FeedView tab="home" />}
-            />
+            <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
             <Route path="/explore" element={<FeedView tab="explore" />} />
             <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
             <Route path="/profile/:did" element={<ProfileView />} />
