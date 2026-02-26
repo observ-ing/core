@@ -39,13 +39,6 @@ interface ImagePreview {
   preview: string;
 }
 
-const QUICK_SPECIES = [
-  { name: "Eschscholzia californica", label: "California Poppy" },
-  { name: "Quercus agrifolia", label: "Coast Live Oak" },
-  { name: "Columba livia", label: "Rock Dove" },
-  { name: "Sciurus griseus", label: "Western Gray Squirrel" },
-];
-
 const LICENSE_OPTIONS = [
   { value: "CC0-1.0", label: "CC0 (Public Domain)" },
   { value: "CC-BY-4.0", label: "CC BY (Attribution)" },
@@ -281,11 +274,6 @@ export function UploadModal() {
       setSuggestions([]);
     }
   }, []);
-
-  const handleQuickSpecies = (name: string) => {
-    setSpecies(name);
-    setSuggestions([]);
-  };
 
   // Poll for observation to appear in database after AT Protocol submission
   const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
@@ -529,25 +517,6 @@ export function UploadModal() {
             );
           }}
         />
-
-        <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
-          {QUICK_SPECIES.map((s) => (
-            <Chip
-              key={s.name}
-              label={s.label}
-              size="small"
-              onClick={() => handleQuickSpecies(s.name)}
-              sx={{
-                cursor: "pointer",
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: "background.paper",
-                },
-              }}
-              variant="outlined"
-            />
-          ))}
-        </Stack>
 
         <TextField
           fullWidth
