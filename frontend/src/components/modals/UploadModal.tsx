@@ -74,6 +74,7 @@ export function UploadModal() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
+  const [searchingTaxa, setSearchingTaxa] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -273,12 +274,15 @@ export function UploadModal() {
   const handleSpeciesSearch = useCallback(async (value: string) => {
     latestSpeciesQuery.current = value;
     if (value.length >= 2) {
+      setSearchingTaxa(true);
       const results = await searchTaxa(value);
       if (latestSpeciesQuery.current === value) {
         setSuggestions(results.slice(0, 5));
+        setSearchingTaxa(false);
       }
     } else {
       setSuggestions([]);
+      setSearchingTaxa(false);
     }
   }, []);
 
@@ -438,6 +442,7 @@ export function UploadModal() {
         <Autocomplete
           freeSolo
           options={suggestions}
+          loading={searchingTaxa}
           getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
           inputValue={species}
           onInputChange={(_, value) => {
@@ -462,6 +467,15 @@ export function UploadModal() {
                 label="Species (optional)"
                 placeholder="e.g. Eschscholzia californica - leave blank if unknown"
                 margin="normal"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {searchingTaxa && <CircularProgress color="inherit" size={20} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
               />
             );
           }}
