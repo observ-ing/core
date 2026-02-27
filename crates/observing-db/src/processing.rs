@@ -165,7 +165,6 @@ pub fn identification_from_json(
         order: record.taxon.order.map(|s| s.to_string()),
         family: record.taxon.family.map(|s| s.to_string()),
         genus: record.taxon.genus.map(|s| s.to_string()),
-        confidence: record.confidence.map(|s| s.to_string()),
     })
 }
 
@@ -259,7 +258,6 @@ pub fn interaction_from_json(
             .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
         interaction_type: record.interaction_type.as_ref().to_string(),
         direction: record.direction.to_string(),
-        confidence: record.confidence.map(|s| s.to_string()),
         comment: record.comment.map(|s| s.to_string()),
         created_at,
     })

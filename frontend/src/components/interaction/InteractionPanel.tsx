@@ -49,12 +49,6 @@ const DIRECTION_OPTIONS = [
   { value: "bidirectional", label: "Bidirectional" },
 ];
 
-const CONFIDENCE_OPTIONS = [
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
 interface InteractionPanelProps {
   observation: {
     uri: string;
@@ -82,14 +76,10 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
   const [taxonSuggestions, setTaxonSuggestions] = useState<TaxaResult[]>([]);
   const [interactionType, setInteractionType] = useState("predation");
   const [direction, setDirection] = useState<"AtoB" | "BtoA" | "bidirectional">("AtoB");
-  const [confidence, setConfidence] = useState<"low" | "medium" | "high">("medium");
   const [comment, setComment] = useState("");
 
   const toDirection = (v: string): "AtoB" | "BtoA" | "bidirectional" =>
     v === "AtoB" || v === "BtoA" || v === "bidirectional" ? v : "AtoB";
-
-  const toConfidence = (v: string): "low" | "medium" | "high" =>
-    v === "low" || v === "medium" || v === "high" ? v : "medium";
 
   useEffect(() => {
     loadInteractions();
@@ -150,7 +140,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
         },
         interactionType,
         direction,
-        confidence,
         ...(trimmedComment ? { comment: trimmedComment } : {}),
       });
 
@@ -161,7 +150,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
       setComment("");
       setInteractionType("predation");
       setDirection("AtoB");
-      setConfidence("medium");
 
       // Reload interactions
       await loadInteractions();
@@ -253,14 +241,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
                     interaction.subject_b_taxon_name || "Subject B",
                   )}
                 </Typography>
-                {interaction.confidence && (
-                  <Chip
-                    label={interaction.confidence}
-                    size="small"
-                    variant="outlined"
-                    sx={{ textTransform: "capitalize" }}
-                  />
-                )}
               </Stack>
               {interaction.comment && (
                 <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -420,22 +400,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
                 onChange={(e) => setDirection(toDirection(e.target.value))}
               >
                 {DIRECTION_OPTIONS.map((opt) => (
-                  <MenuItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
-            {/* Confidence */}
-            <FormControl size="small" fullWidth>
-              <InputLabel>Confidence</InputLabel>
-              <Select
-                value={confidence}
-                label="Confidence"
-                onChange={(e) => setConfidence(toConfidence(e.target.value))}
-              >
-                {CONFIDENCE_OPTIONS.map((opt) => (
                   <MenuItem key={opt.value} value={opt.value}>
                     {opt.label}
                   </MenuItem>

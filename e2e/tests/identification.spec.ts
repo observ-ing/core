@@ -54,7 +54,6 @@ authTest.describe("Identification - Logged In", () => {
         timeout: 10000,
       });
       await authExpect(page.getByLabel("Comment (optional)")).toBeVisible();
-      await authExpect(muiSelect(page, "Confidence")).toBeVisible();
     },
   );
 

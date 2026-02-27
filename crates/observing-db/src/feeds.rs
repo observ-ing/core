@@ -183,7 +183,7 @@ pub async fn get_profile_feed(
                     uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id, identification_remarks,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1 AND date_identified < ($3::text)::timestamptz
                 ORDER BY date_identified DESC
@@ -203,7 +203,7 @@ pub async fn get_profile_feed(
                     uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id, identification_remarks,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1
                 ORDER BY date_identified DESC

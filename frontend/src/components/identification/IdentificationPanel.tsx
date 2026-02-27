@@ -1,17 +1,5 @@
 import { useState, type FormEvent } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Stack,
-  Paper,
-  Divider,
-} from "@mui/material";
+import { Box, Typography, Button, TextField, Stack, Paper, Divider } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
@@ -19,8 +7,6 @@ import { submitIdentification } from "../../services/api";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
-
-type ConfidenceLevel = "low" | "medium" | "high";
 
 interface IdentificationPanelProps {
   observation: {
@@ -45,7 +31,6 @@ export function IdentificationPanel({
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
   const [comment, setComment] = useState("");
-  const [confidence, setConfidence] = useState<ConfidenceLevel>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
 
@@ -63,7 +48,6 @@ export function IdentificationPanel({
         subjectIndex,
         scientificName: currentId,
         isAgreement: true,
-        confidence: "high",
       });
       dispatch(
         addToast({
@@ -104,7 +88,6 @@ export function IdentificationPanel({
         subjectIndex: targetSubjectIndex,
         scientificName: taxonName.trim(),
         ...(trimmedComment ? { comment: trimmedComment } : {}),
-        confidence,
         isAgreement: false,
       });
       const message = identifyingNewOrganism
@@ -127,9 +110,6 @@ export function IdentificationPanel({
       setIsSubmitting(false);
     }
   };
-
-  const toConfidence = (v: string): ConfidenceLevel =>
-    v === "low" || v === "medium" || v === "high" ? v : "medium";
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -196,19 +176,6 @@ export function IdentificationPanel({
             margin="normal"
             size="small"
           />
-
-          <FormControl fullWidth margin="normal" size="small">
-            <InputLabel>Confidence</InputLabel>
-            <Select
-              value={confidence}
-              label="Confidence"
-              onChange={(e) => setConfidence(toConfidence(e.target.value))}
-            >
-              <MenuItem value="high">High - I'm sure</MenuItem>
-              <MenuItem value="medium">Medium</MenuItem>
-              <MenuItem value="low">Low - Best guess</MenuItem>
-            </Select>
-          </FormControl>
 
           {identifyingNewOrganism && (
             <Paper

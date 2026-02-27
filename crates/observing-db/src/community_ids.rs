@@ -191,7 +191,6 @@ mod tests {
             order_: None,
             family: None,
             genus: None,
-            confidence: None,
         }
     }
 

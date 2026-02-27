@@ -4,7 +4,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_db::types::{Confidence, InteractionDirection};
+use observing_db::types::InteractionDirection;
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::identification::Taxon;
 use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionSubject};
@@ -56,8 +56,6 @@ pub struct CreateInteractionRequest {
     interaction_type: String,
     #[ts(optional, as = "Option<InteractionDirection>")]
     direction: Option<String>,
-    #[ts(optional, as = "Option<Confidence>")]
-    confidence: Option<String>,
     #[ts(optional)]
     comment: Option<String>,
 }
@@ -121,7 +119,6 @@ pub async fn create_interaction(
         .interaction_type(&body.interaction_type)
         .direction(direction)
         .created_at(Datetime::now())
-        .maybe_confidence(body.confidence.as_deref().map(Into::into))
         .maybe_comment(body.comment.as_deref().map(Into::into))
         .build();
 

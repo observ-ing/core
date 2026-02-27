@@ -16,10 +16,6 @@ pub struct Identification<'a> {
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
     pub comment: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The identifier's confidence level in this identification.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub confidence: std::option::Option<jacquard_common::CowStr<'a>>,
     /// Timestamp when this identification was created (Darwin Core dwc:dateIdentified).
     pub created_at: jacquard_common::types::string::Datetime,
     /// If true, this identification agrees with the current community ID rather than proposing a new one.
@@ -103,7 +99,6 @@ pub struct IdentificationBuilder<'a, S: identification_state::State> {
     _phantom_state: ::core::marker::PhantomData<fn() -> S>,
     __unsafe_private_named: (
         ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
         ::core::option::Option<jacquard_common::types::string::Datetime>,
         ::core::option::Option<bool>,
         ::core::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
@@ -126,7 +121,7 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
     pub fn new() -> Self {
         IdentificationBuilder {
             _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None, None, None, None, None),
+            __unsafe_private_named: (None, None, None, None, None, None, None),
             _phantom: ::core::marker::PhantomData,
         }
     }
@@ -145,19 +140,6 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
-    /// Set the `confidence` field (optional)
-    pub fn confidence(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.1 = value.into();
-        self
-    }
-    /// Set the `confidence` field to an Option value (optional)
-    pub fn maybe_confidence(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.1 = value;
-        self
-    }
-}
-
 impl<'a, S> IdentificationBuilder<'a, S>
 where
     S: identification_state::State,
@@ -168,7 +150,7 @@ where
         mut self,
         value: impl Into<jacquard_common::types::string::Datetime>,
     ) -> IdentificationBuilder<'a, identification_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
         IdentificationBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -180,12 +162,12 @@ where
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `isAgreement` field (optional)
     pub fn is_agreement(mut self, value: impl Into<Option<bool>>) -> Self {
-        self.__unsafe_private_named.3 = value.into();
+        self.__unsafe_private_named.2 = value.into();
         self
     }
     /// Set the `isAgreement` field to an Option value (optional)
     pub fn maybe_is_agreement(mut self, value: Option<bool>) -> Self {
-        self.__unsafe_private_named.3 = value;
+        self.__unsafe_private_named.2 = value;
         self
     }
 }
@@ -200,7 +182,7 @@ where
         mut self,
         value: impl Into<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
     ) -> IdentificationBuilder<'a, identification_state::SetSubject<S>> {
-        self.__unsafe_private_named.4 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
         IdentificationBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -212,12 +194,12 @@ where
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `subjectIndex` field (optional)
     pub fn subject_index(mut self, value: impl Into<Option<i64>>) -> Self {
-        self.__unsafe_private_named.5 = value.into();
+        self.__unsafe_private_named.4 = value.into();
         self
     }
     /// Set the `subjectIndex` field to an Option value (optional)
     pub fn maybe_subject_index(mut self, value: Option<i64>) -> Self {
-        self.__unsafe_private_named.5 = value;
+        self.__unsafe_private_named.4 = value;
         self
     }
 }
@@ -232,7 +214,7 @@ where
         mut self,
         value: impl Into<crate::org_rwell::test::identification::Taxon<'a>>,
     ) -> IdentificationBuilder<'a, identification_state::SetTaxon<S>> {
-        self.__unsafe_private_named.6 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.5 = ::core::option::Option::Some(value.into());
         IdentificationBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -244,12 +226,12 @@ where
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonId` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.7 = value.into();
+        self.__unsafe_private_named.6 = value.into();
         self
     }
     /// Set the `taxonId` field to an Option value (optional)
     pub fn maybe_taxon_id(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.7 = value;
+        self.__unsafe_private_named.6 = value;
         self
     }
 }
@@ -265,13 +247,12 @@ where
     pub fn build(self) -> Identification<'a> {
         Identification {
             comment: self.__unsafe_private_named.0,
-            confidence: self.__unsafe_private_named.1,
-            created_at: self.__unsafe_private_named.2.unwrap(),
-            is_agreement: self.__unsafe_private_named.3,
-            subject: self.__unsafe_private_named.4.unwrap(),
-            subject_index: self.__unsafe_private_named.5,
-            taxon: self.__unsafe_private_named.6.unwrap(),
-            taxon_id: self.__unsafe_private_named.7,
+            created_at: self.__unsafe_private_named.1.unwrap(),
+            is_agreement: self.__unsafe_private_named.2,
+            subject: self.__unsafe_private_named.3.unwrap(),
+            subject_index: self.__unsafe_private_named.4,
+            taxon: self.__unsafe_private_named.5.unwrap(),
+            taxon_id: self.__unsafe_private_named.6,
             extra_data: Default::default(),
         }
     }
@@ -285,13 +266,12 @@ where
     ) -> Identification<'a> {
         Identification {
             comment: self.__unsafe_private_named.0,
-            confidence: self.__unsafe_private_named.1,
-            created_at: self.__unsafe_private_named.2.unwrap(),
-            is_agreement: self.__unsafe_private_named.3,
-            subject: self.__unsafe_private_named.4.unwrap(),
-            subject_index: self.__unsafe_private_named.5,
-            taxon: self.__unsafe_private_named.6.unwrap(),
-            taxon_id: self.__unsafe_private_named.7,
+            created_at: self.__unsafe_private_named.1.unwrap(),
+            is_agreement: self.__unsafe_private_named.2,
+            subject: self.__unsafe_private_named.3.unwrap(),
+            subject_index: self.__unsafe_private_named.4,
+            taxon: self.__unsafe_private_named.5.unwrap(),
+            taxon_id: self.__unsafe_private_named.6,
             extra_data: Some(extra_data),
         }
     }
@@ -453,27 +433,6 @@ fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::L
                                     default: None,
                                     min_length: None,
                                     max_length: Some(3000usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "confidence",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "The identifier's confidence level in this identification.",
-                                        ),
-                                    ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
                                     min_graphemes: None,
                                     max_graphemes: None,
                                     r#enum: None,

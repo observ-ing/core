@@ -13,9 +13,9 @@ pub async fn upsert(
             subject_a_taxon_name, subject_a_kingdom,
             subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
             subject_b_taxon_name, subject_b_kingdom,
-            interaction_type, direction, confidence, comment, created_at, indexed_at
+            interaction_type, direction, comment, created_at, indexed_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
         ON CONFLICT (uri) DO UPDATE SET
             cid = EXCLUDED.cid,
             subject_a_occurrence_uri = EXCLUDED.subject_a_occurrence_uri,
@@ -30,7 +30,6 @@ pub async fn upsert(
             subject_b_kingdom = EXCLUDED.subject_b_kingdom,
             interaction_type = EXCLUDED.interaction_type,
             direction = EXCLUDED.direction,
-            confidence = EXCLUDED.confidence,
             comment = EXCLUDED.comment,
             indexed_at = NOW()
         "#,
@@ -49,7 +48,6 @@ pub async fn upsert(
         p.subject_b_kingdom as _,
         p.interaction_type,
         p.direction,
-        p.confidence as _,
         p.comment as _,
         p.created_at,
     )
@@ -80,7 +78,7 @@ pub async fn get_for_occurrence(
             subject_a_taxon_name, subject_a_kingdom,
             subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
             subject_b_taxon_name, subject_b_kingdom,
-            interaction_type, direction, confidence, comment, created_at, indexed_at
+            interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
         WHERE subject_a_occurrence_uri = $1 OR subject_b_occurrence_uri = $1
         ORDER BY created_at DESC
@@ -106,7 +104,7 @@ pub async fn get_by_type(
             subject_a_taxon_name, subject_a_kingdom,
             subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
             subject_b_taxon_name, subject_b_kingdom,
-            interaction_type, direction, confidence, comment, created_at, indexed_at
+            interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
         WHERE interaction_type = $1
         ORDER BY created_at DESC
@@ -133,7 +131,7 @@ pub async fn get(
             subject_a_taxon_name, subject_a_kingdom,
             subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
             subject_b_taxon_name, subject_b_kingdom,
-            interaction_type, direction, confidence, comment, created_at, indexed_at
+            interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
         WHERE uri = $1
         "#,

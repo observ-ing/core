@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did,\n            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,\n            subject_a_taxon_name, subject_a_kingdom,\n            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,\n            subject_b_taxon_name, subject_b_kingdom,\n            interaction_type, direction, confidence, comment, created_at, indexed_at\n        FROM interactions\n        WHERE interaction_type = $1\n        ORDER BY created_at DESC\n        LIMIT $2\n        ",
+  "query": "\n        SELECT\n            uri, cid, did,\n            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,\n            subject_a_taxon_name, subject_a_kingdom,\n            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,\n            subject_b_taxon_name, subject_b_kingdom,\n            interaction_type, direction, comment, created_at, indexed_at\n        FROM interactions\n        WHERE subject_a_occurrence_uri = $1 OR subject_b_occurrence_uri = $1\n        ORDER BY created_at DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -80,29 +80,23 @@
       },
       {
         "ordinal": 15,
-        "name": "confidence",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 16,
         "name": "comment",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "indexed_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -122,10 +116,9 @@
       false,
       false,
       true,
-      true,
       false,
       true
     ]
   },
-  "hash": "b3c10468fc1a593d72e79b2656a877d7ec603aff9c1c797ca13fef27a999adc6"
+  "hash": "2ba823840d3da198b2218f381a2684181a440a23fb9eafbcb81f619063d9fd39"
 }
