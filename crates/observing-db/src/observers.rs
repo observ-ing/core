@@ -143,11 +143,13 @@ pub async fn get_for_occurrences(
 
     let mut map: HashMap<String, Vec<ObserverRow>> = HashMap::new();
     for row in rows {
-        map.entry(row.occurrence_uri).or_default().push(ObserverRow {
-            did: row.did,
-            role: row.role,
-            added_at: row.added_at,
-        });
+        map.entry(row.occurrence_uri)
+            .or_default()
+            .push(ObserverRow {
+                did: row.did,
+                role: row.role,
+                added_at: row.added_at,
+            });
     }
     Ok(map)
 }

@@ -238,7 +238,14 @@ pub async fn enrich_occurrences(
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
 
     // Stage 1: Batch-fetch all DB data concurrently
-    let (like_counts, viewer_likes, observers_by_uri, subjects_by_uri, community_ids, identifications_by_uri) = tokio::join!(
+    let (
+        like_counts,
+        viewer_likes,
+        observers_by_uri,
+        subjects_by_uri,
+        community_ids,
+        identifications_by_uri,
+    ) = tokio::join!(
         async {
             observing_db::likes::get_counts_for_occurrences(pool, &uris)
                 .await
