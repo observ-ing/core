@@ -123,7 +123,8 @@ pub async fn get_for_subjects_batch(
         return Ok(HashMap::new());
     }
 
-    let rows: Vec<IdentificationRow> = sqlx::query_as(
+    let rows = sqlx::query_as!(
+        IdentificationRow,
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
@@ -134,8 +135,8 @@ pub async fn get_for_subjects_batch(
         WHERE subject_uri = ANY($1) AND subject_index = 0
         ORDER BY subject_uri, date_identified DESC
         "#,
+        uris,
     )
-    .bind(uris)
     .fetch_all(executor)
     .await?;
 
@@ -179,28 +180,20 @@ pub async fn get_subjects_for_occurrences(
         return Ok(HashMap::new());
     }
 
-    #[derive(sqlx::FromRow)]
-    struct Row {
-        subject_uri: String,
-        subject_index: i32,
-        identification_count: i64,
-        latest_identification: Option<chrono::DateTime<chrono::Utc>>,
-    }
-
-    let rows: Vec<Row> = sqlx::query_as(
+    let rows = sqlx::query!(
         r#"
         SELECT
             subject_uri,
             subject_index,
-            COUNT(*)::bigint as identification_count,
+            COUNT(*) as "identification_count!",
             MAX(date_identified) as latest_identification
         FROM identifications
         WHERE subject_uri = ANY($1)
         GROUP BY subject_uri, subject_index
         ORDER BY subject_uri, subject_index
         "#,
+        uris,
     )
-    .bind(uris)
     .fetch_all(executor)
     .await?;
 
@@ -246,22 +239,16 @@ pub async fn get_community_ids_for_occurrences(
         return Ok(HashMap::new());
     }
 
-    #[derive(sqlx::FromRow)]
-    struct Row {
-        occurrence_uri: String,
-        scientific_name: Option<String>,
-    }
-
-    let rows: Vec<Row> = sqlx::query_as(
+    let rows = sqlx::query!(
         r#"
         SELECT DISTINCT ON (occurrence_uri)
-            occurrence_uri, scientific_name
+            occurrence_uri as "occurrence_uri!", scientific_name
         FROM community_ids
         WHERE occurrence_uri = ANY($1) AND subject_index = 0
         ORDER BY occurrence_uri, id_count DESC
         "#,
+        uris,
     )
-    .bind(uris)
     .fetch_all(executor)
     .await?;
 
