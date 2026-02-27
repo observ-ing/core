@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT DISTINCT ON (occurrence_uri)\n            occurrence_uri as \"occurrence_uri!\", scientific_name\n        FROM community_ids\n        WHERE occurrence_uri = ANY($1) AND subject_index = 0\n        ORDER BY occurrence_uri, id_count DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "occurrence_uri!",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "scientific_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "2729f87b5433844cda3fa1817e2b5d9ed92026493680b28f6256c98ac6aadf0e"
+}

@@ -121,23 +121,15 @@ pub async fn get_for_occurrences(
         return Ok(HashMap::new());
     }
 
-    #[derive(sqlx::FromRow)]
-    struct Row {
-        occurrence_uri: String,
-        did: String,
-        role: String,
-        added_at: Option<chrono::DateTime<chrono::Utc>>,
-    }
-
-    let rows: Vec<Row> = sqlx::query_as(
+    let rows = sqlx::query!(
         r#"
         SELECT occurrence_uri, observer_did as did, role, added_at
         FROM occurrence_observers
         WHERE occurrence_uri = ANY($1)
         ORDER BY occurrence_uri, role ASC, added_at ASC
         "#,
+        uris,
     )
-    .bind(uris)
     .fetch_all(executor)
     .await?;
 
