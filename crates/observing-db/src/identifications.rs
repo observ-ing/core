@@ -1,5 +1,6 @@
 use crate::types::{IdentificationRow, SubjectInfo, UpsertIdentificationParams};
 use sqlx::PgPool;
+use std::collections::HashMap;
 
 /// Upsert an identification record and refresh the community ID materialized view
 pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(), sqlx::Error> {
@@ -113,6 +114,39 @@ pub async fn get_for_subject(
     .await
 }
 
+/// Get identifications for subject_index=0 across multiple occurrences (batch)
+pub async fn get_for_subjects_batch(
+    executor: impl sqlx::PgExecutor<'_>,
+    uris: &[String],
+) -> Result<HashMap<String, Vec<IdentificationRow>>, sqlx::Error> {
+    if uris.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    let rows: Vec<IdentificationRow> = sqlx::query_as(
+        r#"
+        SELECT
+            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+            taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+            identification_verification_status, type_status, is_agreement, date_identified,
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+        FROM identifications
+        WHERE subject_uri = ANY($1) AND subject_index = 0
+        ORDER BY subject_uri, date_identified DESC
+        "#,
+    )
+    .bind(uris)
+    .fetch_all(executor)
+    .await?;
+
+    let mut map: HashMap<String, Vec<IdentificationRow>> = HashMap::new();
+    for row in rows {
+        let key = row.subject_uri.clone();
+        map.entry(key).or_default().push(row);
+    }
+    Ok(map)
+}
+
 /// Get subject info (aggregated) for an occurrence
 pub async fn get_subjects(
     executor: impl sqlx::PgExecutor<'_>,
@@ -136,6 +170,51 @@ pub async fn get_subjects(
     .await
 }
 
+/// Get subject info (aggregated) for multiple occurrences (batch)
+pub async fn get_subjects_for_occurrences(
+    executor: impl sqlx::PgExecutor<'_>,
+    uris: &[String],
+) -> Result<HashMap<String, Vec<SubjectInfo>>, sqlx::Error> {
+    if uris.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        subject_uri: String,
+        subject_index: i32,
+        identification_count: i64,
+        latest_identification: Option<chrono::DateTime<chrono::Utc>>,
+    }
+
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"
+        SELECT
+            subject_uri,
+            subject_index,
+            COUNT(*)::bigint as identification_count,
+            MAX(date_identified) as latest_identification
+        FROM identifications
+        WHERE subject_uri = ANY($1)
+        GROUP BY subject_uri, subject_index
+        ORDER BY subject_uri, subject_index
+        "#,
+    )
+    .bind(uris)
+    .fetch_all(executor)
+    .await?;
+
+    let mut map: HashMap<String, Vec<SubjectInfo>> = HashMap::new();
+    for row in rows {
+        map.entry(row.subject_uri).or_default().push(SubjectInfo {
+            subject_index: row.subject_index,
+            identification_count: row.identification_count,
+            latest_identification: row.latest_identification,
+        });
+    }
+    Ok(map)
+}
+
 /// Get the community ID (winning taxon) for an occurrence/subject
 pub async fn get_community_id(
     executor: impl sqlx::PgExecutor<'_>,
@@ -156,6 +235,40 @@ pub async fn get_community_id(
     .fetch_optional(executor)
     .await?;
     Ok(row.and_then(|r| r.scientific_name))
+}
+
+/// Get community IDs (winning taxon) for multiple occurrences at subject_index=0 (batch)
+pub async fn get_community_ids_for_occurrences(
+    executor: impl sqlx::PgExecutor<'_>,
+    uris: &[String],
+) -> Result<HashMap<String, String>, sqlx::Error> {
+    if uris.is_empty() {
+        return Ok(HashMap::new());
+    }
+
+    #[derive(sqlx::FromRow)]
+    struct Row {
+        occurrence_uri: String,
+        scientific_name: Option<String>,
+    }
+
+    let rows: Vec<Row> = sqlx::query_as(
+        r#"
+        SELECT DISTINCT ON (occurrence_uri)
+            occurrence_uri, scientific_name
+        FROM community_ids
+        WHERE occurrence_uri = ANY($1) AND subject_index = 0
+        ORDER BY occurrence_uri, id_count DESC
+        "#,
+    )
+    .bind(uris)
+    .fetch_all(executor)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .filter_map(|r| Some((r.occurrence_uri, r.scientific_name?)))
+        .collect())
 }
 
 /// Refresh the community IDs materialized view
