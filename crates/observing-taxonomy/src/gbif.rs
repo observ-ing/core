@@ -460,7 +460,8 @@ impl GbifClient {
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
-        // Get the best vernacular name: prefer English, then any preferred, then first available
+        // Get the best vernacular name: prefer English, then untagged (likely English),
+        // then any preferred, then first available
         let common_name = item
             .vernacular_name
             .clone()
@@ -469,6 +470,13 @@ impl GbifClient {
                 item.vernacular_names
                     .iter()
                     .find(|v| v.language.as_deref() == Some("eng"))
+                    .and_then(|v| v.vernacular_name.clone())
+            })
+            .or_else(|| {
+                // Try vernacular names with no language tag (GBIF often omits it for English)
+                item.vernacular_names
+                    .iter()
+                    .find(|v| v.language.is_none())
                     .and_then(|v| v.vernacular_name.clone())
             })
             .or_else(|| {
