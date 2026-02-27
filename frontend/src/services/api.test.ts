@@ -567,7 +567,6 @@ describe("api", () => {
         scientificName: "Quercus alba",
         taxonRank: "species",
         isAgreement: true,
-        confidence: "high",
       });
 
       expect(result).toEqual({ uri: "at://id", cid: "cid" });

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO identifications (\n            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n            taxon_rank, identification_remarks, taxon_id, is_agreement, date_identified,\n            vernacular_name, kingdom, phylum, class, \"order\", family, genus\n        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = $2,\n            subject_index = $6,\n            scientific_name = $7,\n            taxon_rank = COALESCE($8, identifications.taxon_rank),\n            identification_remarks = $9,\n            taxon_id = COALESCE($10, identifications.taxon_id),\n            is_agreement = $11,\n            vernacular_name = COALESCE($13, identifications.vernacular_name),\n            kingdom = COALESCE($14, identifications.kingdom),\n            phylum = COALESCE($15, identifications.phylum),\n            class = COALESCE($16, identifications.class),\n            \"order\" = COALESCE($17, identifications.\"order\"),\n            family = COALESCE($18, identifications.family),\n            genus = COALESCE($19, identifications.genus),\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Int4",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Timestamptz",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f23ff6ffe6da016121f2bd98f75a23b27fc22f0c14114970ecd4af271e4f7276"
+}

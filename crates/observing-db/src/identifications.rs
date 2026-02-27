@@ -9,8 +9,8 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_remarks, taxon_id, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order", family, genus, confidence
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
+            vernacular_name, kingdom, phylum, class, "order", family, genus
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             subject_index = $6,
@@ -26,7 +26,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
             "order" = COALESCE($17, identifications."order"),
             family = COALESCE($18, identifications.family),
             genus = COALESCE($19, identifications.genus),
-            confidence = $20,
             indexed_at = NOW()
         "#,
         p.uri,
@@ -48,7 +47,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.order as _,
         p.family as _,
         p.genus as _,
-        p.confidence as _,
     )
     .execute(pool)
     .await?;
@@ -78,7 +76,7 @@ pub async fn get_for_occurrence(
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_qualifier, taxon_id, identification_remarks,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = $1
         ORDER BY subject_index, date_identified DESC
@@ -102,7 +100,7 @@ pub async fn get_for_subject(
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_qualifier, taxon_id, identification_remarks,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = $1 AND subject_index = $2
         ORDER BY date_identified DESC
@@ -130,7 +128,7 @@ pub async fn get_for_subjects_batch(
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
             taxon_rank, identification_qualifier, taxon_id, identification_remarks,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus, confidence
+            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = ANY($1) AND subject_index = 0
         ORDER BY subject_uri, date_identified DESC

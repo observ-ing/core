@@ -30,7 +30,6 @@ export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
 export type { InteractionSubjectRequest } from "../bindings/InteractionSubjectRequest";
 export type { CreateInteractionRequest } from "../bindings/CreateInteractionRequest";
 export type { ObserverRole } from "../bindings/ObserverRole";
-export type { Confidence } from "../bindings/Confidence";
 export type { InteractionDirection } from "../bindings/InteractionDirection";
 
 // ============================================================================

@@ -42,12 +42,6 @@
             "description": "If true, this identification agrees with the current community ID rather than proposing a new one.",
             "default": false
           },
-          "confidence": {
-            "type": "string",
-            "description": "The identifier's confidence level in this identification.",
-            "enum": ["low", "medium", "high"],
-            "default": "medium"
-          },
           "createdAt": {
             "type": "string",
             "format": "datetime",

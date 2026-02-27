@@ -307,7 +307,6 @@ export async function submitIdentification(data: {
   taxonRank?: string;
   comment?: string;
   isAgreement?: boolean;
-  confidence?: "low" | "medium" | "high";
 }): Promise<{ uri: string; cid: string }> {
   const response = await fetch(`${API_BASE}/api/identifications`, {
     method: "POST",
@@ -422,7 +421,6 @@ export interface InteractionResponse {
   subject_b_kingdom: string | null;
   interaction_type: string;
   direction: string;
-  confidence: string | null;
   comment: string | null;
   created_at: string;
   creator?: {
@@ -450,7 +448,6 @@ export async function submitInteraction(data: {
   };
   interactionType: string;
   direction: "AtoB" | "BtoA" | "bidirectional";
-  confidence?: "low" | "medium" | "high";
   comment?: string;
 }): Promise<{ uri: string; cid: string }> {
   const response = await fetch(`${API_BASE}/api/interactions`, {

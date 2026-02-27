@@ -14,17 +14,6 @@ pub enum ObserverRole {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "bindings/")]
-pub enum Confidence {
-    #[serde(rename = "low")]
-    Low,
-    #[serde(rename = "medium")]
-    Medium,
-    #[serde(rename = "high")]
-    High,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "bindings/")]
 pub enum InteractionDirection {
     AtoB,
     BtoA,
@@ -121,8 +110,6 @@ pub struct IdentificationRow {
     pub family: Option<String>,
     #[ts(optional)]
     pub genus: Option<String>,
-    #[ts(optional, as = "Option<Confidence>")]
-    pub confidence: Option<String>,
 }
 
 /// Comment row returned from SELECT queries
@@ -184,8 +171,6 @@ pub struct InteractionRow {
     pub interaction_type: String,
     #[ts(as = "InteractionDirection")]
     pub direction: String,
-    #[ts(optional, as = "Option<Confidence>")]
-    pub confidence: Option<String>,
     #[ts(optional)]
     pub comment: Option<String>,
     pub created_at: DateTime<Utc>,
@@ -286,7 +271,6 @@ pub struct UpsertIdentificationParams {
     pub order: Option<String>,
     pub family: Option<String>,
     pub genus: Option<String>,
-    pub confidence: Option<String>,
 }
 
 /// Parameters for upserting a comment
@@ -321,7 +305,6 @@ pub struct UpsertInteractionParams {
     pub subject_b_kingdom: Option<String>,
     pub interaction_type: String,
     pub direction: String,
-    pub confidence: Option<String>,
     pub comment: Option<String>,
     pub created_at: DateTime<Utc>,
 }
