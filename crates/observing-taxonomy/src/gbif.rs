@@ -764,9 +764,6 @@ mod tests {
             ],
         );
         let result = client.search_result_to_taxon(&item);
-        assert_eq!(
-            result.common_name.as_deref(),
-            Some("Powdery Mildew Fungi")
-        );
+        assert_eq!(result.common_name.as_deref(), Some("Powdery Mildew Fungi"));
     }
 }
