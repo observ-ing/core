@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 import { getTheme } from "./theme";
@@ -46,10 +46,11 @@ function AppContent() {
     return () => mediaQuery.removeEventListener("change", handleChange);
   }, [dispatch]);
 
-  const showLanding = !user && !isAuthLoading;
+  const location = useLocation();
+  const showLanding = !user && !isAuthLoading && location.pathname === "/";
 
   return (
-    <BrowserRouter>
+    <>
       {!showLanding && (
         <Alert
           severity="warning"
@@ -98,7 +99,7 @@ function AppContent() {
       <UploadModal />
       <DeleteConfirmDialog />
       <ToastContainer />
-    </BrowserRouter>
+    </>
   );
 }
 
@@ -109,7 +110,9 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <AppContent />
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
     </ThemeProvider>
   );
 }

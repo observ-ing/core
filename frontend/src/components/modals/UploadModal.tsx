@@ -39,13 +39,6 @@ interface ImagePreview {
   preview: string;
 }
 
-const QUICK_SPECIES = [
-  { name: "Eschscholzia californica", label: "California Poppy" },
-  { name: "Quercus agrifolia", label: "Coast Live Oak" },
-  { name: "Columba livia", label: "Rock Dove" },
-  { name: "Sciurus griseus", label: "Western Gray Squirrel" },
-];
-
 const LICENSE_OPTIONS = [
   { value: "CC0-1.0", label: "CC0 (Public Domain)" },
   { value: "CC-BY-4.0", label: "CC BY (Attribution)" },
@@ -74,6 +67,7 @@ export function UploadModal() {
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
+  const [searchingTaxa, setSearchingTaxa] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -273,19 +267,17 @@ export function UploadModal() {
   const handleSpeciesSearch = useCallback(async (value: string) => {
     latestSpeciesQuery.current = value;
     if (value.length >= 2) {
+      setSearchingTaxa(true);
       const results = await searchTaxa(value);
       if (latestSpeciesQuery.current === value) {
         setSuggestions(results.slice(0, 5));
+        setSearchingTaxa(false);
       }
     } else {
       setSuggestions([]);
+      setSearchingTaxa(false);
     }
   }, []);
-
-  const handleQuickSpecies = (name: string) => {
-    setSpecies(name);
-    setSuggestions([]);
-  };
 
   // Poll for observation to appear in database after AT Protocol submission
   const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
@@ -438,6 +430,7 @@ export function UploadModal() {
         <Autocomplete
           freeSolo
           options={suggestions}
+          loading={searchingTaxa}
           getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
           inputValue={species}
           onInputChange={(_, value) => {
@@ -462,6 +455,15 @@ export function UploadModal() {
                 label="Species (optional)"
                 placeholder="e.g. Eschscholzia californica - leave blank if unknown"
                 margin="normal"
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {searchingTaxa && <CircularProgress color="inherit" size={20} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
               />
             );
           }}
@@ -529,25 +531,6 @@ export function UploadModal() {
             );
           }}
         />
-
-        <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
-          {QUICK_SPECIES.map((s) => (
-            <Chip
-              key={s.name}
-              label={s.label}
-              size="small"
-              onClick={() => handleQuickSpecies(s.name)}
-              sx={{
-                cursor: "pointer",
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: "background.paper",
-                },
-              }}
-              variant="outlined"
-            />
-          ))}
-        </Stack>
 
         <TextField
           fullWidth
