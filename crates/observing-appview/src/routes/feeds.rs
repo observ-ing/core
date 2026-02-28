@@ -96,9 +96,8 @@ pub async fn get_home(
     let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
     let limit = params.limit.unwrap_or(20).min(100);
 
-    // Get followed DIDs
     let followed_dids = state.resolver.get_follows(&viewer).await;
-    let total_follows = followed_dids.len();
+    let (followed_dids, total_follows) = home_feed_dids(&viewer, followed_dids);
 
     let options = HomeFeedOptions {
         limit: Some(limit),
@@ -136,4 +135,50 @@ pub async fn get_home(
             "totalFollows": total_follows,
         }
     })))
+}
+
+/// Build the list of DIDs whose observations should appear in the home feed.
+/// Always includes the viewer's own DID alongside their followed DIDs.
+/// Returns (dids, total_follows) where total_follows excludes the viewer.
+fn home_feed_dids(viewer: &str, mut followed_dids: Vec<String>) -> (Vec<String>, usize) {
+    let total_follows = followed_dids.len();
+    if !followed_dids.contains(&viewer.to_string()) {
+        followed_dids.push(viewer.to_string());
+    }
+    (followed_dids, total_follows)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_home_feed_dids_includes_viewer() {
+        let (dids, count) = home_feed_dids("did:plc:viewer", vec!["did:plc:friend".into()]);
+        assert!(dids.contains(&"did:plc:viewer".to_string()));
+        assert!(dids.contains(&"did:plc:friend".to_string()));
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_home_feed_dids_no_duplicate_if_viewer_follows_self() {
+        let (dids, _) = home_feed_dids("did:plc:viewer", vec!["did:plc:viewer".into()]);
+        assert_eq!(dids.len(), 1);
+    }
+
+    #[test]
+    fn test_home_feed_dids_empty_follows() {
+        let (dids, count) = home_feed_dids("did:plc:viewer", vec![]);
+        assert_eq!(dids, vec!["did:plc:viewer".to_string()]);
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn test_home_feed_dids_total_follows_excludes_viewer() {
+        let (_, count) = home_feed_dids(
+            "did:plc:viewer",
+            vec!["did:plc:a".into(), "did:plc:b".into()],
+        );
+        assert_eq!(count, 2);
+    }
 }

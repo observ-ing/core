@@ -4,7 +4,6 @@ use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_db::types::Confidence;
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
@@ -53,8 +52,6 @@ pub struct CreateIdentificationRequest {
     comment: Option<String>,
     #[ts(optional)]
     is_agreement: Option<bool>,
-    #[ts(optional, as = "Option<Confidence>")]
-    confidence: Option<String>,
 }
 
 pub async fn create_identification(
@@ -130,7 +127,6 @@ pub async fn create_identification(
         .subject_index(body.subject_index.map(|i| i as i64))
         .is_agreement(body.is_agreement.unwrap_or(false))
         .maybe_comment(body.comment.as_deref().map(Into::into))
-        .maybe_confidence(body.confidence.as_deref().map(Into::into))
         .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
         .build();
 

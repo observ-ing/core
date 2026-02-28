@@ -237,44 +237,86 @@ pub async fn enrich_occurrences(
 
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
 
-    // Stage 1: Fetch like data
-    let like_counts = observing_db::likes::get_counts_for_occurrences(pool, &uris)
-        .await
-        .unwrap_or_default();
+    // Stage 1: Batch-fetch all DB data concurrently
+    let (
+        like_counts,
+        viewer_likes,
+        observers_by_uri,
+        subjects_by_uri,
+        community_ids,
+        identifications_by_uri,
+    ) = tokio::join!(
+        async {
+            observing_db::likes::get_counts_for_occurrences(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
+        async {
+            if let Some(did) = viewer_did {
+                observing_db::likes::get_user_like_statuses(pool, &uris, did)
+                    .await
+                    .unwrap_or_default()
+            } else {
+                HashSet::new()
+            }
+        },
+        async {
+            observing_db::observers::get_for_occurrences(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
+        async {
+            observing_db::identifications::get_subjects_for_occurrences(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
+        async {
+            observing_db::identifications::get_community_ids_for_occurrences(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
+        async {
+            observing_db::identifications::get_for_subjects_batch(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
+    );
 
-    let viewer_likes: HashSet<String> = if let Some(did) = viewer_did {
-        observing_db::likes::get_user_like_statuses(pool, &uris, did)
-            .await
-            .unwrap_or_default()
-    } else {
-        HashSet::new()
-    };
-
-    // Stage 2: Fetch observers for each occurrence
-    let mut observers_by_uri: HashMap<String, Vec<observing_db::types::ObserverRow>> =
-        HashMap::new();
-    for row in rows {
-        if let Ok(observers) = observing_db::observers::get_for_occurrence(pool, &row.uri).await {
-            observers_by_uri.insert(row.uri.clone(), observers);
-        }
-    }
-
-    // Stage 3: Batch profile resolution
+    // Stage 2: Batch profile resolution (needs observer DIDs from stage 1)
     let mut all_dids: HashSet<String> = rows.iter().map(|r| r.did.clone()).collect();
     all_dids.extend(observers_by_uri.values().flatten().map(|o| o.did.clone()));
     let dids_vec: Vec<String> = all_dids.into_iter().collect();
     let profiles = resolver.get_profiles(&dids_vec).await;
 
-    // Build responses
+    // Stage 3: Resolve taxonomy for all occurrences (HTTP fallbacks run in parallel)
+    let taxonomy_futures: Vec<_> = rows
+        .iter()
+        .map(|row| {
+            let community_id = community_ids.get(&row.uri).cloned();
+            let identifications = identifications_by_uri
+                .get(&row.uri)
+                .cloned()
+                .unwrap_or_default();
+            let kingdom = row.kingdom.clone();
+            async move {
+                resolve_effective_taxonomy(
+                    taxonomy,
+                    community_id.as_deref(),
+                    &identifications,
+                    kingdom.as_deref(),
+                )
+                .await
+            }
+        })
+        .collect();
+    let taxonomies: Vec<Option<EffectiveTaxonomy>> =
+        futures::future::join_all(taxonomy_futures).await;
+
+    // Stage 4: Build responses (pure data assembly, no I/O)
     let mut results = Vec::with_capacity(rows.len());
 
-    for row in rows {
-        // Stage 4: Get subjects
-        let subject_data = observing_db::identifications::get_subjects(pool, &row.uri)
-            .await
-            .unwrap_or_default();
-
-        // Ensure subject 0 is present
+    for (i, row) in rows.iter().enumerate() {
+        let subject_data = subjects_by_uri.get(&row.uri).cloned().unwrap_or_default();
         let has_subject_0 = subject_data.iter().any(|s| s.subject_index == 0);
 
         let mut subjects: Vec<SubjectResponse> = Vec::new();
@@ -284,7 +326,6 @@ pub async fn enrich_occurrences(
                 identification_count: 0,
             });
         }
-
         for si in &subject_data {
             subjects.push(SubjectResponse {
                 subject_index: si.subject_index,
@@ -292,22 +333,9 @@ pub async fn enrich_occurrences(
             });
         }
 
-        // Subject 0 community ID
-        let community_id = observing_db::identifications::get_community_id(pool, &row.uri, 0)
-            .await
-            .unwrap_or(None);
+        let community_id = community_ids.get(&row.uri).cloned();
+        let effective_taxonomy = taxonomies[i].clone();
 
-        // Stage 6: Effective taxonomy
-        let effective_taxonomy = resolve_effective_taxonomy(
-            pool,
-            taxonomy,
-            &row.uri,
-            community_id.as_deref(),
-            row.kingdom.as_deref(),
-        )
-        .await;
-
-        // Stage 7: Build observer info with profiles
         let observer_rows = observers_by_uri.get(&row.uri).cloned().unwrap_or_default();
         let observer_infos: Vec<ObserverInfo> = observer_rows
             .iter()
@@ -359,21 +387,17 @@ pub async fn enrich_occurrences(
     results
 }
 
-/// Resolve effective taxonomy from community ID consensus
+/// Resolve effective taxonomy using pre-fetched data.
+/// Only makes external HTTP calls (GBIF) when the DB doesn't have taxonomy info.
 async fn resolve_effective_taxonomy(
-    pool: &PgPool,
     taxonomy: &TaxonomyClient,
-    occurrence_uri: &str,
     community_id: Option<&str>,
+    identifications: &[IdentificationRow],
     occurrence_kingdom: Option<&str>,
 ) -> Option<EffectiveTaxonomy> {
     let effective_name = community_id?;
 
     // Try to find a matching identification with taxonomy info
-    let identifications = observing_db::identifications::get_for_subject(pool, occurrence_uri, 0)
-        .await
-        .unwrap_or_default();
-
     let matching_id = identifications
         .iter()
         .find(|id| id.scientific_name == effective_name && id.kingdom.is_some());

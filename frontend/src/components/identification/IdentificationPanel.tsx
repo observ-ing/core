@@ -1,28 +1,12 @@
 import { useState, type FormEvent } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Stack,
-  Paper,
-  Divider,
-  Autocomplete,
-} from "@mui/material";
+import { Box, Typography, Button, TextField, Stack, Paper, Divider } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
 import { submitIdentification } from "../../services/api";
-import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
-import { ConservationStatus } from "../common/ConservationStatus";
+import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
-
-type ConfidenceLevel = "low" | "medium" | "high";
 
 interface IdentificationPanelProps {
   observation: {
@@ -47,10 +31,8 @@ export function IdentificationPanel({
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
   const [comment, setComment] = useState("");
-  const [confidence, setConfidence] = useState<ConfidenceLevel>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
-  const { suggestions, search: searchSpecies, clearSuggestions } = useDebouncedTaxaSearch();
 
   // Calculate the next available subject index for new organisms
   const nextSubjectIndex = existingSubjectCount;
@@ -66,9 +48,13 @@ export function IdentificationPanel({
         subjectIndex,
         scientificName: currentId,
         isAgreement: true,
-        confidence: "high",
       });
-      dispatch(addToast({ message: "Your agreement has been recorded!", type: "success" }));
+      dispatch(
+        addToast({
+          message: "Your agreement has been recorded!",
+          type: "success",
+        }),
+      );
       onSuccess?.();
     } catch (error) {
       dispatch(
@@ -102,7 +88,6 @@ export function IdentificationPanel({
         subjectIndex: targetSubjectIndex,
         scientificName: taxonName.trim(),
         ...(trimmedComment ? { comment: trimmedComment } : {}),
-        confidence,
         isAgreement: false,
       });
       const message = identifyingNewOrganism
@@ -112,7 +97,6 @@ export function IdentificationPanel({
       setShowSuggestForm(false);
       setTaxonName("");
       setComment("");
-      clearSuggestions();
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     } catch (error) {
@@ -126,9 +110,6 @@ export function IdentificationPanel({
       setIsSubmitting(false);
     }
   };
-
-  const toConfidence = (v: string): ConfidenceLevel =>
-    v === "low" || v === "medium" || v === "high" ? v : "medium";
 
   return (
     <Box sx={{ mt: 2 }}>
@@ -183,103 +164,7 @@ export function IdentificationPanel({
 
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          <Autocomplete
-            freeSolo
-            options={suggestions}
-            getOptionLabel={(option) =>
-              typeof option === "string" ? option : option.scientificName
-            }
-            inputValue={taxonName}
-            onInputChange={(_, value) => {
-              setTaxonName(value);
-              searchSpecies(value);
-            }}
-            onChange={(_, value) => {
-              if (value) {
-                const name = typeof value === "string" ? value : value.scientificName;
-                setTaxonName(name);
-                clearSuggestions();
-              }
-            }}
-            filterOptions={(x) => x}
-            size="small"
-            renderInput={(params) => {
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              const p = params as object;
-              return (
-                <TextField
-                  {...p}
-                  fullWidth
-                  label="Species Name"
-                  placeholder="Search by common or scientific name..."
-                  margin="normal"
-                />
-              );
-            }}
-            renderOption={(props, option) => {
-              const { key, ...otherProps } = props;
-              return (
-                <Box
-                  component="li"
-                  key={key}
-                  {...otherProps}
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1.5,
-                    p: 1.5,
-                  }}
-                >
-                  {option.photoUrl && (
-                    <Box
-                      component="img"
-                      src={option.photoUrl}
-                      alt=""
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 1,
-                        objectFit: "cover",
-                        flexShrink: 0,
-                      }}
-                    />
-                  )}
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                      <Typography fontWeight={600}>{option.scientificName}</Typography>
-                      {option.isSynonym && (
-                        <Typography
-                          variant="caption"
-                          sx={{
-                            bgcolor: "action.selected",
-                            px: 0.75,
-                            py: 0.25,
-                            borderRadius: 0.5,
-                            fontSize: "0.65rem",
-                          }}
-                        >
-                          synonym
-                        </Typography>
-                      )}
-                      {option.conservationStatus && (
-                        <ConservationStatus status={option.conservationStatus} size="sm" />
-                      )}
-                    </Stack>
-                    {option.isSynonym && option.acceptedName && (
-                      <Typography variant="caption" color="text.disabled">
-                        → {option.acceptedName}
-                      </Typography>
-                    )}
-                    {option.commonName && !option.isSynonym && (
-                      <Typography variant="caption" color="text.disabled">
-                        {option.commonName}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              );
-            }}
-          />
+          <TaxaAutocomplete value={taxonName} onChange={setTaxonName} size="small" />
 
           <TextField
             fullWidth
@@ -291,19 +176,6 @@ export function IdentificationPanel({
             margin="normal"
             size="small"
           />
-
-          <FormControl fullWidth margin="normal" size="small">
-            <InputLabel>Confidence</InputLabel>
-            <Select
-              value={confidence}
-              label="Confidence"
-              onChange={(e) => setConfidence(toConfidence(e.target.value))}
-            >
-              <MenuItem value="high">High - I'm sure</MenuItem>
-              <MenuItem value="medium">Medium</MenuItem>
-              <MenuItem value="low">Low - Best guess</MenuItem>
-            </Select>
-          </FormControl>
 
           {identifyingNewOrganism && (
             <Paper
@@ -342,7 +214,6 @@ export function IdentificationPanel({
               onClick={() => {
                 setShowSuggestForm(false);
                 setTaxonName("");
-                clearSuggestions();
                 setIdentifyingNewOrganism(false);
               }}
             >

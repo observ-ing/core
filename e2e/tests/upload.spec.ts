@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "../fixtures/auth";
+import { openUploadModal } from "../helpers/navigation";
 
 const FAB = 'button[aria-label="Create actions"]';
 
@@ -7,29 +8,16 @@ test.describe("Upload Modal - Logged Out", () => {
   // TC-UPLOAD-002: FAB hidden when logged out
   test("FAB button is not visible when logged out", async ({ page }) => {
     await page.goto("/");
-    await page.waitForTimeout(1000);
+    await page.locator(FAB).waitFor({ state: "hidden", timeout: 5000 });
     await expect(page.locator(FAB)).not.toBeVisible();
   });
 });
 
 authTest.describe("Upload Modal - Logged In", () => {
-  async function openUploadModal(page: any) {
-    const fab = page.locator(FAB);
-    await authExpect(fab).toBeVisible({ timeout: 5000 });
-    await fab.click();
-    const newObsAction = page.getByRole("menuitem", {
-      name: "New Observation",
-    });
-    await newObsAction.waitFor({ state: "visible", timeout: 3000 });
-    await newObsAction.click();
-    // Wait for the modal to appear (use heading, not just text)
-    await page.waitForTimeout(500);
-  }
-
   // TC-UPLOAD-010: FAB visible when logged in
   authTest("FAB button is visible when logged in", async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    await authExpect(page.locator(FAB)).toBeVisible({ timeout: 5000 });
+    await authExpect(page.locator(FAB)).toBeVisible();
   });
 
   // TC-UPLOAD-001: Open/close modal
@@ -78,9 +66,7 @@ authTest.describe("Upload Modal - Logged In", () => {
         page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
         speciesInput.pressSequentially("quercus", { delay: 50 }),
       ]);
-      await authExpect(page.locator(".MuiAutocomplete-option").first()).toBeVisible({
-        timeout: 10000,
-      });
+      await authExpect(page.locator(".MuiAutocomplete-option").first()).toBeVisible();
     },
   );
 
@@ -136,15 +122,28 @@ authTest.describe("Upload Modal - Logged In", () => {
     }
 
     // Set location via the "Use My Location" button (geolocation mocked in fixture)
-    const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
+    const useLocationBtn = page.getByRole("button", {
+      name: /Use My Location/i,
+    });
     await useLocationBtn.scrollIntoViewIfNeeded();
     await useLocationBtn.click();
-    await page.waitForTimeout(1000);
+    // Wait for location text to appear instead of fixed delay
+    await page
+      .getByText(/latitude|location|coordinates/i)
+      .first()
+      .waitFor({ state: "visible", timeout: 5000 })
+      .catch(() => {});
 
     const submitButton = page.getByRole("button", { name: /Submit/i });
     if (await submitButton.isEnabled()) {
       await submitButton.click();
-      await page.waitForTimeout(1000);
+      // Wait for the mocked API response
+      await page
+        .waitForResponse(
+          (r) => r.url().includes("/api/occurrences") && r.request().method() === "POST",
+          { timeout: 10_000 },
+        )
+        .catch(() => {});
     }
   });
 
@@ -216,17 +215,33 @@ authTest.describe("Upload Modal - Logged In", () => {
       });
 
       // Wait for the image preview to appear
-      await page.waitForTimeout(1000);
+      await page
+        .getByRole("dialog")
+        .locator("img")
+        .first()
+        .waitFor({ state: "visible", timeout: 10_000 })
+        .catch(() => {});
 
       // Set location via the "Use My Location" button (geolocation mocked in fixture)
-      const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
+      const useLocationBtn = page.getByRole("button", {
+        name: /Use My Location/i,
+      });
       await useLocationBtn.scrollIntoViewIfNeeded();
       await useLocationBtn.click();
-      await page.waitForTimeout(1000);
+      // Wait for location text to appear instead of fixed delay
+      await page
+        .getByText(/latitude|location|coordinates/i)
+        .first()
+        .waitFor({ state: "visible", timeout: 5000 })
+        .catch(() => {});
 
       const submitButton = page.getByRole("button", { name: /Submit/i });
       await submitButton.click();
-      await page.waitForTimeout(2000);
+      // Wait for the mocked API response instead of fixed delay
+      await page.waitForResponse(
+        (r) => r.url().includes("/api/occurrences") && r.request().method() === "POST",
+        { timeout: 15_000 },
+      );
 
       // The base64-encoded body should exceed the old 2MB limit
       authExpect(requestBodySize).toBeGreaterThan(2 * 1024 * 1024);

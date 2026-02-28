@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
 import {
   Box,
   Typography,
@@ -8,7 +8,6 @@ import {
   Stack,
   IconButton,
   Alert,
-  Autocomplete,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -23,9 +22,8 @@ import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
 import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
-import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { ModalOverlay } from "./ModalOverlay";
-import { ConservationStatus } from "../common/ConservationStatus";
+import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl } from "../../lib/utils";
 
@@ -34,19 +32,15 @@ interface ImagePreview {
   preview: string;
 }
 
-const QUICK_SPECIES = [
-  { name: "Eschscholzia californica", label: "California Poppy" },
-  { name: "Quercus agrifolia", label: "Coast Live Oak" },
-  { name: "Columba livia", label: "Rock Dove" },
-  { name: "Sciurus griseus", label: "Western Gray Squirrel" },
-];
-
 const LICENSE_OPTIONS = [
   { value: "CC0-1.0", label: "CC0 (Public Domain)" },
   { value: "CC-BY-4.0", label: "CC BY (Attribution)" },
   { value: "CC-BY-NC-4.0", label: "CC BY-NC (Attribution, Non-Commercial)" },
   { value: "CC-BY-SA-4.0", label: "CC BY-SA (Attribution, Share-Alike)" },
-  { value: "CC-BY-NC-SA-4.0", label: "CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)" },
+  {
+    value: "CC-BY-NC-SA-4.0",
+    label: "CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)",
+  },
 ];
 
 function toDatetimeLocal(date: Date): string {
@@ -68,7 +62,6 @@ export function UploadModal() {
   const [license, setLicense] = useState("CC-BY-4.0");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const { suggestions, search: searchSpecies, clearSuggestions } = useDebouncedTaxaSearch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -114,7 +107,6 @@ export function UploadModal() {
     setSpecies("");
     setNotes("");
     setLicense("CC-BY-4.0");
-    clearSuggestions();
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
@@ -261,11 +253,6 @@ export function UploadModal() {
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
-  };
-
-  const handleQuickSpecies = (name: string) => {
-    setSpecies(name);
-    clearSuggestions();
   };
 
   // Poll for observation to appear in database after AT Protocol submission
@@ -416,119 +403,12 @@ export function UploadModal() {
       </Typography>
 
       <form onSubmit={handleSubmit}>
-        <Autocomplete
-          freeSolo
-          options={suggestions}
-          getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
-          inputValue={species}
-          onInputChange={(_, value) => {
-            setSpecies(value);
-            searchSpecies(value);
-          }}
-          onChange={(_, value) => {
-            if (value) {
-              const name = typeof value === "string" ? value : value.scientificName;
-              setSpecies(name);
-              clearSuggestions();
-            }
-          }}
-          filterOptions={(x) => x}
-          renderInput={(params) => {
-            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- MUI Autocomplete params incompatible with exactOptionalPropertyTypes
-            const spreadParams = params as object;
-            return (
-              <TextField
-                {...spreadParams}
-                fullWidth
-                label="Species (optional)"
-                placeholder="e.g. Eschscholzia californica - leave blank if unknown"
-                margin="normal"
-              />
-            );
-          }}
-          renderOption={(props, option) => {
-            const { key, ...otherProps } = props;
-            return (
-              <Box
-                component="li"
-                key={key}
-                {...otherProps}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 1.5,
-                  p: 1.5,
-                }}
-              >
-                {option.photoUrl && (
-                  <Box
-                    component="img"
-                    src={option.photoUrl}
-                    alt=""
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 1,
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Typography fontWeight={600}>{option.scientificName}</Typography>
-                    {option.isSynonym && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          bgcolor: "action.selected",
-                          px: 0.75,
-                          py: 0.25,
-                          borderRadius: 0.5,
-                          fontSize: "0.65rem",
-                        }}
-                      >
-                        synonym
-                      </Typography>
-                    )}
-                    {option.conservationStatus && (
-                      <ConservationStatus status={option.conservationStatus} size="sm" />
-                    )}
-                  </Stack>
-                  {option.isSynonym && option.acceptedName && (
-                    <Typography variant="caption" color="text.disabled">
-                      → {option.acceptedName}
-                    </Typography>
-                  )}
-                  {option.commonName && !option.isSynonym && (
-                    <Typography variant="caption" color="text.disabled">
-                      {option.commonName}
-                    </Typography>
-                  )}
-                </Box>
-              </Box>
-            );
-          }}
+        <TaxaAutocomplete
+          value={species}
+          onChange={setSpecies}
+          label="Species (optional)"
+          placeholder="e.g. Eschscholzia californica - leave blank if unknown"
         />
-
-        <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
-          {QUICK_SPECIES.map((s) => (
-            <Chip
-              key={s.name}
-              label={s.label}
-              size="small"
-              onClick={() => handleQuickSpecies(s.name)}
-              sx={{
-                cursor: "pointer",
-                "&:hover": {
-                  borderColor: "primary.main",
-                  bgcolor: "background.paper",
-                },
-              }}
-              variant="outlined"
-            />
-          ))}
-        </Stack>
 
         <TextField
           fullWidth

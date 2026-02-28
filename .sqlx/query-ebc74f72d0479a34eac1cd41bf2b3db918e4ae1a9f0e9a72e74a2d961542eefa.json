@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id, identification_remarks,\n                    identification_verification_status, type_status, is_agreement, date_identified,\n                    vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus, confidence\n                FROM identifications\n                WHERE did = $1\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
+  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id, identification_remarks,\n            identification_verification_status, type_status, is_agreement, date_identified,\n            vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus, confidence\n        FROM identifications\n        WHERE subject_uri = ANY($1) AND subject_index = 0\n        ORDER BY subject_uri, date_identified DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -121,8 +121,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8"
+        "TextArray"
       ]
     },
     "nullable": [
@@ -151,5 +150,5 @@
       true
     ]
   },
-  "hash": "a259b12d9a070f7e1f0276bc5f36d191d1913290eb6d8eff553c299ddfafc270"
+  "hash": "ebc74f72d0479a34eac1cd41bf2b3db918e4ae1a9f0e9a72e74a2d961542eefa"
 }

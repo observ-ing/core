@@ -187,7 +187,6 @@ describe("IdentificationService", () => {
         taxonRank: "species",
         comment: "Distinctive bark pattern",
         isAgreement: true,
-        confidence: "high",
       });
 
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
@@ -206,7 +205,6 @@ describe("IdentificationService", () => {
             },
             comment: "Distinctive bark pattern",
             isAgreement: true,
-            confidence: "high",
           }),
         }),
       );
@@ -226,7 +224,6 @@ describe("IdentificationService", () => {
               taxonRank: "species", // default
             }),
             isAgreement: false, // default
-            confidence: "medium", // default
           }),
         }),
       );
@@ -248,7 +245,6 @@ describe("IdentificationService", () => {
               scientificName: "Quercus alba",
             }),
             isAgreement: true,
-            confidence: "high",
           }),
         }),
       );
@@ -283,7 +279,6 @@ describe("IdentificationService", () => {
         {
           taxonRank: "species",
           comment: "Red oak based on leaf shape",
-          confidence: "high",
         },
       );
 
@@ -295,7 +290,6 @@ describe("IdentificationService", () => {
               taxonRank: "species",
             }),
             comment: "Red oak based on leaf shape",
-            confidence: "high",
           }),
         }),
       );
@@ -377,20 +371,6 @@ describe("IdentificationService", () => {
               taxonRank: "species", // preserved from existing
             }),
             comment: "New comment", // updated
-          }),
-        }),
-      );
-    });
-
-    it("updates confidence when provided", async () => {
-      await service.update("at://did:plc:test/org.rwell.test.identification/abc123", {
-        confidence: "low",
-      });
-
-      expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          record: expect.objectContaining({
-            confidence: "low",
           }),
         }),
       );

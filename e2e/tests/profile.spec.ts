@@ -31,14 +31,15 @@ test.describe("Profile View", () => {
   // TC-PROFILE-004: Profile stats display
   test("profile page shows observation and ID counts", async ({ page }) => {
     await navigateToProfile(page);
-    await page.waitForTimeout(2000);
-    await expect(page.getByText(/Observations/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Observations/i).first()).toBeVisible();
   });
 
   // TC-PROFILE-005: Profile feed tabs
   test("profile has Observations and IDs tabs", async ({ page }) => {
     await navigateToProfile(page);
-    await expect(page.getByRole("tab", { name: /Observations/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("tab", { name: /Observations/i })).toBeVisible({
+      timeout: 10000,
+    });
     await expect(page.getByRole("tab", { name: /IDs/i })).toBeVisible();
   });
 

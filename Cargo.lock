@@ -2598,6 +2598,7 @@ dependencies = [
  "axum-extra",
  "base64",
  "chrono",
+ "futures",
  "hickory-resolver",
  "jacquard-common",
  "nominatim-client",

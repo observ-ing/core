@@ -50,7 +50,7 @@ export function ExploreFilterPanel() {
 
   // Local state for form fields
   const [taxonQuery, setTaxonQuery] = useState(filters.taxon || "");
-  const { suggestions: taxonSuggestions, search: searchTaxon, clearSuggestions: clearTaxonSuggestions } = useDebouncedTaxaSearch();
+  const { suggestions: taxonSuggestions, search: searchTaxon } = useDebouncedTaxaSearch();
   const [selectedTaxon, setSelectedTaxon] = useState<string | null>(filters.taxon || null);
 
   const [useLocation, setUseLocation] = useState(filters.lat !== undefined);

@@ -460,7 +460,8 @@ impl GbifClient {
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
-        // Get the best vernacular name: prefer English, then any preferred, then first available
+        // Get the best vernacular name: prefer English, then untagged (likely English),
+        // then any preferred, then first available
         let common_name = item
             .vernacular_name
             .clone()
@@ -469,6 +470,13 @@ impl GbifClient {
                 item.vernacular_names
                     .iter()
                     .find(|v| v.language.as_deref() == Some("eng"))
+                    .and_then(|v| v.vernacular_name.clone())
+            })
+            .or_else(|| {
+                // Try vernacular names with no language tag (GBIF often omits it for English)
+                item.vernacular_names
+                    .iter()
+                    .find(|v| v.language.is_none())
                     .and_then(|v| v.vernacular_name.clone())
             })
             .or_else(|| {
@@ -611,5 +619,151 @@ impl GbifClient {
 impl Default for GbifClient {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use gbif_api::{SearchResult, VernacularName};
+
+    fn make_search_result(
+        canonical_name: &str,
+        rank: &str,
+        vernacular_name: Option<&str>,
+        vernacular_names: Vec<VernacularName>,
+    ) -> SearchResult {
+        serde_json::from_value(serde_json::json!({
+            "canonicalName": canonical_name,
+            "rank": rank,
+            "vernacularName": vernacular_name,
+            "vernacularNames": vernacular_names.iter().map(|v| {
+                let mut m = serde_json::Map::new();
+                if let Some(ref name) = v.vernacular_name {
+                    m.insert("vernacularName".into(), serde_json::json!(name));
+                }
+                if let Some(ref lang) = v.language {
+                    m.insert("language".into(), serde_json::json!(lang));
+                }
+                if let Some(pref) = v.preferred {
+                    m.insert("preferred".into(), serde_json::json!(pref));
+                }
+                serde_json::Value::Object(m)
+            }).collect::<Vec<_>>(),
+            "kingdom": "Fungi",
+        }))
+        .unwrap()
+    }
+
+    fn vn(name: &str, language: Option<&str>, preferred: Option<bool>) -> VernacularName {
+        VernacularName {
+            vernacular_name: Some(name.to_string()),
+            language: language.map(|l| l.to_string()),
+            preferred,
+        }
+    }
+
+    #[test]
+    fn test_vernacular_prefers_top_level_field() {
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Quercus alba",
+            "SPECIES",
+            Some("White Oak"),
+            vec![vn("Chêne blanc", Some("fra"), None)],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("White Oak"));
+    }
+
+    #[test]
+    fn test_vernacular_prefers_english_tagged() {
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Quercus alba",
+            "SPECIES",
+            None,
+            vec![
+                vn("Chêne blanc", Some("fra"), None),
+                vn("White Oak", Some("eng"), None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("White Oak"));
+    }
+
+    #[test]
+    fn test_vernacular_untagged_fallback() {
+        // Reproduces the Erysiphaceae / "Powdery Mildews" case:
+        // GBIF returns the English name with no language tag
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Erysiphaceae",
+            "FAMILY",
+            None,
+            vec![
+                vn("Meldugfamilien", Some("dan"), None),
+                vn("Powdery Mildews", None, None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("Powdery Mildews"));
+    }
+
+    #[test]
+    fn test_vernacular_preferred_fallback() {
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Passer domesticus",
+            "SPECIES",
+            None,
+            vec![
+                vn("Gorrión común", Some("spa"), Some(true)),
+                vn("Moineau domestique", Some("fra"), None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("Gorrión común"));
+    }
+
+    #[test]
+    fn test_vernacular_first_available_fallback() {
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Passer domesticus",
+            "SPECIES",
+            None,
+            vec![
+                vn("Gorrión común", Some("spa"), None),
+                vn("Moineau domestique", Some("fra"), None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("Gorrión común"));
+    }
+
+    #[test]
+    fn test_vernacular_none_when_empty() {
+        let client = GbifClient::new();
+        let item = make_search_result("Erysiphaceae", "FAMILY", None, vec![]);
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name, None);
+    }
+
+    #[test]
+    fn test_vernacular_english_beats_untagged() {
+        // When both English-tagged and untagged exist, prefer the tagged one
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Erysiphaceae",
+            "FAMILY",
+            None,
+            vec![
+                vn("Powdery Mildews", None, None),
+                vn("Powdery Mildew Fungi", Some("eng"), None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("Powdery Mildew Fungi"));
     }
 }

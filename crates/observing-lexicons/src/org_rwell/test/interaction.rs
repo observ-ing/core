@@ -135,27 +135,6 @@ fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::Lexi
                             );
                             map.insert(
                                 ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "confidence",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "Confidence level in the interaction observation.",
-                                        ),
-                                    ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
                                     "createdAt",
                                 ),
                                 ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
@@ -301,10 +280,6 @@ pub struct Interaction<'a> {
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
     pub comment: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Confidence level in the interaction observation.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub confidence: std::option::Option<jacquard_common::CowStr<'a>>,
     /// Timestamp when this record was created.
     pub created_at: jacquard_common::types::string::Datetime,
     /// Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.
@@ -418,7 +393,6 @@ pub struct InteractionBuilder<'a, S: interaction_state::State> {
     _phantom_state: ::core::marker::PhantomData<fn() -> S>,
     __unsafe_private_named: (
         ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
         ::core::option::Option<jacquard_common::types::string::Datetime>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
@@ -440,7 +414,7 @@ impl<'a> InteractionBuilder<'a, interaction_state::Empty> {
     pub fn new() -> Self {
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None, None, None, None),
+            __unsafe_private_named: (None, None, None, None, None, None),
             _phantom: ::core::marker::PhantomData,
         }
     }
@@ -459,19 +433,6 @@ impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
     }
 }
 
-impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
-    /// Set the `confidence` field (optional)
-    pub fn confidence(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.1 = value.into();
-        self
-    }
-    /// Set the `confidence` field to an Option value (optional)
-    pub fn maybe_confidence(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.1 = value;
-        self
-    }
-}
-
 impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
@@ -482,7 +443,7 @@ where
         mut self,
         value: impl Into<jacquard_common::types::string::Datetime>,
     ) -> InteractionBuilder<'a, interaction_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -501,7 +462,7 @@ where
         mut self,
         value: impl Into<jacquard_common::CowStr<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetDirection<S>> {
-        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -520,7 +481,7 @@ where
         mut self,
         value: impl Into<jacquard_common::CowStr<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetInteractionType<S>> {
-        self.__unsafe_private_named.4 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -539,7 +500,7 @@ where
         mut self,
         value: impl Into<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetSubjectA<S>> {
-        self.__unsafe_private_named.5 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.4 = ::core::option::Option::Some(value.into());
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -558,7 +519,7 @@ where
         mut self,
         value: impl Into<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetSubjectB<S>> {
-        self.__unsafe_private_named.6 = ::core::option::Option::Some(value.into());
+        self.__unsafe_private_named.5 = ::core::option::Option::Some(value.into());
         InteractionBuilder {
             _phantom_state: ::core::marker::PhantomData,
             __unsafe_private_named: self.__unsafe_private_named,
@@ -580,12 +541,11 @@ where
     pub fn build(self) -> Interaction<'a> {
         Interaction {
             comment: self.__unsafe_private_named.0,
-            confidence: self.__unsafe_private_named.1,
-            created_at: self.__unsafe_private_named.2.unwrap(),
-            direction: self.__unsafe_private_named.3.unwrap(),
-            interaction_type: self.__unsafe_private_named.4.unwrap(),
-            subject_a: self.__unsafe_private_named.5.unwrap(),
-            subject_b: self.__unsafe_private_named.6.unwrap(),
+            created_at: self.__unsafe_private_named.1.unwrap(),
+            direction: self.__unsafe_private_named.2.unwrap(),
+            interaction_type: self.__unsafe_private_named.3.unwrap(),
+            subject_a: self.__unsafe_private_named.4.unwrap(),
+            subject_b: self.__unsafe_private_named.5.unwrap(),
             extra_data: Default::default(),
         }
     }
@@ -599,12 +559,11 @@ where
     ) -> Interaction<'a> {
         Interaction {
             comment: self.__unsafe_private_named.0,
-            confidence: self.__unsafe_private_named.1,
-            created_at: self.__unsafe_private_named.2.unwrap(),
-            direction: self.__unsafe_private_named.3.unwrap(),
-            interaction_type: self.__unsafe_private_named.4.unwrap(),
-            subject_a: self.__unsafe_private_named.5.unwrap(),
-            subject_b: self.__unsafe_private_named.6.unwrap(),
+            created_at: self.__unsafe_private_named.1.unwrap(),
+            direction: self.__unsafe_private_named.2.unwrap(),
+            interaction_type: self.__unsafe_private_named.3.unwrap(),
+            subject_a: self.__unsafe_private_named.4.unwrap(),
+            subject_b: self.__unsafe_private_named.5.unwrap(),
             extra_data: Some(extra_data),
         }
     }

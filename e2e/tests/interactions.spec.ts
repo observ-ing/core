@@ -52,7 +52,6 @@ authTest.describe("Interactions - Logged In", () => {
     await authExpect(page.getByLabel("Other organism (Subject B)")).toBeVisible({ timeout: 10000 });
     await authExpect(muiSelect(page, "Interaction Type")).toBeVisible();
     await authExpect(muiSelect(page, "Direction")).toBeVisible();
-    await authExpect(muiSelect(page, "Confidence")).toBeVisible();
   });
 
   // TC-INT-004: Submit interaction hits real API

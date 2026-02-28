@@ -54,7 +54,7 @@ export function FAB() {
         direction="up"
         sx={{
           position: "fixed",
-          bottom: 80,
+          bottom: 16,
           right: 16,
           zIndex: 100,
           "@media (min-width: 900px)": {

@@ -44,12 +44,6 @@
             "enum": ["AtoB", "BtoA", "bidirectional"],
             "default": "AtoB"
           },
-          "confidence": {
-            "type": "string",
-            "description": "Confidence level in the interaction observation.",
-            "enum": ["low", "medium", "high"],
-            "default": "medium"
-          },
           "comment": {
             "type": "string",
             "description": "Additional notes about the interaction.",

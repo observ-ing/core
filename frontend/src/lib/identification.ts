@@ -24,8 +24,6 @@ interface IdentificationInput {
   comment?: string | undefined;
   /** Whether this is an agreement with existing ID */
   isAgreement?: boolean | undefined;
-  /** Confidence level */
-  confidence?: ConfidenceLevel | undefined;
 }
 
 type TaxonRank =
@@ -39,21 +37,12 @@ type TaxonRank =
   | "subspecies"
   | "variety";
 
-type ConfidenceLevel = "low" | "medium" | "high";
-
-const CONFIDENCE_LEVELS: ReadonlySet<string> = new Set<ConfidenceLevel>(["low", "medium", "high"]);
-
-function isConfidenceLevel(value: string): value is ConfidenceLevel {
-  return CONFIDENCE_LEVELS.has(value);
-}
-
 interface IdentificationRecord {
   $type: string;
   subject: { uri: string; cid: string };
   taxon: { scientificName: string; taxonRank?: string };
   comment?: string;
   isAgreement?: boolean;
-  confidence?: string;
   createdAt: string;
 }
 
@@ -107,7 +96,6 @@ export class IdentificationService {
       },
       comment: input.comment,
       isAgreement: input.isAgreement || false,
-      confidence: input.confidence || "medium",
       createdAt: new Date().toISOString(),
     };
 
@@ -138,7 +126,6 @@ export class IdentificationService {
       subjectIndex,
       scientificName: currentTaxonName,
       isAgreement: true,
-      confidence: "high",
     });
   }
 
@@ -153,7 +140,6 @@ export class IdentificationService {
       subjectIndex?: number;
       taxonRank?: TaxonRank;
       comment?: string;
-      confidence?: ConfidenceLevel;
     } = {},
   ): Promise<IdentificationResult> {
     return this.identify({
@@ -164,7 +150,6 @@ export class IdentificationService {
       ...(options.taxonRank ? { taxonRank: options.taxonRank } : {}),
       ...(options.comment ? { comment: options.comment } : {}),
       isAgreement: false,
-      ...(options.confidence ? { confidence: options.confidence } : {}),
     });
   }
 
@@ -227,11 +212,6 @@ export class IdentificationService {
         ? { comment: updates.comment }
         : existingRecord.comment
           ? { comment: existingRecord.comment }
-          : {}),
-      ...(updates.confidence
-        ? { confidence: updates.confidence }
-        : existingRecord.confidence
-          ? { confidence: existingRecord.confidence }
           : {}),
     };
 
@@ -336,14 +316,6 @@ export function createIdentificationUI(
           <label for="comment-input">Comment (optional)</label>
           <textarea id="comment-input" rows="2"></textarea>
         </div>
-        <div class="form-group">
-          <label for="confidence-select">Confidence</label>
-          <select id="confidence-select">
-            <option value="high">High - I'm sure</option>
-            <option value="medium" selected>Medium</option>
-            <option value="low">Low - Best guess</option>
-          </select>
-        </div>
         <div class="form-actions">
           <button class="btn btn-cancel" data-action="cancel">Cancel</button>
           <button class="btn btn-submit" data-action="submit">Submit ID</button>
@@ -384,9 +356,8 @@ export function createIdentificationUI(
   submitBtn?.addEventListener("click", async () => {
     const taxonInput = container.querySelector<HTMLInputElement>("#taxon-input");
     const commentInput = container.querySelector<HTMLTextAreaElement>("#comment-input");
-    const confidenceSelect = container.querySelector<HTMLSelectElement>("#confidence-select");
 
-    if (!taxonInput || !commentInput || !confidenceSelect) {
+    if (!taxonInput || !commentInput) {
       return;
     }
 
@@ -399,7 +370,6 @@ export function createIdentificationUI(
       const trimmedComment = commentInput.value.trim();
       await service.suggestId(occurrence.uri, occurrence.cid, taxonInput.value.trim(), {
         ...(trimmedComment ? { comment: trimmedComment } : {}),
-        confidence: isConfidenceLevel(confidenceSelect.value) ? confidenceSelect.value : "medium",
       });
       showToast?.("Your identification has been submitted!", "success");
       suggestForm?.classList.add("hidden");
@@ -410,4 +380,4 @@ export function createIdentificationUI(
   });
 }
 
-export type { IdentificationInput, IdentificationResult, TaxonRank, ConfidenceLevel };
+export type { IdentificationInput, IdentificationResult, TaxonRank };
