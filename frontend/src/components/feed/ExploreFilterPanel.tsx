@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from "react";
+import { useState } from "react";
 import {
   Box,
   Paper,
@@ -25,8 +25,8 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { setFilters, loadInitialFeed } from "../../store/feedSlice";
-import { searchTaxa } from "../../services/api";
-import type { TaxaResult, FeedFilters } from "../../services/types";
+import type { FeedFilters } from "../../services/types";
+import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { LocationPicker } from "../map/LocationPicker";
 
 const KINGDOMS = [
@@ -50,7 +50,7 @@ export function ExploreFilterPanel() {
 
   // Local state for form fields
   const [taxonQuery, setTaxonQuery] = useState(filters.taxon || "");
-  const [taxonSuggestions, setTaxonSuggestions] = useState<TaxaResult[]>([]);
+  const { suggestions: taxonSuggestions, search: searchTaxon, clearSuggestions: clearTaxonSuggestions } = useDebouncedTaxaSearch();
   const [selectedTaxon, setSelectedTaxon] = useState<string | null>(filters.taxon || null);
 
   const [useLocation, setUseLocation] = useState(filters.lat !== undefined);
@@ -71,21 +71,6 @@ export function ExploreFilterPanel() {
   const activeFilterCount = [selectedTaxon, useLocation, kingdom, startDate, endDate].filter(
     Boolean,
   ).length;
-
-  // Taxon search handler
-  const latestTaxonQuery = useRef("");
-
-  const handleTaxonSearch = useCallback(async (query: string) => {
-    latestTaxonQuery.current = query;
-    if (query.length >= 2) {
-      const results = await searchTaxa(query);
-      if (latestTaxonQuery.current === query) {
-        setTaxonSuggestions(results.slice(0, 5));
-      }
-    } else {
-      setTaxonSuggestions([]);
-    }
-  }, []);
 
   // Apply filters
   const handleApplyFilters = () => {
@@ -168,7 +153,7 @@ export function ExploreFilterPanel() {
             inputValue={taxonQuery}
             onInputChange={(_, value) => {
               setTaxonQuery(value);
-              handleTaxonSearch(value);
+              searchTaxon(value);
             }}
             onChange={(_, value) => {
               if (value) {

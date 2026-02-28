@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, useCallback, useRef, type ChangeEvent } from "react";
+import { useState, useEffect, type FormEvent, useRef, type ChangeEvent } from "react";
 import {
   Box,
   Typography,
@@ -22,13 +22,8 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
-import {
-  submitObservation,
-  updateObservation,
-  searchTaxa,
-  fetchObservation,
-} from "../../services/api";
-import type { TaxaResult } from "../../services/types";
+import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
+import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { LocationPicker } from "../map/LocationPicker";
@@ -73,7 +68,7 @@ export function UploadModal() {
   const [license, setLicense] = useState("CC-BY-4.0");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
+  const { suggestions, search: searchSpecies, clearSuggestions } = useDebouncedTaxaSearch();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
@@ -119,7 +114,7 @@ export function UploadModal() {
     setSpecies("");
     setNotes("");
     setLicense("CC-BY-4.0");
-    setSuggestions([]);
+    clearSuggestions();
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
@@ -268,23 +263,9 @@ export function UploadModal() {
     fileInputRef.current?.click();
   };
 
-  const latestSpeciesQuery = useRef("");
-
-  const handleSpeciesSearch = useCallback(async (value: string) => {
-    latestSpeciesQuery.current = value;
-    if (value.length >= 2) {
-      const results = await searchTaxa(value);
-      if (latestSpeciesQuery.current === value) {
-        setSuggestions(results.slice(0, 5));
-      }
-    } else {
-      setSuggestions([]);
-    }
-  }, []);
-
   const handleQuickSpecies = (name: string) => {
     setSpecies(name);
-    setSuggestions([]);
+    clearSuggestions();
   };
 
   // Poll for observation to appear in database after AT Protocol submission
@@ -442,13 +423,13 @@ export function UploadModal() {
           inputValue={species}
           onInputChange={(_, value) => {
             setSpecies(value);
-            handleSpeciesSearch(value);
+            searchSpecies(value);
           }}
           onChange={(_, value) => {
             if (value) {
               const name = typeof value === "string" ? value : value.scientificName;
               setSpecies(name);
-              setSuggestions([]);
+              clearSuggestions();
             }
           }}
           filterOptions={(x) => x}

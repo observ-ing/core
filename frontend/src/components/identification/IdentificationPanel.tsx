@@ -1,4 +1,4 @@
-import { useState, type FormEvent, useCallback } from "react";
+import { useState, type FormEvent } from "react";
 import {
   Box,
   Typography,
@@ -16,8 +16,8 @@ import {
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
-import { submitIdentification, searchTaxa } from "../../services/api";
-import type { TaxaResult } from "../../services/types";
+import { submitIdentification } from "../../services/api";
+import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
@@ -50,16 +50,7 @@ export function IdentificationPanel({
   const [confidence, setConfidence] = useState<ConfidenceLevel>("medium");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
-  const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
-
-  const handleSpeciesSearch = useCallback(async (value: string) => {
-    if (value.length >= 2) {
-      const results = await searchTaxa(value);
-      setSuggestions(results.slice(0, 5));
-    } else {
-      setSuggestions([]);
-    }
-  }, []);
+  const { suggestions, search: searchSpecies, clearSuggestions } = useDebouncedTaxaSearch();
 
   // Calculate the next available subject index for new organisms
   const nextSubjectIndex = existingSubjectCount;
@@ -121,7 +112,7 @@ export function IdentificationPanel({
       setShowSuggestForm(false);
       setTaxonName("");
       setComment("");
-      setSuggestions([]);
+      clearSuggestions();
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     } catch (error) {
@@ -201,13 +192,13 @@ export function IdentificationPanel({
             inputValue={taxonName}
             onInputChange={(_, value) => {
               setTaxonName(value);
-              handleSpeciesSearch(value);
+              searchSpecies(value);
             }}
             onChange={(_, value) => {
               if (value) {
                 const name = typeof value === "string" ? value : value.scientificName;
                 setTaxonName(name);
-                setSuggestions([]);
+                clearSuggestions();
               }
             }}
             filterOptions={(x) => x}
@@ -351,7 +342,7 @@ export function IdentificationPanel({
               onClick={() => {
                 setShowSuggestForm(false);
                 setTaxonName("");
-                setSuggestions([]);
+                clearSuggestions();
                 setIdentifyingNewOrganism(false);
               }}
             >
