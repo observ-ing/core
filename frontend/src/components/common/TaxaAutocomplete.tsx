@@ -1,8 +1,10 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { Autocomplete, Box, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
+
+const DEBOUNCE_MS = 300;
 
 interface TaxaAutocompleteProps {
   value: string;
@@ -24,20 +26,30 @@ export function TaxaAutocomplete({
   const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
   const [loading, setLoading] = useState(false);
   const latestQuery = useRef("");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const handleSearch = useCallback(async (query: string) => {
+  useEffect(() => {
+    return () => clearTimeout(timerRef.current);
+  }, []);
+
+  const handleSearch = useCallback((query: string) => {
     latestQuery.current = query;
-    if (query.length >= 2) {
-      setLoading(true);
+    clearTimeout(timerRef.current);
+
+    if (query.length < 2) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    timerRef.current = setTimeout(async () => {
       const results = await searchTaxa(query);
       if (latestQuery.current === query) {
         setSuggestions(results.slice(0, 5));
         setLoading(false);
       }
-    } else {
-      setSuggestions([]);
-      setLoading(false);
-    }
+    }, DEBOUNCE_MS);
   }, []);
 
   return (
