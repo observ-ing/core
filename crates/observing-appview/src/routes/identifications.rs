@@ -15,6 +15,7 @@ use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::validation::validate_string_length;
 use at_uri_parser::AtUri;
 
 pub async fn get_for_occurrence(
@@ -63,11 +64,7 @@ pub async fn create_identification(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.scientific_name.is_empty() || body.scientific_name.len() > 256 {
-        return Err(AppError::BadRequest(
-            "Scientific name must be 1-256 characters".into(),
-        ));
-    }
+    validate_string_length(&body.scientific_name, 1, 256, "Scientific name")?;
 
     // Validate taxonomy via GBIF
     let mut taxon_id = None;

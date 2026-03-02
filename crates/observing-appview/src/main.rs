@@ -7,6 +7,7 @@ mod resolver;
 mod routes;
 mod state;
 mod taxonomy_client;
+mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
