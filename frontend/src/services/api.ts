@@ -14,6 +14,7 @@ import type {
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
+const DEFAULT_PAGE_SIZE = "20";
 
 export async function checkAuth(): Promise<User | null> {
   try {
@@ -50,7 +51,7 @@ export async function initiateLogin(handle: string): Promise<{ url: string }> {
 }
 
 export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) {
     params.set("cursor", cursor);
   }
@@ -67,7 +68,7 @@ export async function fetchExploreFeed(
   cursor?: string,
   filters?: FeedFilters,
 ): Promise<ExploreFeedResponse> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
   if (filters?.taxon) params.set("taxon", filters.taxon);
   if (filters?.lat !== undefined) params.set("lat", filters.lat.toString());
@@ -89,7 +90,7 @@ export async function fetchHomeFeed(
   cursor?: string,
   location?: { lat: number; lng: number; nearbyRadius?: number },
 ): Promise<HomeFeedResponse> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
   if (location) {
     params.set("lat", location.lat.toString());
@@ -117,7 +118,7 @@ export async function fetchProfileFeed(
   cursor?: string,
   type?: "observations" | "identifications",
 ): Promise<ProfileFeedResponse> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
   if (type) params.set("type", type);
 
@@ -404,7 +405,7 @@ export async function fetchTaxonObservations(
   name?: string,
   cursor?: string,
 ): Promise<{ occurrences: Occurrence[]; cursor?: string }> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
 
   let url: string;
@@ -525,7 +526,7 @@ export async function likeObservation(
 // ============================================================================
 
 export async function fetchNotifications(cursor?: string): Promise<NotificationsResponse> {
-  const params = new URLSearchParams({ limit: "20" });
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
 
   const response = await fetch(`${API_BASE}/api/notifications?${params}`, {
