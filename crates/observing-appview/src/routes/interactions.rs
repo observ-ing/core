@@ -17,6 +17,7 @@ use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::validation::validate_string_length;
 
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
@@ -102,11 +103,7 @@ pub async fn create_interaction(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.interaction_type.is_empty() || body.interaction_type.len() > 64 {
-        return Err(AppError::BadRequest(
-            "Interaction type must be 1-64 characters".into(),
-        ));
-    }
+    validate_string_length(&body.interaction_type, 1, 64, "Interaction type")?;
 
     let direction = body.direction.as_deref().unwrap_or("AtoB");
 

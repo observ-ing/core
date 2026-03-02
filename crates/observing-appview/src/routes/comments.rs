@@ -14,6 +14,7 @@ use ts_rs::TS;
 use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::validation::validate_string_length;
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -37,11 +38,7 @@ pub async fn create_comment(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.body.is_empty() || body.body.len() > 3000 {
-        return Err(AppError::BadRequest(
-            "Comment body must be 1-3000 characters".into(),
-        ));
-    }
+    validate_string_length(&body.body, 1, 3000, "Comment body")?;
 
     let subject = StrongRef::new()
         .uri(
