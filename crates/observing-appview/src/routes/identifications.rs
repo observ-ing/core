@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::AuthUser;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -56,13 +56,9 @@ pub struct CreateIdentificationRequest {
 
 pub async fn create_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     if body.scientific_name.is_empty() || body.scientific_name.len() > 256 {
         return Err(AppError::BadRequest(
             "Scientific name must be 1-256 characters".into(),
@@ -182,13 +178,9 @@ pub async fn create_identification(
 
 pub async fn delete_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
