@@ -1,10 +1,7 @@
-use std::str::FromStr;
-
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -96,16 +93,7 @@ pub async fn create_identification(
         }
     }
 
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let taxon = Taxon {
         scientific_name: (&*body.scientific_name).into(),

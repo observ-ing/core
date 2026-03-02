@@ -1,10 +1,7 @@
-use std::str::FromStr;
-
 use axum::extract::State;
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri, Cid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::comment::Comment;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -43,30 +40,10 @@ pub async fn create_comment(
         ));
     }
 
-    let subject = StrongRef::new()
-        .uri(
-            AtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            Cid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let reply_to = match (&body.reply_to_uri, &body.reply_to_cid) {
-        (Some(uri), Some(cid)) => Some(
-            StrongRef::new()
-                .uri(
-                    AtUri::from_str(uri)
-                        .map_err(|_| AppError::BadRequest("Invalid reply-to URI".into()))?,
-                )
-                .cid(
-                    Cid::from_str(cid)
-                        .map_err(|_| AppError::BadRequest("Invalid reply-to CID".into()))?,
-                )
-                .build(),
-        ),
+        (Some(uri), Some(cid)) => Some(auth::build_strong_ref(uri, cid)?),
         _ => None,
     };
 
