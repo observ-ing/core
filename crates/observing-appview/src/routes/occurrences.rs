@@ -359,13 +359,7 @@ pub async fn create_occurrence(
     }
 
     // Restore OAuth session for AT Protocol operations
-    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
-        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
-        tracing::warn!(error = %e, "Failed to restore OAuth session");
-        AppError::Unauthorized
-    })?;
-    let agent = atrium_api::agent::Agent::new(session);
+    let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
     // Upload blobs
     let mut blobs = Vec::new();
@@ -479,37 +473,7 @@ pub async fn create_occurrence(
     let record_value_for_db = record_value.clone();
 
     // Create AT Protocol record
-    let resp = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .create_record(
-            atrium_api::com::atproto::repo::create_record::InputData {
-                collection: Occurrence::NSID
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
-                record: serde_json::from_value(record_value)
-                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: None,
-                swap_commit: None,
-                validate: None,
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(
-                    error = %e,
-                    "AT Protocol authentication failed (session expired)"
-                );
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to create record: {e}"))
-            }
-        })?;
+    let resp = auth::create_at_record(&agent, did_parsed, Occurrence::NSID, record_value).await?;
 
     let uri = resp.uri.to_string();
     let cid = resp.cid.as_ref().to_string();
@@ -594,31 +558,9 @@ pub async fn create_occurrence(
 
             let id_value_for_db = id_value.clone();
 
-            match agent
-                .api
-                .com
-                .atproto
-                .repo
-                .create_record(
-                    atrium_api::com::atproto::repo::create_record::InputData {
-                        collection: Identification::NSID
-                            .parse()
-                            .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
-                        record: serde_json::from_value(id_value).map_err(|e| {
-                            AppError::Internal(format!("Failed to convert record: {e}"))
-                        })?,
-                        repo: atrium_api::types::string::AtIdentifier::Did(
-                            atrium_api::types::string::Did::new(user.did.clone())
-                                .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?,
-                        ),
-                        rkey: None,
-                        swap_commit: None,
-                        validate: None,
-                    }
-                    .into(),
-                )
-                .await
-            {
+            let id_did = atrium_api::types::string::Did::new(user.did.clone())
+                .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
+            match auth::create_at_record(&agent, id_did, Identification::NSID, id_value).await {
                 Ok(id_resp) => {
                     info!(uri = %id_resp.uri, "Auto-created identification for occurrence");
                     // Immediate DB sync for the identification
@@ -633,7 +575,7 @@ pub async fn create_occurrence(
                     }
                 }
                 Err(e) => {
-                    tracing::warn!(error = %e, "Failed to auto-create identification");
+                    tracing::warn!(error = ?e, "Failed to auto-create identification");
                 }
             }
         }
@@ -700,14 +642,7 @@ pub async fn delete_occurrence_catch_all(
         ));
     }
 
-    // Restore OAuth session and delete the AT Protocol record directly
-    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
-        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
-        tracing::warn!(error = %e, "Failed to restore OAuth session");
-        AppError::Unauthorized
-    })?;
-    let agent = atrium_api::agent::Agent::new(session);
+    let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     agent
         .api
         .com
