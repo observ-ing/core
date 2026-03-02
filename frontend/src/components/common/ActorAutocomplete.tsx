@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import {
   Autocomplete,
   Avatar,
@@ -10,8 +10,7 @@ import {
 } from "@mui/material";
 import { searchActors } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
-
-const DEBOUNCE_MS = 300;
+import { useAutocomplete } from "../../hooks/useAutocomplete";
 
 interface ActorAutocompleteProps {
   onSelect: (actor: ActorSearchResult) => void;
@@ -27,37 +26,16 @@ export function ActorAutocomplete({
   placeholder = "Search for a user...",
 }: ActorAutocompleteProps) {
   const [inputValue, setInputValue] = useState("");
-  const [options, setOptions] = useState<ActorSearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const latestQuery = useRef("");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
-    return () => clearTimeout(timerRef.current);
-  }, []);
-
-  const handleSearch = useCallback(
-    (query: string) => {
-      latestQuery.current = query;
-      clearTimeout(timerRef.current);
-
-      if (query.length < 2) {
-        setOptions([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
-      timerRef.current = setTimeout(async () => {
-        const results = await searchActors(query);
-        if (latestQuery.current === query) {
-          setOptions(results.filter((r) => !excludeDids.includes(r.did)));
-          setLoading(false);
-        }
-      }, DEBOUNCE_MS);
-    },
+  const searchFn = useCallback((query: string) => searchActors(query), []);
+  const filterResults = useCallback(
+    (results: ActorSearchResult[]) => results.filter((r) => !excludeDids.includes(r.did)),
     [excludeDids],
   );
+  const { options, loading, handleSearch, clearOptions } = useAutocomplete<ActorSearchResult>({
+    searchFn,
+    filterResults,
+  });
 
   return (
     <Autocomplete
@@ -73,7 +51,7 @@ export function ActorAutocomplete({
         if (v) {
           onSelect(v);
           setInputValue("");
-          setOptions([]);
+          clearOptions();
         }
       }}
       filterOptions={(x) => x}
