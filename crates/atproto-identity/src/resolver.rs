@@ -204,23 +204,13 @@ impl IdentityResolver {
             Ok(response) if response.status().is_success() => {
                 match response.json::<ProfileResponse>().await {
                     Ok(data) => {
-                        let profile = Arc::new(Profile {
-                            did: data.did.clone(),
-                            handle: data.handle.clone(),
-                            display_name: data.display_name,
-                            description: data.description,
-                            avatar: data.avatar,
-                            banner: data.banner,
-                            followers_count: data.followers_count,
-                            follows_count: data.follows_count,
-                            posts_count: data.posts_count,
-                        });
+                        let did = data.did.clone();
+                        let handle = data.handle.clone();
+                        let profile = Arc::new(Profile::from(data));
 
                         // Cache by both DID and handle
-                        self.profile_cache.insert(data.did, profile.clone()).await;
-                        self.profile_cache
-                            .insert(data.handle, profile.clone())
-                            .await;
+                        self.profile_cache.insert(did, profile.clone()).await;
+                        self.profile_cache.insert(handle, profile.clone()).await;
 
                         Some(profile)
                     }
@@ -264,23 +254,15 @@ impl IdentityResolver {
                 Ok(response) if response.status().is_success() => {
                     if let Ok(data) = response.json::<ProfilesResponse>().await {
                         for p in data.profiles {
-                            let profile = Arc::new(Profile {
-                                did: p.did.clone(),
-                                handle: p.handle.clone(),
-                                display_name: p.display_name,
-                                description: p.description,
-                                avatar: p.avatar,
-                                banner: p.banner,
-                                followers_count: p.followers_count,
-                                follows_count: p.follows_count,
-                                posts_count: p.posts_count,
-                            });
+                            let did = p.did.clone();
+                            let handle = p.handle.clone();
+                            let profile = Arc::new(Profile::from(p));
 
-                            results.insert(p.did.clone(), profile.clone());
-                            results.insert(p.handle.clone(), profile.clone());
+                            results.insert(did.clone(), profile.clone());
+                            results.insert(handle.clone(), profile.clone());
 
-                            self.profile_cache.insert(p.did, profile.clone()).await;
-                            self.profile_cache.insert(p.handle, profile).await;
+                            self.profile_cache.insert(did, profile.clone()).await;
+                            self.profile_cache.insert(handle, profile).await;
                         }
                     }
                 }
@@ -318,21 +300,13 @@ impl IdentityResolver {
                     Ok(data) => {
                         let mut results = Vec::with_capacity(data.actors.len());
                         for p in data.actors {
-                            let profile = Arc::new(Profile {
-                                did: p.did.clone(),
-                                handle: p.handle.clone(),
-                                display_name: p.display_name,
-                                description: p.description,
-                                avatar: p.avatar,
-                                banner: p.banner,
-                                followers_count: p.followers_count,
-                                follows_count: p.follows_count,
-                                posts_count: p.posts_count,
-                            });
+                            let did = p.did.clone();
+                            let handle = p.handle.clone();
+                            let profile = Arc::new(Profile::from(p));
 
                             // Cache discovered profiles
-                            self.profile_cache.insert(p.did, profile.clone()).await;
-                            self.profile_cache.insert(p.handle, profile.clone()).await;
+                            self.profile_cache.insert(did, profile.clone()).await;
+                            self.profile_cache.insert(handle, profile.clone()).await;
 
                             results.push(profile);
                         }
