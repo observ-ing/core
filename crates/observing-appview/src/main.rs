@@ -157,6 +157,8 @@ async fn main() {
             "/api/notifications/read",
             post(routes::notifications::mark_read),
         )
+        // Actors
+        .route("/api/actors/search", get(routes::actors::search))
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))

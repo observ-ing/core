@@ -164,6 +164,27 @@ export async function fetchObservationsGeoJSON(bounds: {
   return response.json();
 }
 
+// ============================================================================
+// Actor Search
+// ============================================================================
+
+export interface ActorSearchResult {
+  did: string;
+  handle: string;
+  displayName?: string;
+  avatar?: string;
+}
+
+export async function searchActors(query: string): Promise<ActorSearchResult[]> {
+  if (query.length < 2) return [];
+
+  const response = await fetch(`${API_BASE}/api/actors/search?q=${encodeURIComponent(query)}`);
+  if (!response.ok) return [];
+
+  const data = await response.json();
+  return data.actors || [];
+}
+
 export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   if (query.length < 2) return [];
 

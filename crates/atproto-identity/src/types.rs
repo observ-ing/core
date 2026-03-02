@@ -68,6 +68,11 @@ pub(crate) struct ProfilesResponse {
 }
 
 #[derive(Debug, Deserialize)]
+pub(crate) struct SearchActorsTypeaheadResponse {
+    pub(crate) actors: Vec<ProfileResponse>,
+}
+
+#[derive(Debug, Deserialize)]
 pub(crate) struct FollowsResponse {
     pub(crate) follows: Vec<FollowEntry>,
     pub(crate) cursor: Option<String>,

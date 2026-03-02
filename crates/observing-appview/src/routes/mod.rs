@@ -1,3 +1,4 @@
+pub mod actors;
 pub mod comments;
 pub mod feeds;
 pub mod health;
