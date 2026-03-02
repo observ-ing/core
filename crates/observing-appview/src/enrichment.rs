@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use atproto_identity::{IdentityResolver, Profile};
 use observing_db::types::{
-    CommentRow, IdentificationRow, InteractionRow, ObserverRole, OccurrenceRow,
+    CommentRow, IdentificationRow, InteractionRow, ObserverRole, ObserverRow, OccurrenceRow,
 };
 use serde::Serialize;
 use sqlx::PgPool;
@@ -489,6 +489,28 @@ pub async fn enrich_interactions(
         .map(|row| EnrichedInteraction {
             creator: profile_summary(&row.did, &profiles),
             row: row.clone(),
+        })
+        .collect()
+}
+
+/// Enrich observers with profile info
+pub async fn enrich_observers(
+    resolver: &IdentityResolver,
+    rows: &[ObserverRow],
+) -> Vec<ObserverInfo> {
+    let dids: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
+    let profiles = resolver.get_profiles(&dids).await;
+
+    rows.iter()
+        .map(|o| {
+            let p = profiles.get(&o.did);
+            ObserverInfo {
+                did: o.did.clone(),
+                role: o.role.clone(),
+                handle: p.map(|p| p.handle.clone()),
+                display_name: p.and_then(|p| p.display_name.clone()),
+                avatar: p.and_then(|p| p.avatar.clone()),
+            }
         })
         .collect()
 }
