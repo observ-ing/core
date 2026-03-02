@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
@@ -28,13 +28,9 @@ pub struct CreateLikeRequest {
 
 pub async fn create_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let now = Utc::now();
 
     let subject = StrongRef::new()
@@ -129,13 +125,9 @@ pub struct DeleteLikeRequest {
 
 pub async fn delete_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<DeleteLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     // Delete from local DB first (returns the like URI)
     let like_uri = observing_db::likes::delete_by_subject_and_did(
         &state.pool,

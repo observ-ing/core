@@ -13,7 +13,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::AuthUser;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -95,13 +95,9 @@ fn build_interaction_subject(
 
 pub async fn create_interaction(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateInteractionRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     if body.interaction_type.is_empty() || body.interaction_type.len() > 64 {
         return Err(AppError::BadRequest(
             "Interaction type must be 1-64 characters".into(),

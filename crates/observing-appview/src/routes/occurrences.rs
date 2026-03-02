@@ -12,8 +12,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
-use crate::auth::session_did;
+use crate::auth::{session_did, AuthUser};
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -346,13 +345,9 @@ pub struct ImageUpload {
 
 pub async fn create_occurrence(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateOccurrenceRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     // Validate coordinates
     if !(-90.0..=90.0).contains(&body.latitude) || !(-180.0..=180.0).contains(&body.longitude) {
         return Err(AppError::BadRequest("Invalid coordinates".into()));
@@ -649,14 +644,11 @@ pub async fn create_occurrence(
 /// POST catch-all for /api/occurrences/{*uri} — dispatches observers POST
 pub async fn post_occurrence_catch_all(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(full_path): Path<String>,
     Json(body): Json<Value>,
 ) -> Result<Json<Value>, AppError> {
     if let Some(uri) = full_path.strip_suffix("/observers") {
-        let user = auth::require_auth(&state.pool, &cookies)
-            .await
-            .map_err(|_| AppError::Unauthorized)?;
         let observer_did = body["did"]
             .as_str()
             .ok_or_else(|| AppError::BadRequest("did is required".into()))?;
@@ -671,7 +663,7 @@ pub async fn post_occurrence_catch_all(
 /// DELETE catch-all for /api/occurrences/{*uri} — dispatches occurrence delete or observer remove
 pub async fn delete_occurrence_catch_all(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(full_path): Path<String>,
 ) -> Result<Json<Value>, AppError> {
     // Try observer removal: path contains /observers/{did}
@@ -679,18 +671,12 @@ pub async fn delete_occurrence_catch_all(
         let idx = full_path.rfind("/observers/").unwrap();
         let uri = &full_path[..idx];
         let observer_did = &full_path[idx + "/observers/".len()..];
-        let _user = auth::require_auth(&state.pool, &cookies)
-            .await
-            .map_err(|_| AppError::Unauthorized)?;
         let _ = observing_db::observers::remove(&state.pool, uri, observer_did).await;
         return Ok(Json(json!({ "success": true })));
     }
 
     // Otherwise, delete the occurrence itself
     let uri = &full_path;
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
 
     let at_uri = AtUri::parse(uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 

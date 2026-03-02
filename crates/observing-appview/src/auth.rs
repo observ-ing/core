@@ -1,10 +1,38 @@
+use axum::extract::FromRequestParts;
+use axum::http::request::Parts;
 use axum_extra::extract::CookieJar;
 use sqlx::postgres::PgPool;
+
+use crate::error::AppError;
+use crate::state::AppState;
 
 /// User information extracted from session
 #[derive(Debug, Clone)]
 pub struct AuthUser {
     pub did: String,
+}
+
+/// Axum extractor that validates the session cookie and returns an [`AuthUser`].
+///
+/// Use this as a handler parameter to require authentication:
+///
+/// ```ignore
+/// async fn my_handler(user: AuthUser, ...) -> Result<..., AppError> { ... }
+/// ```
+impl FromRequestParts<AppState> for AuthUser {
+    type Rejection = AppError;
+
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
+        let cookies = CookieJar::from_request_parts(parts, state)
+            .await
+            .map_err(|_| AppError::Unauthorized)?;
+        require_auth(&state.pool, &cookies)
+            .await
+            .map_err(|_| AppError::Unauthorized)
+    }
 }
 
 /// Extract session DID from cookie (used for optional auth in read endpoints)
