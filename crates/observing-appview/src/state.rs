@@ -19,6 +19,17 @@ pub type OAuthClientType = OAuthClient<
     AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>,
 >;
 
+/// The concrete OAuth session type returned by `OAuthClientType::restore()`.
+pub type OAuthSessionType = atrium_oauth::OAuthSession<
+    DefaultHttpClient,
+    CommonDidResolver<DefaultHttpClient>,
+    AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>,
+    PgSessionStore,
+>;
+
+/// The concrete AT Protocol agent type used throughout the application.
+pub type AgentType = atrium_api::agent::Agent<OAuthSessionType>;
+
 /// Shared application state passed to all route handlers
 #[derive(Clone)]
 pub struct AppState {
