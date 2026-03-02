@@ -3,6 +3,7 @@ use axum::Json;
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -19,13 +20,20 @@ pub async fn search(
         .q
         .ok_or_else(|| AppError::BadRequest("q is required".into()))?;
 
-    if query.len() < 2 {
+    if query.len() < constants::MIN_SEARCH_QUERY_LENGTH {
         return Err(AppError::BadRequest(
-            "Search query must be at least 2 characters".into(),
+            format!(
+                "Search query must be at least {} characters",
+                constants::MIN_SEARCH_QUERY_LENGTH
+            )
+            .into(),
         ));
     }
 
-    let results = state.resolver.search_actors(&query, 8).await;
+    let results = state
+        .resolver
+        .search_actors(&query, constants::ACTOR_SEARCH_LIMIT)
+        .await;
 
     let actors: Vec<Value> = results
         .iter()

@@ -14,6 +14,7 @@ use ts_rs::TS;
 
 use crate::auth;
 use crate::auth::session_did;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -39,8 +40,11 @@ pub async fn get_nearby(
     let lng = params
         .lng
         .ok_or_else(|| AppError::BadRequest("lng is required".into()))?;
-    let radius = params.radius.unwrap_or(10000.0);
-    let limit = params.limit.unwrap_or(100).min(1000);
+    let radius = params.radius.unwrap_or(constants::DEFAULT_NEARBY_RADIUS);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_NEARBY_LIMIT)
+        .min(constants::MAX_NEARBY_LIMIT);
     let offset = params.offset.unwrap_or(0);
 
     let rows = observing_db::occurrences::get_nearby(
@@ -88,7 +92,10 @@ pub async fn get_feed(
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<FeedParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     let rows = observing_db::occurrences::get_feed(
         &state.pool,
@@ -146,7 +153,7 @@ pub async fn get_bbox(
     let max_lng = params
         .max_lng
         .ok_or_else(|| AppError::BadRequest("maxLng is required".into()))?;
-    let limit = params.limit.unwrap_or(1000);
+    let limit = params.limit.unwrap_or(constants::DEFAULT_BBOX_LIMIT);
 
     let rows = observing_db::occurrences::get_by_bounding_box(
         &state.pool,
@@ -206,7 +213,7 @@ pub async fn get_geojson(
         min_lng,
         max_lat,
         max_lng,
-        10000,
+        constants::MAX_GEOJSON_LIMIT,
         &state.hidden_dids,
     )
     .await?;
@@ -408,7 +415,8 @@ pub async fn create_occurrence(
         decimal_latitude: body.latitude.to_string().into(),
         decimal_longitude: body.longitude.to_string().into(),
         coordinate_uncertainty_in_meters: Some(
-            body.coordinate_uncertainty_in_meters.unwrap_or(50) as i64
+            body.coordinate_uncertainty_in_meters
+                .unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY) as i64,
         ),
         geodetic_datum: Some("WGS84".into()),
         continent: geo

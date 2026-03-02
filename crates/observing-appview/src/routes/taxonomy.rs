@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::session_did;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -22,9 +23,13 @@ pub async fn search(
         .q
         .ok_or_else(|| AppError::BadRequest("q is required".into()))?;
 
-    if query.len() < 2 {
+    if query.len() < constants::MIN_SEARCH_QUERY_LENGTH {
         return Err(AppError::BadRequest(
-            "Search query must be at least 2 characters".into(),
+            format!(
+                "Search query must be at least {} characters",
+                constants::MIN_SEARCH_QUERY_LENGTH
+            )
+            .into(),
         ));
     }
 
@@ -98,7 +103,10 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     Path((kingdom, name)): Path<(String, String)>,
     Query(params): Query<TaxonOccurrenceParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
     let name = name.replace('-', " ");
 
     // Look up taxon to get rank
@@ -177,7 +185,10 @@ pub async fn get_taxon_occurrences_by_id(
     Path(id): Path<String>,
     Query(params): Query<TaxonOccurrenceParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     // Look up taxon to get name + rank
     let detail = state.taxonomy.get_by_id(&id).await;

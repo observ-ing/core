@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::auth;
+use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -62,7 +63,10 @@ pub async fn list(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    let limit = params.limit.unwrap_or(20).min(50);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_NOTIFICATION_LIMIT)
+        .min(constants::MAX_NOTIFICATION_LIMIT);
     let cursor = params.cursor.and_then(|c| c.parse::<i64>().ok());
 
     let rows = observing_db::notifications::list(&state.pool, &user.did, limit, cursor).await?;
