@@ -1,11 +1,7 @@
-use std::str::FromStr;
-
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
-use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -13,305 +9,11 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth;
-use crate::auth::session_did;
-use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
 
-#[derive(Deserialize)]
-pub struct NearbyParams {
-    lat: Option<f64>,
-    lng: Option<f64>,
-    radius: Option<f64>,
-    limit: Option<i64>,
-    offset: Option<i64>,
-}
-
-pub async fn get_nearby(
-    State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
-    Query(params): Query<NearbyParams>,
-) -> Result<Json<Value>, AppError> {
-    let lat = params
-        .lat
-        .ok_or_else(|| AppError::BadRequest("lat is required".into()))?;
-    let lng = params
-        .lng
-        .ok_or_else(|| AppError::BadRequest("lng is required".into()))?;
-    let radius = params.radius.unwrap_or(10000.0);
-    let limit = params.limit.unwrap_or(100).min(1000);
-    let offset = params.offset.unwrap_or(0);
-
-    let rows = observing_db::occurrences::get_nearby(
-        &state.pool,
-        lat,
-        lng,
-        radius,
-        limit,
-        offset,
-        &state.hidden_dids,
-    )
-    .await?;
-
-    let viewer = session_did(&cookies);
-    let occurrences = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &rows,
-        viewer.as_deref(),
-    )
-    .await;
-
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "meta": {
-            "lat": lat,
-            "lng": lng,
-            "radius": radius,
-            "limit": limit,
-            "offset": offset,
-            "count": occurrences.len(),
-        }
-    })))
-}
-
-#[derive(Deserialize)]
-pub struct FeedParams {
-    limit: Option<i64>,
-    cursor: Option<String>,
-}
-
-pub async fn get_feed(
-    State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
-    Query(params): Query<FeedParams>,
-) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
-
-    let rows = observing_db::occurrences::get_feed(
-        &state.pool,
-        limit,
-        params.cursor.as_deref(),
-        &state.hidden_dids,
-    )
-    .await?;
-
-    let viewer = session_did(&cookies);
-    let occurrences = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &rows,
-        viewer.as_deref(),
-    )
-    .await;
-
-    let next_cursor = occurrences.last().map(|o| o.created_at.clone());
-
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-    })))
-}
-
-#[derive(Deserialize)]
-pub struct BboxParams {
-    #[serde(rename = "minLat")]
-    min_lat: Option<f64>,
-    #[serde(rename = "minLng")]
-    min_lng: Option<f64>,
-    #[serde(rename = "maxLat")]
-    max_lat: Option<f64>,
-    #[serde(rename = "maxLng")]
-    max_lng: Option<f64>,
-    limit: Option<i64>,
-}
-
-pub async fn get_bbox(
-    State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
-    Query(params): Query<BboxParams>,
-) -> Result<Json<Value>, AppError> {
-    let min_lat = params
-        .min_lat
-        .ok_or_else(|| AppError::BadRequest("minLat is required".into()))?;
-    let min_lng = params
-        .min_lng
-        .ok_or_else(|| AppError::BadRequest("minLng is required".into()))?;
-    let max_lat = params
-        .max_lat
-        .ok_or_else(|| AppError::BadRequest("maxLat is required".into()))?;
-    let max_lng = params
-        .max_lng
-        .ok_or_else(|| AppError::BadRequest("maxLng is required".into()))?;
-    let limit = params.limit.unwrap_or(1000);
-
-    let rows = observing_db::occurrences::get_by_bounding_box(
-        &state.pool,
-        min_lat,
-        min_lng,
-        max_lat,
-        max_lng,
-        limit,
-        &state.hidden_dids,
-    )
-    .await?;
-
-    let viewer = session_did(&cookies);
-    let occurrences = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &rows,
-        viewer.as_deref(),
-    )
-    .await;
-
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "meta": {
-            "bounds": {
-                "minLat": min_lat,
-                "minLng": min_lng,
-                "maxLat": max_lat,
-                "maxLng": max_lng,
-            },
-            "count": occurrences.len(),
-        }
-    })))
-}
-
-pub async fn get_geojson(
-    State(state): State<AppState>,
-    Query(params): Query<BboxParams>,
-) -> Result<Json<Value>, AppError> {
-    let min_lat = params
-        .min_lat
-        .ok_or_else(|| AppError::BadRequest("minLat is required".into()))?;
-    let min_lng = params
-        .min_lng
-        .ok_or_else(|| AppError::BadRequest("minLng is required".into()))?;
-    let max_lat = params
-        .max_lat
-        .ok_or_else(|| AppError::BadRequest("maxLat is required".into()))?;
-    let max_lng = params
-        .max_lng
-        .ok_or_else(|| AppError::BadRequest("maxLng is required".into()))?;
-
-    let rows = observing_db::occurrences::get_by_bounding_box(
-        &state.pool,
-        min_lat,
-        min_lng,
-        max_lat,
-        max_lng,
-        10000,
-        &state.hidden_dids,
-    )
-    .await?;
-
-    let features: Vec<Value> = rows
-        .iter()
-        .map(|row| {
-            json!({
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [row.longitude, row.latitude]
-                },
-                "properties": {
-                    "uri": row.uri,
-                    "eventDate": row.event_date.to_rfc3339(),
-                }
-            })
-        })
-        .collect();
-
-    Ok(Json(json!({
-        "type": "FeatureCollection",
-        "features": features,
-    })))
-}
-
-/// Handles both GET /api/occurrences/{uri} and GET /api/occurrences/{uri}/observers
-/// since axum catch-all wildcards don't allow sub-routes.
-pub async fn get_occurrence_or_observers(
-    State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
-    Path(full_path): Path<String>,
-) -> Result<Json<Value>, AppError> {
-    if let Some(uri) = full_path.strip_suffix("/observers") {
-        return get_observers_inner(&state, uri).await;
-    }
-
-    get_occurrence_inner(&state, &cookies, &full_path).await
-}
-
-async fn get_occurrence_inner(
-    state: &AppState,
-    cookies: &axum_extra::extract::CookieJar,
-    uri: &str,
-) -> Result<Json<Value>, AppError> {
-    let row = observing_db::occurrences::get(&state.pool, uri)
-        .await?
-        .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
-
-    let viewer = session_did(cookies);
-    let enriched = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &[row],
-        viewer.as_deref(),
-    )
-    .await;
-
-    let occurrence = enriched
-        .into_iter()
-        .next()
-        .ok_or_else(|| AppError::Internal("Failed to enrich occurrence".into()))?;
-
-    let identification_rows =
-        observing_db::identifications::get_for_occurrence(&state.pool, uri).await?;
-    let identifications =
-        enrichment::enrich_identifications(&state.resolver, &identification_rows).await;
-
-    let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, uri).await?;
-    let comments = enrichment::enrich_comments(&state.resolver, &comment_rows).await;
-
-    Ok(Json(json!({
-        "occurrence": occurrence,
-        "identifications": identifications,
-        "comments": comments,
-    })))
-}
-
-async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>, AppError> {
-    let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
-
-    let dids: Vec<String> = observers.iter().map(|o| o.did.clone()).collect();
-    let profiles = state.resolver.get_profiles(&dids).await;
-
-    let infos: Vec<Value> = observers
-        .iter()
-        .map(|o| {
-            let p = profiles.get(&o.did);
-            json!({
-                "did": o.did,
-                "role": o.role,
-                "handle": p.map(|p| p.handle.as_str()),
-                "displayName": p.and_then(|p| p.display_name.as_deref()),
-                "avatar": p.and_then(|p| p.avatar.as_deref()),
-                "addedAt": o.added_at.map(|t| t.to_rfc3339()),
-            })
-        })
-        .collect();
-
-    Ok(Json(json!({ "observers": infos })))
-}
-
-// --- Write handlers ---
+use super::auto_id;
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -539,58 +241,8 @@ pub async fn create_occurrence(
     // Auto-create first identification if a scientific name was provided
     if let Some(ref scientific_name) = body.scientific_name {
         if !scientific_name.is_empty() {
-            let mut taxon_id = None;
-            let mut taxon_rank = None;
-            let mut vernacular_name = None;
-            let mut kingdom = None;
-            let mut phylum = None;
-            let mut class = None;
-            let mut order = None;
-            let mut family = None;
-            let mut genus = None;
-
-            if let Some(validation) = state.taxonomy.validate(scientific_name).await {
-                if let Some(ref t) = validation.taxon {
-                    taxon_id = Some(t.id.clone());
-                    taxon_rank = Some(t.rank.clone());
-                    vernacular_name = t.common_name.clone();
-                    kingdom = t.kingdom.clone();
-                    phylum = t.phylum.clone();
-                    class = t.class.clone();
-                    order = t.order.clone();
-                    family = t.family.clone();
-                    genus = t.genus.clone();
-                }
-            }
-
-            let subject = StrongRef::new()
-                .uri(JAtUri::from_str(&uri).expect("just-created URI must be valid"))
-                .cid(JCid::from_str(&cid).expect("just-created CID must be valid"))
-                .build();
-
-            let taxon = Taxon {
-                scientific_name: scientific_name.as_str().into(),
-                taxon_rank: taxon_rank.as_deref().map(Into::into),
-                vernacular_name: vernacular_name.as_deref().map(Into::into),
-                kingdom: kingdom.as_deref().map(Into::into),
-                phylum: phylum.as_deref().map(Into::into),
-                class: class.as_deref().map(Into::into),
-                order: order.as_deref().map(Into::into),
-                family: family.as_deref().map(Into::into),
-                genus: genus.as_deref().map(Into::into),
-                ..Default::default()
-            };
-
-            let id_record = Identification::new()
-                .taxon(taxon)
-                .created_at(Datetime::now())
-                .subject(subject)
-                .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
-                .build();
-
-            let mut id_value =
-                serde_json::to_value(&id_record).map_err(|e| AppError::Internal(e.to_string()))?;
-            id_value["$type"] = json!(Identification::NSID);
+            let id_value =
+                auto_id::build_identification_record(&state, scientific_name, &uri, &cid).await?;
 
             let id_value_for_db = id_value.clone();
 
@@ -601,7 +253,7 @@ pub async fn create_occurrence(
                 .repo
                 .create_record(
                     atrium_api::com::atproto::repo::create_record::InputData {
-                        collection: Identification::NSID
+                        collection: auto_id::identification_nsid()
                             .parse()
                             .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
                         record: serde_json::from_value(id_value).map_err(|e| {
@@ -646,7 +298,7 @@ pub async fn create_occurrence(
     })))
 }
 
-/// POST catch-all for /api/occurrences/{*uri} — dispatches observers POST
+/// POST catch-all for /api/occurrences/{*uri} -- dispatches observers POST
 pub async fn post_occurrence_catch_all(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -668,7 +320,7 @@ pub async fn post_occurrence_catch_all(
     Err(AppError::NotFound("Not found".into()))
 }
 
-/// DELETE catch-all for /api/occurrences/{*uri} — dispatches occurrence delete or observer remove
+/// DELETE catch-all for /api/occurrences/{*uri} -- dispatches occurrence delete or observer remove
 pub async fn delete_occurrence_catch_all(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
