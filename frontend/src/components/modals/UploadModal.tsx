@@ -1,10 +1,4 @@
-import {
-  useState,
-  useEffect,
-  type FormEvent,
-  type ChangeEvent,
-  useRef,
-} from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
 import {
   Avatar,
   Box,
@@ -27,11 +21,7 @@ import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
-import {
-  submitObservation,
-  updateObservation,
-  fetchObservation,
-} from "../../services/api";
+import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
@@ -63,9 +53,7 @@ function toDatetimeLocal(date: Date): string {
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
-  const editingObservation = useAppSelector(
-    (state) => state.ui.editingObservation,
-  );
+  const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
@@ -80,9 +68,7 @@ export function UploadModal() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [coObservers, setCoObservers] = useState<ActorSearchResult[]>([]);
-  const [observationDate, setObservationDate] = useState(() =>
-    toDatetimeLocal(new Date()),
-  );
+  const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -96,9 +82,7 @@ export function UploadModal() {
         setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
         setNotes(editingObservation.occurrenceRemarks || "");
         if (editingObservation.eventDate) {
-          setObservationDate(
-            toDatetimeLocal(new Date(editingObservation.eventDate)),
-          );
+          setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
         }
         if (editingObservation.location) {
           setLat(editingObservation.location.latitude.toFixed(6));
@@ -222,12 +206,8 @@ export function UploadModal() {
 
         if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
           // Apply hemisphere signs
-          const latRefValue = Array.isArray(latRef?.value)
-            ? latRef.value[0]
-            : undefined;
-          const lngRefValue = Array.isArray(lngRef?.value)
-            ? lngRef.value[0]
-            : undefined;
+          const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
+          const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
           if (latRefValue === "S") latitude = -Math.abs(latitude);
           if (lngRefValue === "W") longitude = -Math.abs(longitude);
 
@@ -283,10 +263,7 @@ export function UploadModal() {
   };
 
   // Poll for observation to appear in database after AT Protocol submission
-  const waitForObservation = async (
-    uri: string,
-    maxAttempts = 30,
-  ): Promise<boolean> => {
+  const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
     // Sequential polling by design
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // eslint-disable-next-line no-await-in-loop
@@ -304,9 +281,7 @@ export function UploadModal() {
     e.preventDefault();
 
     if (!lat || !lng) {
-      dispatch(
-        addToast({ message: "Please provide a location", type: "error" }),
-      );
+      dispatch(addToast({ message: "Please provide a location", type: "error" }));
       return;
     }
 
@@ -338,9 +313,7 @@ export function UploadModal() {
           ...(notes ? { notes } : {}),
           license,
           eventDate: new Date(observationDate).toISOString(),
-          ...(coObservers.length > 0
-            ? { recordedBy: coObservers.map((co) => co.did) }
-            : {}),
+          ...(coObservers.length > 0 ? { recordedBy: coObservers.map((co) => co.did) } : {}),
           ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
         });
@@ -368,9 +341,7 @@ export function UploadModal() {
           license,
           eventDate,
           ...(imageData.length > 0 ? { images: imageData } : {}),
-          ...(coObservers.length > 0
-            ? { recordedBy: coObservers.map((co) => co.did) }
-            : {}),
+          ...(coObservers.length > 0 ? { recordedBy: coObservers.map((co) => co.did) } : {}),
         });
 
         // Wait for the observation to be processed by the ingester
@@ -473,37 +444,21 @@ export function UploadModal() {
           </Select>
         </FormControl>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 2, mb: 1 }}
-        >
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
           Co-observers (optional)
         </Typography>
 
         <ActorAutocomplete
           onSelect={handleAddCoObserver}
-          excludeDids={[
-            ...(user?.did ? [user.did] : []),
-            ...coObservers.map((co) => co.did),
-          ]}
+          excludeDids={[...(user?.did ? [user.did] : []), ...coObservers.map((co) => co.did)]}
         />
 
         {coObservers.length > 0 && (
-          <Stack
-            direction="row"
-            spacing={0.5}
-            sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}
-          >
+          <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
             {coObservers.map((co) => (
               <Chip
                 key={co.did}
-                avatar={
-                  <Avatar
-                    src={co.avatar ?? ""}
-                    sx={{ width: 24, height: 24 }}
-                  />
-                }
+                avatar={<Avatar src={co.avatar ?? ""} sx={{ width: 24, height: 24 }} />}
                 label={co.displayName || `@${co.handle}`}
                 size="small"
                 onDelete={() => handleRemoveCoObserver(co.did)}
@@ -512,19 +467,11 @@ export function UploadModal() {
           </Stack>
         )}
 
-        <Typography
-          variant="caption"
-          color="text.disabled"
-          sx={{ display: "block", mt: 0.5 }}
-        >
+        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
           Add other observers who participated in this sighting
         </Typography>
 
-        <Typography
-          variant="body2"
-          color="text.secondary"
-          sx={{ mt: 2, mb: 1 }}
-        >
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
           Photos (optional)
         </Typography>
 
@@ -538,11 +485,7 @@ export function UploadModal() {
         />
 
         {(existingImages.length > 0 || images.length > 0) && (
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}
-          >
+          <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
             {existingImages.map((url, index) => (
               <Box
                 key={`existing-${index}`}
@@ -641,11 +584,7 @@ export function UploadModal() {
           </Button>
         )}
 
-        <Typography
-          variant="caption"
-          color="text.disabled"
-          sx={{ display: "block", mt: 0.5 }}
-        >
+        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
 
@@ -661,10 +600,7 @@ export function UploadModal() {
           }}
         />
 
-        {lat &&
-        lng &&
-        Number.isFinite(parseFloat(lat)) &&
-        Number.isFinite(parseFloat(lng)) ? (
+        {lat && lng && Number.isFinite(parseFloat(lat)) && Number.isFinite(parseFloat(lng)) ? (
           <LocationPicker
             latitude={parseFloat(lat)}
             longitude={parseFloat(lng)}
@@ -686,8 +622,7 @@ export function UploadModal() {
                 () => {
                   dispatch(
                     addToast({
-                      message:
-                        "Could not get your location. Use the map to set it manually.",
+                      message: "Could not get your location. Use the map to set it manually.",
                       type: "error",
                     }),
                   );
@@ -708,12 +643,7 @@ export function UploadModal() {
           </Button>
         )}
 
-        <Stack
-          direction="row"
-          spacing={1}
-          justifyContent="flex-end"
-          sx={{ mt: 2 }}
-        >
+        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button onClick={handleClose} color="inherit">
             Cancel
           </Button>
@@ -722,11 +652,7 @@ export function UploadModal() {
             variant="contained"
             color="primary"
             disabled={isSubmitting}
-            startIcon={
-              isSubmitting ? (
-                <CircularProgress size={16} color="inherit" />
-              ) : undefined
-            }
+            startIcon={isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined}
           >
             {isSubmitting
               ? isEditMode

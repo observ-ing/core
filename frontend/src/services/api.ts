@@ -38,9 +38,7 @@ export async function logout(): Promise<void> {
 }
 
 export async function initiateLogin(handle: string): Promise<{ url: string }> {
-  const response = await fetch(
-    `${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`,
-  );
+  const response = await fetch(`${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`);
 
   const data = await response.json();
 
@@ -133,9 +131,7 @@ export async function fetchProfileFeed(
   return response.json();
 }
 
-export async function fetchObservation(
-  uri: string,
-): Promise<OccurrenceDetailResponse | null> {
+export async function fetchObservation(uri: string): Promise<OccurrenceDetailResponse | null> {
   try {
     const url = `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`;
     const response = await fetch(url);
@@ -179,14 +175,10 @@ export interface ActorSearchResult {
   avatar?: string;
 }
 
-export async function searchActors(
-  query: string,
-): Promise<ActorSearchResult[]> {
+export async function searchActors(query: string): Promise<ActorSearchResult[]> {
   if (query.length < 2) return [];
 
-  const response = await fetch(
-    `${API_BASE}/api/actors/search?q=${encodeURIComponent(query)}`,
-  );
+  const response = await fetch(`${API_BASE}/api/actors/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
   const data = await response.json();
@@ -196,9 +188,7 @@ export async function searchActors(
 export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   if (query.length < 2) return [];
 
-  const response = await fetch(
-    `${API_BASE}/api/taxa/search?q=${encodeURIComponent(query)}`,
-  );
+  const response = await fetch(`${API_BASE}/api/taxa/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
   const data = await response.json();
@@ -292,16 +282,11 @@ export async function updateObservation(data: {
   return response.json();
 }
 
-export async function deleteObservation(
-  uri: string,
-): Promise<{ success: boolean }> {
-  const response = await fetch(
-    `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-    },
-  );
+export async function deleteObservation(uri: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -314,16 +299,11 @@ export async function deleteObservation(
   return response.json();
 }
 
-export async function deleteIdentification(
-  uri: string,
-): Promise<{ success: boolean }> {
-  const response = await fetch(
-    `${API_BASE}/api/identifications/${encodeURIComponent(uri)}`,
-    {
-      method: "DELETE",
-      credentials: "include",
-    },
-  );
+export async function deleteIdentification(uri: string): Promise<{ success: boolean }> {
+  const response = await fetch(`${API_BASE}/api/identifications/${encodeURIComponent(uri)}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
 
   if (!response.ok) {
     if (response.status === 401) {
@@ -396,10 +376,7 @@ export async function submitComment(data: {
  * - kingdom only: fetchTaxon("Plantae")
  * - legacy ID: fetchTaxon("gbif:12345")
  */
-export async function fetchTaxon(
-  kingdomOrId: string,
-  name?: string,
-): Promise<TaxonDetail | null> {
+export async function fetchTaxon(kingdomOrId: string, name?: string): Promise<TaxonDetail | null> {
   try {
     let url: string;
     if (name) {
@@ -547,9 +524,7 @@ export async function likeObservation(
 // Notification API Functions
 // ============================================================================
 
-export async function fetchNotifications(
-  cursor?: string,
-): Promise<NotificationsResponse> {
+export async function fetchNotifications(cursor?: string): Promise<NotificationsResponse> {
   const params = new URLSearchParams({ limit: "20" });
   if (cursor) params.set("cursor", cursor);
 
@@ -574,9 +549,7 @@ export async function fetchUnreadCount(): Promise<{ count: number }> {
   return response.json();
 }
 
-export async function markNotificationRead(
-  id?: number,
-): Promise<{ success: boolean }> {
+export async function markNotificationRead(id?: number): Promise<{ success: boolean }> {
   const response = await fetch(`${API_BASE}/api/notifications/read`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -590,9 +563,7 @@ export async function markNotificationRead(
   return response.json();
 }
 
-export async function unlikeObservation(
-  occurrenceUri: string,
-): Promise<{ success: boolean }> {
+export async function unlikeObservation(occurrenceUri: string): Promise<{ success: boolean }> {
   const response = await fetch(`${API_BASE}/api/likes`, {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
