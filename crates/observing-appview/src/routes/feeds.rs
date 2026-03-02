@@ -4,13 +4,10 @@ use observing_db::types::{ExploreFeedOptions, HomeFeedOptions};
 use serde::Deserialize;
 use serde_json::{json, Value};
 
+use crate::auth::session_did;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
-
-fn session_did(cookies: &axum_extra::extract::CookieJar) -> Option<String> {
-    cookies.get("session_did").map(|c| c.value().to_string())
-}
 
 #[derive(Deserialize)]
 pub struct ExploreParams {
