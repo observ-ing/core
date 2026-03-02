@@ -12,6 +12,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth;
+use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -37,9 +38,13 @@ pub async fn create_comment(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.body.is_empty() || body.body.len() > 3000 {
+    if body.body.is_empty() || body.body.len() > constants::MAX_COMMENT_LENGTH {
         return Err(AppError::BadRequest(
-            "Comment body must be 1-3000 characters".into(),
+            format!(
+                "Comment body must be 1-{} characters",
+                constants::MAX_COMMENT_LENGTH
+            )
+            .into(),
         ));
     }
 

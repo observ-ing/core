@@ -14,6 +14,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -102,13 +103,22 @@ pub async fn create_interaction(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.interaction_type.is_empty() || body.interaction_type.len() > 64 {
+    if body.interaction_type.is_empty()
+        || body.interaction_type.len() > constants::MAX_INTERACTION_TYPE_LENGTH
+    {
         return Err(AppError::BadRequest(
-            "Interaction type must be 1-64 characters".into(),
+            format!(
+                "Interaction type must be 1-{} characters",
+                constants::MAX_INTERACTION_TYPE_LENGTH
+            )
+            .into(),
         ));
     }
 
-    let direction = body.direction.as_deref().unwrap_or("AtoB");
+    let direction = body
+        .direction
+        .as_deref()
+        .unwrap_or(constants::DEFAULT_INTERACTION_DIRECTION);
 
     let subject_a = build_interaction_subject(&body.subject_a)?;
     let subject_b = build_interaction_subject(&body.subject_b)?;

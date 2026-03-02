@@ -12,6 +12,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -63,9 +64,15 @@ pub async fn create_identification(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.scientific_name.is_empty() || body.scientific_name.len() > 256 {
+    if body.scientific_name.is_empty()
+        || body.scientific_name.len() > constants::MAX_SCIENTIFIC_NAME_LENGTH
+    {
         return Err(AppError::BadRequest(
-            "Scientific name must be 1-256 characters".into(),
+            format!(
+                "Scientific name must be 1-{} characters",
+                constants::MAX_SCIENTIFIC_NAME_LENGTH
+            )
+            .into(),
         ));
     }
 
