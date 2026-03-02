@@ -15,6 +15,7 @@ use crate::auth;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::taxonomy_client::TaxonFields;
 use at_uri_parser::AtUri;
 
 pub async fn get_for_occurrence(
@@ -70,31 +71,12 @@ pub async fn create_identification(
     }
 
     // Validate taxonomy via GBIF
-    let mut taxon_id = None;
-    let mut taxon_rank = body.taxon_rank.clone();
-    let mut vernacular_name = None;
-    let mut kingdom = None;
-    let mut phylum = None;
-    let mut class = None;
-    let mut order = None;
-    let mut family = None;
-    let mut genus = None;
-
-    if let Some(validation) = state.taxonomy.validate(&body.scientific_name).await {
-        if let Some(ref t) = validation.taxon {
-            taxon_id = Some(t.id.clone());
-            if taxon_rank.is_none() {
-                taxon_rank = Some(t.rank.clone());
-            }
-            vernacular_name = t.common_name.clone();
-            kingdom = t.kingdom.clone();
-            phylum = t.phylum.clone();
-            class = t.class.clone();
-            order = t.order.clone();
-            family = t.family.clone();
-            genus = t.genus.clone();
-        }
-    }
+    let fields = TaxonFields::from_validation(
+        &state.taxonomy,
+        &body.scientific_name,
+        body.taxon_rank.clone(),
+    )
+    .await;
 
     let subject = StrongRef::new()
         .uri(
@@ -109,14 +91,14 @@ pub async fn create_identification(
 
     let taxon = Taxon {
         scientific_name: (&*body.scientific_name).into(),
-        taxon_rank: taxon_rank.as_deref().map(Into::into),
-        vernacular_name: vernacular_name.as_deref().map(Into::into),
-        kingdom: kingdom.as_deref().map(Into::into),
-        phylum: phylum.as_deref().map(Into::into),
-        class: class.as_deref().map(Into::into),
-        order: order.as_deref().map(Into::into),
-        family: family.as_deref().map(Into::into),
-        genus: genus.as_deref().map(Into::into),
+        taxon_rank: fields.taxon_rank.as_deref().map(Into::into),
+        vernacular_name: fields.vernacular_name.as_deref().map(Into::into),
+        kingdom: fields.kingdom.as_deref().map(Into::into),
+        phylum: fields.phylum.as_deref().map(Into::into),
+        class: fields.class.as_deref().map(Into::into),
+        order: fields.order.as_deref().map(Into::into),
+        family: fields.family.as_deref().map(Into::into),
+        genus: fields.genus.as_deref().map(Into::into),
         ..Default::default()
     };
 
@@ -127,7 +109,7 @@ pub async fn create_identification(
         .subject_index(body.subject_index.map(|i| i as i64))
         .is_agreement(body.is_agreement.unwrap_or(false))
         .maybe_comment(body.comment.as_deref().map(Into::into))
-        .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
+        .maybe_taxon_id(fields.taxon_id.as_deref().map(Into::into))
         .build();
 
     let mut record_value =
