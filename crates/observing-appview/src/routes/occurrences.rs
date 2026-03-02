@@ -13,14 +13,11 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth;
+use crate::auth::session_did;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
-
-fn session_did(cookies: &axum_extra::extract::CookieJar) -> Option<String> {
-    cookies.get("session_did").map(|c| c.value().to_string())
-}
 
 #[derive(Deserialize)]
 pub struct NearbyParams {
