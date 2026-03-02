@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useCallback, type FormEvent } from "react";
 import { Box, Typography, Button, TextField, Stack, Paper, Divider } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
@@ -7,6 +7,7 @@ import { submitIdentification } from "../../services/api";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
+import { useFormSubmit } from "../../hooks/useFormSubmit";
 
 interface IdentificationPanelProps {
   observation: {
@@ -31,7 +32,6 @@ export function IdentificationPanel({
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
   const [comment, setComment] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
 
   // Calculate the next available subject index for new organisms
@@ -39,36 +39,60 @@ export function IdentificationPanel({
 
   const currentId = observation.communityId || observation.scientificName || "Unknown";
 
-  const handleAgree = async () => {
-    setIsSubmitting(true);
-    try {
-      await submitIdentification({
+  const agreeFn = useCallback(
+    () =>
+      submitIdentification({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         subjectIndex,
         scientificName: currentId,
         isAgreement: true,
-      });
-      dispatch(
-        addToast({
-          message: "Your agreement has been recorded!",
-          type: "success",
-        }),
-      );
-      onSuccess?.();
-    } catch (error) {
-      dispatch(
-        addToast({
-          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-          type: "error",
-        }),
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+      }),
+    [observation.uri, observation.cid, subjectIndex, currentId],
+  );
 
-  const handleSubmit = async (e: FormEvent) => {
+  const { isSubmitting: isAgreeing, handleSubmit: handleAgree } = useFormSubmit(agreeFn, {
+    successMessage: "Your agreement has been recorded!",
+    onSuccess: () => onSuccess?.(),
+  });
+
+  const suggestFn = useCallback(() => {
+    const targetSubjectIndex = identifyingNewOrganism ? nextSubjectIndex : subjectIndex;
+    const trimmedComment = comment.trim();
+    return submitIdentification({
+      occurrenceUri: observation.uri,
+      occurrenceCid: observation.cid,
+      subjectIndex: targetSubjectIndex,
+      scientificName: taxonName.trim(),
+      ...(trimmedComment ? { comment: trimmedComment } : {}),
+      isAgreement: false,
+    });
+  }, [
+    observation.uri,
+    observation.cid,
+    subjectIndex,
+    identifyingNewOrganism,
+    nextSubjectIndex,
+    taxonName,
+    comment,
+  ]);
+
+  const { isSubmitting: isSuggesting, handleSubmit: doSuggest } = useFormSubmit(suggestFn, {
+    successMessage: identifyingNewOrganism
+      ? "New organism added and identification submitted!"
+      : "Your identification has been submitted!",
+    onSuccess: () => {
+      setShowSuggestForm(false);
+      setTaxonName("");
+      setComment("");
+      setIdentifyingNewOrganism(false);
+      onSuccess?.();
+    },
+  });
+
+  const isSubmitting = isAgreeing || isSuggesting;
+
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     if (!taxonName.trim()) {
@@ -76,39 +100,7 @@ export function IdentificationPanel({
       return;
     }
 
-    // Use next available index if identifying a new organism
-    const targetSubjectIndex = identifyingNewOrganism ? nextSubjectIndex : subjectIndex;
-
-    setIsSubmitting(true);
-    try {
-      const trimmedComment = comment.trim();
-      await submitIdentification({
-        occurrenceUri: observation.uri,
-        occurrenceCid: observation.cid,
-        subjectIndex: targetSubjectIndex,
-        scientificName: taxonName.trim(),
-        ...(trimmedComment ? { comment: trimmedComment } : {}),
-        isAgreement: false,
-      });
-      const message = identifyingNewOrganism
-        ? "New organism added and identification submitted!"
-        : "Your identification has been submitted!";
-      dispatch(addToast({ message, type: "success" }));
-      setShowSuggestForm(false);
-      setTaxonName("");
-      setComment("");
-      setIdentifyingNewOrganism(false);
-      onSuccess?.();
-    } catch (error) {
-      dispatch(
-        addToast({
-          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-          type: "error",
-        }),
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    doSuggest();
   };
 
   return (

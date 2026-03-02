@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useCallback, type FormEvent } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -18,6 +18,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { submitComment } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
+import { useFormSubmit } from "../../hooks/useFormSubmit";
 import type { Comment } from "../../services/types";
 import { formatRelativeTime, getPdslsUrl } from "../../lib/utils";
 
@@ -38,8 +39,26 @@ export function CommentSection({
   const user = useAppSelector((state) => state.auth.user);
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [menuAnchorEl, setMenuAnchorEl] = useState<{ [key: string]: HTMLElement | null }>({});
+
+  const submitFn = useCallback(
+    () =>
+      submitComment({
+        occurrenceUri: observationUri,
+        occurrenceCid: observationCid,
+        body: body.trim(),
+      }),
+    [observationUri, observationCid, body],
+  );
+
+  const { isSubmitting, handleSubmit: doSubmit } = useFormSubmit(submitFn, {
+    successMessage: "Comment posted!",
+    onSuccess: () => {
+      setBody("");
+      setShowForm(false);
+      onCommentAdded?.();
+    },
+  });
 
   const handleMenuOpen = (commentUri: string, event: React.MouseEvent<HTMLElement>) => {
     setMenuAnchorEl((prev) => ({ ...prev, [commentUri]: event.currentTarget }));
@@ -49,7 +68,7 @@ export function CommentSection({
     setMenuAnchorEl((prev) => ({ ...prev, [commentUri]: null }));
   };
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
     if (!body.trim()) {
@@ -57,27 +76,7 @@ export function CommentSection({
       return;
     }
 
-    setIsSubmitting(true);
-    try {
-      await submitComment({
-        occurrenceUri: observationUri,
-        occurrenceCid: observationCid,
-        body: body.trim(),
-      });
-      dispatch(addToast({ message: "Comment posted!", type: "success" }));
-      setBody("");
-      setShowForm(false);
-      onCommentAdded?.();
-    } catch (error) {
-      dispatch(
-        addToast({
-          message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
-          type: "error",
-        }),
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
+    doSubmit();
   };
 
   return (
