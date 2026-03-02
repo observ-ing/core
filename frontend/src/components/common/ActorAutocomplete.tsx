@@ -1,5 +1,13 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { Autocomplete, Avatar, Box, CircularProgress, Stack, TextField, Typography } from "@mui/material";
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  CircularProgress,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import { searchActors } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
 
@@ -97,7 +105,12 @@ export function ActorAutocomplete({
         const { key, ...otherProps } = props;
         return (
           <Box component="li" key={key} {...otherProps}>
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.5 }}>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              alignItems="center"
+              sx={{ py: 0.5 }}
+            >
               <Avatar
                 src={option.avatar ?? ""}
                 alt={option.handle}

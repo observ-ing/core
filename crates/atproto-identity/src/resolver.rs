@@ -297,7 +297,10 @@ impl IdentityResolver {
     pub async fn search_actors(&self, query: &str, limit: u8) -> Vec<Arc<Profile>> {
         let limit = limit.min(10);
         let url = reqwest::Url::parse_with_params(
-            &format!("{}/xrpc/app.bsky.actor.searchActorsTypeahead", self.service_url),
+            &format!(
+                "{}/xrpc/app.bsky.actor.searchActorsTypeahead",
+                self.service_url
+            ),
             &[("q", query), ("limit", &limit.to_string())],
         );
 
@@ -342,10 +345,7 @@ impl IdentityResolver {
                 }
             }
             Ok(response) => {
-                debug!(
-                    "Search actors failed: status {}",
-                    response.status()
-                );
+                debug!("Search actors failed: status {}", response.status());
                 Vec::new()
             }
             Err(e) => {
