@@ -1,10 +1,7 @@
-use std::str::FromStr;
-
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
@@ -563,10 +560,7 @@ pub async fn create_occurrence(
                 }
             }
 
-            let subject = StrongRef::new()
-                .uri(JAtUri::from_str(&uri).expect("just-created URI must be valid"))
-                .cid(JCid::from_str(&cid).expect("just-created CID must be valid"))
-                .build();
+            let subject = auth::build_strong_ref(&uri, &cid)?;
 
             let taxon = Taxon {
                 scientific_name: scientific_name.as_str().into(),

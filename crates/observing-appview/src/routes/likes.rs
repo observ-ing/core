@@ -1,12 +1,9 @@
-use std::str::FromStr;
-
 use axum::extract::State;
 use axum::Json;
 use chrono::Utc;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use jacquard_common::types::string::Datetime;
 use observing_db::types::CreateLikeParams;
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::like::Like;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -37,16 +34,7 @@ pub async fn create_like(
 
     let now = Utc::now();
 
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let record = Like::new()
         .created_at(Datetime::new(now.fixed_offset()))
