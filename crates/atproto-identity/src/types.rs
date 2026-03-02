@@ -62,6 +62,22 @@ pub(crate) struct ProfileResponse {
     pub(crate) posts_count: Option<u64>,
 }
 
+impl From<ProfileResponse> for Profile {
+    fn from(resp: ProfileResponse) -> Self {
+        Self {
+            did: resp.did,
+            handle: resp.handle,
+            display_name: resp.display_name,
+            description: resp.description,
+            avatar: resp.avatar,
+            banner: resp.banner,
+            followers_count: resp.followers_count,
+            follows_count: resp.follows_count,
+            posts_count: resp.posts_count,
+        }
+    }
+}
+
 #[derive(Debug, Deserialize)]
 pub(crate) struct ProfilesResponse {
     pub(crate) profiles: Vec<ProfileResponse>,
