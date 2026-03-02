@@ -289,26 +289,9 @@ async fn get_occurrence_inner(
 
 async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>, AppError> {
     let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
+    let enriched = enrichment::enrich_observers(&state.resolver, &observers).await;
 
-    let dids: Vec<String> = observers.iter().map(|o| o.did.clone()).collect();
-    let profiles = state.resolver.get_profiles(&dids).await;
-
-    let infos: Vec<Value> = observers
-        .iter()
-        .map(|o| {
-            let p = profiles.get(&o.did);
-            json!({
-                "did": o.did,
-                "role": o.role,
-                "handle": p.map(|p| p.handle.as_str()),
-                "displayName": p.and_then(|p| p.display_name.as_deref()),
-                "avatar": p.and_then(|p| p.avatar.as_deref()),
-                "addedAt": o.added_at.map(|t| t.to_rfc3339()),
-            })
-        })
-        .collect();
-
-    Ok(Json(json!({ "observers": infos })))
+    Ok(Json(json!({ "observers": enriched })))
 }
 
 // --- Write handlers ---
