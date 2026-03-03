@@ -18,6 +18,7 @@ use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::validation::validate_string_length;
 
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
@@ -103,14 +104,12 @@ pub async fn create_interaction(
         .await
         .map_err(|_| AppError::Unauthorized)?;
 
-    if body.interaction_type.is_empty()
-        || body.interaction_type.len() > constants::MAX_INTERACTION_TYPE_LENGTH
-    {
-        return Err(AppError::BadRequest(format!(
-            "Interaction type must be 1-{} characters",
-            constants::MAX_INTERACTION_TYPE_LENGTH
-        )));
-    }
+    validate_string_length(
+        &body.interaction_type,
+        1,
+        constants::MAX_INTERACTION_TYPE_LENGTH,
+        "Interaction type",
+    )?;
 
     let direction = body
         .direction
@@ -133,45 +132,8 @@ pub async fn create_interaction(
         serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
     record_value["$type"] = json!(Interaction::NSID);
 
-    // Restore OAuth session and create the AT Protocol record directly
-    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
-        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
-        tracing::warn!(error = %e, "Failed to restore OAuth session");
-        AppError::Unauthorized
-    })?;
-    let agent = atrium_api::agent::Agent::new(session);
-    let resp = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .create_record(
-            atrium_api::com::atproto::repo::create_record::InputData {
-                collection: Interaction::NSID
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
-                record: serde_json::from_value(record_value)
-                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: None,
-                swap_commit: None,
-                validate: None,
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(
-                    error = %e,
-                    "AT Protocol authentication failed (session expired)"
-                );
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to create record: {e}"))
-            }
-        })?;
+    let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
+    let resp = auth::create_at_record(&agent, did_parsed, Interaction::NSID, record_value).await?;
 
     info!(uri = %resp.uri, "Created interaction");
 
