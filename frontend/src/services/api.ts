@@ -15,6 +15,23 @@ import type {
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
 
+/**
+ * Extract an error message from a failed fetch response.
+ * Tries to parse the response body as JSON and extract `.error`,
+ * falling back to the provided default message if parsing fails.
+ */
+async function extractErrorMessage(response: Response, defaultMessage: string): Promise<string> {
+  try {
+    const body = await response.json();
+    if (body.error && typeof body.error === "string") {
+      return body.error;
+    }
+  } catch {
+    // JSON parsing failed, fall through to default
+  }
+  return defaultMessage;
+}
+
 export async function checkAuth(): Promise<User | null> {
   try {
     const response = await fetch(`${API_BASE}/oauth/me`, {
@@ -40,13 +57,11 @@ export async function logout(): Promise<void> {
 export async function initiateLogin(handle: string): Promise<{ url: string }> {
   const response = await fetch(`${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`);
 
-  const data = await response.json();
-
   if (!response.ok) {
-    throw new Error(data.error || "Failed to initiate login");
+    throw new Error(await extractErrorMessage(response, "Failed to initiate login"));
   }
 
-  return data;
+  return response.json();
 }
 
 export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
@@ -57,7 +72,7 @@ export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
 
   const response = await fetch(`${API_BASE}/api/occurrences/feed?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to load feed");
+    throw new Error(await extractErrorMessage(response, "Failed to load feed"));
   }
 
   return response.json();
@@ -79,7 +94,7 @@ export async function fetchExploreFeed(
 
   const response = await fetch(`${API_BASE}/api/feeds/explore?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to load explore feed");
+    throw new Error(await extractErrorMessage(response, "Failed to load explore feed"));
   }
 
   return response.json();
@@ -106,7 +121,7 @@ export async function fetchHomeFeed(
     if (response.status === 401) {
       throw new Error("Authentication required");
     }
-    throw new Error("Failed to load home feed");
+    throw new Error(await extractErrorMessage(response, "Failed to load home feed"));
   }
 
   return response.json();
@@ -125,7 +140,7 @@ export async function fetchProfileFeed(
     `${API_BASE}/api/profiles/${encodeURIComponent(did)}/feed?${params}`,
   );
   if (!response.ok) {
-    throw new Error("Failed to load profile feed");
+    throw new Error(await extractErrorMessage(response, "Failed to load profile feed"));
   }
 
   return response.json();
@@ -158,7 +173,7 @@ export async function fetchObservationsGeoJSON(bounds: {
 
   const response = await fetch(`${API_BASE}/api/occurrences/geojson?${params}`);
   if (!response.ok) {
-    throw new Error("Failed to load observations");
+    throw new Error(await extractErrorMessage(response, "Failed to load observations"));
   }
 
   return response.json();
@@ -227,15 +242,7 @@ export async function submitObservation(data: {
   });
 
   if (!response.ok) {
-    let message = "Failed to submit";
-    try {
-      const error = await response.json();
-      message = error.error || message;
-    } catch {
-      const text = await response.text().catch(() => "");
-      message = text || `Request failed (${response.status})`;
-    }
-    throw new Error(message);
+    throw new Error(await extractErrorMessage(response, "Failed to submit"));
   }
 
   return response.json();
@@ -275,8 +282,7 @@ export async function updateObservation(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to update");
+    throw new Error(await extractErrorMessage(response, "Failed to update"));
   }
 
   return response.json();
@@ -292,8 +298,7 @@ export async function deleteObservation(uri: string): Promise<{ success: boolean
     if (response.status === 401) {
       throw new Error("Session expired, please log in again");
     }
-    const error = await response.json();
-    throw new Error(error.error || "Failed to delete observation");
+    throw new Error(await extractErrorMessage(response, "Failed to delete observation"));
   }
 
   return response.json();
@@ -309,8 +314,7 @@ export async function deleteIdentification(uri: string): Promise<{ success: bool
     if (response.status === 401) {
       throw new Error("Session expired, please log in again");
     }
-    const error = await response.json();
-    throw new Error(error.error || "Failed to delete identification");
+    throw new Error(await extractErrorMessage(response, "Failed to delete identification"));
   }
 
   return response.json();
@@ -339,8 +343,7 @@ export async function submitIdentification(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to submit identification");
+    throw new Error(await extractErrorMessage(response, "Failed to submit identification"));
   }
 
   return response.json();
@@ -363,8 +366,7 @@ export async function submitComment(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to submit comment");
+    throw new Error(await extractErrorMessage(response, "Failed to submit comment"));
   }
 
   return response.json();
@@ -416,7 +418,7 @@ export async function fetchTaxonObservations(
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error("Failed to fetch taxon observations");
+    throw new Error(await extractErrorMessage(response, "Failed to fetch taxon observations"));
   }
 
   return response.json();
@@ -481,8 +483,7 @@ export async function submitInteraction(data: {
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to submit interaction");
+    throw new Error(await extractErrorMessage(response, "Failed to submit interaction"));
   }
 
   return response.json();
@@ -495,7 +496,7 @@ export async function fetchInteractionsForOccurrence(
     `${API_BASE}/api/interactions/occurrence/${encodeURIComponent(occurrenceUri)}`,
   );
   if (!response.ok) {
-    throw new Error("Failed to fetch interactions");
+    throw new Error(await extractErrorMessage(response, "Failed to fetch interactions"));
   }
 
   return response.json();
@@ -513,8 +514,7 @@ export async function likeObservation(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to like observation");
+    throw new Error(await extractErrorMessage(response, "Failed to like observation"));
   }
 
   return response.json();
@@ -532,7 +532,7 @@ export async function fetchNotifications(cursor?: string): Promise<Notifications
     credentials: "include",
   });
   if (!response.ok) {
-    throw new Error("Failed to load notifications");
+    throw new Error(await extractErrorMessage(response, "Failed to load notifications"));
   }
 
   return response.json();
@@ -543,7 +543,7 @@ export async function fetchUnreadCount(): Promise<{ count: number }> {
     credentials: "include",
   });
   if (!response.ok) {
-    throw new Error("Failed to fetch unread count");
+    throw new Error(await extractErrorMessage(response, "Failed to fetch unread count"));
   }
 
   return response.json();
@@ -557,7 +557,7 @@ export async function markNotificationRead(id?: number): Promise<{ success: bool
     body: JSON.stringify(id !== undefined ? { id } : {}),
   });
   if (!response.ok) {
-    throw new Error("Failed to mark notification read");
+    throw new Error(await extractErrorMessage(response, "Failed to mark notification read"));
   }
 
   return response.json();
@@ -572,8 +572,7 @@ export async function unlikeObservation(occurrenceUri: string): Promise<{ succes
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || "Failed to unlike observation");
+    throw new Error(await extractErrorMessage(response, "Failed to unlike observation"));
   }
 
   return response.json();
