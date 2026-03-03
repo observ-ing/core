@@ -39,12 +39,10 @@ pub async fn create_comment(
         .map_err(|_| AppError::Unauthorized)?;
 
     if body.body.is_empty() || body.body.len() > constants::MAX_COMMENT_LENGTH {
-        return Err(AppError::BadRequest(
-            format!(
-                "Comment body must be 1-{} characters",
-                constants::MAX_COMMENT_LENGTH
-            ),
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Comment body must be 1-{} characters",
+            constants::MAX_COMMENT_LENGTH
+        )));
     }
 
     let subject = StrongRef::new()

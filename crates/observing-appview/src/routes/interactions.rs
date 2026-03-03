@@ -106,12 +106,10 @@ pub async fn create_interaction(
     if body.interaction_type.is_empty()
         || body.interaction_type.len() > constants::MAX_INTERACTION_TYPE_LENGTH
     {
-        return Err(AppError::BadRequest(
-            format!(
-                "Interaction type must be 1-{} characters",
-                constants::MAX_INTERACTION_TYPE_LENGTH
-            ),
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Interaction type must be 1-{} characters",
+            constants::MAX_INTERACTION_TYPE_LENGTH
+        )));
     }
 
     let direction = body

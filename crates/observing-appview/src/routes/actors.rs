@@ -21,12 +21,10 @@ pub async fn search(
         .ok_or_else(|| AppError::BadRequest("q is required".into()))?;
 
     if query.len() < constants::MIN_SEARCH_QUERY_LENGTH {
-        return Err(AppError::BadRequest(
-            format!(
-                "Search query must be at least {} characters",
-                constants::MIN_SEARCH_QUERY_LENGTH
-            ),
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Search query must be at least {} characters",
+            constants::MIN_SEARCH_QUERY_LENGTH
+        )));
     }
 
     let results = state

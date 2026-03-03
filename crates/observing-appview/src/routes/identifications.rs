@@ -67,12 +67,10 @@ pub async fn create_identification(
     if body.scientific_name.is_empty()
         || body.scientific_name.len() > constants::MAX_SCIENTIFIC_NAME_LENGTH
     {
-        return Err(AppError::BadRequest(
-            format!(
-                "Scientific name must be 1-{} characters",
-                constants::MAX_SCIENTIFIC_NAME_LENGTH
-            ),
-        ));
+        return Err(AppError::BadRequest(format!(
+            "Scientific name must be 1-{} characters",
+            constants::MAX_SCIENTIFIC_NAME_LENGTH
+        )));
     }
 
     // Validate taxonomy via GBIF
