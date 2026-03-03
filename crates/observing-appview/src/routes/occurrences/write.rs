@@ -212,13 +212,8 @@ pub async fn create_occurrence(
 
             let id_did = atrium_api::types::string::Did::new(user.did.clone())
                 .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-            match auth::create_at_record(
-                &agent,
-                id_did,
-                auto_id::identification_nsid(),
-                id_value,
-            )
-            .await
+            match auth::create_at_record(&agent, id_did, auto_id::identification_nsid(), id_value)
+                .await
             {
                 Ok(id_resp) => {
                     info!(uri = %id_resp.uri, "Auto-created identification for occurrence");
