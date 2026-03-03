@@ -43,8 +43,7 @@ pub async fn create_comment(
             format!(
                 "Comment body must be 1-{} characters",
                 constants::MAX_COMMENT_LENGTH
-            )
-            .into(),
+            ),
         ));
     }
 

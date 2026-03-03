@@ -71,8 +71,7 @@ pub async fn create_identification(
             format!(
                 "Scientific name must be 1-{} characters",
                 constants::MAX_SCIENTIFIC_NAME_LENGTH
-            )
-            .into(),
+            ),
         ));
     }
 

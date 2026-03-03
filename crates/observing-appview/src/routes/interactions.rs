@@ -110,8 +110,7 @@ pub async fn create_interaction(
             format!(
                 "Interaction type must be 1-{} characters",
                 constants::MAX_INTERACTION_TYPE_LENGTH
-            )
-            .into(),
+            ),
         ));
     }
 

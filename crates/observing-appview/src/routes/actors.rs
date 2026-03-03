@@ -25,8 +25,7 @@ pub async fn search(
             format!(
                 "Search query must be at least {} characters",
                 constants::MIN_SEARCH_QUERY_LENGTH
-            )
-            .into(),
+            ),
         ));
     }
 
