@@ -57,45 +57,8 @@ pub async fn create_like(
         serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
     record_value["$type"] = json!(Like::NSID);
 
-    // Restore OAuth session and create record directly
-    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
-        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
-        tracing::warn!(error = %e, "Failed to restore OAuth session");
-        AppError::Unauthorized
-    })?;
-    let agent = atrium_api::agent::Agent::new(session);
-
-    let record_unknown: atrium_api::types::Unknown = serde_json::from_value(record_value)
-        .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?;
-
-    let output = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .create_record(
-            atrium_api::com::atproto::repo::create_record::InputData {
-                collection: Like::NSID
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
-                record: record_unknown,
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: None,
-                swap_commit: None,
-                validate: None,
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(error = %e, "AT Protocol authentication failed");
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to create like record: {e}"))
-            }
-        })?;
+    let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
+    let output = auth::create_at_record(&agent, did_parsed, Like::NSID, record_value).await?;
 
     let uri = output.uri.clone();
     let cid = output.cid.as_ref().to_string();
