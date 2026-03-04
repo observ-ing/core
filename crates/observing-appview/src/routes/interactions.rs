@@ -10,7 +10,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -82,13 +82,9 @@ fn build_interaction_subject(
 
 pub async fn create_interaction(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateInteractionRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     validate_string_length(&body.interaction_type, 1, 64, "Interaction type")?;
 
     let direction = body.direction.as_deref().unwrap_or("AtoB");

@@ -1,10 +1,9 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useCallback } from "react";
 import { Autocomplete, Box, CircularProgress, Stack, TextField, Typography } from "@mui/material";
 import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
-
-const DEBOUNCE_MS = 300;
+import { useAutocomplete } from "../../hooks/useAutocomplete";
 
 interface TaxaAutocompleteProps {
   value: string;
@@ -15,6 +14,8 @@ interface TaxaAutocompleteProps {
   margin?: "normal" | "dense" | "none";
 }
 
+const sliceToFive = (results: TaxaResult[]) => results.slice(0, 5);
+
 export function TaxaAutocomplete({
   value,
   onChange,
@@ -23,39 +24,16 @@ export function TaxaAutocomplete({
   size,
   margin = "normal",
 }: TaxaAutocompleteProps) {
-  const [suggestions, setSuggestions] = useState<TaxaResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const latestQuery = useRef("");
-  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-
-  useEffect(() => {
-    return () => clearTimeout(timerRef.current);
-  }, []);
-
-  const handleSearch = useCallback((query: string) => {
-    latestQuery.current = query;
-    clearTimeout(timerRef.current);
-
-    if (query.length < 2) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    timerRef.current = setTimeout(async () => {
-      const results = await searchTaxa(query);
-      if (latestQuery.current === query) {
-        setSuggestions(results.slice(0, 5));
-        setLoading(false);
-      }
-    }, DEBOUNCE_MS);
-  }, []);
+  const searchFn = useCallback((query: string) => searchTaxa(query), []);
+  const { options, loading, handleSearch, clearOptions } = useAutocomplete<TaxaResult>({
+    searchFn,
+    filterResults: sliceToFive,
+  });
 
   return (
     <Autocomplete
       freeSolo
-      options={suggestions}
+      options={options}
       loading={loading}
       getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
       inputValue={value}
@@ -67,7 +45,7 @@ export function TaxaAutocomplete({
         if (v) {
           const name = typeof v === "string" ? v : v.scientificName;
           onChange(name);
-          setSuggestions([]);
+          clearOptions();
         }
       }}
       filterOptions={(x) => x}
