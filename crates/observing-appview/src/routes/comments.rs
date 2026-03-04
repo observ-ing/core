@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::error::AppError;
 use crate::state::AppState;
 use crate::validation::validate_string_length;
@@ -31,13 +31,9 @@ pub struct CreateCommentRequest {
 
 pub async fn create_comment(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateCommentRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     validate_string_length(&body.body, 1, 3000, "Comment body")?;
 
     let subject = StrongRef::new()

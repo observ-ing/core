@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -58,13 +58,9 @@ pub struct CreateIdentificationRequest {
 
 pub async fn create_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     validate_string_length(&body.scientific_name, 1, 256, "Scientific name")?;
 
     // Validate taxonomy via GBIF
@@ -128,13 +124,9 @@ pub async fn create_identification(
 
 pub async fn delete_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
