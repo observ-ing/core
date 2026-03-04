@@ -1,19 +1,16 @@
-use std::str::FromStr;
-
 use axum::extract::State;
 use axum::Json;
 use chrono::Utc;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use jacquard_common::types::string::Datetime;
 use observing_db::types::CreateLikeParams;
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::like::Like;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
@@ -28,25 +25,12 @@ pub struct CreateLikeRequest {
 
 pub async fn create_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let now = Utc::now();
 
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let record = Like::new()
         .created_at(Datetime::new(now.fixed_offset()))
@@ -57,45 +41,8 @@ pub async fn create_like(
         serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
     record_value["$type"] = json!(Like::NSID);
 
-    // Restore OAuth session and create record directly
-    let did_parsed = atrium_api::types::string::Did::new(user.did.clone())
-        .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-    let session = state.oauth_client.restore(&did_parsed).await.map_err(|e| {
-        tracing::warn!(error = %e, "Failed to restore OAuth session");
-        AppError::Unauthorized
-    })?;
-    let agent = atrium_api::agent::Agent::new(session);
-
-    let record_unknown: atrium_api::types::Unknown = serde_json::from_value(record_value)
-        .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?;
-
-    let output = agent
-        .api
-        .com
-        .atproto
-        .repo
-        .create_record(
-            atrium_api::com::atproto::repo::create_record::InputData {
-                collection: Like::NSID
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid NSID: {e}")))?,
-                record: record_unknown,
-                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: None,
-                swap_commit: None,
-                validate: None,
-            }
-            .into(),
-        )
-        .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(error = %e, "AT Protocol authentication failed");
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to create like record: {e}"))
-            }
-        })?;
+    let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
+    let output = auth::create_at_record(&agent, did_parsed, Like::NSID, record_value).await?;
 
     let uri = output.uri.clone();
     let cid = output.cid.as_ref().to_string();
@@ -129,13 +76,9 @@ pub struct DeleteLikeRequest {
 
 pub async fn delete_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<DeleteLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     // Delete from local DB first (returns the like URI)
     let like_uri = observing_db::likes::delete_by_subject_and_did(
         &state.pool,

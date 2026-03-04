@@ -1,9 +1,8 @@
 import { test as authTest, expect as authExpect } from "../fixtures/auth";
 import { openUploadModal } from "../helpers/navigation";
+import { mockTaxaSearchRoute } from "../helpers/mock-taxa";
 
-/** Type into the species input and wait for the taxa search response that
- *  matches the full query. Filters by query-param length so we skip early
- *  responses triggered by partial (debounced) input. */
+/** Type into the species input and wait for the autocomplete options to appear. */
 async function searchSpecies(page: import("@playwright/test").Page, query: string) {
   const speciesInput = page.getByLabel(/Species/i);
   await speciesInput.click();
@@ -27,6 +26,7 @@ async function searchSpecies(page: import("@playwright/test").Page, query: strin
 
 authTest.describe("Species Input", () => {
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockTaxaSearchRoute(page);
     await page.goto("/");
     await openUploadModal(page);
   });

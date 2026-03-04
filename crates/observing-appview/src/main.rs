@@ -1,5 +1,6 @@
 mod auth;
 mod config;
+mod constants;
 mod enrichment;
 mod error;
 mod oauth_store;
@@ -7,6 +8,7 @@ mod resolver;
 mod routes;
 mod state;
 mod taxonomy_client;
+mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
