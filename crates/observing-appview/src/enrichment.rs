@@ -514,6 +514,7 @@ pub async fn enrich_observers(
         })
         .collect()
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;

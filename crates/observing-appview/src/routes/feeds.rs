@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::session_did;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -29,7 +30,10 @@ pub async fn get_explore(
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<ExploreParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     let options = ExploreFeedOptions {
         limit: Some(limit),
@@ -91,7 +95,10 @@ pub async fn get_home(
     Query(params): Query<HomeParams>,
 ) -> Result<Json<Value>, AppError> {
     let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     let followed_dids = state.resolver.get_follows(&viewer).await;
     let (followed_dids, total_follows) = home_feed_dids(&viewer, followed_dids);

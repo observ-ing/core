@@ -1,11 +1,9 @@
-use std::str::FromStr;
-
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde_json::{json, Value};
 
+use crate::auth;
 use crate::error::AppError;
 use crate::state::AppState;
 
@@ -43,10 +41,7 @@ pub async fn build_identification_record(
         }
     }
 
-    let subject = StrongRef::new()
-        .uri(JAtUri::from_str(occurrence_uri).expect("just-created URI must be valid"))
-        .cid(JCid::from_str(occurrence_cid).expect("just-created CID must be valid"))
-        .build();
+    let subject = auth::build_strong_ref(occurrence_uri, occurrence_cid)?;
 
     let taxon = Taxon {
         scientific_name: scientific_name.into(),

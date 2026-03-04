@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -25,6 +25,7 @@ import {
   searchTaxa,
   type InteractionResponse,
 } from "../../services/api";
+import { useFormSubmit } from "../../hooks/useFormSubmit";
 import type { Subject, TaxaResult } from "../../services/types";
 import { formatDate } from "../../lib/utils";
 
@@ -65,7 +66,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
   const [interactions, setInteractions] = useState<InteractionResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Form state
@@ -112,53 +112,60 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
     setTaxonSuggestions([]);
   };
 
-  const handleSubmit = async () => {
-    if (!subjectBTaxon.trim()) {
-      setError("Please specify the other organism");
-      return;
-    }
+  const submitFn = useCallback(() => {
+    const selectedSubject = subjects.find((s) => s.index === subjectAIndex) || subjects[0];
+    const subjectAName =
+      selectedSubject?.communityId || observation.communityId || observation.scientificName;
+    const trimmedComment = comment.trim();
+    return submitInteraction({
+      subjectA: {
+        occurrenceUri: observation.uri,
+        occurrenceCid: observation.cid,
+        subjectIndex: subjectAIndex,
+        ...(subjectAName ? { scientificName: subjectAName } : {}),
+      },
+      subjectB: {
+        scientificName: subjectBTaxon.trim(),
+        ...(subjectBKingdom ? { kingdom: subjectBKingdom } : {}),
+      },
+      interactionType,
+      direction,
+      ...(trimmedComment ? { comment: trimmedComment } : {}),
+    });
+  }, [
+    subjects,
+    subjectAIndex,
+    observation,
+    comment,
+    subjectBTaxon,
+    subjectBKingdom,
+    interactionType,
+    direction,
+  ]);
 
-    setSubmitting(true);
-    setError(null);
-
-    try {
-      const selectedSubject = subjects.find((s) => s.index === subjectAIndex) || subjects[0];
-
-      const subjectAName =
-        selectedSubject?.communityId || observation.communityId || observation.scientificName;
-      const trimmedComment = comment.trim();
-      await submitInteraction({
-        subjectA: {
-          occurrenceUri: observation.uri,
-          occurrenceCid: observation.cid,
-          subjectIndex: subjectAIndex,
-          ...(subjectAName ? { scientificName: subjectAName } : {}),
-        },
-        subjectB: {
-          scientificName: subjectBTaxon.trim(),
-          ...(subjectBKingdom ? { kingdom: subjectBKingdom } : {}),
-        },
-        interactionType,
-        direction,
-        ...(trimmedComment ? { comment: trimmedComment } : {}),
-      });
-
-      // Reset form
+  const { isSubmitting: submitting, handleSubmit: doSubmit } = useFormSubmit(submitFn, {
+    onSuccess: async () => {
       setShowForm(false);
       setSubjectBTaxon("");
       setSubjectBKingdom("");
       setComment("");
       setInteractionType("predation");
       setDirection("AtoB");
-
-      // Reload interactions
       await loadInteractions();
       onSuccess?.();
-    } catch (err) {
+    },
+    onError: (err) => {
       setError(err instanceof Error ? err.message : "Failed to submit interaction");
-    }
+    },
+  });
 
-    setSubmitting(false);
+  const handleSubmit = () => {
+    if (!subjectBTaxon.trim()) {
+      setError("Please specify the other organism");
+      return;
+    }
+    setError(null);
+    doSubmit();
   };
 
   const getInteractionLabel = (type: string) => {
