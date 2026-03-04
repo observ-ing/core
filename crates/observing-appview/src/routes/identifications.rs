@@ -1,21 +1,19 @@
-use std::str::FromStr;
-
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::taxonomy_client::TaxonFields;
 use crate::validation::validate_string_length;
 use at_uri_parser::AtUri;
 
@@ -58,13 +56,9 @@ pub struct CreateIdentificationRequest {
 
 pub async fn create_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     validate_string_length(
         &body.scientific_name,
         1,
@@ -73,53 +67,25 @@ pub async fn create_identification(
     )?;
 
     // Validate taxonomy via GBIF
-    let mut taxon_id = None;
-    let mut taxon_rank = body.taxon_rank.clone();
-    let mut vernacular_name = None;
-    let mut kingdom = None;
-    let mut phylum = None;
-    let mut class = None;
-    let mut order = None;
-    let mut family = None;
-    let mut genus = None;
+    let fields = TaxonFields::from_validation(
+        &state.taxonomy,
+        &body.scientific_name,
+        body.taxon_rank.clone(),
+    )
+    .await;
 
-    if let Some(validation) = state.taxonomy.validate(&body.scientific_name).await {
-        if let Some(ref t) = validation.taxon {
-            taxon_id = Some(t.id.clone());
-            if taxon_rank.is_none() {
-                taxon_rank = Some(t.rank.clone());
-            }
-            vernacular_name = t.common_name.clone();
-            kingdom = t.kingdom.clone();
-            phylum = t.phylum.clone();
-            class = t.class.clone();
-            order = t.order.clone();
-            family = t.family.clone();
-            genus = t.genus.clone();
-        }
-    }
-
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let taxon = Taxon {
         scientific_name: (&*body.scientific_name).into(),
-        taxon_rank: taxon_rank.as_deref().map(Into::into),
-        vernacular_name: vernacular_name.as_deref().map(Into::into),
-        kingdom: kingdom.as_deref().map(Into::into),
-        phylum: phylum.as_deref().map(Into::into),
-        class: class.as_deref().map(Into::into),
-        order: order.as_deref().map(Into::into),
-        family: family.as_deref().map(Into::into),
-        genus: genus.as_deref().map(Into::into),
+        taxon_rank: fields.taxon_rank.as_deref().map(Into::into),
+        vernacular_name: fields.vernacular_name.as_deref().map(Into::into),
+        kingdom: fields.kingdom.as_deref().map(Into::into),
+        phylum: fields.phylum.as_deref().map(Into::into),
+        class: fields.class.as_deref().map(Into::into),
+        order: fields.order.as_deref().map(Into::into),
+        family: fields.family.as_deref().map(Into::into),
+        genus: fields.genus.as_deref().map(Into::into),
         ..Default::default()
     };
 
@@ -130,7 +96,7 @@ pub async fn create_identification(
         .subject_index(body.subject_index.map(|i| i as i64))
         .is_agreement(body.is_agreement.unwrap_or(false))
         .maybe_comment(body.comment.as_deref().map(Into::into))
-        .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
+        .maybe_taxon_id(fields.taxon_id.as_deref().map(Into::into))
         .build();
 
     let mut record_value =
@@ -152,13 +118,9 @@ pub async fn create_identification(
 
 pub async fn delete_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {

@@ -7,7 +7,7 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
-use crate::auth;
+use crate::auth::AuthUser;
 use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -56,13 +56,9 @@ fn actor_from_profile(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Op
 
 pub async fn list(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Query(params): Query<ListParams>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_NOTIFICATION_LIMIT)
@@ -99,12 +95,8 @@ pub async fn list(
 
 pub async fn unread_count(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let count = observing_db::notifications::unread_count(&state.pool, &user.did).await?;
 
     Ok(Json(json!({ "count": count })))
@@ -117,13 +109,9 @@ pub struct MarkReadBody {
 
 pub async fn mark_read(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<MarkReadBody>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     if let Some(id) = body.id {
         observing_db::notifications::mark_read(&state.pool, &user.did, id).await?;
     } else {
