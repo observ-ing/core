@@ -9,6 +9,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
@@ -100,7 +101,8 @@ pub async fn create_occurrence(
         decimal_latitude: body.latitude.to_string().into(),
         decimal_longitude: body.longitude.to_string().into(),
         coordinate_uncertainty_in_meters: Some(
-            body.coordinate_uncertainty_in_meters.unwrap_or(50) as i64
+            body.coordinate_uncertainty_in_meters
+                .unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY) as i64,
         ),
         geodetic_datum: Some("WGS84".into()),
         continent: geo

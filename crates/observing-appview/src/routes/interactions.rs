@@ -1,11 +1,8 @@
-use std::str::FromStr;
-
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use jacquard_common::types::string::Datetime;
 use observing_db::types::InteractionDirection;
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::identification::Taxon;
 use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionSubject};
 use serde::Deserialize;
@@ -14,6 +11,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -65,18 +63,7 @@ fn build_interaction_subject(
     req: &InteractionSubjectRequest,
 ) -> Result<InteractionSubject<'_>, AppError> {
     let occurrence = match (&req.occurrence_uri, &req.occurrence_cid) {
-        (Some(uri), Some(cid)) => Some(
-            StrongRef::new()
-                .uri(
-                    JAtUri::from_str(uri)
-                        .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-                )
-                .cid(
-                    JCid::from_str(cid)
-                        .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-                )
-                .build(),
-        ),
+        (Some(uri), Some(cid)) => Some(auth::build_strong_ref(uri, cid)?),
         _ => None,
     };
 
@@ -99,9 +86,17 @@ pub async fn create_interaction(
     user: AuthUser,
     Json(body): Json<CreateInteractionRequest>,
 ) -> Result<Json<Value>, AppError> {
-    validate_string_length(&body.interaction_type, 1, 64, "Interaction type")?;
+    validate_string_length(
+        &body.interaction_type,
+        1,
+        constants::MAX_INTERACTION_TYPE_LENGTH,
+        "Interaction type",
+    )?;
 
-    let direction = body.direction.as_deref().unwrap_or("AtoB");
+    let direction = body
+        .direction
+        .as_deref()
+        .unwrap_or(constants::DEFAULT_INTERACTION_DIRECTION);
 
     let subject_a = build_interaction_subject(&body.subject_a)?;
     let subject_b = build_interaction_subject(&body.subject_b)?;
