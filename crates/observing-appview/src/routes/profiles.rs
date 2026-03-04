@@ -5,6 +5,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::session_did;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -23,7 +24,10 @@ pub async fn get_profile_feed(
     Path(did): Path<String>,
     Query(params): Query<ProfileFeedParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     let feed_type = match params.feed_type.as_deref() {
         Some("observations") => ProfileFeedType::Observations,

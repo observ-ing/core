@@ -11,6 +11,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -85,9 +86,17 @@ pub async fn create_interaction(
     user: AuthUser,
     Json(body): Json<CreateInteractionRequest>,
 ) -> Result<Json<Value>, AppError> {
-    validate_string_length(&body.interaction_type, 1, 64, "Interaction type")?;
+    validate_string_length(
+        &body.interaction_type,
+        1,
+        constants::MAX_INTERACTION_TYPE_LENGTH,
+        "Interaction type",
+    )?;
 
-    let direction = body.direction.as_deref().unwrap_or("AtoB");
+    let direction = body
+        .direction
+        .as_deref()
+        .unwrap_or(constants::DEFAULT_INTERACTION_DIRECTION);
 
     let subject_a = build_interaction_subject(&body.subject_a)?;
     let subject_b = build_interaction_subject(&body.subject_b)?;

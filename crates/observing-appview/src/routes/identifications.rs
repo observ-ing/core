@@ -9,6 +9,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -58,7 +59,12 @@ pub async fn create_identification(
     user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
 ) -> Result<Json<Value>, AppError> {
-    validate_string_length(&body.scientific_name, 1, 256, "Scientific name")?;
+    validate_string_length(
+        &body.scientific_name,
+        1,
+        constants::MAX_SCIENTIFIC_NAME_LENGTH,
+        "Scientific name",
+    )?;
 
     // Validate taxonomy via GBIF
     let fields = TaxonFields::from_validation(

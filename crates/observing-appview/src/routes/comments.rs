@@ -9,6 +9,7 @@ use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::error::AppError;
 use crate::state::AppState;
 use crate::validation::validate_string_length;
@@ -31,7 +32,7 @@ pub async fn create_comment(
     user: AuthUser,
     Json(body): Json<CreateCommentRequest>,
 ) -> Result<Json<Value>, AppError> {
-    validate_string_length(&body.body, 1, 3000, "Comment body")?;
+    validate_string_length(&body.body, 1, constants::MAX_COMMENT_LENGTH, "Comment body")?;
 
     let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
