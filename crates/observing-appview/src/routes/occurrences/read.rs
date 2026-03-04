@@ -4,6 +4,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 
 use crate::auth::session_did;
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -28,8 +29,11 @@ pub async fn get_nearby(
     let lng = params
         .lng
         .ok_or_else(|| AppError::BadRequest("lng is required".into()))?;
-    let radius = params.radius.unwrap_or(10000.0);
-    let limit = params.limit.unwrap_or(100).min(1000);
+    let radius = params.radius.unwrap_or(constants::DEFAULT_NEARBY_RADIUS);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_NEARBY_LIMIT)
+        .min(constants::MAX_NEARBY_LIMIT);
     let offset = params.offset.unwrap_or(0);
 
     let rows = observing_db::occurrences::get_nearby(
@@ -77,7 +81,10 @@ pub async fn get_feed(
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<FeedParams>,
 ) -> Result<Json<Value>, AppError> {
-    let limit = params.limit.unwrap_or(20).min(100);
+    let limit = params
+        .limit
+        .unwrap_or(constants::DEFAULT_FEED_LIMIT)
+        .min(constants::MAX_FEED_LIMIT);
 
     let rows = observing_db::occurrences::get_feed(
         &state.pool,
@@ -135,7 +142,7 @@ pub async fn get_bbox(
     let max_lng = params
         .max_lng
         .ok_or_else(|| AppError::BadRequest("maxLng is required".into()))?;
-    let limit = params.limit.unwrap_or(1000);
+    let limit = params.limit.unwrap_or(constants::DEFAULT_BBOX_LIMIT);
 
     let rows = observing_db::occurrences::get_by_bounding_box(
         &state.pool,
@@ -195,7 +202,7 @@ pub async fn get_geojson(
         min_lng,
         max_lat,
         max_lng,
-        10000,
+        constants::MAX_GEOJSON_LIMIT,
         &state.hidden_dids,
     )
     .await?;
@@ -278,24 +285,7 @@ async fn get_occurrence_inner(
 
 async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>, AppError> {
     let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
+    let enriched = enrichment::enrich_observers(&state.resolver, &observers).await;
 
-    let dids: Vec<String> = observers.iter().map(|o| o.did.clone()).collect();
-    let profiles = state.resolver.get_profiles(&dids).await;
-
-    let infos: Vec<Value> = observers
-        .iter()
-        .map(|o| {
-            let p = profiles.get(&o.did);
-            json!({
-                "did": o.did,
-                "role": o.role,
-                "handle": p.map(|p| p.handle.as_str()),
-                "displayName": p.and_then(|p| p.display_name.as_deref()),
-                "avatar": p.and_then(|p| p.avatar.as_deref()),
-                "addedAt": o.added_at.map(|t| t.to_rfc3339()),
-            })
-        })
-        .collect();
-
-    Ok(Json(json!({ "observers": infos })))
+    Ok(Json(json!({ "observers": enriched })))
 }

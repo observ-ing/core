@@ -1,19 +1,16 @@
-use std::str::FromStr;
-
 use axum::extract::State;
 use axum::Json;
 use chrono::Utc;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
+use jacquard_common::types::string::Datetime;
 use observing_db::types::CreateLikeParams;
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use observing_lexicons::org_rwell::test::like::Like;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
 use crate::error::AppError;
 use crate::state::AppState;
 use at_uri_parser::AtUri;
@@ -28,25 +25,12 @@ pub struct CreateLikeRequest {
 
 pub async fn create_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let now = Utc::now();
 
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let record = Like::new()
         .created_at(Datetime::new(now.fixed_offset()))
@@ -92,13 +76,9 @@ pub struct DeleteLikeRequest {
 
 pub async fn delete_like(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<DeleteLikeRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     // Delete from local DB first (returns the like URI)
     let like_uri = observing_db::likes::delete_by_subject_and_did(
         &state.pool,

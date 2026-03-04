@@ -1,17 +1,15 @@
-use std::str::FromStr;
-
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::{AtUri as JAtUri, Cid as JCid, Datetime};
-use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
+use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
-use crate::auth;
+use crate::auth::{self, AuthUser};
+use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
@@ -58,14 +56,15 @@ pub struct CreateIdentificationRequest {
 
 pub async fn create_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
-    validate_string_length(&body.scientific_name, 1, 256, "Scientific name")?;
+    validate_string_length(
+        &body.scientific_name,
+        1,
+        constants::MAX_SCIENTIFIC_NAME_LENGTH,
+        "Scientific name",
+    )?;
 
     // Validate taxonomy via GBIF
     let fields = TaxonFields::from_validation(
@@ -75,16 +74,7 @@ pub async fn create_identification(
     )
     .await;
 
-    let subject = StrongRef::new()
-        .uri(
-            JAtUri::from_str(&body.occurrence_uri)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence URI".into()))?,
-        )
-        .cid(
-            JCid::from_str(&body.occurrence_cid)
-                .map_err(|_| AppError::BadRequest("Invalid occurrence CID".into()))?,
-        )
-        .build();
+    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let taxon = Taxon {
         scientific_name: (&*body.scientific_name).into(),
@@ -128,13 +118,9 @@ pub async fn create_identification(
 
 pub async fn delete_identification(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<Value>, AppError> {
-    let user = auth::require_auth(&state.pool, &cookies)
-        .await
-        .map_err(|_| AppError::Unauthorized)?;
-
     let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
