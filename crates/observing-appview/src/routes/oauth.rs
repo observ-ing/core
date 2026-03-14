@@ -9,6 +9,8 @@ use tracing::{error, info};
 use crate::error::AppError;
 use crate::state::AppState;
 
+const SESSION_MAX_AGE_SECS: i64 = 14 * 24 * 60 * 60;
+
 #[derive(Deserialize)]
 pub struct LoginParams {
     handle: Option<String>,
@@ -87,9 +89,7 @@ pub async fn callback(
                     };
                     let cookie = format!(
                         "session_did={}; HttpOnly; Path=/; Max-Age={}{}",
-                        did_str,
-                        14 * 24 * 60 * 60, // 14 days
-                        secure,
+                        did_str, SESSION_MAX_AGE_SECS, secure,
                     );
                     (
                         [(axum::http::header::SET_COOKIE, cookie)],
