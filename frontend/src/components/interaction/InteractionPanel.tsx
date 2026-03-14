@@ -27,7 +27,7 @@ import {
 } from "../../services/api";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import type { Subject, TaxaResult } from "../../services/types";
-import { formatDate } from "../../lib/utils";
+import { formatDate, MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
 
 // Known interaction types with human-readable labels
 const INTERACTION_TYPES = [
@@ -100,7 +100,7 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
     setSubjectBTaxon(query);
     if (query.length >= 2) {
       const results = await searchTaxa(query);
-      setTaxonSuggestions(results.slice(0, 5));
+      setTaxonSuggestions(results.slice(0, MAX_AUTOCOMPLETE_RESULTS));
     } else {
       setTaxonSuggestions([]);
     }
