@@ -64,7 +64,7 @@ fn deduplicate_by_user(identifications: &[IdentificationRow]) -> Vec<&Identifica
 
     for id in identifications {
         let existing = latest_by_user.get(id.did.as_str());
-        if existing.map_or(true, |e| id.date_identified > e.date_identified) {
+        if existing.is_none_or(|e| id.date_identified > e.date_identified) {
             latest_by_user.insert(&id.did, id);
         }
     }
