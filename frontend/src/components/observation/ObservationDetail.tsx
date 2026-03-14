@@ -29,15 +29,10 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
-import {
-  fetchObservation,
-  getImageUrl,
-  deleteIdentification,
-  likeObservation,
-  unlikeObservation,
-} from "../../services/api";
+import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
@@ -63,8 +58,7 @@ export function ObservationDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -101,7 +95,7 @@ export function ObservationDetail() {
     }
 
     loadObservation();
-  }, [atUri]);
+  }, [atUri, setLiked, setLikeCount]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -150,25 +144,6 @@ export function ObservationDetail() {
     handleMenuClose();
     if (observation) {
       dispatch(openDeleteConfirm(observation));
-    }
-  };
-
-  const handleLikeToggle = async () => {
-    if (!user || !observation) return;
-
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount((c) => c + (wasLiked ? -1 : 1));
-
-    try {
-      if (wasLiked) {
-        await unlikeObservation(observation.uri);
-      } else {
-        await likeObservation(observation.uri, observation.cid);
-      }
-    } catch {
-      setLiked(wasLiked);
-      setLikeCount((c) => c + (wasLiked ? 1 : -1));
     }
   };
 
@@ -313,7 +288,7 @@ export function ObservationDetail() {
             <span>
               <IconButton
                 size="small"
-                onClick={handleLikeToggle}
+                onClick={() => observation && handleLikeToggle(observation.uri, observation.cid)}
                 disabled={!user}
                 aria-label={liked ? "Unlike" : "Like"}
                 sx={{

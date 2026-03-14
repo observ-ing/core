@@ -23,7 +23,8 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
-import { getImageUrl, likeObservation, unlikeObservation } from "../../services/api";
+import { getImageUrl } from "../../services/api";
+import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
 import { formatTimeAgo, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 
@@ -38,8 +39,10 @@ const REMARKS_TRUNCATE_LENGTH = 200;
 export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [remarksExpanded, setRemarksExpanded] = useState(false);
-  const [liked, setLiked] = useState(observation.viewerHasLiked ?? false);
-  const [likeCount, setLikeCount] = useState(observation.likeCount ?? 0);
+  const { liked, likeCount, handleLikeToggle } = useLikeToggle(
+    observation.viewerHasLiked ?? false,
+    observation.likeCount ?? 0,
+  );
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -100,27 +103,6 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       return;
     }
     navigate(observationUrl);
-  };
-
-  const handleLikeToggle = async () => {
-    if (!currentUser) return;
-
-    const wasLiked = liked;
-    // Optimistic update
-    setLiked(!wasLiked);
-    setLikeCount((c) => c + (wasLiked ? -1 : 1));
-
-    try {
-      if (wasLiked) {
-        await unlikeObservation(observation.uri);
-      } else {
-        await likeObservation(observation.uri, observation.cid);
-      }
-    } catch {
-      // Revert on failure
-      setLiked(wasLiked);
-      setLikeCount((c) => c + (wasLiked ? 1 : -1));
-    }
   };
 
   const avatarEl = hasCoObservers ? (
@@ -350,7 +332,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           <span>
             <IconButton
               size="small"
-              onClick={handleLikeToggle}
+              onClick={() => handleLikeToggle(observation.uri, observation.cid)}
               disabled={!currentUser}
               aria-label={liked ? "Unlike" : "Like"}
               sx={{
