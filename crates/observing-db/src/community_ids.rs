@@ -55,8 +55,6 @@ struct TaxonCount {
     kingdom: Option<String>,
     taxon_rank: Option<String>,
     count: usize,
-    #[allow(dead_code)]
-    agreement_count: usize,
 }
 
 /// Keep only each user's most recent identification
@@ -66,7 +64,7 @@ fn deduplicate_by_user(identifications: &[IdentificationRow]) -> Vec<&Identifica
 
     for id in identifications {
         let existing = latest_by_user.get(id.did.as_str());
-        if existing.is_none() || id.date_identified > existing.unwrap().date_identified {
+        if existing.is_none_or(|e| id.date_identified > e.date_identified) {
             latest_by_user.insert(&id.did, id);
         }
     }
@@ -88,12 +86,8 @@ fn group_by_taxon(identifications: &[&IdentificationRow]) -> Vec<TaxonCount> {
             kingdom: id.kingdom.clone(),
             taxon_rank: id.taxon_rank.clone(),
             count: 0,
-            agreement_count: 0,
         });
         entry.count += 1;
-        if id.is_agreement.unwrap_or(false) {
-            entry.agreement_count += 1;
-        }
     }
 
     counts.into_values().collect()

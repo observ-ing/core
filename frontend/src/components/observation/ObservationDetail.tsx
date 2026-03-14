@@ -48,7 +48,7 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "../common/Skeletons";
-import { formatDate, getPdslsUrl, buildOccurrenceAtUri } from "../../lib/utils";
+import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -531,8 +531,7 @@ export function ObservationDetail() {
                     dispatch(addToast({ message: "Identification deleted", type: "success" }));
                     await handleIdentificationSuccess();
                   } catch (error) {
-                    const message =
-                      error instanceof Error ? error.message : "Failed to delete identification";
+                    const message = getErrorMessage(error, "Failed to delete identification");
                     dispatch(addToast({ message, type: "error" }));
                     if (message.includes("Session expired")) {
                       dispatch(checkAuth());

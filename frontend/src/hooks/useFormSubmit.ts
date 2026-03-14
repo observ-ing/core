@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
+import { getErrorMessage } from "../lib/utils";
 
 interface UseFormSubmitOptions {
   /** Toast message shown on success. If omitted, no success toast is dispatched. */
@@ -41,7 +42,7 @@ export function useFormSubmit(
       } else {
         dispatch(
           addToast({
-            message: `Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+            message: `Error: ${getErrorMessage(error)}`,
             type: "error",
           }),
         );

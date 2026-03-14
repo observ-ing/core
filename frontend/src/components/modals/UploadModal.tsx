@@ -27,7 +27,7 @@ import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { ActorAutocomplete } from "../common/ActorAutocomplete";
 import { LocationPicker } from "../map/LocationPicker";
-import { getObservationUrl } from "../../lib/utils";
+import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 
 interface ImagePreview {
   file: File;
@@ -363,7 +363,7 @@ export function UploadModal() {
     } catch (error) {
       dispatch(
         addToast({
-          message: `Failed to ${isEditMode ? "update" : "submit"}: ${error instanceof Error ? error.message : "Unknown error"}`,
+          message: `Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`,
           type: "error",
         }),
       );

@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { deleteObservation } from "../../services/api";
+import { getErrorMessage } from "../../lib/utils";
 
 export function DeleteConfirmDialog() {
   const dispatch = useAppDispatch();
@@ -53,7 +54,7 @@ export function DeleteConfirmDialog() {
         window.location.reload();
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to delete observation";
+      const message = getErrorMessage(error, "Failed to delete observation");
       dispatch(addToast({ message, type: "error" }));
       if (message.includes("Session expired")) {
         dispatch(checkAuth());

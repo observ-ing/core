@@ -2,6 +2,9 @@
  * Shared utility functions for the Observ.ing frontend
  */
 
+/** Maximum number of results shown in autocomplete dropdowns. */
+export const MAX_AUTOCOMPLETE_RESULTS = 5;
+
 /**
  * Format a Date as a compact relative time string (e.g., "now", "5m", "2h", "3d")
  * For dates older than a week, returns a formatted date string.
@@ -85,4 +88,11 @@ export function getObservationUrl(atUri: string): string {
  */
 export function buildOccurrenceAtUri(did: string, rkey: string): string {
   return `at://${did}/org.rwell.test.occurrence/${rkey}`;
+}
+
+/**
+ * Extract a human-readable error message from an unknown caught value.
+ */
+export function getErrorMessage(error: unknown, fallback = "Unknown error"): string {
+  return error instanceof Error ? error.message : fallback;
 }

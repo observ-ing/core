@@ -15,7 +15,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification, Profile } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
-import { getPdslsUrl } from "../../lib/utils";
+import { formatRelativeTime, getPdslsUrl } from "../../lib/utils";
 
 interface ObserverInitialId {
   scientificName: string;
@@ -37,21 +37,6 @@ export interface IdentificationHistoryProps {
   currentUserDid?: string | undefined;
   /** Called when an identification is deleted */
   onDeleteIdentification?: ((uri: string) => Promise<void>) | undefined;
-}
-
-function formatRelativeTime(dateString: string): string {
-  const date = new Date(dateString);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60000);
-  const diffHours = Math.floor(diffMs / 3600000);
-  const diffDays = Math.floor(diffMs / 86400000);
-
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
-  return date.toLocaleDateString();
 }
 
 export function IdentificationHistory({
