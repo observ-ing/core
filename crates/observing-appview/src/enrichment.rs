@@ -445,20 +445,35 @@ async fn resolve_effective_taxonomy(
     })
 }
 
+/// Generic helper: resolve profiles for a slice of rows and map each into an enriched type.
+async fn enrich_rows<R, E>(
+    resolver: &IdentityResolver,
+    rows: &[R],
+    get_did: impl Fn(&R) -> &str,
+    build: impl Fn(&R, ProfileSummary) -> E,
+) -> Vec<E> {
+    let dids: Vec<String> = rows.iter().map(|r| get_did(r).to_string()).collect();
+    let profiles = resolver.get_profiles(&dids).await;
+    rows.iter()
+        .map(|row| build(row, profile_summary(get_did(row), &profiles)))
+        .collect()
+}
+
 /// Enrich identifications with profile info
 pub async fn enrich_identifications(
     resolver: &IdentityResolver,
     rows: &[IdentificationRow],
 ) -> Vec<EnrichedIdentification> {
-    let dids: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
-    let profiles = resolver.get_profiles(&dids).await;
-
-    rows.iter()
-        .map(|row| EnrichedIdentification {
-            identifier: profile_summary(&row.did, &profiles),
+    enrich_rows(
+        resolver,
+        rows,
+        |r| &r.did,
+        |row, profile| EnrichedIdentification {
+            identifier: profile,
             row: row.clone(),
-        })
-        .collect()
+        },
+    )
+    .await
 }
 
 /// Enrich comments with profile info
@@ -466,15 +481,16 @@ pub async fn enrich_comments(
     resolver: &IdentityResolver,
     rows: &[CommentRow],
 ) -> Vec<EnrichedComment> {
-    let dids: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
-    let profiles = resolver.get_profiles(&dids).await;
-
-    rows.iter()
-        .map(|row| EnrichedComment {
-            commenter: profile_summary(&row.did, &profiles),
+    enrich_rows(
+        resolver,
+        rows,
+        |r| &r.did,
+        |row, profile| EnrichedComment {
+            commenter: profile,
             row: row.clone(),
-        })
-        .collect()
+        },
+    )
+    .await
 }
 
 /// Enrich interactions with profile info
@@ -482,15 +498,16 @@ pub async fn enrich_interactions(
     resolver: &IdentityResolver,
     rows: &[InteractionRow],
 ) -> Vec<EnrichedInteraction> {
-    let dids: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
-    let profiles = resolver.get_profiles(&dids).await;
-
-    rows.iter()
-        .map(|row| EnrichedInteraction {
-            creator: profile_summary(&row.did, &profiles),
+    enrich_rows(
+        resolver,
+        rows,
+        |r| &r.did,
+        |row, profile| EnrichedInteraction {
+            creator: profile,
             row: row.clone(),
-        })
-        .collect()
+        },
+    )
+    .await
 }
 
 /// Enrich observers with profile info
