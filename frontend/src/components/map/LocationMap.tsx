@@ -3,6 +3,7 @@ import { Box, Typography, useTheme } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
+import { createCircleGeoJSON, METERS_PER_DEGREE } from "./mapUtils";
 
 export interface LocationMapProps {
   latitude: number;
@@ -75,8 +76,9 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
         });
 
         // Fit map to uncertainty circle bounds
-        const latOffset = uncertaintyMeters / 111320;
-        const lngOffset = uncertaintyMeters / (111320 * Math.cos((latitude * Math.PI) / 180));
+        const latOffset = uncertaintyMeters / METERS_PER_DEGREE;
+        const lngOffset =
+          uncertaintyMeters / (METERS_PER_DEGREE * Math.cos((latitude * Math.PI) / 180));
         mapInstance.fitBounds(
           [
             [longitude - lngOffset, latitude - latOffset],
@@ -133,42 +135,4 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       }}
     />
   );
-}
-
-// Create a GeoJSON circle polygon from center point and radius in meters
-function createCircleGeoJSON(
-  lng: number,
-  lat: number,
-  radiusMeters: number,
-): GeoJSON.FeatureCollection {
-  const points = 64;
-  const coords: [number, number][] = [];
-
-  for (let i = 0; i < points; i++) {
-    const angle = (i / points) * 2 * Math.PI;
-    const dx = radiusMeters * Math.cos(angle);
-    const dy = radiusMeters * Math.sin(angle);
-
-    // Convert meters to degrees (approximate)
-    const latOffset = dy / 111320;
-    const lngOffset = dx / (111320 * Math.cos((lat * Math.PI) / 180));
-
-    coords.push([lng + lngOffset, lat + latOffset]);
-  }
-  const first = coords[0];
-  if (first) coords.push(first); // Close the polygon
-
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: {},
-        geometry: {
-          type: "Polygon",
-          coordinates: [coords],
-        },
-      },
-    ],
-  };
 }
