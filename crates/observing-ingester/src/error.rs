@@ -3,14 +3,16 @@
 use std::fmt;
 
 #[derive(Debug)]
-#[allow(dead_code)]
 pub enum IngesterError {
     Jetstream(jetstream_client::JetstreamError),
     Database(Box<sqlx::Error>),
     CborDecode(String),
+    #[allow(dead_code)]
     InvalidFrame(String),
+    #[allow(dead_code)]
     ConnectionClosed,
     Config(String),
+    #[allow(dead_code)]
     Parse(String),
 }
 
