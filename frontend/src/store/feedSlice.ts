@@ -24,6 +24,19 @@ function isHomeFeedMeta(value: unknown): value is HomeFeedMeta {
   );
 }
 
+function resetFeedState(state: FeedState) {
+  state.observations = [];
+  state.cursor = undefined;
+  state.hasMore = true;
+  state.homeFeedMeta = null;
+}
+
+function applyHomeFeedMeta(state: FeedState, payload: ExploreFeedResponse | HomeFeedResponse) {
+  if ("meta" in payload && isHomeFeedMeta(payload.meta)) {
+    state.homeFeedMeta = payload.meta;
+  }
+}
+
 interface ThunkApiConfig {
   state: { feed: FeedState; auth: { user: unknown } };
 }
@@ -95,22 +108,14 @@ const feedSlice = createSlice({
   reducers: {
     switchTab: (state, action: PayloadAction<FeedTab>) => {
       state.currentTab = action.payload;
-      state.observations = [];
-      state.cursor = undefined;
-      state.hasMore = true;
-      state.homeFeedMeta = null;
+      resetFeedState(state);
     },
     resetFeed: (state) => {
-      state.observations = [];
-      state.cursor = undefined;
-      state.hasMore = true;
-      state.homeFeedMeta = null;
+      resetFeedState(state);
     },
     setFilters: (state, action: PayloadAction<FeedFilters>) => {
       state.filters = action.payload;
-      state.observations = [];
-      state.cursor = undefined;
-      state.hasMore = true;
+      resetFeedState(state);
     },
     setUserLocation: (state, action: PayloadAction<{ lat: number; lng: number } | null>) => {
       state.userLocation = action.payload;
@@ -126,9 +131,7 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
-          state.homeFeedMeta = action.payload.meta;
-        }
+        applyHomeFeedMeta(state, action.payload);
       })
       .addCase(loadFeed.rejected, (state) => {
         state.isLoading = false;
@@ -143,9 +146,7 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
-          state.homeFeedMeta = action.payload.meta;
-        }
+        applyHomeFeedMeta(state, action.payload);
       })
       .addCase(loadInitialFeed.rejected, (state) => {
         state.isLoading = false;
