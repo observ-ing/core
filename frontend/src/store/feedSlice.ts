@@ -8,6 +8,8 @@ import type {
 } from "../services/types";
 import * as api from "../services/api";
 
+const DEFAULT_NEARBY_RADIUS = 50000;
+
 type HomeFeedMeta = {
   followedCount: number;
   nearbyCount: number;
@@ -64,7 +66,7 @@ export const loadFeed = createAsyncThunk<
   if (currentTab === "home" && isAuthenticated) {
     return api.fetchHomeFeed(
       cursor,
-      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
+      userLocation ? { ...userLocation, nearbyRadius: DEFAULT_NEARBY_RADIUS } : undefined,
     );
   }
   // Fall back to explore for unauthenticated users or explore tab
@@ -83,7 +85,7 @@ export const loadInitialFeed = createAsyncThunk<
   if (currentTab === "home" && isAuthenticated) {
     return api.fetchHomeFeed(
       undefined,
-      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
+      userLocation ? { ...userLocation, nearbyRadius: DEFAULT_NEARBY_RADIUS } : undefined,
     );
   }
   return api.fetchExploreFeed(undefined, filters);
