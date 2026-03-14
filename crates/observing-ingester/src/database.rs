@@ -42,6 +42,19 @@ async fn notify_occurrence_owner(
     }
 }
 
+/// Extract the record JSON from a commit, or return `Ok(())` with a warning if missing.
+macro_rules! require_record {
+    ($commit:expr, $kind:expr) => {
+        match &$commit.record {
+            Some(v) => v,
+            None => {
+                warn!(uri = %$commit.uri, "Skipping {} without record", $kind);
+                return Ok(());
+            }
+        }
+    };
+}
+
 /// Database connection and operations
 pub struct Database {
     pool: PgPool,
@@ -69,13 +82,7 @@ impl Database {
     pub async fn upsert_occurrence(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting occurrence: {}", commit.uri);
 
-        let record_json = match &commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %commit.uri, "Skipping occurrence without record");
-                return Ok(());
-            }
-        };
+        let record_json = require_record!(commit, "occurrence");
 
         let params = match processing::occurrence_from_json(
             record_json,
@@ -110,13 +117,7 @@ impl Database {
     pub async fn upsert_identification(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting identification: {}", commit.uri);
 
-        let record_json = match &commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %commit.uri, "Skipping identification without record");
-                return Ok(());
-            }
-        };
+        let record_json = require_record!(commit, "identification");
 
         let params = match processing::identification_from_json(
             record_json,
@@ -155,13 +156,7 @@ impl Database {
     pub async fn upsert_comment(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting comment: {}", commit.uri);
 
-        let record_json = match &commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %commit.uri, "Skipping comment without record");
-                return Ok(());
-            }
-        };
+        let record_json = require_record!(commit, "comment");
 
         let params = match processing::comment_from_json(
             record_json,
@@ -200,13 +195,7 @@ impl Database {
     pub async fn upsert_interaction(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting interaction: {}", commit.uri);
 
-        let record_json = match &commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %commit.uri, "Skipping interaction without record");
-                return Ok(());
-            }
-        };
+        let record_json = require_record!(commit, "interaction");
 
         let params = match processing::interaction_from_json(
             record_json,
@@ -237,13 +226,7 @@ impl Database {
     pub async fn upsert_like(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting like: {}", commit.uri);
 
-        let record_json = match &commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %commit.uri, "Skipping like without record");
-                return Ok(());
-            }
-        };
+        let record_json = require_record!(commit, "like");
 
         let params = match processing::like_from_json(
             record_json,
