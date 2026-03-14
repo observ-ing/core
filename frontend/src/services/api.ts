@@ -33,6 +33,14 @@ async function extractErrorMessage(response: Response, defaultMessage: string): 
   return defaultMessage;
 }
 
+async function fetchApi<T>(url: string, errorMessage: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, init);
+  if (!response.ok) {
+    throw new Error(await extractErrorMessage(response, errorMessage));
+  }
+  return response.json();
+}
+
 export async function checkAuth(): Promise<User | null> {
   try {
     const response = await fetch(`${API_BASE}/oauth/me`, {
@@ -56,13 +64,10 @@ export async function logout(): Promise<void> {
 }
 
 export async function initiateLogin(handle: string): Promise<{ url: string }> {
-  const response = await fetch(`${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`);
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to initiate login"));
-  }
-
-  return response.json();
+  return fetchApi(
+    `${API_BASE}/oauth/login?handle=${encodeURIComponent(handle)}`,
+    "Failed to initiate login",
+  );
 }
 
 export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
@@ -71,12 +76,7 @@ export async function fetchFeed(cursor?: string): Promise<FeedResponse> {
     params.set("cursor", cursor);
   }
 
-  const response = await fetch(`${API_BASE}/api/occurrences/feed?${params}`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to load feed"));
-  }
-
-  return response.json();
+  return fetchApi(`${API_BASE}/api/occurrences/feed?${params}`, "Failed to load feed");
 }
 
 export async function fetchExploreFeed(
@@ -93,12 +93,7 @@ export async function fetchExploreFeed(
   if (filters?.startDate) params.set("startDate", filters.startDate);
   if (filters?.endDate) params.set("endDate", filters.endDate);
 
-  const response = await fetch(`${API_BASE}/api/feeds/explore?${params}`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to load explore feed"));
-  }
-
-  return response.json();
+  return fetchApi(`${API_BASE}/api/feeds/explore?${params}`, "Failed to load explore feed");
 }
 
 export async function fetchHomeFeed(
@@ -137,14 +132,10 @@ export async function fetchProfileFeed(
   if (cursor) params.set("cursor", cursor);
   if (type) params.set("type", type);
 
-  const response = await fetch(
+  return fetchApi(
     `${API_BASE}/api/profiles/${encodeURIComponent(did)}/feed?${params}`,
+    "Failed to load profile feed",
   );
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to load profile feed"));
-  }
-
-  return response.json();
 }
 
 export async function fetchObservation(uri: string): Promise<OccurrenceDetailResponse | null> {
@@ -172,12 +163,7 @@ export async function fetchObservationsGeoJSON(bounds: {
     maxLng: bounds.maxLng.toString(),
   });
 
-  const response = await fetch(`${API_BASE}/api/occurrences/geojson?${params}`);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to load observations"));
-  }
-
-  return response.json();
+  return fetchApi(`${API_BASE}/api/occurrences/geojson?${params}`, "Failed to load observations");
 }
 
 // ============================================================================
@@ -233,20 +219,12 @@ export async function submitObservation(data: {
   // Co-observers
   recordedBy?: string[];
 }): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/occurrences`, {
+  return fetchApi(`${API_BASE}/api/occurrences`, "Failed to submit", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to submit"));
-  }
-
-  return response.json();
 }
 
 export async function updateObservation(data: {
@@ -273,20 +251,12 @@ export async function updateObservation(data: {
   // Co-observers
   recordedBy?: string[];
 }): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/occurrences`, {
+  return fetchApi(`${API_BASE}/api/occurrences`, "Failed to update", {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to update"));
-  }
-
-  return response.json();
 }
 
 export async function deleteObservation(uri: string): Promise<{ success: boolean }> {
@@ -334,20 +304,12 @@ export async function submitIdentification(data: {
   comment?: string;
   isAgreement?: boolean;
 }): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/identifications`, {
+  return fetchApi(`${API_BASE}/api/identifications`, "Failed to submit identification", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to submit identification"));
-  }
-
-  return response.json();
 }
 
 export async function submitComment(data: {
@@ -357,20 +319,12 @@ export async function submitComment(data: {
   replyToUri?: string;
   replyToCid?: string;
 }): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/comments`, {
+  return fetchApi(`${API_BASE}/api/comments`, "Failed to submit comment", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to submit comment"));
-  }
-
-  return response.json();
 }
 
 /**
@@ -417,12 +371,7 @@ export async function fetchTaxonObservations(
     url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/occurrences?${params}`;
   }
 
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to fetch taxon observations"));
-  }
-
-  return response.json();
+  return fetchApi(url, "Failed to fetch taxon observations");
 }
 
 // ============================================================================
@@ -474,20 +423,12 @@ export async function submitInteraction(data: {
   direction: "AtoB" | "BtoA" | "bidirectional";
   comment?: string;
 }): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/interactions`, {
+  return fetchApi(`${API_BASE}/api/interactions`, "Failed to submit interaction", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to submit interaction"));
-  }
-
-  return response.json();
 }
 
 export async function fetchInteractionsForOccurrence(
@@ -507,18 +448,12 @@ export async function likeObservation(
   occurrenceUri: string,
   occurrenceCid: string,
 ): Promise<{ uri: string; cid: string }> {
-  const response = await fetch(`${API_BASE}/api/likes`, {
+  return fetchApi(`${API_BASE}/api/likes`, "Failed to like observation", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ occurrenceUri, occurrenceCid }),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to like observation"));
-  }
-
-  return response.json();
 }
 
 // ============================================================================
@@ -529,52 +464,31 @@ export async function fetchNotifications(cursor?: string): Promise<Notifications
   const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
 
-  const response = await fetch(`${API_BASE}/api/notifications?${params}`, {
+  return fetchApi(`${API_BASE}/api/notifications?${params}`, "Failed to load notifications", {
     credentials: "include",
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to load notifications"));
-  }
-
-  return response.json();
 }
 
 export async function fetchUnreadCount(): Promise<{ count: number }> {
-  const response = await fetch(`${API_BASE}/api/notifications/unread-count`, {
+  return fetchApi(`${API_BASE}/api/notifications/unread-count`, "Failed to fetch unread count", {
     credentials: "include",
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to fetch unread count"));
-  }
-
-  return response.json();
 }
 
 export async function markNotificationRead(id?: number): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/notifications/read`, {
+  return fetchApi(`${API_BASE}/api/notifications/read`, "Failed to mark notification read", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(id !== undefined ? { id } : {}),
   });
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to mark notification read"));
-  }
-
-  return response.json();
 }
 
 export async function unlikeObservation(occurrenceUri: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/likes`, {
+  return fetchApi(`${API_BASE}/api/likes`, "Failed to unlike observation", {
     method: "DELETE",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify({ occurrenceUri }),
   });
-
-  if (!response.ok) {
-    throw new Error(await extractErrorMessage(response, "Failed to unlike observation"));
-  }
-
-  return response.json();
 }
