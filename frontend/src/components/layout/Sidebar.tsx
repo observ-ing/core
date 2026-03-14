@@ -36,6 +36,7 @@ import { useAppSelector, useAppDispatch } from "../../store";
 import { logout } from "../../store/authSlice";
 import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlice";
 import { fetchUnreadCount } from "../../services/api";
+import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 
 export const DRAWER_WIDTH = 240;
@@ -286,7 +287,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography variant="body2" fontWeight={600} noWrap>
-                  {user.displayName || user.handle || "User"}
+                  {getDisplayName(user, "User")}
                 </Typography>
                 {user.handle && (
                   <Typography variant="caption" color="text.secondary" noWrap>

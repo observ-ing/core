@@ -90,6 +90,14 @@ export function buildOccurrenceAtUri(did: string, rkey: string): string {
   return `at://${did}/org.rwell.test.occurrence/${rkey}`;
 }
 
+/** Get a display name for an actor, with consistent fallback chain */
+export function getDisplayName(
+  actor: { displayName?: string | null; handle?: string | null; did?: string },
+  fallback = "Unknown",
+): string {
+  return actor.displayName || actor.handle || actor.did?.slice(0, 20) || fallback;
+}
+
 /**
  * Extract a human-readable error message from an unknown caught value.
  */
