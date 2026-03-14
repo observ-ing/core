@@ -6,6 +6,7 @@
  */
 
 import type { AtpAgent } from "@atproto/api";
+import { getErrorMessage } from "./utils";
 
 const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
 
@@ -341,7 +342,7 @@ export function createIdentificationUI(
       showToast?.("Your agreement has been recorded!", "success");
       onSuccess?.();
     } catch (error) {
-      showToast?.(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+      showToast?.(`Error: ${getErrorMessage(error)}`, "error");
     }
   });
 
@@ -375,7 +376,7 @@ export function createIdentificationUI(
       suggestForm?.classList.add("hidden");
       onSuccess?.();
     } catch (error) {
-      showToast?.(`Error: ${error instanceof Error ? error.message : "Unknown error"}`, "error");
+      showToast?.(`Error: ${getErrorMessage(error)}`, "error");
     }
   });
 }

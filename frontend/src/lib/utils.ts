@@ -86,3 +86,10 @@ export function getObservationUrl(atUri: string): string {
 export function buildOccurrenceAtUri(did: string, rkey: string): string {
   return `at://${did}/org.rwell.test.occurrence/${rkey}`;
 }
+
+/**
+ * Extract a human-readable error message from an unknown caught value.
+ */
+export function getErrorMessage(error: unknown, fallback = "Unknown error"): string {
+  return error instanceof Error ? error.message : fallback;
+}
