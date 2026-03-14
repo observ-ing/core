@@ -3,6 +3,7 @@ import { Box, Typography, useTheme } from "@mui/material";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
+import { MAP_MARKER_COLOR, addUncertaintyLayers } from "./mapUtils";
 
 export interface LocationMapProps {
   latitude: number;
@@ -42,7 +43,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
 
     mapInstance.on("load", () => {
       // Add marker
-      new maplibregl.Marker({ color: "#22c55e" })
+      new maplibregl.Marker({ color: MAP_MARKER_COLOR })
         .setLngLat([longitude, latitude])
         .addTo(mapInstance);
 
@@ -53,26 +54,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
           data: createCircleGeoJSON(longitude, latitude, uncertaintyMeters),
         });
 
-        mapInstance.addLayer({
-          id: "uncertainty-fill",
-          type: "fill",
-          source: "uncertainty",
-          paint: {
-            "fill-color": "#22c55e",
-            "fill-opacity": 0.15,
-          },
-        });
-
-        mapInstance.addLayer({
-          id: "uncertainty-outline",
-          type: "line",
-          source: "uncertainty",
-          paint: {
-            "line-color": "#22c55e",
-            "line-width": 2,
-            "line-opacity": 0.5,
-          },
-        });
+        addUncertaintyLayers(mapInstance);
 
         // Fit map to uncertainty circle bounds
         const latOffset = uncertaintyMeters / 111320;

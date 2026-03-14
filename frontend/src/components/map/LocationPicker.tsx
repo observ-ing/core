@@ -13,6 +13,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
+import { MAP_MARKER_COLOR, addUncertaintyLayers } from "./mapUtils";
 
 interface LocationPickerProps {
   latitude: number;
@@ -110,7 +111,7 @@ export function LocationPicker({
       if (marker.current) {
         marker.current.setLngLat([lng, lat]);
       } else {
-        marker.current = new maplibregl.Marker({ color: "#22c55e" })
+        marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
           .setLngLat([lng, lat])
           .addTo(map.current);
       }
@@ -204,26 +205,7 @@ export function LocationPicker({
         data: createCircleGeoJSON(longitude, latitude, uncertaintyMeters),
       });
 
-      mapInstance.addLayer({
-        id: "uncertainty-fill",
-        type: "fill",
-        source: "uncertainty",
-        paint: {
-          "fill-color": "#22c55e",
-          "fill-opacity": 0.15,
-        },
-      });
-
-      mapInstance.addLayer({
-        id: "uncertainty-outline",
-        type: "line",
-        source: "uncertainty",
-        paint: {
-          "line-color": "#22c55e",
-          "line-width": 2,
-          "line-opacity": 0.5,
-        },
-      });
+      addUncertaintyLayers(mapInstance);
 
       updateMarker(longitude, latitude);
     });
