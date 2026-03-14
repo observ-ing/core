@@ -38,7 +38,7 @@ async function fetchApi<T>(url: string, errorMessage: string, init?: RequestInit
   if (!response.ok) {
     throw new Error(await extractErrorMessage(response, errorMessage));
   }
-  return response.json() as Promise<T>;
+  return response.json();
 }
 
 export async function checkAuth(): Promise<User | null> {
