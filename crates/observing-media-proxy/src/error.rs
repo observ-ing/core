@@ -4,8 +4,6 @@ use std::fmt;
 
 #[derive(Debug)]
 pub enum MediaProxyError {
-    #[allow(dead_code)]
-    Cache(String),
     BlobResolver(atproto_blob_resolver::BlobResolverError),
     Io(Box<std::io::Error>),
     Config(String),
@@ -14,7 +12,6 @@ pub enum MediaProxyError {
 impl fmt::Display for MediaProxyError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MediaProxyError::Cache(msg) => write!(f, "Cache error: {}", msg),
             MediaProxyError::BlobResolver(err) => write!(f, "Blob resolver error: {}", err),
             MediaProxyError::Io(err) => write!(f, "IO error: {}", err),
             MediaProxyError::Config(msg) => write!(f, "Configuration error: {}", msg),
@@ -57,12 +54,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cache_error_display() {
-        let err = MediaProxyError::Cache("disk full".to_string());
-        assert_eq!(format!("{}", err), "Cache error: disk full");
-    }
-
-    #[test]
     fn test_blob_resolver_error_display() {
         let err =
             MediaProxyError::BlobResolver(atproto_blob_resolver::BlobResolverError::DidResolution(
@@ -79,8 +70,8 @@ mod tests {
 
     #[test]
     fn test_error_is_debug() {
-        let err = MediaProxyError::Cache("test".to_string());
+        let err = MediaProxyError::Config("test".to_string());
         let debug_str = format!("{:?}", err);
-        assert!(debug_str.contains("Cache"));
+        assert!(debug_str.contains("Config"));
     }
 }
