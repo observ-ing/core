@@ -41,8 +41,7 @@ pub struct CreateOccurrenceRequest {
 #[ts(export, export_to = "bindings/")]
 pub struct ImageUpload {
     data: String, // base64
-    // Deserialized from frontend but not sent to PDS — atrium's upload_blob
-    // uses */* encoding and the PDS infers the MIME type from the bytes.
+    /// Deserialized from frontend but unused — PDS infers MIME type from bytes.
     #[allow(dead_code)]
     mime_type: String,
 }
