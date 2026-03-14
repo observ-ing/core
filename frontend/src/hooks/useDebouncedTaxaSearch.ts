@@ -1,9 +1,8 @@
 import { useCallback } from "react";
 import { searchTaxa } from "../services/api";
 import type { TaxaResult } from "../services/types";
+import { MAX_AUTOCOMPLETE_RESULTS } from "../lib/utils";
 import { useAutocomplete } from "./useAutocomplete";
-
-const sliceToFive = (results: TaxaResult[]) => results.slice(0, 5);
 
 /**
  * Debounced taxa search hook. Waits for the user to stop typing before
@@ -18,7 +17,7 @@ export function useDebouncedTaxaSearch(debounceMs = 300) {
     clearOptions: clearSuggestions,
   } = useAutocomplete<TaxaResult>({
     searchFn,
-    filterResults: sliceToFive,
+    filterResults: (results) => results.slice(0, MAX_AUTOCOMPLETE_RESULTS),
     debounceMs,
   });
 

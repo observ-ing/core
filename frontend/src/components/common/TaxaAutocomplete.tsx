@@ -4,6 +4,7 @@ import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { useAutocomplete } from "../../hooks/useAutocomplete";
+import { MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
 
 interface TaxaAutocompleteProps {
   value: string;
@@ -13,8 +14,6 @@ interface TaxaAutocompleteProps {
   size?: "small" | "medium";
   margin?: "normal" | "dense" | "none";
 }
-
-const sliceToFive = (results: TaxaResult[]) => results.slice(0, 5);
 
 export function TaxaAutocomplete({
   value,
@@ -27,7 +26,7 @@ export function TaxaAutocomplete({
   const searchFn = useCallback((query: string) => searchTaxa(query), []);
   const { options, loading, handleSearch, clearOptions } = useAutocomplete<TaxaResult>({
     searchFn,
-    filterResults: sliceToFive,
+    filterResults: (results) => results.slice(0, MAX_AUTOCOMPLETE_RESULTS),
   });
 
   return (
