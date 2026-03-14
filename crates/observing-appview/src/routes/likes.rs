@@ -12,7 +12,7 @@ use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
 use crate::error::AppError;
-use crate::state::AppState;
+use crate::state::{AppState, OAuthClientType};
 use at_uri_parser::AtUri;
 
 #[derive(Deserialize, TS)]
@@ -89,34 +89,40 @@ pub async fn delete_like(
 
     // Try to delete from AT Protocol too (non-fatal: local DB is already updated)
     if let Some(ref uri) = like_uri {
-        if let Some(at_uri) = AtUri::parse(uri) {
-            if let Ok(did_parsed) = atrium_api::types::string::Did::new(user.did.clone()) {
-                if let Ok(session) = state.oauth_client.restore(&did_parsed).await {
-                    let agent = atrium_api::agent::Agent::new(session);
-                    if let (Ok(collection), Ok(rkey)) =
-                        (at_uri.collection.parse(), at_uri.rkey.parse())
-                    {
-                        let _ = agent
-                            .api
-                            .com
-                            .atproto
-                            .repo
-                            .delete_record(
-                                atrium_api::com::atproto::repo::delete_record::InputData {
-                                    collection,
-                                    repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                                    rkey,
-                                    swap_commit: None,
-                                    swap_record: None,
-                                }
-                                .into(),
-                            )
-                            .await;
-                    }
-                }
-            }
-        }
+        let _ = try_delete_atp_record(&state.oauth_client, uri, &user.did).await;
     }
 
     Ok(Json(json!({ "success": true })))
+}
+
+/// Best-effort deletion of an AT Protocol record. Returns `None` if any step
+/// fails (URI parsing, session restore, network call), which the caller can
+/// safely ignore.
+async fn try_delete_atp_record(oauth_client: &OAuthClientType, uri: &str, did: &str) -> Option<()> {
+    let at_uri = AtUri::parse(uri)?;
+    let did_parsed = atrium_api::types::string::Did::new(did.to_owned()).ok()?;
+    let session = oauth_client.restore(&did_parsed).await.ok()?;
+    let agent = atrium_api::agent::Agent::new(session);
+    let collection = at_uri.collection.parse().ok()?;
+    let rkey = at_uri.rkey.parse().ok()?;
+
+    agent
+        .api
+        .com
+        .atproto
+        .repo
+        .delete_record(
+            atrium_api::com::atproto::repo::delete_record::InputData {
+                collection,
+                repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
+                rkey,
+                swap_commit: None,
+                swap_record: None,
+            }
+            .into(),
+        )
+        .await
+        .ok()?;
+
+    Some(())
 }
