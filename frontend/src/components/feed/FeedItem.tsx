@@ -26,7 +26,7 @@ import type { RootState } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
-import { formatTimeAgo, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { formatTimeAgo, getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 
 interface FeedItemProps {
   observation: Occurrence;
@@ -54,7 +54,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const coObservers = observers.filter((o) => o.role === "co-observer");
   const hasCoObservers = coObservers.length > 0;
 
-  const displayName = owner.displayName || owner.handle || owner.did.slice(0, 20);
+  const displayName = getDisplayName(owner);
   const handle = owner.handle ? `@${owner.handle}` : "";
   const timeAgo = formatTimeAgo(new Date(observation.createdAt));
 
@@ -67,9 +67,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const pdslsUrl = getPdslsUrl(observation.uri);
 
   // Build tooltip for co-observers
-  const coObserverNames = coObservers
-    .map((o) => o.displayName || o.handle || o.did.slice(0, 15))
-    .join(", ");
+  const coObserverNames = coObservers.map((o) => getDisplayName(o)).join(", ");
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();

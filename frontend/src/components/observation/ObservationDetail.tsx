@@ -43,7 +43,13 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "../common/Skeletons";
-import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
+import {
+  formatDate,
+  getDisplayName,
+  getPdslsUrl,
+  buildOccurrenceAtUri,
+  getErrorMessage,
+} from "../../lib/utils";
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -181,10 +187,7 @@ export function ObservationDetail() {
     );
   }
 
-  const displayName =
-    observation.observer.displayName ||
-    observation.observer.handle ||
-    observation.observer.did.slice(0, 20);
+  const displayName = getDisplayName(observation.observer);
   const handle = observation.observer.handle ? `@${observation.observer.handle}` : "";
 
   // Find the current subject's data

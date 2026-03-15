@@ -21,7 +21,7 @@ import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
-import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
+import { formatTimeAgo, getDisplayName, getObservationUrl } from "../../lib/utils";
 import {
   ProfileHeaderSkeleton,
   ProfileObservationCardSkeleton,
@@ -124,7 +124,7 @@ export function ProfileView() {
             />
             <Box>
               <Typography variant="h5" fontWeight={600}>
-                {profile?.displayName || profile?.handle || did.slice(0, 20)}
+                {getDisplayName({ ...profile, did })}
               </Typography>
               {profile?.handle && <Typography color="text.disabled">@{profile.handle}</Typography>}
             </Box>
