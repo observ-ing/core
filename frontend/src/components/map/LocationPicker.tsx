@@ -244,31 +244,28 @@ export function LocationPicker({
     }
   }, [latitude, longitude, updateMarker]);
 
-  const handleLatChange = (value: string) => {
-    setLatInput(value);
-    const parsed = parseFloat(value);
-    if (!isNaN(parsed) && parsed >= -90 && parsed <= 90) {
-      const lng = parseFloat(lngInput);
-      if (!isNaN(lng)) {
-        updateMarker(lng, parsed);
-        map.current?.setCenter([lng, parsed]);
-        onChange(parsed, lng);
-      }
+  const handleCoordinateChange = (value: string, axis: "lat" | "lng") => {
+    if (axis === "lat") {
+      setLatInput(value);
+    } else {
+      setLngInput(value);
     }
+    const parsed = parseFloat(value);
+    const [min, max] = axis === "lat" ? [-90, 90] : [-180, 180];
+    if (isNaN(parsed) || parsed < min || parsed > max) return;
+
+    const otherValue = parseFloat(axis === "lat" ? lngInput : latInput);
+    if (isNaN(otherValue)) return;
+
+    const lat = axis === "lat" ? parsed : otherValue;
+    const lng = axis === "lat" ? otherValue : parsed;
+    updateMarker(lng, lat);
+    map.current?.setCenter([lng, lat]);
+    onChange(lat, lng);
   };
 
-  const handleLngChange = (value: string) => {
-    setLngInput(value);
-    const parsed = parseFloat(value);
-    if (!isNaN(parsed) && parsed >= -180 && parsed <= 180) {
-      const lat = parseFloat(latInput);
-      if (!isNaN(lat)) {
-        updateMarker(parsed, lat);
-        map.current?.setCenter([parsed, lat]);
-        onChange(lat, parsed);
-      }
-    }
-  };
+  const handleLatChange = (value: string) => handleCoordinateChange(value, "lat");
+  const handleLngChange = (value: string) => handleCoordinateChange(value, "lng");
 
   return (
     <Box sx={{ mt: 2 }}>
