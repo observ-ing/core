@@ -11,6 +11,7 @@ use crate::types::{GeocodedLocation, NominatimResponse};
 const DEFAULT_BASE_URL: &str = "https://nominatim.openstreetmap.org";
 const DEFAULT_USER_AGENT: &str = "nominatim-client-rs/0.1";
 const CACHE_TTL_SECS: u64 = 86400; // 24 hours
+const RATE_LIMIT_DELAY: Duration = Duration::from_millis(1100);
 
 /// Nominatim reverse geocoding client with rate limiting and caching
 pub struct NominatimClient {
@@ -101,7 +102,7 @@ impl NominatimClient {
             let result = GeocodedLocation::default();
             self.cache.insert(cache_key, result.clone()).await;
             // Delay to respect rate limit
-            tokio::time::sleep(Duration::from_millis(1100)).await;
+            tokio::time::sleep(RATE_LIMIT_DELAY).await;
             return Ok(result);
         }
 
@@ -117,7 +118,7 @@ impl NominatimClient {
         self.cache.insert(cache_key, result.clone()).await;
 
         // Delay to respect rate limit (1 req/sec)
-        tokio::time::sleep(Duration::from_millis(1100)).await;
+        tokio::time::sleep(RATE_LIMIT_DELAY).await;
 
         Ok(result)
     }

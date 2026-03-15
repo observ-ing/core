@@ -29,15 +29,10 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NotesIcon from "@mui/icons-material/Notes";
-import {
-  fetchObservation,
-  getImageUrl,
-  deleteIdentification,
-  likeObservation,
-  unlikeObservation,
-} from "../../services/api";
+import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import type { Occurrence, Identification, Comment } from "../../services/types";
@@ -48,7 +43,13 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "../common/Skeletons";
-import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
+import {
+  formatDate,
+  getDisplayName,
+  getPdslsUrl,
+  buildOccurrenceAtUri,
+  getErrorMessage,
+} from "../../lib/utils";
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -63,8 +64,7 @@ export function ObservationDetail() {
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSubject, setSelectedSubject] = useState(0);
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(0);
+  const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
 
@@ -101,7 +101,7 @@ export function ObservationDetail() {
     }
 
     loadObservation();
-  }, [atUri]);
+  }, [atUri, setLiked, setLikeCount]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -153,25 +153,6 @@ export function ObservationDetail() {
     }
   };
 
-  const handleLikeToggle = async () => {
-    if (!user || !observation) return;
-
-    const wasLiked = liked;
-    setLiked(!wasLiked);
-    setLikeCount((c) => c + (wasLiked ? -1 : 1));
-
-    try {
-      if (wasLiked) {
-        await unlikeObservation(observation.uri);
-      } else {
-        await likeObservation(observation.uri, observation.cid);
-      }
-    } catch {
-      setLiked(wasLiked);
-      setLikeCount((c) => c + (wasLiked ? 1 : -1));
-    }
-  };
-
   if (loading) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -206,10 +187,7 @@ export function ObservationDetail() {
     );
   }
 
-  const displayName =
-    observation.observer.displayName ||
-    observation.observer.handle ||
-    observation.observer.did.slice(0, 20);
+  const displayName = getDisplayName(observation.observer);
   const handle = observation.observer.handle ? `@${observation.observer.handle}` : "";
 
   // Find the current subject's data
@@ -313,7 +291,7 @@ export function ObservationDetail() {
             <span>
               <IconButton
                 size="small"
-                onClick={handleLikeToggle}
+                onClick={() => observation && handleLikeToggle(observation.uri, observation.cid)}
                 disabled={!user}
                 aria-label={liked ? "Unlike" : "Like"}
                 sx={{

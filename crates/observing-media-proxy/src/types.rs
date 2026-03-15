@@ -3,6 +3,8 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
+const DEFAULT_CACHE_TTL_SECS: u64 = 24 * 60 * 60;
+
 /// Configuration for the media proxy
 #[derive(Debug, Clone)]
 pub struct MediaProxyConfig {
@@ -18,7 +20,7 @@ impl Default for MediaProxyConfig {
             port: 3001,
             cache_dir: PathBuf::from("./cache/media"),
             max_cache_size: 1024 * 1024 * 1024, // 1GB
-            cache_ttl_secs: 24 * 60 * 60,       // 24 hours
+            cache_ttl_secs: DEFAULT_CACHE_TTL_SECS,
         }
     }
 }

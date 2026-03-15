@@ -8,6 +8,8 @@ import type {
 } from "../services/types";
 import * as api from "../services/api";
 
+const DEFAULT_NEARBY_RADIUS = 50000;
+
 type HomeFeedMeta = {
   followedCount: number;
   nearbyCount: number;
@@ -52,23 +54,33 @@ const initialState: FeedState = {
   homeFeedMeta: null,
 };
 
+function extractHomeFeedMeta(payload: ExploreFeedResponse | HomeFeedResponse): HomeFeedMeta | null {
+  if ("meta" in payload && isHomeFeedMeta(payload.meta)) {
+    return payload.meta;
+  }
+  return null;
+}
+
+function fetchFeedData(state: { feed: FeedState; auth: { user: unknown } }, cursor?: string) {
+  const { currentTab, filters, userLocation } = state.feed;
+  const isAuthenticated = !!state.auth?.user;
+
+  if (currentTab === "home" && isAuthenticated) {
+    return api.fetchHomeFeed(
+      cursor,
+      userLocation ? { ...userLocation, nearbyRadius: DEFAULT_NEARBY_RADIUS } : undefined,
+    );
+  }
+  return api.fetchExploreFeed(cursor, filters);
+}
+
 export const loadFeed = createAsyncThunk<
   ExploreFeedResponse | HomeFeedResponse,
   void,
   ThunkApiConfig
 >("feed/loadFeed", async (_, { getState }) => {
   const state = getState();
-  const { currentTab, cursor, filters, userLocation } = state.feed;
-  const isAuthenticated = !!state.auth?.user;
-
-  if (currentTab === "home" && isAuthenticated) {
-    return api.fetchHomeFeed(
-      cursor,
-      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
-    );
-  }
-  // Fall back to explore for unauthenticated users or explore tab
-  return api.fetchExploreFeed(cursor, filters);
+  return fetchFeedData(state, state.feed.cursor);
 });
 
 export const loadInitialFeed = createAsyncThunk<
@@ -76,17 +88,7 @@ export const loadInitialFeed = createAsyncThunk<
   void,
   ThunkApiConfig
 >("feed/loadInitialFeed", async (_, { getState }) => {
-  const state = getState();
-  const { currentTab, filters, userLocation } = state.feed;
-  const isAuthenticated = !!state.auth?.user;
-
-  if (currentTab === "home" && isAuthenticated) {
-    return api.fetchHomeFeed(
-      undefined,
-      userLocation ? { ...userLocation, nearbyRadius: 50000 } : undefined,
-    );
-  }
-  return api.fetchExploreFeed(undefined, filters);
+  return fetchFeedData(getState());
 });
 
 const feedSlice = createSlice({
@@ -126,9 +128,7 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
-          state.homeFeedMeta = action.payload.meta;
-        }
+        state.homeFeedMeta = extractHomeFeedMeta(action.payload);
       })
       .addCase(loadFeed.rejected, (state) => {
         state.isLoading = false;
@@ -143,9 +143,7 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        if ("meta" in action.payload && isHomeFeedMeta(action.payload.meta)) {
-          state.homeFeedMeta = action.payload.meta;
-        }
+        state.homeFeedMeta = extractHomeFeedMeta(action.payload);
       })
       .addCase(loadInitialFeed.rejected, (state) => {
         state.isLoading = false;

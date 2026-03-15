@@ -23,9 +23,10 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
 import type { RootState } from "../../store";
-import { getImageUrl, likeObservation, unlikeObservation } from "../../services/api";
+import { getImageUrl } from "../../services/api";
+import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
-import { formatTimeAgo, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { formatTimeAgo, getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 
 interface FeedItemProps {
   observation: Occurrence;
@@ -38,8 +39,10 @@ const REMARKS_TRUNCATE_LENGTH = 200;
 export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [remarksExpanded, setRemarksExpanded] = useState(false);
-  const [liked, setLiked] = useState(observation.viewerHasLiked ?? false);
-  const [likeCount, setLikeCount] = useState(observation.likeCount ?? 0);
+  const { liked, likeCount, handleLikeToggle } = useLikeToggle(
+    observation.viewerHasLiked ?? false,
+    observation.likeCount ?? 0,
+  );
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
@@ -51,7 +54,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const coObservers = observers.filter((o) => o.role === "co-observer");
   const hasCoObservers = coObservers.length > 0;
 
-  const displayName = owner.displayName || owner.handle || owner.did.slice(0, 20);
+  const displayName = getDisplayName(owner);
   const handle = owner.handle ? `@${owner.handle}` : "";
   const timeAgo = formatTimeAgo(new Date(observation.createdAt));
 
@@ -64,9 +67,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const pdslsUrl = getPdslsUrl(observation.uri);
 
   // Build tooltip for co-observers
-  const coObserverNames = coObservers
-    .map((o) => o.displayName || o.handle || o.did.slice(0, 15))
-    .join(", ");
+  const coObserverNames = coObservers.map((o) => getDisplayName(o)).join(", ");
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -100,27 +101,6 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       return;
     }
     navigate(observationUrl);
-  };
-
-  const handleLikeToggle = async () => {
-    if (!currentUser) return;
-
-    const wasLiked = liked;
-    // Optimistic update
-    setLiked(!wasLiked);
-    setLikeCount((c) => c + (wasLiked ? -1 : 1));
-
-    try {
-      if (wasLiked) {
-        await unlikeObservation(observation.uri);
-      } else {
-        await likeObservation(observation.uri, observation.cid);
-      }
-    } catch {
-      // Revert on failure
-      setLiked(wasLiked);
-      setLikeCount((c) => c + (wasLiked ? 1 : -1));
-    }
   };
 
   const avatarEl = hasCoObservers ? (
@@ -350,7 +330,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
           <span>
             <IconButton
               size="small"
-              onClick={handleLikeToggle}
+              onClick={() => handleLikeToggle(observation.uri, observation.cid)}
               disabled={!currentUser}
               aria-label={liked ? "Unlike" : "Like"}
               sx={{
