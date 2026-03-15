@@ -285,11 +285,4 @@ impl Database {
         .await?;
         Ok(())
     }
-
-    /// Close the database connection
-    #[allow(dead_code)]
-    pub async fn close(&self) {
-        info!("Closing database connection...");
-        self.pool.close().await;
-    }
 }
