@@ -55,6 +55,20 @@ macro_rules! require_record {
     };
 }
 
+/// Process a record via a `processing::*_from_json` call, returning `Ok(())` with a warning on
+/// parse failure.
+macro_rules! process_or_warn {
+    ($commit:expr, $method:ident, $label:literal, $($arg:expr),* $(,)?) => {
+        match processing::$method($($arg),*) {
+            Ok(p) => p,
+            Err(e) => {
+                warn!(uri = %$commit.uri, error = %e, "Failed to process {} record", $label);
+                return Ok(());
+            }
+        }
+    };
+}
+
 /// Database connection and operations
 pub struct Database {
     pool: PgPool,
@@ -84,18 +98,15 @@ impl Database {
 
         let record_json = require_record!(commit, "occurrence");
 
-        let params = match processing::occurrence_from_json(
+        let params = process_or_warn!(
+            commit,
+            occurrence_from_json,
+            "occurrence",
             record_json,
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!(uri = %commit.uri, error = %e, "Failed to process occurrence record");
-                return Ok(());
-            }
-        };
+        );
 
         observing_db::occurrences::upsert(&self.pool, &params).await?;
 
@@ -119,19 +130,16 @@ impl Database {
 
         let record_json = require_record!(commit, "identification");
 
-        let params = match processing::identification_from_json(
+        let params = process_or_warn!(
+            commit,
+            identification_from_json,
+            "identification",
             record_json,
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
             commit.time,
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!(uri = %commit.uri, error = %e, "Failed to process identification record");
-                return Ok(());
-            }
-        };
+        );
 
         observing_db::identifications::upsert(&self.pool, &params).await?;
         notify_occurrence_owner(
@@ -158,19 +166,16 @@ impl Database {
 
         let record_json = require_record!(commit, "comment");
 
-        let params = match processing::comment_from_json(
+        let params = process_or_warn!(
+            commit,
+            comment_from_json,
+            "comment",
             record_json,
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
             commit.time,
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!(uri = %commit.uri, error = %e, "Failed to process comment record");
-                return Ok(());
-            }
-        };
+        );
 
         observing_db::comments::upsert(&self.pool, &params).await?;
         notify_occurrence_owner(
@@ -197,19 +202,16 @@ impl Database {
 
         let record_json = require_record!(commit, "interaction");
 
-        let params = match processing::interaction_from_json(
+        let params = process_or_warn!(
+            commit,
+            interaction_from_json,
+            "interaction",
             record_json,
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
             commit.time,
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!(uri = %commit.uri, error = %e, "Failed to process interaction record");
-                return Ok(());
-            }
-        };
+        );
 
         observing_db::interactions::upsert(&self.pool, &params).await?;
         Ok(())
@@ -228,19 +230,16 @@ impl Database {
 
         let record_json = require_record!(commit, "like");
 
-        let params = match processing::like_from_json(
+        let params = process_or_warn!(
+            commit,
+            like_from_json,
+            "like",
             record_json,
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
             commit.time,
-        ) {
-            Ok(p) => p,
-            Err(e) => {
-                warn!(uri = %commit.uri, error = %e, "Failed to process like record");
-                return Ok(());
-            }
-        };
+        );
 
         observing_db::likes::create(&self.pool, &params).await?;
         notify_occurrence_owner(
