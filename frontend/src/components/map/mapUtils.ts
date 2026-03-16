@@ -20,6 +20,30 @@ export function getRadiusBounds(
   ];
 }
 
+/** Add uncertainty circle layers to a map instance */
+export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
+  mapInstance.addLayer({
+    id: "uncertainty-fill",
+    type: "fill",
+    source: "uncertainty",
+    paint: {
+      "fill-color": MAP_MARKER_COLOR,
+      "fill-opacity": 0.15,
+    },
+  });
+
+  mapInstance.addLayer({
+    id: "uncertainty-outline",
+    type: "line",
+    source: "uncertainty",
+    paint: {
+      "line-color": MAP_MARKER_COLOR,
+      "line-width": 2,
+      "line-opacity": 0.5,
+    },
+  });
+}
+
 /** Create a GeoJSON circle polygon from center point and radius in meters */
 export function createCircleGeoJSON(
   lng: number,
@@ -56,28 +80,4 @@ export function createCircleGeoJSON(
       },
     ],
   };
-}
-
-/** Add uncertainty circle layers to a map instance */
-export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
-  mapInstance.addLayer({
-    id: "uncertainty-fill",
-    type: "fill",
-    source: "uncertainty",
-    paint: {
-      "fill-color": MAP_MARKER_COLOR,
-      "fill-opacity": 0.15,
-    },
-  });
-
-  mapInstance.addLayer({
-    id: "uncertainty-outline",
-    type: "line",
-    source: "uncertainty",
-    paint: {
-      "line-color": MAP_MARKER_COLOR,
-      "line-width": 2,
-      "line-opacity": 0.5,
-    },
-  });
 }
