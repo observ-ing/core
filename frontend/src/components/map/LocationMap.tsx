@@ -4,10 +4,10 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
 import {
+  createCircleGeoJSON,
+  getRadiusBounds,
   MAP_MARKER_COLOR,
   addUncertaintyLayers,
-  createCircleGeoJSON,
-  METERS_PER_DEGREE,
 } from "./mapUtils";
 
 export interface LocationMapProps {
@@ -62,16 +62,10 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
         addUncertaintyLayers(mapInstance);
 
         // Fit map to uncertainty circle bounds
-        const latOffset = uncertaintyMeters / METERS_PER_DEGREE;
-        const lngOffset =
-          uncertaintyMeters / (METERS_PER_DEGREE * Math.cos((latitude * Math.PI) / 180));
-        mapInstance.fitBounds(
-          [
-            [longitude - lngOffset, latitude - latOffset],
-            [longitude + lngOffset, latitude + latOffset],
-          ],
-          { padding: 40, maxZoom: 18 },
-        );
+        mapInstance.fitBounds(getRadiusBounds(latitude, longitude, uncertaintyMeters), {
+          padding: 40,
+          maxZoom: 18,
+        });
       }
     });
 
