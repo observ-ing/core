@@ -4,14 +4,16 @@
 
 Services deployed via GitHub Actions (`.github/workflows/ci.yml`):
 
-| Service | Dockerfile | Public | Cloud SQL | Notes |
-|---------|------------|--------|-----------|-------|
-| observing-appview | crates/observing-appview/Dockerfile | Yes | Yes | REST API + OAuth + serves frontend |
-| observing-ingester | crates/observing-ingester/Dockerfile | Yes | Yes | min-instances=1 (always running) |
-| observing-media-proxy | crates/observing-media-proxy/Dockerfile | Yes | No | Stateless image cache |
-| observing-taxonomy | crates/observing-taxonomy/Dockerfile | Yes | No | GBIF taxonomy lookups with caching |
+| Service | Build arg | Public | Cloud SQL | Notes |
+|---------|-----------|--------|-----------|-------|
+| observing-appview | `SERVICE=observing-appview` | Yes | Yes | REST API + OAuth + serves frontend |
+| observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | min-instances=1 (always running) |
+| observing-media-proxy | `SERVICE=observing-media-proxy` | Yes | No | Stateless image cache |
+| observing-taxonomy | `SERVICE=observing-taxonomy` | Yes | No | GBIF taxonomy lookups with caching |
 
-All services are Rust binaries.
+All services are built from the root `Dockerfile` using `--build-arg SERVICE=<name>`.
+
+All services are Rust binaries built from the shared multi-stage `Dockerfile` at the project root.
 
 ## Automatic Deploy
 
