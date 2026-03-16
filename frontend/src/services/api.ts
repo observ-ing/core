@@ -52,6 +52,7 @@ export async function checkAuth(): Promise<User | null> {
     }
     return null;
   } catch {
+    // Network failure during auth check — treat as logged out
     return null;
   }
 }

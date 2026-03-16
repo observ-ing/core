@@ -17,6 +17,7 @@ export function useLikeToggle(initialLiked = false, initialCount = 0) {
         await likeObservation(uri, cid);
       }
     } catch {
+      // Revert optimistic update on failure
       setLiked(wasLiked);
       setLikeCount((c) => c + (wasLiked ? 1 : -1));
     }
