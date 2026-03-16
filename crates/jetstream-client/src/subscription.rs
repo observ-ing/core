@@ -91,10 +91,13 @@ impl JetstreamSubscription {
                 }
                 Err(e) => {
                     error!("Jetstream error: {}", e);
-                    let _ = self
+                    if let Err(e) = self
                         .event_tx
                         .send(JetstreamEvent::Error(e.to_string()))
-                        .await;
+                        .await
+                    {
+                        warn!(error = %e, "Failed to send error event to channel");
+                    }
 
                     reconnect_attempts += 1;
                     if reconnect_attempts >= MAX_RECONNECT_ATTEMPTS {
@@ -121,7 +124,9 @@ impl JetstreamSubscription {
         let (ws_stream, _) = connect_async(&url).await?;
         let (mut _write, mut read) = ws_stream.split();
 
-        let _ = self.event_tx.send(JetstreamEvent::Connected).await;
+        if let Err(e) = self.event_tx.send(JetstreamEvent::Connected).await {
+            warn!(error = %e, "Failed to send connected event to channel");
+        }
         info!("Jetstream connection established");
 
         while let Some(msg) = read.next().await {
@@ -133,7 +138,9 @@ impl JetstreamSubscription {
                 }
                 Ok(Message::Close(_)) => {
                     info!("Received close frame");
-                    let _ = self.event_tx.send(JetstreamEvent::Disconnected).await;
+                    if let Err(e) = self.event_tx.send(JetstreamEvent::Disconnected).await {
+                        warn!(error = %e, "Failed to send disconnected event to channel");
+                    }
                     break;
                 }
                 Ok(_) => {
@@ -141,7 +148,9 @@ impl JetstreamSubscription {
                 }
                 Err(e) => {
                     error!("WebSocket error: {}", e);
-                    let _ = self.event_tx.send(JetstreamEvent::Disconnected).await;
+                    if let Err(e) = self.event_tx.send(JetstreamEvent::Disconnected).await {
+                        warn!(error = %e, "Failed to send disconnected event to channel");
+                    }
                     return Err(e.into());
                 }
             }
@@ -187,10 +196,13 @@ impl JetstreamSubscription {
         self.last_timing = Some(TimingInfo { seq, time });
         if self.last_timing_sent.elapsed() >= TIMING_UPDATE_INTERVAL {
             if let Some(ref timing) = self.last_timing {
-                let _ = self
+                if let Err(e) = self
                     .event_tx
                     .send(JetstreamEvent::TimingUpdate(timing.clone()))
-                    .await;
+                    .await
+                {
+                    warn!(error = %e, "Failed to send timing update to channel");
+                }
             }
             self.last_timing_sent = Instant::now();
         }
@@ -219,10 +231,13 @@ impl JetstreamSubscription {
                 "[{}] {}: {}",
                 commit_info.collection, commit_info.operation, commit_info.uri
             );
-            let _ = self
+            if let Err(e) = self
                 .event_tx
                 .send(JetstreamEvent::Commit(commit_info))
-                .await;
+                .await
+            {
+                warn!(error = %e, "Failed to send commit event to channel");
+            }
         }
 
         // Update cursor

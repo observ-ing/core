@@ -7,7 +7,7 @@ use observing_db::types::CreateLikeParams;
 use observing_lexicons::org_rwell::test::like::Like;
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tracing::info;
+use tracing::{info, warn};
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
@@ -58,7 +58,9 @@ pub async fn create_like(
         subject_cid: body.occurrence_cid,
         created_at: now.naive_utc(),
     };
-    let _ = observing_db::likes::create(&state.pool, &params).await;
+    if let Err(e) = observing_db::likes::create(&state.pool, &params).await {
+        warn!(error = %e, "Failed to insert like into local DB");
+    }
 
     Ok(Json(json!({
         "success": true,

@@ -5,7 +5,7 @@ use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tracing::info;
+use tracing::{info, warn};
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
@@ -162,7 +162,9 @@ pub async fn delete_identification(
         })?;
 
     // Delete from local DB (refreshes community IDs)
-    let _ = observing_db::identifications::delete(&state.pool, &uri).await;
+    if let Err(e) = observing_db::identifications::delete(&state.pool, &uri).await {
+        warn!(error = %e, "Failed to delete identification from local DB");
+    }
 
     Ok(Json(json!({ "success": true })))
 }
