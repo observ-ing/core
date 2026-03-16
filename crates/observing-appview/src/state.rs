@@ -70,38 +70,40 @@ pub fn create_oauth_client(pool: PgPool, public_url: Option<&str>, port: u16) ->
         atrium_oauth::Scope::Known(atrium_oauth::KnownScope::TransitionGeneric),
     ];
 
+    let state_store = PgStateStore::new(pool.clone());
+    let session_store = PgSessionStore::new(pool);
+
+    macro_rules! build_client {
+        ($metadata:expr) => {
+            OAuthClient::new(atrium_oauth::OAuthClientConfig {
+                client_metadata: $metadata,
+                keys: None,
+                resolver,
+                state_store,
+                session_store,
+            })
+            .expect("failed to create OAuth client")
+        };
+    }
+
     if let Some(public_url) = public_url {
-        let config = atrium_oauth::OAuthClientConfig {
-            client_metadata: atrium_oauth::AtprotoClientMetadata {
-                client_id: format!("{public_url}/oauth/client-metadata.json"),
-                client_uri: Some(public_url.to_string()),
-                redirect_uris: vec![format!("{public_url}/oauth/callback")],
-                token_endpoint_auth_method: atrium_oauth::AuthMethod::None,
-                grant_types: vec![
-                    atrium_oauth::GrantType::AuthorizationCode,
-                    atrium_oauth::GrantType::RefreshToken,
-                ],
-                scopes,
-                jwks_uri: None,
-                token_endpoint_auth_signing_alg: None,
-            },
-            keys: None,
-            resolver,
-            state_store: PgStateStore::new(pool.clone()),
-            session_store: PgSessionStore::new(pool),
-        };
-        OAuthClient::new(config).expect("failed to create OAuth client")
+        build_client!(atrium_oauth::AtprotoClientMetadata {
+            client_id: format!("{public_url}/oauth/client-metadata.json"),
+            client_uri: Some(public_url.to_string()),
+            redirect_uris: vec![format!("{public_url}/oauth/callback")],
+            token_endpoint_auth_method: atrium_oauth::AuthMethod::None,
+            grant_types: vec![
+                atrium_oauth::GrantType::AuthorizationCode,
+                atrium_oauth::GrantType::RefreshToken,
+            ],
+            scopes,
+            jwks_uri: None,
+            token_endpoint_auth_signing_alg: None,
+        })
     } else {
-        let config = atrium_oauth::OAuthClientConfig {
-            client_metadata: atrium_oauth::AtprotoLocalhostClientMetadata {
-                redirect_uris: Some(vec![format!("http://127.0.0.1:{port}/oauth/callback")]),
-                scopes: Some(scopes),
-            },
-            keys: None,
-            resolver,
-            state_store: PgStateStore::new(pool.clone()),
-            session_store: PgSessionStore::new(pool),
-        };
-        OAuthClient::new(config).expect("failed to create OAuth client")
+        build_client!(atrium_oauth::AtprotoLocalhostClientMetadata {
+            redirect_uris: Some(vec![format!("http://127.0.0.1:{port}/oauth/callback")]),
+            scopes: Some(scopes),
+        })
     }
 }
