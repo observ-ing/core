@@ -327,10 +327,11 @@ mod tests {
             }
         }"#;
 
-        let event: RawJetstreamEvent = serde_json::from_str(json).unwrap();
+        let event: RawJetstreamEvent =
+            serde_json::from_str(json).expect("valid JSON should parse into RawJetstreamEvent");
         assert_eq!(event.did, "did:plc:abc123");
         assert!(event.commit.is_some());
-        let commit = event.commit.unwrap();
+        let commit = event.commit.expect("event should contain a commit");
         assert_eq!(commit.collection, "app.example.record");
         assert_eq!(commit.operation, "create");
     }
@@ -342,7 +343,8 @@ mod tests {
             "time_us": 1704067200000000
         }"#;
 
-        let event: RawJetstreamEvent = serde_json::from_str(json).unwrap();
+        let event: RawJetstreamEvent =
+            serde_json::from_str(json).expect("valid JSON should parse into RawJetstreamEvent");
         assert!(event.commit.is_none());
     }
 
@@ -363,18 +365,21 @@ mod tests {
                 "cid": "bafyrei..."
             }
         }"#;
-        sub.handle_message(msg).await.unwrap();
+        sub.handle_message(msg)
+            .await
+            .expect("handle_message should process a valid commit message");
 
-        let event = rx.try_recv().unwrap();
-        match event {
-            JetstreamEvent::Commit(commit) => {
-                assert_eq!(commit.did, "did:plc:abc123");
-                assert_eq!(commit.collection, "app.example.record");
-                assert_eq!(commit.rkey, "123");
-                assert_eq!(commit.operation, "create");
-                assert_eq!(commit.uri, "at://did:plc:abc123/app.example.record/123");
-            }
-            _ => panic!("Expected Commit event"),
-        }
+        let event = rx
+            .try_recv()
+            .expect("channel should contain the emitted event");
+        let commit = match event {
+            JetstreamEvent::Commit(commit) => commit,
+            other => panic!("Expected Commit event, got {:?}", other),
+        };
+        assert_eq!(commit.did, "did:plc:abc123");
+        assert_eq!(commit.collection, "app.example.record");
+        assert_eq!(commit.rkey, "123");
+        assert_eq!(commit.operation, "create");
+        assert_eq!(commit.uri, "at://did:plc:abc123/app.example.record/123");
     }
 }

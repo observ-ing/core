@@ -58,11 +58,12 @@ mod tests {
             record: Some(serde_json::json!({"key": "value"})),
         };
 
-        let json = serde_json::to_string(&commit).unwrap();
+        let json = serde_json::to_string(&commit).expect("CommitInfo should serialize to JSON");
         assert!(json.contains("did:plc:abc123"));
         assert!(json.contains("app.example.record"));
 
-        let deserialized: CommitInfo = serde_json::from_str(&json).unwrap();
+        let deserialized: CommitInfo =
+            serde_json::from_str(&json).expect("JSON should deserialize back into CommitInfo");
         assert_eq!(deserialized.did, commit.did);
         assert_eq!(deserialized.uri, commit.uri);
         assert_eq!(deserialized.operation, commit.operation);
@@ -82,7 +83,8 @@ mod tests {
             record: None,
         };
 
-        let json = serde_json::to_string(&commit).unwrap();
+        let json = serde_json::to_string(&commit)
+            .expect("CommitInfo without record should serialize to JSON");
         // record field should be omitted when None
         assert!(!json.contains("\"record\""));
     }
@@ -92,10 +94,11 @@ mod tests {
         let time = Utc::now();
         let timing = TimingInfo { seq: 999, time };
 
-        let json = serde_json::to_string(&timing).unwrap();
+        let json = serde_json::to_string(&timing).expect("TimingInfo should serialize to JSON");
         assert!(json.contains("999"));
 
-        let deserialized: TimingInfo = serde_json::from_str(&json).unwrap();
+        let deserialized: TimingInfo =
+            serde_json::from_str(&json).expect("JSON should deserialize back into TimingInfo");
         assert_eq!(deserialized.seq, 999);
     }
 }
