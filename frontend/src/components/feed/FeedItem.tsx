@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
 import {
   Box,
   Avatar,
@@ -22,7 +21,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
-import type { RootState } from "../../store";
+import { useAppSelector } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
@@ -45,7 +44,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   );
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
-  const currentUser = useSelector((state: RootState) => state.auth.user);
+  const currentUser = useAppSelector((state) => state.auth.user);
   const isOwnPost = currentUser?.did === observation.observer.did;
 
   // Get owner and co-observers
