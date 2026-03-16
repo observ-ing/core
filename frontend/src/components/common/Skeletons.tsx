@@ -14,6 +14,7 @@ export function FeedItemSkeleton() {
         },
       }}
     >
+      {/* CardHeader: avatar, name/handle, timestamp */}
       <Box sx={{ display: "flex", gap: 1, p: 2 }}>
         <Skeleton variant="circular" width={40} height={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -24,9 +25,18 @@ export function FeedItemSkeleton() {
           <Skeleton variant="text" width="15%" height={16} />
         </Box>
       </Box>
+      {/* Image */}
       <Skeleton variant="rectangular" height={280} />
-      <Box sx={{ p: 2 }}>
+      {/* CardContent: species, remarks, location */}
+      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
         <Skeleton variant="text" width="45%" height={24} />
+        <Skeleton variant="text" width="90%" height={18} sx={{ mt: 0.5 }} />
+        <Skeleton variant="text" width="70%" height={18} />
+        <Skeleton variant="text" width="35%" height={16} sx={{ mt: 0.5 }} />
+      </Box>
+      {/* CardActions: like button */}
+      <Box sx={{ px: 1, pb: 1 }}>
+        <Skeleton variant="circular" width={28} height={28} />
       </Box>
     </Card>
   );
