@@ -158,7 +158,7 @@ pub async fn client_metadata(State(state): State<AppState>) -> Response {
 }
 
 /// GET /oauth/me
-/// Returns { user: { did, handle } } or { user: null }.
+/// Returns { user: { did, handle, displayName?, avatar? } } or { user: null }.
 pub async fn me(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -177,8 +177,8 @@ pub async fn me(
     match state.oauth_client.restore(&did_parsed).await {
         Ok(session) => {
             let agent = atrium_api::agent::Agent::new(session);
-            // Try to get the user's handle from their profile
-            let handle = match agent
+            // Try to get the user's profile (handle, avatar, displayName)
+            let (handle, display_name, avatar) = match agent
                 .api
                 .app
                 .bsky
@@ -191,14 +191,20 @@ pub async fn me(
                 )
                 .await
             {
-                Ok(profile) => profile.handle.to_string(),
-                Err(_) => did.clone(),
+                Ok(profile) => (
+                    profile.handle.to_string(),
+                    profile.display_name.clone(),
+                    profile.avatar.clone(),
+                ),
+                Err(_) => (did.clone(), None, None),
             };
 
             Ok(Json(json!({
                 "user": {
                     "did": did,
                     "handle": handle,
+                    "displayName": display_name,
+                    "avatar": avatar,
                 }
             })))
         }
