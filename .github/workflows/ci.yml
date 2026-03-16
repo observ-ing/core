@@ -103,6 +103,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy
+      - uses: Swatinem/rust-cache@v2
       - run: cargo clippy --workspace -- -D warnings
 
   rust-sqlx:
@@ -110,6 +111,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
           tool: sqlx-cli
@@ -123,6 +125,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
   # End-to-end tests
@@ -151,6 +154,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
       - run: npm ci
       - name: Run database migrations and seed
         run: |
