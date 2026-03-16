@@ -22,11 +22,10 @@ import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
 import { formatTimeAgo, getDisplayName, getObservationUrl } from "../../lib/utils";
-import {
-  ProfileHeaderSkeleton,
-  ProfileObservationCardSkeleton,
-  ProfileIdentificationCardSkeleton,
-} from "../common/Skeletons";
+import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
+import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
+import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
+import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "observations" | "identifications";
@@ -115,12 +114,12 @@ export function ProfileView() {
       {isLoading && !profile ? (
         <ProfileHeaderSkeleton />
       ) : (
-        <Box sx={{ p: 3, borderBottom: 1, borderColor: "divider" }}>
+        <Box sx={PROFILE_HEADER_SX}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Avatar
               {...(profile?.avatar ? { src: profile.avatar } : {})}
               alt={profile?.displayName || profile?.handle || did}
-              sx={{ width: 80, height: 80 }}
+              sx={{ width: PROFILE_AVATAR_SIZE, height: PROFILE_AVATAR_SIZE }}
             />
             <Box>
               <Typography variant="h5" fontWeight={600}>
@@ -133,16 +132,7 @@ export function ProfileView() {
           {/* Stats */}
           {counts && (
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <Box
-                sx={{
-                  textAlign: "center",
-                  flex: 1,
-                  bgcolor: "action.hover",
-                  borderRadius: 2,
-                  py: 1.5,
-                  px: 1,
-                }}
-              >
+              <Box sx={PROFILE_STAT_BOX_SX}>
                 <Typography variant="h6" fontWeight={700} color="primary.main">
                   {counts.observations.toLocaleString()}
                 </Typography>
@@ -159,16 +149,7 @@ export function ProfileView() {
                   </Typography>
                 </Stack>
               </Box>
-              <Box
-                sx={{
-                  textAlign: "center",
-                  flex: 1,
-                  bgcolor: "action.hover",
-                  borderRadius: 2,
-                  py: 1.5,
-                  px: 1,
-                }}
-              >
+              <Box sx={PROFILE_STAT_BOX_SX}>
                 <Typography variant="h6" fontWeight={700} color="secondary.main">
                   {counts.identifications.toLocaleString()}
                 </Typography>
@@ -185,16 +166,7 @@ export function ProfileView() {
                   </Typography>
                 </Stack>
               </Box>
-              <Box
-                sx={{
-                  textAlign: "center",
-                  flex: 1,
-                  bgcolor: "action.hover",
-                  borderRadius: 2,
-                  py: 1.5,
-                  px: 1,
-                }}
-              >
+              <Box sx={PROFILE_STAT_BOX_SX}>
                 <Typography variant="h6" fontWeight={700} color="success.main">
                   {counts.species.toLocaleString()}
                 </Typography>
