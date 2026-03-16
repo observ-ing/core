@@ -17,33 +17,33 @@ at-uri-parser = { path = "../at-uri-parser" }
 jacquard-common = "0.9"
 
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true }
 
 # Web framework
-axum = { version = "0.8", features = ["macros"] }
+axum = { workspace = true, features = ["macros"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
-tower-http = { version = "0.6", features = ["cors", "fs"] }
-tower = "0.5"
+tower-http = { workspace = true, features = ["cors", "fs"] }
+tower = { workspace = true }
 
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }
+sqlx = { workspace = true }
 
 # HTTP client (for taxonomy service + internal agent RPC)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+reqwest = { workspace = true, features = ["stream"] }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # TypeScript type generation
 ts-rs = { workspace = true }
 
 # Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # Base64 for blob uploads
 base64 = "0.22"
@@ -59,10 +59,10 @@ hickory-resolver = "0.24"
 async-trait = "0.1"
 
 # URL encoding
-urlencoding = "2"
+urlencoding = { workspace = true }
 
 # Async combinators
-futures = "0.3"
+futures = { workspace = true }
 
 [[bin]]
 name = "observing-appview"

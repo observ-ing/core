@@ -7,40 +7,40 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true }
 
 # Jetstream client
 jetstream-client = { path = "../jetstream-client" }
 
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono"] }
+sqlx = { workspace = true }
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-lexicons = { path = "../observing-lexicons" }
 
 # HTTP server
-axum = "0.8"
-tower-http = { version = "0.6", features = ["cors"] }
+axum = { workspace = true }
+tower-http = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
-tracing-stackdriver = "0.10"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # CLI
 clap = { version = "4", features = ["derive"] }
 
 # URL parsing
-url = "2"
+url = { workspace = true }
 
 [dev-dependencies]
-tower = { version = "0.5", features = ["util"] }
+tower = { workspace = true, features = ["util"] }
 
 [[bin]]
 name = "observing-ingester"

@@ -7,18 +7,18 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["time", "sync"] }
+tokio = { workspace = true }
 
 # WebSocket
 tokio-tungstenite = { version = "0.28", features = ["native-tls"] }
-futures-util = "0.3"
+futures-util = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }

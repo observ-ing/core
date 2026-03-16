@@ -7,19 +7,19 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # HTTP client
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
+serde = { workspace = true }
 
 # Caching
-moka = { version = "0.12", features = ["future"] }
+moka = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Async
-tokio = { version = "1", features = ["sync", "time"] }
+tokio = { workspace = true }
 
 # Static initialization
 lazy_static = "1"
