@@ -42,7 +42,7 @@ import { CommentSection } from "../comment/CommentSection";
 import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
-import { ObservationDetailSkeleton } from "../common/Skeletons";
+import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import {
   formatDate,
   getDisplayName,

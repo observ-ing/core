@@ -31,7 +31,7 @@ import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
-import { TaxonDetailSkeleton } from "../common/Skeletons";
+import { TaxonDetailSkeleton } from "./TaxonDetailSkeleton";
 
 export function TaxonDetail() {
   // Support both /taxon/:kingdom/:name and /taxon/:id

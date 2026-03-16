@@ -26,6 +26,7 @@ import { getImageUrl } from "../../services/api";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
 import { formatTimeAgo, getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
 interface FeedItemProps {
   observation: Occurrence;
@@ -175,15 +176,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   );
 
   return (
-    <Card
-      sx={{
-        mb: 1.5,
-        mx: { xs: 0.5, sm: 1 },
-        "&:first-of-type": {
-          mt: 1.5,
-        },
-      }}
-    >
+    <Card sx={FEED_CARD_SX}>
       <CardActionArea onClick={handleCardClick} component="div">
         <CardHeader
           avatar={avatarEl}
@@ -235,7 +228,7 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
             alt={species || "Observation photo"}
             loading="lazy"
             sx={{
-              maxHeight: 280,
+              maxHeight: FEED_IMAGE_MAX_HEIGHT,
               objectFit: "cover",
             }}
           />
