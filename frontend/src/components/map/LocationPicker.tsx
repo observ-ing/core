@@ -127,8 +127,8 @@ export function LocationPicker({
           setSearchResults(data);
         }
       } catch (error) {
-        if (!(error instanceof Error && error.name === "AbortError")) {
-          console.error("Geocoding error:", error);
+        if (error instanceof Error && error.name === "AbortError") {
+          // Expected when the previous request is cancelled
         }
       } finally {
         setIsSearching(false);

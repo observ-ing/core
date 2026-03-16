@@ -226,8 +226,8 @@ export class OccurrenceUploader {
       if (!exifData.dateTime && file.lastModified) {
         exifData.dateTime = new Date(file.lastModified);
       }
-    } catch (error) {
-      console.error("EXIF extraction error:", error);
+    } catch {
+      // EXIF extraction is best-effort; fall through with whatever data we have
     }
 
     return exifData;

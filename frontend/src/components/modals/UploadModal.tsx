@@ -239,8 +239,8 @@ export function UploadModal() {
           );
         }
       }
-    } catch (error) {
-      console.error("EXIF extraction error:", error);
+    } catch {
+      // EXIF extraction is best-effort; silently continue without EXIF data
     }
   };
 

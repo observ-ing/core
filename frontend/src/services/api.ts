@@ -144,8 +144,7 @@ export async function fetchObservation(uri: string): Promise<OccurrenceDetailRes
     const response = await fetch(url);
     if (!response.ok) return null;
     return response.json();
-  } catch (e) {
-    console.error("fetchObservation error:", e);
+  } catch {
     return null;
   }
 }
@@ -344,8 +343,7 @@ export async function fetchTaxon(kingdomOrId: string, name?: string): Promise<Ta
     const response = await fetch(url);
     if (!response.ok) return null;
     return response.json();
-  } catch (e) {
-    console.error("fetchTaxon error:", e);
+  } catch {
     return null;
   }
 }
