@@ -22,4 +22,4 @@ jacquard-common = "0.9"
 jacquard-derive = "0.9"
 jacquard-lexicon = "0.9"
 rustversion = "1"
-serde = { version = "1", features = ["derive"] }
+serde = { workspace = true }

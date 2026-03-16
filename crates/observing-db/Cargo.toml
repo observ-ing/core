@@ -11,20 +11,20 @@ processing = ["observing-lexicons"]
 
 [dependencies]
 # Database
-sqlx = { version = "0.8", features = ["runtime-tokio", "tls-native-tls", "postgres", "chrono", "json", "migrate"] }
+sqlx = { workspace = true, features = ["json", "migrate"] }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # TypeScript type generation
 ts-rs = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # Optional: AT Protocol lexicon types for record processing
 observing-lexicons = { path = "../observing-lexicons", optional = true }

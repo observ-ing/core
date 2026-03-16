@@ -7,11 +7,11 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # Async runtime
-tokio = { version = "1", features = ["full"] }
+tokio = { workspace = true }
 
 # HTTP server
-axum = "0.8"
-tower-http = { version = "0.6", features = ["cors"] }
+axum = { workspace = true }
+tower-http = { workspace = true }
 
 # AT Protocol blob resolution
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
@@ -20,23 +20,23 @@ atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 file-blob-cache = { path = "../file-blob-cache" }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Logging
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "json", "registry"] }
-tracing-stackdriver = "0.10"
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
 
 # Time
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { workspace = true }
 
 # URL parsing
-url = "2"
+url = { workspace = true }
 
 [dev-dependencies]
-tower = { version = "0.5", features = ["util"] }
-tempfile = "3"
+tower = { workspace = true, features = ["util"] }
+tempfile = { workspace = true }
 
 [[bin]]
 name = "observing-media-proxy"

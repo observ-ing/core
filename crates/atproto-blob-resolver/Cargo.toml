@@ -7,17 +7,17 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # HTTP client
-reqwest = { version = "0.13", features = ["json"] }
+reqwest = { workspace = true }
 
 # Serialization
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 # Logging
-tracing = "0.1"
+tracing = { workspace = true }
 
 # URL encoding
-urlencoding = "2"
+urlencoding = { workspace = true }
 
 [dev-dependencies]
-tokio = { version = "1", features = ["macros", "rt"] }
+tokio = { workspace = true }
