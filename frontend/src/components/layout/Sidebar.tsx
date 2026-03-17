@@ -162,6 +162,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
         <img src={logoSvg} alt="" width={28} height={28} />
         <Typography
           variant="h6"
+          component="span"
           sx={{
             fontWeight: 700,
             color: "primary.main",
