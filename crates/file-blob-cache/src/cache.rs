@@ -176,8 +176,10 @@ impl BlobCache {
         if let Some(entry) = entry {
             self.current_size.fetch_sub(entry.size, Ordering::Relaxed);
 
-            // Try to remove the file (ignore errors)
-            let _ = fs::remove_file(&entry.path).await;
+            // Try to remove the file
+            if let Err(e) = fs::remove_file(&entry.path).await {
+                warn!(path = ?entry.path, error = %e, "Failed to remove cached file from disk");
+            }
         }
     }
 

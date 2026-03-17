@@ -5,7 +5,7 @@ use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::{json, Value};
-use tracing::info;
+use tracing::{info, warn};
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
@@ -187,17 +187,25 @@ pub async fn create_occurrence(
         cid.clone(),
         user.did.clone(),
     ) {
-        let _ = observing_db::occurrences::upsert(&state.pool, &params).await;
+        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &params).await {
+            warn!(error = %e, "Failed to upsert occurrence into local DB");
+        }
     }
 
     // Save private location data
-    let _ =
+    if let Err(e) =
         observing_db::private_data::save(&state.pool, &uri, body.latitude, body.longitude, "open")
-            .await;
+            .await
+    {
+        warn!(error = %e, "Failed to save private location data");
+    }
 
     // Sync observers
     let co_observers = body.recorded_by.unwrap_or_default();
-    let _ = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await;
+    if let Err(e) = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await
+    {
+        warn!(error = %e, "Failed to sync observers");
+    }
 
     // Auto-create first identification if a scientific name was provided
     if let Some(ref scientific_name) = body.scientific_name {
@@ -222,7 +230,11 @@ pub async fn create_occurrence(
                         user.did.clone(),
                         chrono::Utc::now(),
                     ) {
-                        let _ = observing_db::identifications::upsert(&state.pool, &params).await;
+                        if let Err(e) =
+                            observing_db::identifications::upsert(&state.pool, &params).await
+                        {
+                            warn!(error = %e, "Failed to upsert auto-created identification into local DB");
+                        }
                     }
                 }
                 Err(e) => {
@@ -250,8 +262,14 @@ pub async fn post_occurrence_catch_all(
         let observer_did = body["did"]
             .as_str()
             .ok_or_else(|| AppError::BadRequest("did is required".into()))?;
-        let _ = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await;
-        let _ = observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await;
+        if let Err(e) = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await {
+            warn!(error = %e, "Failed to add owner observer");
+        }
+        if let Err(e) =
+            observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await
+        {
+            warn!(error = %e, "Failed to add co-observer");
+        }
         return Ok(Json(json!({ "success": true })));
     }
 
@@ -269,7 +287,9 @@ pub async fn delete_occurrence_catch_all(
         let idx = full_path.rfind("/observers/").unwrap();
         let uri = &full_path[..idx];
         let observer_did = &full_path[idx + "/observers/".len()..];
-        let _ = observing_db::observers::remove(&state.pool, uri, observer_did).await;
+        if let Err(e) = observing_db::observers::remove(&state.pool, uri, observer_did).await {
+            warn!(error = %e, "Failed to remove observer");
+        }
         return Ok(Json(json!({ "success": true })));
     }
 
@@ -316,7 +336,9 @@ pub async fn delete_occurrence_catch_all(
             }
         })?;
 
-    let _ = observing_db::occurrences::delete(&state.pool, uri).await;
+    if let Err(e) = observing_db::occurrences::delete(&state.pool, uri).await {
+        warn!(error = %e, "Failed to delete occurrence from local DB");
+    }
 
     Ok(Json(json!({ "success": true })))
 }
