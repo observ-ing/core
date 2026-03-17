@@ -352,6 +352,7 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
                           component="img"
                           src={taxon.photoUrl}
                           alt=""
+                          loading="lazy"
                           sx={{
                             width: 36,
                             height: 36,
