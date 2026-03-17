@@ -17,6 +17,16 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "../dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom", "react-router-dom"],
+          "vendor-mui": ["@mui/material", "@mui/icons-material"],
+          "vendor-map": ["maplibre-gl"],
+          "vendor-redux": ["@reduxjs/toolkit", "react-redux"],
+        },
+      },
+    },
   },
   server: {
     fs: {
