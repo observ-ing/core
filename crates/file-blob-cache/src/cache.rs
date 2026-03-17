@@ -217,9 +217,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_put_and_get() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("should create temp directory");
         let cache = BlobCache::new(dir.path().to_path_buf(), 1024 * 1024, 3600);
-        cache.init().await.unwrap();
+        cache.init().await.expect("cache init should succeed");
 
         let did = "did:plc:test123";
         let cid = "bafytest";
@@ -227,22 +227,26 @@ mod tests {
         let content_type = "text/plain";
 
         // Put data
-        cache.put(did, cid, data, content_type).await.unwrap();
+        cache
+            .put(did, cid, data, content_type)
+            .await
+            .expect("cache put should succeed");
 
         // Get data back
         let result = cache.get(did, cid).await;
         assert!(result.is_some());
 
-        let (retrieved_data, retrieved_type) = result.unwrap();
+        let (retrieved_data, retrieved_type) =
+            result.expect("cache get should return previously stored data");
         assert_eq!(retrieved_data, data);
         assert_eq!(retrieved_type, content_type);
     }
 
     #[tokio::test]
     async fn test_cache_miss() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("should create temp directory");
         let cache = BlobCache::new(dir.path().to_path_buf(), 1024 * 1024, 3600);
-        cache.init().await.unwrap();
+        cache.init().await.expect("cache init should succeed");
 
         let result = cache.get("did:plc:nonexistent", "bafynonexistent").await;
         assert!(result.is_none());
@@ -250,9 +254,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_stats() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("should create temp directory");
         let cache = BlobCache::new(dir.path().to_path_buf(), 1024 * 1024, 3600);
-        cache.init().await.unwrap();
+        cache.init().await.expect("cache init should succeed");
 
         // Initial stats
         let stats = cache.stats().await;
@@ -263,7 +267,7 @@ mod tests {
         cache
             .put("did:plc:test", "bafytest", b"test data", "text/plain")
             .await
-            .unwrap();
+            .expect("cache put should succeed");
 
         let stats = cache.stats().await;
         assert_eq!(stats.entries, 1);
@@ -272,9 +276,9 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_hit_miss_counters() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("should create temp directory");
         let cache = BlobCache::new(dir.path().to_path_buf(), 1024 * 1024, 3600);
-        cache.init().await.unwrap();
+        cache.init().await.expect("cache init should succeed");
 
         // Miss
         cache.get("did:plc:test", "bafytest").await;
@@ -286,7 +290,7 @@ mod tests {
         cache
             .put("did:plc:test", "bafytest", b"data", "text/plain")
             .await
-            .unwrap();
+            .expect("cache put should succeed");
         cache.get("did:plc:test", "bafytest").await;
 
         let stats = cache.stats().await;
@@ -296,22 +300,22 @@ mod tests {
 
     #[tokio::test]
     async fn test_cache_eviction() {
-        let dir = tempdir().unwrap();
+        let dir = tempdir().expect("should create temp directory");
         // Small cache: only 20 bytes
         let cache = BlobCache::new(dir.path().to_path_buf(), 20, 3600);
-        cache.init().await.unwrap();
+        cache.init().await.expect("cache init should succeed");
 
         // Add first entry (10 bytes)
         cache
             .put("did:plc:1", "cid1", b"0123456789", "text/plain")
             .await
-            .unwrap();
+            .expect("first cache put should succeed");
 
         // Add second entry (10 bytes) - should fit
         cache
             .put("did:plc:2", "cid2", b"abcdefghij", "text/plain")
             .await
-            .unwrap();
+            .expect("second cache put should succeed");
 
         // Both should exist
         assert!(cache.get("did:plc:1", "cid1").await.is_some());
@@ -321,7 +325,7 @@ mod tests {
         cache
             .put("did:plc:3", "cid3", b"ABCDEFGHIJ", "text/plain")
             .await
-            .unwrap();
+            .expect("third cache put should succeed");
 
         // Third should exist, first might be evicted
         assert!(cache.get("did:plc:3", "cid3").await.is_some());

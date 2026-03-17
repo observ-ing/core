@@ -34,7 +34,8 @@ mod tests {
 
     #[test]
     fn test_parse_valid_uri() {
-        let uri = AtUri::parse("at://did:plc:abc123/org.rwell.test.occurrence/rkey1").unwrap();
+        let uri = AtUri::parse("at://did:plc:abc123/org.rwell.test.occurrence/rkey1")
+            .expect("valid AT URI should parse successfully");
         assert_eq!(uri.did, "did:plc:abc123");
         assert_eq!(uri.collection, "org.rwell.test.occurrence");
         assert_eq!(uri.rkey, "rkey1");
@@ -62,7 +63,8 @@ mod tests {
 
     #[test]
     fn test_parse_did_web() {
-        let uri = AtUri::parse("at://did:web:example.com/app.bsky.feed.like/abc").unwrap();
+        let uri = AtUri::parse("at://did:web:example.com/app.bsky.feed.like/abc")
+            .expect("AT URI with did:web should parse successfully");
         assert_eq!(uri.did, "did:web:example.com");
         assert_eq!(uri.collection, "app.bsky.feed.like");
         assert_eq!(uri.rkey, "abc");
