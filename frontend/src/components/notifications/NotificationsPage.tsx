@@ -39,7 +39,7 @@ export function NotificationsPage() {
       setCursor(data.cursor ?? undefined);
       setHasMore(data.notifications.length === 20);
     } catch {
-      // ignore
+      // Ignore fetch errors — previously loaded notifications remain visible
     } finally {
       setIsLoading(false);
     }

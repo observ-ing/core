@@ -98,6 +98,7 @@ export function TaxonDetail() {
           setCursor(obsResult.cursor);
           setHasMore(!!obsResult.cursor);
         } catch {
+          // Show empty state if observations fail to load
           setObservations([]);
           setHasMore(false);
         }
@@ -133,6 +134,7 @@ export function TaxonDetail() {
       setCursor(result.cursor);
       setHasMore(!!result.cursor);
     } catch {
+      // Stop pagination on error — existing observations remain visible
       setHasMore(false);
     }
     setLoadingMore(false);

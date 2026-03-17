@@ -66,7 +66,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const poll = () => {
       fetchUnreadCount()
         .then((data) => setUnreadCount(data.count))
-        .catch(() => {});
+        .catch(() => {
+          // Ignore polling failures — count stays at its last known value
+        });
     };
     poll();
     intervalRef.current = setInterval(poll, 30_000);
