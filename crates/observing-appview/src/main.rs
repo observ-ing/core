@@ -14,7 +14,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::DefaultBodyLimit;
-use axum::http::{header, Method};
+use axum::http::{header, HeaderValue, Method, Uri};
+use axum::middleware;
+use axum::response::Response;
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
@@ -199,7 +201,11 @@ async fn main() {
     let spa_fallback =
         ServeDir::new(&public_path).fallback(ServeFile::new(format!("{}/index.html", public_path)));
 
-    let app = app.fallback_service(spa_fallback);
+    let spa_with_cache = Router::new()
+        .fallback_service(spa_fallback)
+        .layer(middleware::map_response(cache_control_middleware));
+
+    let app = app.fallback_service(spa_with_cache);
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port))
         .await
@@ -208,4 +214,21 @@ async fn main() {
     info!(port = config.port, "Listening");
 
     axum::serve(listener, app).await.expect("Server failed");
+}
+
+/// Sets Cache-Control headers for static assets.
+///
+/// Vite-produced files under `/assets/` have content hashes in their filenames,
+/// so they can be cached indefinitely. All other files (index.html, favicon, etc.)
+/// must be revalidated on every request to ensure users get fresh content.
+async fn cache_control_middleware(uri: Uri, mut response: Response) -> Response {
+    let cache_value = if uri.path().contains("/assets/") {
+        HeaderValue::from_static("public, max-age=31536000, immutable")
+    } else {
+        HeaderValue::from_static("public, max-age=0, must-revalidate")
+    };
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, cache_value);
+    response
 }
