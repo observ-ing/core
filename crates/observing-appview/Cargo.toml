@@ -22,7 +22,7 @@ tokio = { workspace = true }
 # Web framework
 axum = { workspace = true, features = ["macros"] }
 axum-extra = { version = "0.10", features = ["cookie"] }
-tower-http = { workspace = true, features = ["cors", "fs"] }
+tower-http = { workspace = true, features = ["cors", "compression-full", "fs"] }
 tower = { workspace = true }
 
 # Database

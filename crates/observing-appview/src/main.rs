@@ -18,6 +18,7 @@ use axum::http::{header, Method};
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -180,6 +181,7 @@ async fn main() {
         // Media proxy
         .route("/media/{*path}", get(routes::media::proxy))
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
+        .layer(CompressionLayer::new())
         .layer(cors)
         .with_state(state);
 
