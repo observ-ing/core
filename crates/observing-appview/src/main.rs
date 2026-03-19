@@ -12,6 +12,7 @@ mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
@@ -42,7 +43,10 @@ async fn main() {
 
     // Connect to database
     let pool = PgPoolOptions::new()
-        .max_connections(20)
+        .max_connections(50)
+        .acquire_timeout(Duration::from_secs(5))
+        .idle_timeout(Some(Duration::from_secs(300)))
+        .max_lifetime(Some(Duration::from_secs(1800)))
         .connect(&config.database_url)
         .await
         .expect("Failed to connect to database");
