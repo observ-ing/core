@@ -74,14 +74,24 @@ RUN cargo build --release -p ${SERVICE}
 # ---------------------------------------------------------------------------
 FROM deps AS builder
 
-# Remove dummy sources
-RUN find crates -name "*.rs" -delete
+# Remove dummy sources and invalidate cargo fingerprints for all workspace
+# crates so cargo recompiles them from the real source below. Without this,
+# cargo may skip dependency crates (e.g. gbif-api) whose cached artifacts
+# from the dummy build appear up-to-date.
+RUN find crates -name "*.rs" -delete \
+    && for crate in crates/*/; do \
+        name=$(basename "$crate" | tr '-' '_'); \
+        rm -rf target/release/.fingerprint/${name}-* \
+               target/release/.fingerprint/$(basename "$crate")-* \
+               target/release/deps/lib${name}*; \
+    done
 
 # Copy all real source code and assets
 COPY crates/ crates/
 COPY .sqlx ./.sqlx
 
-# Rebuild with real sources
+# Rebuild with real sources. External dependencies (from crates.io) remain
+# cached from the deps stage; only workspace crates are recompiled.
 ENV SQLX_OFFLINE=true
 ARG SERVICE
 RUN cargo build --release -p ${SERVICE}
