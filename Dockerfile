@@ -27,61 +27,49 @@ COPY frontend/ frontend/
 RUN npm run build
 
 # ---------------------------------------------------------------------------
-# Stage: deps – cache compiled dependencies
+# Stage: chef – install cargo-chef
 # ---------------------------------------------------------------------------
-FROM rust:1.93-slim-bookworm AS deps
+FROM rust:1.93-slim-bookworm AS chef
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
     libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
+RUN cargo install cargo-chef
+
 WORKDIR /app
 
-# Copy workspace manifests
+# ---------------------------------------------------------------------------
+# Stage: planner – analyze dependencies and produce a recipe
+# ---------------------------------------------------------------------------
+FROM chef AS planner
+
 COPY Cargo.toml Cargo.lock ./
+COPY crates/ crates/
 
-# Copy all crate manifests (this block must be updated when crates are added)
-COPY crates/at-uri-parser/Cargo.toml crates/at-uri-parser/
-COPY crates/atproto-blob-resolver/Cargo.toml crates/atproto-blob-resolver/
-COPY crates/file-blob-cache/Cargo.toml crates/file-blob-cache/
-COPY crates/gbif-api/Cargo.toml crates/gbif-api/
-COPY crates/jetstream-client/Cargo.toml crates/jetstream-client/
-COPY crates/observing-appview/Cargo.toml crates/observing-appview/
-COPY crates/observing-db/Cargo.toml crates/observing-db/
-COPY crates/nominatim-client/Cargo.toml crates/nominatim-client/
-COPY crates/atproto-identity/Cargo.toml crates/atproto-identity/
-COPY crates/observing-ingester/Cargo.toml crates/observing-ingester/
-COPY crates/observing-lexicons/Cargo.toml crates/observing-lexicons/
-COPY crates/observing-media-proxy/Cargo.toml crates/observing-media-proxy/
-COPY crates/observing-taxonomy/Cargo.toml crates/observing-taxonomy/
+RUN cargo chef prepare --recipe-path recipe.json
 
-# Create dummy sources so cargo can resolve the workspace and cache deps
-RUN for crate in at-uri-parser atproto-blob-resolver file-blob-cache gbif-api \
-        jetstream-client observing-appview observing-db nominatim-client \
-        atproto-identity observing-ingester observing-lexicons \
-        observing-media-proxy observing-taxonomy; do \
-        mkdir -p crates/$crate/src && \
-        echo "fn main() {}" > crates/$crate/src/main.rs && \
-        echo "" > crates/$crate/src/lib.rs; \
-    done
+# ---------------------------------------------------------------------------
+# Stage: deps – cook (compile) only the dependencies from the recipe
+# ---------------------------------------------------------------------------
+FROM chef AS deps
+
+COPY --from=planner /app/recipe.json recipe.json
 
 ARG SERVICE
-RUN cargo build --release -p ${SERVICE}
+RUN cargo chef cook --release --recipe-path recipe.json -p ${SERVICE}
 
 # ---------------------------------------------------------------------------
 # Stage: builder – compile the real binary
 # ---------------------------------------------------------------------------
 FROM deps AS builder
 
-# Remove dummy sources
-RUN find crates -name "*.rs" -delete
-
-# Copy all real source code and assets
+# Copy all source code and assets
+COPY Cargo.toml Cargo.lock ./
 COPY crates/ crates/
 COPY .sqlx ./.sqlx
 
-# Rebuild with real sources
 ENV SQLX_OFFLINE=true
 ARG SERVICE
 RUN cargo build --release -p ${SERVICE}
