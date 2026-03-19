@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
@@ -36,7 +36,7 @@ interface FeedItemProps {
 
 const REMARKS_TRUNCATE_LENGTH = 200;
 
-export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
+export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [remarksExpanded, setRemarksExpanded] = useState(false);
   const { liked, likeCount, handleLikeToggle } = useLikeToggle(
@@ -341,4 +341,4 @@ export function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
       </CardActions>
     </Card>
   );
-}
+});
