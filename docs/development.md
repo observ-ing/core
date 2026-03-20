@@ -105,11 +105,11 @@ cargo run -p observing-taxonomy
 npm run dev
 ```
 
-### After Frontend Changes
+### Frontend Development
 
-Rebuild and restart:
+If there's nothing in `dist/public`, the app view running on port 3000 will proxy frontend requests to the hot-reloading vite server running in the `frontend` process.
+
+If you want to mimic a more production-like setup, rebuild the static frontend files and restart:
 ```bash
 npm run build && process-compose process restart appview
 ```
-
-The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.
