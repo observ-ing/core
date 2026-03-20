@@ -14,7 +14,7 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   if (!email || !password || !handle) {
     throw new Error(
       "BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, and BLUESKY_TEST_HANDLE env vars " +
-      "are required to run e2e tests",
+        "are required to run e2e tests",
     );
   }
 
