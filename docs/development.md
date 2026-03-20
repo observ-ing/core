@@ -113,3 +113,26 @@ If you want to mimic a more production-like setup, rebuild the static frontend f
 ```bash
 npm run build && process-compose process restart appview
 ```
+
+The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.
+
+## Tests
+
+Backend tests with `cargo test --workspace` should run without setup.
+
+Frontend tests with `npm run test:e2e` require a real Bluesky test account with these credentials in environmental variables: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
+
+e2e tests are truly end-to-end, so you need to have a full stack running for them to complete. The whole thing might look like this:
+
+```sh
+# Start full development stack
+process-compose up -D
+
+# Set up Bluesky credentials
+export BLUESKY_TEST_EMAIL=your-test-bluesky-email@yourmail.com
+export BLUESKY_TEST_PASSWORD=your-test-bluesky-password
+export BLUESKY_TEST_HANDLE=your-test-bluesky-handle.bsky.social
+
+# Run the tests
+npm run test:e2e
+```
