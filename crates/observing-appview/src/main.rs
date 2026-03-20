@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod middleware;
 mod oauth_store;
 mod resolver;
 mod routes;
@@ -14,9 +15,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use axum::extract::DefaultBodyLimit;
-use axum::http::{header, HeaderValue, Method};
-use axum::middleware;
-use axum::response::Response;
+use axum::http::{header, Method};
+use axum::middleware as axum_middleware;
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
@@ -183,23 +183,9 @@ async fn main() {
         .route("/media/{*path}", get(routes::media::proxy))
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(cors)
-        .layer(middleware::map_response({
+        .layer(axum_middleware::map_response({
             let is_production = config.public_url.is_some();
-            move |mut response: Response| async move {
-                let headers = response.headers_mut();
-                headers.insert(
-                    "X-Content-Type-Options",
-                    HeaderValue::from_static("nosniff"),
-                );
-                headers.insert("X-Frame-Options", HeaderValue::from_static("DENY"));
-                if is_production {
-                    headers.insert(
-                        "Strict-Transport-Security",
-                        HeaderValue::from_static("max-age=63072000; includeSubDomains"),
-                    );
-                }
-                response
-            }
+            move |response| middleware::security_headers(response, is_production)
         }))
         .with_state(state);
 
