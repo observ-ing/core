@@ -186,6 +186,7 @@ export function ExploreFilterPanel() {
                       component="img"
                       src={option.photoUrl}
                       alt=""
+                      loading="lazy"
                       sx={{
                         width: 32,
                         height: 32,

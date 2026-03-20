@@ -92,6 +92,7 @@ export function TaxaAutocomplete({
                 component="img"
                 src={option.photoUrl}
                 alt=""
+                loading="lazy"
                 sx={{
                   width: 40,
                   height: 40,
