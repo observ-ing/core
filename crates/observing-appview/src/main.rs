@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod middleware;
 mod oauth_store;
 mod resolver;
 mod routes;
@@ -16,6 +17,7 @@ use std::time::Duration;
 
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
+use axum::middleware as axum_middleware;
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
@@ -187,6 +189,10 @@ async fn main() {
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(CompressionLayer::new())
         .layer(cors)
+        .layer(axum_middleware::map_response({
+            let is_production = config.public_url.is_some();
+            move |response| middleware::security_headers(response, is_production)
+        }))
         .with_state(state);
 
     // Serve React SPA with fallback to index.html for client-side routing
