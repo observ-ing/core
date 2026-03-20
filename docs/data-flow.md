@@ -105,7 +105,7 @@ flowchart TB
 
 | Service | Port | Role | DB Access |
 |---------|------|------|-----------|
-| **AppView** | 3000 | REST API, OAuth, AT Protocol client, static files | Read/Write |
+| **AppView** | 3000 | REST API, OAuth, AT Protocol client, frontend (static files or Vite proxy) | Read/Write |
 | **Ingester** | 8080 | Firehose consumer, indexes records | Write-heavy |
 | **Media Proxy** | 3001 | Image caching | None |
 | **Taxonomy** | 3003 | GBIF taxonomy lookups | None |

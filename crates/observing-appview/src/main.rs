@@ -18,6 +18,7 @@ use std::time::Duration;
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
 use axum::middleware as axum_middleware;
+use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
@@ -195,23 +196,36 @@ async fn main() {
         }))
         .with_state(state);
 
-    // Serve React SPA with fallback to index.html for client-side routing
-    let public_path = std::env::var("PUBLIC_PATH").unwrap_or_else(|_| {
-        // Default: dist/public relative to the workspace root
-        let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        manifest_dir
-            .join("../../dist/public")
-            .canonicalize()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|_| "dist/public".to_string())
-    });
+    // Serve the frontend: use pre-built static files if available, otherwise proxy to Vite
+    let built_public = std::env::var("PUBLIC_PATH")
+        .map(PathBuf::from)
+        .ok()
+        .or_else(|| {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("../../dist/public")
+                .canonicalize()
+                .ok()
+        });
 
-    info!(public_path = %public_path, "Serving static files");
-
-    let spa_fallback =
-        ServeDir::new(&public_path).fallback(ServeFile::new(format!("{}/index.html", public_path)));
-
-    let app = app.fallback_service(spa_fallback);
+    let app = match built_public {
+        Some(path) => {
+            info!(path = %path.display(), "Serving pre-built frontend");
+            let fallback = ServeDir::new(&path).fallback(ServeFile::new(path.join("index.html")));
+            app.fallback_service(fallback)
+        }
+        None => {
+            let vite_url = "http://localhost:5173";
+            info!(
+                vite_url,
+                "No pre-built frontend found, proxying to Vite dev server"
+            );
+            let client = reqwest::Client::new();
+            app.fallback(move |req: axum::extract::Request| {
+                let client = client.clone();
+                async move { vite_proxy(req, vite_url, &client).await }
+            })
+        }
+    };
 
     let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port))
         .await
@@ -220,4 +234,57 @@ async fn main() {
     info!(port = config.port, "Listening");
 
     axum::serve(listener, app).await.expect("Server failed");
+}
+
+async fn vite_proxy(
+    req: axum::extract::Request,
+    vite_base_url: &str,
+    client: &reqwest::Client,
+) -> axum::response::Response {
+    let path_query = req
+        .uri()
+        .path_and_query()
+        .map(|pq| pq.as_str())
+        .unwrap_or("/");
+    let target_url = format!("{}{}", vite_base_url, path_query);
+
+    let method = reqwest::Method::from_bytes(req.method().as_str().as_bytes())
+        .unwrap_or(reqwest::Method::GET);
+
+    let mut builder = client.request(method, &target_url);
+    for (name, value) in req.headers() {
+        if name != axum::http::header::HOST {
+            builder = builder.header(name, value);
+        }
+    }
+
+    let body_bytes = axum::body::to_bytes(req.into_body(), usize::MAX)
+        .await
+        .unwrap_or_default();
+    if !body_bytes.is_empty() {
+        builder = builder.body(body_bytes);
+    }
+
+    match builder.send().await {
+        Ok(upstream) => {
+            let status = axum::http::StatusCode::from_u16(upstream.status().as_u16())
+                .unwrap_or(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+            let mut response = axum::http::Response::builder().status(status);
+            for (name, value) in upstream.headers() {
+                response = response.header(name, value);
+            }
+            let bytes = upstream.bytes().await.unwrap_or_default();
+            response
+                .body(axum::body::Body::from(bytes))
+                .unwrap_or_else(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR.into_response())
+        }
+        Err(e) => {
+            tracing::warn!(
+                error = %e,
+                vite_url = vite_base_url,
+                "Failed to proxy request to Vite dev server — is it running?"
+            );
+            axum::http::StatusCode::BAD_GATEWAY.into_response()
+        }
+    }
 }

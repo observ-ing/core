@@ -38,7 +38,7 @@ export PORT=3000
 # Install dependencies
 npm install
 
-# Build frontend
+# Build static frontend (will be served instead of hot-reloading Vite content)
 npm run build
 
 # Typecheck frontend
@@ -101,13 +101,15 @@ cargo run -p observing-media-proxy
 # Taxonomy (GBIF resolver on port 3003)
 cargo run -p observing-taxonomy
 
-# Frontend dev server
+# Frontend dev server (serves frontend if `npm run build` hasn't been run)
 npm run dev
 ```
 
-### After Frontend Changes
+### Frontend Development
 
-Rebuild and restart:
+If there's nothing in `dist/public`, the app view running on port 3000 will proxy frontend requests to the hot-reloading vite server running in the `frontend` process.
+
+If you want to mimic a more production-like setup, rebuild the static frontend files and restart:
 ```bash
 npm run build && process-compose process restart appview
 ```
@@ -115,6 +117,7 @@ npm run build && process-compose process restart appview
 The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.
 
 ## Tests
+
 Backend tests with `cargo test --workspace` should run without setup.
 
 Frontend tests with `npm run test:e2e` require a real Bluesky test account with these credentials in environmental variables: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
