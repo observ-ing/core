@@ -80,6 +80,8 @@ impl Database {
         info!("Connecting to database...");
         let pool = PgPoolOptions::new()
             .max_connections(10)
+            .acquire_timeout(std::time::Duration::from_secs(5))
+            .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .connect(database_url)
             .await?;
         info!("Database connection established");
