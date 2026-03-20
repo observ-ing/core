@@ -210,13 +210,15 @@ async fn main() {
     let app = match built_public {
         Some(path) => {
             info!(path = %path.display(), "Serving pre-built frontend");
-            let fallback =
-                ServeDir::new(&path).fallback(ServeFile::new(path.join("index.html")));
+            let fallback = ServeDir::new(&path).fallback(ServeFile::new(path.join("index.html")));
             app.fallback_service(fallback)
         }
         None => {
             let vite_url = "http://localhost:5173";
-            info!(vite_url, "No pre-built frontend found, proxying to Vite dev server");
+            info!(
+                vite_url,
+                "No pre-built frontend found, proxying to Vite dev server"
+            );
             let client = reqwest::Client::new();
             app.fallback(move |req: axum::extract::Request| {
                 let client = client.clone();
