@@ -6,15 +6,15 @@ const AUTH_FILE = resolve("playwright/.auth/user.json");
 const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
 const AUTH_DIR = dirname(AUTH_FILE);
 
-const TEST_HANDLE = "testobserving.bsky.social";
-
 setup("authenticate via Bluesky OAuth", async ({ page }) => {
   const email = process.env.BLUESKY_TEST_EMAIL;
   const password = process.env.BLUESKY_TEST_PASSWORD;
+  const handle = process.env.BLUESKY_TEST_HANDLE;
 
-  if (!email || !password) {
+  if (!email || !password || !handle) {
     throw new Error(
-      "BLUESKY_TEST_EMAIL and BLUESKY_TEST_PASSWORD env vars are required to run e2e tests",
+      "BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, and BLUESKY_TEST_HANDLE env vars " +
+      "are required to run e2e tests",
     );
   }
 
@@ -28,7 +28,7 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   await expect(page.getByLabel("Your handle")).toBeVisible();
 
   // 3. Enter the test handle and submit
-  await page.getByLabel("Your handle").fill(TEST_HANDLE);
+  await page.getByLabel("Your handle").fill(handle);
   await page.getByRole("button", { name: "Continue" }).click();
 
   // 4. The app redirects to Bluesky's OAuth authorization page.
@@ -54,7 +54,7 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   await page.waitForURL(/127\.0\.0\.1/, { timeout: 30000 });
 
   // 9. Verify we're authenticated — the sidebar should show the test user
-  await expect(page.getByText(`@${TEST_HANDLE}`).first()).toBeVisible({ timeout: 10000 });
+  await expect(page.getByText(`@${handle}`).first()).toBeVisible({ timeout: 10000 });
 
   // 10. Fetch user info from /oauth/me
   const userInfo = await page.evaluate(async () => {
