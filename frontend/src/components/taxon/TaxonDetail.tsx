@@ -219,7 +219,7 @@ export function TaxonDetail() {
 
           {/* Common Name */}
           {taxon.commonName && (
-            <Typography variant="h6" color="text.secondary" sx={{ mt: 0.5 }}>
+            <Typography variant="h6" component="p" color="text.secondary" sx={{ mt: 0.5 }}>
               {taxon.commonName}
             </Typography>
           )}

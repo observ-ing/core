@@ -25,6 +25,7 @@ export function WikiTaxonThumbnail({ src, size = 24 }: WikiTaxonThumbnailProps) 
       component="img"
       src={src}
       alt=""
+      loading="lazy"
       sx={{
         width: size,
         height: size,

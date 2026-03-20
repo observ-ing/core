@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod middleware;
 mod oauth_store;
 mod resolver;
 mod routes;
@@ -12,13 +13,16 @@ mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
+use axum::middleware as axum_middleware;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
 use sqlx::postgres::PgPoolOptions;
+use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
@@ -43,7 +47,10 @@ async fn main() {
 
     // Connect to database
     let pool = PgPoolOptions::new()
-        .max_connections(20)
+        .max_connections(50)
+        .acquire_timeout(Duration::from_secs(5))
+        .idle_timeout(Some(Duration::from_secs(300)))
+        .max_lifetime(Some(Duration::from_secs(1800)))
         .connect(&config.database_url)
         .await
         .expect("Failed to connect to database");
@@ -181,7 +188,12 @@ async fn main() {
         // Media proxy
         .route("/media/{*path}", get(routes::media::proxy))
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
+        .layer(CompressionLayer::new())
         .layer(cors)
+        .layer(axum_middleware::map_response({
+            let is_production = config.public_url.is_some();
+            move |response| middleware::security_headers(response, is_production)
+        }))
         .with_state(state);
 
     // Serve the frontend: use pre-built static files if available, otherwise proxy to Vite
