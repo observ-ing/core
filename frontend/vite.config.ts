@@ -22,6 +22,12 @@ export default defineConfig({
     fs: {
       allow: [path.resolve(__dirname, "../lexicons"), "."],
     },
+    hmr: {
+      // When accessed via the Rust proxy on port 3000, HMR WebSocket must still
+      // connect directly to Vite so it isn't routed through the proxy
+      host: 'localhost',
+      clientPort: 5173,
+    },
     proxy: {
       "/api": "http://localhost:3000",
       "/oauth": "http://localhost:3000",

@@ -38,7 +38,7 @@ export PORT=3000
 # Install dependencies
 npm install
 
-# Build frontend
+# Build static frontend (will be served instead of hot-reloading Vite content)
 npm run build
 
 # Typecheck frontend
@@ -101,7 +101,7 @@ cargo run -p observing-media-proxy
 # Taxonomy (GBIF resolver on port 3003)
 cargo run -p observing-taxonomy
 
-# Frontend dev server
+# Frontend dev server (serves frontend if `npm run build` hasn't been run)
 npm run dev
 ```
 
