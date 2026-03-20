@@ -133,7 +133,7 @@ export function ProfileView() {
           {counts && (
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" fontWeight={700} color="primary.main">
+                <Typography variant="h6" component="span" fontWeight={700} color="primary.main">
                   {counts.observations.toLocaleString()}
                 </Typography>
                 <Stack
@@ -150,7 +150,7 @@ export function ProfileView() {
                 </Stack>
               </Box>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" fontWeight={700} color="secondary.main">
+                <Typography variant="h6" component="span" fontWeight={700} color="secondary.main">
                   {counts.identifications.toLocaleString()}
                 </Typography>
                 <Stack
@@ -167,7 +167,7 @@ export function ProfileView() {
                 </Stack>
               </Box>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" fontWeight={700} color="success.main">
+                <Typography variant="h6" component="span" fontWeight={700} color="success.main">
                   {counts.species.toLocaleString()}
                 </Typography>
                 <Stack

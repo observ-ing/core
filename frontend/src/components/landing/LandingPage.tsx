@@ -112,7 +112,7 @@ export function LandingPage() {
               }}
             >
               <CardContent>
-                <Typography variant="h6" sx={{ mb: 0.5, fontWeight: 700 }}>
+                <Typography variant="h6" component="h2" sx={{ mb: 0.5, fontWeight: 700 }}>
                   {feature.title}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">

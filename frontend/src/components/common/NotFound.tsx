@@ -44,7 +44,7 @@ export function NotFound() {
       >
         404
       </Typography>
-      <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography variant="h6" component="h2" color="text.secondary" sx={{ mb: 1 }}>
         Page not found
       </Typography>
       <Typography variant="body2" color="text.disabled" sx={{ mb: 4, maxWidth: 300 }}>
