@@ -82,6 +82,11 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
     let model = state.clone();
     let limit = body.limit.min(20); // Cap at 20 suggestions
 
+    // Log geo context if provided (reserved for future geo-prior reranking)
+    if body.latitude.is_some() || body.longitude.is_some() {
+        info!(lat = ?body.latitude, lng = ?body.longitude, "Geo context provided");
+    }
+
     let result =
         tokio::task::spawn_blocking(move || model.model.identify(&image_bytes, limit)).await;
 
@@ -127,9 +132,6 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
 #[cfg(test)]
 mod tests {
     use super::*;
-    use axum::body::Body;
-    use axum::http::Request;
-    use tower::ServiceExt;
 
     // Note: full integration tests require the model files to be present.
     // These tests verify the server structure without model loading.

@@ -7,10 +7,10 @@ use serde::{Deserialize, Serialize};
 pub struct IdentifyRequest {
     /// Base64-encoded image data
     pub image: String,
-    /// Optional latitude for geo-prior reranking
+    /// Latitude for geo-prior reranking (reserved for future use)
     #[serde(default)]
     pub latitude: Option<f64>,
-    /// Optional longitude for geo-prior reranking
+    /// Longitude for geo-prior reranking (reserved for future use)
     #[serde(default)]
     pub longitude: Option<f64>,
     /// Number of suggestions to return (default: 5)
