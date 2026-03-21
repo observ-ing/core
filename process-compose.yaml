@@ -2,7 +2,7 @@ version: "0.5"
 
 processes:
   cloud-sql-proxy:
-    command: cloud-sql-proxy --port 5432 frewsxcv:us-central1:observing-db
+    command: cloud-sql-proxy --port 5432 observ-ing:us-central1:observing-db
     readiness_probe:
       exec:
         command: pg_isready -h localhost -p 5432
