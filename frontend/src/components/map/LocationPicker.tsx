@@ -16,8 +16,8 @@ import { mapStyle, darkMapFilter } from "./mapStyle";
 import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON } from "./mapUtils";
 
 interface LocationPickerProps {
-  latitude: number;
-  longitude: number;
+  latitude: number | null;
+  longitude: number | null;
   onChange: (lat: number, lng: number) => void;
   uncertaintyMeters?: number;
   onUncertaintyChange?: (meters: number) => void;
@@ -62,8 +62,8 @@ export function LocationPicker({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [latInput, setLatInput] = useState(latitude.toFixed(6));
-  const [lngInput, setLngInput] = useState(longitude.toFixed(6));
+  const [latInput, setLatInput] = useState(latitude?.toFixed(6) ?? "");
+  const [lngInput, setLngInput] = useState(longitude?.toFixed(6) ?? "");
   const theme = useTheme();
 
   const updateMarker = useCallback(
@@ -145,14 +145,14 @@ export function LocationPicker({
   useEffect(() => {
     if (!mapContainer.current || map.current) return;
 
-    const safeLat = Number.isFinite(latitude) ? latitude : 0;
-    const safeLng = Number.isFinite(longitude) ? longitude : 0;
+    const safeLat = latitude && Number.isFinite(latitude) ? latitude : 0;
+    const safeLng = longitude && Number.isFinite(longitude) ? longitude : 0;
 
     const mapInstance = new maplibregl.Map({
       container: mapContainer.current,
       style: mapStyle,
       center: [safeLng, safeLat],
-      zoom: 12,
+      zoom: latitude && longitude ? 12 : 1,
     });
 
     mapInstance.addControl(
@@ -164,12 +164,15 @@ export function LocationPicker({
       // Add uncertainty circle source and layers
       mapInstance.addSource("uncertainty", {
         type: "geojson",
-        data: createCircleGeoJSON(longitude, latitude, uncertaintyMeters),
+        data:
+          latitude && longitude
+            ? createCircleGeoJSON(longitude, latitude, uncertaintyMeters)
+            : { type: "FeatureCollection", features: [] },
       });
 
       addUncertaintyLayers(mapInstance);
 
-      updateMarker(longitude, latitude);
+      if (latitude && longitude) updateMarker(longitude, latitude);
     });
 
     mapInstance.on("click", (e) => {
@@ -192,17 +195,19 @@ export function LocationPicker({
 
   // Update marker and center when props change externally
   useEffect(() => {
-    if (map.current && marker.current) {
-      const currentPos = marker.current.getLngLat();
-      if (
-        Math.abs(currentPos.lat - latitude) > 0.0001 ||
-        Math.abs(currentPos.lng - longitude) > 0.0001
-      ) {
-        updateMarker(longitude, latitude);
-        map.current.setCenter([longitude, latitude]);
-        setLatInput(latitude.toFixed(6));
-        setLngInput(longitude.toFixed(6));
-      }
+    if (!map.current) return;
+    if (!latitude || !longitude) return;
+
+    const currentPos = marker.current?.getLngLat();
+    if (
+      !currentPos ||
+      Math.abs(currentPos.lat - latitude) > 0.0001 ||
+      Math.abs(currentPos.lng - longitude) > 0.0001
+    ) {
+      updateMarker(longitude, latitude);
+      map.current.setCenter([longitude, latitude]);
+      setLatInput(latitude.toFixed(6));
+      setLngInput(longitude.toFixed(6));
     }
   }, [latitude, longitude, updateMarker]);
 
@@ -215,6 +220,7 @@ export function LocationPicker({
     const parsed = parseFloat(value);
     const [min, max] = axis === "lat" ? [-90, 90] : [-180, 180];
     if (isNaN(parsed) || parsed < min || parsed > max) return;
+    if (!latInput || !lngInput) return;
 
     const otherValue = parseFloat(axis === "lat" ? lngInput : latInput);
     if (isNaN(otherValue)) return;
@@ -337,7 +343,7 @@ export function LocationPicker({
               const source = map.current?.getSource("uncertainty") as
                 | maplibregl.GeoJSONSource
                 | undefined;
-              if (source) {
+              if (source && lngInput && latInput) {
                 source.setData(
                   createCircleGeoJSON(parseFloat(lngInput), parseFloat(latInput), meters),
                 );

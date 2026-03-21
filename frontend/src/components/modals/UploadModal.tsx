@@ -600,48 +600,46 @@ export function UploadModal() {
           }}
         />
 
-        {lat && lng && Number.isFinite(parseFloat(lat)) && Number.isFinite(parseFloat(lng)) ? (
-          <LocationPicker
-            latitude={parseFloat(lat)}
-            longitude={parseFloat(lng)}
-            onChange={handleLocationChange}
-            uncertaintyMeters={uncertaintyMeters}
-            onUncertaintyChange={setUncertaintyMeters}
-          />
-        ) : (
-          <Button
-            fullWidth
-            variant="outlined"
-            startIcon={<MyLocationIcon />}
-            onClick={() => {
-              navigator.geolocation?.getCurrentPosition(
-                (position) => {
-                  setLat(position.coords.latitude.toFixed(6));
-                  setLng(position.coords.longitude.toFixed(6));
-                },
-                () => {
-                  dispatch(
-                    addToast({
-                      message: "Could not get your location. Use the map to set it manually.",
-                      type: "error",
-                    }),
-                  );
-                },
-              );
-            }}
-            sx={{
-              mt: 2,
-              borderStyle: "dashed",
-              color: "text.disabled",
-              "&:hover": {
-                borderColor: "primary.main",
-                color: "primary.main",
+        <LocationPicker
+          latitude={lat ? parseFloat(lat) : null}
+          longitude={lng ? parseFloat(lng) : null}
+          onChange={handleLocationChange}
+          uncertaintyMeters={uncertaintyMeters}
+          onUncertaintyChange={setUncertaintyMeters}
+        />
+
+        <Button
+          fullWidth
+          variant="outlined"
+          startIcon={<MyLocationIcon />}
+          onClick={() => {
+            navigator.geolocation?.getCurrentPosition(
+              (position) => {
+                setLat(position.coords.latitude.toFixed(6));
+                setLng(position.coords.longitude.toFixed(6));
               },
-            }}
-          >
-            Use My Location
-          </Button>
-        )}
+              () => {
+                dispatch(
+                  addToast({
+                    message: "Could not get your location. Use the map to set it manually.",
+                    type: "error",
+                  }),
+                );
+              },
+            );
+          }}
+          sx={{
+            mt: 2,
+            borderStyle: "dashed",
+            color: "text.disabled",
+            "&:hover": {
+              borderColor: "primary.main",
+              color: "primary.main",
+            },
+          }}
+        >
+          Use My Location
+        </Button>
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button onClick={handleClose} color="inherit">
