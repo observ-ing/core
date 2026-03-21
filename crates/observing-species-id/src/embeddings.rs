@@ -1,8 +1,12 @@
 //! Species embedding matrix for zero-shot classification
 //!
 //! At startup, the service loads:
-//! - `species_embeddings.bin`: flat f32 array of shape [N, 512], L2-normalized rows
+//! - `species_embeddings.bin`: flat f32 array of shape [N, embed_dim], L2-normalized rows
 //! - `species_labels.json`: array of species metadata objects
+//!
+//! The embedding dimension is inferred at load time from the file size and label
+//! count, so any CLIP model variant (e.g. ViT-B/16 = 512-d, ViT-H/14 = 1024-d)
+//! is supported without code changes.
 //!
 //! At inference time, cosine similarity between the image embedding and all
 //! species embeddings is computed via a single matrix multiply.
@@ -13,9 +17,6 @@ use ndarray::{Array1, Array2};
 use serde::Deserialize;
 use std::path::Path;
 use tracing::info;
-
-/// Embedding dimension for BioCLIP (ViT-B/16 CLIP)
-const EMBED_DIM: usize = 512;
 
 /// Species label metadata loaded from JSON
 #[derive(Debug, Clone, Deserialize)]
@@ -40,18 +41,22 @@ pub struct SpeciesLabel {
 
 /// Pre-computed species embeddings and their metadata
 pub struct SpeciesEmbeddings {
-    /// Shape: [num_species, 512], L2-normalized rows
+    /// Shape: [num_species, embed_dim], L2-normalized rows
     embeddings: Array2<f32>,
     /// Metadata for each species (same order as embedding rows)
     labels: Vec<SpeciesLabel>,
+    /// Embedding dimension (inferred from file at load time)
+    embed_dim: usize,
 }
 
 impl SpeciesEmbeddings {
     /// Load embeddings and labels from a model directory.
     ///
     /// Expects:
-    /// - `{model_dir}/species_embeddings.bin` - raw f32 little-endian, shape [N, 512]
+    /// - `{model_dir}/species_embeddings.bin` - raw f32 little-endian, shape [N, embed_dim]
     /// - `{model_dir}/species_labels.json` - JSON array of SpeciesLabel objects
+    ///
+    /// The embedding dimension is inferred from `file_size / (num_species * sizeof(f32))`.
     pub fn load(model_dir: &Path) -> Result<Self> {
         let embeddings_path = model_dir.join("species_embeddings.bin");
         let labels_path = model_dir.join("species_labels.json");
@@ -80,30 +85,29 @@ impl SpeciesEmbeddings {
             ))
         })?;
 
-        let expected_bytes = num_species * EMBED_DIM * std::mem::size_of::<f32>();
-        if embeddings_bytes.len() != expected_bytes {
+        let total_floats = embeddings_bytes.len() / std::mem::size_of::<f32>();
+        if embeddings_bytes.len() % std::mem::size_of::<f32>() != 0 || !total_floats.is_multiple_of(num_species) {
             return Err(SpeciesIdError::Config(format!(
-                "Embeddings file size mismatch: expected {} bytes ({} species x {} dims x 4), got {}",
-                expected_bytes,
-                num_species,
-                EMBED_DIM,
-                embeddings_bytes.len()
+                "Embeddings file size ({} bytes) is not evenly divisible into {} species of f32 vectors",
+                embeddings_bytes.len(),
+                num_species
             )));
         }
+        let embed_dim = total_floats / num_species;
 
         // Cast bytes to f32 slice
         let float_data: &[f32] = bytemuck::cast_slice(&embeddings_bytes);
-        let embeddings = Array2::from_shape_vec((num_species, EMBED_DIM), float_data.to_vec())
+        let embeddings = Array2::from_shape_vec((num_species, embed_dim), float_data.to_vec())
             .map_err(|e| SpeciesIdError::Config(format!("Failed to reshape embeddings: {}", e)))?;
 
         info!(
             num_species,
-            embedding_dim = EMBED_DIM,
+            embedding_dim = embed_dim,
             size_mb = embeddings_bytes.len() / (1024 * 1024),
             "Species embeddings loaded"
         );
 
-        Ok(Self { embeddings, labels })
+        Ok(Self { embeddings, labels, embed_dim })
     }
 
     /// Number of species in the label set
@@ -111,9 +115,14 @@ impl SpeciesEmbeddings {
         self.labels.len()
     }
 
+    /// Embedding dimension (inferred from the loaded model data)
+    pub fn embed_dim(&self) -> usize {
+        self.embed_dim
+    }
+
     /// Find the top-K most similar species to the given image embedding.
     ///
-    /// `image_embedding` must be L2-normalized, shape [512].
+    /// `image_embedding` must be L2-normalized, shape [embed_dim].
     /// Returns suggestions sorted by descending confidence.
     pub fn top_k(&self, image_embedding: &Array1<f32>, k: usize) -> Vec<SpeciesSuggestion> {
         // Cosine similarity = dot product (both are L2-normalized)

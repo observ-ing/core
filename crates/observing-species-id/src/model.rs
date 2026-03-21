@@ -1,7 +1,7 @@
 //! BioCLIP ONNX model loading and inference
 //!
-//! Loads the BioCLIP ViT-B/16 vision encoder as an ONNX model and runs
-//! inference to produce image embeddings for zero-shot species classification.
+//! Loads a BioCLIP vision encoder as an ONNX model and runs inference to
+//! produce image embeddings for zero-shot species classification.
 
 use crate::embeddings::SpeciesEmbeddings;
 use crate::error::{Result, SpeciesIdError};
@@ -25,7 +25,7 @@ impl BioclipModel {
     /// Load the BioCLIP model from a directory.
     ///
     /// Expects:
-    /// - `{model_dir}/vision_encoder.onnx` - BioCLIP ViT-B/16 vision encoder
+    /// - `{model_dir}/vision_encoder.onnx` - BioCLIP vision encoder
     /// - `{model_dir}/species_embeddings.bin` - pre-computed text embeddings
     /// - `{model_dir}/species_labels.json` - species metadata
     pub fn load(model_dir: &Path) -> Result<Self> {
@@ -55,7 +55,7 @@ impl BioclipModel {
         Ok(Self {
             session: Mutex::new(session),
             species,
-            version: "bioclip-vit-b-16".to_string(),
+            version: "bioclip-2.5-vit-h-14".to_string(),
         })
     }
 
@@ -91,11 +91,12 @@ impl BioclipModel {
             .try_extract_tensor::<f32>()
             .map_err(|e| SpeciesIdError::Model(format!("Failed to extract embedding: {}", e)))?;
 
-        // Validate expected shape [1, 512]
-        if shape.len() != 2 || shape[1] != 512 {
+        // Validate expected shape [1, embed_dim]
+        let embed_dim = self.species.embed_dim();
+        if shape.len() != 2 || shape[1] != embed_dim as i64 {
             return Err(SpeciesIdError::Model(format!(
-                "Unexpected embedding shape: {:?}, expected [1, 512]",
-                &**shape
+                "Unexpected embedding shape: {:?}, expected [1, {}]",
+                &**shape, embed_dim
             )));
         }
 
