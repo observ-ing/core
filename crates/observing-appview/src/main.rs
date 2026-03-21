@@ -7,6 +7,7 @@ mod middleware;
 mod oauth_store;
 mod resolver;
 mod routes;
+mod species_id_client;
 mod state;
 mod taxonomy_client;
 mod validation;
@@ -28,6 +29,7 @@ use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
 
 use config::Config;
+use species_id_client::SpeciesIdClient;
 use state::AppState;
 use taxonomy_client::TaxonomyClient;
 
@@ -59,11 +61,17 @@ async fn main() {
     let oauth_client =
         state::create_oauth_client(pool.clone(), config.public_url.as_deref(), config.port);
 
+    let species_id = config
+        .species_id_service_url
+        .as_deref()
+        .map(|url| Arc::new(SpeciesIdClient::new(url)));
+
     let state = AppState {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
         geocoding: Arc::new(nominatim_client::NominatimClient::new()),
+        species_id,
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
         public_url: config.public_url.clone(),
@@ -169,6 +177,8 @@ async fn main() {
         )
         // Actors
         .route("/api/actors/search", get(routes::actors::search))
+        // Species identification
+        .route("/api/species-id", post(routes::species_id::identify))
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))

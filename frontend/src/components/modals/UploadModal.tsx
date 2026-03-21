@@ -19,10 +19,16 @@ import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast } from "../../store/uiSlice";
-import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
-import type { ActorSearchResult } from "../../services/api";
+import {
+  submitObservation,
+  updateObservation,
+  fetchObservation,
+  identifySpecies,
+} from "../../services/api";
+import type { ActorSearchResult, SpeciesSuggestion } from "../../services/api";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { ActorAutocomplete } from "../common/ActorAutocomplete";
@@ -70,6 +76,8 @@ export function UploadModal() {
   const [coObservers, setCoObservers] = useState<ActorSearchResult[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
+  const [aiSuggestions, setAiSuggestions] = useState<SpeciesSuggestion[]>([]);
+  const [isIdentifying, setIsIdentifying] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
@@ -123,6 +131,8 @@ export function UploadModal() {
     setCoObservers([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setUncertaintyMeters(50);
+    setAiSuggestions([]);
+    setIsIdentifying(false);
   };
 
   const handleAddCoObserver = (actor: ActorSearchResult) => {
@@ -174,6 +184,7 @@ export function UploadModal() {
 
       if (images.length === 0) {
         extractExifData(file);
+        triggerSpeciesId(file);
       }
     }
 
@@ -241,6 +252,34 @@ export function UploadModal() {
       }
     } catch (error) {
       console.error("EXIF extraction error:", error);
+    }
+  };
+
+  const triggerSpeciesId = async (file: File) => {
+    if (species || isEditMode) return; // Don't auto-identify if species is already set or editing
+
+    setIsIdentifying(true);
+    try {
+      const base64 = await fileToBase64(file);
+      const parsedLat = parseFloat(lat);
+      const parsedLng = parseFloat(lng);
+
+      const params: Parameters<typeof identifySpecies>[0] = {
+        image: base64,
+        limit: 5,
+      };
+      if (Number.isFinite(parsedLat)) params.latitude = parsedLat;
+      if (Number.isFinite(parsedLng)) params.longitude = parsedLng;
+      const result = await identifySpecies(params);
+
+      if (result.suggestions.length > 0) {
+        setAiSuggestions(result.suggestions);
+      }
+    } catch {
+      // Species ID is best-effort — don't show errors to the user
+      console.debug("Species identification unavailable");
+    } finally {
+      setIsIdentifying(false);
     }
   };
 
@@ -410,7 +449,104 @@ export function UploadModal() {
       </Typography>
 
       <form onSubmit={handleSubmit}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <TaxaAutocomplete
+          value={species}
+          onChange={setSpecies}
+          label="Species (optional)"
+          placeholder="e.g. Eschscholzia californica - leave blank if unknown"
+        />
+
+        {isIdentifying && (
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mt: 1 }}>
+            <CircularProgress size={16} />
+            <Typography variant="caption" color="text.secondary">
+              Identifying species...
+            </Typography>
+          </Box>
+        )}
+
+        {aiSuggestions.length > 0 && !species && (
+          <Box sx={{ mt: 1 }}>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+              <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+              <Typography variant="caption" color="text.secondary">
+                AI suggestions
+              </Typography>
+            </Box>
+            <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+              {aiSuggestions.map((s) => (
+                <Chip
+                  key={s.scientificName}
+                  label={s.commonName ? `${s.scientificName} (${s.commonName})` : s.scientificName}
+                  size="small"
+                  onClick={() => {
+                    setSpecies(s.scientificName);
+                    setAiSuggestions([]);
+                  }}
+                  variant="outlined"
+                  color="primary"
+                  sx={{ fontStyle: "italic" }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        )}
+
+        <TextField
+          fullWidth
+          label="Notes (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Describe what you observed..."
+          multiline
+          rows={2}
+          margin="normal"
+        />
+
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="license-label">License</InputLabel>
+          <Select
+            labelId="license-label"
+            value={license}
+            label="License"
+            onChange={(e) => setLicense(e.target.value)}
+          >
+            {LICENSE_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+          Co-observers (optional)
+        </Typography>
+
+        <ActorAutocomplete
+          onSelect={handleAddCoObserver}
+          excludeDids={[...(user?.did ? [user.did] : []), ...coObservers.map((co) => co.did)]}
+        />
+
+        {coObservers.length > 0 && (
+          <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
+            {coObservers.map((co) => (
+              <Chip
+                key={co.did}
+                avatar={<Avatar src={co.avatar ?? ""} sx={{ width: 24, height: 24 }} />}
+                label={co.displayName || `@${co.handle}`}
+                size="small"
+                onDelete={() => handleRemoveCoObserver(co.did)}
+              />
+            ))}
+          </Stack>
+        )}
+
+        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+          Add other observers who participated in this sighting
+        </Typography>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
           Photos (optional)
         </Typography>
 
