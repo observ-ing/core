@@ -1,10 +1,18 @@
 import { test, expect, type Route } from "@playwright/test";
-import { test as authTest, expect as authExpect, getTestUser } from "../fixtures/auth";
-import { buildMockObservation, mockOwnObservationFeed } from "../helpers/mock-observation";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import {
+  buildMockObservation,
+  mockOwnObservationFeed,
+  mockObservationDetailRoute,
+  mockInteractionsRoute,
+} from "./helpers/mock-observation";
 
 test.describe("Observation Edit - Logged Out", () => {
   // TC-EDIT-002: Edit menu item hidden for others' observations
   test("more menu does not show Edit for non-owned observation", async ({ page }) => {
+    await mockOwnObservationFeed(page);
+    await mockObservationDetailRoute(page);
+    await mockInteractionsRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible({ timeout: 10000 });
@@ -32,7 +40,7 @@ authTest.describe("Observation Edit - Logged In", () => {
   authTest("more menu hides Edit for others' observations", async ({ authenticatedPage: page }) => {
     // Mock a feed with an observation owned by a different user
     const otherUserObs = buildMockObservation({
-      uri: "at://did:plc:otheruser/org.observ.ing.occurrence/other123",
+      uri: "at://did:plc:otheruser/org.rwell.test.occurrence/other123",
       observer: {
         did: "did:plc:otheruser",
         handle: "other.bsky.social",
@@ -120,7 +128,7 @@ authTest.describe("Observation Edit - Logged In", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            uri: "at://did:plc:test/org.observ.ing.occurrence/test123",
+            uri: "at://did:plc:test/org.rwell.test.occurrence/test123",
             cid: "bafyupdated",
           }),
         });

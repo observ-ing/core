@@ -1,14 +1,10 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { navigateToMockedDetail } from "./helpers/mock-observation";
 
-/** Navigate from the feed to the first observation's detail page. */
-async function navigateToDetail(page: any, expectFn: any) {
-  await page.goto("/explore");
-  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
-  await expectFn(card).toBeVisible({ timeout: 15000 });
-  await card.click();
-  await expectFn(page).toHaveURL(/\/observation\/.+\/.+/);
-  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
+/** Navigate to the mock observation detail page. */
+async function navigateToDetail(page: any, _expectFn: any) {
+  await navigateToMockedDetail(page);
 }
 
 test.describe("Comments - Logged Out", () => {
@@ -53,6 +49,16 @@ authTest.describe("Comments - Logged In", () => {
 
   // TC-CMT-004: Post comment hits real API
   authTest("posting comment sends POST with body text", async ({ authenticatedPage: page }) => {
+    await page.route("**/api/comments", (route) => {
+      if (route.request().method() === "POST") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ uri: "at://test/comment/1", cid: "bafycomment" }),
+        });
+      }
+      return route.continue();
+    });
     await navigateToDetail(page, authExpect);
     const addBtn = page
       .locator("text=Discussion")

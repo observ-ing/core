@@ -1,14 +1,9 @@
 import { test, expect } from "@playwright/test";
+import { navigateToMockedDetail } from "./helpers/mock-observation";
 
-/** Navigate from the feed to the first observation's detail page. */
+/** Navigate to the mock observation detail page. */
 async function navigateToDetail(page: any) {
-  await page.goto("/explore");
-  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
-  await expect(card).toBeVisible({ timeout: 15000 });
-  await card.click();
-  await expect(page).toHaveURL(/\/observation\/.+\/.+/);
-  // Wait for detail page content to render
-  await expect(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
+  await navigateToMockedDetail(page);
 }
 
 test.describe("Observation Detail - Display", () => {

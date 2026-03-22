@@ -1,6 +1,15 @@
 import { test, expect } from "@playwright/test";
+import {
+  mockOwnObservationFeed,
+  mockObservationDetailRoute,
+  mockInteractionsRoute,
+} from "./helpers/mock-observation";
 
 test.describe("Feed View", () => {
+  test.beforeEach(async ({ page }) => {
+    await mockOwnObservationFeed(page);
+  });
+
   // TC-FEED-001: Feed loads observations
   test("feed displays observation cards", async ({ page }) => {
     await page.goto("/explore");
@@ -46,6 +55,28 @@ test.describe("Feed View", () => {
 
   // TC-FEED-007: Observer name links to profile (via detail page)
   test("clicking observer name navigates to their profile", async ({ page }) => {
+    await mockObservationDetailRoute(page);
+    await mockInteractionsRoute(page);
+    await page.route("**/api/profiles/*", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          did: "did:plc:mocktest",
+          handle: "testuser.bsky.social",
+          displayName: "Test User",
+          observationCount: 1,
+          identificationCount: 0,
+        }),
+      }),
+    );
+    await page.route("**/api/feeds/profile/**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ occurrences: [], cursor: null }),
+      }),
+    );
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible();
@@ -60,6 +91,8 @@ test.describe("Feed View", () => {
 
   // TC-FEED-008: Observer avatar display (via detail page)
   test("observation detail shows observer avatar", async ({ page }) => {
+    await mockObservationDetailRoute(page);
+    await mockInteractionsRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible();

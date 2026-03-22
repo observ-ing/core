@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Error Handling", () => {
   // TC-ERR-001: Network error on feed load
@@ -15,6 +16,7 @@ test.describe("Error Handling", () => {
 authTest.describe("Error Handling - Authenticated", () => {
   // TC-ERR-002: API error on submission
   authTest("API error on like reverts optimistic update", async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
     await page.route("**/api/likes", (route) => {
       if (route.request().method() === "POST") {
         return route.fulfill({

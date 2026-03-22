@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect, getTestUser } from "../fixtures/auth";
+import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Authentication - Logged Out", () => {
   // TC-AUTH-001: Login flow - modal opens
@@ -36,6 +37,10 @@ test.describe("Authentication - Logged Out", () => {
 });
 
 authTest.describe("Authentication - Logged In", () => {
+  authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
+  });
+
   // TC-AUTH-002: Logout button visible
   authTest(
     "logged in user sees their handle and logout button",

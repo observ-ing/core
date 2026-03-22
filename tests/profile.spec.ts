@@ -1,13 +1,47 @@
 import { test, expect } from "@playwright/test";
+import {
+  mockOwnObservationFeed,
+  mockObservationDetailRoute,
+  mockInteractionsRoute,
+} from "./helpers/mock-observation";
 
 /** Navigate from explore grid to an observation detail page, then to the observer's profile. */
 async function navigateToProfile(page: any) {
+  await mockOwnObservationFeed(page);
+  await mockObservationDetailRoute(page);
+  await mockInteractionsRoute(page);
+  await page.route("**/api/profiles/*", (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        did: "did:plc:mocktest",
+        handle: "testuser.bsky.social",
+        displayName: "Test User",
+        observationCount: 3,
+        identificationCount: 1,
+      }),
+    }),
+  );
+  await page.route("**/api/feeds/profile/**", (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ occurrences: [], cursor: null }),
+    }),
+  );
+  await page.route("**/api/identifications/by-observer/**", (route: any) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ identifications: [], cursor: null }),
+    }),
+  );
   await page.goto("/explore");
   const firstCard = page.locator(".MuiCard-root").first();
   await expect(firstCard).toBeVisible({ timeout: 10000 });
   await firstCard.locator(".MuiCardActionArea-root").click();
   await expect(page).toHaveURL(/\/observation\//);
-  // Detail page shows observer info with a profile link
   const profileLink = page.locator('a[href*="/profile/"]').first();
   await expect(profileLink).toBeVisible({ timeout: 15000 });
   await profileLink.click();

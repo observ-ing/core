@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 export default defineConfig({
-  testDir: "./tests",
+  testDir: ".",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -18,13 +18,28 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   projects: [
+    // Real e2e: signs in to Bluesky and runs a CRUD flow against the live PDS.
+    // Requires BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, BLUESKY_TEST_HANDLE.
     {
-      name: "setup",
+      name: "e2e-setup",
       testMatch: /auth\.setup\.ts/,
     },
     {
-      name: "chromium",
-      dependencies: ["setup"],
+      name: "e2e",
+      testMatch: /e2e\.spec\.ts/,
+      dependencies: ["e2e-setup"],
+      use: {
+        ...devices["Desktop Chrome"],
+        launchOptions: {
+          args: ["--use-gl=angle", "--use-angle=swiftshader"],
+        },
+        storageState: "playwright/.auth/user.json",
+      },
+    },
+    // Integration: mocked Bluesky auth, no credentials required.
+    {
+      name: "integration",
+      testMatch: /(?<!e2e)\.spec\.ts/,
       use: {
         ...devices["Desktop Chrome"],
         launchOptions: {

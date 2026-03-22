@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
-import { openUploadModal } from "../helpers/navigation";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { openUploadModal } from "./helpers/navigation";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Accessibility", () => {
   // TC-A11Y-001: Keyboard navigation
@@ -24,6 +25,10 @@ test.describe("Accessibility", () => {
 });
 
 authTest.describe("Accessibility - Authenticated", () => {
+  authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
+  });
+
   // TC-A11Y-002: Modal escape key (upload modal)
   authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
     await page.goto("/");

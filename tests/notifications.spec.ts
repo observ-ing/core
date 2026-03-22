@@ -1,4 +1,4 @@
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
 
 const mockNotifications = [
   {

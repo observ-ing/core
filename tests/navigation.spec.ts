@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Navigation", () => {
   // TC-NAV-001: Home page load — unauthenticated users see landing page
@@ -24,6 +25,7 @@ test.describe("Navigation", () => {
 
   // TC-NAV-003: Observation detail page
   test("clicking a feed item navigates to observation detail", async ({ page }) => {
+    await mockOwnObservationFeed(page);
     await page.goto("/explore");
     const feedCard = page.locator(".MuiCard-root").first();
     await expect(feedCard).toBeVisible({ timeout: 10000 });

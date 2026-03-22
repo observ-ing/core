@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 /**
  * MUI v7 Select doesn't link labels via aria-labelledby.
@@ -14,6 +15,7 @@ function muiSelect(page: Page, label: string) {
 
 test.describe("Explore Filters", () => {
   test.beforeEach(async ({ page }) => {
+    await mockOwnObservationFeed(page);
     await page.goto("/explore");
     // Wait for feed content to load instead of a fixed delay
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 15_000 });
