@@ -119,7 +119,11 @@ impl WikidataClient {
             return HashMap::new();
         }
 
-        let values: String = ids.iter().map(|id| format!("\"{}\"", id)).collect::<Vec<_>>().join(" ");
+        let values: String = ids
+            .iter()
+            .map(|id| format!("\"{}\"", id))
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let query = format!(
             r#"SELECT ?external_id ?item WHERE {{
@@ -172,7 +176,11 @@ impl WikidataClient {
             return HashMap::new();
         }
 
-        let values: String = ids.iter().map(|id| format!("\"{}\"", id)).collect::<Vec<_>>().join(" ");
+        let values: String = ids
+            .iter()
+            .map(|id| format!("\"{}\"", id))
+            .collect::<Vec<_>>()
+            .join(" ");
 
         let query = format!(
             r#"SELECT ?external_id (SAMPLE(?image) AS ?image) WHERE {{
