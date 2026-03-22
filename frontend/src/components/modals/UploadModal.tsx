@@ -410,68 +410,7 @@ export function UploadModal() {
       </Typography>
 
       <form onSubmit={handleSubmit}>
-        <TaxaAutocomplete
-          value={species}
-          onChange={setSpecies}
-          label="Species (optional)"
-          placeholder="e.g. Eschscholzia californica - leave blank if unknown"
-        />
-
-        <TextField
-          fullWidth
-          label="Notes (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Describe what you observed..."
-          multiline
-          rows={2}
-          margin="normal"
-        />
-
-        <FormControl fullWidth margin="normal">
-          <InputLabel id="license-label">License</InputLabel>
-          <Select
-            labelId="license-label"
-            value={license}
-            label="License"
-            onChange={(e) => setLicense(e.target.value)}
-          >
-            {LICENSE_OPTIONS.map((opt) => (
-              <MenuItem key={opt.value} value={opt.value}>
-                {opt.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
-          Co-observers (optional)
-        </Typography>
-
-        <ActorAutocomplete
-          onSelect={handleAddCoObserver}
-          excludeDids={[...(user?.did ? [user.did] : []), ...coObservers.map((co) => co.did)]}
-        />
-
-        {coObservers.length > 0 && (
-          <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
-            {coObservers.map((co) => (
-              <Chip
-                key={co.did}
-                avatar={<Avatar src={co.avatar ?? ""} sx={{ width: 24, height: 24 }} />}
-                label={co.displayName || `@${co.handle}`}
-                size="small"
-                onDelete={() => handleRemoveCoObserver(co.did)}
-              />
-            ))}
-          </Stack>
-        )}
-
-        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
-          Add other observers who participated in this sighting
-        </Typography>
-
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
           Photos (optional)
         </Typography>
 
@@ -586,6 +525,67 @@ export function UploadModal() {
 
         <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
+        </Typography>
+
+        <TaxaAutocomplete
+          value={species}
+          onChange={setSpecies}
+          label="Species (optional)"
+          placeholder="e.g. Eschscholzia californica - leave blank if unknown"
+        />
+
+        <TextField
+          fullWidth
+          label="Notes (optional)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Describe what you observed..."
+          multiline
+          rows={2}
+          margin="normal"
+        />
+
+        <FormControl fullWidth margin="normal">
+          <InputLabel id="license-label">License</InputLabel>
+          <Select
+            labelId="license-label"
+            value={license}
+            label="License"
+            onChange={(e) => setLicense(e.target.value)}
+          >
+            {LICENSE_OPTIONS.map((opt) => (
+              <MenuItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+          Co-observers (optional)
+        </Typography>
+
+        <ActorAutocomplete
+          onSelect={handleAddCoObserver}
+          excludeDids={[...(user?.did ? [user.did] : []), ...coObservers.map((co) => co.did)]}
+        />
+
+        {coObservers.length > 0 && (
+          <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
+            {coObservers.map((co) => (
+              <Chip
+                key={co.did}
+                avatar={<Avatar src={co.avatar ?? ""} sx={{ width: 24, height: 24 }} />}
+                label={co.displayName || `@${co.handle}`}
+                size="small"
+                onDelete={() => handleRemoveCoObserver(co.did)}
+              />
+            ))}
+          </Stack>
+        )}
+
+        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+          Add other observers who participated in this sighting
         </Typography>
 
         <TextField
