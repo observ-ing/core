@@ -13,9 +13,7 @@ pub struct WikidataClient {
 impl WikidataClient {
     pub fn new() -> Self {
         Self {
-            client: Client::with_user_agent(
-                "Observing/1.0 (https://observ.ing; taxonomy service)",
-            ),
+            client: Client::with_user_agent("Observing/1.0 (https://observ.ing; taxonomy service)"),
         }
     }
 
