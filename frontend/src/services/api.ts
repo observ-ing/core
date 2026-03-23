@@ -503,8 +503,10 @@ export interface SpeciesSuggestion {
 }
 
 export async function identifySpecies(_params: {
-  occurrenceUri: string;
-  imageUrls?: string[];
+  image: string;
+  limit?: number;
+  latitude?: number;
+  longitude?: number;
 }): Promise<{ suggestions: SpeciesSuggestion[] }> {
   throw new Error("Species identification not yet implemented");
 }

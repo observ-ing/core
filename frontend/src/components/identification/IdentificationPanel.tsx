@@ -65,7 +65,7 @@ export function IdentificationPanel({
       const blob = await response.blob();
       const base64 = await new Promise<string>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve((reader.result as string).split(",")[1] ?? "");
+        reader.onloadend = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
         reader.readAsDataURL(blob);
       });
 
