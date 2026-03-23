@@ -120,7 +120,17 @@ The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files
 
 Backend tests with `cargo test --workspace` should run without setup.
 
-Frontend tests with `npm run test:e2e` require a real Bluesky test account with these credentials in environmental variables: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
+Frontend integration tests require the full stack to run, so running them will look like:
+
+```sh
+# Start full development stack
+process-compose up -D
+
+# Run the tests
+npm run test:integration
+```
+
+Frontend e2e tests with `npm run test:e2e` require a real Bluesky test account with these credentials in environmental variables: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
 
 e2e tests are truly end-to-end, so you need to have a full stack running for them to complete. The whole thing might look like this:
 

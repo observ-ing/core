@@ -1,5 +1,6 @@
 import { type Page } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { navigateToMockedDetail } from "./helpers/mock-observation";
 
 /**
  * MUI v7 Select doesn't link labels via aria-labelledby.
@@ -13,19 +14,24 @@ function muiSelect(page: Page, label: string) {
     .getByRole("combobox");
 }
 
-/** Navigate from the feed to the first observation's detail page. */
+/** Navigate to the mock observation detail page. */
 async function navigateToDetail(page: any) {
-  await page.goto("/explore");
-  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
-  await authExpect(card).toBeVisible({ timeout: 15000 });
-  await card.click();
-  await authExpect(page).toHaveURL(/\/observation\/.+\/.+/);
-  await authExpect(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
+  await navigateToMockedDetail(page);
 }
 
 authTest.describe("Identification - Logged In", () => {
   // TC-ID-001: Agree button sends agreement
   authTest("Agree button sends POST with isAgreement true", async ({ authenticatedPage: page }) => {
+    await page.route("**/api/identifications", (route) => {
+      if (route.request().method() === "POST") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ uri: "at://test/id/1", cid: "bafyid" }),
+        });
+      }
+      return route.continue();
+    });
     await navigateToDetail(page);
     const agreeBtn = page.getByRole("button", { name: "Agree" });
     await authExpect(agreeBtn).toBeVisible({ timeout: 10000 });
@@ -61,6 +67,16 @@ authTest.describe("Identification - Logged In", () => {
   authTest(
     "submitting different ID sends POST with new scientificName",
     async ({ authenticatedPage: page }) => {
+      await page.route("**/api/identifications", (route) => {
+        if (route.request().method() === "POST") {
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ uri: "at://test/id/1", cid: "bafyid" }),
+          });
+        }
+        return route.continue();
+      });
       await navigateToDetail(page);
       const suggestBtn = page.getByRole("button", {
         name: "Suggest Different ID",

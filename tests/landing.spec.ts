@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Landing Page", () => {
   test("unauthenticated user sees landing page at /", async ({ page }) => {
@@ -23,6 +24,7 @@ test.describe("Landing Page", () => {
   });
 
   test("Explore button navigates to /explore", async ({ page }) => {
+    await mockOwnObservationFeed(page);
     await page.goto("/");
     await page.getByRole("link", { name: "Explore" }).click();
     await expect(page).toHaveURL("/explore");
@@ -48,6 +50,7 @@ authTest.describe("Landing Page - Authenticated", () => {
   authTest(
     "authenticated user sees feed at /, not landing page",
     async ({ authenticatedPage: page }) => {
+      await mockOwnObservationFeed(page);
       await page.goto("/");
       // Should see the sidebar and feed, not the landing page
       await authExpect(page.getByRole("link", { name: "Home" }).first()).toBeVisible({

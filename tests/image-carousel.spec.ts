@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
-import { mockObservationDetailRoute, mockInteractionsRoute } from "../helpers/mock-observation";
-import type { Occurrence } from "../../frontend/src/services/types";
+import { mockObservationDetailRoute, mockInteractionsRoute } from "./helpers/mock-observation";
+import type { Occurrence } from "../frontend/src/services/types";
 
 const TEST_DID = "did:plc:testuser123";
 const TEST_RKEY = "obs456";
@@ -8,7 +8,7 @@ const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
 
 function observationOverrides(extra: Partial<Occurrence> = {}): Partial<Occurrence> {
   return {
-    uri: `at://${TEST_DID}/org.observ.ing.occurrence/${TEST_RKEY}`,
+    uri: `at://${TEST_DID}/org.rwell.test.occurrence/${TEST_RKEY}`,
     observer: {
       did: TEST_DID,
       handle: "naturalist.bsky.social",

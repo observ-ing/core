@@ -1,6 +1,7 @@
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
-import { openUploadModal } from "../helpers/navigation";
-import { mockTaxaSearchRoute } from "../helpers/mock-taxa";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { openUploadModal } from "./helpers/navigation";
+import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 /** Type into the species input and wait for the autocomplete options to appear. */
 async function searchSpecies(page: import("@playwright/test").Page, query: string) {
@@ -26,6 +27,7 @@ async function searchSpecies(page: import("@playwright/test").Page, query: strin
 
 authTest.describe("Species Input", () => {
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
     await mockTaxaSearchRoute(page);
     await page.goto("/");
     await openUploadModal(page);

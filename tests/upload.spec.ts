@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect, getTestUser } from "../fixtures/auth";
-import { openUploadModal } from "../helpers/navigation";
+import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
+import { openUploadModal } from "./helpers/navigation";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 const FAB = 'button[aria-label="Create actions"]';
 
@@ -14,6 +15,10 @@ test.describe("Upload Modal - Logged Out", () => {
 });
 
 authTest.describe("Upload Modal - Logged In", () => {
+  authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
+  });
+
   // TC-UPLOAD-010: FAB visible when logged in
   authTest("FAB button is visible when logged in", async ({ authenticatedPage: page }) => {
     await page.goto("/");
@@ -103,7 +108,7 @@ authTest.describe("Upload Modal - Logged In", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            uri: "at://did:plc:test123/org.observ.ing.occurrence/abc123",
+            uri: "at://did:plc:test123/org.rwell.test.occurrence/abc123",
             cid: "bafytest",
           }),
         });
@@ -160,7 +165,7 @@ authTest.describe("Upload Modal - Logged In", () => {
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
-              uri: "at://did:plc:test123/org.observ.ing.occurrence/large123",
+              uri: "at://did:plc:test123/org.rwell.test.occurrence/large123",
               cid: "bafylarge",
             }),
           });
