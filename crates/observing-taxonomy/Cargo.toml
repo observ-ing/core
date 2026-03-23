@@ -9,6 +9,9 @@ license = "AGPL-3.0-only"
 # GBIF API client
 gbif-api = { path = "../gbif-api" }
 
+# Wikidata SPARQL client
+wikidata-client = { path = "../wikidata-client" }
+
 # Async runtime
 tokio = { workspace = true }
 
@@ -34,8 +37,6 @@ chrono = { workspace = true }
 # Caching
 moka = { workspace = true }
 
-# URL encoding
-urlencoding = { workspace = true }
 
 # Async utilities
 futures = { workspace = true }

@@ -1,34 +1,11 @@
-//! Wikidata SPARQL client for fetching taxon images via GBIF taxon IDs
+//! Wikidata integration for taxon images and entity lookups via GBIF taxon IDs.
+//!
+//! Thin wrapper around `wikidata_client` that works with GBIF numeric keys.
 
-use reqwest::Client;
-use serde::Deserialize;
 use std::collections::HashMap;
-use tracing::warn;
+use wikidata_client::WikidataClient as Client;
 
-const WIKIDATA_SPARQL_ENDPOINT: &str = "https://query.wikidata.org/sparql";
-
-#[derive(Debug, Deserialize)]
-struct SparqlResponse {
-    results: SparqlResults,
-}
-
-#[derive(Debug, Deserialize)]
-struct SparqlResults {
-    bindings: Vec<SparqlBinding>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SparqlBinding {
-    gbif_taxon_id: SparqlValue,
-    image: Option<SparqlValue>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SparqlValue {
-    value: String,
-}
-
-/// Client for fetching taxon images from Wikidata using GBIF taxon IDs
+/// Client for fetching taxon data from Wikidata using GBIF taxon IDs (property P846).
 pub struct WikidataClient {
     client: Client,
 }
@@ -36,145 +13,33 @@ pub struct WikidataClient {
 impl WikidataClient {
     pub fn new() -> Self {
         Self {
-            client: Client::builder()
-                .user_agent("Observing/1.0 (https://observ.ing; taxonomy service)")
-                .build()
-                .unwrap_or_else(|_| Client::new()),
+            client: Client::with_user_agent("Observing/1.0 (https://observ.ing; taxonomy service)"),
         }
     }
 
-    /// Fetch images for multiple taxa by their GBIF taxon IDs
-    /// Returns a map of gbif_key -> image_url
+    /// Fetch images for multiple taxa by their GBIF taxon IDs.
+    /// Returns a map of gbif_key -> thumbnail URL.
     pub async fn get_images_for_keys(&self, keys: &[u64]) -> HashMap<u64, String> {
-        if keys.is_empty() {
-            return HashMap::new();
-        }
+        let string_keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
+        let str_keys: Vec<&str> = string_keys.iter().map(|s| s.as_str()).collect();
 
-        // Build SPARQL VALUES clause with quoted string IDs
-        let values: String = keys
-            .iter()
-            .map(|k| format!("\"{}\"", k))
-            .collect::<Vec<_>>()
-            .join(" ");
+        let results = self.client.get_images_by_property("P846", &str_keys).await;
 
-        let query = format!(
-            r#"
-SELECT ?gbif_taxon_id (SAMPLE(?image) AS ?image) WHERE {{
-    VALUES ?gbif_taxon_id {{ {} }} .
-    ?item wdt:P846 ?gbif_taxon_id .
-    OPTIONAL {{ ?item wdt:P18 ?image }} .
-}} GROUP BY ?gbif_taxon_id
-"#,
-            values
-        );
-
-        // Build URL with query parameters
-        let url = format!(
-            "{}?query={}&format=json",
-            WIKIDATA_SPARQL_ENDPOINT,
-            urlencoding::encode(&query)
-        );
-
-        let response = match self.client.get(&url).send().await {
-            Ok(r) => r,
-            Err(e) => {
-                warn!(error = ?e, "Wikidata SPARQL request failed");
-                return HashMap::new();
-            }
-        };
-
-        if !response.status().is_success() {
-            warn!(status = %response.status(), "Wikidata SPARQL returned error status");
-            return HashMap::new();
-        }
-
-        let data: SparqlResponse = match response.json().await {
-            Ok(d) => d,
-            Err(e) => {
-                warn!(error = ?e, "Failed to parse Wikidata SPARQL response");
-                return HashMap::new();
-            }
-        };
-
-        let mut result = HashMap::new();
-        for binding in data.results.bindings {
-            if let Some(image) = binding.image {
-                if let Ok(key) = binding.gbif_taxon_id.value.parse::<u64>() {
-                    // Convert Wikimedia Commons URL to a thumbnail URL
-                    let thumb_url = Self::to_thumbnail_url(&image.value, 100);
-                    result.insert(key, thumb_url);
-                }
-            }
-        }
-
-        result
+        results
+            .into_iter()
+            .filter_map(|(k, v)| k.parse::<u64>().ok().map(|id| (id, v)))
+            .collect()
     }
 
-    /// Convert a Wikimedia Commons file URL to a thumbnail URL
-    /// Example: "http://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg"
-    /// becomes a 100px thumbnail
-    fn to_thumbnail_url(file_url: &str, width: u32) -> String {
-        // The FilePath URL redirects to the full image. For thumbnails, we need
-        // to construct a thumb URL. However, that requires knowing the MD5 hash.
-        // For simplicity, we'll use the Special:FilePath with width parameter.
-        if file_url.contains("Special:FilePath/") {
-            format!("{}?width={}", file_url, width)
-        } else {
-            file_url.to_string()
-        }
-    }
-
-    /// Get the Wikidata entity URL for a GBIF taxon ID
-    /// Returns e.g. "https://www.wikidata.org/wiki/Q12345"
+    /// Get the Wikidata entity URL for a GBIF taxon ID.
+    /// Returns e.g. `"https://www.wikidata.org/wiki/Q12345"`.
     pub async fn get_entity_url(&self, gbif_key: u64) -> Option<String> {
-        let query = format!(
-            r#"SELECT ?item WHERE {{ ?item wdt:P846 "{}" . }} LIMIT 1"#,
-            gbif_key
-        );
-
-        let url = format!(
-            "{}?query={}&format=json",
-            WIKIDATA_SPARQL_ENDPOINT,
-            urlencoding::encode(&query)
-        );
-
-        let response = match self.client.get(&url).send().await {
-            Ok(r) => r,
-            Err(e) => {
-                warn!(error = ?e, "Wikidata entity URL lookup failed");
-                return None;
-            }
-        };
-
-        if !response.status().is_success() {
-            return None;
-        }
-
-        #[derive(Deserialize)]
-        struct EntityResponse {
-            results: EntityResults,
-        }
-        #[derive(Deserialize)]
-        struct EntityResults {
-            bindings: Vec<EntityBinding>,
-        }
-        #[derive(Deserialize)]
-        struct EntityBinding {
-            item: SparqlValue,
-        }
-
-        let data: EntityResponse = match response.json().await {
-            Ok(d) => d,
-            Err(_) => return None,
-        };
-
-        data.results.bindings.first().map(|b| {
-            // Convert http://www.wikidata.org/entity/Q123 to https://www.wikidata.org/wiki/Q123
-            b.item.value.replace(
-                "http://www.wikidata.org/entity/",
-                "https://www.wikidata.org/wiki/",
-            )
-        })
+        let key_str = gbif_key.to_string();
+        let results = self
+            .client
+            .get_entities_by_property("P846", &[key_str.as_str()])
+            .await;
+        results.into_values().next()
     }
 }
 

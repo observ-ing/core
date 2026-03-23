@@ -1,5 +1,6 @@
 import { test, expect, type Page } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { navigateToMockedDetail } from "./helpers/mock-observation";
 
 /**
  * MUI v7 Select doesn't link labels via aria-labelledby.
@@ -13,14 +14,9 @@ function muiSelect(page: Page, label: string) {
     .getByRole("combobox");
 }
 
-/** Navigate from the feed to the first observation's detail page. */
-async function navigateToDetail(page: any, expectFn: any) {
-  await page.goto("/explore");
-  const card = page.locator(".MuiCard-root .MuiCardActionArea-root").first();
-  await expectFn(card).toBeVisible({ timeout: 15000 });
-  await card.click();
-  await expectFn(page).toHaveURL(/\/observation\/.+\/.+/);
-  await expectFn(page.getByText("Observed")).toBeVisible({ timeout: 15000 });
+/** Navigate to the mock observation detail page. */
+async function navigateToDetail(page: any, _expectFn: any) {
+  await navigateToMockedDetail(page);
 }
 
 test.describe("Interactions - Logged Out", () => {
@@ -58,6 +54,16 @@ authTest.describe("Interactions - Logged In", () => {
   authTest(
     "submitting interaction sends POST with correct data",
     async ({ authenticatedPage: page }) => {
+      await page.route("**/api/interactions", (route) => {
+        if (route.request().method() === "POST") {
+          return route.fulfill({
+            status: 200,
+            contentType: "application/json",
+            body: JSON.stringify({ uri: "at://test/int/1", cid: "bafyint" }),
+          });
+        }
+        return route.continue();
+      });
       await navigateToDetail(page, authExpect);
       const addBtn = page
         .getByRole("heading", { name: "Species Interactions" })

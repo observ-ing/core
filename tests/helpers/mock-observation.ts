@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import { getTestUser } from "../fixtures/auth";
+import { MOCK_TEST_USER } from "./test-users";
 import type {
   Occurrence,
   Identification,
@@ -7,6 +7,10 @@ import type {
   FeedResponse,
 } from "../../frontend/src/services/types";
 import type { EnrichedInteraction } from "../../frontend/src/bindings/EnrichedInteraction";
+
+export const MOCK_OBS_DID = MOCK_TEST_USER.did;
+export const MOCK_OBS_RKEY = "test123";
+export const MOCK_OBS_URL = `/observation/${MOCK_OBS_DID}/${MOCK_OBS_RKEY}`;
 
 /** Occurrence overrides plus optional detail-level fields */
 type MockDetailOverrides = Partial<Occurrence> & {
@@ -19,20 +23,19 @@ type MockDetailOverrides = Partial<Occurrence> & {
  * Validated against the Rust-generated Occurrence type.
  */
 export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occurrence {
-  const user = getTestUser();
   return {
-    uri: `at://${user.did}/org.observ.ing.occurrence/test123`,
+    uri: `at://${MOCK_TEST_USER.did}/org.rwell.test.occurrence/${MOCK_OBS_RKEY}`,
     cid: "bafytest",
     observer: {
-      did: user.did,
-      handle: user.handle,
-      displayName: user.displayName || user.handle,
+      did: MOCK_TEST_USER.did,
+      handle: MOCK_TEST_USER.handle,
+      displayName: MOCK_TEST_USER.displayName,
     },
     observers: [
       {
-        did: user.did,
-        handle: user.handle,
-        displayName: user.displayName || user.handle,
+        did: MOCK_TEST_USER.did,
+        handle: MOCK_TEST_USER.handle,
+        displayName: MOCK_TEST_USER.displayName,
         role: "owner",
       },
     ],
@@ -117,4 +120,19 @@ export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occu
   await page.route("**/api/feeds/home*", handler);
   await page.route("**/api/feeds/explore*", handler);
   await page.route("**/api/occurrences/feed*", handler);
+}
+
+/**
+ * Mocks observation detail + interactions routes, then navigates directly
+ * to the mock observation URL. Used by integration tests instead of
+ * navigating through the explore feed.
+ */
+export async function navigateToMockedDetail(page: Page, overrides: MockDetailOverrides = {}) {
+  await mockObservationDetailRoute(page, {
+    uri: `at://${MOCK_OBS_DID}/org.rwell.test.occurrence/${MOCK_OBS_RKEY}`,
+    ...overrides,
+  });
+  await mockInteractionsRoute(page);
+  await page.goto(MOCK_OBS_URL);
+  await page.getByText("Observed").waitFor({ timeout: 15_000 });
 }

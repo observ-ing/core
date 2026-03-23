@@ -1,25 +1,18 @@
 import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "../fixtures/auth";
+import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { navigateToMockedDetail, mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Likes - Logged Out", () => {
   // TC-LIKE-001: Like button visible on detail page
   test("detail page shows a heart icon", async ({ page }) => {
-    await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible({ timeout: 10000 });
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await navigateToMockedDetail(page);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
     await expect(likeButton).toBeVisible({ timeout: 15000 });
   });
 
   // TC-LIKE-002: Like button disabled when logged out
   test("like button is disabled when not logged in", async ({ page }) => {
-    await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible({ timeout: 10000 });
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await navigateToMockedDetail(page);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
     await expect(likeButton).toBeVisible({ timeout: 15000 });
     await expect(likeButton).toBeDisabled();
@@ -41,6 +34,7 @@ authTest.describe("Likes - Logged In", () => {
       return route.continue();
     });
 
+    await mockOwnObservationFeed(page);
     await page.goto("/");
     // Wait for real feed cards (not skeletons) by waiting for Like button
     const likeButton = page.getByRole("button", { name: "Like" }).first();
@@ -65,6 +59,7 @@ authTest.describe("Likes - Logged In", () => {
       return route.continue();
     });
 
+    await mockOwnObservationFeed(page);
     await page.goto("/");
     const likeButton = page.getByRole("button", { name: "Like" }).first();
     await authExpect(likeButton).toBeVisible({ timeout: 15000 });
@@ -92,6 +87,7 @@ authTest.describe("Likes - Logged In", () => {
         return route.continue();
       });
 
+      await mockOwnObservationFeed(page);
       await page.goto("/");
       const likeButton = page.getByRole("button", { name: "Like" }).first();
       await authExpect(likeButton).toBeVisible({ timeout: 15000 });

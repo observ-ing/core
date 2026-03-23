@@ -9,10 +9,12 @@
     "build": "vite build -c frontend/vite.config.ts",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "dev": "vite -c frontend/vite.config.ts",
-    "fmt": "oxfmt frontend/src e2e scripts",
-    "fmt:check": "oxfmt --check frontend/src e2e scripts",
+    "fmt": "oxfmt frontend/src tests scripts",
+    "fmt:check": "oxfmt --check frontend/src tests scripts",
     "lint": "oxlint frontend/src",
-    "test:e2e": "playwright test --config=e2e/playwright.config.ts"
+    "test": "playwright test --config=tests/playwright.config.ts",
+    "test:e2e": "playwright test --config=tests/playwright.config.ts --project=e2e",
+    "test:integration": "playwright test --config=tests/playwright.config.ts --project=integration"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",

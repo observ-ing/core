@@ -166,7 +166,7 @@ jobs:
       - name: Run database migrations and seed
         run: |
           for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
-          psql $DATABASE_URL -f e2e/seed.sql
+          psql $DATABASE_URL -f tests/seed.sql
       - name: Build frontend
         run: npm run build
       - name: Build appview and taxonomy service
@@ -185,8 +185,8 @@ jobs:
           done
           echo "Services failed to start"
           exit 1
-      - name: Run e2e tests
-        run: npm run test:e2e
+      - name: Run integration & e2e tests
+        run: npm run test
         env:
           BLUESKY_TEST_EMAIL: ${{ secrets.BLUESKY_TEST_EMAIL }}
           BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
