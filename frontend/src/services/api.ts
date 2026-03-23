@@ -493,3 +493,20 @@ export async function unlikeObservation(occurrenceUri: string): Promise<{ succes
     body: JSON.stringify({ occurrenceUri }),
   });
 }
+
+// TODO: Placeholder for species identification feature
+export interface SpeciesSuggestion {
+  scientificName: string;
+  commonName?: string;
+  confidence: number;
+  taxonId?: number;
+}
+
+export async function identifySpecies(_params: {
+  image: string;
+  limit?: number;
+  latitude?: number;
+  longitude?: number;
+}): Promise<{ suggestions: SpeciesSuggestion[] }> {
+  throw new Error("Species identification not yet implemented");
+}

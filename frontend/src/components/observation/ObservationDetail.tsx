@@ -536,6 +536,13 @@ export function ObservationDetail() {
                         scientificName: taxonomy?.scientificName,
                         communityId: currentSubject?.communityId || observation.communityId,
                       }}
+                      imageUrl={
+                        observation.images[0] != null
+                          ? getImageUrl(observation.images[0])
+                          : undefined
+                      }
+                      latitude={observation.location?.latitude}
+                      longitude={observation.location?.longitude}
                       subjectIndex={selectedSubject}
                       existingSubjectCount={observation.subjects?.length ?? 1}
                       onSuccess={handleIdentificationSuccess}

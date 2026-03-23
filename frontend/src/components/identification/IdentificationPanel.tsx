@@ -1,9 +1,20 @@
 import { useState, useCallback, type FormEvent } from "react";
-import { Box, Typography, Button, TextField, Stack, Paper, Divider } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Stack,
+  Paper,
+  Divider,
+  Chip,
+  CircularProgress,
+} from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
-import { submitIdentification } from "../../services/api";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import { submitIdentification, identifySpecies, type SpeciesSuggestion } from "../../services/api";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
@@ -16,6 +27,12 @@ interface IdentificationPanelProps {
     scientificName?: string | undefined;
     communityId?: string | undefined;
   };
+  /** Full URL of the observation's primary image, for AI species suggestion */
+  imageUrl?: string | undefined;
+  /** Observation latitude, passed to species-id for geo-prior context */
+  latitude?: number | undefined;
+  /** Observation longitude, passed to species-id for geo-prior context */
+  longitude?: number | undefined;
   subjectIndex?: number | undefined;
   /** Number of existing subjects in this observation (used to calculate next available index) */
   existingSubjectCount?: number | undefined;
@@ -24,6 +41,9 @@ interface IdentificationPanelProps {
 
 export function IdentificationPanel({
   observation,
+  imageUrl,
+  latitude,
+  longitude,
   subjectIndex = 0,
   existingSubjectCount = 1,
   onSuccess,
@@ -33,6 +53,41 @@ export function IdentificationPanel({
   const [taxonName, setTaxonName] = useState("");
   const [comment, setComment] = useState("");
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<SpeciesSuggestion[]>([]);
+  const [isIdentifying, setIsIdentifying] = useState(false);
+
+  const handleAiSuggest = async () => {
+    if (!imageUrl) return;
+    setIsIdentifying(true);
+    setAiSuggestions([]);
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      const base64 = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
+        reader.readAsDataURL(blob);
+      });
+
+      const params: Parameters<typeof identifySpecies>[0] = {
+        image: base64,
+        limit: 5,
+      };
+      if (latitude != null && Number.isFinite(latitude)) params.latitude = latitude;
+      if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
+
+      const result = await identifySpecies(params);
+      if (result.suggestions.length > 0) {
+        setAiSuggestions(result.suggestions);
+      } else {
+        dispatch(addToast({ message: "No species suggestions found", type: "success" }));
+      }
+    } catch {
+      dispatch(addToast({ message: "Species identification unavailable", type: "error" }));
+    } finally {
+      setIsIdentifying(false);
+    }
+  };
 
   // Calculate the next available subject index for new organisms
   const nextSubjectIndex = existingSubjectCount;
@@ -152,7 +207,50 @@ export function IdentificationPanel({
         >
           Add Another Organism
         </Button>
+        {imageUrl && (
+          <Button
+            variant="outlined"
+            color="secondary"
+            size="small"
+            startIcon={
+              isIdentifying ? <CircularProgress size={16} color="inherit" /> : <AutoFixHighIcon />
+            }
+            onClick={handleAiSuggest}
+            disabled={isSubmitting || isIdentifying}
+          >
+            AI Suggest
+          </Button>
+        )}
       </Stack>
+
+      {aiSuggestions.length > 0 && (
+        <Box sx={{ mt: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+            <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+            <Typography variant="caption" color="text.secondary">
+              AI suggestions
+            </Typography>
+          </Box>
+          <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+            {aiSuggestions.map((s) => (
+              <Chip
+                key={s.scientificName}
+                label={s.commonName ? `${s.scientificName} (${s.commonName})` : s.scientificName}
+                size="small"
+                onClick={() => {
+                  setTaxonName(s.scientificName);
+                  setAiSuggestions([]);
+                  setIdentifyingNewOrganism(false);
+                  setShowSuggestForm(true);
+                }}
+                variant="outlined"
+                color="primary"
+                sx={{ fontStyle: "italic", cursor: "pointer" }}
+              />
+            ))}
+          </Stack>
+        </Box>
+      )}
 
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
