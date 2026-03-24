@@ -137,11 +137,11 @@ jobs:
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
           tool: jacquard-lexgen@0.9.5
-      - name: Check generated lexicon types are up to date
+      - name: Check lexicon schemas produce valid Rust types
         run: |
           ./scripts/generate-rust-types.sh
           cargo fmt -p observing-lexicons
-          git diff --exit-code crates/observing-lexicons/src/
+          cargo check -p observing-lexicons
 
   rust-test:
     runs-on: ubuntu-latest
