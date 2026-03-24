@@ -8,22 +8,15 @@
 /// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.
 #[jacquard_derive::lexicon]
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Occurrence<'a> {
     /// Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
-    pub associated_media: std::option::Option<
-        Vec<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-    >,
+    pub associated_media:
+        std::option::Option<Vec<crate::com_atproto::repo::strong_ref::StrongRef<'a>>>,
     /// The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     pub coordinate_uncertainty_in_meters: std::option::Option<i64>,
@@ -42,7 +35,7 @@ pub struct Occurrence<'a> {
 
 pub mod occurrence_state {
 
-    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
+    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -94,9 +87,7 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `associatedMedia` field (optional)
     pub fn associated_media(
         mut self,
-        value: impl Into<
-            Option<Vec<crate::com_atproto::repo::strong_ref::StrongRef<'a>>>,
-        >,
+        value: impl Into<Option<Vec<crate::com_atproto::repo::strong_ref::StrongRef<'a>>>>,
     ) -> Self {
         self.__unsafe_private_named.0 = value.into();
         self
@@ -113,10 +104,7 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `coordinateUncertaintyInMeters` field (optional)
-    pub fn coordinate_uncertainty_in_meters(
-        mut self,
-        value: impl Into<Option<i64>>,
-    ) -> Self {
+    pub fn coordinate_uncertainty_in_meters(mut self, value: impl Into<Option<i64>>) -> Self {
         self.__unsafe_private_named.1 = value.into();
         self
     }
@@ -137,10 +125,7 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
         self
     }
     /// Set the `decimalLatitude` field to an Option value (optional)
-    pub fn maybe_decimal_latitude(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_decimal_latitude(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.2 = value;
         self
     }
@@ -156,10 +141,7 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
         self
     }
     /// Set the `decimalLongitude` field to an Option value (optional)
-    pub fn maybe_decimal_longitude(
-        mut self,
-        value: Option<jacquard_common::CowStr<'a>>,
-    ) -> Self {
+    pub fn maybe_decimal_longitude(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
         self.__unsafe_private_named.3 = value;
         self
     }
@@ -233,13 +215,7 @@ impl<'a> Occurrence<'a> {
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct OccurrenceGetRecordOutput<'a> {
@@ -319,9 +295,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Occurrence<'a> {
     }
 }
 
-fn lexicon_doc_bio_lexicons_temp_occurrence() -> ::jacquard_lexicon::lexicon::LexiconDoc<
-    'static,
-> {
+fn lexicon_doc_bio_lexicons_temp_occurrence() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
     ::jacquard_lexicon::lexicon::LexiconDoc {
         lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
         id: ::jacquard_common::CowStr::new_static("bio.lexicons.temp.occurrence"),

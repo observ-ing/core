@@ -8,13 +8,7 @@
 /// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
 #[jacquard_derive::lexicon]
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Identification<'a> {
@@ -44,7 +38,7 @@ pub struct Identification<'a> {
 
 pub mod identification_state {
 
-    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
+    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -135,10 +129,7 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.0 = value.into();
         self
     }
@@ -234,10 +225,7 @@ where
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonId` field (optional)
-    pub fn taxon_id(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
+    pub fn taxon_id(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
         self.__unsafe_private_named.6 = value.into();
         self
     }
@@ -304,13 +292,7 @@ impl<'a> Identification<'a> {
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 #[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic
+    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct IdentificationGetRecordOutput<'a> {
@@ -367,9 +349,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 3000usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "comment",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
                     max: 3000usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -401,9 +381,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_id",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_id"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -413,9 +391,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
     }
 }
 
-fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::LexiconDoc<
-    'static,
-> {
+fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
     ::jacquard_lexicon::lexicon::LexiconDoc {
         lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
         id: ::jacquard_common::CowStr::new_static("org.rwell.test.identification"),
@@ -784,7 +760,7 @@ fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::L
     PartialEq,
     Eq,
     jacquard_derive::IntoStatic,
-    Default
+    Default,
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Taxon<'a> {
@@ -846,9 +822,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "class",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("class"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -858,9 +832,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "family",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("family"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -870,9 +842,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "genus",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("genus"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -882,9 +852,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "kingdom",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("kingdom"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -894,9 +862,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "order",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("order"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -906,9 +872,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "phylum",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("phylum"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -943,9 +907,7 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 32usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "taxon_rank",
-                    ),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_rank"),
                     max: 32usize,
                     actual: <str>::len(value.as_ref()),
                 });
