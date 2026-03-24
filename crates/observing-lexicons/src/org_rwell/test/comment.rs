@@ -5,25 +5,123 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+#[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
+use core::marker::PhantomData;
+use jacquard_common::CowStr;
+
+#[allow(unused_imports)]
+use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::types::collection::{Collection, RecordError};
+use jacquard_common::types::string::{AtUri, Cid, Datetime};
+use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::xrpc::XrpcResp;
+use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_lexicon::lexicon::LexiconDoc;
+use jacquard_lexicon::schema::LexiconSchema;
+
+use crate::com_atproto::repo::strong_ref::StrongRef;
+#[allow(unused_imports)]
+use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
+use serde::{Deserialize, Serialize};
 /// A comment on an observation. Used for general discussion, questions, or additional context about an observation.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(
+    rename_all = "camelCase",
+    rename = "org.rwell.test.comment",
+    tag = "$type"
 )]
-#[serde(rename_all = "camelCase")]
 pub struct Comment<'a> {
-    /// The text content of the comment.
+    ///The text content of the comment.
     #[serde(borrow)]
-    pub body: jacquard_common::CowStr<'a>,
-    /// Timestamp when this comment was created.
-    pub created_at: jacquard_common::types::string::Datetime,
-    /// Optional reference to another comment this is replying to, for threaded discussions.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
+    pub body: CowStr<'a>,
+    ///Timestamp when this comment was created.
+    pub created_at: Datetime,
+    ///Optional reference to another comment this is replying to, for threaded discussions.
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub reply_to: std::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-    /// A strong reference (CID + URI) to the observation being commented on.
+    pub reply_to: Option<StrongRef<'a>>,
+    ///A strong reference (CID + URI) to the observation being commented on.
     #[serde(borrow)]
-    pub subject: crate::com_atproto::repo::strong_ref::StrongRef<'a>,
+    pub subject: StrongRef<'a>,
+}
+
+/// Typed wrapper for GetRecord response with this collection's record type.
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(rename_all = "camelCase")]
+pub struct CommentGetRecordOutput<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub cid: Option<Cid<'a>>,
+    #[serde(borrow)]
+    pub uri: AtUri<'a>,
+    #[serde(borrow)]
+    pub value: Comment<'a>,
+}
+
+impl<'a> Comment<'a> {
+    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, CommentRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+    }
+}
+
+/// Marker type for deserializing records from this collection.
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CommentRecord;
+impl XrpcResp for CommentRecord {
+    const NSID: &'static str = "org.rwell.test.comment";
+    const ENCODING: &'static str = "application/json";
+    type Output<'de> = CommentGetRecordOutput<'de>;
+    type Err<'de> = RecordError<'de>;
+}
+
+impl From<CommentGetRecordOutput<'_>> for Comment<'_> {
+    fn from(output: CommentGetRecordOutput<'_>) -> Self {
+        use jacquard_common::IntoStatic;
+        output.value.into_static()
+    }
+}
+
+impl Collection for Comment<'_> {
+    const NSID: &'static str = "org.rwell.test.comment";
+    type Record = CommentRecord;
+}
+
+impl Collection for CommentRecord {
+    const NSID: &'static str = "org.rwell.test.comment";
+    type Record = CommentRecord;
+}
+
+impl<'a> LexiconSchema for Comment<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.comment"
+    }
+    fn def_name() -> &'static str {
+        "main"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_comment()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        {
+            let value = &self.body;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 3000usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("body"),
+                    max: 3000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
 pub mod comment_state {
@@ -36,64 +134,64 @@ pub mod comment_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type CreatedAt;
-        type Body;
         type Subject;
+        type Body;
+        type CreatedAt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type CreatedAt = Unset;
-        type Body = Unset;
         type Subject = Unset;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedAt = Set<members::created_at>;
-        type Body = S::Body;
-        type Subject = S::Subject;
-    }
-    ///State transition - sets the `body` field to Set
-    pub struct SetBody<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetBody<S> {}
-    impl<S: State> State for SetBody<S> {
-        type CreatedAt = S::CreatedAt;
-        type Body = Set<members::body>;
-        type Subject = S::Subject;
+        type Body = Unset;
+        type CreatedAt = Unset;
     }
     ///State transition - sets the `subject` field to Set
     pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubject<S> {}
     impl<S: State> State for SetSubject<S> {
-        type CreatedAt = S::CreatedAt;
-        type Body = S::Body;
         type Subject = Set<members::subject>;
+        type Body = S::Body;
+        type CreatedAt = S::CreatedAt;
+    }
+    ///State transition - sets the `body` field to Set
+    pub struct SetBody<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetBody<S> {}
+    impl<S: State> State for SetBody<S> {
+        type Subject = S::Subject;
+        type Body = Set<members::body>;
+        type CreatedAt = S::CreatedAt;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type Subject = S::Subject;
+        type Body = S::Body;
+        type CreatedAt = Set<members::created_at>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
-        ///Marker type for the `body` field
-        pub struct body(());
         ///Marker type for the `subject` field
         pub struct subject(());
+        ///Marker type for the `body` field
+        pub struct body(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct CommentBuilder<'a, S: comment_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::types::string::Datetime>,
-        ::core::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-        ::core::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (
+        Option<CowStr<'a>>,
+        Option<Datetime>,
+        Option<StrongRef<'a>>,
+        Option<StrongRef<'a>>,
     ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> Comment<'a> {
@@ -107,9 +205,9 @@ impl<'a> CommentBuilder<'a, comment_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         CommentBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _lifetime: PhantomData,
         }
     }
 }
@@ -122,13 +220,13 @@ where
     /// Set the `body` field (required)
     pub fn body(
         mut self,
-        value: impl Into<jacquard_common::CowStr<'a>>,
+        value: impl Into<CowStr<'a>>,
     ) -> CommentBuilder<'a, comment_state::SetBody<S>> {
-        self.__unsafe_private_named.0 = ::core::option::Option::Some(value.into());
+        self._fields.0 = Option::Some(value.into());
         CommentBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -141,32 +239,26 @@ where
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
-        value: impl Into<jacquard_common::types::string::Datetime>,
+        value: impl Into<Datetime>,
     ) -> CommentBuilder<'a, comment_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         CommentBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: comment_state::State> CommentBuilder<'a, S> {
     /// Set the `replyTo` field (optional)
-    pub fn reply_to(
-        mut self,
-        value: impl Into<Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>>,
-    ) -> Self {
-        self.__unsafe_private_named.2 = value.into();
+    pub fn reply_to(mut self, value: impl Into<Option<StrongRef<'a>>>) -> Self {
+        self._fields.2 = value.into();
         self
     }
     /// Set the `replyTo` field to an Option value (optional)
-    pub fn maybe_reply_to(
-        mut self,
-        value: Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-    ) -> Self {
-        self.__unsafe_private_named.2 = value;
+    pub fn maybe_reply_to(mut self, value: Option<StrongRef<'a>>) -> Self {
+        self._fields.2 = value;
         self
     }
 }
@@ -179,13 +271,13 @@ where
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
+        value: impl Into<StrongRef<'a>>,
     ) -> CommentBuilder<'a, comment_state::SetSubject<S>> {
-        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         CommentBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -193,217 +285,112 @@ where
 impl<'a, S> CommentBuilder<'a, S>
 where
     S: comment_state::State,
-    S::CreatedAt: comment_state::IsSet,
-    S::Body: comment_state::IsSet,
     S::Subject: comment_state::IsSet,
+    S::Body: comment_state::IsSet,
+    S::CreatedAt: comment_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Comment<'a> {
         Comment {
-            body: self.__unsafe_private_named.0.unwrap(),
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            reply_to: self.__unsafe_private_named.2,
-            subject: self.__unsafe_private_named.3.unwrap(),
+            body: self._fields.0.unwrap(),
+            created_at: self._fields.1.unwrap(),
+            reply_to: self._fields.2,
+            subject: self._fields.3.unwrap(),
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> Comment<'a> {
         Comment {
-            body: self.__unsafe_private_named.0.unwrap(),
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            reply_to: self.__unsafe_private_named.2,
-            subject: self.__unsafe_private_named.3.unwrap(),
+            body: self._fields.0.unwrap(),
+            created_at: self._fields.1.unwrap(),
+            reply_to: self._fields.2,
+            subject: self._fields.3.unwrap(),
             extra_data: Some(extra_data),
         }
     }
 }
 
-impl<'a> Comment<'a> {
-    pub fn uri(
-        uri: impl Into<jacquard_common::CowStr<'a>>,
-    ) -> Result<
-        jacquard_common::types::uri::RecordUri<'a, CommentRecord>,
-        jacquard_common::types::uri::UriError,
-    > {
-        jacquard_common::types::uri::RecordUri::try_from_uri(
-            jacquard_common::types::string::AtUri::new_cow(uri.into())?,
-        )
-    }
-}
-
-/// Typed wrapper for GetRecord response with this collection's record type.
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct CommentGetRecordOutput<'a> {
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub cid: std::option::Option<jacquard_common::types::string::Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: jacquard_common::types::string::AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Comment<'a>,
-}
-
-impl From<CommentGetRecordOutput<'_>> for Comment<'_> {
-    fn from(output: CommentGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
-    }
-}
-
-impl jacquard_common::types::collection::Collection for Comment<'_> {
-    const NSID: &'static str = "org.rwell.test.comment";
-    type Record = CommentRecord;
-}
-
-/// Marker type for deserializing records from this collection.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct CommentRecord;
-impl jacquard_common::xrpc::XrpcResp for CommentRecord {
-    const NSID: &'static str = "org.rwell.test.comment";
-    const ENCODING: &'static str = "application/json";
-    type Output<'de> = CommentGetRecordOutput<'de>;
-    type Err<'de> = jacquard_common::types::collection::RecordError<'de>;
-}
-
-impl jacquard_common::types::collection::Collection for CommentRecord {
-    const NSID: &'static str = "org.rwell.test.comment";
-    type Record = CommentRecord;
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Comment<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.comment"
-    }
-    fn def_name() -> &'static str {
-        "main"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_comment()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        {
-            let value = &self.body;
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 3000usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("body"),
-                    max: 3000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-fn lexicon_doc_org_rwell_test_comment() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-    ::jacquard_lexicon::lexicon::LexiconDoc {
-        lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
-        id: ::jacquard_common::CowStr::new_static("org.rwell.test.comment"),
-        revision: None,
-        description: None,
+fn lexicon_doc_org_rwell_test_comment() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("org.rwell.test.comment"),
         defs: {
-            let mut map = ::std::collections::BTreeMap::new();
+            let mut map = BTreeMap::new();
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("main"),
-                ::jacquard_lexicon::lexicon::LexUserType::Record(::jacquard_lexicon::lexicon::LexRecord {
+                SmolStr::new_static("main"),
+                LexUserType::Record(LexRecord {
                     description: Some(
-                        ::jacquard_common::CowStr::new_static(
+                        CowStr::new_static(
                             "A comment on an observation. Used for general discussion, questions, or additional context about an observation.",
                         ),
                     ),
-                    key: Some(::jacquard_common::CowStr::new_static("tid")),
-                    record: ::jacquard_lexicon::lexicon::LexRecordRecord::Object(::jacquard_lexicon::lexicon::LexObject {
-                        description: None,
+                    key: Some(CowStr::new_static("tid")),
+                    record: LexRecordRecord::Object(LexObject {
                         required: Some(
                             vec![
-                                ::jacquard_common::smol_str::SmolStr::new_static("subject"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("body"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("createdAt")
+                                SmolStr::new_static("subject"), SmolStr::new_static("body"),
+                                SmolStr::new_static("createdAt")
                             ],
                         ),
-                        nullable: None,
                         properties: {
                             #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
+                            let mut map = BTreeMap::new();
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("body"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("body"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "The text content of the comment.",
-                                        ),
+                                        CowStr::new_static("The text content of the comment."),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(3000usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "createdAt",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("createdAt"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Timestamp when this comment was created.",
                                         ),
                                     ),
-                                    format: Some(
-                                        ::jacquard_lexicon::lexicon::LexStringFormat::Datetime,
-                                    ),
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("replyTo"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static(
-                                        "com.atproto.repo.strongRef",
-                                    ),
+                                SmolStr::new_static("replyTo"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("subject"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static(
-                                        "com.atproto.repo.strongRef",
-                                    ),
+                                SmolStr::new_static("subject"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                    ..Default::default()
                                 }),
                             );
                             map
                         },
+                        ..Default::default()
                     }),
+                    ..Default::default()
                 }),
             );
             map
         },
+        ..Default::default()
     }
 }

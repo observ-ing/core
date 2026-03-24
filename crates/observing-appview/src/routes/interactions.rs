@@ -104,7 +104,7 @@ pub async fn create_interaction(
     let record = Interaction::new()
         .subject_a(subject_a)
         .subject_b(subject_b)
-        .interaction_type(&body.interaction_type)
+        .interaction_type(&*body.interaction_type)
         .direction(direction)
         .created_at(Datetime::now())
         .maybe_comment(body.comment.as_deref().map(Into::into))

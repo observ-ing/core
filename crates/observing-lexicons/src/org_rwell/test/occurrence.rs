@@ -5,15 +5,711 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+#[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
+use core::marker::PhantomData;
+use jacquard_common::CowStr;
+
+#[allow(unused_imports)]
+use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::types::blob::BlobRef;
+use jacquard_common::types::collection::{Collection, RecordError};
+use jacquard_common::types::string::{AtUri, Cid, Datetime};
+use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::xrpc::XrpcResp;
+use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_lexicon::lexicon::LexiconDoc;
+use jacquard_lexicon::schema::LexiconSchema;
+
+use crate::org_rwell::test::occurrence;
+#[allow(unused_imports)]
+use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
+use serde::{Deserialize, Serialize};
 /// Width and height of an image, used for proper display before loading.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
 pub struct AspectRatio<'a> {
     pub height: i64,
     pub width: i64,
+}
+
+/// A reference to an uploaded image blob.
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageEmbed<'a> {
+    ///Alt text description of the image for accessibility.
+    #[serde(borrow)]
+    pub alt: CowStr<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub aspect_ratio: Option<occurrence::AspectRatio<'a>>,
+    ///The image blob reference.
+    #[serde(borrow)]
+    pub image: BlobRef<'a>,
+}
+
+/// Geographic coordinates following Darwin Core standards.
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Location<'a> {
+    ///The name of the continent (Darwin Core dwc:continent).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub continent: Option<LocationContinent<'a>>,
+    ///The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coordinate_uncertainty_in_meters: Option<i64>,
+    ///The name of the country or major administrative unit (Darwin Core dwc:country).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub country: Option<CowStr<'a>>,
+    ///The standard code for the country (Darwin Core dwc:countryCode). ISO 3166-1-alpha-2.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub country_code: Option<CowStr<'a>>,
+    ///The full, unabbreviated name of the next smaller administrative region than stateProvince (Darwin Core dwc:county).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub county: Option<CowStr<'a>>,
+    ///The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.
+    #[serde(borrow)]
+    pub decimal_latitude: CowStr<'a>,
+    ///The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
+    #[serde(borrow)]
+    pub decimal_longitude: CowStr<'a>,
+    ///The ellipsoid, geodetic datum, or spatial reference system used (Darwin Core dwc:geodeticDatum). Defaults to WGS84.  Defaults to `"WGS84"`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "_default_location_geodetic_datum")]
+    #[serde(borrow)]
+    pub geodetic_datum: Option<CowStr<'a>>,
+    ///The specific description of the place (Darwin Core dwc:locality).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub locality: Option<CowStr<'a>>,
+    ///The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub maximum_depth_in_meters: Option<CowStr<'a>>,
+    ///The upper limit of the range of elevation in meters (Darwin Core dwc:maximumElevationInMeters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub maximum_elevation_in_meters: Option<CowStr<'a>>,
+    ///The lesser depth of a range of depth below the local surface in meters (Darwin Core dwc:minimumDepthInMeters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub minimum_depth_in_meters: Option<CowStr<'a>>,
+    ///The lower limit of the range of elevation in meters (Darwin Core dwc:minimumElevationInMeters).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub minimum_elevation_in_meters: Option<CowStr<'a>>,
+    ///The full, unabbreviated name of the next smaller administrative region than county (Darwin Core dwc:municipality).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub municipality: Option<CowStr<'a>>,
+    ///The name of the next smaller administrative region than country (Darwin Core dwc:stateProvince).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub state_province: Option<CowStr<'a>>,
+    ///The name of the water body in which the location occurs (Darwin Core dwc:waterBody).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub water_body: Option<CowStr<'a>>,
+}
+
+/// The name of the continent (Darwin Core dwc:continent).
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LocationContinent<'a> {
+    Africa,
+    Antarctica,
+    Asia,
+    Europe,
+    NorthAmerica,
+    Oceania,
+    SouthAmerica,
+    Other(CowStr<'a>),
+}
+
+impl<'a> LocationContinent<'a> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Africa => "Africa",
+            Self::Antarctica => "Antarctica",
+            Self::Asia => "Asia",
+            Self::Europe => "Europe",
+            Self::NorthAmerica => "North America",
+            Self::Oceania => "Oceania",
+            Self::SouthAmerica => "South America",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for LocationContinent<'a> {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "Africa" => Self::Africa,
+            "Antarctica" => Self::Antarctica,
+            "Asia" => Self::Asia,
+            "Europe" => Self::Europe,
+            "North America" => Self::NorthAmerica,
+            "Oceania" => Self::Oceania,
+            "South America" => Self::SouthAmerica,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> From<String> for LocationContinent<'a> {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "Africa" => Self::Africa,
+            "Antarctica" => Self::Antarctica,
+            "Asia" => Self::Asia,
+            "Europe" => Self::Europe,
+            "North America" => Self::NorthAmerica,
+            "Oceania" => Self::Oceania,
+            "South America" => Self::SouthAmerica,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> core::fmt::Display for LocationContinent<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<'a> AsRef<str> for LocationContinent<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> serde::Serialize for LocationContinent<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, 'a> serde::Deserialize<'de> for LocationContinent<'a>
+where
+    'de: 'a,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = <&'de str>::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl<'a> Default for LocationContinent<'a> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl jacquard_common::IntoStatic for LocationContinent<'_> {
+    type Output = LocationContinent<'static>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            LocationContinent::Africa => LocationContinent::Africa,
+            LocationContinent::Antarctica => LocationContinent::Antarctica,
+            LocationContinent::Asia => LocationContinent::Asia,
+            LocationContinent::Europe => LocationContinent::Europe,
+            LocationContinent::NorthAmerica => LocationContinent::NorthAmerica,
+            LocationContinent::Oceania => LocationContinent::Oceania,
+            LocationContinent::SouthAmerica => LocationContinent::SouthAmerica,
+            LocationContinent::Other(v) => LocationContinent::Other(v.into_static()),
+        }
+    }
+}
+
+/// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism at a specific place and time.
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(
+    rename_all = "camelCase",
+    rename = "org.rwell.test.occurrence",
+    tag = "$type"
+)]
+pub struct Occurrence<'a> {
+    ///Array of image references documenting the observation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub blobs: Option<Vec<occurrence::ImageEmbed<'a>>>,
+    ///Timestamp when this record was created.
+    pub created_at: Datetime,
+    ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
+    pub event_date: Datetime,
+    ///SPDX license identifier for this observation (maps to Dublin Core dcterms:license).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub license: Option<OccurrenceLicense<'a>>,
+    ///Geographic location information for the observation.
+    #[serde(borrow)]
+    pub location: occurrence::Location<'a>,
+    ///Additional notes or comments about the observation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub notes: Option<CowStr<'a>>,
+    ///DIDs of co-observers who participated in this observation. The record creator is the primary observer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub recorded_by: Option<Vec<CowStr<'a>>>,
+    ///The original textual description of the place (Darwin Core dwc:verbatimLocality).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub verbatim_locality: Option<CowStr<'a>>,
+}
+
+/// SPDX license identifier for this observation (maps to Dublin Core dcterms:license).
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum OccurrenceLicense<'a> {
+    Cc010,
+    CcBy40,
+    CcByNc40,
+    CcBySa40,
+    CcByNcSa40,
+    Other(CowStr<'a>),
+}
+
+impl<'a> OccurrenceLicense<'a> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Cc010 => "CC0-1.0",
+            Self::CcBy40 => "CC-BY-4.0",
+            Self::CcByNc40 => "CC-BY-NC-4.0",
+            Self::CcBySa40 => "CC-BY-SA-4.0",
+            Self::CcByNcSa40 => "CC-BY-NC-SA-4.0",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for OccurrenceLicense<'a> {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "CC0-1.0" => Self::Cc010,
+            "CC-BY-4.0" => Self::CcBy40,
+            "CC-BY-NC-4.0" => Self::CcByNc40,
+            "CC-BY-SA-4.0" => Self::CcBySa40,
+            "CC-BY-NC-SA-4.0" => Self::CcByNcSa40,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> From<String> for OccurrenceLicense<'a> {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "CC0-1.0" => Self::Cc010,
+            "CC-BY-4.0" => Self::CcBy40,
+            "CC-BY-NC-4.0" => Self::CcByNc40,
+            "CC-BY-SA-4.0" => Self::CcBySa40,
+            "CC-BY-NC-SA-4.0" => Self::CcByNcSa40,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> core::fmt::Display for OccurrenceLicense<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<'a> AsRef<str> for OccurrenceLicense<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> serde::Serialize for OccurrenceLicense<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, 'a> serde::Deserialize<'de> for OccurrenceLicense<'a>
+where
+    'de: 'a,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = <&'de str>::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl<'a> Default for OccurrenceLicense<'a> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl jacquard_common::IntoStatic for OccurrenceLicense<'_> {
+    type Output = OccurrenceLicense<'static>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            OccurrenceLicense::Cc010 => OccurrenceLicense::Cc010,
+            OccurrenceLicense::CcBy40 => OccurrenceLicense::CcBy40,
+            OccurrenceLicense::CcByNc40 => OccurrenceLicense::CcByNc40,
+            OccurrenceLicense::CcBySa40 => OccurrenceLicense::CcBySa40,
+            OccurrenceLicense::CcByNcSa40 => OccurrenceLicense::CcByNcSa40,
+            OccurrenceLicense::Other(v) => OccurrenceLicense::Other(v.into_static()),
+        }
+    }
+}
+
+/// Typed wrapper for GetRecord response with this collection's record type.
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(rename_all = "camelCase")]
+pub struct OccurrenceGetRecordOutput<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub cid: Option<Cid<'a>>,
+    #[serde(borrow)]
+    pub uri: AtUri<'a>,
+    #[serde(borrow)]
+    pub value: Occurrence<'a>,
+}
+
+impl<'a> Occurrence<'a> {
+    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, OccurrenceRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+    }
+}
+
+impl<'a> LexiconSchema for AspectRatio<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.occurrence"
+    }
+    fn def_name() -> &'static str {
+        "aspectRatio"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_occurrence()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        {
+            let value = &self.height;
+            if *value < 1i64 {
+                return Err(ConstraintError::Minimum {
+                    path: ValidationPath::from_field("height"),
+                    min: 1i64,
+                    actual: *value,
+                });
+            }
+        }
+        {
+            let value = &self.width;
+            if *value < 1i64 {
+                return Err(ConstraintError::Minimum {
+                    path: ValidationPath::from_field("width"),
+                    min: 1i64,
+                    actual: *value,
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a> LexiconSchema for ImageEmbed<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.occurrence"
+    }
+    fn def_name() -> &'static str {
+        "imageEmbed"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_occurrence()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        {
+            let value = &self.alt;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 1000usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("alt"),
+                    max: 1000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.image;
+            {
+                let size = value.blob().size;
+                if size > 10000000usize {
+                    return Err(ConstraintError::BlobTooLarge {
+                        path: ValidationPath::from_field("image"),
+                        max: 10000000usize,
+                        actual: size,
+                    });
+                }
+            }
+        }
+        {
+            let value = &self.image;
+            {
+                let mime = value.blob().mime_type.as_str();
+                let accepted: &[&str] = &["image/jpeg", "image/png", "image/webp"];
+                let matched = accepted.iter().any(|pattern| {
+                    if *pattern == "*/*" {
+                        true
+                    } else if pattern.ends_with("/*") {
+                        let prefix = &pattern[..pattern.len() - 2];
+                        mime.starts_with(prefix) && mime.as_bytes().get(prefix.len()) == Some(&b'/')
+                    } else {
+                        mime == *pattern
+                    }
+                });
+                if !matched {
+                    return Err(ConstraintError::BlobMimeTypeNotAccepted {
+                        path: ValidationPath::from_field("image"),
+                        accepted: vec![
+                            "image/jpeg".to_string(),
+                            "image/png".to_string(),
+                            "image/webp".to_string(),
+                        ],
+                        actual: mime.to_string(),
+                    });
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a> LexiconSchema for Location<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.occurrence"
+    }
+    fn def_name() -> &'static str {
+        "location"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_occurrence()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.continent {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 32usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("continent"),
+                    max: 32usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.coordinate_uncertainty_in_meters {
+            if *value < 0i64 {
+                return Err(ConstraintError::Minimum {
+                    path: ValidationPath::from_field("coordinate_uncertainty_in_meters"),
+                    min: 0i64,
+                    actual: *value,
+                });
+            }
+        }
+        if let Some(ref value) = self.country {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 128usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("country"),
+                    max: 128usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.country_code {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 2usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("country_code"),
+                    max: 2usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.county {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 128usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("county"),
+                    max: 128usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.geodetic_datum {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("geodetic_datum"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.locality {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 512usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("locality"),
+                    max: 512usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.municipality {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 128usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("municipality"),
+                    max: 128usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.state_province {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 128usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("state_province"),
+                    max: 128usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.water_body {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 128usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("water_body"),
+                    max: 128usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Marker type for deserializing records from this collection.
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OccurrenceRecord;
+impl XrpcResp for OccurrenceRecord {
+    const NSID: &'static str = "org.rwell.test.occurrence";
+    const ENCODING: &'static str = "application/json";
+    type Output<'de> = OccurrenceGetRecordOutput<'de>;
+    type Err<'de> = RecordError<'de>;
+}
+
+impl From<OccurrenceGetRecordOutput<'_>> for Occurrence<'_> {
+    fn from(output: OccurrenceGetRecordOutput<'_>) -> Self {
+        use jacquard_common::IntoStatic;
+        output.value.into_static()
+    }
+}
+
+impl Collection for Occurrence<'_> {
+    const NSID: &'static str = "org.rwell.test.occurrence";
+    type Record = OccurrenceRecord;
+}
+
+impl Collection for OccurrenceRecord {
+    const NSID: &'static str = "org.rwell.test.occurrence";
+    type Record = OccurrenceRecord;
+}
+
+impl<'a> LexiconSchema for Occurrence<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.occurrence"
+    }
+    fn def_name() -> &'static str {
+        "main"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_occurrence()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.blobs {
+            #[allow(unused_comparisons)]
+            if value.len() > 10usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("blobs"),
+                    max: 10usize,
+                    actual: value.len(),
+                });
+            }
+        }
+        if let Some(ref value) = self.license {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 32usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("license"),
+                    max: 32usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.notes {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 3000usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("notes"),
+                    max: 3000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.recorded_by {
+            #[allow(unused_comparisons)]
+            if value.len() > 10usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("recorded_by"),
+                    max: 10usize,
+                    actual: value.len(),
+                });
+            }
+        }
+        if let Some(ref value) = self.verbatim_locality {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 1024usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("verbatim_locality"),
+                    max: 1024usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
 }
 
 pub mod aspect_ratio_state {
@@ -26,45 +722,45 @@ pub mod aspect_ratio_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Height;
         type Width;
+        type Height;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Height = Unset;
         type Width = Unset;
-    }
-    ///State transition - sets the `height` field to Set
-    pub struct SetHeight<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHeight<S> {}
-    impl<S: State> State for SetHeight<S> {
-        type Height = Set<members::height>;
-        type Width = S::Width;
+        type Height = Unset;
     }
     ///State transition - sets the `width` field to Set
     pub struct SetWidth<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetWidth<S> {}
     impl<S: State> State for SetWidth<S> {
-        type Height = S::Height;
         type Width = Set<members::width>;
+        type Height = S::Height;
+    }
+    ///State transition - sets the `height` field to Set
+    pub struct SetHeight<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetHeight<S> {}
+    impl<S: State> State for SetHeight<S> {
+        type Width = S::Width;
+        type Height = Set<members::height>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `height` field
-        pub struct height(());
         ///Marker type for the `width` field
         pub struct width(());
+        ///Marker type for the `height` field
+        pub struct height(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct AspectRatioBuilder<'a, S: aspect_ratio_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (::core::option::Option<i64>, ::core::option::Option<i64>),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (Option<i64>, Option<i64>),
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> AspectRatio<'a> {
@@ -78,9 +774,9 @@ impl<'a> AspectRatioBuilder<'a, aspect_ratio_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         AspectRatioBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None),
+            _lifetime: PhantomData,
         }
     }
 }
@@ -95,11 +791,11 @@ where
         mut self,
         value: impl Into<i64>,
     ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetHeight<S>> {
-        self.__unsafe_private_named.0 = ::core::option::Option::Some(value.into());
+        self._fields.0 = Option::Some(value.into());
         AspectRatioBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -114,11 +810,11 @@ where
         mut self,
         value: impl Into<i64>,
     ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetWidth<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         AspectRatioBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -126,732 +822,446 @@ where
 impl<'a, S> AspectRatioBuilder<'a, S>
 where
     S: aspect_ratio_state::State,
-    S::Height: aspect_ratio_state::IsSet,
     S::Width: aspect_ratio_state::IsSet,
+    S::Height: aspect_ratio_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> AspectRatio<'a> {
         AspectRatio {
-            height: self.__unsafe_private_named.0.unwrap(),
-            width: self.__unsafe_private_named.1.unwrap(),
+            height: self._fields.0.unwrap(),
+            width: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> AspectRatio<'a> {
         AspectRatio {
-            height: self.__unsafe_private_named.0.unwrap(),
-            width: self.__unsafe_private_named.1.unwrap(),
+            height: self._fields.0.unwrap(),
+            width: self._fields.1.unwrap(),
             extra_data: Some(extra_data),
         }
     }
 }
 
-fn lexicon_doc_org_rwell_test_occurrence() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-    ::jacquard_lexicon::lexicon::LexiconDoc {
-        lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
-        id: ::jacquard_common::CowStr::new_static("org.rwell.test.occurrence"),
-        revision: None,
-        description: None,
+fn lexicon_doc_org_rwell_test_occurrence() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("org.rwell.test.occurrence"),
         defs: {
-            let mut map = ::std::collections::BTreeMap::new();
+            let mut map = BTreeMap::new();
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("aspectRatio"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(
-                    ::jacquard_lexicon::lexicon::LexObject {
-                        description: Some(::jacquard_common::CowStr::new_static(
-                            "Width and height of an image, used for proper display before loading.",
-                        )),
-                        required: Some(vec![
-                            ::jacquard_common::smol_str::SmolStr::new_static("width"),
-                            ::jacquard_common::smol_str::SmolStr::new_static("height"),
-                        ]),
-                        nullable: None,
-                        properties: {
-                            #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("height"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Integer(
-                                    ::jacquard_lexicon::lexicon::LexInteger {
-                                        description: None,
-                                        default: None,
-                                        minimum: Some(1i64),
-                                        maximum: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                    },
-                                ),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("width"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Integer(
-                                    ::jacquard_lexicon::lexicon::LexInteger {
-                                        description: None,
-                                        default: None,
-                                        minimum: Some(1i64),
-                                        maximum: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                    },
-                                ),
-                            );
-                            map
-                        },
+                SmolStr::new_static("aspectRatio"),
+                LexUserType::Object(LexObject {
+                    description: Some(CowStr::new_static(
+                        "Width and height of an image, used for proper display before loading.",
+                    )),
+                    required: Some(vec![
+                        SmolStr::new_static("width"),
+                        SmolStr::new_static("height"),
+                    ]),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("height"),
+                            LexObjectProperty::Integer(LexInteger {
+                                minimum: Some(1i64),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("width"),
+                            LexObjectProperty::Integer(LexInteger {
+                                minimum: Some(1i64),
+                                ..Default::default()
+                            }),
+                        );
+                        map
                     },
-                ),
+                    ..Default::default()
+                }),
             );
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("imageEmbed"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(
-                    ::jacquard_lexicon::lexicon::LexObject {
-                        description: Some(::jacquard_common::CowStr::new_static(
-                            "A reference to an uploaded image blob.",
-                        )),
-                        required: Some(vec![
-                            ::jacquard_common::smol_str::SmolStr::new_static("image"),
-                            ::jacquard_common::smol_str::SmolStr::new_static("alt"),
-                        ]),
-                        nullable: None,
-                        properties: {
-                            #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("alt"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(
-                                    ::jacquard_lexicon::lexicon::LexString {
-                                        description: Some(::jacquard_common::CowStr::new_static(
-                                            "Alt text description of the image for accessibility.",
-                                        )),
-                                        format: None,
-                                        default: None,
-                                        min_length: None,
-                                        max_length: Some(1000usize),
-                                        min_graphemes: None,
-                                        max_graphemes: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                        known_values: None,
-                                    },
-                                ),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("aspectRatio"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(
-                                    ::jacquard_lexicon::lexicon::LexRef {
-                                        description: None,
-                                        r#ref: ::jacquard_common::CowStr::new_static(
-                                            "#aspectRatio",
-                                        ),
-                                    },
-                                ),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("image"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Blob(
-                                    ::jacquard_lexicon::lexicon::LexBlob {
-                                        description: None,
-                                        accept: None,
-                                        max_size: None,
-                                    },
-                                ),
-                            );
-                            map
-                        },
+                SmolStr::new_static("imageEmbed"),
+                LexUserType::Object(LexObject {
+                    description: Some(CowStr::new_static("A reference to an uploaded image blob.")),
+                    required: Some(vec![
+                        SmolStr::new_static("image"),
+                        SmolStr::new_static("alt"),
+                    ]),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("alt"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(CowStr::new_static(
+                                    "Alt text description of the image for accessibility.",
+                                )),
+                                max_length: Some(1000usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("aspectRatio"),
+                            LexObjectProperty::Ref(LexRef {
+                                r#ref: CowStr::new_static("#aspectRatio"),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("image"),
+                            LexObjectProperty::Blob(LexBlob {
+                                ..Default::default()
+                            }),
+                        );
+                        map
                     },
-                ),
+                    ..Default::default()
+                }),
             );
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("location"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(::jacquard_lexicon::lexicon::LexObject {
+                SmolStr::new_static("location"),
+                LexUserType::Object(LexObject {
                     description: Some(
-                        ::jacquard_common::CowStr::new_static(
+                        CowStr::new_static(
                             "Geographic coordinates following Darwin Core standards.",
                         ),
                     ),
                     required: Some(
                         vec![
-                            ::jacquard_common::smol_str::SmolStr::new_static("decimalLatitude"),
-                            ::jacquard_common::smol_str::SmolStr::new_static("decimalLongitude")
+                            SmolStr::new_static("decimalLatitude"),
+                            SmolStr::new_static("decimalLongitude")
                         ],
                     ),
-                    nullable: None,
                     properties: {
                         #[allow(unused_mut)]
-                        let mut map = ::std::collections::BTreeMap::new();
+                        let mut map = BTreeMap::new();
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "continent",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("continent"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The name of the continent (Darwin Core dwc:continent).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(32usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "coordinateUncertaintyInMeters",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::Integer(::jacquard_lexicon::lexicon::LexInteger {
-                                description: None,
-                                default: None,
+                            SmolStr::new_static("coordinateUncertaintyInMeters"),
+                            LexObjectProperty::Integer(LexInteger {
                                 minimum: Some(0i64),
-                                maximum: None,
-                                r#enum: None,
-                                r#const: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("country"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("country"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The name of the country or major administrative unit (Darwin Core dwc:country).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(128usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "countryCode",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("countryCode"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The standard code for the country (Darwin Core dwc:countryCode). ISO 3166-1-alpha-2.",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(2usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("county"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("county"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The full, unabbreviated name of the next smaller administrative region than stateProvince (Darwin Core dwc:county).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(128usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "decimalLatitude",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("decimalLatitude"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "decimalLongitude",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("decimalLongitude"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "geodeticDatum",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("geodeticDatum"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The ellipsoid, geodetic datum, or spatial reference system used (Darwin Core dwc:geodeticDatum). Defaults to WGS84.",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("locality"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("locality"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The specific description of the place (Darwin Core dwc:locality).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(512usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "maximumDepthInMeters",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("maximumDepthInMeters"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "maximumElevationInMeters",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("maximumElevationInMeters"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The upper limit of the range of elevation in meters (Darwin Core dwc:maximumElevationInMeters).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "minimumDepthInMeters",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("minimumDepthInMeters"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The lesser depth of a range of depth below the local surface in meters (Darwin Core dwc:minimumDepthInMeters).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "minimumElevationInMeters",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("minimumElevationInMeters"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The lower limit of the range of elevation in meters (Darwin Core dwc:minimumElevationInMeters).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
-                                max_length: None,
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "municipality",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("municipality"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The full, unabbreviated name of the next smaller administrative region than county (Darwin Core dwc:municipality).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(128usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "stateProvince",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("stateProvince"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The name of the next smaller administrative region than country (Darwin Core dwc:stateProvince).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(128usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "waterBody",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("waterBody"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The name of the water body in which the location occurs (Darwin Core dwc:waterBody).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(128usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map
                     },
+                    ..Default::default()
                 }),
             );
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("main"),
-                ::jacquard_lexicon::lexicon::LexUserType::Record(::jacquard_lexicon::lexicon::LexRecord {
+                SmolStr::new_static("main"),
+                LexUserType::Record(LexRecord {
                     description: Some(
-                        ::jacquard_common::CowStr::new_static(
+                        CowStr::new_static(
                             "A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism at a specific place and time.",
                         ),
                     ),
-                    key: Some(::jacquard_common::CowStr::new_static("tid")),
-                    record: ::jacquard_lexicon::lexicon::LexRecordRecord::Object(::jacquard_lexicon::lexicon::LexObject {
-                        description: None,
+                    key: Some(CowStr::new_static("tid")),
+                    record: LexRecordRecord::Object(LexObject {
                         required: Some(
                             vec![
-                                ::jacquard_common::smol_str::SmolStr::new_static("eventDate"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("location"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("createdAt")
+                                SmolStr::new_static("eventDate"),
+                                SmolStr::new_static("location"),
+                                SmolStr::new_static("createdAt")
                             ],
                         ),
-                        nullable: None,
                         properties: {
                             #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
+                            let mut map = BTreeMap::new();
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("blobs"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Array(::jacquard_lexicon::lexicon::LexArray {
+                                SmolStr::new_static("blobs"),
+                                LexObjectProperty::Array(LexArray {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Array of image references documenting the observation.",
                                         ),
                                     ),
-                                    items: ::jacquard_lexicon::lexicon::LexArrayItem::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                        description: None,
-                                        r#ref: ::jacquard_common::CowStr::new_static("#imageEmbed"),
+                                    items: LexArrayItem::Ref(LexRef {
+                                        r#ref: CowStr::new_static("#imageEmbed"),
+                                        ..Default::default()
                                     }),
-                                    min_length: None,
                                     max_length: Some(10usize),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "createdAt",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("createdAt"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Timestamp when this record was created.",
                                         ),
                                     ),
-                                    format: Some(
-                                        ::jacquard_lexicon::lexicon::LexStringFormat::Datetime,
-                                    ),
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "eventDate",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("eventDate"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).",
                                         ),
                                     ),
-                                    format: Some(
-                                        ::jacquard_lexicon::lexicon::LexStringFormat::Datetime,
-                                    ),
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("license"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("license"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "SPDX license identifier for this observation (maps to Dublin Core dcterms:license).",
                                         ),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(32usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "location",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static("#location"),
+                                SmolStr::new_static("location"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("#location"),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("notes"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("notes"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Additional notes or comments about the observation.",
                                         ),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(3000usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "recordedBy",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Array(::jacquard_lexicon::lexicon::LexArray {
+                                SmolStr::new_static("recordedBy"),
+                                LexObjectProperty::Array(LexArray {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "DIDs of co-observers who participated in this observation. The record creator is the primary observer.",
                                         ),
                                     ),
-                                    items: ::jacquard_lexicon::lexicon::LexArrayItem::String(::jacquard_lexicon::lexicon::LexString {
-                                        description: None,
-                                        format: None,
-                                        default: None,
-                                        min_length: None,
-                                        max_length: None,
-                                        min_graphemes: None,
-                                        max_graphemes: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                        known_values: None,
+                                    items: LexArrayItem::String(LexString {
+                                        ..Default::default()
                                     }),
-                                    min_length: None,
                                     max_length: Some(10usize),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "verbatimLocality",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("verbatimLocality"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "The original textual description of the place (Darwin Core dwc:verbatimLocality).",
                                         ),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(1024usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map
                         },
+                        ..Default::default()
                     }),
+                    ..Default::default()
                 }),
             );
             map
         },
+        ..Default::default()
     }
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for AspectRatio<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "aspectRatio"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_occurrence()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        {
-            let value = &self.height;
-            if *value < 1i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Minimum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("height"),
-                    min: 1i64,
-                    actual: *value,
-                });
-            }
-        }
-        {
-            let value = &self.width;
-            if *value < 1i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Minimum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("width"),
-                    min: 1i64,
-                    actual: *value,
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-/// A reference to an uploaded image blob.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct ImageEmbed<'a> {
-    /// Alt text description of the image for accessibility.
-    #[serde(borrow)]
-    pub alt: jacquard_common::CowStr<'a>,
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub aspect_ratio: std::option::Option<crate::org_rwell::test::occurrence::AspectRatio<'a>>,
-    /// The image blob reference.
-    #[serde(borrow)]
-    pub image: jacquard_common::types::blob::BlobRef<'a>,
 }
 
 pub mod image_embed_state {
@@ -864,49 +1274,49 @@ pub mod image_embed_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Alt;
         type Image;
+        type Alt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Alt = Unset;
         type Image = Unset;
-    }
-    ///State transition - sets the `alt` field to Set
-    pub struct SetAlt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAlt<S> {}
-    impl<S: State> State for SetAlt<S> {
-        type Alt = Set<members::alt>;
-        type Image = S::Image;
+        type Alt = Unset;
     }
     ///State transition - sets the `image` field to Set
     pub struct SetImage<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetImage<S> {}
     impl<S: State> State for SetImage<S> {
-        type Alt = S::Alt;
         type Image = Set<members::image>;
+        type Alt = S::Alt;
+    }
+    ///State transition - sets the `alt` field to Set
+    pub struct SetAlt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetAlt<S> {}
+    impl<S: State> State for SetAlt<S> {
+        type Image = S::Image;
+        type Alt = Set<members::alt>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `alt` field
-        pub struct alt(());
         ///Marker type for the `image` field
         pub struct image(());
+        ///Marker type for the `alt` field
+        pub struct alt(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct ImageEmbedBuilder<'a, S: image_embed_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<crate::org_rwell::test::occurrence::AspectRatio<'a>>,
-        ::core::option::Option<jacquard_common::types::blob::BlobRef<'a>>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (
+        Option<CowStr<'a>>,
+        Option<occurrence::AspectRatio<'a>>,
+        Option<BlobRef<'a>>,
     ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> ImageEmbed<'a> {
@@ -920,9 +1330,9 @@ impl<'a> ImageEmbedBuilder<'a, image_embed_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         ImageEmbedBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None, None),
+            _lifetime: PhantomData,
         }
     }
 }
@@ -935,32 +1345,26 @@ where
     /// Set the `alt` field (required)
     pub fn alt(
         mut self,
-        value: impl Into<jacquard_common::CowStr<'a>>,
+        value: impl Into<CowStr<'a>>,
     ) -> ImageEmbedBuilder<'a, image_embed_state::SetAlt<S>> {
-        self.__unsafe_private_named.0 = ::core::option::Option::Some(value.into());
+        self._fields.0 = Option::Some(value.into());
         ImageEmbedBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: image_embed_state::State> ImageEmbedBuilder<'a, S> {
     /// Set the `aspectRatio` field (optional)
-    pub fn aspect_ratio(
-        mut self,
-        value: impl Into<Option<crate::org_rwell::test::occurrence::AspectRatio<'a>>>,
-    ) -> Self {
-        self.__unsafe_private_named.1 = value.into();
+    pub fn aspect_ratio(mut self, value: impl Into<Option<occurrence::AspectRatio<'a>>>) -> Self {
+        self._fields.1 = value.into();
         self
     }
     /// Set the `aspectRatio` field to an Option value (optional)
-    pub fn maybe_aspect_ratio(
-        mut self,
-        value: Option<crate::org_rwell::test::occurrence::AspectRatio<'a>>,
-    ) -> Self {
-        self.__unsafe_private_named.1 = value;
+    pub fn maybe_aspect_ratio(mut self, value: Option<occurrence::AspectRatio<'a>>) -> Self {
+        self._fields.1 = value;
         self
     }
 }
@@ -973,13 +1377,13 @@ where
     /// Set the `image` field (required)
     pub fn image(
         mut self,
-        value: impl Into<jacquard_common::types::blob::BlobRef<'a>>,
+        value: impl Into<BlobRef<'a>>,
     ) -> ImageEmbedBuilder<'a, image_embed_state::SetImage<S>> {
-        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
+        self._fields.2 = Option::Some(value.into());
         ImageEmbedBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -987,300 +1391,37 @@ where
 impl<'a, S> ImageEmbedBuilder<'a, S>
 where
     S: image_embed_state::State,
-    S::Alt: image_embed_state::IsSet,
     S::Image: image_embed_state::IsSet,
+    S::Alt: image_embed_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> ImageEmbed<'a> {
         ImageEmbed {
-            alt: self.__unsafe_private_named.0.unwrap(),
-            aspect_ratio: self.__unsafe_private_named.1,
-            image: self.__unsafe_private_named.2.unwrap(),
+            alt: self._fields.0.unwrap(),
+            aspect_ratio: self._fields.1,
+            image: self._fields.2.unwrap(),
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> ImageEmbed<'a> {
         ImageEmbed {
-            alt: self.__unsafe_private_named.0.unwrap(),
-            aspect_ratio: self.__unsafe_private_named.1,
-            image: self.__unsafe_private_named.2.unwrap(),
+            alt: self._fields.0.unwrap(),
+            aspect_ratio: self._fields.1,
+            image: self._fields.2.unwrap(),
             extra_data: Some(extra_data),
         }
     }
 }
 
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for ImageEmbed<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "imageEmbed"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_occurrence()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        {
-            let value = &self.alt;
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 1000usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("alt"),
-                    max: 1000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-/// Geographic coordinates following Darwin Core standards.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic,
-    Default,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct Location<'a> {
-    /// The name of the continent (Darwin Core dwc:continent).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub continent: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    pub coordinate_uncertainty_in_meters: std::option::Option<i64>,
-    /// The name of the country or major administrative unit (Darwin Core dwc:country).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub country: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The standard code for the country (Darwin Core dwc:countryCode). ISO 3166-1-alpha-2.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub country_code: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The full, unabbreviated name of the next smaller administrative region than stateProvince (Darwin Core dwc:county).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub county: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.
-    #[serde(borrow)]
-    pub decimal_latitude: jacquard_common::CowStr<'a>,
-    /// The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
-    #[serde(borrow)]
-    pub decimal_longitude: jacquard_common::CowStr<'a>,
-    /// The ellipsoid, geodetic datum, or spatial reference system used (Darwin Core dwc:geodeticDatum). Defaults to WGS84.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub geodetic_datum: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The specific description of the place (Darwin Core dwc:locality).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub locality: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub maximum_depth_in_meters: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The upper limit of the range of elevation in meters (Darwin Core dwc:maximumElevationInMeters).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub maximum_elevation_in_meters: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The lesser depth of a range of depth below the local surface in meters (Darwin Core dwc:minimumDepthInMeters).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub minimum_depth_in_meters: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The lower limit of the range of elevation in meters (Darwin Core dwc:minimumElevationInMeters).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub minimum_elevation_in_meters: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The full, unabbreviated name of the next smaller administrative region than county (Darwin Core dwc:municipality).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub municipality: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The name of the next smaller administrative region than country (Darwin Core dwc:stateProvince).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub state_province: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The name of the water body in which the location occurs (Darwin Core dwc:waterBody).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub water_body: std::option::Option<jacquard_common::CowStr<'a>>,
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Location<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "location"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_occurrence()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.continent {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 32usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("continent"),
-                    max: 32usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.coordinate_uncertainty_in_meters {
-            if *value < 0i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Minimum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "coordinate_uncertainty_in_meters",
-                    ),
-                    min: 0i64,
-                    actual: *value,
-                });
-            }
-        }
-        if let Some(ref value) = self.country {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 128usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("country"),
-                    max: 128usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.country_code {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 2usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "country_code",
-                    ),
-                    max: 2usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.county {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 128usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("county"),
-                    max: 128usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.geodetic_datum {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "geodetic_datum",
-                    ),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.locality {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 512usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("locality"),
-                    max: 512usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.municipality {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 128usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "municipality",
-                    ),
-                    max: 128usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.state_province {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 128usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "state_province",
-                    ),
-                    max: 128usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.water_body {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 128usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("water_body"),
-                    max: 128usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-/// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism at a specific place and time.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct Occurrence<'a> {
-    /// Array of image references documenting the observation.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub blobs: std::option::Option<Vec<crate::org_rwell::test::occurrence::ImageEmbed<'a>>>,
-    /// Timestamp when this record was created.
-    pub created_at: jacquard_common::types::string::Datetime,
-    /// The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
-    pub event_date: jacquard_common::types::string::Datetime,
-    /// SPDX license identifier for this observation (maps to Dublin Core dcterms:license).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub license: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Geographic location information for the observation.
-    #[serde(borrow)]
-    pub location: crate::org_rwell::test::occurrence::Location<'a>,
-    /// Additional notes or comments about the observation.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub notes: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// DIDs of co-observers who participated in this observation. The record creator is the primary observer.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub recorded_by: std::option::Option<Vec<jacquard_common::CowStr<'a>>>,
-    /// The original textual description of the place (Darwin Core dwc:verbatimLocality).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub verbatim_locality: std::option::Option<jacquard_common::CowStr<'a>>,
+fn _default_location_geodetic_datum() -> Option<CowStr<'static>> {
+    Some(CowStr::from("WGS84"))
 }
 
 pub mod occurrence_state {
@@ -1293,68 +1434,68 @@ pub mod occurrence_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Location;
         type CreatedAt;
         type EventDate;
+        type Location;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Location = Unset;
         type CreatedAt = Unset;
         type EventDate = Unset;
-    }
-    ///State transition - sets the `location` field to Set
-    pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetLocation<S> {}
-    impl<S: State> State for SetLocation<S> {
-        type Location = Set<members::location>;
-        type CreatedAt = S::CreatedAt;
-        type EventDate = S::EventDate;
+        type Location = Unset;
     }
     ///State transition - sets the `created_at` field to Set
     pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
     impl<S: State> State for SetCreatedAt<S> {
-        type Location = S::Location;
         type CreatedAt = Set<members::created_at>;
         type EventDate = S::EventDate;
+        type Location = S::Location;
     }
     ///State transition - sets the `event_date` field to Set
     pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetEventDate<S> {}
     impl<S: State> State for SetEventDate<S> {
-        type Location = S::Location;
         type CreatedAt = S::CreatedAt;
         type EventDate = Set<members::event_date>;
+        type Location = S::Location;
+    }
+    ///State transition - sets the `location` field to Set
+    pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetLocation<S> {}
+    impl<S: State> State for SetLocation<S> {
+        type CreatedAt = S::CreatedAt;
+        type EventDate = S::EventDate;
+        type Location = Set<members::location>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `location` field
-        pub struct location(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
         ///Marker type for the `event_date` field
         pub struct event_date(());
+        ///Marker type for the `location` field
+        pub struct location(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct OccurrenceBuilder<'a, S: occurrence_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<Vec<crate::org_rwell::test::occurrence::ImageEmbed<'a>>>,
-        ::core::option::Option<jacquard_common::types::string::Datetime>,
-        ::core::option::Option<jacquard_common::types::string::Datetime>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<crate::org_rwell::test::occurrence::Location<'a>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<Vec<jacquard_common::CowStr<'a>>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (
+        Option<Vec<occurrence::ImageEmbed<'a>>>,
+        Option<Datetime>,
+        Option<Datetime>,
+        Option<OccurrenceLicense<'a>>,
+        Option<occurrence::Location<'a>>,
+        Option<CowStr<'a>>,
+        Option<Vec<CowStr<'a>>>,
+        Option<CowStr<'a>>,
     ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> Occurrence<'a> {
@@ -1368,28 +1509,22 @@ impl<'a> OccurrenceBuilder<'a, occurrence_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         OccurrenceBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None, None, None, None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None),
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `blobs` field (optional)
-    pub fn blobs(
-        mut self,
-        value: impl Into<Option<Vec<crate::org_rwell::test::occurrence::ImageEmbed<'a>>>>,
-    ) -> Self {
-        self.__unsafe_private_named.0 = value.into();
+    pub fn blobs(mut self, value: impl Into<Option<Vec<occurrence::ImageEmbed<'a>>>>) -> Self {
+        self._fields.0 = value.into();
         self
     }
     /// Set the `blobs` field to an Option value (optional)
-    pub fn maybe_blobs(
-        mut self,
-        value: Option<Vec<crate::org_rwell::test::occurrence::ImageEmbed<'a>>>,
-    ) -> Self {
-        self.__unsafe_private_named.0 = value;
+    pub fn maybe_blobs(mut self, value: Option<Vec<occurrence::ImageEmbed<'a>>>) -> Self {
+        self._fields.0 = value;
         self
     }
 }
@@ -1402,13 +1537,13 @@ where
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
-        value: impl Into<jacquard_common::types::string::Datetime>,
+        value: impl Into<Datetime>,
     ) -> OccurrenceBuilder<'a, occurrence_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         OccurrenceBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -1421,26 +1556,26 @@ where
     /// Set the `eventDate` field (required)
     pub fn event_date(
         mut self,
-        value: impl Into<jacquard_common::types::string::Datetime>,
+        value: impl Into<Datetime>,
     ) -> OccurrenceBuilder<'a, occurrence_state::SetEventDate<S>> {
-        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
+        self._fields.2 = Option::Some(value.into());
         OccurrenceBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `license` field (optional)
-    pub fn license(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.3 = value.into();
+    pub fn license(mut self, value: impl Into<Option<OccurrenceLicense<'a>>>) -> Self {
+        self._fields.3 = value.into();
         self
     }
     /// Set the `license` field to an Option value (optional)
-    pub fn maybe_license(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.3 = value;
+    pub fn maybe_license(mut self, value: Option<OccurrenceLicense<'a>>) -> Self {
+        self._fields.3 = value;
         self
     }
 }
@@ -1453,58 +1588,52 @@ where
     /// Set the `location` field (required)
     pub fn location(
         mut self,
-        value: impl Into<crate::org_rwell::test::occurrence::Location<'a>>,
+        value: impl Into<occurrence::Location<'a>>,
     ) -> OccurrenceBuilder<'a, occurrence_state::SetLocation<S>> {
-        self.__unsafe_private_named.4 = ::core::option::Option::Some(value.into());
+        self._fields.4 = Option::Some(value.into());
         OccurrenceBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `notes` field (optional)
-    pub fn notes(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.5 = value.into();
+    pub fn notes(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+        self._fields.5 = value.into();
         self
     }
     /// Set the `notes` field to an Option value (optional)
-    pub fn maybe_notes(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.5 = value;
+    pub fn maybe_notes(mut self, value: Option<CowStr<'a>>) -> Self {
+        self._fields.5 = value;
         self
     }
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `recordedBy` field (optional)
-    pub fn recorded_by(
-        mut self,
-        value: impl Into<Option<Vec<jacquard_common::CowStr<'a>>>>,
-    ) -> Self {
-        self.__unsafe_private_named.6 = value.into();
+    pub fn recorded_by(mut self, value: impl Into<Option<Vec<CowStr<'a>>>>) -> Self {
+        self._fields.6 = value.into();
         self
     }
     /// Set the `recordedBy` field to an Option value (optional)
-    pub fn maybe_recorded_by(mut self, value: Option<Vec<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.6 = value;
+    pub fn maybe_recorded_by(mut self, value: Option<Vec<CowStr<'a>>>) -> Self {
+        self._fields.6 = value;
         self
     }
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `verbatimLocality` field (optional)
-    pub fn verbatim_locality(
-        mut self,
-        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
-    ) -> Self {
-        self.__unsafe_private_named.7 = value.into();
+    pub fn verbatim_locality(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+        self._fields.7 = value.into();
         self
     }
     /// Set the `verbatimLocality` field to an Option value (optional)
-    pub fn maybe_verbatim_locality(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.7 = value;
+    pub fn maybe_verbatim_locality(mut self, value: Option<CowStr<'a>>) -> Self {
+        self._fields.7 = value;
         self
     }
 }
@@ -1512,166 +1641,42 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 impl<'a, S> OccurrenceBuilder<'a, S>
 where
     S: occurrence_state::State,
-    S::Location: occurrence_state::IsSet,
     S::CreatedAt: occurrence_state::IsSet,
     S::EventDate: occurrence_state::IsSet,
+    S::Location: occurrence_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Occurrence<'a> {
         Occurrence {
-            blobs: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            event_date: self.__unsafe_private_named.2.unwrap(),
-            license: self.__unsafe_private_named.3,
-            location: self.__unsafe_private_named.4.unwrap(),
-            notes: self.__unsafe_private_named.5,
-            recorded_by: self.__unsafe_private_named.6,
-            verbatim_locality: self.__unsafe_private_named.7,
+            blobs: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            event_date: self._fields.2.unwrap(),
+            license: self._fields.3,
+            location: self._fields.4.unwrap(),
+            notes: self._fields.5,
+            recorded_by: self._fields.6,
+            verbatim_locality: self._fields.7,
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> Occurrence<'a> {
         Occurrence {
-            blobs: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            event_date: self.__unsafe_private_named.2.unwrap(),
-            license: self.__unsafe_private_named.3,
-            location: self.__unsafe_private_named.4.unwrap(),
-            notes: self.__unsafe_private_named.5,
-            recorded_by: self.__unsafe_private_named.6,
-            verbatim_locality: self.__unsafe_private_named.7,
+            blobs: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            event_date: self._fields.2.unwrap(),
+            license: self._fields.3,
+            location: self._fields.4.unwrap(),
+            notes: self._fields.5,
+            recorded_by: self._fields.6,
+            verbatim_locality: self._fields.7,
             extra_data: Some(extra_data),
         }
-    }
-}
-
-impl<'a> Occurrence<'a> {
-    pub fn uri(
-        uri: impl Into<jacquard_common::CowStr<'a>>,
-    ) -> Result<
-        jacquard_common::types::uri::RecordUri<'a, OccurrenceRecord>,
-        jacquard_common::types::uri::UriError,
-    > {
-        jacquard_common::types::uri::RecordUri::try_from_uri(
-            jacquard_common::types::string::AtUri::new_cow(uri.into())?,
-        )
-    }
-}
-
-/// Typed wrapper for GetRecord response with this collection's record type.
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct OccurrenceGetRecordOutput<'a> {
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub cid: std::option::Option<jacquard_common::types::string::Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: jacquard_common::types::string::AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Occurrence<'a>,
-}
-
-impl From<OccurrenceGetRecordOutput<'_>> for Occurrence<'_> {
-    fn from(output: OccurrenceGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
-    }
-}
-
-impl jacquard_common::types::collection::Collection for Occurrence<'_> {
-    const NSID: &'static str = "org.rwell.test.occurrence";
-    type Record = OccurrenceRecord;
-}
-
-/// Marker type for deserializing records from this collection.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct OccurrenceRecord;
-impl jacquard_common::xrpc::XrpcResp for OccurrenceRecord {
-    const NSID: &'static str = "org.rwell.test.occurrence";
-    const ENCODING: &'static str = "application/json";
-    type Output<'de> = OccurrenceGetRecordOutput<'de>;
-    type Err<'de> = jacquard_common::types::collection::RecordError<'de>;
-}
-
-impl jacquard_common::types::collection::Collection for OccurrenceRecord {
-    const NSID: &'static str = "org.rwell.test.occurrence";
-    type Record = OccurrenceRecord;
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Occurrence<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "main"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_occurrence()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.blobs {
-            #[allow(unused_comparisons)]
-            if value.len() > 10usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("blobs"),
-                    max: 10usize,
-                    actual: value.len(),
-                });
-            }
-        }
-        if let Some(ref value) = self.license {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 32usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("license"),
-                    max: 32usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.notes {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 3000usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("notes"),
-                    max: 3000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.recorded_by {
-            #[allow(unused_comparisons)]
-            if value.len() > 10usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("recorded_by"),
-                    max: 10usize,
-                    actual: value.len(),
-                });
-            }
-        }
-        if let Some(ref value) = self.verbatim_locality {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 1024usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "verbatim_locality",
-                    ),
-                    max: 1024usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
     }
 }

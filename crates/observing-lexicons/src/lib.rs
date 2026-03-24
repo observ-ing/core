@@ -3,6 +3,8 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+extern crate alloc;
+
 #[cfg(feature = "app_bsky")]
 pub mod app_bsky;
 pub mod builder_types;

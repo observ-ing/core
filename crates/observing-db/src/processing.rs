@@ -102,7 +102,7 @@ pub fn occurrence_from_json(
             .location
             .coordinate_uncertainty_in_meters
             .map(|v| v as i32),
-        continent: record.location.continent.map(Into::into),
+        continent: record.location.continent.map(|v| v.to_string()),
         country: record.location.country.map(Into::into),
         country_code: record.location.country_code.map(Into::into),
         state_province: record.location.state_province.map(Into::into),

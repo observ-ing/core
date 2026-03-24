@@ -18,8 +18,8 @@ non_snake_case = "allow"
 all = "allow"
 
 [dependencies]
-jacquard-common = "0.9"
-jacquard-derive = "0.9"
-jacquard-lexicon = "0.9"
+jacquard-common = "0.11"
+jacquard-derive = "0.11"
+jacquard-lexicon = "0.11"
 rustversion = "1"
 serde = { workspace = true }

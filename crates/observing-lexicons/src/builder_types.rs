@@ -16,7 +16,8 @@ impl<T> Set<T> {
 /// Marker type indicating a builder field has not been set
 pub struct Unset;
 /// Trait indicating a builder field is set (has a value)
-#[rustversion::attr(
+
+#[jacquard_common::deps::codegen::rustversion::attr(
     since(1.78.0),
     diagnostic::on_unimplemented(
         message = "the field `{Self}` was not set, but this method requires it to be set",
@@ -25,7 +26,8 @@ pub struct Unset;
 )]
 pub trait IsSet: private::Sealed {}
 /// Trait indicating a builder field is unset (no value yet)
-#[rustversion::attr(
+
+#[jacquard_common::deps::codegen::rustversion::attr(
     since(1.78.0),
     diagnostic::on_unimplemented(
         message = "the field `{Self}` was already set, but this method requires it to be unset",
