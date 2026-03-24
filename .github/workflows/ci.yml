@@ -141,7 +141,7 @@ jobs:
         run: |
           ./scripts/generate-rust-types.sh
           cargo fmt -p observing-lexicons
-          cargo check -p observing-lexicons
+          git diff --exit-code crates/observing-lexicons/src/
 
   rust-test:
     runs-on: ubuntu-latest
