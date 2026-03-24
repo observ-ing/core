@@ -1,0 +1,43 @@
+{
+  "lexicon": 1,
+  "id": "bio.lexicons.temp.occurrence",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "properties": {
+          "eventDate": {
+            "type": "string",
+            "format": "datetime",
+            "description": "The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate)."
+          },
+          "decimalLatitude": {
+            "type": "string",
+            "description": "The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90."
+          },
+          "decimalLongitude": {
+            "type": "string",
+            "description": "The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180."
+          },
+          "coordinateUncertaintyInMeters": {
+            "type": "integer",
+            "description": "The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).",
+            "minimum": 0
+          },
+          "associatedMedia": {
+            "type": "array",
+            "description": "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
+            "items": {
+              "type": "ref",
+              "ref": "com.atproto.repo.strongRef"
+            },
+            "maxLength": 10
+          }
+        }
+      }
+    }
+  }
+}

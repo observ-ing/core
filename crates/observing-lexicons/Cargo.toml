@@ -6,8 +6,9 @@ description = "Generated AT Protocol record types from lexicon schemas"
 license = "AGPL-3.0-only"
 
 [features]
-default = ["app_bsky", "com_atproto", "org_rwell"]
+default = ["app_bsky", "bio_lexicons", "com_atproto", "org_rwell"]
 app_bsky = ["com_atproto"]
+bio_lexicons = ["com_atproto"]
 com_atproto = []
 org_rwell = ["com_atproto"]
 

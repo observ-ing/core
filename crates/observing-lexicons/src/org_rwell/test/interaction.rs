@@ -15,14 +15,16 @@
     PartialEq,
     Eq,
     jacquard_derive::IntoStatic,
-    Default,
+    Default
 )]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionSubject<'a> {
     /// Reference to an existing occurrence record.
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     #[serde(borrow)]
-    pub occurrence: std::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
+    pub occurrence: std::option::Option<
+        crate::com_atproto::repo::strong_ref::StrongRef<'a>,
+    >,
     /// Index of the subject within the occurrence (for multi-subject observations).
     #[serde(skip_serializing_if = "std::option::Option::is_none")]
     pub subject_index: std::option::Option<i64>,
@@ -32,7 +34,9 @@ pub struct InteractionSubject<'a> {
     pub taxon: std::option::Option<crate::org_rwell::test::identification::Taxon<'a>>,
 }
 
-fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
+fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<
+    'static,
+> {
     ::jacquard_lexicon::lexicon::LexiconDoc {
         lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
         id: ::jacquard_common::CowStr::new_static("org.rwell.test.interaction"),
@@ -272,7 +276,13 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
 /// Species interaction documenting ecological relationship between organisms.
 #[jacquard_derive::lexicon]
 #[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    jacquard_derive::IntoStatic
 )]
 #[serde(rename_all = "camelCase")]
 pub struct Interaction<'a> {
@@ -298,7 +308,7 @@ pub struct Interaction<'a> {
 
 pub mod interaction_state {
 
-    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
+    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -307,84 +317,84 @@ pub mod interaction_state {
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
         type SubjectA;
-        type InteractionType;
-        type Direction;
         type CreatedAt;
         type SubjectB;
+        type InteractionType;
+        type Direction;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
         type SubjectA = Unset;
-        type InteractionType = Unset;
-        type Direction = Unset;
         type CreatedAt = Unset;
         type SubjectB = Unset;
+        type InteractionType = Unset;
+        type Direction = Unset;
     }
     ///State transition - sets the `subject_a` field to Set
     pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectA<S> {}
     impl<S: State> State for SetSubjectA<S> {
         type SubjectA = Set<members::subject_a>;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
         type InteractionType = S::InteractionType;
         type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
-        type SubjectB = S::SubjectB;
-    }
-    ///State transition - sets the `interaction_type` field to Set
-    pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetInteractionType<S> {}
-    impl<S: State> State for SetInteractionType<S> {
-        type SubjectA = S::SubjectA;
-        type InteractionType = Set<members::interaction_type>;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
-        type SubjectB = S::SubjectB;
-    }
-    ///State transition - sets the `direction` field to Set
-    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDirection<S> {}
-    impl<S: State> State for SetDirection<S> {
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-        type Direction = Set<members::direction>;
-        type CreatedAt = S::CreatedAt;
-        type SubjectB = S::SubjectB;
     }
     ///State transition - sets the `created_at` field to Set
     pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
     impl<S: State> State for SetCreatedAt<S> {
         type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-        type Direction = S::Direction;
         type CreatedAt = Set<members::created_at>;
         type SubjectB = S::SubjectB;
+        type InteractionType = S::InteractionType;
+        type Direction = S::Direction;
     }
     ///State transition - sets the `subject_b` field to Set
     pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectB<S> {}
     impl<S: State> State for SetSubjectB<S> {
         type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-        type Direction = S::Direction;
         type CreatedAt = S::CreatedAt;
         type SubjectB = Set<members::subject_b>;
+        type InteractionType = S::InteractionType;
+        type Direction = S::Direction;
+    }
+    ///State transition - sets the `interaction_type` field to Set
+    pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetInteractionType<S> {}
+    impl<S: State> State for SetInteractionType<S> {
+        type SubjectA = S::SubjectA;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
+        type InteractionType = Set<members::interaction_type>;
+        type Direction = S::Direction;
+    }
+    ///State transition - sets the `direction` field to Set
+    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetDirection<S> {}
+    impl<S: State> State for SetDirection<S> {
+        type SubjectA = S::SubjectA;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
+        type InteractionType = S::InteractionType;
+        type Direction = Set<members::direction>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
         ///Marker type for the `subject_a` field
         pub struct subject_a(());
-        ///Marker type for the `interaction_type` field
-        pub struct interaction_type(());
-        ///Marker type for the `direction` field
-        pub struct direction(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
         ///Marker type for the `subject_b` field
         pub struct subject_b(());
+        ///Marker type for the `interaction_type` field
+        pub struct interaction_type(());
+        ///Marker type for the `direction` field
+        pub struct direction(());
     }
 }
 
@@ -396,8 +406,12 @@ pub struct InteractionBuilder<'a, S: interaction_state::State> {
         ::core::option::Option<jacquard_common::types::string::Datetime>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
         ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
-        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
+        ::core::option::Option<
+            crate::org_rwell::test::interaction::InteractionSubject<'a>,
+        >,
+        ::core::option::Option<
+            crate::org_rwell::test::interaction::InteractionSubject<'a>,
+        >,
     ),
     _phantom: ::core::marker::PhantomData<&'a ()>,
 }
@@ -422,7 +436,10 @@ impl<'a> InteractionBuilder<'a, interaction_state::Empty> {
 
 impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
+    pub fn comment(
+        mut self,
+        value: impl Into<Option<jacquard_common::CowStr<'a>>>,
+    ) -> Self {
         self.__unsafe_private_named.0 = value.into();
         self
     }
@@ -532,10 +549,10 @@ impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
     S::SubjectA: interaction_state::IsSet,
-    S::InteractionType: interaction_state::IsSet,
-    S::Direction: interaction_state::IsSet,
     S::CreatedAt: interaction_state::IsSet,
     S::SubjectB: interaction_state::IsSet,
+    S::InteractionType: interaction_state::IsSet,
+    S::Direction: interaction_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Interaction<'a> {
@@ -584,7 +601,13 @@ impl<'a> Interaction<'a> {
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 #[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
+    serde::Serialize,
+    serde::Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    jacquard_derive::IntoStatic
 )]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionGetRecordOutput<'a> {
@@ -641,7 +664,9 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Interaction<'a> {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 3000usize {
                 return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
+                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
+                        "comment",
+                    ),
                     max: 3000usize,
                     actual: <str>::len(value.as_ref()),
                 });

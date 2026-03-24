@@ -5,6 +5,9 @@
 
 #[cfg(feature = "app_bsky")]
 pub mod app_bsky;
+
+#[cfg(feature = "bio_lexicons")]
+pub mod bio_lexicons;
 pub mod builder_types;
 
 #[cfg(feature = "com_atproto")]
