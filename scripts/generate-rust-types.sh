@@ -3,11 +3,10 @@ set -euo pipefail
 
 # Generate Rust AT Protocol types from lexicon schemas using jacquard-codegen.
 #
-# Prerequisites:
-#   cargo install jacquard-lexgen
-#
 # Usage:
 #   ./scripts/generate-rust-types.sh
+
+JACQUARD_LEXGEN_VERSION="0.9.5"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -15,14 +14,15 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 INPUT_DIR="$ROOT_DIR/lexicons"
 OUTPUT_DIR="$ROOT_DIR/crates/observing-lexicons/src"
 
-# Try to find jacquard-codegen on PATH or in ~/.cargo/bin
-JACQUARD_CODEGEN="jacquard-codegen"
-if ! command -v "$JACQUARD_CODEGEN" &>/dev/null; then
-  if [ -x "$HOME/.cargo/bin/jacquard-codegen" ]; then
-    JACQUARD_CODEGEN="$HOME/.cargo/bin/jacquard-codegen"
-  else
-    echo "Error: jacquard-codegen not found. Install with: cargo install jacquard-lexgen"
-    exit 1
+# Ensure the pinned version of jacquard-codegen is installed
+if ! command -v jacquard-codegen &>/dev/null; then
+  echo "Installing jacquard-lexgen@${JACQUARD_LEXGEN_VERSION}..."
+  cargo install "jacquard-lexgen@${JACQUARD_LEXGEN_VERSION}"
+else
+  INSTALLED_VERSION=$(jacquard-codegen --version | awk '{print $2}')
+  if [ "$INSTALLED_VERSION" != "$JACQUARD_LEXGEN_VERSION" ]; then
+    echo "Updating jacquard-lexgen from $INSTALLED_VERSION to $JACQUARD_LEXGEN_VERSION..."
+    cargo install "jacquard-lexgen@${JACQUARD_LEXGEN_VERSION}"
   fi
 fi
 
@@ -30,6 +30,6 @@ echo "Generating Rust types from lexicons..."
 echo "  Input:  $INPUT_DIR"
 echo "  Output: $OUTPUT_DIR"
 
-"$JACQUARD_CODEGEN" --input "$INPUT_DIR" --output "$OUTPUT_DIR"
+jacquard-codegen --input "$INPUT_DIR" --output "$OUTPUT_DIR"
 
 echo "Rust types generated successfully!"
