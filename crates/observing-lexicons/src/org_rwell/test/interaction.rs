@@ -5,250 +5,254 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+#[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
+use core::marker::PhantomData;
+use jacquard_common::CowStr;
+
+#[allow(unused_imports)]
+use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::types::collection::{Collection, RecordError};
+use jacquard_common::types::string::{AtUri, Cid, Datetime};
+use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::xrpc::XrpcResp;
+use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_lexicon::lexicon::LexiconDoc;
+use jacquard_lexicon::schema::LexiconSchema;
+
+use crate::com_atproto::repo::strong_ref::StrongRef;
+use crate::org_rwell::test::identification::Taxon;
+use crate::org_rwell::test::interaction;
+#[allow(unused_imports)]
+use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
+use serde::{Deserialize, Serialize};
 /// A subject in an interaction - can reference an existing occurrence or just specify a taxon.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic,
-    Default,
-)]
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionSubject<'a> {
-    /// Reference to an existing occurrence record.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
+    ///Reference to an existing occurrence record.
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub occurrence: std::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-    /// Index of the subject within the occurrence (for multi-subject observations).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    pub subject_index: std::option::Option<i64>,
-    /// Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
+    pub occurrence: Option<StrongRef<'a>>,
+    ///Index of the subject within the occurrence (for multi-subject observations).  Defaults to `0`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "_default_interaction_subject_subject_index")]
+    pub subject_index: Option<i64>,
+    ///Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub taxon: std::option::Option<crate::org_rwell::test::identification::Taxon<'a>>,
+    pub taxon: Option<Taxon<'a>>,
 }
 
-fn lexicon_doc_org_rwell_test_interaction() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-    ::jacquard_lexicon::lexicon::LexiconDoc {
-        lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
-        id: ::jacquard_common::CowStr::new_static("org.rwell.test.interaction"),
-        revision: None,
-        description: None,
-        defs: {
-            let mut map = ::std::collections::BTreeMap::new();
-            map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("interactionSubject"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(::jacquard_lexicon::lexicon::LexObject {
-                    description: Some(
-                        ::jacquard_common::CowStr::new_static(
-                            "A subject in an interaction - can reference an existing occurrence or just specify a taxon.",
-                        ),
-                    ),
-                    required: None,
-                    nullable: None,
-                    properties: {
-                        #[allow(unused_mut)]
-                        let mut map = ::std::collections::BTreeMap::new();
-                        map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "occurrence",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                description: None,
-                                r#ref: ::jacquard_common::CowStr::new_static(
-                                    "com.atproto.repo.strongRef",
-                                ),
-                            }),
-                        );
-                        map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "subjectIndex",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::Integer(::jacquard_lexicon::lexicon::LexInteger {
-                                description: None,
-                                default: None,
-                                minimum: Some(0i64),
-                                maximum: Some(99i64),
-                                r#enum: None,
-                                r#const: None,
-                            }),
-                        );
-                        map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("taxon"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                description: None,
-                                r#ref: ::jacquard_common::CowStr::new_static(
-                                    "org.rwell.test.identification#taxon",
-                                ),
-                            }),
-                        );
-                        map
-                    },
-                }),
-            );
-            map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("main"),
-                ::jacquard_lexicon::lexicon::LexUserType::Record(::jacquard_lexicon::lexicon::LexRecord {
-                    description: Some(
-                        ::jacquard_common::CowStr::new_static(
-                            "Species interaction documenting ecological relationship between organisms.",
-                        ),
-                    ),
-                    key: Some(::jacquard_common::CowStr::new_static("tid")),
-                    record: ::jacquard_lexicon::lexicon::LexRecordRecord::Object(::jacquard_lexicon::lexicon::LexObject {
-                        description: None,
-                        required: Some(
-                            vec![
-                                ::jacquard_common::smol_str::SmolStr::new_static("subjectA"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("subjectB"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("interactionType"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("direction"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("createdAt")
-                            ],
-                        ),
-                        nullable: None,
-                        properties: {
-                            #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("comment"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "Additional notes about the interaction.",
-                                        ),
-                                    ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
-                                    max_length: Some(3000usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "createdAt",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "Timestamp when this record was created.",
-                                        ),
-                                    ),
-                                    format: Some(
-                                        ::jacquard_lexicon::lexicon::LexStringFormat::Datetime,
-                                    ),
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "direction",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.",
-                                        ),
-                                    ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "interactionType",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
-                                    description: Some(
-                                        ::jacquard_common::CowStr::new_static(
-                                            "Type of ecological interaction between the subjects.",
-                                        ),
-                                    ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
-                                    max_length: Some(64usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "subjectA",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static(
-                                        "#interactionSubject",
-                                    ),
-                                }),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "subjectB",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static(
-                                        "#interactionSubject",
-                                    ),
-                                }),
-                            );
-                            map
-                        },
-                    }),
-                }),
-            );
-            map
-        },
+/// Species interaction documenting ecological relationship between organisms.
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(
+    rename_all = "camelCase",
+    rename = "org.rwell.test.interaction",
+    tag = "$type"
+)]
+pub struct Interaction<'a> {
+    ///Additional notes about the interaction.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub comment: Option<CowStr<'a>>,
+    ///Timestamp when this record was created.
+    pub created_at: Datetime,
+    ///Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.  Defaults to `"AtoB"`.
+    #[serde(default = "_default_interaction_direction")]
+    #[serde(borrow)]
+    pub direction: CowStr<'a>,
+    ///Type of ecological interaction between the subjects.
+    #[serde(borrow)]
+    pub interaction_type: InteractionInteractionType<'a>,
+    ///The first subject (actor) in the interaction.
+    #[serde(borrow)]
+    pub subject_a: interaction::InteractionSubject<'a>,
+    ///The second subject (recipient) in the interaction.
+    #[serde(borrow)]
+    pub subject_b: interaction::InteractionSubject<'a>,
+}
+
+/// Type of ecological interaction between the subjects.
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum InteractionInteractionType<'a> {
+    Predation,
+    Pollination,
+    Parasitism,
+    Herbivory,
+    Symbiosis,
+    Mutualism,
+    Competition,
+    Shelter,
+    Transportation,
+    Oviposition,
+    SeedDispersal,
+    Other(CowStr<'a>),
+}
+
+impl<'a> InteractionInteractionType<'a> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Predation => "predation",
+            Self::Pollination => "pollination",
+            Self::Parasitism => "parasitism",
+            Self::Herbivory => "herbivory",
+            Self::Symbiosis => "symbiosis",
+            Self::Mutualism => "mutualism",
+            Self::Competition => "competition",
+            Self::Shelter => "shelter",
+            Self::Transportation => "transportation",
+            Self::Oviposition => "oviposition",
+            Self::SeedDispersal => "seed_dispersal",
+            Self::Other(s) => s.as_ref(),
+        }
     }
 }
 
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
+impl<'a> From<&'a str> for InteractionInteractionType<'a> {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "predation" => Self::Predation,
+            "pollination" => Self::Pollination,
+            "parasitism" => Self::Parasitism,
+            "herbivory" => Self::Herbivory,
+            "symbiosis" => Self::Symbiosis,
+            "mutualism" => Self::Mutualism,
+            "competition" => Self::Competition,
+            "shelter" => Self::Shelter,
+            "transportation" => Self::Transportation,
+            "oviposition" => Self::Oviposition,
+            "seed_dispersal" => Self::SeedDispersal,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> From<String> for InteractionInteractionType<'a> {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "predation" => Self::Predation,
+            "pollination" => Self::Pollination,
+            "parasitism" => Self::Parasitism,
+            "herbivory" => Self::Herbivory,
+            "symbiosis" => Self::Symbiosis,
+            "mutualism" => Self::Mutualism,
+            "competition" => Self::Competition,
+            "shelter" => Self::Shelter,
+            "transportation" => Self::Transportation,
+            "oviposition" => Self::Oviposition,
+            "seed_dispersal" => Self::SeedDispersal,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> core::fmt::Display for InteractionInteractionType<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<'a> AsRef<str> for InteractionInteractionType<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> serde::Serialize for InteractionInteractionType<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, 'a> serde::Deserialize<'de> for InteractionInteractionType<'a>
+where
+    'de: 'a,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = <&'de str>::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl<'a> Default for InteractionInteractionType<'a> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl jacquard_common::IntoStatic for InteractionInteractionType<'_> {
+    type Output = InteractionInteractionType<'static>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            InteractionInteractionType::Predation => InteractionInteractionType::Predation,
+            InteractionInteractionType::Pollination => InteractionInteractionType::Pollination,
+            InteractionInteractionType::Parasitism => InteractionInteractionType::Parasitism,
+            InteractionInteractionType::Herbivory => InteractionInteractionType::Herbivory,
+            InteractionInteractionType::Symbiosis => InteractionInteractionType::Symbiosis,
+            InteractionInteractionType::Mutualism => InteractionInteractionType::Mutualism,
+            InteractionInteractionType::Competition => InteractionInteractionType::Competition,
+            InteractionInteractionType::Shelter => InteractionInteractionType::Shelter,
+            InteractionInteractionType::Transportation => {
+                InteractionInteractionType::Transportation
+            }
+            InteractionInteractionType::Oviposition => InteractionInteractionType::Oviposition,
+            InteractionInteractionType::SeedDispersal => InteractionInteractionType::SeedDispersal,
+            InteractionInteractionType::Other(v) => {
+                InteractionInteractionType::Other(v.into_static())
+            }
+        }
+    }
+}
+
+/// Typed wrapper for GetRecord response with this collection's record type.
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(rename_all = "camelCase")]
+pub struct InteractionGetRecordOutput<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub cid: Option<Cid<'a>>,
+    #[serde(borrow)]
+    pub uri: AtUri<'a>,
+    #[serde(borrow)]
+    pub value: Interaction<'a>,
+}
+
+impl<'a> Interaction<'a> {
+    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, InteractionRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+    }
+}
+
+impl<'a> LexiconSchema for InteractionSubject<'a> {
     fn nsid() -> &'static str {
         "org.rwell.test.interaction"
     }
     fn def_name() -> &'static str {
         "interactionSubject"
     }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
+    fn lexicon_doc() -> LexiconDoc<'static> {
         lexicon_doc_org_rwell_test_interaction()
     }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
+    fn validate(&self) -> Result<(), ConstraintError> {
         if let Some(ref value) = self.subject_index {
             if *value > 99i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Maximum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "subject_index",
-                    ),
+                return Err(ConstraintError::Maximum {
+                    path: ValidationPath::from_field("subject_index"),
                     max: 99i64,
                     actual: *value,
                 });
@@ -256,10 +260,8 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
         }
         if let Some(ref value) = self.subject_index {
             if *value < 0i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Minimum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "subject_index",
-                    ),
+                return Err(ConstraintError::Minimum {
+                    path: ValidationPath::from_field("subject_index"),
                     min: 0i64,
                     actual: *value,
                 });
@@ -269,31 +271,233 @@ impl<'a> ::jacquard_lexicon::schema::LexiconSchema for InteractionSubject<'a> {
     }
 }
 
-/// Species interaction documenting ecological relationship between organisms.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct Interaction<'a> {
-    /// Additional notes about the interaction.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub comment: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Timestamp when this record was created.
-    pub created_at: jacquard_common::types::string::Datetime,
-    /// Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.
-    #[serde(borrow)]
-    pub direction: jacquard_common::CowStr<'a>,
-    /// Type of ecological interaction between the subjects.
-    #[serde(borrow)]
-    pub interaction_type: jacquard_common::CowStr<'a>,
-    /// The first subject (actor) in the interaction.
-    #[serde(borrow)]
-    pub subject_a: crate::org_rwell::test::interaction::InteractionSubject<'a>,
-    /// The second subject (recipient) in the interaction.
-    #[serde(borrow)]
-    pub subject_b: crate::org_rwell::test::interaction::InteractionSubject<'a>,
+/// Marker type for deserializing records from this collection.
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InteractionRecord;
+impl XrpcResp for InteractionRecord {
+    const NSID: &'static str = "org.rwell.test.interaction";
+    const ENCODING: &'static str = "application/json";
+    type Output<'de> = InteractionGetRecordOutput<'de>;
+    type Err<'de> = RecordError<'de>;
+}
+
+impl From<InteractionGetRecordOutput<'_>> for Interaction<'_> {
+    fn from(output: InteractionGetRecordOutput<'_>) -> Self {
+        use jacquard_common::IntoStatic;
+        output.value.into_static()
+    }
+}
+
+impl Collection for Interaction<'_> {
+    const NSID: &'static str = "org.rwell.test.interaction";
+    type Record = InteractionRecord;
+}
+
+impl Collection for InteractionRecord {
+    const NSID: &'static str = "org.rwell.test.interaction";
+    type Record = InteractionRecord;
+}
+
+impl<'a> LexiconSchema for Interaction<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.interaction"
+    }
+    fn def_name() -> &'static str {
+        "main"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_interaction()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.comment {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 3000usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("comment"),
+                    max: 3000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.interaction_type;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("interaction_type"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+fn _default_interaction_subject_subject_index() -> Option<i64> {
+    Some(0i64)
+}
+
+impl Default for InteractionSubject<'_> {
+    fn default() -> Self {
+        Self {
+            occurrence: None,
+            subject_index: Some(0i64),
+            taxon: None,
+            extra_data: Default::default(),
+        }
+    }
+}
+
+fn lexicon_doc_org_rwell_test_interaction() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("org.rwell.test.interaction"),
+        defs: {
+            let mut map = BTreeMap::new();
+            map.insert(
+                SmolStr::new_static("interactionSubject"),
+                LexUserType::Object(LexObject {
+                    description: Some(
+                        CowStr::new_static(
+                            "A subject in an interaction - can reference an existing occurrence or just specify a taxon.",
+                        ),
+                    ),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("occurrence"),
+                            LexObjectProperty::Ref(LexRef {
+                                r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("subjectIndex"),
+                            LexObjectProperty::Integer(LexInteger {
+                                minimum: Some(0i64),
+                                maximum: Some(99i64),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("taxon"),
+                            LexObjectProperty::Ref(LexRef {
+                                r#ref: CowStr::new_static(
+                                    "org.rwell.test.identification#taxon",
+                                ),
+                                ..Default::default()
+                            }),
+                        );
+                        map
+                    },
+                    ..Default::default()
+                }),
+            );
+            map.insert(
+                SmolStr::new_static("main"),
+                LexUserType::Record(LexRecord {
+                    description: Some(
+                        CowStr::new_static(
+                            "Species interaction documenting ecological relationship between organisms.",
+                        ),
+                    ),
+                    key: Some(CowStr::new_static("tid")),
+                    record: LexRecordRecord::Object(LexObject {
+                        required: Some(
+                            vec![
+                                SmolStr::new_static("subjectA"),
+                                SmolStr::new_static("subjectB"),
+                                SmolStr::new_static("interactionType"),
+                                SmolStr::new_static("direction"),
+                                SmolStr::new_static("createdAt")
+                            ],
+                        ),
+                        properties: {
+                            #[allow(unused_mut)]
+                            let mut map = BTreeMap::new();
+                            map.insert(
+                                SmolStr::new_static("comment"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Additional notes about the interaction.",
+                                        ),
+                                    ),
+                                    max_length: Some(3000usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("createdAt"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Timestamp when this record was created.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("direction"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("interactionType"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Type of ecological interaction between the subjects.",
+                                        ),
+                                    ),
+                                    max_length: Some(64usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("subjectA"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("#interactionSubject"),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("subjectB"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("#interactionSubject"),
+                                    ..Default::default()
+                                }),
+                            );
+                            map
+                        },
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+            );
+            map
+        },
+        ..Default::default()
+    }
+}
+
+fn _default_interaction_direction() -> CowStr<'static> {
+    CowStr::from("AtoB")
 }
 
 pub mod interaction_state {
@@ -306,83 +510,83 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type CreatedAt;
-        type Direction;
         type SubjectB;
         type SubjectA;
+        type Direction;
+        type CreatedAt;
         type InteractionType;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type CreatedAt = Unset;
-        type Direction = Unset;
         type SubjectB = Unset;
         type SubjectA = Unset;
+        type Direction = Unset;
+        type CreatedAt = Unset;
         type InteractionType = Unset;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedAt = Set<members::created_at>;
-        type Direction = S::Direction;
-        type SubjectB = S::SubjectB;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
-    }
-    ///State transition - sets the `direction` field to Set
-    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDirection<S> {}
-    impl<S: State> State for SetDirection<S> {
-        type CreatedAt = S::CreatedAt;
-        type Direction = Set<members::direction>;
-        type SubjectB = S::SubjectB;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `subject_b` field to Set
     pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectB<S> {}
     impl<S: State> State for SetSubjectB<S> {
-        type CreatedAt = S::CreatedAt;
-        type Direction = S::Direction;
         type SubjectB = Set<members::subject_b>;
         type SubjectA = S::SubjectA;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
         type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `subject_a` field to Set
     pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectA<S> {}
     impl<S: State> State for SetSubjectA<S> {
-        type CreatedAt = S::CreatedAt;
-        type Direction = S::Direction;
         type SubjectB = S::SubjectB;
         type SubjectA = Set<members::subject_a>;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
+        type InteractionType = S::InteractionType;
+    }
+    ///State transition - sets the `direction` field to Set
+    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetDirection<S> {}
+    impl<S: State> State for SetDirection<S> {
+        type SubjectB = S::SubjectB;
+        type SubjectA = S::SubjectA;
+        type Direction = Set<members::direction>;
+        type CreatedAt = S::CreatedAt;
+        type InteractionType = S::InteractionType;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type SubjectB = S::SubjectB;
+        type SubjectA = S::SubjectA;
+        type Direction = S::Direction;
+        type CreatedAt = Set<members::created_at>;
         type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `interaction_type` field to Set
     pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetInteractionType<S> {}
     impl<S: State> State for SetInteractionType<S> {
-        type CreatedAt = S::CreatedAt;
-        type Direction = S::Direction;
         type SubjectB = S::SubjectB;
         type SubjectA = S::SubjectA;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
         type InteractionType = Set<members::interaction_type>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
-        ///Marker type for the `direction` field
-        pub struct direction(());
         ///Marker type for the `subject_b` field
         pub struct subject_b(());
         ///Marker type for the `subject_a` field
         pub struct subject_a(());
+        ///Marker type for the `direction` field
+        pub struct direction(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
         ///Marker type for the `interaction_type` field
         pub struct interaction_type(());
     }
@@ -390,16 +594,16 @@ pub mod interaction_state {
 
 /// Builder for constructing an instance of this type
 pub struct InteractionBuilder<'a, S: interaction_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::types::string::Datetime>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
-        ::core::option::Option<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (
+        Option<CowStr<'a>>,
+        Option<Datetime>,
+        Option<CowStr<'a>>,
+        Option<InteractionInteractionType<'a>>,
+        Option<interaction::InteractionSubject<'a>>,
+        Option<interaction::InteractionSubject<'a>>,
     ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> Interaction<'a> {
@@ -413,22 +617,22 @@ impl<'a> InteractionBuilder<'a, interaction_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None, None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.0 = value.into();
+    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+        self._fields.0 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.0 = value;
+    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+        self._fields.0 = value;
         self
     }
 }
@@ -441,13 +645,13 @@ where
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
-        value: impl Into<jacquard_common::types::string::Datetime>,
+        value: impl Into<Datetime>,
     ) -> InteractionBuilder<'a, interaction_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -460,13 +664,13 @@ where
     /// Set the `direction` field (required)
     pub fn direction(
         mut self,
-        value: impl Into<jacquard_common::CowStr<'a>>,
+        value: impl Into<CowStr<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetDirection<S>> {
-        self.__unsafe_private_named.2 = ::core::option::Option::Some(value.into());
+        self._fields.2 = Option::Some(value.into());
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -479,13 +683,13 @@ where
     /// Set the `interactionType` field (required)
     pub fn interaction_type(
         mut self,
-        value: impl Into<jacquard_common::CowStr<'a>>,
+        value: impl Into<InteractionInteractionType<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetInteractionType<S>> {
-        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -498,13 +702,13 @@ where
     /// Set the `subjectA` field (required)
     pub fn subject_a(
         mut self,
-        value: impl Into<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
+        value: impl Into<interaction::InteractionSubject<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetSubjectA<S>> {
-        self.__unsafe_private_named.4 = ::core::option::Option::Some(value.into());
+        self._fields.4 = Option::Some(value.into());
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -517,13 +721,13 @@ where
     /// Set the `subjectB` field (required)
     pub fn subject_b(
         mut self,
-        value: impl Into<crate::org_rwell::test::interaction::InteractionSubject<'a>>,
+        value: impl Into<interaction::InteractionSubject<'a>>,
     ) -> InteractionBuilder<'a, interaction_state::SetSubjectB<S>> {
-        self.__unsafe_private_named.5 = ::core::option::Option::Some(value.into());
+        self._fields.5 = Option::Some(value.into());
         InteractionBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -531,135 +735,40 @@ where
 impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
-    S::CreatedAt: interaction_state::IsSet,
-    S::Direction: interaction_state::IsSet,
     S::SubjectB: interaction_state::IsSet,
     S::SubjectA: interaction_state::IsSet,
+    S::Direction: interaction_state::IsSet,
+    S::CreatedAt: interaction_state::IsSet,
     S::InteractionType: interaction_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Interaction<'a> {
         Interaction {
-            comment: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            direction: self.__unsafe_private_named.2.unwrap(),
-            interaction_type: self.__unsafe_private_named.3.unwrap(),
-            subject_a: self.__unsafe_private_named.4.unwrap(),
-            subject_b: self.__unsafe_private_named.5.unwrap(),
+            comment: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            direction: self._fields.2.unwrap(),
+            interaction_type: self._fields.3.unwrap(),
+            subject_a: self._fields.4.unwrap(),
+            subject_b: self._fields.5.unwrap(),
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> Interaction<'a> {
         Interaction {
-            comment: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            direction: self.__unsafe_private_named.2.unwrap(),
-            interaction_type: self.__unsafe_private_named.3.unwrap(),
-            subject_a: self.__unsafe_private_named.4.unwrap(),
-            subject_b: self.__unsafe_private_named.5.unwrap(),
+            comment: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            direction: self._fields.2.unwrap(),
+            interaction_type: self._fields.3.unwrap(),
+            subject_a: self._fields.4.unwrap(),
+            subject_b: self._fields.5.unwrap(),
             extra_data: Some(extra_data),
         }
-    }
-}
-
-impl<'a> Interaction<'a> {
-    pub fn uri(
-        uri: impl Into<jacquard_common::CowStr<'a>>,
-    ) -> Result<
-        jacquard_common::types::uri::RecordUri<'a, InteractionRecord>,
-        jacquard_common::types::uri::UriError,
-    > {
-        jacquard_common::types::uri::RecordUri::try_from_uri(
-            jacquard_common::types::string::AtUri::new_cow(uri.into())?,
-        )
-    }
-}
-
-/// Typed wrapper for GetRecord response with this collection's record type.
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct InteractionGetRecordOutput<'a> {
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub cid: std::option::Option<jacquard_common::types::string::Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: jacquard_common::types::string::AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Interaction<'a>,
-}
-
-impl From<InteractionGetRecordOutput<'_>> for Interaction<'_> {
-    fn from(output: InteractionGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
-    }
-}
-
-impl jacquard_common::types::collection::Collection for Interaction<'_> {
-    const NSID: &'static str = "org.rwell.test.interaction";
-    type Record = InteractionRecord;
-}
-
-/// Marker type for deserializing records from this collection.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct InteractionRecord;
-impl jacquard_common::xrpc::XrpcResp for InteractionRecord {
-    const NSID: &'static str = "org.rwell.test.interaction";
-    const ENCODING: &'static str = "application/json";
-    type Output<'de> = InteractionGetRecordOutput<'de>;
-    type Err<'de> = jacquard_common::types::collection::RecordError<'de>;
-}
-
-impl jacquard_common::types::collection::Collection for InteractionRecord {
-    const NSID: &'static str = "org.rwell.test.interaction";
-    type Record = InteractionRecord;
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Interaction<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.interaction"
-    }
-    fn def_name() -> &'static str {
-        "main"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_interaction()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.comment {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 3000usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
-                    max: 3000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        {
-            let value = &self.interaction_type;
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "interaction_type",
-                    ),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
     }
 }

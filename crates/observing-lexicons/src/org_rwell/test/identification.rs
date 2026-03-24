@@ -5,35 +5,466 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+#[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
+use core::marker::PhantomData;
+use jacquard_common::CowStr;
+
+#[allow(unused_imports)]
+use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::types::collection::{Collection, RecordError};
+use jacquard_common::types::string::{AtUri, Cid, Datetime};
+use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::xrpc::XrpcResp;
+use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_lexicon::lexicon::LexiconDoc;
+use jacquard_lexicon::schema::LexiconSchema;
+
+use crate::com_atproto::repo::strong_ref::StrongRef;
+use crate::org_rwell::test::identification;
+#[allow(unused_imports)]
+use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
+use serde::{Deserialize, Serialize};
 /// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(
+    rename_all = "camelCase",
+    rename = "org.rwell.test.identification",
+    tag = "$type"
 )]
-#[serde(rename_all = "camelCase")]
 pub struct Identification<'a> {
-    /// Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
+    ///Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub comment: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Timestamp when this identification was created (Darwin Core dwc:dateIdentified).
-    pub created_at: jacquard_common::types::string::Datetime,
-    /// If true, this identification agrees with the current community ID rather than proposing a new one.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    pub is_agreement: std::option::Option<bool>,
-    /// A strong reference (CID + URI) to the observation being identified.
+    pub comment: Option<CowStr<'a>>,
+    ///Timestamp when this identification was created (Darwin Core dwc:dateIdentified).
+    pub created_at: Datetime,
+    ///If true, this identification agrees with the current community ID rather than proposing a new one.  Defaults to `false`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "_default_identification_is_agreement")]
+    pub is_agreement: Option<bool>,
+    ///A strong reference (CID + URI) to the observation being identified.
     #[serde(borrow)]
-    pub subject: crate::com_atproto::repo::strong_ref::StrongRef<'a>,
-    /// Index of the subject within the occurrence being identified. When multiple organisms are photographed together (e.g., butterfly on a flower), each gets a unique index starting from 0. Creating an identification with a new subjectIndex implicitly creates that subject.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    pub subject_index: std::option::Option<i64>,
-    /// The taxonomic determination being proposed (Darwin Core Taxon class).
+    pub subject: StrongRef<'a>,
+    ///Index of the subject within the occurrence being identified. When multiple organisms are photographed together (e.g., butterfly on a flower), each gets a unique index starting from 0. Creating an identification with a new subjectIndex implicitly creates that subject.  Defaults to `0`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default = "_default_identification_subject_index")]
+    pub subject_index: Option<i64>,
+    ///The taxonomic determination being proposed (Darwin Core Taxon class).
     #[serde(borrow)]
-    pub taxon: crate::org_rwell::test::identification::Taxon<'a>,
-    /// [DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source.
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
+    pub taxon: identification::Taxon<'a>,
+    ///[DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source.
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub taxon_id: std::option::Option<jacquard_common::CowStr<'a>>,
+    pub taxon_id: Option<CowStr<'a>>,
+}
+
+/// Typed wrapper for GetRecord response with this collection's record type.
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentificationGetRecordOutput<'a> {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub cid: Option<Cid<'a>>,
+    #[serde(borrow)]
+    pub uri: AtUri<'a>,
+    #[serde(borrow)]
+    pub value: Identification<'a>,
+}
+
+/// Taxonomic information following Darwin Core Taxon class (dwc:Taxon).
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct Taxon<'a> {
+    ///Taxonomic class (Darwin Core dwc:class).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub class: Option<CowStr<'a>>,
+    ///Taxonomic family (Darwin Core dwc:family).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub family: Option<CowStr<'a>>,
+    ///Taxonomic genus (Darwin Core dwc:genus).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub genus: Option<CowStr<'a>>,
+    ///Taxonomic kingdom (Darwin Core dwc:kingdom).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub kingdom: Option<CowStr<'a>>,
+    ///Taxonomic order (Darwin Core dwc:order).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub order: Option<CowStr<'a>>,
+    ///Taxonomic phylum (Darwin Core dwc:phylum).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub phylum: Option<CowStr<'a>>,
+    ///The full scientific name (Darwin Core dwc:scientificName).
+    #[serde(borrow)]
+    pub scientific_name: CowStr<'a>,
+    ///The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub scientific_name_authorship: Option<CowStr<'a>>,
+    ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub taxon_rank: Option<TaxonTaxonRank<'a>>,
+    ///Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(borrow)]
+    pub vernacular_name: Option<CowStr<'a>>,
+}
+
+/// The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaxonTaxonRank<'a> {
+    Kingdom,
+    Phylum,
+    Class,
+    Order,
+    Family,
+    Genus,
+    Species,
+    Subspecies,
+    Variety,
+    Form,
+    Other(CowStr<'a>),
+}
+
+impl<'a> TaxonTaxonRank<'a> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Kingdom => "kingdom",
+            Self::Phylum => "phylum",
+            Self::Class => "class",
+            Self::Order => "order",
+            Self::Family => "family",
+            Self::Genus => "genus",
+            Self::Species => "species",
+            Self::Subspecies => "subspecies",
+            Self::Variety => "variety",
+            Self::Form => "form",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for TaxonTaxonRank<'a> {
+    fn from(s: &'a str) -> Self {
+        match s {
+            "kingdom" => Self::Kingdom,
+            "phylum" => Self::Phylum,
+            "class" => Self::Class,
+            "order" => Self::Order,
+            "family" => Self::Family,
+            "genus" => Self::Genus,
+            "species" => Self::Species,
+            "subspecies" => Self::Subspecies,
+            "variety" => Self::Variety,
+            "form" => Self::Form,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> From<String> for TaxonTaxonRank<'a> {
+    fn from(s: String) -> Self {
+        match s.as_str() {
+            "kingdom" => Self::Kingdom,
+            "phylum" => Self::Phylum,
+            "class" => Self::Class,
+            "order" => Self::Order,
+            "family" => Self::Family,
+            "genus" => Self::Genus,
+            "species" => Self::Species,
+            "subspecies" => Self::Subspecies,
+            "variety" => Self::Variety,
+            "form" => Self::Form,
+            _ => Self::Other(CowStr::from(s)),
+        }
+    }
+}
+
+impl<'a> core::fmt::Display for TaxonTaxonRank<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<'a> AsRef<str> for TaxonTaxonRank<'a> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> serde::Serialize for TaxonTaxonRank<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, 'a> serde::Deserialize<'de> for TaxonTaxonRank<'a>
+where
+    'de: 'a,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = <&'de str>::deserialize(deserializer)?;
+        Ok(Self::from(s))
+    }
+}
+
+impl<'a> Default for TaxonTaxonRank<'a> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl jacquard_common::IntoStatic for TaxonTaxonRank<'_> {
+    type Output = TaxonTaxonRank<'static>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            TaxonTaxonRank::Kingdom => TaxonTaxonRank::Kingdom,
+            TaxonTaxonRank::Phylum => TaxonTaxonRank::Phylum,
+            TaxonTaxonRank::Class => TaxonTaxonRank::Class,
+            TaxonTaxonRank::Order => TaxonTaxonRank::Order,
+            TaxonTaxonRank::Family => TaxonTaxonRank::Family,
+            TaxonTaxonRank::Genus => TaxonTaxonRank::Genus,
+            TaxonTaxonRank::Species => TaxonTaxonRank::Species,
+            TaxonTaxonRank::Subspecies => TaxonTaxonRank::Subspecies,
+            TaxonTaxonRank::Variety => TaxonTaxonRank::Variety,
+            TaxonTaxonRank::Form => TaxonTaxonRank::Form,
+            TaxonTaxonRank::Other(v) => TaxonTaxonRank::Other(v.into_static()),
+        }
+    }
+}
+
+impl<'a> Identification<'a> {
+    pub fn uri(
+        uri: impl Into<CowStr<'a>>,
+    ) -> Result<RecordUri<'a, IdentificationRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+    }
+}
+
+/// Marker type for deserializing records from this collection.
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct IdentificationRecord;
+impl XrpcResp for IdentificationRecord {
+    const NSID: &'static str = "org.rwell.test.identification";
+    const ENCODING: &'static str = "application/json";
+    type Output<'de> = IdentificationGetRecordOutput<'de>;
+    type Err<'de> = RecordError<'de>;
+}
+
+impl From<IdentificationGetRecordOutput<'_>> for Identification<'_> {
+    fn from(output: IdentificationGetRecordOutput<'_>) -> Self {
+        use jacquard_common::IntoStatic;
+        output.value.into_static()
+    }
+}
+
+impl Collection for Identification<'_> {
+    const NSID: &'static str = "org.rwell.test.identification";
+    type Record = IdentificationRecord;
+}
+
+impl Collection for IdentificationRecord {
+    const NSID: &'static str = "org.rwell.test.identification";
+    type Record = IdentificationRecord;
+}
+
+impl<'a> LexiconSchema for Identification<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.identification"
+    }
+    fn def_name() -> &'static str {
+        "main"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_identification()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.comment {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 3000usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("comment"),
+                    max: 3000usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.subject_index {
+            if *value > 99i64 {
+                return Err(ConstraintError::Maximum {
+                    path: ValidationPath::from_field("subject_index"),
+                    max: 99i64,
+                    actual: *value,
+                });
+            }
+        }
+        if let Some(ref value) = self.subject_index {
+            if *value < 0i64 {
+                return Err(ConstraintError::Minimum {
+                    path: ValidationPath::from_field("subject_index"),
+                    min: 0i64,
+                    actual: *value,
+                });
+            }
+        }
+        if let Some(ref value) = self.taxon_id {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("taxon_id"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a> LexiconSchema for Taxon<'a> {
+    fn nsid() -> &'static str {
+        "org.rwell.test.identification"
+    }
+    fn def_name() -> &'static str {
+        "taxon"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_org_rwell_test_identification()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.class {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("class"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.family {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("family"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.genus {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("genus"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.kingdom {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("kingdom"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.order {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("order"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.phylum {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("phylum"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.scientific_name;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 256usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("scientific_name"),
+                    max: 256usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.scientific_name_authorship {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 256usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("scientific_name_authorship"),
+                    max: 256usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.taxon_rank {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 32usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("taxon_rank"),
+                    max: 32usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.vernacular_name {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 256usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("vernacular_name"),
+                    max: 256usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
+fn _default_identification_is_agreement() -> Option<bool> {
+    Some(false)
+}
+
+fn _default_identification_subject_index() -> Option<i64> {
+    Some(0i64)
 }
 
 pub mod identification_state {
@@ -46,67 +477,67 @@ pub mod identification_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Subject;
-        type Taxon;
         type CreatedAt;
+        type Taxon;
+        type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Subject = Unset;
-        type Taxon = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Subject = Set<members::subject>;
-        type Taxon = S::Taxon;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `taxon` field to Set
-    pub struct SetTaxon<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetTaxon<S> {}
-    impl<S: State> State for SetTaxon<S> {
-        type Subject = S::Subject;
-        type Taxon = Set<members::taxon>;
-        type CreatedAt = S::CreatedAt;
+        type Taxon = Unset;
+        type Subject = Unset;
     }
     ///State transition - sets the `created_at` field to Set
     pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
     impl<S: State> State for SetCreatedAt<S> {
-        type Subject = S::Subject;
-        type Taxon = S::Taxon;
         type CreatedAt = Set<members::created_at>;
+        type Taxon = S::Taxon;
+        type Subject = S::Subject;
+    }
+    ///State transition - sets the `taxon` field to Set
+    pub struct SetTaxon<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetTaxon<S> {}
+    impl<S: State> State for SetTaxon<S> {
+        type CreatedAt = S::CreatedAt;
+        type Taxon = Set<members::taxon>;
+        type Subject = S::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetSubject<S> {}
+    impl<S: State> State for SetSubject<S> {
+        type CreatedAt = S::CreatedAt;
+        type Taxon = S::Taxon;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject` field
-        pub struct subject(());
-        ///Marker type for the `taxon` field
-        pub struct taxon(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `taxon` field
+        pub struct taxon(());
+        ///Marker type for the `subject` field
+        pub struct subject(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct IdentificationBuilder<'a, S: identification_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
-        ::core::option::Option<jacquard_common::types::string::Datetime>,
-        ::core::option::Option<bool>,
-        ::core::option::Option<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
-        ::core::option::Option<i64>,
-        ::core::option::Option<crate::org_rwell::test::identification::Taxon<'a>>,
-        ::core::option::Option<jacquard_common::CowStr<'a>>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (
+        Option<CowStr<'a>>,
+        Option<Datetime>,
+        Option<bool>,
+        Option<StrongRef<'a>>,
+        Option<i64>,
+        Option<identification::Taxon<'a>>,
+        Option<CowStr<'a>>,
     ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> Identification<'a> {
@@ -120,22 +551,22 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         IdentificationBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None, None, None, None, None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None),
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.0 = value.into();
+    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+        self._fields.0 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.0 = value;
+    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+        self._fields.0 = value;
         self
     }
 }
@@ -148,13 +579,13 @@ where
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
-        value: impl Into<jacquard_common::types::string::Datetime>,
+        value: impl Into<Datetime>,
     ) -> IdentificationBuilder<'a, identification_state::SetCreatedAt<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         IdentificationBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -162,12 +593,12 @@ where
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `isAgreement` field (optional)
     pub fn is_agreement(mut self, value: impl Into<Option<bool>>) -> Self {
-        self.__unsafe_private_named.2 = value.into();
+        self._fields.2 = value.into();
         self
     }
     /// Set the `isAgreement` field to an Option value (optional)
     pub fn maybe_is_agreement(mut self, value: Option<bool>) -> Self {
-        self.__unsafe_private_named.2 = value;
+        self._fields.2 = value;
         self
     }
 }
@@ -180,13 +611,13 @@ where
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<crate::com_atproto::repo::strong_ref::StrongRef<'a>>,
+        value: impl Into<StrongRef<'a>>,
     ) -> IdentificationBuilder<'a, identification_state::SetSubject<S>> {
-        self.__unsafe_private_named.3 = ::core::option::Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         IdentificationBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -194,12 +625,12 @@ where
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `subjectIndex` field (optional)
     pub fn subject_index(mut self, value: impl Into<Option<i64>>) -> Self {
-        self.__unsafe_private_named.4 = value.into();
+        self._fields.4 = value.into();
         self
     }
     /// Set the `subjectIndex` field to an Option value (optional)
     pub fn maybe_subject_index(mut self, value: Option<i64>) -> Self {
-        self.__unsafe_private_named.4 = value;
+        self._fields.4 = value;
         self
     }
 }
@@ -212,26 +643,26 @@ where
     /// Set the `taxon` field (required)
     pub fn taxon(
         mut self,
-        value: impl Into<crate::org_rwell::test::identification::Taxon<'a>>,
+        value: impl Into<identification::Taxon<'a>>,
     ) -> IdentificationBuilder<'a, identification_state::SetTaxon<S>> {
-        self.__unsafe_private_named.5 = ::core::option::Option::Some(value.into());
+        self._fields.5 = Option::Some(value.into());
         IdentificationBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonId` field (optional)
-    pub fn taxon_id(mut self, value: impl Into<Option<jacquard_common::CowStr<'a>>>) -> Self {
-        self.__unsafe_private_named.6 = value.into();
+    pub fn taxon_id(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+        self._fields.6 = value.into();
         self
     }
     /// Set the `taxonId` field to an Option value (optional)
-    pub fn maybe_taxon_id(mut self, value: Option<jacquard_common::CowStr<'a>>) -> Self {
-        self.__unsafe_private_named.6 = value;
+    pub fn maybe_taxon_id(mut self, value: Option<CowStr<'a>>) -> Self {
+        self._fields.6 = value;
         self
     }
 }
@@ -239,692 +670,284 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 impl<'a, S> IdentificationBuilder<'a, S>
 where
     S: identification_state::State,
-    S::Subject: identification_state::IsSet,
-    S::Taxon: identification_state::IsSet,
     S::CreatedAt: identification_state::IsSet,
+    S::Taxon: identification_state::IsSet,
+    S::Subject: identification_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Identification<'a> {
         Identification {
-            comment: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            is_agreement: self.__unsafe_private_named.2,
-            subject: self.__unsafe_private_named.3.unwrap(),
-            subject_index: self.__unsafe_private_named.4,
-            taxon: self.__unsafe_private_named.5.unwrap(),
-            taxon_id: self.__unsafe_private_named.6,
+            comment: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            is_agreement: self._fields.2.or_else(|| Some(false)),
+            subject: self._fields.3.unwrap(),
+            subject_index: self._fields.4.or_else(|| Some(0i64)),
+            taxon: self._fields.5.unwrap(),
+            taxon_id: self._fields.6,
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> Identification<'a> {
         Identification {
-            comment: self.__unsafe_private_named.0,
-            created_at: self.__unsafe_private_named.1.unwrap(),
-            is_agreement: self.__unsafe_private_named.2,
-            subject: self.__unsafe_private_named.3.unwrap(),
-            subject_index: self.__unsafe_private_named.4,
-            taxon: self.__unsafe_private_named.5.unwrap(),
-            taxon_id: self.__unsafe_private_named.6,
+            comment: self._fields.0,
+            created_at: self._fields.1.unwrap(),
+            is_agreement: self._fields.2.or_else(|| Some(false)),
+            subject: self._fields.3.unwrap(),
+            subject_index: self._fields.4.or_else(|| Some(0i64)),
+            taxon: self._fields.5.unwrap(),
+            taxon_id: self._fields.6,
             extra_data: Some(extra_data),
         }
     }
 }
 
-impl<'a> Identification<'a> {
-    pub fn uri(
-        uri: impl Into<jacquard_common::CowStr<'a>>,
-    ) -> Result<
-        jacquard_common::types::uri::RecordUri<'a, IdentificationRecord>,
-        jacquard_common::types::uri::UriError,
-    > {
-        jacquard_common::types::uri::RecordUri::try_from_uri(
-            jacquard_common::types::string::AtUri::new_cow(uri.into())?,
-        )
-    }
-}
-
-/// Typed wrapper for GetRecord response with this collection's record type.
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct IdentificationGetRecordOutput<'a> {
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub cid: std::option::Option<jacquard_common::types::string::Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: jacquard_common::types::string::AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Identification<'a>,
-}
-
-impl From<IdentificationGetRecordOutput<'_>> for Identification<'_> {
-    fn from(output: IdentificationGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
-    }
-}
-
-impl jacquard_common::types::collection::Collection for Identification<'_> {
-    const NSID: &'static str = "org.rwell.test.identification";
-    type Record = IdentificationRecord;
-}
-
-/// Marker type for deserializing records from this collection.
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct IdentificationRecord;
-impl jacquard_common::xrpc::XrpcResp for IdentificationRecord {
-    const NSID: &'static str = "org.rwell.test.identification";
-    const ENCODING: &'static str = "application/json";
-    type Output<'de> = IdentificationGetRecordOutput<'de>;
-    type Err<'de> = jacquard_common::types::collection::RecordError<'de>;
-}
-
-impl jacquard_common::types::collection::Collection for IdentificationRecord {
-    const NSID: &'static str = "org.rwell.test.identification";
-    type Record = IdentificationRecord;
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Identification<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.identification"
-    }
-    fn def_name() -> &'static str {
-        "main"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_identification()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.comment {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 3000usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("comment"),
-                    max: 3000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.subject_index {
-            if *value > 99i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Maximum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "subject_index",
-                    ),
-                    max: 99i64,
-                    actual: *value,
-                });
-            }
-        }
-        if let Some(ref value) = self.subject_index {
-            if *value < 0i64 {
-                return Err(::jacquard_lexicon::validation::ConstraintError::Minimum {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "subject_index",
-                    ),
-                    min: 0i64,
-                    actual: *value,
-                });
-            }
-        }
-        if let Some(ref value) = self.taxon_id {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_id"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-fn lexicon_doc_org_rwell_test_identification() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-    ::jacquard_lexicon::lexicon::LexiconDoc {
-        lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
-        id: ::jacquard_common::CowStr::new_static("org.rwell.test.identification"),
-        revision: None,
-        description: None,
+fn lexicon_doc_org_rwell_test_identification() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("org.rwell.test.identification"),
         defs: {
-            let mut map = ::std::collections::BTreeMap::new();
+            let mut map = BTreeMap::new();
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("main"),
-                ::jacquard_lexicon::lexicon::LexUserType::Record(::jacquard_lexicon::lexicon::LexRecord {
+                SmolStr::new_static("main"),
+                LexUserType::Record(LexRecord {
                     description: Some(
-                        ::jacquard_common::CowStr::new_static(
+                        CowStr::new_static(
                             "An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.",
                         ),
                     ),
-                    key: Some(::jacquard_common::CowStr::new_static("tid")),
-                    record: ::jacquard_lexicon::lexicon::LexRecordRecord::Object(::jacquard_lexicon::lexicon::LexObject {
-                        description: None,
+                    key: Some(CowStr::new_static("tid")),
+                    record: LexRecordRecord::Object(LexObject {
                         required: Some(
                             vec![
-                                ::jacquard_common::smol_str::SmolStr::new_static("subject"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("taxon"),
-                                ::jacquard_common::smol_str::SmolStr::new_static("createdAt")
+                                SmolStr::new_static("subject"),
+                                SmolStr::new_static("taxon"),
+                                SmolStr::new_static("createdAt")
                             ],
                         ),
-                        nullable: None,
                         properties: {
                             #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
+                            let mut map = BTreeMap::new();
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("comment"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("comment"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
                                         ),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(3000usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "createdAt",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("createdAt"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "Timestamp when this identification was created (Darwin Core dwc:dateIdentified).",
                                         ),
                                     ),
-                                    format: Some(
-                                        ::jacquard_lexicon::lexicon::LexStringFormat::Datetime,
-                                    ),
-                                    default: None,
-                                    min_length: None,
-                                    max_length: None,
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "isAgreement",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Boolean(::jacquard_lexicon::lexicon::LexBoolean {
-                                    description: None,
-                                    default: None,
-                                    r#const: None,
+                                SmolStr::new_static("isAgreement"),
+                                LexObjectProperty::Boolean(LexBoolean {
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("subject"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static(
-                                        "com.atproto.repo.strongRef",
-                                    ),
+                                SmolStr::new_static("subject"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static(
-                                    "subjectIndex",
-                                ),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Integer(::jacquard_lexicon::lexicon::LexInteger {
-                                    description: None,
-                                    default: None,
+                                SmolStr::new_static("subjectIndex"),
+                                LexObjectProperty::Integer(LexInteger {
                                     minimum: Some(0i64),
                                     maximum: Some(99i64),
-                                    r#enum: None,
-                                    r#const: None,
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("taxon"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::Ref(::jacquard_lexicon::lexicon::LexRef {
-                                    description: None,
-                                    r#ref: ::jacquard_common::CowStr::new_static("#taxon"),
+                                SmolStr::new_static("taxon"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("#taxon"),
+                                    ..Default::default()
                                 }),
                             );
                             map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("taxonId"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                                SmolStr::new_static("taxonId"),
+                                LexObjectProperty::String(LexString {
                                     description: Some(
-                                        ::jacquard_common::CowStr::new_static(
+                                        CowStr::new_static(
                                             "[DEPRECATED: Use kingdom + scientificName for taxon resolution] External taxon identifier (e.g., gbif:2878688). Prefixed with source.",
                                         ),
                                     ),
-                                    format: None,
-                                    default: None,
-                                    min_length: None,
                                     max_length: Some(64usize),
-                                    min_graphemes: None,
-                                    max_graphemes: None,
-                                    r#enum: None,
-                                    r#const: None,
-                                    known_values: None,
+                                    ..Default::default()
                                 }),
                             );
                             map
                         },
+                        ..Default::default()
                     }),
+                    ..Default::default()
                 }),
             );
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("taxon"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(::jacquard_lexicon::lexicon::LexObject {
+                SmolStr::new_static("taxon"),
+                LexUserType::Object(LexObject {
                     description: Some(
-                        ::jacquard_common::CowStr::new_static(
+                        CowStr::new_static(
                             "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
                         ),
                     ),
-                    required: Some(
-                        vec![
-                            ::jacquard_common::smol_str::SmolStr::new_static("scientificName")
-                        ],
-                    ),
-                    nullable: None,
+                    required: Some(vec![SmolStr::new_static("scientificName")]),
                     properties: {
                         #[allow(unused_mut)]
-                        let mut map = ::std::collections::BTreeMap::new();
+                        let mut map = BTreeMap::new();
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("class"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("class"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic class (Darwin Core dwc:class).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("family"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("family"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic family (Darwin Core dwc:family).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("genus"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("genus"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic genus (Darwin Core dwc:genus).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("kingdom"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("kingdom"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic kingdom (Darwin Core dwc:kingdom).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("order"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("order"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic order (Darwin Core dwc:order).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static("phylum"),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("phylum"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Taxonomic phylum (Darwin Core dwc:phylum).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(64usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "scientificName",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("scientificName"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The full scientific name (Darwin Core dwc:scientificName).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(256usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "scientificNameAuthorship",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("scientificNameAuthorship"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(256usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "taxonRank",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("taxonRank"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(32usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map.insert(
-                            ::jacquard_common::smol_str::SmolStr::new_static(
-                                "vernacularName",
-                            ),
-                            ::jacquard_lexicon::lexicon::LexObjectProperty::String(::jacquard_lexicon::lexicon::LexString {
+                            SmolStr::new_static("vernacularName"),
+                            LexObjectProperty::String(LexString {
                                 description: Some(
-                                    ::jacquard_common::CowStr::new_static(
+                                    CowStr::new_static(
                                         "Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).",
                                     ),
                                 ),
-                                format: None,
-                                default: None,
-                                min_length: None,
                                 max_length: Some(256usize),
-                                min_graphemes: None,
-                                max_graphemes: None,
-                                r#enum: None,
-                                r#const: None,
-                                known_values: None,
+                                ..Default::default()
                             }),
                         );
                         map
                     },
+                    ..Default::default()
                 }),
             );
             map
         },
-    }
-}
-
-/// Taxonomic information following Darwin Core Taxon class (dwc:Taxon).
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize,
-    serde::Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    jacquard_derive::IntoStatic,
-    Default,
-)]
-#[serde(rename_all = "camelCase")]
-pub struct Taxon<'a> {
-    /// Taxonomic class (Darwin Core dwc:class).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub class: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Taxonomic family (Darwin Core dwc:family).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub family: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Taxonomic genus (Darwin Core dwc:genus).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub genus: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Taxonomic kingdom (Darwin Core dwc:kingdom).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub kingdom: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Taxonomic order (Darwin Core dwc:order).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub order: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Taxonomic phylum (Darwin Core dwc:phylum).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub phylum: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The full scientific name (Darwin Core dwc:scientificName).
-    #[serde(borrow)]
-    pub scientific_name: jacquard_common::CowStr<'a>,
-    /// The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub scientific_name_authorship: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub taxon_rank: std::option::Option<jacquard_common::CowStr<'a>>,
-    /// Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).
-    #[serde(skip_serializing_if = "std::option::Option::is_none")]
-    #[serde(borrow)]
-    pub vernacular_name: std::option::Option<jacquard_common::CowStr<'a>>,
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for Taxon<'a> {
-    fn nsid() -> &'static str {
-        "org.rwell.test.identification"
-    }
-    fn def_name() -> &'static str {
-        "taxon"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_org_rwell_test_identification()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        if let Some(ref value) = self.class {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("class"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.family {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("family"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.genus {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("genus"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.kingdom {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("kingdom"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.order {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("order"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.phylum {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("phylum"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        {
-            let value = &self.scientific_name;
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "scientific_name",
-                    ),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.scientific_name_authorship {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "scientific_name_authorship",
-                    ),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.taxon_rank {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 32usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field("taxon_rank"),
-                    max: 32usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.vernacular_name {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(::jacquard_lexicon::validation::ConstraintError::MaxLength {
-                    path: ::jacquard_lexicon::validation::ValidationPath::from_field(
-                        "vernacular_name",
-                    ),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        Ok(())
+        ..Default::default()
     }
 }

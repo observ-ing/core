@@ -5,16 +5,46 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
-#[jacquard_derive::lexicon]
-#[derive(
-    serde::Serialize, serde::Deserialize, Debug, Clone, PartialEq, Eq, jacquard_derive::IntoStatic,
-)]
+#[allow(unused_imports)]
+use alloc::collections::BTreeMap;
+
+#[allow(unused_imports)]
+use core::marker::PhantomData;
+
+#[allow(unused_imports)]
+use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::types::string::{AtUri, Cid};
+use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_lexicon::lexicon::LexiconDoc;
+use jacquard_lexicon::schema::LexiconSchema;
+
+#[allow(unused_imports)]
+use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
+use serde::{Deserialize, Serialize};
+
+#[lexicon]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
 pub struct StrongRef<'a> {
     #[serde(borrow)]
-    pub cid: jacquard_common::types::string::Cid<'a>,
+    pub cid: Cid<'a>,
     #[serde(borrow)]
-    pub uri: jacquard_common::types::string::AtUri<'a>,
+    pub uri: AtUri<'a>,
+}
+
+impl<'a> LexiconSchema for StrongRef<'a> {
+    fn nsid() -> &'static str {
+        "com.atproto.repo.strongRef"
+    }
+    fn def_name() -> &'static str {
+        "main"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_com_atproto_repo_strongRef()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        Ok(())
+    }
 }
 
 pub mod strong_ref_state {
@@ -27,48 +57,45 @@ pub mod strong_ref_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Cid;
         type Uri;
+        type Cid;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Cid = Unset;
         type Uri = Unset;
-    }
-    ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type Cid = Set<members::cid>;
-        type Uri = S::Uri;
+        type Cid = Unset;
     }
     ///State transition - sets the `uri` field to Set
     pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetUri<S> {}
     impl<S: State> State for SetUri<S> {
-        type Cid = S::Cid;
         type Uri = Set<members::uri>;
+        type Cid = S::Cid;
+    }
+    ///State transition - sets the `cid` field to Set
+    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCid<S> {}
+    impl<S: State> State for SetCid<S> {
+        type Uri = S::Uri;
+        type Cid = Set<members::cid>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `cid` field
-        pub struct cid(());
         ///Marker type for the `uri` field
         pub struct uri(());
+        ///Marker type for the `cid` field
+        pub struct cid(());
     }
 }
 
 /// Builder for constructing an instance of this type
 pub struct StrongRefBuilder<'a, S: strong_ref_state::State> {
-    _phantom_state: ::core::marker::PhantomData<fn() -> S>,
-    __unsafe_private_named: (
-        ::core::option::Option<jacquard_common::types::string::Cid<'a>>,
-        ::core::option::Option<jacquard_common::types::string::AtUri<'a>>,
-    ),
-    _phantom: ::core::marker::PhantomData<&'a ()>,
+    _state: PhantomData<fn() -> S>,
+    _fields: (Option<Cid<'a>>, Option<AtUri<'a>>),
+    _lifetime: PhantomData<&'a ()>,
 }
 
 impl<'a> StrongRef<'a> {
@@ -82,9 +109,9 @@ impl<'a> StrongRefBuilder<'a, strong_ref_state::Empty> {
     /// Create a new builder with all fields unset
     pub fn new() -> Self {
         StrongRefBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: (None, None),
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: (None, None),
+            _lifetime: PhantomData,
         }
     }
 }
@@ -97,13 +124,13 @@ where
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<jacquard_common::types::string::Cid<'a>>,
+        value: impl Into<Cid<'a>>,
     ) -> StrongRefBuilder<'a, strong_ref_state::SetCid<S>> {
-        self.__unsafe_private_named.0 = ::core::option::Option::Some(value.into());
+        self._fields.0 = Option::Some(value.into());
         StrongRefBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -116,13 +143,13 @@ where
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<jacquard_common::types::string::AtUri<'a>>,
+        value: impl Into<AtUri<'a>>,
     ) -> StrongRefBuilder<'a, strong_ref_state::SetUri<S>> {
-        self.__unsafe_private_named.1 = ::core::option::Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         StrongRefBuilder {
-            _phantom_state: ::core::marker::PhantomData,
-            __unsafe_private_named: self.__unsafe_private_named,
-            _phantom: ::core::marker::PhantomData,
+            _state: PhantomData,
+            _fields: self._fields,
+            _lifetime: PhantomData,
         }
     }
 }
@@ -130,115 +157,71 @@ where
 impl<'a, S> StrongRefBuilder<'a, S>
 where
     S: strong_ref_state::State,
-    S::Cid: strong_ref_state::IsSet,
     S::Uri: strong_ref_state::IsSet,
+    S::Cid: strong_ref_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> StrongRef<'a> {
         StrongRef {
-            cid: self.__unsafe_private_named.0.unwrap(),
-            uri: self.__unsafe_private_named.1.unwrap(),
+            cid: self._fields.0.unwrap(),
+            uri: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data
     pub fn build_with_data(
         self,
-        extra_data: std::collections::BTreeMap<
-            jacquard_common::smol_str::SmolStr,
+        extra_data: BTreeMap<
+            jacquard_common::deps::smol_str::SmolStr,
             jacquard_common::types::value::Data<'a>,
         >,
     ) -> StrongRef<'a> {
         StrongRef {
-            cid: self.__unsafe_private_named.0.unwrap(),
-            uri: self.__unsafe_private_named.1.unwrap(),
+            cid: self._fields.0.unwrap(),
+            uri: self._fields.1.unwrap(),
             extra_data: Some(extra_data),
         }
     }
 }
 
-fn lexicon_doc_com_atproto_repo_strongRef() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-    ::jacquard_lexicon::lexicon::LexiconDoc {
-        lexicon: ::jacquard_lexicon::lexicon::Lexicon::Lexicon1,
-        id: ::jacquard_common::CowStr::new_static("com.atproto.repo.strongRef"),
-        revision: None,
-        description: None,
+fn lexicon_doc_com_atproto_repo_strongRef() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("com.atproto.repo.strongRef"),
         defs: {
-            let mut map = ::std::collections::BTreeMap::new();
+            let mut map = BTreeMap::new();
             map.insert(
-                ::jacquard_common::smol_str::SmolStr::new_static("main"),
-                ::jacquard_lexicon::lexicon::LexUserType::Object(
-                    ::jacquard_lexicon::lexicon::LexObject {
-                        description: None,
-                        required: Some(vec![
-                            ::jacquard_common::smol_str::SmolStr::new_static("uri"),
-                            ::jacquard_common::smol_str::SmolStr::new_static("cid"),
-                        ]),
-                        nullable: None,
-                        properties: {
-                            #[allow(unused_mut)]
-                            let mut map = ::std::collections::BTreeMap::new();
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("cid"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(
-                                    ::jacquard_lexicon::lexicon::LexString {
-                                        description: None,
-                                        format: Some(
-                                            ::jacquard_lexicon::lexicon::LexStringFormat::Cid,
-                                        ),
-                                        default: None,
-                                        min_length: None,
-                                        max_length: None,
-                                        min_graphemes: None,
-                                        max_graphemes: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                        known_values: None,
-                                    },
-                                ),
-                            );
-                            map.insert(
-                                ::jacquard_common::smol_str::SmolStr::new_static("uri"),
-                                ::jacquard_lexicon::lexicon::LexObjectProperty::String(
-                                    ::jacquard_lexicon::lexicon::LexString {
-                                        description: None,
-                                        format: Some(
-                                            ::jacquard_lexicon::lexicon::LexStringFormat::AtUri,
-                                        ),
-                                        default: None,
-                                        min_length: None,
-                                        max_length: None,
-                                        min_graphemes: None,
-                                        max_graphemes: None,
-                                        r#enum: None,
-                                        r#const: None,
-                                        known_values: None,
-                                    },
-                                ),
-                            );
-                            map
-                        },
+                SmolStr::new_static("main"),
+                LexUserType::Object(LexObject {
+                    required: Some(vec![SmolStr::new_static("uri"), SmolStr::new_static("cid")]),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("cid"),
+                            LexObjectProperty::String(LexString {
+                                format: Some(LexStringFormat::Cid),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("uri"),
+                            LexObjectProperty::String(LexString {
+                                format: Some(LexStringFormat::AtUri),
+                                ..Default::default()
+                            }),
+                        );
+                        map
                     },
-                ),
+                    ..Default::default()
+                }),
             );
             map
         },
-    }
-}
-
-impl<'a> ::jacquard_lexicon::schema::LexiconSchema for StrongRef<'a> {
-    fn nsid() -> &'static str {
-        "com.atproto.repo.strongRef"
-    }
-    fn def_name() -> &'static str {
-        "main"
-    }
-    fn lexicon_doc() -> ::jacquard_lexicon::lexicon::LexiconDoc<'static> {
-        lexicon_doc_com_atproto_repo_strongRef()
-    }
-    fn validate(
-        &self,
-    ) -> ::std::result::Result<(), ::jacquard_lexicon::validation::ConstraintError> {
-        Ok(())
+        ..Default::default()
     }
 }
