@@ -306,8 +306,8 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SubjectA;
         type InteractionType;
+        type SubjectA;
         type Direction;
         type CreatedAt;
         type SubjectB;
@@ -316,28 +316,28 @@ pub mod interaction_state {
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SubjectA = Unset;
         type InteractionType = Unset;
+        type SubjectA = Unset;
         type Direction = Unset;
         type CreatedAt = Unset;
         type SubjectB = Unset;
-    }
-    ///State transition - sets the `subject_a` field to Set
-    pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjectA<S> {}
-    impl<S: State> State for SetSubjectA<S> {
-        type SubjectA = Set<members::subject_a>;
-        type InteractionType = S::InteractionType;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
-        type SubjectB = S::SubjectB;
     }
     ///State transition - sets the `interaction_type` field to Set
     pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetInteractionType<S> {}
     impl<S: State> State for SetInteractionType<S> {
-        type SubjectA = S::SubjectA;
         type InteractionType = Set<members::interaction_type>;
+        type SubjectA = S::SubjectA;
+        type Direction = S::Direction;
+        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
+    }
+    ///State transition - sets the `subject_a` field to Set
+    pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetSubjectA<S> {}
+    impl<S: State> State for SetSubjectA<S> {
+        type InteractionType = S::InteractionType;
+        type SubjectA = Set<members::subject_a>;
         type Direction = S::Direction;
         type CreatedAt = S::CreatedAt;
         type SubjectB = S::SubjectB;
@@ -346,8 +346,8 @@ pub mod interaction_state {
     pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetDirection<S> {}
     impl<S: State> State for SetDirection<S> {
-        type SubjectA = S::SubjectA;
         type InteractionType = S::InteractionType;
+        type SubjectA = S::SubjectA;
         type Direction = Set<members::direction>;
         type CreatedAt = S::CreatedAt;
         type SubjectB = S::SubjectB;
@@ -356,8 +356,8 @@ pub mod interaction_state {
     pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
     impl<S: State> State for SetCreatedAt<S> {
-        type SubjectA = S::SubjectA;
         type InteractionType = S::InteractionType;
+        type SubjectA = S::SubjectA;
         type Direction = S::Direction;
         type CreatedAt = Set<members::created_at>;
         type SubjectB = S::SubjectB;
@@ -366,8 +366,8 @@ pub mod interaction_state {
     pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectB<S> {}
     impl<S: State> State for SetSubjectB<S> {
-        type SubjectA = S::SubjectA;
         type InteractionType = S::InteractionType;
+        type SubjectA = S::SubjectA;
         type Direction = S::Direction;
         type CreatedAt = S::CreatedAt;
         type SubjectB = Set<members::subject_b>;
@@ -375,10 +375,10 @@ pub mod interaction_state {
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject_a` field
-        pub struct subject_a(());
         ///Marker type for the `interaction_type` field
         pub struct interaction_type(());
+        ///Marker type for the `subject_a` field
+        pub struct subject_a(());
         ///Marker type for the `direction` field
         pub struct direction(());
         ///Marker type for the `created_at` field
@@ -531,8 +531,8 @@ where
 impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
-    S::SubjectA: interaction_state::IsSet,
     S::InteractionType: interaction_state::IsSet,
+    S::SubjectA: interaction_state::IsSet,
     S::Direction: interaction_state::IsSet,
     S::CreatedAt: interaction_state::IsSet,
     S::SubjectB: interaction_state::IsSet,
