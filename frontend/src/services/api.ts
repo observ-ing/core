@@ -529,4 +529,3 @@ export async function unlikeObservation(occurrenceUri: string): Promise<{ succes
     body: JSON.stringify({ occurrenceUri }),
   });
 }
-
