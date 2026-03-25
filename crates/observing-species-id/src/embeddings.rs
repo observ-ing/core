@@ -86,7 +86,9 @@ impl SpeciesEmbeddings {
         })?;
 
         let total_floats = embeddings_bytes.len() / std::mem::size_of::<f32>();
-        if embeddings_bytes.len() % std::mem::size_of::<f32>() != 0 || !total_floats.is_multiple_of(num_species) {
+        if embeddings_bytes.len() % std::mem::size_of::<f32>() != 0
+            || !total_floats.is_multiple_of(num_species)
+        {
             return Err(SpeciesIdError::Config(format!(
                 "Embeddings file size ({} bytes) is not evenly divisible into {} species of f32 vectors",
                 embeddings_bytes.len(),
@@ -107,7 +109,11 @@ impl SpeciesEmbeddings {
             "Species embeddings loaded"
         );
 
-        Ok(Self { embeddings, labels, embed_dim })
+        Ok(Self {
+            embeddings,
+            labels,
+            embed_dim,
+        })
     }
 
     /// Number of species in the label set
