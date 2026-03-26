@@ -10,4 +10,5 @@ pub mod notifications;
 pub mod oauth;
 pub mod occurrences;
 pub mod profiles;
+pub mod species_id;
 pub mod taxonomy;

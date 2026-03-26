@@ -485,6 +485,42 @@ export async function markNotificationRead(id?: number): Promise<{ success: bool
   });
 }
 
+// ============================================================================
+// Species Identification API Functions
+// ============================================================================
+
+export interface SpeciesSuggestion {
+  scientificName: string;
+  confidence: number;
+  commonName?: string;
+  kingdom?: string;
+  phylum?: string;
+  class?: string;
+  order?: string;
+  family?: string;
+  genus?: string;
+}
+
+export interface IdentifyResponse {
+  suggestions: SpeciesSuggestion[];
+  modelVersion: string;
+  inferenceTimeMs: number;
+}
+
+export async function identifySpecies(data: {
+  image: string;
+  latitude?: number;
+  longitude?: number;
+  limit?: number;
+}): Promise<IdentifyResponse> {
+  return fetchApi(`${API_BASE}/api/species-id`, "Species identification failed", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(data),
+  });
+}
+
 export async function unlikeObservation(occurrenceUri: string): Promise<{ success: boolean }> {
   return fetchApi(`${API_BASE}/api/likes`, "Failed to unlike observation", {
     method: "DELETE",
@@ -492,21 +528,4 @@ export async function unlikeObservation(occurrenceUri: string): Promise<{ succes
     credentials: "include",
     body: JSON.stringify({ occurrenceUri }),
   });
-}
-
-// TODO: Placeholder for species identification feature
-export interface SpeciesSuggestion {
-  scientificName: string;
-  commonName?: string;
-  confidence: number;
-  taxonId?: number;
-}
-
-export async function identifySpecies(_params: {
-  image: string;
-  limit?: number;
-  latitude?: number;
-  longitude?: number;
-}): Promise<{ suggestions: SpeciesSuggestion[] }> {
-  throw new Error("Species identification not yet implemented");
 }

@@ -8,6 +8,8 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     pub media_proxy_url: String,
     pub taxonomy_service_url: String,
+    /// URL for the species identification service (optional)
+    pub species_id_service_url: Option<String>,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
@@ -64,6 +66,8 @@ impl Config {
         let taxonomy_service_url = env::var("TAXONOMY_SERVICE_URL")
             .unwrap_or_else(|_| "http://localhost:3003".to_string());
 
+        let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
+
         let public_url = env::var("PUBLIC_URL").ok();
 
         let hidden_dids = env::var("HIDDEN_DIDS")
@@ -76,6 +80,7 @@ impl Config {
             cors_origins,
             media_proxy_url,
             taxonomy_service_url,
+            species_id_service_url,
             public_url,
             hidden_dids,
         }
