@@ -1,5 +1,5 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::auth::AuthUser;
 use crate::state::AppState;
@@ -17,6 +17,11 @@ pub struct IdentifyRequest {
     limit: Option<usize>,
 }
 
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    error: String,
+}
+
 /// POST /api/species-id
 ///
 /// Proxies to the species identification service.
@@ -31,9 +36,9 @@ pub async fn identify(
         None => {
             return (
                 StatusCode::SERVICE_UNAVAILABLE,
-                Json(serde_json::json!({
-                    "error": "Species identification service not configured"
-                })),
+                Json(ErrorResponse {
+                    error: "Species identification service not configured".into(),
+                }),
             )
                 .into_response();
         }
@@ -43,17 +48,12 @@ pub async fn identify(
         .identify(&body.image, body.latitude, body.longitude, body.limit)
         .await
     {
-        Some(response) => Json(serde_json::json!({
-            "suggestions": response.suggestions,
-            "modelVersion": response.model_version,
-            "inferenceTimeMs": response.inference_time_ms,
-        }))
-        .into_response(),
+        Some(response) => Json(response).into_response(),
         None => (
             StatusCode::BAD_GATEWAY,
-            Json(serde_json::json!({
-                "error": "Species identification failed"
-            })),
+            Json(ErrorResponse {
+                error: "Species identification failed".into(),
+            }),
         )
             .into_response(),
     }
