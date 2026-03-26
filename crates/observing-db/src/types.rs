@@ -3,6 +3,44 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
 
+/// A single blob/image entry as stored in the `associated_media` JSONB column.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BlobEntry {
+    pub image: BlobImage,
+    #[serde(default)]
+    pub alt: Option<String>,
+}
+
+/// Image metadata within a blob entry.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct BlobImage {
+    #[serde(rename = "ref")]
+    pub ref_: BlobRef,
+    pub mime_type: String,
+}
+
+/// The CID reference for a blob, supporting both `{"$link": "cid"}` and `"cid"` formats.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum BlobRef {
+    Link {
+        #[serde(rename = "$link")]
+        link: String,
+    },
+    Bare(String),
+}
+
+impl BlobRef {
+    /// Extract the CID string regardless of format.
+    pub fn cid(&self) -> &str {
+        match self {
+            BlobRef::Link { link } => link,
+            BlobRef::Bare(s) => s,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "bindings/")]
 pub enum ObserverRole {
@@ -66,6 +104,17 @@ pub struct OccurrenceRow {
     /// Only present in profile feed queries
     #[sqlx(default)]
     pub observer_role: Option<String>,
+}
+
+impl OccurrenceRow {
+    /// Parse `associated_media` JSONB into typed blob entries.
+    /// Returns an empty vec if the field is `None` or cannot be deserialized.
+    pub fn blob_entries(&self) -> Vec<BlobEntry> {
+        self.associated_media
+            .as_ref()
+            .and_then(|v| serde_json::from_value::<Vec<BlobEntry>>(v.clone()).ok())
+            .unwrap_or_default()
+    }
 }
 
 /// Identification row returned from SELECT queries
@@ -247,6 +296,17 @@ pub struct UpsertOccurrenceParams {
     pub family: Option<String>,
     pub genus: Option<String>,
     pub created_at: DateTime<Utc>,
+}
+
+impl UpsertOccurrenceParams {
+    /// Set `associated_media` from typed blob entries.
+    pub fn set_blobs(&mut self, blobs: Vec<BlobEntry>) {
+        self.associated_media = if blobs.is_empty() {
+            None
+        } else {
+            serde_json::to_value(blobs).ok()
+        };
+    }
 }
 
 /// Parameters for upserting an identification

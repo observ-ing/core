@@ -197,29 +197,9 @@ fn profile_summary(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Profi
 }
 
 fn extract_images(row: &OccurrenceRow) -> Vec<String> {
-    let Some(ref media) = row.associated_media else {
-        return Vec::new();
-    };
-
-    let blobs = match media {
-        serde_json::Value::Array(arr) => arr.clone(),
-        _ => return Vec::new(),
-    };
-
-    blobs
+    row.blob_entries()
         .iter()
-        .filter_map(|blob| {
-            let image = blob.get("image")?;
-            let ref_val = image.get("ref")?;
-            let cid = if let Some(link) = ref_val.get("$link") {
-                link.as_str()?.to_string()
-            } else if let Some(s) = ref_val.as_str() {
-                s.to_string()
-            } else {
-                return None;
-            };
-            Some(format!("/media/blob/{}/{}", row.did, cid))
-        })
+        .map(|blob| format!("/media/blob/{}/{}", row.did, blob.image.ref_.cid()))
         .collect()
 }
 
@@ -536,7 +516,7 @@ pub async fn enrich_observers(
 mod tests {
     use super::*;
     use chrono::Utc;
-    use serde_json::json;
+    use observing_db::types::{BlobEntry, BlobImage, BlobRef};
 
     fn make_row(media: Option<serde_json::Value>) -> OccurrenceRow {
         OccurrenceRow {
@@ -576,6 +556,26 @@ mod tests {
         }
     }
 
+    fn blob_entry(cid: &str, mime: &str, ref_style: &str) -> BlobEntry {
+        let ref_ = match ref_style {
+            "link" => BlobRef::Link {
+                link: cid.to_string(),
+            },
+            _ => BlobRef::Bare(cid.to_string()),
+        };
+        BlobEntry {
+            image: BlobImage {
+                ref_,
+                mime_type: mime.to_string(),
+            },
+            alt: None,
+        }
+    }
+
+    fn blobs_to_json(entries: Vec<BlobEntry>) -> serde_json::Value {
+        serde_json::to_value(entries).unwrap()
+    }
+
     #[test]
     fn test_extract_images_no_media() {
         let row = make_row(None);
@@ -584,39 +584,43 @@ mod tests {
 
     #[test]
     fn test_extract_images_non_array() {
-        let row = make_row(Some(json!("not an array")));
+        let row = make_row(Some(serde_json::json!("not an array")));
         assert!(extract_images(&row).is_empty());
     }
 
     #[test]
     fn test_extract_images_empty_array() {
-        let row = make_row(Some(json!([])));
+        let row = make_row(Some(blobs_to_json(vec![])));
         assert!(extract_images(&row).is_empty());
     }
 
     #[test]
     fn test_extract_images_with_link() {
-        let row = make_row(Some(json!([
-            {"image": {"ref": {"$link": "bafkreiabc123"}, "mimeType": "image/jpeg"}}
-        ])));
+        let row = make_row(Some(blobs_to_json(vec![blob_entry(
+            "bafkreiabc123",
+            "image/jpeg",
+            "link",
+        )])));
         let images = extract_images(&row);
         assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreiabc123"]);
     }
 
     #[test]
     fn test_extract_images_with_string_ref() {
-        let row = make_row(Some(json!([
-            {"image": {"ref": "bafkreixyz789", "mimeType": "image/jpeg"}}
-        ])));
+        let row = make_row(Some(blobs_to_json(vec![blob_entry(
+            "bafkreixyz789",
+            "image/jpeg",
+            "bare",
+        )])));
         let images = extract_images(&row);
         assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreixyz789"]);
     }
 
     #[test]
     fn test_extract_images_multiple() {
-        let row = make_row(Some(json!([
-            {"image": {"ref": {"$link": "cid1"}, "mimeType": "image/jpeg"}},
-            {"image": {"ref": {"$link": "cid2"}, "mimeType": "image/png"}}
+        let row = make_row(Some(blobs_to_json(vec![
+            blob_entry("cid1", "image/jpeg", "link"),
+            blob_entry("cid2", "image/png", "link"),
         ])));
         let images = extract_images(&row);
         assert_eq!(images.len(), 2);
@@ -626,7 +630,8 @@ mod tests {
 
     #[test]
     fn test_extract_images_missing_image_field() {
-        let row = make_row(Some(json!([
+        // Invalid blob entries that can't deserialize just get skipped by blob_entries()
+        let row = make_row(Some(serde_json::json!([
             {"notImage": {"ref": {"$link": "cid1"}}}
         ])));
         assert!(extract_images(&row).is_empty());
@@ -634,10 +639,26 @@ mod tests {
 
     #[test]
     fn test_extract_images_missing_ref_field() {
-        let row = make_row(Some(json!([
+        let row = make_row(Some(serde_json::json!([
             {"image": {"mimeType": "image/jpeg"}}
         ])));
         assert!(extract_images(&row).is_empty());
+    }
+
+    #[test]
+    fn test_blob_entry_roundtrip_link_format() {
+        let json_str =
+            r#"{"image":{"ref":{"$link":"bafkreiabc123"},"mimeType":"image/jpeg"},"alt":""}"#;
+        let entry: BlobEntry = serde_json::from_str(json_str).unwrap();
+        assert_eq!(entry.image.ref_.cid(), "bafkreiabc123");
+        assert_eq!(entry.image.mime_type, "image/jpeg");
+    }
+
+    #[test]
+    fn test_blob_entry_roundtrip_bare_format() {
+        let json_str = r#"{"image":{"ref":"bafkreixyz789","mimeType":"image/jpeg"}}"#;
+        let entry: BlobEntry = serde_json::from_str(json_str).unwrap();
+        assert_eq!(entry.image.ref_.cid(), "bafkreixyz789");
     }
 
     #[test]
