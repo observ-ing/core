@@ -1,0 +1,46 @@
+[package]
+name = "observing-species-id"
+version = "0.1.0"
+edition = "2021"
+description = "BioCLIP-based species identification service for Observ.ing"
+license = "AGPL-3.0-only"
+
+[dependencies]
+# ONNX inference
+ort = { version = "2.0.0-rc.12", features = ["load-dynamic", "ndarray"] }
+ndarray = "0.17"
+
+# Image processing
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp"] }
+
+# Async runtime
+tokio = { workspace = true }
+
+# HTTP server
+axum = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Base64 decoding
+base64 = "0.22"
+
+# Zero-copy binary loading
+bytemuck = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+
+[[bin]]
+name = "observing-species-id"
+path = "src/main.rs"

@@ -128,6 +128,29 @@ EXPOSE 3001
 CMD ["/app/observing-media-proxy"]
 
 # ---------------------------------------------------------------------------
+# Stage: runtime for species-id
+# ---------------------------------------------------------------------------
+FROM runtime-base AS runtime-observing-species-id
+
+# Install ONNX Runtime shared library
+RUN apt-get update && apt-get install -y wget && \
+    wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-linux-x64-1.21.1.tgz && \
+    tar xzf onnxruntime-linux-x64-1.21.1.tgz && \
+    cp onnxruntime-linux-x64-1.21.1/lib/* /usr/lib/ && \
+    rm -rf onnxruntime-* && \
+    apt-get remove -y wget && apt-get autoremove -y && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /app/target/release/observing-species-id /app/observing-species-id
+
+ENV RUST_LOG=observing_species_id=info
+ENV PORT=3005
+ENV MODEL_DIR=/app/models/bioclip
+ENV ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
+EXPOSE 3005
+CMD ["/app/observing-species-id"]
+
+# ---------------------------------------------------------------------------
 # Stage: runtime for taxonomy
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-taxonomy
