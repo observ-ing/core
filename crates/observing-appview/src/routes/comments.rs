@@ -4,13 +4,14 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::comment::Comment;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::error::AppError;
+use crate::responses::RecordCreatedResponse;
 use crate::state::AppState;
 use crate::validation::validate_string_length;
 
@@ -31,7 +32,7 @@ pub async fn create_comment(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<CreateCommentRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<RecordCreatedResponse>, AppError> {
     validate_string_length(&body.body, 1, constants::MAX_COMMENT_LENGTH, "Comment body")?;
 
     let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
@@ -55,9 +56,9 @@ pub async fn create_comment(
 
     info!(uri = %resp.uri, "Created comment");
 
-    Ok(Json(json!({
-        "success": true,
-        "uri": resp.uri,
-        "cid": resp.cid.as_ref(),
-    })))
+    Ok(Json(RecordCreatedResponse {
+        success: true,
+        uri: resp.uri.to_string(),
+        cid: resp.cid.as_ref().to_string(),
+    }))
 }

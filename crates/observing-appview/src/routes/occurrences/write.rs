@@ -11,6 +11,7 @@ use ts_rs::TS;
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::error::AppError;
+use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::AppState;
 use at_uri_parser::AtUri;
 
@@ -57,7 +58,7 @@ pub async fn create_occurrence(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<CreateOccurrenceRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<RecordCreatedResponse>, AppError> {
     // Validate coordinates
     if !(-90.0..=90.0).contains(&body.latitude) || !(-180.0..=180.0).contains(&body.longitude) {
         return Err(AppError::BadRequest("Invalid coordinates".into()));
@@ -249,11 +250,11 @@ pub async fn create_occurrence(
         }
     }
 
-    Ok(Json(json!({
-        "success": true,
-        "uri": uri,
-        "cid": cid,
-    })))
+    Ok(Json(RecordCreatedResponse {
+        success: true,
+        uri,
+        cid,
+    }))
 }
 
 /// POST catch-all for /api/occurrences/{*uri} -- dispatches observers POST
@@ -262,7 +263,7 @@ pub async fn post_occurrence_catch_all(
     user: AuthUser,
     Path(full_path): Path<String>,
     Json(body): Json<AddObserverRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<SuccessResponse>, AppError> {
     if let Some(uri) = full_path.strip_suffix("/observers") {
         if let Err(e) = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await {
             warn!(error = %e, "Failed to add owner observer");
@@ -272,7 +273,7 @@ pub async fn post_occurrence_catch_all(
         {
             warn!(error = %e, "Failed to add co-observer");
         }
-        return Ok(Json(json!({ "success": true })));
+        return Ok(Json(SuccessResponse { success: true }));
     }
 
     Err(AppError::NotFound("Not found".into()))
@@ -283,7 +284,7 @@ pub async fn delete_occurrence_catch_all(
     State(state): State<AppState>,
     user: AuthUser,
     Path(full_path): Path<String>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<SuccessResponse>, AppError> {
     // Try observer removal: path contains /observers/{did}
     if full_path.contains("/observers/") {
         let idx = full_path.rfind("/observers/").unwrap();
@@ -292,7 +293,7 @@ pub async fn delete_occurrence_catch_all(
         if let Err(e) = observing_db::observers::remove(&state.pool, uri, observer_did).await {
             warn!(error = %e, "Failed to remove observer");
         }
-        return Ok(Json(json!({ "success": true })));
+        return Ok(Json(SuccessResponse { success: true }));
     }
 
     // Otherwise, delete the occurrence itself
@@ -342,5 +343,5 @@ pub async fn delete_occurrence_catch_all(
         warn!(error = %e, "Failed to delete occurrence from local DB");
     }
 
-    Ok(Json(json!({ "success": true })))
+    Ok(Json(SuccessResponse { success: true }))
 }

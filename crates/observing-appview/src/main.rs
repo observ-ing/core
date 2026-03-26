@@ -6,6 +6,7 @@ mod error;
 mod middleware;
 mod oauth_store;
 mod resolver;
+mod responses;
 mod routes;
 mod species_id_client;
 mod state;
