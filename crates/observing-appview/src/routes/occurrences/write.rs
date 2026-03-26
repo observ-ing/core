@@ -159,9 +159,7 @@ pub async fn create_occurrence(
             .maybe_recorded_by(recorded_by_cowstrs)
             .build();
 
-        let mut rv =
-            serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
-        rv["$type"] = json!(Occurrence::NSID);
+        let mut rv = auth::serialize_at_record(&record)?;
         if !blobs.is_empty() {
             rv["blobs"] = json!(blobs);
         }

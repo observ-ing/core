@@ -37,9 +37,7 @@ pub async fn create_like(
         .subject(subject)
         .build();
 
-    let mut record_value =
-        serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
-    record_value["$type"] = json!(Like::NSID);
+    let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let output = auth::create_at_record(&agent, did_parsed, Like::NSID, record_value).await?;

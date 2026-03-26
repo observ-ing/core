@@ -3,6 +3,7 @@ use std::str::FromStr;
 use axum::extract::FromRequestParts;
 use axum::http::request::Parts;
 use axum_extra::extract::CookieJar;
+use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::{AtUri, Cid};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use serde_json::Value;
@@ -83,6 +84,15 @@ pub async fn require_agent(
     })?;
     let agent = atrium_api::agent::Agent::new(session);
     Ok((agent, did_parsed))
+}
+
+/// Serialize a lexicon record to a [`serde_json::Value`] with the `$type` field set.
+pub fn serialize_at_record<T: Collection + serde::Serialize>(
+    record: &T,
+) -> Result<Value, AppError> {
+    let mut value = serde_json::to_value(record).map_err(|e| AppError::Internal(e.to_string()))?;
+    value["$type"] = serde_json::json!(T::NSID);
+    Ok(value)
 }
 
 /// Create an AT Protocol record via the PDS agent.

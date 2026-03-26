@@ -1,7 +1,7 @@
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::auth;
 use crate::error::AppError;
@@ -63,9 +63,7 @@ pub async fn build_identification_record(
         .maybe_taxon_id(taxon_id.as_deref().map(Into::into))
         .build();
 
-    let mut id_value =
-        serde_json::to_value(&id_record).map_err(|e| AppError::Internal(e.to_string()))?;
-    id_value["$type"] = json!(Identification::NSID);
+    let id_value = auth::serialize_at_record(&id_record)?;
 
     Ok(id_value)
 }
