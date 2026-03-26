@@ -32,7 +32,7 @@ pub struct SpeciesSuggestion {
     pub genus: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifyResponse {
     pub suggestions: Vec<SpeciesSuggestion>,
