@@ -1,6 +1,5 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::time::Duration;
 use tracing::error;
 use ts_rs::TS;
@@ -80,6 +79,15 @@ pub struct TaxonDetail {
     pub description: Option<String>,
     #[ts(optional)]
     pub wikidata_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct TaxonDetailWithCount {
+    #[serde(flatten)]
+    pub detail: TaxonDetail,
+    pub observation_count: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, TS)]
@@ -193,16 +201,6 @@ impl TaxonomyClient {
         }
     }
 
-    /// Get taxon by GBIF ID or name (raw JSON)
-    pub async fn get_by_id_raw(&self, id: &str) -> Option<Value> {
-        let url = format!("{}/taxon/{}", self.base_url, urlencoding::encode(id));
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
-        }
-    }
-
     /// Get taxon by GBIF ID or name
     pub async fn get_by_id(&self, id: &str) -> Option<TaxonDetail> {
         let url = format!("{}/taxon/{}", self.base_url, id);
@@ -214,21 +212,6 @@ impl TaxonomyClient {
     }
 
     /// Get taxon by name with optional kingdom.
-    /// Returns the raw JSON Value so all fields (ancestors, children, descriptions, etc.) are preserved.
-    pub async fn get_by_name_raw(&self, name: &str, kingdom: Option<&str>) -> Option<Value> {
-        let encoded_name = urlencoding::encode(name);
-        let mut url = format!("{}/taxon/{}", self.base_url, encoded_name);
-        if let Some(k) = kingdom {
-            url.push_str(&format!("?kingdom={}", k));
-        }
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
-        }
-    }
-
-    /// Get taxon by name with optional kingdom (typed).
     pub async fn get_by_name(&self, name: &str, kingdom: Option<&str>) -> Option<TaxonDetail> {
         let encoded_name = urlencoding::encode(name);
         let mut url = format!("{}/taxon/{}", self.base_url, encoded_name);

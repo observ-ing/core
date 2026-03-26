@@ -9,6 +9,7 @@ use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::state::AppState;
+use crate::taxonomy_client::TaxonDetailWithCount;
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -70,28 +71,29 @@ pub struct TaxonOccurrenceParams {
 pub async fn get_taxon_by_kingdom_name(
     State(state): State<AppState>,
     Path((kingdom, name)): Path<(String, String)>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<TaxonDetailWithCount>, AppError> {
     // Frontend uses dashes in URLs (e.g., "Morus-alba"), convert to spaces
     let name = name.replace('-', " ");
 
-    let mut detail = state
+    let detail = state
         .taxonomy
-        .get_by_name_raw(&name, Some(&kingdom))
+        .get_by_name(&name, Some(&kingdom))
         .await
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
-    let rank = detail["rank"].as_str().unwrap_or("species").to_string();
-    let count =
-        observing_db::feeds::count_occurrences_by_taxon(&state.pool, &name, &rank, Some(&kingdom))
-            .await
-            .unwrap_or(0);
+    let count = observing_db::feeds::count_occurrences_by_taxon(
+        &state.pool,
+        &name,
+        &detail.rank,
+        Some(&kingdom),
+    )
+    .await
+    .unwrap_or(0);
 
-    // TS returns {...taxon, observationCount} (taxon fields at root level)
-    if let Value::Object(ref mut map) = detail {
-        map.insert("observationCount".to_string(), json!(count));
-    }
-
-    Ok(Json(detail))
+    Ok(Json(TaxonDetailWithCount {
+        detail,
+        observation_count: count,
+    }))
 }
 
 pub async fn get_taxon_occurrences_by_kingdom_name(
@@ -149,31 +151,26 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
 pub async fn get_taxon_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> Result<Json<Value>, AppError> {
-    let mut detail = state
+) -> Result<Json<TaxonDetailWithCount>, AppError> {
+    let detail = state
         .taxonomy
-        .get_by_id_raw(&id)
+        .get_by_id(&id)
         .await
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
-    let rank = detail["rank"].as_str().unwrap_or("species").to_string();
-    let scientific_name = detail["scientificName"].as_str().unwrap_or(&id).to_string();
-    let kingdom = detail["kingdom"].as_str().map(|s| s.to_string());
     let count = observing_db::feeds::count_occurrences_by_taxon(
         &state.pool,
-        &scientific_name,
-        &rank,
-        kingdom.as_deref(),
+        &detail.scientific_name,
+        &detail.rank,
+        detail.kingdom.as_deref(),
     )
     .await
     .unwrap_or(0);
 
-    // TS returns {...taxon, observationCount} (taxon fields at root level)
-    if let Value::Object(ref mut map) = detail {
-        map.insert("observationCount".to_string(), json!(count));
-    }
-
-    Ok(Json(detail))
+    Ok(Json(TaxonDetailWithCount {
+        detail,
+        observation_count: count,
+    }))
 }
 
 pub async fn get_taxon_occurrences_by_id(
