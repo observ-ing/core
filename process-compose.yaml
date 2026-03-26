@@ -14,6 +14,7 @@ processes:
       - PORT=3000
       - MEDIA_PROXY_URL=http://localhost:3001
       - TAXONOMY_SERVICE_URL=http://localhost:3003
+      - SPECIES_ID_SERVICE_URL=http://localhost:3005
     readiness_probe:
       http_get:
         host: localhost
@@ -58,3 +59,16 @@ processes:
         host: localhost
         port: 3003
         path: /health
+
+  species-id:
+    command: cargo run -p observing-species-id
+    environment:
+      - PORT=3005
+      - MODEL_DIR=./models/bioclip
+      - ORT_DYLIB_PATH=/opt/homebrew/lib/libonnxruntime.dylib
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 3005
+        path: /health
+      initial_delay_seconds: 10
