@@ -42,6 +42,9 @@ coverage
 
 target
 
+# ML models (large binary files)
+models/
+
 # Playwright
 playwright/.auth/
 playwright-report/
