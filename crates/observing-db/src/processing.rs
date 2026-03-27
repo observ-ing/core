@@ -5,8 +5,8 @@
 //! the ingester (asynchronous firehose path).
 
 use crate::types::{
-    CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams, UpsertInteractionParams,
-    UpsertOccurrenceParams,
+    BlobEntry, CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams,
+    UpsertInteractionParams, UpsertOccurrenceParams,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use observing_lexicons::org_rwell::test::{
@@ -112,7 +112,15 @@ pub fn occurrence_from_json(
         water_body: record.location.water_body.map(Into::into),
         verbatim_locality: record.verbatim_locality.map(Into::into),
         occurrence_remarks: record.notes.map(Into::into),
-        associated_media: record_json.get("blobs").cloned(),
+        associated_media: record_json.get("blobs").and_then(|v| {
+            // Validate blobs parse as typed BlobEntry structs, then store as Value
+            let blobs: Vec<BlobEntry> = serde_json::from_value(v.clone()).ok()?;
+            if blobs.is_empty() {
+                None
+            } else {
+                Some(v.clone())
+            }
+        }),
         recorded_by: None,
         taxon_id: None,
         taxon_rank: None,
