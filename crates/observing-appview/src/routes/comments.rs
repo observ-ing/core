@@ -48,9 +48,7 @@ pub async fn create_comment(
         .maybe_reply_to(reply_to)
         .build();
 
-    let mut record_value =
-        serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
-    record_value["$type"] = json!(Comment::NSID);
+    let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let resp = auth::create_at_record(&agent, did_parsed, Comment::NSID, record_value).await?;

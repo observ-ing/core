@@ -99,9 +99,7 @@ pub async fn create_identification(
         .maybe_taxon_id(fields.taxon_id.as_deref().map(Into::into))
         .build();
 
-    let mut record_value =
-        serde_json::to_value(&record).map_err(|e| AppError::Internal(e.to_string()))?;
-    record_value["$type"] = json!(Identification::NSID);
+    let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let resp =
