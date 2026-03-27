@@ -46,6 +46,13 @@ pub struct ImageUpload {
     mime_type: String,
 }
 
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct AddObserverRequest {
+    did: String,
+}
+
 pub async fn create_occurrence(
     State(state): State<AppState>,
     user: AuthUser,
@@ -254,17 +261,14 @@ pub async fn post_occurrence_catch_all(
     State(state): State<AppState>,
     user: AuthUser,
     Path(full_path): Path<String>,
-    Json(body): Json<Value>,
+    Json(body): Json<AddObserverRequest>,
 ) -> Result<Json<Value>, AppError> {
     if let Some(uri) = full_path.strip_suffix("/observers") {
-        let observer_did = body["did"]
-            .as_str()
-            .ok_or_else(|| AppError::BadRequest("did is required".into()))?;
         if let Err(e) = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await {
             warn!(error = %e, "Failed to add owner observer");
         }
         if let Err(e) =
-            observing_db::observers::add(&state.pool, uri, observer_did, "co-observer").await
+            observing_db::observers::add(&state.pool, uri, &body.did, "co-observer").await
         {
             warn!(error = %e, "Failed to add co-observer");
         }
