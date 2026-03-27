@@ -4,7 +4,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::{info, warn};
 use ts_rs::TS;
 
