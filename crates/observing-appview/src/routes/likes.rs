@@ -6,12 +6,12 @@ use jacquard_common::types::string::Datetime;
 use observing_db::types::CreateLikeParams;
 use observing_lexicons::org_rwell::test::like::Like;
 use serde::Deserialize;
-use serde_json::{json, Value};
 use tracing::{info, warn};
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
 use crate::error::AppError;
+use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AppState, OAuthClientType};
 use at_uri_parser::AtUri;
 
@@ -27,7 +27,7 @@ pub async fn create_like(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<CreateLikeRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<RecordCreatedResponse>, AppError> {
     let now = Utc::now();
 
     let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
@@ -60,11 +60,11 @@ pub async fn create_like(
         warn!(error = %e, "Failed to insert like into local DB");
     }
 
-    Ok(Json(json!({
-        "success": true,
-        "uri": uri,
-        "cid": cid,
-    })))
+    Ok(Json(RecordCreatedResponse {
+        success: true,
+        uri,
+        cid,
+    }))
 }
 
 #[derive(Deserialize, TS)]
@@ -78,7 +78,7 @@ pub async fn delete_like(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<DeleteLikeRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<SuccessResponse>, AppError> {
     // Delete from local DB first (returns the like URI)
     let like_uri = observing_db::likes::delete_by_subject_and_did(
         &state.pool,
@@ -92,7 +92,7 @@ pub async fn delete_like(
         let _ = try_delete_atp_record(&state.oauth_client, uri, &user.did).await;
     }
 
-    Ok(Json(json!({ "success": true })))
+    Ok(Json(SuccessResponse { success: true }))
 }
 
 /// Best-effort deletion of an AT Protocol record. Returns `None` if any step

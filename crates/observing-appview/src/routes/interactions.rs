@@ -14,6 +14,7 @@ use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::responses::RecordCreatedResponse;
 use crate::state::AppState;
 use crate::validation::validate_string_length;
 
@@ -85,7 +86,7 @@ pub async fn create_interaction(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<CreateInteractionRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<RecordCreatedResponse>, AppError> {
     validate_string_length(
         &body.interaction_type,
         1,
@@ -117,9 +118,9 @@ pub async fn create_interaction(
 
     info!(uri = %resp.uri, "Created interaction");
 
-    Ok(Json(json!({
-        "success": true,
-        "uri": resp.uri,
-        "cid": resp.cid.as_ref(),
-    })))
+    Ok(Json(RecordCreatedResponse {
+        success: true,
+        uri: resp.uri.to_string(),
+        cid: resp.cid.as_ref().to_string(),
+    }))
 }

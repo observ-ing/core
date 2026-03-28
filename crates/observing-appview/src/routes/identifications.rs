@@ -12,6 +12,7 @@ use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonFields;
 use crate::validation::validate_string_length;
@@ -58,7 +59,7 @@ pub async fn create_identification(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<CreateIdentificationRequest>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<RecordCreatedResponse>, AppError> {
     validate_string_length(
         &body.scientific_name,
         1,
@@ -107,18 +108,18 @@ pub async fn create_identification(
 
     info!(uri = %resp.uri, "Created identification");
 
-    Ok(Json(json!({
-        "success": true,
-        "uri": resp.uri,
-        "cid": resp.cid.as_ref(),
-    })))
+    Ok(Json(RecordCreatedResponse {
+        success: true,
+        uri: resp.uri.to_string(),
+        cid: resp.cid.as_ref().to_string(),
+    }))
 }
 
 pub async fn delete_identification(
     State(state): State<AppState>,
     user: AuthUser,
     Path(uri): Path<String>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<SuccessResponse>, AppError> {
     let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
@@ -164,5 +165,5 @@ pub async fn delete_identification(
         warn!(error = %e, "Failed to delete identification from local DB");
     }
 
-    Ok(Json(json!({ "success": true })))
+    Ok(Json(SuccessResponse { success: true }))
 }
