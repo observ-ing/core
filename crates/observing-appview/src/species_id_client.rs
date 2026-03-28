@@ -32,6 +32,15 @@ pub struct SpeciesSuggestion {
     pub genus: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct IdentifyRequestBody {
+    image: String,
+    latitude: Option<f64>,
+    longitude: Option<f64>,
+    limit: usize,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifyResponse {
@@ -63,12 +72,12 @@ impl SpeciesIdClient {
     ) -> Option<IdentifyResponse> {
         let url = format!("{}/identify", self.base_url);
 
-        let body = serde_json::json!({
-            "image": image_base64,
-            "latitude": latitude,
-            "longitude": longitude,
-            "limit": limit.unwrap_or(5),
-        });
+        let body = IdentifyRequestBody {
+            image: image_base64.to_string(),
+            latitude,
+            longitude,
+            limit: limit.unwrap_or(5),
+        };
 
         match self.client.post(&url).json(&body).send().await {
             Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
