@@ -100,7 +100,7 @@ impl Database {
 
         let record_json = require_record!(commit, "occurrence");
 
-        let params = process_or_warn!(
+        let parsed = process_or_warn!(
             commit,
             occurrence_from_json,
             "occurrence",
@@ -110,10 +110,11 @@ impl Database {
             commit.did.clone(),
         );
 
-        observing_db::occurrences::upsert(&self.pool, &params).await?;
+        observing_db::occurrences::upsert(&self.pool, &parsed.params).await?;
 
-        // Sync occurrence_observers
-        let co_observers = processing::extract_co_observers(record_json, &commit.did);
+        // Sync occurrence_observers using typed recorded_by data
+        let co_observers =
+            processing::extract_co_observers(parsed.recorded_by.as_deref(), &commit.did);
         observing_db::observers::sync(&self.pool, &commit.uri, &commit.did, &co_observers).await?;
 
         Ok(())

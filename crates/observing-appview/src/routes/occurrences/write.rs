@@ -187,13 +187,13 @@ pub async fn create_occurrence(
 
     // Immediate DB upsert for visibility — uses the same shared conversion
     // as the ingester so field mapping is always consistent.
-    if let Ok(params) = observing_db::processing::occurrence_from_json(
+    if let Ok(parsed) = observing_db::processing::occurrence_from_json(
         &record_value_for_db,
         uri.clone(),
         cid.clone(),
         user.did.clone(),
     ) {
-        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &params).await {
+        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
             warn!(error = %e, "Failed to upsert occurrence into local DB");
         }
     }
