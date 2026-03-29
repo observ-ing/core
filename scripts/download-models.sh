@@ -5,7 +5,7 @@
 set -euo pipefail
 
 MODEL_DIR="models/bioclip"
-RELEASE_URL="https://github.com/observ-ing/bioclip-models/releases/download/v1.0.0/bioclip-2.5-models.tar.gz"
+RELEASE_URL="https://github.com/observ-ing/bioclip-models/releases/download/v2.0.0/bioclip-2.5-models.tar.gz"
 
 if [ -f "$MODEL_DIR/vision_encoder.onnx" ]; then
   echo "Models already present in $MODEL_DIR — skipping download."
