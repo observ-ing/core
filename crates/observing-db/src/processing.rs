@@ -49,16 +49,27 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
         .ok()
 }
 
+/// Result of parsing an occurrence record, containing both the database
+/// params and the typed `recorded_by` field for co-observer processing.
+pub struct ParsedOccurrence {
+    pub params: UpsertOccurrenceParams,
+    /// The `recordedBy` DIDs from the lexicon record (if present).
+    pub recorded_by: Option<Vec<String>>,
+}
+
 /// Convert an occurrence record JSON to database params.
 ///
 /// The `record_json` should be the full AT Protocol record value (a `serde_json::Value`).
 /// Fields like `blobs` are extracted from the raw JSON to populate `associated_media`.
+///
+/// Returns a [`ParsedOccurrence`] containing the upsert params and the typed
+/// `recorded_by` list so callers can process co-observers without re-parsing JSON.
 pub fn occurrence_from_json(
     record_json: &Value,
     uri: String,
     cid: String,
     did: String,
-) -> Result<UpsertOccurrenceParams, ProcessingError> {
+) -> Result<ParsedOccurrence, ProcessingError> {
     let record_str = record_json.to_string();
     let record: Occurrence<'_> =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
@@ -90,48 +101,55 @@ pub fn occurrence_from_json(
 
     let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(event_date);
 
-    Ok(UpsertOccurrenceParams {
-        uri,
-        cid,
-        did,
-        scientific_name: None,
-        event_date,
-        longitude: lng,
-        latitude: lat,
-        coordinate_uncertainty_meters: record
-            .location
-            .coordinate_uncertainty_in_meters
-            .map(|v| v as i32),
-        continent: record.location.continent.map(|v| v.to_string()),
-        country: record.location.country.map(Into::into),
-        country_code: record.location.country_code.map(Into::into),
-        state_province: record.location.state_province.map(Into::into),
-        county: record.location.county.map(Into::into),
-        municipality: record.location.municipality.map(Into::into),
-        locality: record.location.locality.map(Into::into),
-        water_body: record.location.water_body.map(Into::into),
-        verbatim_locality: record.verbatim_locality.map(Into::into),
-        occurrence_remarks: record.notes.map(Into::into),
-        associated_media: record_json.get("blobs").and_then(|v| {
-            // Validate blobs parse as typed BlobEntry structs, then store as Value
-            let blobs: Vec<BlobEntry> = serde_json::from_value(v.clone()).ok()?;
-            if blobs.is_empty() {
-                None
-            } else {
-                Some(v.clone())
-            }
-        }),
-        recorded_by: None,
-        taxon_id: None,
-        taxon_rank: None,
-        vernacular_name: None,
-        kingdom: None,
-        phylum: None,
-        class: None,
-        order: None,
-        family: None,
-        genus: None,
-        created_at,
+    let recorded_by = record
+        .recorded_by
+        .map(|v| v.into_iter().map(|s| s.to_string()).collect());
+
+    Ok(ParsedOccurrence {
+        params: UpsertOccurrenceParams {
+            uri,
+            cid,
+            did,
+            scientific_name: None,
+            event_date,
+            longitude: lng,
+            latitude: lat,
+            coordinate_uncertainty_meters: record
+                .location
+                .coordinate_uncertainty_in_meters
+                .map(|v| v as i32),
+            continent: record.location.continent.map(|v| v.to_string()),
+            country: record.location.country.map(Into::into),
+            country_code: record.location.country_code.map(Into::into),
+            state_province: record.location.state_province.map(Into::into),
+            county: record.location.county.map(Into::into),
+            municipality: record.location.municipality.map(Into::into),
+            locality: record.location.locality.map(Into::into),
+            water_body: record.location.water_body.map(Into::into),
+            verbatim_locality: record.verbatim_locality.map(Into::into),
+            occurrence_remarks: record.notes.map(Into::into),
+            associated_media: record_json.get("blobs").and_then(|v| {
+                // Validate blobs parse as typed BlobEntry structs, then store as Value
+                let blobs: Vec<BlobEntry> = serde_json::from_value(v.clone()).ok()?;
+                if blobs.is_empty() {
+                    None
+                } else {
+                    Some(v.clone())
+                }
+            }),
+            recorded_by: None,
+            taxon_id: None,
+            taxon_rank: None,
+            vernacular_name: None,
+            kingdom: None,
+            phylum: None,
+            class: None,
+            order: None,
+            family: None,
+            genus: None,
+            created_at,
+        },
+        recorded_by,
     })
 }
 
@@ -298,15 +316,16 @@ pub fn like_from_json(
     })
 }
 
-/// Extract co-observer DIDs from an occurrence record JSON,
+/// Extract co-observer DIDs from a typed `recorded_by` list,
 /// filtering out the primary author.
-pub fn extract_co_observers(record_json: &Value, author_did: &str) -> Vec<String> {
-    record_json
-        .get("recordedBy")
-        .and_then(|v| v.as_array())
+pub fn extract_co_observers<T: AsRef<str>>(
+    recorded_by: Option<&[T]>,
+    author_did: &str,
+) -> Vec<String> {
+    recorded_by
         .map(|arr| {
             arr.iter()
-                .filter_map(|v| v.as_str())
+                .map(AsRef::as_ref)
                 .filter(|did| *did != author_did)
                 .map(|s| s.to_string())
                 .collect()
@@ -369,17 +388,25 @@ mod tests {
 
     #[test]
     fn test_extract_co_observers() {
-        let json = serde_json::json!({
-            "recordedBy": ["did:plc:author", "did:plc:coobs1", "did:plc:coobs2"]
-        });
-        let result = extract_co_observers(&json, "did:plc:author");
+        let recorded_by = vec![
+            "did:plc:author".to_string(),
+            "did:plc:coobs1".to_string(),
+            "did:plc:coobs2".to_string(),
+        ];
+        let result = extract_co_observers(Some(recorded_by.as_slice()), "did:plc:author");
         assert_eq!(result, vec!["did:plc:coobs1", "did:plc:coobs2"]);
     }
 
     #[test]
+    fn test_extract_co_observers_none() {
+        let result: Vec<String> = extract_co_observers(None::<&[String]>, "did:plc:author");
+        assert!(result.is_empty());
+    }
+
+    #[test]
     fn test_extract_co_observers_empty() {
-        let json = serde_json::json!({});
-        let result = extract_co_observers(&json, "did:plc:author");
+        let recorded_by: Vec<String> = vec![];
+        let result = extract_co_observers(Some(recorded_by.as_slice()), "did:plc:author");
         assert!(result.is_empty());
     }
 }
