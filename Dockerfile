@@ -133,22 +133,22 @@ CMD ["/app/observing-media-proxy"]
 FROM runtime-base AS runtime-observing-species-id
 
 # Install ONNX Runtime shared library
-RUN apt-get update && apt-get install -y wget && \
-    wget --retry-connrefused --waitretry=1 --tries=3 -q \
+RUN apt-get update && apt-get install -y curl && \
+    curl -fsSL --retry 3 -o /tmp/ort.tgz \
       https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-linux-x64-1.21.1.tgz && \
-    tar xzf onnxruntime-linux-x64-1.21.1.tgz && \
+    tar xzf /tmp/ort.tgz && \
     cp onnxruntime-linux-x64-1.21.1/lib/* /usr/lib/ && \
-    rm -rf onnxruntime-*
+    rm -rf onnxruntime-* /tmp/ort.tgz
 
 # Download model artifacts (separate layer for better caching)
 RUN mkdir -p /app/models/bioclip && \
-    wget --retry-connrefused --waitretry=1 --tries=3 -q -O /tmp/models.tar.gz \
+    curl -fsSL --retry 3 -o /tmp/models.tar.gz \
       https://github.com/observ-ing/bioclip-models/releases/download/v2.0.0/bioclip-2.5-models.tar.gz && \
     tar xzf /tmp/models.tar.gz -C /app/models/bioclip && \
     rm /tmp/models.tar.gz
 
 # Clean up
-RUN apt-get remove -y wget && apt-get autoremove -y && \
+RUN apt-get remove -y curl && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/observing-species-id /app/observing-species-id
