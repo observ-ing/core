@@ -9,6 +9,7 @@ Services deployed via GitHub Actions (`.github/workflows/ci.yml`):
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | REST API + OAuth + serves frontend |
 | observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | min-instances=1 (always running) |
 | observing-media-proxy | `SERVICE=observing-media-proxy` | Yes | No | Stateless image cache |
+| observing-species-id | `SERVICE=observing-species-id` | Yes | No | BioCLIP species identification (2 CPU, 4 GiB) |
 | observing-taxonomy | `SERVICE=observing-taxonomy` | Yes | No | GBIF taxonomy lookups with caching |
 
 All services are built from the root `Dockerfile` using `--build-arg SERVICE=<name>`.
@@ -53,7 +54,16 @@ PORT=3000
 PUBLIC_URL=https://your-domain.run.app
 TAXONOMY_SERVICE_URL=https://observing-taxonomy-xxx.run.app
 MEDIA_PROXY_URL=https://observing-media-proxy-xxx.run.app
+SPECIES_ID_SERVICE_URL=https://observing-species-id-xxx.run.app  # Optional
 HIDDEN_DIDS=did:plc:abc123  # Comma-separated DIDs to hide from feeds
+```
+
+### Species ID
+
+```bash
+PORT=3005
+MODEL_DIR=/app/models/bioclip
+ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
 ```
 
 ### Taxonomy

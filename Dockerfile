@@ -9,7 +9,7 @@
 # when SERVICE=observing-appview.
 #
 # Supported SERVICE values:
-#   observing-appview, observing-ingester, observing-media-proxy, observing-taxonomy
+#   observing-appview, observing-ingester, observing-media-proxy, observing-species-id, observing-taxonomy
 
 ARG SERVICE=observing-appview
 
@@ -132,13 +132,15 @@ CMD ["/app/observing-media-proxy"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-species-id
 
-# Install ONNX Runtime shared library
-RUN apt-get update && apt-get install -y wget && \
+# Install ONNX Runtime shared library and download model artifacts
+RUN apt-get update && apt-get install -y wget curl && \
     wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-linux-x64-1.21.1.tgz && \
     tar xzf onnxruntime-linux-x64-1.21.1.tgz && \
     cp onnxruntime-linux-x64-1.21.1/lib/* /usr/lib/ && \
     rm -rf onnxruntime-* && \
-    apt-get remove -y wget && apt-get autoremove -y && \
+    mkdir -p /app/models/bioclip && \
+    curl -L https://github.com/observ-ing/bioclip-models/releases/download/v2.0.0/bioclip-2.5-models.tar.gz | tar xz -C /app/models/bioclip && \
+    apt-get remove -y wget curl && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/observing-species-id /app/observing-species-id

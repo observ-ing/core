@@ -226,7 +226,7 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service: [appview, ingester, media-proxy, taxonomy]
+        service: [appview, ingester, media-proxy, species-id, taxonomy]
     steps:
       - uses: actions/checkout@v4
 
@@ -289,11 +289,22 @@ jobs:
             --allow-unauthenticated \
             --set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json
 
+      - name: Deploy species-id
+        run: |
+          gcloud run deploy observing-species-id \
+            --image=$REGISTRY/observing-species-id:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --cpu=2 \
+            --memory=4Gi \
+            --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
+
       - name: Get service URLs
         id: urls
         run: |
           echo "media_proxy=$(gcloud run services describe observing-media-proxy --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
           echo "taxonomy=$(gcloud run services describe observing-taxonomy --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
+          echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
       - name: Deploy appview
         id: deploy-appview
@@ -303,7 +314,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=${{ steps.urls.outputs.media_proxy }},TAXONOMY_SERVICE_URL=${{ steps.urls.outputs.taxonomy }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=${{ steps.urls.outputs.media_proxy }},TAXONOMY_SERVICE_URL=${{ steps.urls.outputs.taxonomy }},SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
             --set-secrets=DB_PASSWORD=observing-db-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
