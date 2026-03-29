@@ -134,7 +134,7 @@ FROM runtime-base AS runtime-observing-species-id
 
 # Install ONNX Runtime shared library
 RUN apt-get update && apt-get install -y curl && \
-    curl -fsSL --retry 3 -o /tmp/ort.tgz \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/ort.tgz \
       https://github.com/microsoft/onnxruntime/releases/download/v1.21.1/onnxruntime-linux-x64-1.21.1.tgz && \
     tar xzf /tmp/ort.tgz && \
     cp onnxruntime-linux-x64-1.21.1/lib/* /usr/lib/ && \
@@ -142,7 +142,7 @@ RUN apt-get update && apt-get install -y curl && \
 
 # Download model artifacts (separate layer for better caching)
 RUN mkdir -p /app/models/bioclip && \
-    curl -fsSL --retry 3 -o /tmp/models.tar.gz \
+    curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/models.tar.gz \
       https://github.com/observ-ing/bioclip-models/releases/download/v2.0.0/bioclip-2.5-models.tar.gz && \
     tar xzf /tmp/models.tar.gz -C /app/models/bioclip && \
     rm /tmp/models.tar.gz
