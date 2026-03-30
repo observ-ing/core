@@ -252,8 +252,12 @@ jobs:
           build-args: SERVICE=observing-${{ matrix.service }}
           push: true
           tags: ${{ env.REGISTRY }}/observing-${{ matrix.service }}:latest
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          cache-from: |
+            type=gha,scope=${{ matrix.service }}
+            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache
+          cache-to: |
+            type=gha,mode=max,scope=${{ matrix.service }}
+            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
