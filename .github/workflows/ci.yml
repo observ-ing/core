@@ -301,7 +301,8 @@ jobs:
             --allow-unauthenticated \
             --cpu=2 \
             --memory=4Gi \
-            --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json,PORT=3005
+            --port=3005 \
+            --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
       - name: Get service URLs
         id: urls
