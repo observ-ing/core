@@ -302,7 +302,7 @@ jobs:
             --cpu=2 \
             --memory=4Gi \
             --cpu-boost \
-            --timeout=300 \
+            --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
       - name: Get service URLs
