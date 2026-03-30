@@ -135,9 +135,9 @@ FROM runtime-base AS runtime-observing-species-id
 # Install ONNX Runtime shared library
 RUN apt-get update && apt-get install -y curl && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/ort.tgz \
-      https://github.com/microsoft/onnxruntime/releases/download/v1.22.0/onnxruntime-linux-x64-1.22.0.tgz && \
+      https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-linux-x64-1.24.4.tgz && \
     tar xzf /tmp/ort.tgz && \
-    cp onnxruntime-linux-x64-1.22.0/lib/libonnxruntime*.so* /usr/lib/ && \
+    cp onnxruntime-linux-x64-1.24.4/lib/libonnxruntime*.so* /usr/lib/ && \
     rm -rf onnxruntime-* /tmp/ort.tgz
 
 # Download model artifacts (separate layer for better caching)
