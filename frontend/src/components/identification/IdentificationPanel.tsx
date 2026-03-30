@@ -166,17 +166,22 @@ export function IdentificationPanel({
 
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          <TaxaAutocomplete value={taxonName} onChange={setTaxonName} size="small" />
-
-          {imageUrl && (
-            <AiSuggestions
-              imageUrl={imageUrl}
-              latitude={latitude}
-              longitude={longitude}
-              onSelect={(s) => setTaxonName(s.scientificName)}
-              disabled={isSubmitting}
-            />
-          )}
+          <TaxaAutocomplete
+            value={taxonName}
+            onChange={setTaxonName}
+            size="small"
+            bottomContent={
+              imageUrl ? (
+                <AiSuggestions
+                  imageUrl={imageUrl}
+                  latitude={latitude}
+                  longitude={longitude}
+                  onSelect={(s) => setTaxonName(s.scientificName)}
+                  disabled={isSubmitting}
+                />
+              ) : undefined
+            }
+          />
 
           <TextField
             fullWidth
