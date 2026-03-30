@@ -538,19 +538,20 @@ export function UploadModal() {
           onChange={setSpecies}
           label="Species (optional)"
           placeholder="e.g. Eschscholzia californica - leave blank if unknown"
+          bottomContent={
+            aiImageUrl && !species ? (
+              <AiSuggestions
+                imageUrl={aiImageUrl}
+                latitude={lat ? parseFloat(lat) : undefined}
+                longitude={lng ? parseFloat(lng) : undefined}
+                onSelect={(s) => setSpecies(s.scientificName)}
+                disabled={isSubmitting}
+                autoFetch
+                quiet
+              />
+            ) : undefined
+          }
         />
-
-        {aiImageUrl && !species && (
-          <AiSuggestions
-            imageUrl={aiImageUrl}
-            latitude={lat ? parseFloat(lat) : undefined}
-            longitude={lng ? parseFloat(lng) : undefined}
-            onSelect={(s) => setSpecies(s.scientificName)}
-            disabled={isSubmitting}
-            autoFetch
-            quiet
-          />
-        )}
 
         <TextField
           fullWidth
