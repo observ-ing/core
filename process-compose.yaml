@@ -20,6 +20,8 @@ processes:
         host: localhost
         port: 3000
         path: /health
+      initial_delay_seconds: 120
+      period_seconds: 5
     depends_on:
       cloud-sql-proxy:
         condition: process_healthy
