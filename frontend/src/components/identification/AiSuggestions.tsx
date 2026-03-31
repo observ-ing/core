@@ -111,16 +111,38 @@ export function AiSuggestions({
               AI suggestions
             </Typography>
           </Box>
-          <Stack direction="row" spacing={0.5} sx={{ flexWrap: "wrap", gap: 0.5 }}>
+          <Stack spacing={0.5}>
             {suggestions.map((s) => (
               <Chip
                 key={s.scientificName}
-                label={s.commonName ? `${s.scientificName} (${s.commonName})` : s.scientificName}
+                label={
+                  <Box component="span" sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
+                    <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
+                    {s.commonName && (
+                      <Typography variant="caption" component="span" color="text.secondary">
+                        {s.commonName}
+                      </Typography>
+                    )}
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      color="text.secondary"
+                      sx={{ ml: "auto" }}
+                    >
+                      {Math.round(s.confidence * 100)}%
+                    </Typography>
+                  </Box>
+                }
                 size="small"
                 onClick={() => onSelect(s)}
                 variant="outlined"
                 color="primary"
-                sx={{ fontStyle: "italic", cursor: "pointer" }}
+                sx={{
+                  cursor: "pointer",
+                  maxWidth: "100%",
+                  height: "auto",
+                  "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 },
+                }}
               />
             ))}
           </Stack>
