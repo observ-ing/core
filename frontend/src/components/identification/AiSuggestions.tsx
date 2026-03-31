@@ -123,7 +123,12 @@ export function AiSuggestions({
                         {s.commonName}
                       </Typography>
                     )}
-                    <Typography variant="caption" component="span" color="text.secondary" sx={{ ml: "auto" }}>
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      color="text.secondary"
+                      sx={{ ml: "auto" }}
+                    >
                       {Math.round(s.confidence * 100)}%
                     </Typography>
                   </Box>
@@ -132,7 +137,12 @@ export function AiSuggestions({
                 onClick={() => onSelect(s)}
                 variant="outlined"
                 color="primary"
-                sx={{ cursor: "pointer", maxWidth: "100%", height: "auto", "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 } }}
+                sx={{
+                  cursor: "pointer",
+                  maxWidth: "100%",
+                  height: "auto",
+                  "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 },
+                }}
               />
             ))}
           </Stack>
