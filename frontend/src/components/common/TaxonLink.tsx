@@ -2,6 +2,20 @@ import { Link } from "react-router-dom";
 import { Chip, Typography } from "@mui/material";
 import { nameToSlug } from "../../lib/taxonSlug";
 
+const ITALICIZED_RANKS = new Set(["species", "genus", "subspecies", "variety"]);
+
+/**
+ * Determine whether a taxon name should be italicized.
+ * When rank is known, italicize species/genus/subspecies/variety.
+ * When rank is unknown, use word count as a heuristic:
+ * multi-word names are typically species (binomial) or below → italic.
+ */
+export function shouldItalicizeTaxonName(name: string, rank?: string): boolean {
+  if (rank) return ITALICIZED_RANKS.has(rank);
+  // Heuristic: binomial/trinomial names (2+ words) are species-level
+  return name.trim().includes(" ");
+}
+
 export interface TaxonLinkProps {
   /** The taxon name to display */
   name: string;
@@ -32,11 +46,8 @@ export function TaxonLink({
   italic,
   onClick,
 }: TaxonLinkProps) {
-  // Default italic behavior: italicize species and genus ranks
-  const shouldItalicize =
-    italic !== undefined
-      ? italic
-      : rank === "species" || rank === "genus" || rank === "subspecies" || rank === "variety";
+  // Default italic behavior: italicize species/genus/subspecies/variety ranks
+  const shouldItalicize = italic !== undefined ? italic : shouldItalicizeTaxonName(name, rank);
 
   // Build the URL using kingdom/name pattern with hyphenated slugs
   // All non-kingdom taxa require a kingdom prefix

@@ -250,7 +250,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                     <TaxonLink
                       name={subject.communityId}
                       kingdom={taxonomy?.kingdom}
-                      rank="species"
                       onClick={(e) => e.stopPropagation()}
                     />
                   ) : (
@@ -272,7 +271,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                 <TaxonLink
                   name={species}
                   kingdom={taxonomy?.kingdom}
-                  rank="species"
+                  rank={undefined}
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (

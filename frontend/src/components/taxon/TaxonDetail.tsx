@@ -25,7 +25,7 @@ import { fetchTaxon, fetchTaxonObservations } from "../../services/api";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
-import { TaxonLink } from "../common/TaxonLink";
+import { TaxonLink, shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
@@ -209,7 +209,9 @@ export function TaxonDetail() {
           <Typography
             variant="h5"
             sx={{
-              fontStyle: taxon.rank === "species" || taxon.rank === "genus" ? "italic" : "normal",
+              fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
+                ? "italic"
+                : "normal",
               color: "primary.main",
               fontWeight: 600,
             }}
@@ -300,12 +302,9 @@ export function TaxonDetail() {
                       <Typography
                         sx={{
                           fontWeight: 700,
-                          fontStyle:
-                            taxon.rank === "species" ||
-                            taxon.rank === "genus" ||
-                            taxon.rank === "subspecies"
-                              ? "italic"
-                              : "normal",
+                          fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
+                            ? "italic"
+                            : "normal",
                         }}
                       >
                         {taxon.scientificName}

@@ -184,7 +184,6 @@ export function IdentificationHistory({
                   <TaxonLink
                     name={observerInitialId.scientificName}
                     kingdom={observerInitialId.kingdom || kingdom}
-                    rank="species"
                   />
                 </Box>
               </Box>
@@ -242,7 +241,7 @@ export function IdentificationHistory({
                     <TaxonLink
                       name={id.scientific_name}
                       kingdom={id.kingdom || kingdom}
-                      rank={id.taxon_rank || "species"}
+                      rank={id.taxon_rank}
                     />
                   </Box>
                   {id.identification_remarks && (

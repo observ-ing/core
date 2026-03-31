@@ -6,6 +6,7 @@ import NatureIcon from "@mui/icons-material/Nature";
 import { submitIdentification } from "../../services/api";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { AiSuggestions } from "./AiSuggestions";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
@@ -121,7 +122,14 @@ export function IdentificationPanel({
           <Typography variant="caption" color="text.secondary">
             Community ID
           </Typography>
-          <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>{currentId}</Typography>
+          <Typography
+            sx={{
+              fontStyle: shouldItalicizeTaxonName(currentId) ? "italic" : "normal",
+              color: "primary.main",
+            }}
+          >
+            {currentId}
+          </Typography>
         </Box>
       </Stack>
 

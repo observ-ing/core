@@ -4,6 +4,7 @@ import { Box, Typography, Card, CardActionArea, CardMedia, CardContent } from "@
 import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 
 interface ExploreGridCardProps {
   observation: Occurrence;
@@ -53,7 +54,7 @@ export const ExploreGridCard = memo(function ExploreGridCard({
           <Typography
             variant="body2"
             sx={{
-              fontStyle: "italic",
+              fontStyle: species && shouldItalicizeTaxonName(species) ? "italic" : "normal",
               color: "primary.main",
               fontWeight: 500,
               overflow: "hidden",

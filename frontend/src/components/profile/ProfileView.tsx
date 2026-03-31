@@ -22,6 +22,7 @@ import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
 import { formatTimeAgo, getDisplayName, getObservationUrl } from "../../lib/utils";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
@@ -263,7 +264,11 @@ export function ProfileView() {
                   <Typography
                     variant="body2"
                     sx={{
-                      fontStyle: "italic",
+                      fontStyle: shouldItalicizeTaxonName(
+                        occ.communityId || occ.effectiveTaxonomy?.scientificName || "",
+                      )
+                        ? "italic"
+                        : "normal",
                       color: "primary.main",
                       fontWeight: 500,
                       overflow: "hidden",
@@ -328,7 +333,9 @@ export function ProfileView() {
                   <Typography
                     variant="body2"
                     sx={{
-                      fontStyle: "italic",
+                      fontStyle: shouldItalicizeTaxonName(id.scientific_name, id.taxon_rank)
+                        ? "italic"
+                        : "normal",
                       color: "primary.main",
                       fontWeight: 500,
                     }}
