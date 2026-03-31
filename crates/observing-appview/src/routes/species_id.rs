@@ -1,7 +1,9 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 use crate::auth::AuthUser;
+use crate::species_id_client::IdentifyResponse;
 use crate::state::AppState;
 
 #[derive(Debug, Deserialize)]
@@ -48,7 +50,10 @@ pub async fn identify(
         .identify(&body.image, body.latitude, body.longitude, body.limit)
         .await
     {
-        Some(response) => Json(response).into_response(),
+        Some(mut response) => {
+            enrich_common_names(&state, &mut response).await;
+            Json(response).into_response()
+        }
         None => (
             StatusCode::BAD_GATEWAY,
             Json(ErrorResponse {
@@ -56,5 +61,35 @@ pub async fn identify(
             }),
         )
             .into_response(),
+    }
+}
+
+/// Fill in missing common names by looking up each scientific name via the
+/// taxonomy service. Failures are silently ignored — common names are
+/// best-effort.
+async fn enrich_common_names(state: &AppState, response: &mut IdentifyResponse) {
+    let futures: Vec<_> = response
+        .suggestions
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.common_name.is_none())
+        .map(|(i, s)| {
+            let taxonomy = state.taxonomy.clone();
+            let name = s.scientific_name.clone();
+            async move {
+                let result = taxonomy.search(&name, Some(1)).await;
+                let common_name = result
+                    .and_then(|results| results.into_iter().next())
+                    .and_then(|t| t.common_name);
+                (i, common_name)
+            }
+        })
+        .collect();
+
+    for (i, common_name) in futures::future::join_all(futures).await {
+        if let Some(name) = common_name {
+            debug!(scientific_name = %response.suggestions[i].scientific_name, common_name = %name, "Enriched common name");
+            response.suggestions[i].common_name = Some(name);
+        }
     }
 }
