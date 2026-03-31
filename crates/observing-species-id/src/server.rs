@@ -3,7 +3,7 @@
 use crate::model::BioclipModel;
 use crate::types::{HealthResponse, IdentifyRequest, IdentifyResponse};
 use axum::{
-    extract::State,
+    extract::{DefaultBodyLimit, State},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
     routing::{get, post},
@@ -33,6 +33,7 @@ pub fn create_router(state: SharedState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/identify", post(identify))
+        .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // 20MB for base64-encoded images
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
