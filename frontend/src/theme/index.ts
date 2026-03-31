@@ -71,12 +71,6 @@ const lightPalette = {
 const createAppTheme = (mode: PaletteMode): Theme => {
   const isDark = mode === "dark";
   const palette = isDark ? darkPalette : lightPalette;
-  const borderColor = isDark ? "#333" : "#e5e5e5";
-  const surfaceColor = isDark ? "#1a1a1a" : "#ffffff";
-  const skeletonColor = isDark ? "rgba(255, 255, 255, 0.08)" : "rgba(0, 0, 0, 0.06)";
-  const cardShadow = isDark
-    ? "0 1px 3px rgba(0, 0, 0, 0.24), 0 1px 2px rgba(0, 0, 0, 0.16)"
-    : "0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04)";
 
   return createTheme({
     palette,
@@ -94,96 +88,12 @@ const createAppTheme = (mode: PaletteMode): Theme => {
             display: "flex",
             flexDirection: "column",
           },
-          // Focus-visible accessibility styles using theme colors
-          "*:focus-visible": {
-            outline: `2px solid ${palette.primary.main}`,
-            outlineOffset: "2px",
-          },
         },
       },
       MuiButton: {
         styleOverrides: {
           root: {
             textTransform: "none",
-            fontWeight: 600,
-            transition: "all 0.2s ease",
-            "&:active": {
-              transform: "scale(0.98)",
-            },
-          },
-          contained: {
-            boxShadow: isDark
-              ? "0 2px 8px rgba(34, 197, 94, 0.25)"
-              : "0 2px 8px rgba(21, 128, 61, 0.2)",
-            "&:hover": {
-              boxShadow: isDark
-                ? "0 4px 12px rgba(34, 197, 94, 0.35)"
-                : "0 4px 12px rgba(21, 128, 61, 0.3)",
-            },
-          },
-          outlined: {
-            "&:hover": {
-              backgroundColor: isDark ? "rgba(34, 197, 94, 0.08)" : "rgba(21, 128, 61, 0.04)",
-            },
-          },
-        },
-      },
-      MuiAppBar: {
-        styleOverrides: {
-          root: {
-            backgroundColor: surfaceColor,
-            borderBottom: `1px solid ${borderColor}`,
-          },
-        },
-      },
-      MuiBottomNavigation: {
-        styleOverrides: {
-          root: {
-            backgroundColor: surfaceColor,
-            borderTop: `1px solid ${borderColor}`,
-          },
-        },
-      },
-      MuiDialog: {
-        styleOverrides: {
-          paper: {
-            backgroundColor: surfaceColor,
-            border: `1px solid ${borderColor}`,
-            borderRadius: 16,
-          },
-        },
-      },
-      MuiCard: {
-        styleOverrides: {
-          root: {
-            boxShadow: cardShadow,
-          },
-        },
-      },
-      MuiTextField: {
-        styleOverrides: {
-          root: {
-            "& .MuiOutlinedInput-root": {
-              "& fieldset": { borderColor },
-              "&:hover fieldset": { borderColor },
-              "&.Mui-focused fieldset": { borderColor: palette.primary.main },
-            },
-          },
-        },
-      },
-      MuiFab: {
-        styleOverrides: {
-          root: {
-            boxShadow: isDark
-              ? "0 4px 12px rgba(34, 197, 94, 0.3)"
-              : "0 4px 12px rgba(22, 163, 74, 0.25)",
-          },
-        },
-      },
-      MuiTabs: {
-        styleOverrides: {
-          indicator: {
-            backgroundColor: palette.primary.main,
           },
         },
       },
@@ -191,96 +101,6 @@ const createAppTheme = (mode: PaletteMode): Theme => {
         styleOverrides: {
           root: {
             textTransform: "none",
-            fontWeight: 500,
-            color: palette.text.secondary,
-            "&.Mui-selected": {
-              color: palette.primary.main,
-            },
-          },
-        },
-      },
-      MuiBottomNavigationAction: {
-        styleOverrides: {
-          root: {
-            color: palette.text.secondary,
-            "&.Mui-selected": {
-              color: palette.primary.main,
-            },
-          },
-        },
-      },
-      MuiSkeleton: {
-        styleOverrides: {
-          root: {
-            backgroundColor: skeletonColor,
-          },
-        },
-        defaultProps: {
-          animation: "wave",
-        },
-      },
-      MuiPaper: {
-        styleOverrides: {
-          root: {
-            transition: "box-shadow 0.2s ease, transform 0.2s ease",
-          },
-          elevation1: {
-            boxShadow: cardShadow,
-          },
-        },
-      },
-      MuiCardMedia: {
-        styleOverrides: {
-          root: {
-            borderRadius: 0,
-          },
-        },
-      },
-      MuiChip: {
-        styleOverrides: {
-          root: {
-            fontWeight: 500,
-            transition: "all 0.15s ease",
-          },
-          outlined: {
-            "&:hover": {
-              borderColor: palette.primary.main,
-              backgroundColor: isDark ? "rgba(34, 197, 94, 0.08)" : "rgba(21, 128, 61, 0.04)",
-            },
-          },
-        },
-      },
-      MuiAlert: {
-        styleOverrides: {
-          root: {
-            borderRadius: 8,
-          },
-          standardSuccess: {
-            backgroundColor: isDark ? "rgba(34, 197, 94, 0.12)" : "rgba(21, 128, 61, 0.08)",
-            color: palette.primary.main,
-            "& .MuiAlert-icon": {
-              color: palette.primary.main,
-            },
-          },
-        },
-      },
-      MuiAvatar: {
-        styleOverrides: {
-          root: {
-            transition: "transform 0.2s ease, box-shadow 0.2s ease",
-            "&:hover": {
-              transform: "scale(1.05)",
-            },
-          },
-        },
-      },
-      MuiIconButton: {
-        styleOverrides: {
-          root: {
-            transition: "all 0.15s ease",
-            "&:hover": {
-              transform: "scale(1.1)",
-            },
           },
         },
       },
