@@ -25,9 +25,6 @@ const darkPalette = {
     dark: "#16a34a",
     contrastText: "#0a0a0a",
   },
-  secondary: {
-    main: "#333",
-  },
   background: {
     default: "#0a0a0a",
     paper: "#1a1a1a",
@@ -52,9 +49,6 @@ const lightPalette = {
     main: "#15803d",
     dark: "#166534",
     contrastText: "#ffffff",
-  },
-  secondary: {
-    main: "#d4d4d4",
   },
   background: {
     default: "#f5f5f5",
