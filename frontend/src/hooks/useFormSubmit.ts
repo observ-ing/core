@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
 import { getErrorMessage } from "../lib/utils";
@@ -25,8 +25,11 @@ export function useFormSubmit(
 ) {
   const dispatch = useAppDispatch();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const submittingRef = useRef(false);
 
   const handleSubmit = useCallback(async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       await submitFn();
@@ -48,6 +51,7 @@ export function useFormSubmit(
         );
       }
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   }, [submitFn, options, dispatch]);
