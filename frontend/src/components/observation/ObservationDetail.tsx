@@ -269,7 +269,7 @@ export function ObservationDetail() {
         {/* Species Header */}
         <Box sx={{ px: 3, pt: 2, pb: 1 }}>
           {species ? (
-            <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank="species" />
+            <TaxonLink name={species} kingdom={taxonomy?.kingdom} />
           ) : (
             <Typography
               variant="h5"
@@ -485,7 +485,10 @@ export function ObservationDetail() {
                             <Chip
                               label={subject.communityId}
                               size="small"
-                              sx={{ fontStyle: "italic", maxWidth: 120 }}
+                              sx={{
+                                fontStyle: subject.communityId.includes(" ") ? "italic" : "normal",
+                                maxWidth: 120,
+                              }}
                             />
                           )}
                         </Stack>

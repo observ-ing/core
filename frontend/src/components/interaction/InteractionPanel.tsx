@@ -27,6 +27,7 @@ import {
 } from "../../services/api";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import type { Subject, TaxaResult } from "../../services/types";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { formatDate, MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
 
 // Known interaction types with human-readable labels
@@ -363,7 +364,14 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
                         />
                       )}
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" sx={{ fontStyle: "italic" }}>
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
+                              ? "italic"
+                              : "normal",
+                          }}
+                        >
                           {taxon.scientificName}
                         </Typography>
                         {taxon.commonName && (
