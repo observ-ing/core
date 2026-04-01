@@ -1,11 +1,24 @@
 import { useState, useCallback, type FormEvent } from "react";
-import { Box, Typography, Button, TextField, Stack, Paper, Divider } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  TextField,
+  Stack,
+  Paper,
+  Divider,
+  IconButton,
+  CircularProgress,
+  Tooltip,
+} from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
+import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { submitIdentification } from "../../services/api";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
-import { AiSuggestions } from "./AiSuggestions";
+import { AiSuggestionChips } from "./AiSuggestions";
+import { useAiSuggestions } from "../../hooks/useAiSuggestions";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
@@ -103,6 +116,12 @@ export function IdentificationPanel({
 
   const isSubmitting = isAgreeing || isSuggesting;
 
+  const ai = useAiSuggestions({
+    imageUrl: imageUrl ?? "",
+    latitude,
+    longitude,
+  });
+
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
@@ -178,16 +197,30 @@ export function IdentificationPanel({
             value={taxonName}
             onChange={setTaxonName}
             size="small"
-            bottomContent={
-              imageUrl ? (
-                <AiSuggestions
-                  imageUrl={imageUrl}
-                  latitude={latitude}
-                  longitude={longitude}
-                  onSelect={(s) => setTaxonName(s.scientificName)}
-                  disabled={isSubmitting}
-                />
+            inputEndAdornment={
+              imageUrl && !ai.hasLoaded ? (
+                <Tooltip title="AI Suggest">
+                  <IconButton
+                    size="small"
+                    onClick={ai.handleFetch}
+                    disabled={isSubmitting || ai.isLoading}
+                    color="secondary"
+                    edge="end"
+                  >
+                    {ai.isLoading ? (
+                      <CircularProgress size={18} color="inherit" />
+                    ) : (
+                      <AutoFixHighIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Tooltip>
               ) : undefined
+            }
+            bottomContent={
+              <AiSuggestionChips
+                suggestions={ai.suggestions}
+                onSelect={(s) => setTaxonName(s.scientificName)}
+              />
             }
           />
 

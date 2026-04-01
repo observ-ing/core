@@ -15,6 +15,8 @@ interface TaxaAutocompleteProps {
   margin?: "normal" | "dense" | "none";
   /** Content rendered below the input field (e.g. AI suggestions) */
   bottomContent?: ReactNode;
+  /** Extra element rendered inside the input's end adornment (e.g. AI suggest button) */
+  inputEndAdornment?: ReactNode;
 }
 
 export function TaxaAutocomplete({
@@ -25,6 +27,7 @@ export function TaxaAutocomplete({
   size,
   margin = "normal",
   bottomContent,
+  inputEndAdornment,
 }: TaxaAutocompleteProps) {
   const searchFn = useCallback((query: string) => searchTaxa(query), []);
   const { options, loading, handleSearch, clearOptions } = useAutocomplete<TaxaResult>({
@@ -69,6 +72,7 @@ export function TaxaAutocomplete({
                   endAdornment: (
                     <>
                       {loading && <CircularProgress color="inherit" size={20} />}
+                      {inputEndAdornment}
                       {params.InputProps?.endAdornment}
                     </>
                   ),
