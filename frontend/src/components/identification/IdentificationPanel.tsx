@@ -7,9 +7,7 @@ import {
   Stack,
   Paper,
   Divider,
-  IconButton,
   CircularProgress,
-  Tooltip,
 } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
@@ -193,36 +191,40 @@ export function IdentificationPanel({
 
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          <TaxaAutocomplete
-            value={taxonName}
-            onChange={setTaxonName}
-            size="small"
-            inputEndAdornment={
-              imageUrl && !ai.hasLoaded ? (
-                <Tooltip title="AI Suggest">
-                  <IconButton
-                    size="small"
-                    onClick={ai.handleFetch}
-                    disabled={isSubmitting || ai.isLoading}
-                    color="secondary"
-                    edge="end"
-                  >
-                    {ai.isLoading ? (
-                      <CircularProgress size={18} color="inherit" />
-                    ) : (
-                      <AutoFixHighIcon fontSize="small" />
-                    )}
-                  </IconButton>
-                </Tooltip>
-              ) : undefined
-            }
-            bottomContent={
-              <AiSuggestionChips
-                suggestions={ai.suggestions}
-                onSelect={(s) => setTaxonName(s.scientificName)}
+          <Stack direction="row" spacing={1} alignItems="flex-start">
+            <Box sx={{ flex: 1 }}>
+              <TaxaAutocomplete
+                value={taxonName}
+                onChange={setTaxonName}
+                size="small"
+                margin="none"
+                bottomContent={
+                  <AiSuggestionChips
+                    suggestions={ai.suggestions}
+                    onSelect={(s) => setTaxonName(s.scientificName)}
+                  />
+                }
               />
-            }
-          />
+            </Box>
+            {imageUrl && !ai.hasLoaded && (
+              <Button
+                variant="outlined"
+                size="small"
+                onClick={ai.handleFetch}
+                disabled={isSubmitting || ai.isLoading}
+                startIcon={
+                  ai.isLoading ? (
+                    <CircularProgress size={16} color="inherit" />
+                  ) : (
+                    <AutoFixHighIcon fontSize="small" />
+                  )
+                }
+                sx={{ whiteSpace: "nowrap", height: 40 }}
+              >
+                AI Suggest
+              </Button>
+            )}
+          </Stack>
 
           <TextField
             fullWidth
