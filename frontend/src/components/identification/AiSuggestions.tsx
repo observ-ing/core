@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from "react";
 import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import { identifySpecies, type SpeciesSuggestion } from "../../services/api";
+import type { SpeciesSuggestion } from "../../services/api";
 import { nameToSlug } from "../../lib/taxonSlug";
-import { useAppDispatch } from "../../store";
-import { addToast } from "../../store/uiSlice";
+import { useAiSuggestions } from "../../hooks/useAiSuggestions";
 
 interface AiSuggestionsProps {
   imageUrl: string;
@@ -28,54 +26,13 @@ export function AiSuggestions({
   autoFetch,
   quiet,
 }: AiSuggestionsProps) {
-  const dispatch = useAppDispatch();
-  const [suggestions, setSuggestions] = useState<SpeciesSuggestion[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasLoaded, setHasLoaded] = useState(false);
-  const fetchedRef = useRef(false);
-
-  const handleFetch = async () => {
-    setIsLoading(true);
-    setSuggestions([]);
-    try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
-        reader.readAsDataURL(blob);
-      });
-
-      const params: Parameters<typeof identifySpecies>[0] = {
-        image: base64,
-        limit: 5,
-      };
-      if (latitude != null && Number.isFinite(latitude)) params.latitude = latitude;
-      if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
-
-      const result = await identifySpecies(params);
-      setSuggestions(result.suggestions);
-      setHasLoaded(true);
-      if (result.suggestions.length === 0 && !quiet) {
-        dispatch(addToast({ message: "No species suggestions found", type: "success" }));
-      }
-    } catch {
-      if (!quiet) {
-        dispatch(addToast({ message: "Species identification unavailable", type: "error" }));
-      }
-      setHasLoaded(true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (autoFetch && !fetchedRef.current) {
-      fetchedRef.current = true;
-      handleFetch();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoFetch]);
+  const { suggestions, isLoading, hasLoaded, handleFetch } = useAiSuggestions({
+    imageUrl,
+    latitude,
+    longitude,
+    autoFetch,
+    quiet,
+  });
 
   return (
     <Box>
@@ -105,76 +62,87 @@ export function AiSuggestions({
         </Box>
       )}
 
-      {suggestions.length > 0 && (
-        <Box sx={{ mb: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
-            <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-            <Typography variant="caption" color="text.secondary">
-              AI suggestions
-            </Typography>
-          </Box>
-          <Stack spacing={0.5}>
-            {suggestions.map((s) => (
-              <Chip
-                key={s.scientificName}
-                label={
-                  <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <Box
-                      component="span"
-                      sx={{
-                        display: "flex",
-                        alignItems: "baseline",
-                        gap: 0.5,
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
-                      {s.commonName && (
-                        <Typography variant="caption" component="span" color="text.secondary">
-                          {s.commonName}
-                        </Typography>
-                      )}
-                      <Typography
-                        variant="caption"
-                        component="span"
-                        color="text.secondary"
-                        sx={{ ml: "auto" }}
-                      >
-                        {Math.round(s.confidence * 100)}%
-                      </Typography>
-                    </Box>
-                    {s.kingdom && (
-                      <IconButton
-                        size="small"
-                        component="a"
-                        href={`/taxon/${s.kingdom}/${nameToSlug(s.scientificName)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                        sx={{ p: 0, ml: 0.5 }}
-                        title="Open taxon in new tab"
-                      >
-                        <OpenInNewIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    )}
-                  </Box>
-                }
-                size="small"
-                onClick={() => onSelect(s)}
-                variant="outlined"
-                color="primary"
-                sx={{
-                  cursor: "pointer",
-                  maxWidth: "100%",
-                  height: "auto",
-                  "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 },
-                }}
-              />
-            ))}
-          </Stack>
-        </Box>
-      )}
+      <AiSuggestionChips suggestions={suggestions} onSelect={onSelect} />
+    </Box>
+  );
+}
+
+interface AiSuggestionChipsProps {
+  suggestions: SpeciesSuggestion[];
+  onSelect: (suggestion: SpeciesSuggestion) => void;
+}
+
+export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsProps) {
+  if (suggestions.length === 0) return null;
+
+  return (
+    <Box sx={{ mb: 1 }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
+        <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+        <Typography variant="caption" color="text.secondary">
+          AI suggestions
+        </Typography>
+      </Box>
+      <Stack spacing={0.5}>
+        {suggestions.map((s) => (
+          <Chip
+            key={s.scientificName}
+            label={
+              <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                <Box
+                  component="span"
+                  sx={{
+                    display: "flex",
+                    alignItems: "baseline",
+                    gap: 0.5,
+                    flex: 1,
+                    minWidth: 0,
+                  }}
+                >
+                  <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
+                  {s.commonName && (
+                    <Typography variant="caption" component="span" color="text.secondary">
+                      {s.commonName}
+                    </Typography>
+                  )}
+                  <Typography
+                    variant="caption"
+                    component="span"
+                    color="text.secondary"
+                    sx={{ ml: "auto" }}
+                  >
+                    {Math.round(s.confidence * 100)}%
+                  </Typography>
+                </Box>
+                {s.kingdom && (
+                  <IconButton
+                    size="small"
+                    component="a"
+                    href={`/taxon/${s.kingdom}/${nameToSlug(s.scientificName)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    sx={{ p: 0, ml: 0.5 }}
+                    title="Open taxon in new tab"
+                  >
+                    <OpenInNewIcon sx={{ fontSize: 14 }} />
+                  </IconButton>
+                )}
+              </Box>
+            }
+            size="small"
+            onClick={() => onSelect(s)}
+            variant="outlined"
+            color="primary"
+            sx={{
+              cursor: "pointer",
+              maxWidth: "100%",
+              height: "auto",
+              "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 },
+            }}
+          />
+        ))}
+      </Stack>
     </Box>
   );
 }
