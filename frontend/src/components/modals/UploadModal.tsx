@@ -546,8 +546,6 @@ export function UploadModal() {
                 longitude={lng ? parseFloat(lng) : undefined}
                 onSelect={(s) => setSpecies(s.scientificName)}
                 disabled={isSubmitting}
-                autoFetch
-                quiet
               />
             ) : undefined
           }
