@@ -123,6 +123,14 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   </Typography>
                 </Box>
               )}
+
+              {!isLoading && !hasMore && observations.length > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 3, pb: 4 }}>
+                  <Typography variant="body2" color="text.disabled">
+                    You've reached the end — {observations.length} observations
+                  </Typography>
+                </Box>
+              )}
             </>
           ) : (
             <>
@@ -159,6 +167,14 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   <Button variant="outlined" color="primary" component={Link} to="/explore">
                     Browse all observations
                   </Button>
+                </Box>
+              )}
+
+              {!isLoading && !hasMore && observations.length > 0 && (
+                <Box sx={{ display: "flex", justifyContent: "center", p: 3, pb: 4 }}>
+                  <Typography variant="body2" color="text.disabled">
+                    You've reached the end
+                  </Typography>
                 </Box>
               )}
             </>

@@ -60,7 +60,11 @@ pub async fn get_explore(
     )
     .await;
 
-    let next_cursor = occurrences.last().map(|o| o.created_at.clone());
+    let next_cursor = if occurrences.len() as i64 == limit {
+        occurrences.last().map(|o| o.created_at.clone())
+    } else {
+        None
+    };
 
     Ok(Json(json!({
         "occurrences": occurrences,
@@ -128,7 +132,11 @@ pub async fn get_home(
     )
     .await;
 
-    let next_cursor = occurrences.last().map(|o| o.created_at.clone());
+    let next_cursor = if occurrences.len() as i64 == limit {
+        occurrences.last().map(|o| o.created_at.clone())
+    } else {
+        None
+    };
 
     Ok(Json(json!({
         "occurrences": occurrences,
