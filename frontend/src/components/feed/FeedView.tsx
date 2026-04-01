@@ -11,6 +11,7 @@ import { FeedSkeletonList } from "./FeedItemSkeleton";
 import { ProfileObservationCardSkeleton } from "../profile/ProfileObservationCardSkeleton";
 import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
+import { FeedEndIndicator } from "./FeedEndIndicator";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -123,6 +124,10 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   </Typography>
                 </Box>
               )}
+
+              {!isLoading && !hasMore && observations.length > 0 && (
+                <FeedEndIndicator count={observations.length} />
+              )}
             </>
           ) : (
             <>
@@ -161,6 +166,8 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   </Button>
                 </Box>
               )}
+
+              {!isLoading && !hasMore && observations.length > 0 && <FeedEndIndicator />}
             </>
           )}
         </Container>
