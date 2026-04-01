@@ -2,7 +2,7 @@ use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tracing::{error, info};
 
@@ -157,27 +157,42 @@ pub async fn client_metadata(State(state): State<AppState>) -> Response {
     .into_response()
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserInfo {
+    did: String,
+    handle: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    display_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    avatar: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct MeResponse {
+    user: Option<UserInfo>,
+}
+
 /// GET /oauth/me
 /// Returns { user: { did, handle, displayName?, avatar? } } or { user: null }.
 pub async fn me(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<MeResponse>, AppError> {
     let did = match cookies.get("session_did") {
         Some(c) => c.value().to_string(),
-        None => return Ok(Json(json!({ "user": null }))),
+        None => return Ok(Json(MeResponse { user: None })),
     };
 
-    // Try to restore the OAuth session to verify it's valid
     let did_parsed = match atrium_api::types::string::Did::new(did.clone()) {
         Ok(d) => d,
-        Err(_) => return Ok(Json(json!({ "user": null }))),
+        Err(_) => return Ok(Json(MeResponse { user: None })),
     };
 
     // Verify the OAuth session is still valid
     if let Err(e) = state.oauth_client.restore(&did_parsed).await {
         error!(error = %e, "Failed to restore session for /oauth/me");
-        return Ok(Json(json!({ "user": null })));
+        return Ok(Json(MeResponse { user: None }));
     }
 
     // Resolve profile via public API (independent of OAuth session health)
@@ -199,12 +214,12 @@ pub async fn me(
         }
     };
 
-    Ok(Json(json!({
-        "user": {
-            "did": did,
-            "handle": handle,
-            "displayName": display_name,
-            "avatar": avatar,
-        }
-    })))
+    Ok(Json(MeResponse {
+        user: Some(UserInfo {
+            did,
+            handle,
+            display_name,
+            avatar,
+        }),
+    }))
 }
