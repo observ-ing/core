@@ -1,7 +1,9 @@
 import { useState, useEffect, useRef } from "react";
-import { Box, Button, Chip, CircularProgress, Stack, Typography } from "@mui/material";
+import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import { identifySpecies, type SpeciesSuggestion } from "../../services/api";
+import { nameToSlug } from "../../lib/taxonSlug";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 
@@ -116,21 +118,46 @@ export function AiSuggestions({
               <Chip
                 key={s.scientificName}
                 label={
-                  <Box component="span" sx={{ display: "flex", alignItems: "baseline", gap: 0.5 }}>
-                    <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
-                    {s.commonName && (
-                      <Typography variant="caption" component="span" color="text.secondary">
-                        {s.commonName}
-                      </Typography>
-                    )}
-                    <Typography
-                      variant="caption"
+                  <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <Box
                       component="span"
-                      color="text.secondary"
-                      sx={{ ml: "auto" }}
+                      sx={{
+                        display: "flex",
+                        alignItems: "baseline",
+                        gap: 0.5,
+                        flex: 1,
+                        minWidth: 0,
+                      }}
                     >
-                      {Math.round(s.confidence * 100)}%
-                    </Typography>
+                      <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
+                      {s.commonName && (
+                        <Typography variant="caption" component="span" color="text.secondary">
+                          {s.commonName}
+                        </Typography>
+                      )}
+                      <Typography
+                        variant="caption"
+                        component="span"
+                        color="text.secondary"
+                        sx={{ ml: "auto" }}
+                      >
+                        {Math.round(s.confidence * 100)}%
+                      </Typography>
+                    </Box>
+                    {s.kingdom && (
+                      <IconButton
+                        size="small"
+                        component="a"
+                        href={`/taxon/${s.kingdom}/${nameToSlug(s.scientificName)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        sx={{ p: 0, ml: 0.5 }}
+                        title="Open taxon in new tab"
+                      >
+                        <OpenInNewIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    )}
                   </Box>
                 }
                 size="small"
