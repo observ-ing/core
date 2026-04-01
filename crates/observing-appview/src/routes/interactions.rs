@@ -6,7 +6,6 @@ use observing_db::types::InteractionDirection;
 use observing_lexicons::org_rwell::test::identification::Taxon;
 use observing_lexicons::org_rwell::test::interaction::{Interaction, InteractionSubject};
 use serde::Deserialize;
-use serde_json::{json, Value};
 use tracing::info;
 use ts_rs::TS;
 
@@ -14,19 +13,19 @@ use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
-use crate::responses::RecordCreatedResponse;
+use crate::responses::{InteractionListResponse, RecordCreatedResponse};
 use crate::state::AppState;
 use crate::validation::validate_string_length;
 
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
     Path(uri): Path<String>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<InteractionListResponse>, AppError> {
     let rows = observing_db::interactions::get_for_occurrence(&state.pool, &uri).await?;
 
     let interactions = enrichment::enrich_interactions(&state.resolver, &rows).await;
 
-    Ok(Json(json!({ "interactions": interactions })))
+    Ok(Json(InteractionListResponse { interactions }))
 }
 
 // --- Write handlers ---

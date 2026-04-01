@@ -2,12 +2,14 @@ use axum::extract::{Query, State};
 use axum::Json;
 use observing_db::types::{ExploreFeedOptions, HomeFeedOptions};
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::responses::{
+    ExploreFilters, ExploreFeedResponse, ExploreMeta, HomeFeedMeta, HomeFeedResponse,
+};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -29,7 +31,7 @@ pub async fn get_explore(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<ExploreParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<ExploreFeedResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -66,21 +68,21 @@ pub async fn get_explore(
         None
     };
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-        "meta": {
-            "filters": {
-                "taxon": params.taxon,
-                "kingdom": params.kingdom,
-                "lat": params.lat,
-                "lng": params.lng,
-                "radius": params.radius,
-                "startDate": params.start_date,
-                "endDate": params.end_date,
-            }
-        }
-    })))
+    Ok(Json(ExploreFeedResponse {
+        occurrences,
+        cursor: next_cursor,
+        meta: ExploreMeta {
+            filters: ExploreFilters {
+                taxon: params.taxon,
+                kingdom: params.kingdom,
+                lat: params.lat,
+                lng: params.lng,
+                radius: params.radius,
+                start_date: params.start_date,
+                end_date: params.end_date,
+            },
+        },
+    }))
 }
 
 #[derive(Deserialize)]
@@ -97,7 +99,7 @@ pub async fn get_home(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<HomeParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<HomeFeedResponse>, AppError> {
     let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
     let limit = params
         .limit
@@ -138,15 +140,15 @@ pub async fn get_home(
         None
     };
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-        "meta": {
-            "followedCount": result.followed_count,
-            "nearbyCount": result.nearby_count,
-            "totalFollows": total_follows,
-        }
-    })))
+    Ok(Json(HomeFeedResponse {
+        occurrences,
+        cursor: next_cursor,
+        meta: HomeFeedMeta {
+            followed_count: result.followed_count,
+            nearby_count: result.nearby_count,
+            total_follows,
+        },
+    }))
 }
 
 /// Build the list of DIDs whose observations should appear in the home feed.

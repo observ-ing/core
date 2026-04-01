@@ -4,7 +4,6 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::org_rwell::test::identification::{Identification, Taxon};
 use serde::Deserialize;
-use serde_json::{json, Value};
 use tracing::{info, warn};
 use ts_rs::TS;
 
@@ -12,7 +11,7 @@ use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
-use crate::responses::{RecordCreatedResponse, SuccessResponse};
+use crate::responses::{IdentificationListResponse, RecordCreatedResponse, SuccessResponse};
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonFields;
 use crate::validation::validate_string_length;
@@ -21,7 +20,7 @@ use at_uri_parser::AtUri;
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
     Path(occurrence_uri): Path<String>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<IdentificationListResponse>, AppError> {
     let rows =
         observing_db::identifications::get_for_occurrence(&state.pool, &occurrence_uri).await?;
 
@@ -30,10 +29,10 @@ pub async fn get_for_occurrence(
     let community_id =
         observing_db::identifications::get_community_id(&state.pool, &occurrence_uri, 0).await?;
 
-    Ok(Json(json!({
-        "identifications": identifications,
-        "communityId": community_id,
-    })))
+    Ok(Json(IdentificationListResponse {
+        identifications,
+        community_id,
+    }))
 }
 
 // --- Write handlers ---
