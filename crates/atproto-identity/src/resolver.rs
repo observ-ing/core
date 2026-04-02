@@ -240,17 +240,19 @@ impl IdentityResolver {
 
         // Fetch uncached profiles in batches
         for batch in to_fetch.chunks(BATCH_SIZE) {
-            let actors_param = batch
-                .iter()
-                .map(|a| format!("actors={a}"))
-                .collect::<Vec<_>>()
-                .join("&");
-            let url = format!(
-                "{}/xrpc/app.bsky.actor.getProfiles?{actors_param}",
+            let mut url = reqwest::Url::parse(&format!(
+                "{}/xrpc/app.bsky.actor.getProfiles",
                 self.service_url
-            );
+            ))
+            .unwrap();
+            {
+                let mut params = url.query_pairs_mut();
+                for actor in batch {
+                    params.append_pair("actors", actor);
+                }
+            }
 
-            match self.client.get(&url).send().await {
+            match self.client.get(url).send().await {
                 Ok(response) if response.status().is_success() => {
                     if let Ok(data) = response.json::<ProfilesResponse>().await {
                         for p in data.profiles {
