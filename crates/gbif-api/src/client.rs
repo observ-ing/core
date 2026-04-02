@@ -48,17 +48,18 @@ impl GbifClient {
         limit: u32,
         status: Option<&str>,
     ) -> Result<Vec<SuggestResult>> {
-        let mut url = format!(
-            "{}/species/suggest?q={}&limit={}",
-            Self::V1_BASE_URL,
-            urlencoding::encode(query),
-            limit
-        );
-        if let Some(s) = status {
-            url.push_str(&format!("&status={}", urlencoding::encode(s)));
+        let mut url =
+            reqwest::Url::parse(&format!("{}/species/suggest", Self::V1_BASE_URL)).unwrap();
+        {
+            let mut params = url.query_pairs_mut();
+            params.append_pair("q", query);
+            params.append_pair("limit", &limit.to_string());
+            if let Some(s) = status {
+                params.append_pair("status", s);
+            }
         }
 
-        let response = self.http.get(&url).send().await?;
+        let response = self.http.get(url).send().await?;
 
         if !response.status().is_success() {
             return Ok(vec![]);
@@ -90,20 +91,21 @@ impl GbifClient {
         status: Option<&str>,
         backbone_only: bool,
     ) -> Result<Vec<SearchResult>> {
-        let mut url = format!(
-            "{}/species/search?q={}&limit={}",
-            Self::V1_BASE_URL,
-            urlencoding::encode(query),
-            limit
-        );
-        if let Some(s) = status {
-            url.push_str(&format!("&status={}", urlencoding::encode(s)));
-        }
-        if backbone_only {
-            url.push_str(&format!("&datasetKey={}", Self::BACKBONE_DATASET_KEY));
+        let mut url =
+            reqwest::Url::parse(&format!("{}/species/search", Self::V1_BASE_URL)).unwrap();
+        {
+            let mut params = url.query_pairs_mut();
+            params.append_pair("q", query);
+            params.append_pair("limit", &limit.to_string());
+            if let Some(s) = status {
+                params.append_pair("status", s);
+            }
+            if backbone_only {
+                params.append_pair("datasetKey", Self::BACKBONE_DATASET_KEY);
+            }
         }
 
-        let response = self.http.get(&url).send().await?;
+        let response = self.http.get(url).send().await?;
 
         if !response.status().is_success() {
             return Ok(vec![]);
@@ -141,16 +143,16 @@ impl GbifClient {
         name: &str,
         kingdom: Option<&str>,
     ) -> Result<Option<V2MatchResult>> {
-        let mut url = format!(
-            "{}/species/match?scientificName={}",
-            Self::V2_BASE_URL,
-            urlencoding::encode(name)
-        );
-        if let Some(k) = kingdom {
-            url.push_str(&format!("&kingdom={}", urlencoding::encode(k)));
+        let mut url = reqwest::Url::parse(&format!("{}/species/match", Self::V2_BASE_URL)).unwrap();
+        {
+            let mut params = url.query_pairs_mut();
+            params.append_pair("scientificName", name);
+            if let Some(k) = kingdom {
+                params.append_pair("kingdom", k);
+            }
         }
 
-        let response = self.http.get(&url).send().await?;
+        let response = self.http.get(url).send().await?;
 
         if !response.status().is_success() {
             return Ok(None);
@@ -256,14 +258,15 @@ impl GbifClient {
     /// # Arguments
     /// * `match_result` - A v2 match result containing additional status information
     pub fn extract_iucn_status(match_result: &V2MatchResult) -> Option<IucnCategory> {
-        let statuses = match_result.additional_status.as_ref()?;
-        let iucn_status = statuses.iter().find(|s| {
-            s.dataset_alias
-                .as_ref()
-                .map(|a| a == "IUCN")
-                .unwrap_or(false)
-        })?;
-        iucn_status.status_code.as_deref()?.parse().ok()
+        match_result
+            .additional_status
+            .as_ref()?
+            .iter()
+            .find(|s| s.dataset_alias.as_deref() == Some("IUCN"))?
+            .status_code
+            .as_deref()?
+            .parse()
+            .ok()
     }
 }
 
