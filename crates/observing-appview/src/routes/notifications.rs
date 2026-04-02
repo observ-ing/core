@@ -5,11 +5,11 @@ use atproto_identity::Profile;
 use axum::extract::{Query, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 
 use crate::auth::AuthUser;
 use crate::constants;
 use crate::error::AppError;
+use crate::responses::{SuccessResponse, UnreadCountResponse};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -20,7 +20,7 @@ pub struct ListParams {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct NotificationResponse {
+pub struct NotificationResponse {
     id: i64,
     actor_did: String,
     kind: String,
@@ -54,11 +54,18 @@ fn actor_from_profile(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Op
     })
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotificationListResponse {
+    notifications: Vec<NotificationResponse>,
+    cursor: Option<String>,
+}
+
 pub async fn list(
     State(state): State<AppState>,
     user: AuthUser,
     Query(params): Query<ListParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<NotificationListResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_NOTIFICATION_LIMIT)
@@ -87,19 +94,19 @@ pub async fn list(
 
     let next_cursor = rows.last().map(|r| r.id.to_string());
 
-    Ok(Json(json!({
-        "notifications": notifications,
-        "cursor": next_cursor,
-    })))
+    Ok(Json(NotificationListResponse {
+        notifications,
+        cursor: next_cursor,
+    }))
 }
 
 pub async fn unread_count(
     State(state): State<AppState>,
     user: AuthUser,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<UnreadCountResponse>, AppError> {
     let count = observing_db::notifications::unread_count(&state.pool, &user.did).await?;
 
-    Ok(Json(json!({ "count": count })))
+    Ok(Json(UnreadCountResponse { count }))
 }
 
 #[derive(Deserialize)]
@@ -111,12 +118,12 @@ pub async fn mark_read(
     State(state): State<AppState>,
     user: AuthUser,
     Json(body): Json<MarkReadBody>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<SuccessResponse>, AppError> {
     if let Some(id) = body.id {
         observing_db::notifications::mark_read(&state.pool, &user.did, id).await?;
     } else {
         observing_db::notifications::mark_all_read(&state.pool, &user.did).await?;
     }
 
-    Ok(Json(json!({ "success": true })))
+    Ok(Json(SuccessResponse { success: true }))
 }

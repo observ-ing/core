@@ -2,14 +2,14 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use observing_db::types::TaxonOccurrenceOptions;
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::responses::{OccurrenceListResponse, TaxonSearchResponse};
 use crate::state::AppState;
-use crate::taxonomy_client::TaxonDetailWithCount;
+use crate::taxonomy_client::{TaxonDetailWithCount, ValidateResponse};
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -19,7 +19,7 @@ pub struct SearchParams {
 pub async fn search(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<TaxonSearchResponse>, AppError> {
     let query = params
         .q
         .ok_or_else(|| AppError::BadRequest("q is required".into()))?;
@@ -37,7 +37,7 @@ pub async fn search(
         .await
         .unwrap_or_default();
 
-    Ok(Json(json!({ "results": results })))
+    Ok(Json(TaxonSearchResponse { results }))
 }
 
 #[derive(Deserialize)]
@@ -48,17 +48,19 @@ pub struct ValidateParams {
 pub async fn validate(
     State(state): State<AppState>,
     Query(params): Query<ValidateParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<ValidateResponse>, AppError> {
     let name = params
         .name
         .ok_or_else(|| AppError::BadRequest("name is required".into()))?;
 
     match state.taxonomy.validate(&name).await {
-        Some(result) => Ok(Json(json!(result))),
-        None => Ok(Json(json!({
-            "valid": false,
-            "suggestions": [],
-        }))),
+        Some(result) => Ok(Json(result)),
+        None => Ok(Json(ValidateResponse {
+            valid: false,
+            matched_name: None,
+            taxon: None,
+            suggestions: Some(vec![]),
+        })),
     }
 }
 
@@ -101,7 +103,7 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     cookies: axum_extra::extract::CookieJar,
     Path((kingdom, name)): Path<(String, String)>,
     Query(params): Query<TaxonOccurrenceParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<OccurrenceListResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -142,10 +144,10 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
 
     let next_cursor = occurrences.last().map(|o| o.created_at.clone());
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-    })))
+    Ok(Json(OccurrenceListResponse {
+        occurrences,
+        cursor: next_cursor,
+    }))
 }
 
 pub async fn get_taxon_by_id(
@@ -178,7 +180,7 @@ pub async fn get_taxon_occurrences_by_id(
     cookies: axum_extra::extract::CookieJar,
     Path(id): Path<String>,
     Query(params): Query<TaxonOccurrenceParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<OccurrenceListResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -219,8 +221,8 @@ pub async fn get_taxon_occurrences_by_id(
 
     let next_cursor = occurrences.last().map(|o| o.created_at.clone());
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-    })))
+    Ok(Json(OccurrenceListResponse {
+        occurrences,
+        cursor: next_cursor,
+    }))
 }

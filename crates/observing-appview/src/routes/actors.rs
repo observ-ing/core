@@ -1,10 +1,10 @@
 use axum::extract::{Query, State};
 use axum::Json;
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::constants;
 use crate::error::AppError;
+use crate::responses::{ActorResponse, ActorSearchResponse};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -15,7 +15,7 @@ pub struct SearchParams {
 pub async fn search(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<ActorSearchResponse>, AppError> {
     let query = params
         .q
         .ok_or_else(|| AppError::BadRequest("q is required".into()))?;
@@ -32,17 +32,15 @@ pub async fn search(
         .search_actors(&query, constants::ACTOR_SEARCH_LIMIT)
         .await;
 
-    let actors: Vec<Value> = results
+    let actors: Vec<ActorResponse> = results
         .iter()
-        .map(|p| {
-            json!({
-                "did": p.did,
-                "handle": p.handle,
-                "displayName": p.display_name,
-                "avatar": p.avatar,
-            })
+        .map(|p| ActorResponse {
+            did: p.did.clone(),
+            handle: p.handle.clone(),
+            display_name: p.display_name.clone(),
+            avatar: p.avatar.clone(),
         })
         .collect();
 
-    Ok(Json(json!({ "actors": actors })))
+    Ok(Json(ActorSearchResponse { actors }))
 }

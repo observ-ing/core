@@ -1,12 +1,17 @@
 use axum::extract::{Path, Query, State};
+use axum::response::IntoResponse;
 use axum::Json;
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::responses::{
+    BboxBounds, BboxMeta, BboxResponse, GeoJsonFeature, GeoJsonPoint, GeoJsonProperties,
+    GeoJsonResponse, NearbyMeta, NearbyResponse, ObserversResponse, OccurrenceDetailResponse,
+    OccurrenceListResponse,
+};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -22,7 +27,7 @@ pub async fn get_nearby(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<NearbyParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<NearbyResponse>, AppError> {
     let lat = params
         .lat
         .ok_or_else(|| AppError::BadRequest("lat is required".into()))?;
@@ -57,17 +62,17 @@ pub async fn get_nearby(
     )
     .await;
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "meta": {
-            "lat": lat,
-            "lng": lng,
-            "radius": radius,
-            "limit": limit,
-            "offset": offset,
-            "count": occurrences.len(),
-        }
-    })))
+    Ok(Json(NearbyResponse {
+        meta: NearbyMeta {
+            lat,
+            lng,
+            radius,
+            limit,
+            offset,
+            count: occurrences.len(),
+        },
+        occurrences,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -80,7 +85,7 @@ pub async fn get_feed(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<FeedParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<OccurrenceListResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -106,10 +111,10 @@ pub async fn get_feed(
 
     let next_cursor = occurrences.last().map(|o| o.created_at.clone());
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "cursor": next_cursor,
-    })))
+    Ok(Json(OccurrenceListResponse {
+        occurrences,
+        cursor: next_cursor,
+    }))
 }
 
 #[derive(Deserialize)]
@@ -129,7 +134,7 @@ pub async fn get_bbox(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Query(params): Query<BboxParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<BboxResponse>, AppError> {
     let min_lat = params
         .min_lat
         .ok_or_else(|| AppError::BadRequest("minLat is required".into()))?;
@@ -165,24 +170,24 @@ pub async fn get_bbox(
     )
     .await;
 
-    Ok(Json(json!({
-        "occurrences": occurrences,
-        "meta": {
-            "bounds": {
-                "minLat": min_lat,
-                "minLng": min_lng,
-                "maxLat": max_lat,
-                "maxLng": max_lng,
+    Ok(Json(BboxResponse {
+        meta: BboxMeta {
+            bounds: BboxBounds {
+                min_lat,
+                min_lng,
+                max_lat,
+                max_lng,
             },
-            "count": occurrences.len(),
-        }
-    })))
+            count: occurrences.len(),
+        },
+        occurrences,
+    }))
 }
 
 pub async fn get_geojson(
     State(state): State<AppState>,
     Query(params): Query<BboxParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<GeoJsonResponse>, AppError> {
     let min_lat = params
         .min_lat
         .ok_or_else(|| AppError::BadRequest("minLat is required".into()))?;
@@ -207,27 +212,25 @@ pub async fn get_geojson(
     )
     .await?;
 
-    let features: Vec<Value> = rows
+    let features: Vec<GeoJsonFeature> = rows
         .iter()
-        .map(|row| {
-            json!({
-                "type": "Feature",
-                "geometry": {
-                    "type": "Point",
-                    "coordinates": [row.longitude, row.latitude]
-                },
-                "properties": {
-                    "uri": row.uri,
-                    "eventDate": row.event_date.to_rfc3339(),
-                }
-            })
+        .map(|row| GeoJsonFeature {
+            feature_type: "Feature",
+            geometry: GeoJsonPoint {
+                geometry_type: "Point",
+                coordinates: [row.longitude, row.latitude],
+            },
+            properties: GeoJsonProperties {
+                uri: row.uri.clone(),
+                event_date: row.event_date.to_rfc3339(),
+            },
         })
         .collect();
 
-    Ok(Json(json!({
-        "type": "FeatureCollection",
-        "features": features,
-    })))
+    Ok(Json(GeoJsonResponse {
+        collection_type: "FeatureCollection",
+        features,
+    }))
 }
 
 /// Handles both GET /api/occurrences/{uri} and GET /api/occurrences/{uri}/observers
@@ -236,19 +239,21 @@ pub async fn get_occurrence_or_observers(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
     Path(full_path): Path<String>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<axum::response::Response, AppError> {
     if let Some(uri) = full_path.strip_suffix("/observers") {
-        return get_observers_inner(&state, uri).await;
+        return Ok(get_observers_inner(&state, uri).await?.into_response());
     }
 
-    get_occurrence_inner(&state, &cookies, &full_path).await
+    Ok(get_occurrence_inner(&state, &cookies, &full_path)
+        .await?
+        .into_response())
 }
 
 async fn get_occurrence_inner(
     state: &AppState,
     cookies: &axum_extra::extract::CookieJar,
     uri: &str,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<OccurrenceDetailResponse>, AppError> {
     let row = observing_db::occurrences::get(&state.pool, uri)
         .await?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
@@ -276,16 +281,21 @@ async fn get_occurrence_inner(
     let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, uri).await?;
     let comments = enrichment::enrich_comments(&state.resolver, &comment_rows).await;
 
-    Ok(Json(json!({
-        "occurrence": occurrence,
-        "identifications": identifications,
-        "comments": comments,
-    })))
+    Ok(Json(OccurrenceDetailResponse {
+        occurrence,
+        identifications,
+        comments,
+    }))
 }
 
-async fn get_observers_inner(state: &AppState, uri: &str) -> Result<Json<Value>, AppError> {
+async fn get_observers_inner(
+    state: &AppState,
+    uri: &str,
+) -> Result<Json<ObserversResponse>, AppError> {
     let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
     let enriched = enrichment::enrich_observers(&state.resolver, &observers).await;
 
-    Ok(Json(json!({ "observers": enriched })))
+    Ok(Json(ObserversResponse {
+        observers: enriched,
+    }))
 }

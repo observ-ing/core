@@ -2,12 +2,12 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use observing_db::types::{ProfileFeedOptions, ProfileFeedType};
 use serde::Deserialize;
-use serde_json::{json, Value};
 
 use crate::auth::session_did;
 use crate::constants;
-use crate::enrichment;
+use crate::enrichment::{self, ProfileSummary};
 use crate::error::AppError;
+use crate::responses::{ProfileCounts, ProfileFeedResponse};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -23,7 +23,7 @@ pub async fn get_profile_feed(
     cookies: axum_extra::extract::CookieJar,
     Path(did): Path<String>,
     Query(params): Query<ProfileFeedParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<ProfileFeedResponse>, AppError> {
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -69,20 +69,20 @@ pub async fn get_profile_feed(
                 .map(|i| i.date_identified.to_string())
         });
 
-    Ok(Json(json!({
-        "profile": {
-            "did": did,
-            "handle": profile.as_ref().map(|p| p.handle.as_str()),
-            "displayName": profile.as_ref().and_then(|p| p.display_name.as_deref()),
-            "avatar": profile.as_ref().and_then(|p| p.avatar.as_deref()),
+    Ok(Json(ProfileFeedResponse {
+        profile: ProfileSummary {
+            did: did.clone(),
+            handle: profile.as_ref().map(|p| p.handle.clone()),
+            display_name: profile.as_ref().and_then(|p| p.display_name.clone()),
+            avatar: profile.as_ref().and_then(|p| p.avatar.clone()),
         },
-        "counts": {
-            "observations": result.counts.observations,
-            "identifications": result.counts.identifications,
-            "species": result.counts.species,
+        counts: ProfileCounts {
+            observations: result.counts.observations,
+            identifications: result.counts.identifications,
+            species: result.counts.species,
         },
-        "occurrences": occurrences,
-        "identifications": identifications,
-        "cursor": next_cursor,
-    })))
+        occurrences,
+        identifications,
+        cursor: next_cursor,
+    }))
 }
