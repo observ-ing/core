@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
@@ -117,10 +118,22 @@ function ThemedApp() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      gcTime: 1000 * 60 * 60 * 24, // 24 hours
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
+    },
+  },
+});
+
 export function App() {
   return (
     <Provider store={store}>
-      <ThemedApp />
+      <QueryClientProvider client={queryClient}>
+        <ThemedApp />
+      </QueryClientProvider>
     </Provider>
   );
 }

@@ -24,7 +24,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setFilters, loadInitialFeed } from "../../store/feedSlice";
+import { setExploreFilters, resetExploreFilters } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { LocationPicker } from "../map/LocationPicker";
@@ -44,7 +44,7 @@ const DEFAULT_RADIUS = 10000; // 10km
 
 export function ExploreFilterPanel() {
   const dispatch = useAppDispatch();
-  const filters = useAppSelector((state) => state.feed.filters);
+  const filters = useAppSelector((state) => state.feed.exploreFilters);
 
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -86,8 +86,8 @@ export function ExploreFilterPanel() {
     if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0] ?? "";
     if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
 
-    dispatch(setFilters(newFilters));
-    dispatch(loadInitialFeed());
+    dispatch(setExploreFilters(newFilters));
+    setIsExpanded(false);
   };
 
   // Clear all filters
@@ -99,8 +99,8 @@ export function ExploreFilterPanel() {
     setStartDate(null);
     setEndDate(null);
 
-    dispatch(setFilters({}));
-    dispatch(loadInitialFeed());
+    dispatch(resetExploreFilters());
+    setIsExpanded(false);
   };
 
   // Location change handler

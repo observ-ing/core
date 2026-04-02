@@ -1,9 +1,9 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Box, Container, Typography, Button, CircularProgress } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
+import { switchTab } from "../../store/feedSlice";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
@@ -12,6 +12,7 @@ import { ProfileObservationCardSkeleton } from "../profile/ProfileObservationCar
 import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
 import { FeedEndIndicator } from "./FeedEndIndicator";
+import { useFeed } from "../../hooks/useFeed";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -20,30 +21,37 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const { observations, isLoading, currentTab, hasMore, homeFeedMeta } = useAppSelector(
-    (state) => state.feed,
-  );
+  const { currentTab } = useAppSelector((state) => state.feed);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Sync route tab with store
+  const { data, fetchNextPage, hasNextPage, isFetching, isFetchingNextPage } = useFeed(tab);
+
+  const observations = useMemo(() => {
+    return data?.pages.flatMap((page) => page.occurrences || page.feed || []) || [];
+  }, [data]);
+
+  // Extract meta from the first page of the home feed if available
+  const firstPage = data?.pages[0];
+  const homeFeedMeta =
+    tab === "home" && firstPage && "meta" in firstPage ? firstPage.meta : undefined;
+  const isLoading = isFetching && !isFetchingNextPage;
+  const hasMore = hasNextPage;
+
+  // Sync route tab with store (so ExploreFilterPanel knows if we are exploring)
   useEffect(() => {
     if (tab !== currentTab) {
       dispatch(switchTab(tab));
     }
   }, [dispatch, tab, currentTab]);
 
-  useEffect(() => {
-    dispatch(loadInitialFeed());
-  }, [dispatch, currentTab]);
-
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
-    if (!el || isLoading || !hasMore) return;
+    if (!el || isLoading || !hasMore || isFetchingNextPage) return;
 
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-      dispatch(loadFeed());
+      fetchNextPage();
     }
-  }, [dispatch, isLoading, hasMore]);
+  }, [isLoading, hasMore, isFetchingNextPage, fetchNextPage]);
 
   const handleEdit = useCallback(
     (occurrence: Occurrence) => {
