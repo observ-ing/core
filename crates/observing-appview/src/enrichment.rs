@@ -320,13 +320,13 @@ pub async fn enrich_occurrences(
         let observer_infos: Vec<ObserverInfo> = observer_rows
             .iter()
             .map(|o| {
-                let p = profiles.get(&o.did);
+                let p = profile_summary(&o.did, &profiles);
                 ObserverInfo {
                     did: o.did.clone(),
                     role: o.role.clone(),
-                    handle: p.map(|p| p.handle.clone()),
-                    display_name: p.and_then(|p| p.display_name.clone()),
-                    avatar: p.and_then(|p| p.avatar.clone()),
+                    handle: p.handle,
+                    display_name: p.display_name,
+                    avatar: p.avatar,
                 }
             })
             .collect();
@@ -500,13 +500,13 @@ pub async fn enrich_observers(
 
     rows.iter()
         .map(|o| {
-            let p = profiles.get(&o.did);
+            let p = profile_summary(&o.did, &profiles);
             ObserverInfo {
                 did: o.did.clone(),
                 role: o.role.clone(),
-                handle: p.map(|p| p.handle.clone()),
-                display_name: p.and_then(|p| p.display_name.clone()),
-                avatar: p.and_then(|p| p.avatar.clone()),
+                handle: p.handle,
+                display_name: p.display_name,
+                avatar: p.avatar,
             }
         })
         .collect()
