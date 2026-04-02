@@ -295,5 +295,7 @@ async fn get_observers_inner(
     let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
     let enriched = enrichment::enrich_observers(&state.resolver, &observers).await;
 
-    Ok(Json(ObserversResponse { observers: enriched }))
+    Ok(Json(ObserversResponse {
+        observers: enriched,
+    }))
 }

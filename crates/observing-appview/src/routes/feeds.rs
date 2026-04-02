@@ -8,7 +8,7 @@ use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
 use crate::responses::{
-    ExploreFilters, ExploreFeedResponse, ExploreMeta, HomeFeedMeta, HomeFeedResponse,
+    ExploreFeedResponse, ExploreFilters, ExploreMeta, HomeFeedMeta, HomeFeedResponse,
 };
 use crate::state::AppState;
 
