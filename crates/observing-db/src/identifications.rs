@@ -2,7 +2,10 @@ use crate::types::{IdentificationRow, SubjectInfo, UpsertIdentificationParams};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
-/// Upsert an identification record and refresh the community ID materialized view
+/// Upsert an identification record and refresh the community ID materialized view.
+///
+/// NOTE: Must take `&PgPool` because `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+/// cannot be executed within a transaction block.
 pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(), sqlx::Error> {
     sqlx::query!(
         r#"
@@ -55,7 +58,10 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
     Ok(())
 }
 
-/// Delete an identification and refresh the community ID materialized view
+/// Delete an identification and refresh the community ID materialized view.
+///
+/// NOTE: Must take `&PgPool` because `REFRESH MATERIALIZED VIEW CONCURRENTLY`
+/// cannot be executed within a transaction block.
 pub async fn delete(pool: &PgPool, uri: &str) -> Result<(), sqlx::Error> {
     sqlx::query!("DELETE FROM identifications WHERE uri = $1", uri)
         .execute(pool)
