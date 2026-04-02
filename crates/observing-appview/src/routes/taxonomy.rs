@@ -31,11 +31,68 @@ pub async fn search(
         )));
     }
 
-    let results = state
-        .taxonomy
-        .search(&query, None)
-        .await
-        .unwrap_or_default();
+    // Run traditional search and AI search in parallel
+    let trad_fut = state.taxonomy.search(&query, None);
+    let ai_fut = async {
+        if let Some(client) = &state.species_id {
+            client.search(&query, Some(10)).await
+        } else {
+            None
+        }
+    };
+
+    let (trad_results, ai_suggestions) = tokio::join!(trad_fut, ai_fut);
+    let mut results = trad_results.unwrap_or_default();
+    let ai_suggestions = ai_suggestions.unwrap_or_default();
+
+    // Deduplicate and merge:
+    // 1. Keep all traditional results (they are "authoritative")
+    // 2. Add AI results that aren't already in the list
+    for ai in ai_suggestions {
+        if !results
+            .iter()
+            .any(|r| r.scientific_name == ai.scientific_name)
+        {
+            results.push(crate::taxonomy_client::TaxonResult {
+                id: format!("ai:{}", ai.scientific_name),
+                scientific_name: ai.scientific_name,
+                common_name: ai.common_name,
+                photo_url: None,             // AI service doesn't return photos yet
+                rank: "species".to_string(), // PoC assumes species rank for now
+                kingdom: ai.kingdom,
+                phylum: ai.phylum,
+                class: ai.class,
+                order: ai.order,
+                family: ai.family,
+                genus: ai.genus,
+                species: None,
+                source: "ai".to_string(),
+                conservation_status: None,
+                confidence: Some(ai.confidence),
+            });
+        }
+    }
+
+    // Re-rank: perfect matches on query string first, then maintain order
+    let query_lower = query.to_lowercase();
+    results.sort_by(|a, b| {
+        let a_exact = a.scientific_name.to_lowercase() == query_lower
+            || a.common_name
+                .as_ref()
+                .map(|cn| cn.to_lowercase() == query_lower)
+                .unwrap_or(false);
+        let b_exact = b.scientific_name.to_lowercase() == query_lower
+            || b.common_name
+                .as_ref()
+                .map(|cn| cn.to_lowercase() == query_lower)
+                .unwrap_or(false);
+
+        match (a_exact, b_exact) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => std::cmp::Ordering::Equal, // Maintain relative order from sources
+        }
+    });
 
     Ok(Json(TaxonSearchResponse { results }))
 }

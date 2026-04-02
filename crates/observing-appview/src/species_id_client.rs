@@ -91,4 +91,28 @@ impl SpeciesIdClient {
             }
         }
     }
+
+    /// Search for species by query text (AI smart search)
+    pub async fn search(
+        &self,
+        query: &str,
+        limit: Option<usize>,
+    ) -> Option<Vec<SpeciesSuggestion>> {
+        let limit = limit.unwrap_or(10);
+        let mut url = reqwest::Url::parse(&self.base_url).ok()?;
+        url.set_path("/search");
+        {
+            let mut params = url.query_pairs_mut();
+            params.append_pair("q", query);
+            params.append_pair("limit", &limit.to_string());
+        }
+
+        match self.client.get(url).send().await {
+            Ok(resp) if resp.status().is_success() => {
+                let body: IdentifyResponse = resp.json::<IdentifyResponse>().await.ok()?;
+                Some(body.suggestions)
+            }
+            _ => None,
+        }
+    }
 }
