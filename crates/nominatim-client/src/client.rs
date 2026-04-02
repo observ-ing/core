@@ -75,14 +75,21 @@ impl NominatimClient {
         // Rate limit: acquire permit, then wait 1 second after the request
         let _permit = self.rate_limiter.acquire().await.unwrap();
 
-        let url = format!(
-            "{}/reverse?lat={}&lon={}&format=json&addressdetails=1&zoom=18",
-            self.base_url, latitude, longitude
-        );
+        let mut url = reqwest::Url::parse(&self.base_url)
+            .map_err(|e| NominatimError::ApiError(e.to_string()))?;
+        url.set_path("/reverse");
+        {
+            let mut params = url.query_pairs_mut();
+            params.append_pair("lat", &latitude.to_string());
+            params.append_pair("lon", &longitude.to_string());
+            params.append_pair("format", "json");
+            params.append_pair("addressdetails", "1");
+            params.append_pair("zoom", "18");
+        }
 
         let response = self
             .client
-            .get(&url)
+            .get(url)
             .header("Accept", "application/json")
             .send()
             .await
