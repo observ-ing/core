@@ -31,7 +31,7 @@ flowchart TB
 
     subgraph Firehose["AT Protocol Network"]
         Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Collection Filter<br/>org.rwell.test.*<br/>app.bsky.feed.like"]
+        Filter["Collection Filter<br/>org.rwell.test.*"]
     end
 
     subgraph Ingester["Ingester (Rust)"]
@@ -212,7 +212,6 @@ Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │  - org.rwell.test.comment
    │  - org.rwell.test.interaction
    │  - org.rwell.test.like
-   │  - app.bsky.feed.like
    │
    ▼
 ┌─────────────────────────────────────────────────────┐

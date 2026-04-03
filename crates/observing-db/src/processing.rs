@@ -290,8 +290,6 @@ pub fn interaction_from_json(
 }
 
 /// Convert a like record JSON to database params.
-///
-/// Handles both `app.bsky.feed.like` and `org.rwell.test.like` (same shape).
 pub fn like_from_json(
     record_json: &Value,
     uri: String,

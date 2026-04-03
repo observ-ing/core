@@ -63,10 +63,10 @@ mod tests {
 
     #[test]
     fn test_parse_did_web() {
-        let uri = AtUri::parse("at://did:web:example.com/app.bsky.feed.like/abc")
+        let uri = AtUri::parse("at://did:web:example.com/org.rwell.test.like/abc")
             .expect("AT URI with did:web should parse successfully");
         assert_eq!(uri.did, "did:web:example.com");
-        assert_eq!(uri.collection, "app.bsky.feed.like");
+        assert_eq!(uri.collection, "org.rwell.test.like");
         assert_eq!(uri.rkey, "abc");
     }
 }

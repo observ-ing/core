@@ -58,7 +58,7 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 - `org.rwell.test.identification` - Taxonomic determinations
 - `org.rwell.test.comment` - Discussion comments
 - `org.rwell.test.interaction` - Species interactions
-- `org.rwell.test.like` / `app.bsky.feed.like` - Likes
+- `org.rwell.test.like` - Likes
 
 ### AppView (`crates/observing-appview/`)
 
