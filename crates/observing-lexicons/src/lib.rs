@@ -12,5 +12,8 @@ pub mod builder_types;
 #[cfg(feature = "com_atproto")]
 pub mod com_atproto;
 
+#[cfg(feature = "ing_observ")]
+pub mod ing_observ;
+
 #[cfg(feature = "org_rwell")]
 pub mod org_rwell;
