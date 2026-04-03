@@ -18,14 +18,14 @@ use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::xrpc::XrpcResp;
-use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
-use crate::com_atproto::repo::strong_ref::StrongRef;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
+use crate::com_atproto::repo::strong_ref::StrongRef;
 /// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
 
 #[lexicon]
@@ -209,7 +209,9 @@ impl jacquard_common::IntoStatic for IdentificationTaxonRank<'_> {
             IdentificationTaxonRank::Subspecies => IdentificationTaxonRank::Subspecies,
             IdentificationTaxonRank::Variety => IdentificationTaxonRank::Variety,
             IdentificationTaxonRank::Form => IdentificationTaxonRank::Form,
-            IdentificationTaxonRank::Other(v) => IdentificationTaxonRank::Other(v.into_static()),
+            IdentificationTaxonRank::Other(v) => {
+                IdentificationTaxonRank::Other(v.into_static())
+            }
         }
     }
 }
@@ -392,7 +394,7 @@ impl<'a> LexiconSchema for Identification<'a> {
 
 pub mod identification_state {
 
-    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
+    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -467,7 +469,18 @@ impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
         IdentificationBuilder {
             _state: PhantomData,
             _fields: (
-                None, None, None, None, None, None, None, None, None, None, None, None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
             ),
             _lifetime: PhantomData,
         }
@@ -515,7 +528,10 @@ impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `identificationRemarks` field (optional)
-    pub fn identification_remarks(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn identification_remarks(
+        mut self,
+        value: impl Into<Option<CowStr<'a>>>,
+    ) -> Self {
         self._fields.3 = value.into();
         self
     }
@@ -586,12 +602,18 @@ where
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `scientificNameAuthorship` field (optional)
-    pub fn scientific_name_authorship(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn scientific_name_authorship(
+        mut self,
+        value: impl Into<Option<CowStr<'a>>>,
+    ) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `scientificNameAuthorship` field to an Option value (optional)
-    pub fn maybe_scientific_name_authorship(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_scientific_name_authorship(
+        mut self,
+        value: Option<CowStr<'a>>,
+    ) -> Self {
         self._fields.8 = value;
         self
     }
@@ -618,12 +640,18 @@ where
 
 impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
     /// Set the `taxonRank` field (optional)
-    pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<'a>>>) -> Self {
+    pub fn taxon_rank(
+        mut self,
+        value: impl Into<Option<IdentificationTaxonRank<'a>>>,
+    ) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
-    pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<'a>>) -> Self {
+    pub fn maybe_taxon_rank(
+        mut self,
+        value: Option<IdentificationTaxonRank<'a>>,
+    ) -> Self {
         self._fields.10 = value;
         self
     }
@@ -693,10 +721,10 @@ where
 }
 
 fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
-    use alloc::collections::BTreeMap;
     #[allow(unused_imports)]
-    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_common::{CowStr, deps::smol_str::SmolStr, types::blob::MimeType};
     use jacquard_lexicon::lexicon::*;
+    use alloc::collections::BTreeMap;
     LexiconDoc {
         lexicon: Lexicon::Lexicon1,
         id: CowStr::new_static("bio.lexicons.temp.identification"),

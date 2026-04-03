@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "org.rwell.test.interaction",
+  "id": "ing.observ.temp.interaction",
   "defs": {
     "main": {
       "type": "record",
@@ -75,7 +75,7 @@
         },
         "taxon": {
           "type": "ref",
-          "ref": "org.rwell.test.identification#taxon",
+          "ref": "ing.observ.temp.identification#taxon",
           "description": "Taxonomic information for the organism (for unobserved subjects or to specify the taxon)."
         }
       }

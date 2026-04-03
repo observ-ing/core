@@ -2,13 +2,13 @@
  * Identification Component
  *
  * Handles the "Agree" / "Suggest ID" functionality that writes
- * org.rwell.test.identification records to the user's repo.
+ * ing.observ.temp.identification records to the user's repo.
  */
 
 import type { AtpAgent } from "@atproto/api";
 import { getErrorMessage } from "./utils";
 
-const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
+const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
 
 interface IdentificationInput {
   /** URI of the occurrence being identified */

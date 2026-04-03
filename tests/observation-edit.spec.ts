@@ -40,7 +40,7 @@ authTest.describe("Observation Edit - Logged In", () => {
   authTest("more menu hides Edit for others' observations", async ({ authenticatedPage: page }) => {
     // Mock a feed with an observation owned by a different user
     const otherUserObs = buildMockObservation({
-      uri: "at://did:plc:otheruser/org.rwell.test.occurrence/other123",
+      uri: "at://did:plc:otheruser/ing.observ.temp.occurrence/other123",
       observer: {
         did: "did:plc:otheruser",
         handle: "other.bsky.social",
@@ -128,7 +128,7 @@ authTest.describe("Observation Edit - Logged In", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            uri: "at://did:plc:test/org.rwell.test.occurrence/test123",
+            uri: "at://did:plc:test/ing.observ.temp.occurrence/test123",
             cid: "bafyupdated",
           }),
         });

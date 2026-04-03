@@ -9,7 +9,7 @@ use crate::types::{
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
-use observing_lexicons::org_rwell::test::{
+use observing_lexicons::ing_observ::temp::{
     comment::Comment, identification::Identification, interaction::Interaction,
     occurrence::Occurrence,
 };
@@ -298,7 +298,7 @@ pub fn like_from_json(
     fallback_time: DateTime<Utc>,
 ) -> Result<CreateLikeParams, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: observing_lexicons::org_rwell::test::like::Like<'_> =
+    let record: observing_lexicons::ing_observ::temp::like::Like<'_> =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let created_at = parse_naive_datetime(&record.created_at.to_string())

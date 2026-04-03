@@ -3,4 +3,8 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
-pub mod test;
+pub mod comment;
+pub mod identification;
+pub mod interaction;
+pub mod like;
+pub mod occurrence;

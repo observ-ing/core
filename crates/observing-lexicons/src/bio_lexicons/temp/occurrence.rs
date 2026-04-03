@@ -18,14 +18,14 @@ use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::xrpc::XrpcResp;
-use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_derive::{IntoStatic, lexicon};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
-use crate::com_atproto::repo::strong_ref::StrongRef;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
-use serde::{Deserialize, Serialize};
+use serde::{Serialize, Deserialize};
+use crate::com_atproto::repo::strong_ref::StrongRef;
 /// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.
 
 #[lexicon]
@@ -71,7 +71,9 @@ pub struct OccurrenceGetRecordOutput<'a> {
 }
 
 impl<'a> Occurrence<'a> {
-    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, OccurrenceRecord>, UriError> {
+    pub fn uri(
+        uri: impl Into<CowStr<'a>>,
+    ) -> Result<RecordUri<'a, OccurrenceRecord>, UriError> {
         RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
     }
 }
@@ -140,7 +142,7 @@ impl<'a> LexiconSchema for Occurrence<'a> {
 
 pub mod occurrence_state {
 
-    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
+    pub use crate::builder_types::{Set, Unset, IsSet, IsUnset};
     #[allow(unused)]
     use ::core::marker::PhantomData;
     mod sealed {
@@ -190,7 +192,10 @@ impl<'a> OccurrenceBuilder<'a, occurrence_state::Empty> {
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `associatedMedia` field (optional)
-    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<'a>>>>) -> Self {
+    pub fn associated_media(
+        mut self,
+        value: impl Into<Option<Vec<StrongRef<'a>>>>,
+    ) -> Self {
         self._fields.0 = value.into();
         self
     }
@@ -203,7 +208,10 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     /// Set the `coordinateUncertaintyInMeters` field (optional)
-    pub fn coordinate_uncertainty_in_meters(mut self, value: impl Into<Option<i64>>) -> Self {
+    pub fn coordinate_uncertainty_in_meters(
+        mut self,
+        value: impl Into<Option<i64>>,
+    ) -> Self {
         self._fields.1 = value.into();
         self
     }
@@ -288,10 +296,10 @@ where
 }
 
 fn lexicon_doc_bio_lexicons_temp_occurrence() -> LexiconDoc<'static> {
-    use alloc::collections::BTreeMap;
     #[allow(unused_imports)]
-    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_common::{CowStr, deps::smol_str::SmolStr, types::blob::MimeType};
     use jacquard_lexicon::lexicon::*;
+    use alloc::collections::BTreeMap;
     LexiconDoc {
         lexicon: Lexicon::Lexicon1,
         id: CowStr::new_static("bio.lexicons.temp.occurrence"),

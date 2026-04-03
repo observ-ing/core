@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "org.rwell.test.occurrence",
+  "id": "ing.observ.temp.occurrence",
   "defs": {
     "main": {
       "type": "record",

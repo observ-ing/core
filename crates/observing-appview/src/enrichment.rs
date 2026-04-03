@@ -520,7 +520,7 @@ mod tests {
 
     fn make_row(media: Option<serde_json::Value>) -> OccurrenceRow {
         OccurrenceRow {
-            uri: "at://did:plc:test/org.rwell.test.occurrence/1".into(),
+            uri: "at://did:plc:test/ing.observ.temp.occurrence/1".into(),
             cid: "cid".into(),
             did: "did:plc:test".into(),
             scientific_name: None,

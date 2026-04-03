@@ -10,14 +10,14 @@
  * This script:
  *   1. Fetches the last 100 geo-tagged observations from iNaturalist
  *   2. Downloads each photo and uploads it as a blob to your PDS
- *   3. Creates org.rwell.test.occurrence records on your PDS
+ *   3. Creates ing.observ.temp.occurrence records on your PDS
  */
 
 import { AtpAgent } from "@atproto/api";
 
 const INAT_API = "https://api.inaturalist.org/v1";
-const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
-const IDENTIFICATION_COLLECTION = "org.rwell.test.identification";
+const OCCURRENCE_COLLECTION = "ing.observ.temp.occurrence";
+const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
 
 const LICENSE_MAP: Record<string, string> = {
   cc0: "CC0-1.0",

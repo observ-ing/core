@@ -67,3 +67,7 @@ futures = { workspace = true }
 [[bin]]
 name = "observing-appview"
 path = "src/main.rs"
+
+[[bin]]
+name = "migrate-likes"
+path = "src/bin/migrate_likes.rs"

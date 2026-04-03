@@ -34,16 +34,16 @@ mod tests {
 
     #[test]
     fn test_parse_valid_uri() {
-        let uri = AtUri::parse("at://did:plc:abc123/org.rwell.test.occurrence/rkey1")
+        let uri = AtUri::parse("at://did:plc:abc123/ing.observ.temp.occurrence/rkey1")
             .expect("valid AT URI should parse successfully");
         assert_eq!(uri.did, "did:plc:abc123");
-        assert_eq!(uri.collection, "org.rwell.test.occurrence");
+        assert_eq!(uri.collection, "ing.observ.temp.occurrence");
         assert_eq!(uri.rkey, "rkey1");
     }
 
     #[test]
     fn test_parse_missing_rkey() {
-        assert!(AtUri::parse("at://did:plc:abc123/org.rwell.test.occurrence").is_none());
+        assert!(AtUri::parse("at://did:plc:abc123/ing.observ.temp.occurrence").is_none());
     }
 
     #[test]
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_parse_no_at_prefix() {
-        assert!(AtUri::parse("did:plc:abc123/org.rwell.test.occurrence/rkey1").is_none());
+        assert!(AtUri::parse("did:plc:abc123/ing.observ.temp.occurrence/rkey1").is_none());
     }
 
     #[test]
@@ -63,10 +63,10 @@ mod tests {
 
     #[test]
     fn test_parse_did_web() {
-        let uri = AtUri::parse("at://did:web:example.com/org.rwell.test.like/abc")
+        let uri = AtUri::parse("at://did:web:example.com/ing.observ.temp.like/abc")
             .expect("AT URI with did:web should parse successfully");
         assert_eq!(uri.did, "did:web:example.com");
-        assert_eq!(uri.collection, "org.rwell.test.like");
+        assert_eq!(uri.collection, "ing.observ.temp.like");
         assert_eq!(uri.rkey, "abc");
     }
 }

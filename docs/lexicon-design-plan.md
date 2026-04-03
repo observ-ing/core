@@ -33,8 +33,8 @@ Observ.ing is a decentralized biodiversity observation platform built on AT Prot
 
 | Lexicon | Purpose | Status |
 |---------|---------|--------|
-| `org.rwell.test.occurrence` | Biodiversity observations | Production-ready core |
-| `org.rwell.test.identification` | Taxonomic identifications | Production-ready core |
+| `ing.observ.temp.occurrence` | Biodiversity observations | Production-ready core |
+| `ing.observ.temp.identification` | Taxonomic identifications | Production-ready core |
 
 ### Strengths of Current Design
 
@@ -45,7 +45,7 @@ Observ.ing is a decentralized biodiversity observation platform built on AT Prot
 
 ### Areas for Improvement
 
-1. **Namespace**: `org.rwell.test` suggests experimental status; needs production namespace
+1. **Namespace**: `ing.observ.temp` suggests experimental status; needs production namespace
 2. **Enum usage**: `taxonRank` and `confidence` use closed enums (not recommended per AT Protocol style guide)
 3. **Missing Darwin Core fields**: Several commonly-used fields are only in database, not lexicon
 4. **No social features**: No lexicons for likes, follows, bookmarks, or comments

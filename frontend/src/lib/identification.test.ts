@@ -13,15 +13,15 @@ describe("IdentificationService", () => {
         atproto: {
           repo: {
             createRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/org.rwell.test.identification/1", cid: "test-cid" },
+              data: { uri: "at://did:plc:test/ing.observ.temp.identification/1", cid: "test-cid" },
             }),
             deleteRecord: vi.fn().mockResolvedValue({}),
             getRecord: vi.fn().mockResolvedValue({
               data: {
                 value: {
-                  $type: "org.rwell.test.identification",
+                  $type: "ing.observ.temp.identification",
                   subject: {
-                    uri: "at://did:plc:test/org.rwell.test.occurrence/1",
+                    uri: "at://did:plc:test/ing.observ.temp.occurrence/1",
                     cid: "subject-cid",
                   },
                   taxon: { scientificName: "Quercus alba", taxonRank: "species" },
@@ -30,7 +30,7 @@ describe("IdentificationService", () => {
               },
             }),
             putRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/org.rwell.test.identification/1", cid: "new-cid" },
+              data: { uri: "at://did:plc:test/ing.observ.temp.identification/1", cid: "new-cid" },
             }),
             listRecords: vi.fn().mockResolvedValue({
               data: { records: [] },
@@ -44,7 +44,7 @@ describe("IdentificationService", () => {
 
   describe("validateInput", () => {
     const validInput = {
-      occurrenceUri: "at://did:plc:test/org.rwell.test.occurrence/1",
+      occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
       occurrenceCid: "bafyrei123",
       scientificName: "Quercus alba",
     };
@@ -159,7 +159,7 @@ describe("IdentificationService", () => {
 
       await expect(
         noSessionService.identify({
-          occurrenceUri: "at://did:plc:test/org.rwell.test.occurrence/1",
+          occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
           occurrenceCid: "bafyrei123",
           scientificName: "Quercus alba",
         }),
@@ -168,20 +168,20 @@ describe("IdentificationService", () => {
 
     it("returns uri and cid on success", async () => {
       const result = await service.identify({
-        occurrenceUri: "at://did:plc:test/org.rwell.test.occurrence/1",
+        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
       });
 
       expect(result).toEqual({
-        uri: "at://did:plc:test/org.rwell.test.identification/1",
+        uri: "at://did:plc:test/ing.observ.temp.identification/1",
         cid: "test-cid",
       });
     });
 
     it("creates record with correct structure", async () => {
       await service.identify({
-        occurrenceUri: "at://did:plc:test/org.rwell.test.occurrence/1",
+        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
         taxonRank: "species",
@@ -192,11 +192,11 @@ describe("IdentificationService", () => {
       expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
-          collection: "org.rwell.test.identification",
+          collection: "ing.observ.temp.identification",
           record: expect.objectContaining({
-            $type: "org.rwell.test.identification",
+            $type: "ing.observ.temp.identification",
             subject: {
-              uri: "at://did:plc:test/org.rwell.test.occurrence/1",
+              uri: "at://did:plc:test/ing.observ.temp.occurrence/1",
               cid: "bafyrei123",
             },
             taxon: {
@@ -212,7 +212,7 @@ describe("IdentificationService", () => {
 
     it("uses default values when optional fields not provided", async () => {
       await service.identify({
-        occurrenceUri: "at://did:plc:test/org.rwell.test.occurrence/1",
+        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
       });
@@ -233,7 +233,7 @@ describe("IdentificationService", () => {
   describe("agree", () => {
     it("creates an agreement identification", async () => {
       await service.agree(
-        "at://did:plc:test/org.rwell.test.occurrence/1",
+        "at://did:plc:test/ing.observ.temp.occurrence/1",
         "bafyrei123",
         "Quercus alba",
       );
@@ -254,7 +254,7 @@ describe("IdentificationService", () => {
   describe("suggestId", () => {
     it("creates a non-agreement identification", async () => {
       await service.suggestId(
-        "at://did:plc:test/org.rwell.test.occurrence/1",
+        "at://did:plc:test/ing.observ.temp.occurrence/1",
         "bafyrei123",
         "Quercus rubra",
       );
@@ -273,7 +273,7 @@ describe("IdentificationService", () => {
 
     it("accepts optional parameters", async () => {
       await service.suggestId(
-        "at://did:plc:test/org.rwell.test.occurrence/1",
+        "at://did:plc:test/ing.observ.temp.occurrence/1",
         "bafyrei123",
         "Quercus rubra",
         {
@@ -302,16 +302,16 @@ describe("IdentificationService", () => {
       const noSessionService = new IdentificationService(noSessionAgent);
 
       await expect(
-        noSessionService.withdraw("at://did:plc:test/org.rwell.test.identification/abc123"),
+        noSessionService.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123"),
       ).rejects.toThrow("Not logged in");
     });
 
     it("extracts rkey from URI and deletes record", async () => {
-      await service.withdraw("at://did:plc:test/org.rwell.test.identification/abc123");
+      await service.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123");
 
       expect(mockAgent.com!.atproto.repo.deleteRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "org.rwell.test.identification",
+        collection: "ing.observ.temp.identification",
         rkey: "abc123",
       });
     });
@@ -323,7 +323,7 @@ describe("IdentificationService", () => {
       const noSessionService = new IdentificationService(noSessionAgent);
 
       await expect(
-        noSessionService.update("at://did:plc:test/org.rwell.test.identification/abc123", {
+        noSessionService.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
           scientificName: "Quercus rubra",
         }),
       ).rejects.toThrow("Not logged in");
@@ -331,19 +331,19 @@ describe("IdentificationService", () => {
 
     it("fetches existing record and updates it", async () => {
       const result = await service.update(
-        "at://did:plc:test/org.rwell.test.identification/abc123",
+        "at://did:plc:test/ing.observ.temp.identification/abc123",
         { scientificName: "Quercus rubra" },
       );
 
       expect(mockAgent.com!.atproto.repo.getRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "org.rwell.test.identification",
+        collection: "ing.observ.temp.identification",
         rkey: "abc123",
       });
       expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
-          collection: "org.rwell.test.identification",
+          collection: "ing.observ.temp.identification",
           rkey: "abc123",
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -353,13 +353,13 @@ describe("IdentificationService", () => {
         }),
       );
       expect(result).toEqual({
-        uri: "at://did:plc:test/org.rwell.test.identification/1",
+        uri: "at://did:plc:test/ing.observ.temp.identification/1",
         cid: "new-cid",
       });
     });
 
     it("preserves existing fields when not updated", async () => {
-      await service.update("at://did:plc:test/org.rwell.test.identification/abc123", {
+      await service.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
         comment: "New comment",
       });
 
@@ -377,7 +377,7 @@ describe("IdentificationService", () => {
     });
 
     it("clears comment when set to empty string", async () => {
-      await service.update("at://did:plc:test/org.rwell.test.identification/abc123", {
+      await service.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
         comment: "",
       });
 
@@ -404,7 +404,7 @@ describe("IdentificationService", () => {
 
       expect(mockAgent.com!.atproto.repo.listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "org.rwell.test.identification",
+        collection: "ing.observ.temp.identification",
         limit: 50,
       });
     });
@@ -414,7 +414,7 @@ describe("IdentificationService", () => {
 
       expect(mockAgent.com!.atproto.repo.listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "org.rwell.test.identification",
+        collection: "ing.observ.temp.identification",
         limit: 100,
       });
     });

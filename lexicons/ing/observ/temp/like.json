@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "org.rwell.test.like",
+  "id": "ing.observ.temp.like",
   "defs": {
     "main": {
       "type": "record",
