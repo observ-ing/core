@@ -49,7 +49,7 @@ struct Cli {
     #[arg(long, value_name = "NAMES")]
     collection: Option<String>,
 
-    /// Show what would be done without writing to the database
+    /// Fetch and parse records without writing to the database (no DB required)
     #[arg(long)]
     dry_run: bool,
 }
@@ -129,18 +129,81 @@ async fn list_records(
     Ok(all_records)
 }
 
-/// Process a single record through the ingester pipeline and upsert into the DB.
-async fn process_record(
+/// Parse a record through the processing pipeline (validates deserialization).
+fn parse_record(
+    collection: &str,
+    record: &Record,
+    did: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let now = Utc::now();
+
+    match collection {
+        OCCURRENCE_COLLECTION => {
+            processing::occurrence_from_json(
+                &record.value,
+                record.uri.clone(),
+                record.cid.clone(),
+                did.to_string(),
+            )?;
+        }
+        IDENTIFICATION_COLLECTION => {
+            processing::identification_from_json(
+                &record.value,
+                record.uri.clone(),
+                record.cid.clone(),
+                did.to_string(),
+                now,
+            )?;
+        }
+        COMMENT_COLLECTION => {
+            processing::comment_from_json(
+                &record.value,
+                record.uri.clone(),
+                record.cid.clone(),
+                did.to_string(),
+                now,
+            )?;
+        }
+        INTERACTION_COLLECTION => {
+            processing::interaction_from_json(
+                &record.value,
+                record.uri.clone(),
+                record.cid.clone(),
+                did.to_string(),
+                now,
+            )?;
+        }
+        LIKE_COLLECTION => {
+            let is_occurrence_like = record
+                .value
+                .get("subject")
+                .and_then(|s| s.get("uri"))
+                .and_then(|u| u.as_str())
+                .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
+
+            if is_occurrence_like {
+                processing::like_from_json(
+                    &record.value,
+                    record.uri.clone(),
+                    record.cid.clone(),
+                    did.to_string(),
+                    now,
+                )?;
+            }
+        }
+        _ => {}
+    }
+
+    Ok(())
+}
+
+/// Parse a record and write it to the database.
+async fn process_and_store(
     pool: &PgPool,
     collection: &str,
     record: &Record,
     did: &str,
-    dry_run: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    if dry_run {
-        return Ok(());
-    }
-
     let now = Utc::now();
 
     match collection {
@@ -186,7 +249,6 @@ async fn process_record(
             observing_db::interactions::upsert(pool, &params).await?;
         }
         LIKE_COLLECTION => {
-            // Only store likes whose subject is an occurrence
             let is_occurrence_like = record
                 .value
                 .get("subject")
@@ -229,20 +291,32 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let database_url =
-        std::env::var("DATABASE_URL").unwrap_or_else(|_| "postgres://localhost/observing".into());
+    if cli.all && cli.dry_run {
+        eprintln!("--all requires a database connection and cannot be used with --dry-run");
+        std::process::exit(1);
+    }
 
-    let pool = PgPoolOptions::new()
-        .max_connections(5)
-        .acquire_timeout(Duration::from_secs(5))
-        .connect(&database_url)
-        .await
-        .expect("Failed to connect to database");
+    // Only connect to the database when not in dry-run mode
+    let pool = if cli.dry_run {
+        None
+    } else {
+        let database_url = std::env::var("DATABASE_URL")
+            .unwrap_or_else(|_| "postgres://localhost/observing".into());
+        Some(
+            PgPoolOptions::new()
+                .max_connections(5)
+                .acquire_timeout(Duration::from_secs(5))
+                .connect(&database_url)
+                .await
+                .expect("Failed to connect to database"),
+        )
+    };
 
     // Resolve which DIDs to backfill
     let dids: Vec<String> = if cli.all {
+        let pool = pool.as_ref().unwrap();
         sqlx::query_scalar("SELECT key FROM oauth_sessions")
-            .fetch_all(&pool)
+            .fetch_all(pool)
             .await
             .expect("Failed to query oauth_sessions")
     } else {
@@ -263,7 +337,7 @@ async fn main() {
     };
 
     if cli.dry_run {
-        println!("=== DRY RUN MODE ===\n");
+        println!("=== DRY RUN MODE (parse only, no DB writes) ===\n");
     }
 
     let client = Client::new();
@@ -296,7 +370,13 @@ async fn main() {
             info!("[{did}] Found {} {short_name} records", records.len());
 
             for record in &records {
-                match process_record(&pool, collection, record, did, cli.dry_run).await {
+                let result = if cli.dry_run {
+                    parse_record(collection, record, did)
+                } else {
+                    process_and_store(pool.as_ref().unwrap(), collection, record, did).await
+                };
+
+                match result {
                     Ok(()) => {
                         total_processed += 1;
                     }
@@ -312,4 +392,8 @@ async fn main() {
     println!("\n=== Backfill complete ===");
     println!("  Processed: {total_processed}");
     println!("  Failed: {total_failed}");
+
+    if total_failed > 0 {
+        std::process::exit(1);
+    }
 }

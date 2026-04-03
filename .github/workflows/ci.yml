@@ -154,6 +154,15 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
+  # Backfill dry-run: fetch real PDS records and validate parsing
+  backfill-dry-run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo run --bin backfill -- --dry-run did:plc:jh6n3ntljfhhtr4jbvrm3k5b
+
   # End-to-end tests
   e2e:
     runs-on: ubuntu-latest
