@@ -4,12 +4,17 @@
 //! under each collection, and processes them through the same pipeline
 //! the firehose ingester uses.
 //!
+//! Automatically resolves dependencies: if identifications, comments, or
+//! likes reference occurrences from other users, those occurrences are
+//! backfilled first.
+//!
 //! Usage:
 //!   cargo run --bin backfill -- did:plc:abc did:plc:xyz
 //!   cargo run --bin backfill -- --all
 //!   cargo run --bin backfill -- --collection occurrence did:plc:abc
 //!   cargo run --bin backfill -- --dry-run did:plc:abc
 
+use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
 use chrono::Utc;
@@ -67,6 +72,11 @@ struct Record {
     uri: String,
     cid: String,
     value: serde_json::Value,
+}
+
+/// Extract the DID from an AT URI (at://did:plc:xxx/collection/rkey).
+fn did_from_uri(uri: &str) -> Option<&str> {
+    uri.strip_prefix("at://")?.split('/').next()
 }
 
 /// Resolve a DID to its PDS endpoint via plc.directory.
@@ -127,6 +137,58 @@ async fn list_records(
     }
 
     Ok(all_records)
+}
+
+/// Check if a record's subject references a known collection namespace.
+/// Records referencing old/unknown namespaces are skipped during backfill.
+fn has_known_subject(record: &Record) -> bool {
+    let subject_uri = record
+        .value
+        .get("subject")
+        .and_then(|s| s.get("uri"))
+        .and_then(|u| u.as_str());
+
+    match subject_uri {
+        Some(uri) => uri.contains("/ing.observ."),
+        None => true, // No subject (e.g. occurrences) — always process
+    }
+}
+
+/// Extract referenced DIDs from subject.uri fields in non-occurrence records.
+fn extract_referenced_dids(records: &[&Record], exclude: &HashSet<String>) -> HashSet<String> {
+    let mut dids = HashSet::new();
+    for record in records {
+        // subject.uri (identifications, comments, likes)
+        if let Some(uri) = record
+            .value
+            .get("subject")
+            .and_then(|s| s.get("uri"))
+            .and_then(|u| u.as_str())
+        {
+            if let Some(did) = did_from_uri(uri) {
+                if !exclude.contains(did) {
+                    dids.insert(did.to_string());
+                }
+            }
+        }
+        // subjectA.occurrence.uri / subjectB.occurrence.uri (interactions)
+        for key in &["subjectA", "subjectB"] {
+            if let Some(uri) = record
+                .value
+                .get(key)
+                .and_then(|s| s.get("occurrence"))
+                .and_then(|o| o.get("uri"))
+                .and_then(|u| u.as_str())
+            {
+                if let Some(did) = did_from_uri(uri) {
+                    if !exclude.contains(did) {
+                        dids.insert(did.to_string());
+                    }
+                }
+            }
+        }
+    }
+    dids
 }
 
 /// Parse a record through the processing pipeline (validates deserialization).
@@ -275,6 +337,60 @@ async fn process_and_store(
     Ok(())
 }
 
+/// Backfill occurrences for a single DID and return (processed, failed) counts.
+async fn backfill_occurrences(
+    client: &Client,
+    pool: Option<&PgPool>,
+    did: &str,
+    dry_run: bool,
+) -> (usize, usize) {
+    let mut processed = 0;
+    let mut failed = 0;
+
+    let pds = match resolve_pds(client, did).await {
+        Some(p) => p,
+        None => {
+            error!("[{did}] Could not resolve PDS endpoint");
+            return (0, 0);
+        }
+    };
+
+    let records = match list_records(client, &pds, did, OCCURRENCE_COLLECTION).await {
+        Ok(r) => r,
+        Err(e) => {
+            warn!("[{did}] Failed to list occurrences: {e}");
+            return (0, 0);
+        }
+    };
+
+    if records.is_empty() {
+        return (0, 0);
+    }
+
+    info!(
+        "[{did}] Found {} occurrence records (dependency)",
+        records.len()
+    );
+
+    for record in &records {
+        let result = if dry_run {
+            parse_record(OCCURRENCE_COLLECTION, record, did)
+        } else {
+            process_and_store(pool.unwrap(), OCCURRENCE_COLLECTION, record, did).await
+        };
+
+        match result {
+            Ok(()) => processed += 1,
+            Err(e) => {
+                warn!("  FAIL {}: {e}", record.uri);
+                failed += 1;
+            }
+        }
+    }
+
+    (processed, failed)
+}
+
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
@@ -344,6 +460,10 @@ async fn main() {
     let mut total_processed = 0usize;
     let mut total_failed = 0usize;
 
+    // Phase 1: Fetch all records for requested DIDs
+    let did_set: HashSet<String> = dids.iter().cloned().collect();
+    let mut all_fetched: HashMap<String, Vec<(&str, &str, Vec<Record>)>> = HashMap::new();
+
     for did in &dids {
         let pds = match resolve_pds(&client, did).await {
             Some(p) => p,
@@ -354,6 +474,7 @@ async fn main() {
         };
         info!("[{did}] PDS: {pds}");
 
+        let mut did_records = Vec::new();
         for &(short_name, collection) in &collections {
             let records = match list_records(&client, &pds, did, collection).await {
                 Ok(r) => r,
@@ -363,13 +484,51 @@ async fn main() {
                 }
             };
 
-            if records.is_empty() {
-                continue;
+            if !records.is_empty() {
+                info!("[{did}] Found {} {short_name} records", records.len());
             }
+            did_records.push((short_name, collection, records));
+        }
+        all_fetched.insert(did.clone(), did_records);
+    }
 
-            info!("[{did}] Found {} {short_name} records", records.len());
+    // Phase 2: Find referenced DIDs whose occurrences we need as dependencies
+    let mut all_non_occurrence_records: Vec<&Record> = Vec::new();
+    for did_records in all_fetched.values() {
+        for (_, collection, records) in did_records {
+            if *collection != OCCURRENCE_COLLECTION {
+                all_non_occurrence_records.extend(records);
+            }
+        }
+    }
 
-            for record in &records {
+    let dep_dids = extract_referenced_dids(&all_non_occurrence_records, &did_set);
+    if !dep_dids.is_empty() {
+        info!(
+            "Backfilling occurrences from {} referenced user(s)...",
+            dep_dids.len()
+        );
+        for dep_did in &dep_dids {
+            let (p, f) = backfill_occurrences(&client, pool.as_ref(), dep_did, cli.dry_run).await;
+            total_processed += p;
+            total_failed += f;
+        }
+    }
+
+    // Phase 3: Process all records for the requested DIDs
+    for did in &dids {
+        let did_records = match all_fetched.get(did) {
+            Some(r) => r,
+            None => continue,
+        };
+
+        for (_, collection, records) in did_records {
+            for record in records {
+                if !has_known_subject(record) {
+                    info!("  SKIP {} (unknown namespace)", record.uri);
+                    continue;
+                }
+
                 let result = if cli.dry_run {
                     parse_record(collection, record, did)
                 } else {
@@ -377,9 +536,7 @@ async fn main() {
                 };
 
                 match result {
-                    Ok(()) => {
-                        total_processed += 1;
-                    }
+                    Ok(()) => total_processed += 1,
                     Err(e) => {
                         warn!("  FAIL {}: {e}", record.uri);
                         total_failed += 1;
