@@ -74,6 +74,12 @@ struct Record {
     value: serde_json::Value,
 }
 
+/// A batch of fetched records for one DID, grouped by collection.
+struct FetchedRecords {
+    /// (short_name, collection_nsid, records)
+    collections: Vec<(&'static str, &'static str, Vec<Record>)>,
+}
+
 /// Extract the DID from an AT URI (at://did:plc:xxx/collection/rkey).
 fn did_from_uri(uri: &str) -> Option<&str> {
     uri.strip_prefix("at://")?.split('/').next()
@@ -152,6 +158,37 @@ fn has_known_subject(record: &Record) -> bool {
         Some(uri) => uri.contains("/ing.observ."),
         None => true, // No subject (e.g. occurrences) — always process
     }
+}
+
+/// Check that any referenced occurrence URIs actually exist in our fetched data.
+/// This filters out records pointing to phantom occurrences (e.g. from partial migrations).
+fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> bool {
+    // Check subject.uri for identifications/comments/likes
+    if let Some(uri) = record
+        .value
+        .get("subject")
+        .and_then(|s| s.get("uri"))
+        .and_then(|u| u.as_str())
+    {
+        if uri.contains("/ing.observ.temp.occurrence/") && !known_uris.contains(uri) {
+            return false;
+        }
+    }
+    // Check subjectA/subjectB occurrence URIs for interactions
+    for key in &["subjectA", "subjectB"] {
+        if let Some(uri) = record
+            .value
+            .get(key)
+            .and_then(|s| s.get("occurrence"))
+            .and_then(|o| o.get("uri"))
+            .and_then(|u| u.as_str())
+        {
+            if uri.contains("/ing.observ.temp.occurrence/") && !known_uris.contains(uri) {
+                return false;
+            }
+        }
+    }
+    true
 }
 
 /// Extract referenced DIDs from subject.uri fields in non-occurrence records.
@@ -337,21 +374,22 @@ async fn process_and_store(
     Ok(())
 }
 
-/// Backfill occurrences for a single DID and return (processed, failed) counts.
+/// Backfill occurrences for a single DID and return (processed, failed, occurrence_uris).
 async fn backfill_occurrences(
     client: &Client,
     pool: Option<&PgPool>,
     did: &str,
     dry_run: bool,
-) -> (usize, usize) {
+) -> (usize, usize, HashSet<String>) {
     let mut processed = 0;
     let mut failed = 0;
+    let mut uris = HashSet::new();
 
     let pds = match resolve_pds(client, did).await {
         Some(p) => p,
         None => {
             error!("[{did}] Could not resolve PDS endpoint");
-            return (0, 0);
+            return (0, 0, uris);
         }
     };
 
@@ -359,12 +397,12 @@ async fn backfill_occurrences(
         Ok(r) => r,
         Err(e) => {
             warn!("[{did}] Failed to list occurrences: {e}");
-            return (0, 0);
+            return (0, 0, uris);
         }
     };
 
     if records.is_empty() {
-        return (0, 0);
+        return (0, 0, uris);
     }
 
     info!(
@@ -373,6 +411,8 @@ async fn backfill_occurrences(
     );
 
     for record in &records {
+        uris.insert(record.uri.clone());
+
         let result = if dry_run {
             parse_record(OCCURRENCE_COLLECTION, record, did)
         } else {
@@ -388,7 +428,7 @@ async fn backfill_occurrences(
         }
     }
 
-    (processed, failed)
+    (processed, failed, uris)
 }
 
 #[tokio::main]
@@ -462,7 +502,10 @@ async fn main() {
 
     // Phase 1: Fetch all records for requested DIDs
     let did_set: HashSet<String> = dids.iter().cloned().collect();
-    let mut all_fetched: HashMap<String, Vec<(&str, &str, Vec<Record>)>> = HashMap::new();
+    let mut all_fetched: HashMap<String, FetchedRecords> = HashMap::new();
+    // Track all occurrence URIs we've fetched — used to skip records
+    // referencing non-existent occurrences (e.g. orphans from prior migrations).
+    let mut known_occurrence_uris: HashSet<String> = HashSet::new();
 
     for did in &dids {
         let pds = match resolve_pds(&client, did).await {
@@ -474,7 +517,7 @@ async fn main() {
         };
         info!("[{did}] PDS: {pds}");
 
-        let mut did_records = Vec::new();
+        let mut collections_vec = Vec::new();
         for &(short_name, collection) in &collections {
             let records = match list_records(&client, &pds, did, collection).await {
                 Ok(r) => r,
@@ -487,15 +530,25 @@ async fn main() {
             if !records.is_empty() {
                 info!("[{did}] Found {} {short_name} records", records.len());
             }
-            did_records.push((short_name, collection, records));
+            if collection == OCCURRENCE_COLLECTION {
+                for r in &records {
+                    known_occurrence_uris.insert(r.uri.clone());
+                }
+            }
+            collections_vec.push((short_name, collection, records));
         }
-        all_fetched.insert(did.clone(), did_records);
+        all_fetched.insert(
+            did.clone(),
+            FetchedRecords {
+                collections: collections_vec,
+            },
+        );
     }
 
     // Phase 2: Find referenced DIDs whose occurrences we need as dependencies
     let mut all_non_occurrence_records: Vec<&Record> = Vec::new();
-    for did_records in all_fetched.values() {
-        for (_, collection, records) in did_records {
+    for fetched in all_fetched.values() {
+        for (_, collection, records) in &fetched.collections {
             if *collection != OCCURRENCE_COLLECTION {
                 all_non_occurrence_records.extend(records);
             }
@@ -509,23 +562,30 @@ async fn main() {
             dep_dids.len()
         );
         for dep_did in &dep_dids {
-            let (p, f) = backfill_occurrences(&client, pool.as_ref(), dep_did, cli.dry_run).await;
+            let (p, f, uris) =
+                backfill_occurrences(&client, pool.as_ref(), dep_did, cli.dry_run).await;
             total_processed += p;
             total_failed += f;
+            known_occurrence_uris.extend(uris);
         }
     }
 
     // Phase 3: Process all records for the requested DIDs
     for did in &dids {
-        let did_records = match all_fetched.get(did) {
+        let fetched = match all_fetched.get(did) {
             Some(r) => r,
             None => continue,
         };
 
-        for (_, collection, records) in did_records {
+        for (_, collection, records) in &fetched.collections {
             for record in records {
                 if !has_known_subject(record) {
                     info!("  SKIP {} (unknown namespace)", record.uri);
+                    continue;
+                }
+
+                if !subject_occurrence_exists(record, &known_occurrence_uris) {
+                    info!("  SKIP {} (referenced occurrence not found)", record.uri);
                     continue;
                 }
 
