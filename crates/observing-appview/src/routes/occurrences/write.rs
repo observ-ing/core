@@ -2,6 +2,7 @@ use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
+use observing_lexicons::bio_lexicons::temp::media::Media;
 use observing_lexicons::org_rwell::test::occurrence::{Location, Occurrence};
 use serde::Deserialize;
 use serde_json::json;
@@ -67,7 +68,7 @@ pub async fn create_occurrence(
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
-    // Upload blobs
+    // Upload blobs and create media records
     let mut blobs = Vec::new();
     if let Some(images) = &body.images {
         use base64::Engine;
@@ -86,6 +87,19 @@ pub async fn create_occurrence(
             let blob_value = serde_json::to_value(&blob_resp.blob)
                 .map_err(|e| AppError::Internal(format!("Failed to serialize blob: {e}")))?;
             blobs.push(json!({ "image": blob_value, "alt": "" }));
+
+            // Create a bio.lexicons.temp.media record for forward migration
+            let media_record_value = json!({
+                "$type": Media::NSID,
+                "image": blob_value,
+            });
+            let did_for_media = atrium_api::types::string::Did::new(user.did.clone())
+                .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
+            if let Err(e) =
+                auth::create_at_record(&agent, did_for_media, Media::NSID, media_record_value).await
+            {
+                warn!(error = ?e, "Failed to create media record (non-fatal)");
+            }
         }
     }
 
