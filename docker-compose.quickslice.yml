@@ -1,0 +1,48 @@
+services:
+  quickslice:
+    build:
+      context: ./vendor/quickslice
+    ports:
+      - "8090:8080"
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@quickslice-postgres:5432/quickslice
+      JETSTREAM_URL: wss://jetstream1.us-east.bsky.network/subscribe
+    depends_on:
+      quickslice-postgres:
+        condition: service_healthy
+      quickslice-lexicon-loader:
+        condition: service_completed_successfully
+
+  quickslice-postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: quickslice
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - quickslice-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 10
+
+  quickslice-lexicon-loader:
+    image: postgres:16-alpine
+    depends_on:
+      quickslice-postgres:
+        condition: service_healthy
+    volumes:
+      - ./lexicons:/lexicons:ro
+      - ./scripts/load-quickslice-lexicons.sh:/load.sh:ro
+    environment:
+      PGHOST: quickslice-postgres
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: quickslice
+    entrypoint: ["sh", "/load.sh"]
+
+volumes:
+  quickslice-pgdata:
