@@ -7,6 +7,7 @@ use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::quickslice_convert;
 use crate::responses::{
     BboxBounds, BboxMeta, BboxResponse, GeoJsonFeature, GeoJsonPoint, GeoJsonProperties,
     GeoJsonResponse, NearbyMeta, NearbyResponse, ObserversResponse, OccurrenceDetailResponse,
@@ -91,13 +92,17 @@ pub async fn get_feed(
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
         .min(constants::MAX_FEED_LIMIT);
 
-    let rows = observing_db::occurrences::get_feed(
-        &state.pool,
-        limit,
-        params.cursor.as_deref(),
-        &state.hidden_dids,
-    )
-    .await?;
+    let connection = state
+        .quickslice
+        .get_explore_feed(limit as i32, params.cursor.as_deref(), None)
+        .await
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?;
+
+    let rows: Vec<_> = connection
+        .nodes()
+        .into_iter()
+        .map(quickslice_convert::occurrence_from_qs)
+        .collect();
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
@@ -254,9 +259,14 @@ async fn get_occurrence_inner(
     cookies: &axum_extra::extract::CookieJar,
     uri: &str,
 ) -> Result<Json<OccurrenceDetailResponse>, AppError> {
-    let row = observing_db::occurrences::get(&state.pool, uri)
-        .await?
+    let qs_occurrence = state
+        .quickslice
+        .get_occurrence(uri)
+        .await
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
+
+    let row = quickslice_convert::occurrence_from_qs(qs_occurrence);
 
     let viewer = session_did(cookies);
     let enriched = enrichment::enrich_occurrences(
@@ -273,12 +283,27 @@ async fn get_occurrence_inner(
         .next()
         .ok_or_else(|| AppError::Internal("Failed to enrich occurrence".into()))?;
 
-    let identification_rows =
-        observing_db::identifications::get_for_occurrence(&state.pool, uri).await?;
+    let qs_identifications = state
+        .quickslice
+        .get_identifications_for_occurrence(uri)
+        .await
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?;
+    let identification_rows: Vec<_> = qs_identifications
+        .into_iter()
+        .map(quickslice_convert::identification_from_qs)
+        .collect();
     let identifications =
         enrichment::enrich_identifications(&state.resolver, &identification_rows).await;
 
-    let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, uri).await?;
+    let qs_comments = state
+        .quickslice
+        .get_comments_for_occurrence(uri)
+        .await
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?;
+    let comment_rows: Vec<_> = qs_comments
+        .into_iter()
+        .map(quickslice_convert::comment_from_qs)
+        .collect();
     let comments = enrichment::enrich_comments(&state.resolver, &comment_rows).await;
 
     Ok(Json(OccurrenceDetailResponse {

@@ -1,12 +1,13 @@
 use axum::extract::{Query, State};
 use axum::Json;
-use observing_db::types::{ExploreFeedOptions, HomeFeedOptions};
+use observing_db::types::HomeFeedOptions;
 use serde::Deserialize;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
+use crate::quickslice_convert;
 use crate::responses::{
     ExploreFeedResponse, ExploreFilters, ExploreMeta, HomeFeedMeta, HomeFeedResponse,
 };
@@ -37,20 +38,18 @@ pub async fn get_explore(
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
         .min(constants::MAX_FEED_LIMIT);
 
-    let options = ExploreFeedOptions {
-        limit: Some(limit),
-        cursor: params.cursor,
-        taxon: params.taxon.clone(),
-        kingdom: params.kingdom.clone(),
-        lat: params.lat,
-        lng: params.lng,
-        radius: params.radius,
-        start_date: params.start_date.clone(),
-        end_date: params.end_date.clone(),
-    };
+    // Fetch occurrences from QuickSlice GraphQL
+    let connection = state
+        .quickslice
+        .get_explore_feed(limit as i32, params.cursor.as_deref(), None)
+        .await
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?;
 
-    let rows =
-        observing_db::feeds::get_explore_feed(&state.pool, &options, &state.hidden_dids).await?;
+    let rows: Vec<_> = connection
+        .nodes()
+        .into_iter()
+        .map(quickslice_convert::occurrence_from_qs)
+        .collect();
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(

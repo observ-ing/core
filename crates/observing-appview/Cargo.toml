@@ -7,11 +7,12 @@ license = "AGPL-3.0-only"
 
 [dependencies]
 # Internal crates
-observing-db = { path = "../observing-db", features = ["processing"] }
+observing-db = { path = "../observing-db" }
 atproto-identity = { path = "../atproto-identity" }
 nominatim-client = { path = "../nominatim-client" }
 observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
+quickslice-client = { path = "../quickslice-client" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.11"

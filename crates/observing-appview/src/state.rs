@@ -7,6 +7,7 @@ use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
 use crate::species_id_client::SpeciesIdClient;
 use crate::taxonomy_client::TaxonomyClient;
+use quickslice_client::QuickSliceClient;
 
 use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig, DEFAULT_PLC_DIRECTORY_URL};
 use atrium_identity::handle::{AtprotoHandleResolver, AtprotoHandleResolverConfig};
@@ -39,6 +40,7 @@ pub struct AppState {
     pub taxonomy: Arc<TaxonomyClient>,
     pub geocoding: Arc<NominatimClient>,
     pub species_id: Option<Arc<SpeciesIdClient>>,
+    pub quickslice: Arc<QuickSliceClient>,
     pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
     pub public_url: Option<String>,

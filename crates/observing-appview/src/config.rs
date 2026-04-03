@@ -10,6 +10,8 @@ pub struct Config {
     pub taxonomy_service_url: String,
     /// URL for the species identification service (optional)
     pub species_id_service_url: Option<String>,
+    /// URL for the QuickSlice GraphQL service
+    pub quickslice_url: String,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
@@ -68,6 +70,9 @@ impl Config {
 
         let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
 
+        let quickslice_url = env::var("QUICKSLICE_URL")
+            .unwrap_or_else(|_| "http://localhost:8090".to_string());
+
         let public_url = env::var("PUBLIC_URL").ok();
 
         let hidden_dids = env::var("HIDDEN_DIDS")
@@ -81,6 +86,7 @@ impl Config {
             media_proxy_url,
             taxonomy_service_url,
             species_id_service_url,
+            quickslice_url,
             public_url,
             hidden_dids,
         }

@@ -188,29 +188,14 @@ pub async fn create_occurrence(
         rv
     };
 
-    // Clone record_value before it's consumed by create_record
-    let record_value_for_db = record_value.clone();
-
-    // Create AT Protocol record
+    // Create AT Protocol record on user's PDS.
+    // QuickSlice will ingest this from the firehose automatically.
     let resp = auth::create_at_record(&agent, did_parsed, Occurrence::NSID, record_value).await?;
 
     let uri = resp.uri.to_string();
     let cid = resp.cid.as_ref().to_string();
 
     info!(uri = %uri, "Created occurrence");
-
-    // Immediate DB upsert for visibility — uses the same shared conversion
-    // as the ingester so field mapping is always consistent.
-    if let Ok(parsed) = observing_db::processing::occurrence_from_json(
-        &record_value_for_db,
-        uri.clone(),
-        cid.clone(),
-        user.did.clone(),
-    ) {
-        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
-            warn!(error = %e, "Failed to upsert occurrence into local DB");
-        }
-    }
 
     // Save private location data
     if let Err(e) =
@@ -227,13 +212,12 @@ pub async fn create_occurrence(
         warn!(error = %e, "Failed to sync observers");
     }
 
-    // Auto-create first identification if a scientific name was provided
+    // Auto-create first identification if a scientific name was provided.
+    // QuickSlice will ingest this from the firehose automatically.
     if let Some(ref scientific_name) = body.scientific_name {
         if !scientific_name.is_empty() {
             let id_value =
                 auto_id::build_identification_record(&state, scientific_name, &uri, &cid).await?;
-
-            let id_value_for_db = id_value.clone();
 
             let id_did = atrium_api::types::string::Did::new(user.did.clone())
                 .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
@@ -242,20 +226,6 @@ pub async fn create_occurrence(
             {
                 Ok(id_resp) => {
                     info!(uri = %id_resp.uri, "Auto-created identification for occurrence");
-                    // Immediate DB sync for the identification
-                    if let Ok(params) = observing_db::processing::identification_from_json(
-                        &id_value_for_db,
-                        id_resp.uri.to_string(),
-                        id_resp.cid.as_ref().to_string(),
-                        user.did.clone(),
-                        chrono::Utc::now(),
-                    ) {
-                        if let Err(e) =
-                            observing_db::identifications::upsert(&state.pool, &params).await
-                        {
-                            warn!(error = %e, "Failed to upsert auto-created identification into local DB");
-                        }
-                    }
                 }
                 Err(e) => {
                     tracing::warn!(error = ?e, "Failed to auto-create identification");

@@ -21,13 +21,21 @@ pub async fn get_for_occurrence(
     State(state): State<AppState>,
     Path(occurrence_uri): Path<String>,
 ) -> Result<Json<IdentificationListResponse>, AppError> {
-    let rows =
-        observing_db::identifications::get_for_occurrence(&state.pool, &occurrence_uri).await?;
+    let (qs_ids, community_id) = tokio::join!(
+        state
+            .quickslice
+            .get_identifications_for_occurrence(&occurrence_uri),
+        observing_db::identifications::get_community_id(&state.pool, &occurrence_uri, 0),
+    );
+
+    let rows: Vec<_> = qs_ids
+        .map_err(|e| AppError::Internal(format!("QuickSlice error: {e}")))?
+        .into_iter()
+        .map(crate::quickslice_convert::identification_from_qs)
+        .collect();
 
     let identifications = enrichment::enrich_identifications(&state.resolver, &rows).await;
-
-    let community_id =
-        observing_db::identifications::get_community_id(&state.pool, &occurrence_uri, 0).await?;
+    let community_id = community_id?;
 
     Ok(Json(IdentificationListResponse {
         identifications,

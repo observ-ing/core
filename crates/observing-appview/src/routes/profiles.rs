@@ -1,12 +1,12 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
-use observing_db::types::{ProfileFeedOptions, ProfileFeedType};
 use serde::Deserialize;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment::{self, ProfileSummary};
 use crate::error::AppError;
+use crate::quickslice_convert;
 use crate::responses::{ProfileCounts, ProfileFeedResponse};
 use crate::state::AppState;
 
@@ -29,32 +29,67 @@ pub async fn get_profile_feed(
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
         .min(constants::MAX_FEED_LIMIT);
 
-    let feed_type = match params.feed_type.as_deref() {
-        Some("observations") => ProfileFeedType::Observations,
-        Some("identifications") => ProfileFeedType::Identifications,
-        _ => ProfileFeedType::All,
-    };
+    let feed_type = params.feed_type.as_deref();
+    let wants_observations = feed_type != Some("identifications");
+    let wants_identifications = feed_type != Some("observations");
 
-    let options = ProfileFeedOptions {
-        limit: Some(limit),
-        cursor: params.cursor,
-        feed_type: Some(feed_type),
-    };
+    // Fetch occurrences and identifications from QuickSlice concurrently
+    let (occ_result, id_result, occ_count, id_count) = tokio::join!(
+        async {
+            if wants_observations {
+                state
+                    .quickslice
+                    .get_user_occurrences(&did, limit as i32, params.cursor.as_deref())
+                    .await
+                    .ok()
+            } else {
+                None
+            }
+        },
+        async {
+            if wants_identifications {
+                state
+                    .quickslice
+                    .get_user_identifications(&did, limit as i32, params.cursor.as_deref())
+                    .await
+                    .ok()
+            } else {
+                None
+            }
+        },
+        state.quickslice.count_user_occurrences(&did),
+        state.quickslice.count_user_identifications(&did),
+    );
 
-    let result = observing_db::feeds::get_profile_feed(&state.pool, &did, &options).await?;
+    let occ_rows: Vec<_> = occ_result
+        .map(|c| {
+            c.nodes()
+                .into_iter()
+                .map(quickslice_convert::occurrence_from_qs)
+                .collect()
+        })
+        .unwrap_or_default();
+
+    let id_rows: Vec<_> = id_result
+        .map(|c| {
+            c.nodes()
+                .into_iter()
+                .map(quickslice_convert::identification_from_qs)
+                .collect()
+        })
+        .unwrap_or_default();
 
     let viewer = session_did(&cookies);
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
         &state.taxonomy,
-        &result.occurrences,
+        &occ_rows,
         viewer.as_deref(),
     )
     .await;
 
-    let identifications =
-        enrichment::enrich_identifications(&state.resolver, &result.identifications).await;
+    let identifications = enrichment::enrich_identifications(&state.resolver, &id_rows).await;
 
     // Resolve profile for the DID
     let profile = state.resolver.get_profile(&did).await;
@@ -62,12 +97,7 @@ pub async fn get_profile_feed(
     let next_cursor = occurrences
         .last()
         .map(|o| o.created_at.clone())
-        .or_else(|| {
-            result
-                .identifications
-                .last()
-                .map(|i| i.date_identified.to_string())
-        });
+        .or_else(|| id_rows.last().map(|i| i.date_identified.to_string()));
 
     Ok(Json(ProfileFeedResponse {
         profile: ProfileSummary {
@@ -77,9 +107,9 @@ pub async fn get_profile_feed(
             avatar: profile.as_ref().and_then(|p| p.avatar.clone()),
         },
         counts: ProfileCounts {
-            observations: result.counts.observations,
-            identifications: result.counts.identifications,
-            species: result.counts.species,
+            observations: occ_count.unwrap_or(0),
+            identifications: id_count.unwrap_or(0),
+            species: 0, // TODO: species count not yet available via QuickSlice
         },
         occurrences,
         identifications,

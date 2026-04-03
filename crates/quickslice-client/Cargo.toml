@@ -1,0 +1,16 @@
+[package]
+name = "quickslice-client"
+version = "0.1.0"
+edition = "2021"
+description = "GraphQL client for querying a QuickSlice AppView instance"
+license = "AGPL-3.0-only"
+
+[dependencies]
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+tokio-tungstenite = { workspace = true }
+futures-util = { workspace = true }

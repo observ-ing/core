@@ -1,0 +1,3 @@
+[submodule "vendor/quickslice"]
+	path = vendor/quickslice
+	url = https://tangled.org/slices.network/quickslice

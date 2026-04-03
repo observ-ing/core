@@ -5,11 +5,13 @@ mod enrichment;
 mod error;
 mod middleware;
 mod oauth_store;
+mod quickslice_convert;
 mod resolver;
 mod responses;
 mod routes;
 mod species_id_client;
 mod state;
+mod subscriptions;
 mod taxonomy_client;
 mod validation;
 
@@ -73,11 +75,17 @@ async fn main() {
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
         geocoding: Arc::new(nominatim_client::NominatimClient::new()),
         species_id,
+        quickslice: Arc::new(quickslice_client::QuickSliceClient::new(
+            &config.quickslice_url,
+        )),
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
     };
+
+    // Start QuickSlice subscription listener for notifications and co-observer sync
+    subscriptions::start(state.pool.clone(), state.quickslice.clone());
 
     // CORS
     let cors = if config.cors_origins.iter().any(|o| o == "*") {
