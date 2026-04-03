@@ -36,6 +36,9 @@ chrono = { workspace = true }
 # CLI
 clap = { version = "4", features = ["derive"] }
 
+# HTTP client (for backfill)
+reqwest = { workspace = true }
+
 # URL parsing
 url = { workspace = true }
 

@@ -154,6 +154,34 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
+  # Backfill: fetch real PDS records, parse, and write to a test database
+  backfill:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: observing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - name: Run database migrations
+        run: for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
+      - name: Backfill from PDS
+        run: cargo run --bin backfill -- did:plc:jh6n3ntljfhhtr4jbvrm3k5b
+
   # End-to-end tests
   e2e:
     runs-on: ubuntu-latest
