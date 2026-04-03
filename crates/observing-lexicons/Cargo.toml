@@ -6,11 +6,10 @@ description = "Generated AT Protocol record types from lexicon schemas"
 license = "AGPL-3.0-only"
 
 [features]
-default = ["bio_lexicons", "com_atproto", "ing_observ", "org_rwell"]
+default = ["bio_lexicons", "com_atproto", "ing_observ"]
 bio_lexicons = ["com_atproto"]
 com_atproto = []
 ing_observ = ["com_atproto"]
-org_rwell = ["com_atproto"]
 
 [lints.rust]
 non_snake_case = "allow"
