@@ -6,15 +6,14 @@ Services deployed via GitHub Actions (`.github/workflows/ci.yml`):
 
 | Service | Build arg | Public | Cloud SQL | Notes |
 |---------|-----------|--------|-----------|-------|
-| observing-appview | `SERVICE=observing-appview` | Yes | Yes | REST API + OAuth + serves frontend |
-| observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | min-instances=1 (always running) |
+| observing-appview | `SERVICE=observing-appview` | Yes | Yes (`observing` db) | REST API + OAuth + serves frontend |
+| observing-ingester | `SERVICE=observing-ingester` | Yes | Yes (`observing` db) | min-instances=1 (always running) |
 | observing-media-proxy | `SERVICE=observing-media-proxy` | Yes | No | Stateless image cache |
 | observing-species-id | `SERVICE=observing-species-id` | Yes | No | BioCLIP species identification (2 CPU, 4 GiB) |
 | observing-taxonomy | `SERVICE=observing-taxonomy` | Yes | No | GBIF taxonomy lookups with caching |
+| quickslice | `Dockerfile.quickslice` | No | Yes (`quickslice` db) | AT Protocol ingestion + GraphQL API |
 
-All services are built from the root `Dockerfile` using `--build-arg SERVICE=<name>`.
-
-All services are Rust binaries built from the shared multi-stage `Dockerfile` at the project root.
+Rust services are built from the root `Dockerfile` using `--build-arg SERVICE=<name>`. QuickSlice is built from `Dockerfile.quickslice` (Gleam/Erlang).
 
 ## Automatic Deploy
 
@@ -39,6 +38,17 @@ DB_PASSWORD=...
 ```bash
 JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe
 ```
+
+### QuickSlice
+
+Uses a separate `quickslice` database on the same Cloud SQL instance.
+
+```bash
+DATABASE_URL=postgresql://user:pass@localhost/quickslice?host=/cloudsql/project:region:instance
+JETSTREAM_URL=wss://jetstream1.us-east.bsky.network/subscribe
+```
+
+Lexicons and `domain_authority` config are loaded automatically on startup via `scripts/load-quickslice-lexicons.sh`.
 
 ### Media Proxy
 

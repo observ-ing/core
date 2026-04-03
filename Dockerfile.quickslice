@@ -1,0 +1,87 @@
+# Build QuickSlice from source, then layer on our lexicons and startup config.
+#
+# Build:
+#   docker build -f Dockerfile.quickslice -t quickslice .
+
+ARG GLEAM_VERSION=v1.13.0
+
+# ---------------------------------------------------------------------------
+# Stage: build QuickSlice from vendor/quickslice
+# ---------------------------------------------------------------------------
+FROM ghcr.io/gleam-lang/gleam:${GLEAM_VERSION}-erlang-alpine AS builder
+
+RUN apk add --no-cache bash git nodejs npm build-base sqlite-dev postgresql-dev \
+    && npm install -g bun
+
+ENV GIT_TERMINAL_PROMPT=0
+
+COPY vendor/quickslice/lexicon_graphql /build/lexicon_graphql
+COPY vendor/quickslice/client /build/client
+COPY vendor/quickslice/atproto_car /build/atproto_car
+COPY vendor/quickslice/server /build/server
+COPY vendor/quickslice/patches /build/patches
+
+RUN cd /build/client && gleam deps download
+RUN cd /build/lexicon_graphql && gleam deps download
+RUN cd /build/server && gleam deps download
+
+RUN cd /build && patch -p1 < patches/mist-websocket-protocol.patch
+
+RUN cd /build/client && npm install
+RUN cd /build/client \
+    && gleam add --dev lustre_dev_tools \
+    && gleam run -m lustre/dev build quickslice_client --minify --outdir=/build/server/priv/static
+
+RUN cd /build/server && gleam export erlang-shipment
+
+# ---------------------------------------------------------------------------
+# Stage: runtime
+# ---------------------------------------------------------------------------
+FROM ghcr.io/gleam-lang/gleam:${GLEAM_VERSION}-erlang-alpine
+
+ARG TARGETARCH
+RUN apk add --no-cache sqlite-libs sqlite libpq curl postgresql-client \
+    && DBMATE_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "arm64" || echo "amd64") \
+    && curl -fsSL -o /usr/local/bin/dbmate https://github.com/amacneil/dbmate/releases/latest/download/dbmate-linux-${DBMATE_ARCH} \
+    && chmod +x /usr/local/bin/dbmate
+
+COPY --from=builder /build/server/build/erlang-shipment /app
+COPY --from=builder /build/server/db /app/db
+COPY --from=builder /build/server/.dbmate.yml /app/.dbmate.yml
+COPY --from=builder /build/server/docker-entrypoint.sh /app/docker-entrypoint.sh
+
+WORKDIR /app
+RUN mkdir -p /data && chmod 755 /data
+
+# Add our lexicons and loader script
+COPY lexicons/ /app/lexicons/
+COPY scripts/load-quickslice-lexicons.sh /app/load-lexicons.sh
+RUN chmod +x /app/load-lexicons.sh
+
+# Wrapper entrypoint: run migrations, load lexicons + config, then start
+COPY <<'EOF' /app/observing-entrypoint.sh
+#!/bin/sh
+set -e
+
+if [ -n "$DATABASE_URL" ]; then
+    echo "Running database migrations..."
+    if echo "$DATABASE_URL" | grep -q "^postgres"; then
+        dbmate --wait --migrations-dir /app/db/migrations_postgres up
+    else
+        dbmate --wait up
+    fi
+    echo "Migrations complete."
+
+    echo "Loading lexicons and config..."
+    LEXICON_DIR=/app/lexicons /app/load-lexicons.sh
+fi
+
+exec /app/entrypoint.sh "$@"
+EOF
+RUN chmod +x /app/observing-entrypoint.sh
+
+ENV HOST=0.0.0.0
+ENV PORT=8080
+EXPOSE 8080
+
+CMD ["/app/observing-entrypoint.sh", "run"]

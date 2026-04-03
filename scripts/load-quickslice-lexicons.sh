@@ -1,8 +1,23 @@
 #!/bin/sh
 # Load lexicon JSON files into QuickSlice's lexicon table.
-# Runs as an init container against QuickSlice's Postgres.
+#
+# Postgres connection: uses PG* env vars (PGHOST, PGUSER, etc.) or DATABASE_URL.
+# If DATABASE_URL is set and PG* vars are not, parses DATABASE_URL for psql.
 
 set -e
+
+# If DATABASE_URL is set but PGHOST is not, parse it for psql
+if [ -n "$DATABASE_URL" ] && [ -z "$PGHOST" ]; then
+  export PGDATABASE=$(echo "$DATABASE_URL" | sed -n 's|.*/\([^?]*\).*|\1|p')
+  export PGUSER=$(echo "$DATABASE_URL" | sed -n 's|.*://\([^:]*\):.*|\1|p')
+  export PGPASSWORD=$(echo "$DATABASE_URL" | sed -n 's|.*://[^:]*:\([^@]*\)@.*|\1|p')
+  SOCKET_HOST=$(echo "$DATABASE_URL" | sed -n 's|.*[?&]host=\([^&]*\).*|\1|p')
+  if [ -n "$SOCKET_HOST" ]; then
+    export PGHOST="$SOCKET_HOST"
+  else
+    export PGHOST=$(echo "$DATABASE_URL" | sed -n 's|.*@\([^:/]*\).*|\1|p')
+  fi
+fi
 
 echo "Waiting for lexicon table to exist..."
 for i in $(seq 1 30); do
@@ -17,7 +32,7 @@ for i in $(seq 1 30); do
   sleep 1
 done
 
-LEXICON_DIR="/lexicons"
+LEXICON_DIR="${LEXICON_DIR:-/lexicons}"
 COUNT=0
 
 for f in $(find "$LEXICON_DIR" -name '*.json' -type f); do

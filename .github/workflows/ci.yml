@@ -226,9 +226,19 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service: [appview, ingester, media-proxy, species-id, taxonomy]
+        include:
+          - service: appview
+          - service: ingester
+          - service: media-proxy
+          - service: species-id
+          - service: taxonomy
+          - service: quickslice
+            dockerfile: Dockerfile.quickslice
+            image_name: quickslice
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - uses: docker/setup-buildx-action@v3
 
@@ -248,16 +258,16 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile
-          build-args: SERVICE=observing-${{ matrix.service }}
+          file: ${{ matrix.dockerfile || 'Dockerfile' }}
+          build-args: ${{ matrix.dockerfile && '' || format('SERVICE=observing-{0}', matrix.service) }}
           push: true
-          tags: ${{ env.REGISTRY }}/observing-${{ matrix.service }}:latest
+          tags: ${{ env.REGISTRY }}/${{ matrix.image_name || format('observing-{0}', matrix.service) }}:latest
           cache-from: |
             type=gha,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image_name || format('observing-{0}', matrix.service) }}:buildcache
           cache-to: |
             type=gha,mode=max,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image_name || format('observing-{0}', matrix.service) }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
@@ -336,6 +346,20 @@ jobs:
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
             --set-secrets=DB_PASSWORD=observing-db-password:latest \
+            --min-instances=1 \
+            --max-instances=1 \
+            --timeout=3600
+
+      - name: Deploy quickslice
+        run: |
+          gcloud run deploy quickslice \
+            --image=$REGISTRY/quickslice:latest \
+            --region=$REGION \
+            --no-allow-unauthenticated \
+            --cpu=1 \
+            --memory=1Gi \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=DATABASE_URL=postgresql://postgres:${{ secrets.QUICKSLICE_DB_PASSWORD }}@localhost/quickslice?host=/cloudsql/$PROJECT_ID:$REGION:observing-db,JETSTREAM_URL=wss://jetstream1.us-east.bsky.network/subscribe \
             --min-instances=1 \
             --max-instances=1 \
             --timeout=3600
