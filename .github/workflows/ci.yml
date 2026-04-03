@@ -180,7 +180,7 @@ jobs:
       - name: Run database migrations
         run: for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
       - name: Backfill from PDS
-        run: cargo run --bin backfill -- did:plc:jh6n3ntljfhhtr4jbvrm3k5b
+        run: cargo run --bin backfill -- --collection occurrence did:plc:jh6n3ntljfhhtr4jbvrm3k5b
 
   # End-to-end tests
   e2e:
