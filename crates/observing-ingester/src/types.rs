@@ -50,11 +50,11 @@ impl Default for IngesterConfig {
 }
 
 /// The collection types we care about
-pub const OCCURRENCE_COLLECTION: &str = "org.rwell.test.occurrence";
-pub const IDENTIFICATION_COLLECTION: &str = "org.rwell.test.identification";
-pub const COMMENT_COLLECTION: &str = "org.rwell.test.comment";
-pub const INTERACTION_COLLECTION: &str = "org.rwell.test.interaction";
-pub const LIKE_COLLECTION: &str = "org.rwell.test.like";
+pub const OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
+pub const IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
+pub const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
+pub const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
+pub const LIKE_COLLECTION: &str = "ing.observ.temp.like";
 
 /// All known collection short names and their full NSIDs.
 pub const ALL_COLLECTIONS: &[(&str, &str)] = &[
@@ -159,7 +159,7 @@ mod tests {
         let event = RecentEvent {
             event_type: "occurrence".to_string(),
             action: "create".to_string(),
-            uri: "at://did:plc:test/org.rwell.test.occurrence/1".to_string(),
+            uri: "at://did:plc:test/ing.observ.temp.occurrence/1".to_string(),
             time: chrono::Utc::now(),
         };
 
@@ -171,10 +171,10 @@ mod tests {
 
     #[test]
     fn test_collection_constants() {
-        assert_eq!(OCCURRENCE_COLLECTION, "org.rwell.test.occurrence");
-        assert_eq!(IDENTIFICATION_COLLECTION, "org.rwell.test.identification");
-        assert_eq!(COMMENT_COLLECTION, "org.rwell.test.comment");
-        assert_eq!(INTERACTION_COLLECTION, "org.rwell.test.interaction");
-        assert_eq!(LIKE_COLLECTION, "org.rwell.test.like");
+        assert_eq!(OCCURRENCE_COLLECTION, "ing.observ.temp.occurrence");
+        assert_eq!(IDENTIFICATION_COLLECTION, "ing.observ.temp.identification");
+        assert_eq!(COMMENT_COLLECTION, "ing.observ.temp.comment");
+        assert_eq!(INTERACTION_COLLECTION, "ing.observ.temp.interaction");
+        assert_eq!(LIKE_COLLECTION, "ing.observ.temp.like");
     }
 }

@@ -5,12 +5,12 @@
  * 1. Capture/select photo
  * 2. Extract EXIF data (date/location)
  * 3. Upload blob to PDS
- * 4. Write org.rwell.test.occurrence record to the user's repo
+ * 4. Write ing.observ.temp.occurrence record to the user's repo
  */
 
 import type { AtpAgent, BlobRef } from "@atproto/api";
 
-const OCCURRENCE_COLLECTION = "org.rwell.test.occurrence";
+const OCCURRENCE_COLLECTION = "ing.observ.temp.occurrence";
 
 interface UploadConfig {
   pdsUrl: string;

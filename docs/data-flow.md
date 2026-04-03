@@ -19,19 +19,19 @@ flowchart TB
         BlobUpload["Upload Images to PDS<br/>via internal agent RPC"]
         GBIF["Taxonomy Validation<br/>Taxonomy Service"]
         Geocode["Reverse Geocoding<br/>Nominatim API"]
-        BuildRecord["Build AT Protocol Record<br/>org.rwell.test.occurrence"]
+        BuildRecord["Build AT Protocol Record<br/>ing.observ.temp.occurrence"]
         PrivateData["Save Private Coordinates<br/>occurrence_private_data table"]
         DirectInsert["Direct DB Insert<br/>(immediate visibility)"]
     end
 
     subgraph ATProtocol["AT Protocol"]
         PDS["User's Personal Data Server<br/>createRecord()"]
-        URI["Returns URI + CID<br/>at://did:plc:xxx/org.rwell.test.occurrence/rkey"]
+        URI["Returns URI + CID<br/>at://did:plc:xxx/ing.observ.temp.occurrence/rkey"]
     end
 
     subgraph Firehose["AT Protocol Network"]
         Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Collection Filter<br/>org.rwell.test.*"]
+        Filter["Collection Filter<br/>ing.observ.temp.*"]
     end
 
     subgraph Ingester["Ingester (Rust)"]
@@ -156,7 +156,7 @@ flowchart TB
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "org.rwell.test.occurrence", ... })
+   │  createRecord({ collection: "ing.observ.temp.occurrence", ... })
    │
    ├─▶ Writes exact coords to `occurrence_private_data`
    ├─▶ Direct insert to `occurrences` (immediate visibility)
@@ -187,7 +187,7 @@ flowchart TB
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "org.rwell.test.identification", ... })
+   │  createRecord({ collection: "ing.observ.temp.identification", ... })
    │
    ▼
 4. PDS emits event to Jetstream firehose
@@ -207,11 +207,11 @@ flowchart TB
 Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │
    │  Filtered for:
-   │  - org.rwell.test.occurrence
-   │  - org.rwell.test.identification
-   │  - org.rwell.test.comment
-   │  - org.rwell.test.interaction
-   │  - org.rwell.test.like
+   │  - ing.observ.temp.occurrence
+   │  - ing.observ.temp.identification
+   │  - ing.observ.temp.comment
+   │  - ing.observ.temp.interaction
+   │  - ing.observ.temp.like
    │
    ▼
 ┌─────────────────────────────────────────────────────┐

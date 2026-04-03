@@ -4,7 +4,7 @@ Research comparing our lexicons against GBIF data models, Darwin Core standards,
 
 ## Sources Examined
 
-1. **Our lexicons**: 5 record types under `org.rwell.test.*`
+1. **Our lexicons**: 5 record types under `ing.observ.temp.*`
 2. **GBIF models**: Occurrence (200+ fields), Species/Taxon, Dataset, plus 31 registered extensions
 3. **AT Protocol lexicons**: Bluesky (`app.bsky.*`), Frontpage (`fyi.unravel.frontpage.*`), WhiteWind (`com.whtwnd.blog.*`), PinkSea, Statusphere, Smoke Signal, Recipe Exchange, Octosphere (science pubs), and the `community.lexicon.*` standardization effort
 
@@ -75,7 +75,7 @@ The Lexicon community (Lexinomicon style guide) strongly recommends `knownValues
 
 Multiple projects (WhiteWind, Bluesky, Recipe Exchange) use a separate `*.defs` lexicon file for shared types. Our `#imageEmbed`, `#aspectRatio`, and `#location` are inline in `occurrence.json`.
 
-**Takeaway**: Consider creating `org.rwell.test.defs` for types that could be reused. For instance, `#imageEmbed` and `#aspectRatio` could be shared between occurrence and any future record types. Low priority — cleanliness improvement, not a GBIF concern.
+**Takeaway**: Consider creating `ing.observ.temp.defs` for types that could be reused. For instance, `#imageEmbed` and `#aspectRatio` could be shared between occurrence and any future record types. Low priority — cleanliness improvement, not a GBIF concern.
 
 ### 2C. Record vs View Separation
 
@@ -139,7 +139,7 @@ Every system in the biodiversity data ecosystem — GBIF, Darwin Core, Catalogue
 ### Nice-to-have (ecosystem interop)
 
 11. Align interaction types with GloBI vocabulary
-12. Extract shared defs into `org.rwell.test.defs`
+12. Extract shared defs into `ing.observ.temp.defs`
 13. Define `#view` types for API responses
 14. Consider storing resolved `gbifKey` on identifications (server-side or in lexicon)
 

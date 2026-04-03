@@ -74,7 +74,7 @@ export function parseAtUri(
 
 /**
  * Build an observation URL from an AT URI
- * Converts: at://did:plc:xxx/org.rwell.test.occurrence/rkey
+ * Converts: at://did:plc:xxx/ing.observ.temp.occurrence/rkey
  * To: /observation/did:plc:xxx/rkey
  */
 export function getObservationUrl(atUri: string): string {
@@ -87,7 +87,7 @@ export function getObservationUrl(atUri: string): string {
  * Reconstruct an AT URI from did and rkey (for occurrences)
  */
 export function buildOccurrenceAtUri(did: string, rkey: string): string {
-  return `at://${did}/org.rwell.test.occurrence/${rkey}`;
+  return `at://${did}/ing.observ.temp.occurrence/${rkey}`;
 }
 
 /** Get a display name for an actor, with consistent fallback chain */

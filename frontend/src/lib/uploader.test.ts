@@ -65,7 +65,7 @@ describe("OccurrenceUploader", () => {
         atproto: {
           repo: {
             createRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/org.rwell.test.occurrence/1", cid: "test-cid" },
+              data: { uri: "at://did:plc:test/ing.observ.temp.occurrence/1", cid: "test-cid" },
             }),
           },
         },
@@ -317,7 +317,7 @@ describe("OccurrenceUploader", () => {
         const result = await uploader.upload(data);
 
         expect(result).toEqual({
-          uri: "at://did:plc:test/org.rwell.test.occurrence/1",
+          uri: "at://did:plc:test/ing.observ.temp.occurrence/1",
           cid: "test-cid",
         });
       });
