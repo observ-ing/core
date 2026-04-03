@@ -5,8 +5,8 @@ const mockNotifications = [
     id: 3,
     actorDid: "did:plc:other1",
     kind: "comment",
-    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/org.rwell.test.occurrence/seed1",
-    referenceUri: "at://did:plc:other1/org.rwell.test.comment/1",
+    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/ing.observ.temp.occurrence/seed1",
+    referenceUri: "at://did:plc:other1/ing.observ.temp.comment/1",
     read: false,
     createdAt: new Date(Date.now() - 60_000).toISOString(),
     actor: {
@@ -19,8 +19,8 @@ const mockNotifications = [
     id: 2,
     actorDid: "did:plc:other2",
     kind: "identification",
-    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/org.rwell.test.occurrence/seed1",
-    referenceUri: "at://did:plc:other2/org.rwell.test.identification/1",
+    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/ing.observ.temp.occurrence/seed1",
+    referenceUri: "at://did:plc:other2/ing.observ.temp.identification/1",
     read: false,
     createdAt: new Date(Date.now() - 120_000).toISOString(),
     actor: {
@@ -33,8 +33,8 @@ const mockNotifications = [
     id: 1,
     actorDid: "did:plc:other1",
     kind: "like",
-    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/org.rwell.test.occurrence/seed1",
-    referenceUri: "at://did:plc:other1/org.rwell.test.like/1",
+    subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/ing.observ.temp.occurrence/seed1",
+    referenceUri: "at://did:plc:other1/ing.observ.temp.like/1",
     read: true,
     createdAt: new Date(Date.now() - 300_000).toISOString(),
     actor: {

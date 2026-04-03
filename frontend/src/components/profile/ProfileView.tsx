@@ -190,7 +190,7 @@ export function ProfileView() {
           {/* AT Protocol Link */}
           <Button
             component="a"
-            href={`https://pdsls.dev/at://${did}/org.rwell.test.occurrence`}
+            href={`https://pdsls.dev/at://${did}/ing.observ.temp.occurrence`}
             target="_blank"
             rel="noopener noreferrer"
             variant="outlined"

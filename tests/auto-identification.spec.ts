@@ -10,7 +10,7 @@ import {
 } from "./helpers/mock-observation";
 
 const AUTO_ID_RKEY = "autoidtest123";
-const AUTO_ID_URI = `at://${MOCK_OBS_DID}/org.rwell.test.occurrence/${AUTO_ID_RKEY}`;
+const AUTO_ID_URI = `at://${MOCK_OBS_DID}/ing.observ.temp.occurrence/${AUTO_ID_RKEY}`;
 
 authTest.describe("Auto-Identification on Upload", () => {
   // TC-AUTOID-001: Uploading with a species auto-creates the first identification
@@ -43,7 +43,7 @@ authTest.describe("Auto-Identification on Upload", () => {
         },
         identifications: [
           {
-            uri: `at://${MOCK_OBS_DID}/org.rwell.test.identification/${MOCK_OBS_RKEY}`,
+            uri: `at://${MOCK_OBS_DID}/ing.observ.temp.identification/${MOCK_OBS_RKEY}`,
             cid: "bafyid1",
             did: MOCK_OBS_DID,
             subject_uri: AUTO_ID_URI,

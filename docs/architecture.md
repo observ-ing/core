@@ -54,11 +54,11 @@ frontend/                  # Web UI (Vite + React + MapLibre GL)
 
 Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
 
-- `org.rwell.test.occurrence` - Occurrence records
-- `org.rwell.test.identification` - Taxonomic determinations
-- `org.rwell.test.comment` - Discussion comments
-- `org.rwell.test.interaction` - Species interactions
-- `org.rwell.test.like` - Likes
+- `ing.observ.temp.occurrence` - Occurrence records
+- `ing.observ.temp.identification` - Taxonomic determinations
+- `ing.observ.temp.comment` - Discussion comments
+- `ing.observ.temp.interaction` - Species interactions
+- `ing.observ.temp.like` - Likes
 
 ### AppView (`crates/observing-appview/`)
 

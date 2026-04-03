@@ -71,7 +71,7 @@ const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
   .map((mod) => mod.default)
   .sort((a, b) => a.id.localeCompare(b.id));
 
-const isInHouse = (schema: LexiconSchema) => schema.id.startsWith("org.rwell.test.");
+const isInHouse = (schema: LexiconSchema) => schema.id.startsWith("ing.observ.");
 
 const inHouseLexicons = allLexicons.filter(isInHouse);
 const externalLexicons = allLexicons.filter((s) => !isInHouse(s));

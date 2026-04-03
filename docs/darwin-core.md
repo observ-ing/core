@@ -2,7 +2,7 @@
 
 Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. Fields marked with ✅ are implemented, ⚠️ are partially implemented or mapped differently, and ❌ are not yet implemented.
 
-## org.rwell.test.occurrence
+## ing.observ.temp.occurrence
 
 An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence).
 
@@ -36,7 +36,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 }
 ```
 
-> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `org.rwell.test.identification` records, which allows users to submit observations without knowing the species and enables community identification.
+> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `ing.observ.temp.identification` records, which allows users to submit observations without knowing the species and enables community identification.
 
 ### Fields
 
@@ -64,7 +64,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `blobs` | dwc:associatedMedia | ✅ | Array of image references |
 | `license` | dcterms:license | ✅ | SPDX identifiers (CC0, CC-BY, etc.) |
 | `createdAt` | — | ✅ | Record creation timestamp (Observ.ing-specific) |
-| (AT Protocol URI) | dwc:occurrenceID | ⚠️ | `at://did:plc:.../org.rwell.test.occurrence/...` |
+| (AT Protocol URI) | dwc:occurrenceID | ⚠️ | `at://did:plc:.../ing.observ.temp.occurrence/...` |
 | (DID) | dwc:recordedBy | ⚠️ | Derived from AT Protocol identity |
 | — | dwc:basisOfRecord | ❌ | Always assumed `HumanObservation` |
 | — | dwc:occurrenceStatus | ❌ | Always assumed `present` |
@@ -81,7 +81,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | — | dwc:samplingEffort | ❌ | Effort expended during sampling |
 | — | dwc:eventRemarks | ❌ | Notes about the sampling event |
 
-## org.rwell.test.identification
+## ing.observ.temp.identification
 
 A taxonomic determination (dwc:Identification) for an occurrence. The identification record contains both Identification-class fields and an embedded Taxon object (dwc:Taxon) following the same structure as [GBIF's Identification History extension](https://rs.gbif.org/extension/dwc/identification.xml).
 
@@ -90,7 +90,7 @@ A taxonomic determination (dwc:Identification) for an occurrence. The identifica
 ```json
 {
   "subject": {
-    "uri": "at://did:plc:abc.../org.rwell.test.occurrence/123",
+    "uri": "at://did:plc:abc.../ing.observ.temp.occurrence/123",
     "cid": "bafyrei..."
   },
   "taxon": {
