@@ -152,8 +152,7 @@ async fn process_record(
                 did.to_string(),
             )?;
             observing_db::occurrences::upsert(pool, &parsed.params).await?;
-            let co_observers =
-                processing::extract_co_observers(parsed.recorded_by.as_deref(), did);
+            let co_observers = processing::extract_co_observers(parsed.recorded_by.as_deref(), did);
             observing_db::observers::sync(pool, &record.uri, did, &co_observers).await?;
         }
         IDENTIFICATION_COLLECTION => {
@@ -294,10 +293,7 @@ async fn main() {
                 continue;
             }
 
-            info!(
-                "[{did}] Found {} {short_name} records",
-                records.len()
-            );
+            info!("[{did}] Found {} {short_name} records", records.len());
 
             for record in &records {
                 match process_record(&pool, collection, record, did, cli.dry_run).await {
