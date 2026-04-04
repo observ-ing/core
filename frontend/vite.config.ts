@@ -13,6 +13,7 @@ export default defineConfig({
     alias: {
       "@lexicons": path.resolve(__dirname, "../lexicons"),
     },
+    dedupe: ["react", "react-dom"],
   },
   build: {
     outDir: path.resolve(__dirname, "../dist/public"),
