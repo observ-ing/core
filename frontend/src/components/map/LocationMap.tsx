@@ -39,14 +39,22 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       zoom: 14,
       interactive: true,
       scrollZoom: false,
+      attributionControl: false,
     });
 
+    mapInstance.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+    );
     mapInstance.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
 
     mapInstance.on("load", () => {
+      // Start with attribution collapsed behind the (i) button
+      mapContainer.current
+        ?.querySelector(".maplibregl-ctrl-attrib")
+        ?.classList.remove("maplibregl-compact-show");
       // Add marker
       new maplibregl.Marker({ color: MAP_MARKER_COLOR })
         .setLngLat([longitude, latitude])

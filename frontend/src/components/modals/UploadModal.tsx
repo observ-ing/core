@@ -17,7 +17,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
@@ -630,40 +629,15 @@ export function UploadModal() {
           onChange={handleLocationChange}
           uncertaintyMeters={uncertaintyMeters}
           onUncertaintyChange={setUncertaintyMeters}
+          onGeolocationError={() =>
+            dispatch(
+              addToast({
+                message: "Could not get your location. Use the map to set it manually.",
+                type: "error",
+              }),
+            )
+          }
         />
-
-        <Button
-          fullWidth
-          variant="outlined"
-          startIcon={<MyLocationIcon />}
-          onClick={() => {
-            navigator.geolocation?.getCurrentPosition(
-              (position) => {
-                setLat(position.coords.latitude.toFixed(6));
-                setLng(position.coords.longitude.toFixed(6));
-              },
-              () => {
-                dispatch(
-                  addToast({
-                    message: "Could not get your location. Use the map to set it manually.",
-                    type: "error",
-                  }),
-                );
-              },
-            );
-          }}
-          sx={{
-            mt: 2,
-            borderStyle: "dashed",
-            color: "text.disabled",
-            "&:hover": {
-              borderColor: "primary.main",
-              color: "primary.main",
-            },
-          }}
-        >
-          Use My Location
-        </Button>
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
           <Button onClick={handleClose} color="inherit">

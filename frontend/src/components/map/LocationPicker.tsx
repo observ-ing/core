@@ -7,9 +7,11 @@ import {
   Stack,
   InputAdornment,
   Slider,
+  IconButton,
   useTheme,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import MyLocationIcon from "@mui/icons-material/MyLocation";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapStyle, darkMapFilter } from "./mapStyle";
@@ -21,6 +23,7 @@ interface LocationPickerProps {
   onChange: (lat: number, lng: number) => void;
   uncertaintyMeters?: number;
   onUncertaintyChange?: (meters: number) => void;
+  onGeolocationError?: () => void;
 }
 
 interface NominatimResult {
@@ -54,6 +57,7 @@ export function LocationPicker({
   onChange,
   uncertaintyMeters = 50,
   onUncertaintyChange,
+  onGeolocationError,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -153,14 +157,23 @@ export function LocationPicker({
       style: mapStyle,
       center: [safeLng, safeLat],
       zoom: latitude && longitude ? 12 : 1,
+      attributionControl: false,
     });
 
+    mapInstance.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+    );
     mapInstance.addControl(
       new maplibregl.NavigationControl({ showCompass: false }),
       "bottom-right",
     );
 
     mapInstance.on("load", () => {
+      // Start with attribution collapsed behind the (i) button
+      mapContainer.current
+        ?.querySelector(".maplibregl-ctrl-attrib")
+        ?.classList.remove("maplibregl-compact-show");
+
       // Add uncertainty circle source and layers
       mapInstance.addSource("uncertainty", {
         type: "geojson",
@@ -285,18 +298,44 @@ export function LocationPicker({
         }}
       />
 
-      <Box
-        ref={mapContainer}
-        sx={{
-          width: "100%",
-          height: 200,
-          borderRadius: 1,
-          overflow: "hidden",
-          border: 1,
-          borderColor: "divider",
-          ...(theme.palette.mode === "dark" && darkMapFilter),
-        }}
-      />
+      <Box sx={{ position: "relative" }}>
+        <Box
+          ref={mapContainer}
+          sx={{
+            width: "100%",
+            height: 200,
+            borderRadius: 1,
+            overflow: "hidden",
+            border: 1,
+            borderColor: "divider",
+            ...(theme.palette.mode === "dark" && darkMapFilter),
+          }}
+        />
+        <IconButton
+          size="small"
+          title="Use my location"
+          onClick={() => {
+            navigator.geolocation?.getCurrentPosition(
+              (position) => {
+                flyToLocation(position.coords.latitude, position.coords.longitude);
+              },
+              () => {
+                onGeolocationError?.();
+              },
+            );
+          }}
+          sx={{
+            position: "absolute",
+            top: 8,
+            left: 8,
+            bgcolor: "background.paper",
+            boxShadow: 1,
+            "&:hover": { bgcolor: "background.paper" },
+          }}
+        >
+          <MyLocationIcon fontSize="small" />
+        </IconButton>
+      </Box>
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <TextField
