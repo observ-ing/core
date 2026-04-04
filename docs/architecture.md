@@ -54,7 +54,7 @@ frontend/                  # Web UI (Vite + React + MapLibre GL)
 
 Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
 
-- `ing.observ.temp.occurrence` - Occurrence records
+- `bio.lexicons.temp.occurrence` - Occurrence records
 - `ing.observ.temp.identification` - Taxonomic determinations
 - `ing.observ.temp.comment` - Discussion comments
 - `ing.observ.temp.interaction` - Species interactions

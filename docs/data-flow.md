@@ -19,14 +19,14 @@ flowchart TB
         BlobUpload["Upload Images to PDS<br/>via internal agent RPC"]
         GBIF["Taxonomy Validation<br/>Taxonomy Service"]
         Geocode["Reverse Geocoding<br/>Nominatim API"]
-        BuildRecord["Build AT Protocol Record<br/>ing.observ.temp.occurrence"]
+        BuildRecord["Build AT Protocol Record<br/>bio.lexicons.temp.occurrence"]
         PrivateData["Save Private Coordinates<br/>occurrence_private_data table"]
         DirectInsert["Direct DB Insert<br/>(immediate visibility)"]
     end
 
     subgraph ATProtocol["AT Protocol"]
         PDS["User's Personal Data Server<br/>createRecord()"]
-        URI["Returns URI + CID<br/>at://did:plc:xxx/ing.observ.temp.occurrence/rkey"]
+        URI["Returns URI + CID<br/>at://did:plc:xxx/bio.lexicons.temp.occurrence/rkey"]
     end
 
     subgraph Firehose["AT Protocol Network"]
@@ -156,7 +156,7 @@ flowchart TB
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "ing.observ.temp.occurrence", ... })
+   │  createRecord({ collection: "bio.lexicons.temp.occurrence", ... })
    │
    ├─▶ Writes exact coords to `occurrence_private_data`
    ├─▶ Direct insert to `occurrences` (immediate visibility)
@@ -207,7 +207,7 @@ flowchart TB
 Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │
    │  Filtered for:
-   │  - ing.observ.temp.occurrence
+   │  - bio.lexicons.temp.occurrence
    │  - ing.observ.temp.identification
    │  - ing.observ.temp.comment
    │  - ing.observ.temp.interaction

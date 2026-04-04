@@ -23,7 +23,7 @@ describe("uiSlice", () => {
     });
 
   const mockOccurrence: Occurrence = {
-    uri: "at://did:plc:test/ing.observ.temp.occurrence/123",
+    uri: "at://did:plc:test/bio.lexicons.temp.occurrence/123",
     cid: "cid123",
     indexedAt: "2024-01-15T12:00:00Z",
     createdAt: "2024-01-15T12:00:00Z",

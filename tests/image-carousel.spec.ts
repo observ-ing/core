@@ -8,7 +8,7 @@ const DETAIL_URL = `/observation/${TEST_DID}/${TEST_RKEY}`;
 
 function observationOverrides(extra: Partial<Occurrence> = {}): Partial<Occurrence> {
   return {
-    uri: `at://${TEST_DID}/ing.observ.temp.occurrence/${TEST_RKEY}`,
+    uri: `at://${TEST_DID}/bio.lexicons.temp.occurrence/${TEST_RKEY}`,
     observer: {
       did: TEST_DID,
       handle: "naturalist.bsky.social",
