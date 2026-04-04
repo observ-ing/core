@@ -24,6 +24,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY frontend/ frontend/
+COPY lexicons/ lexicons/
 RUN npm run build
 
 # ---------------------------------------------------------------------------
