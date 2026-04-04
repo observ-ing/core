@@ -34,9 +34,9 @@ authTest.describe("E2E CRUD flow", () => {
       await expect(option).toBeVisible();
       await option.click();
 
-      const useLocationBtn = page.getByRole("button", { name: /Use My Location/i });
-      await useLocationBtn.scrollIntoViewIfNeeded();
-      await useLocationBtn.click();
+      const geolocateBtn = page.getByRole("button", { name: /Geolocate/i });
+      await geolocateBtn.scrollIntoViewIfNeeded();
+      await geolocateBtn.click();
       await page
         .getByText(/latitude|location|coordinates/i)
         .first()
