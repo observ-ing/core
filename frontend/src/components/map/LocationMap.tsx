@@ -33,7 +33,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       map.current = null;
     }
 
-    const mapInstance = createMap(mapContainer.current, {
+    const { map: mapInstance } = createMap(mapContainer.current, {
       center: [longitude, latitude],
       zoom: 14,
       interactive: true,

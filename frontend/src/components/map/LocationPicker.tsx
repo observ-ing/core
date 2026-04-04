@@ -7,11 +7,9 @@ import {
   Stack,
   InputAdornment,
   Slider,
-  IconButton,
   useTheme,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { darkMapFilter, mapContainerSx } from "./mapStyle";
@@ -23,7 +21,6 @@ interface LocationPickerProps {
   onChange: (lat: number, lng: number) => void;
   uncertaintyMeters?: number;
   onUncertaintyChange?: (meters: number) => void;
-  onGeolocationError?: () => void;
 }
 
 interface NominatimResult {
@@ -57,7 +54,6 @@ export function LocationPicker({
   onChange,
   uncertaintyMeters = 50,
   onUncertaintyChange,
-  onGeolocationError,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -152,9 +148,18 @@ export function LocationPicker({
     const safeLat = latitude && Number.isFinite(latitude) ? latitude : 0;
     const safeLng = longitude && Number.isFinite(longitude) ? longitude : 0;
 
-    const mapInstance = createMap(mapContainer.current, {
+    const { map: mapInstance, geolocateControl } = createMap(mapContainer.current, {
       center: [safeLng, safeLat],
       zoom: latitude && longitude ? 12 : 1,
+    });
+
+    // Update marker and inputs when user geolocates via the built-in control
+    geolocateControl.on("geolocate", (e: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = e.coords;
+      updateMarker(lng, lat);
+      onChange(lat, lng);
+      setLatInput(lat.toFixed(6));
+      setLngInput(lng.toFixed(6));
     });
 
     mapInstance.on("load", () => {
@@ -282,36 +287,10 @@ export function LocationPicker({
         }}
       />
 
-      <Box sx={{ position: "relative" }}>
-        <Box
-          ref={mapContainer}
-          sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
-        />
-        <IconButton
-          size="small"
-          title="Use my location"
-          onClick={() => {
-            navigator.geolocation?.getCurrentPosition(
-              (position) => {
-                flyToLocation(position.coords.latitude, position.coords.longitude);
-              },
-              () => {
-                onGeolocationError?.();
-              },
-            );
-          }}
-          sx={{
-            position: "absolute",
-            top: 8,
-            left: 8,
-            bgcolor: "background.paper",
-            boxShadow: 1,
-            "&:hover": { bgcolor: "background.paper" },
-          }}
-        >
-          <MyLocationIcon fontSize="small" />
-        </IconButton>
-      </Box>
+      <Box
+        ref={mapContainer}
+        sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
+      />
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <TextField

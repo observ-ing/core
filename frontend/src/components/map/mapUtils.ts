@@ -4,11 +4,16 @@ import { mapStyle } from "./mapStyle";
 /** Approximate meters per degree of latitude at the equator */
 export const METERS_PER_DEGREE = 111320;
 
+interface CreateMapResult {
+  map: maplibregl.Map;
+  geolocateControl: maplibregl.GeolocateControl;
+}
+
 /** Create a map instance with standard controls. */
 export function createMap(
   container: HTMLElement,
   options: Omit<maplibregl.MapOptions, "container" | "style">,
-): maplibregl.Map {
+): CreateMapResult {
   const map = new maplibregl.Map({
     ...options,
     container,
@@ -17,7 +22,12 @@ export function createMap(
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
-  return map;
+  const geolocateControl = new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+  });
+  map.addControl(geolocateControl, "top-left");
+
+  return { map, geolocateControl };
 }
 
 /** Color used for uncertainty circles and map markers */

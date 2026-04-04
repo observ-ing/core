@@ -629,14 +629,6 @@ export function UploadModal() {
           onChange={handleLocationChange}
           uncertaintyMeters={uncertaintyMeters}
           onUncertaintyChange={setUncertaintyMeters}
-          onGeolocationError={() =>
-            dispatch(
-              addToast({
-                message: "Could not get your location. Use the map to set it manually.",
-                type: "error",
-              }),
-            )
-          }
         />
 
         <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
