@@ -71,7 +71,6 @@ async fn main() {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
         taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
-        geocoding: Arc::new(nominatim_client::NominatimClient::new()),
         species_id,
         oauth_client: Arc::new(oauth_client),
         media_proxy_url: config.media_proxy_url.clone(),

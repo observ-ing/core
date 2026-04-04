@@ -49,8 +49,6 @@ export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occur
     images: [],
     eventDate: "2024-06-15",
     location: { latitude: 37.7749, longitude: -122.4194 },
-    verbatimLocality: "Golden Gate Park, San Francisco, CA",
-    occurrenceRemarks: "Found near the eastern edge of the meadow",
     createdAt: new Date().toISOString(),
     likeCount: 3,
     viewerHasLiked: false,

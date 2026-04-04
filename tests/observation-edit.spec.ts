@@ -81,7 +81,6 @@ authTest.describe("Observation Edit - Logged In", () => {
   // TC-EDIT-004: Clicking Edit opens upload modal in edit mode
   authTest("clicking Edit opens upload modal in edit mode", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
-      occurrenceRemarks: "Found near the meadow",
       eventDate: "2024-06-15",
     });
     await page.goto("/");
@@ -93,10 +92,9 @@ authTest.describe("Observation Edit - Logged In", () => {
     await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
   });
 
-  // TC-EDIT-005: Edit modal pre-populates species and notes
-  authTest("edit modal pre-populates species and notes", async ({ authenticatedPage: page }) => {
+  // TC-EDIT-005: Edit modal pre-populates species
+  authTest("edit modal pre-populates species", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
-      occurrenceRemarks: "Found near the meadow",
       eventDate: "2024-06-15",
     });
     await page.goto("/");
@@ -108,16 +106,11 @@ authTest.describe("Observation Edit - Logged In", () => {
     // Species input should have value
     const speciesInput = page.getByLabel(/Species/i);
     await authExpect(speciesInput).toHaveValue("Quercus alba");
-
-    // Notes should have value
-    const notesInput = page.getByLabel("Notes");
-    await authExpect(notesInput).toHaveValue("Found near the meadow");
   });
 
   // TC-EDIT-006: Submitting edit sends PUT
   authTest("submitting edit sends PUT request", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
-      occurrenceRemarks: "Original notes",
       eventDate: "2024-06-15",
       location: { latitude: 37.7749, longitude: -122.4194 },
     });

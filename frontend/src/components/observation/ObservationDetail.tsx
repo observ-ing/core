@@ -26,9 +26,7 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import LocationOnIcon from "@mui/icons-material/LocationOn";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import NotesIcon from "@mui/icons-material/Notes";
 import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -400,20 +398,6 @@ export function ObservationDetail() {
               />
             </ListItem>
 
-            {observation.verbatimLocality && (
-              <ListItem disableGutters alignItems="flex-start">
-                <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                  <LocationOnIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Location"
-                  primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
-                  secondary={observation.verbatimLocality}
-                  secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
-                />
-              </ListItem>
-            )}
-
             <ListItem disableGutters alignItems="flex-start">
               <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
                 <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
@@ -447,20 +431,6 @@ export function ObservationDetail() {
                 uncertaintyMeters={observation.location.uncertaintyMeters}
               />
             </Box>
-
-            {observation.occurrenceRemarks && (
-              <ListItem disableGutters alignItems="flex-start">
-                <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                  <NotesIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Notes"
-                  primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
-                  secondary={observation.occurrenceRemarks}
-                  secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
-                />
-              </ListItem>
-            )}
           </List>
 
           {/* Subject-specific content (identification) */}

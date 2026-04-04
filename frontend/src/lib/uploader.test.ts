@@ -321,30 +321,6 @@ describe("OccurrenceUploader", () => {
           cid: "test-cid",
         });
       });
-
-      it("includes optional fields in record", async () => {
-        const data = createValidOccurrence({
-          scientificName: "Quercus alba",
-          basisOfRecord: "HumanObservation",
-          verbatimLocality: "Central Park, NYC",
-          habitat: "Urban forest",
-          occurrenceRemarks: "Large mature tree",
-        });
-
-        await uploader.upload(data);
-
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
-          expect.objectContaining({
-            record: expect.objectContaining({
-              scientificName: "Quercus alba",
-              basisOfRecord: "HumanObservation",
-              verbatimLocality: "Central Park, NYC",
-              habitat: "Urban forest",
-              occurrenceRemarks: "Large mature tree",
-            }),
-          }),
-        );
-      });
     });
   });
 

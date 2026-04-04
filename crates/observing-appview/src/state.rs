@@ -1,5 +1,4 @@
 use atproto_identity::IdentityResolver;
-use nominatim_client::NominatimClient;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
@@ -37,7 +36,6 @@ pub struct AppState {
     pub pool: PgPool,
     pub resolver: Arc<IdentityResolver>,
     pub taxonomy: Arc<TaxonomyClient>,
-    pub geocoding: Arc<NominatimClient>,
     pub species_id: Option<Arc<SpeciesIdClient>>,
     pub oauth_client: Arc<OAuthClientType>,
     pub media_proxy_url: String,
