@@ -65,7 +65,6 @@ export const ExploreGridCard = memo(function ExploreGridCard({
           </Typography>
           <Typography variant="caption" color="text.disabled" noWrap>
             {formatTimeAgo(new Date(observation.createdAt))}
-            {observation.verbatimLocality && ` · ${observation.verbatimLocality}`}
           </Typography>
         </CardContent>
       </CardActionArea>

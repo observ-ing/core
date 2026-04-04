@@ -27,10 +27,6 @@ pub struct OccurrenceResponse {
     pub subjects: Vec<SubjectResponse>,
     pub event_date: String,
     pub location: LocationResponse,
-    #[ts(optional)]
-    pub verbatim_locality: Option<String>,
-    #[ts(optional)]
-    pub occurrence_remarks: Option<String>,
     pub images: Vec<String>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -84,30 +80,6 @@ pub struct LocationResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub uncertainty_meters: Option<i32>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub continent: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub country: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub country_code: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub state_province: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub county: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub municipality: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub locality: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub water_body: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -346,17 +318,7 @@ pub async fn enrich_occurrences(
                 latitude: row.latitude,
                 longitude: row.longitude,
                 uncertainty_meters: row.coordinate_uncertainty_meters,
-                continent: row.continent.clone(),
-                country: row.country.clone(),
-                country_code: row.country_code.clone(),
-                state_province: row.state_province.clone(),
-                county: row.county.clone(),
-                municipality: row.municipality.clone(),
-                locality: row.locality.clone(),
-                water_body: row.water_body.clone(),
             },
-            verbatim_locality: row.verbatim_locality.clone(),
-            occurrence_remarks: row.occurrence_remarks.clone(),
             images,
             created_at: row.created_at.to_rfc3339(),
             like_count: Some(*like_counts.get(&row.uri).unwrap_or(&0)),
@@ -528,16 +490,6 @@ mod tests {
             latitude: 0.0,
             longitude: 0.0,
             coordinate_uncertainty_meters: None,
-            continent: None,
-            country: None,
-            country_code: None,
-            state_province: None,
-            county: None,
-            municipality: None,
-            locality: None,
-            water_body: None,
-            verbatim_locality: None,
-            occurrence_remarks: None,
             associated_media: media,
             recorded_by: None,
             taxon_id: None,

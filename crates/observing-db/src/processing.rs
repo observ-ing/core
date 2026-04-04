@@ -134,15 +134,6 @@ pub fn occurrence_from_json(
                 .collect()
         });
 
-    // Read a string field from top-level JSON, falling back to nested location object.
-    let str_field = |key: &str| -> Option<String> {
-        record_json
-            .get(key)
-            .and_then(|v| v.as_str())
-            .or_else(|| location.and_then(|l| l.get(key)).and_then(|v| v.as_str()))
-            .map(Into::into)
-    };
-
     Ok(ParsedOccurrence {
         params: UpsertOccurrenceParams {
             uri,
@@ -160,16 +151,6 @@ pub fn occurrence_from_json(
                         .and_then(|v| v.as_i64())
                 })
                 .map(|v| v as i32),
-            continent: str_field("continent"),
-            country: str_field("country"),
-            country_code: str_field("countryCode"),
-            state_province: str_field("stateProvince"),
-            county: str_field("county"),
-            municipality: str_field("municipality"),
-            locality: str_field("locality"),
-            water_body: str_field("waterBody"),
-            verbatim_locality: str_field("verbatimLocality"),
-            occurrence_remarks: str_field("notes"),
             // Try legacy "blobs" field first (inline image embeds), then skip
             // "associatedMedia" (strong refs that require media record resolution).
             // The appview write path provides blob entries directly via parsed.params.

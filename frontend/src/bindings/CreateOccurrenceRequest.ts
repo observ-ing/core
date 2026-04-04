@@ -5,7 +5,6 @@ export type CreateOccurrenceRequest = {
   latitude: number;
   longitude: number;
   coordinateUncertaintyInMeters?: number;
-  notes?: string;
   eventDate?: string;
   images?: Array<ImageUpload>;
   recordedBy?: Array<string>;

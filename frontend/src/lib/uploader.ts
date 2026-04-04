@@ -18,18 +18,12 @@ interface UploadConfig {
 }
 
 interface OccurrenceData {
-  basisOfRecord?: string;
-  scientificName?: string;
   eventDate: string;
   location: {
     decimalLatitude: number;
     decimalLongitude: number;
     coordinateUncertaintyInMeters?: number;
-    geodeticDatum?: string;
   };
-  verbatimLocality?: string;
-  habitat?: string;
-  occurrenceRemarks?: string;
   images: File[];
 }
 

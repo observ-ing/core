@@ -18,8 +18,6 @@ export type Occurrence = {
   subjects: Array<Subject>;
   eventDate: string;
   location: Location;
-  verbatimLocality?: string;
-  occurrenceRemarks?: string;
   images: Array<string>;
   createdAt: string;
   likeCount?: number;

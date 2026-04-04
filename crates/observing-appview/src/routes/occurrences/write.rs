@@ -1,12 +1,12 @@
 use axum::extract::{Path, State};
 use axum::Json;
+use chrono::Utc;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::bio_lexicons::temp::media::Media;
 use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
 use serde::Deserialize;
 use serde_json::json;
-use chrono::Utc;
 use tracing::{info, warn};
 use ts_rs::TS;
 
@@ -27,8 +27,6 @@ pub struct CreateOccurrenceRequest {
     longitude: f64,
     #[ts(optional)]
     coordinate_uncertainty_in_meters: Option<i32>,
-    #[ts(optional)]
-    notes: Option<String>,
     #[ts(optional)]
     event_date: Option<String>,
     #[ts(optional)]
@@ -113,13 +111,6 @@ pub async fn create_occurrence(
         }
     }
 
-    // Reverse geocode
-    let geo = state
-        .geocoding
-        .reverse_geocode(body.latitude, body.longitude)
-        .await
-        .ok();
-
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
     let event_date_str = body.event_date.as_deref().unwrap_or(&now_rfc3339);
@@ -174,21 +165,7 @@ pub async fn create_occurrence(
         if !blob_entries.is_empty() {
             parsed.params.associated_media = Some(json!(blob_entries));
         }
-        // Set DB-only fields not stored in the PDS record
         parsed.params.created_at = Utc::now();
-        if let Some(ref notes) = body.notes {
-            parsed.params.occurrence_remarks = Some(notes.clone());
-        }
-        if let Some(ref g) = geo {
-            parsed.params.continent = g.continent.clone();
-            parsed.params.country = g.country.clone();
-            parsed.params.country_code = g.country_code.clone();
-            parsed.params.state_province = g.state_province.clone();
-            parsed.params.county = g.county.clone();
-            parsed.params.municipality = g.municipality.clone();
-            parsed.params.locality = g.locality.clone();
-            parsed.params.water_body = g.water_body.clone();
-        }
         if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
             warn!(error = %e, "Failed to upsert occurrence into local DB");
         }

@@ -34,11 +34,8 @@ interface FeedItemProps {
   onDelete?: (observation: Occurrence) => void;
 }
 
-const REMARKS_TRUNCATE_LENGTH = 200;
-
 export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [remarksExpanded, setRemarksExpanded] = useState(false);
   const { liked, likeCount, handleLikeToggle } = useLikeToggle(
     observation.viewerHasLiked ?? false,
     observation.likeCount ?? 0,
@@ -275,39 +272,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                 </Typography>
               )}
             </Box>
-          )}
-
-          {observation.occurrenceRemarks && (
-            <Typography variant="body2" color="text.secondary" sx={{ lineHeight: 1.4, mt: 0.5 }}>
-              {observation.occurrenceRemarks.length > REMARKS_TRUNCATE_LENGTH &&
-              !remarksExpanded ? (
-                <>
-                  {observation.occurrenceRemarks.slice(0, REMARKS_TRUNCATE_LENGTH).trimEnd()}…{" "}
-                  <Box
-                    component="span"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setRemarksExpanded(true);
-                    }}
-                    sx={{
-                      color: "primary.main",
-                      cursor: "pointer",
-                      "&:hover": { textDecoration: "underline" },
-                    }}
-                  >
-                    Read more
-                  </Box>
-                </>
-              ) : (
-                observation.occurrenceRemarks
-              )}
-            </Typography>
-          )}
-
-          {observation.verbatimLocality && (
-            <Typography variant="body2" color="text.disabled" sx={{ mt: 0.5 }}>
-              {observation.verbatimLocality}
-            </Typography>
           )}
         </CardContent>
       </CardActionArea>

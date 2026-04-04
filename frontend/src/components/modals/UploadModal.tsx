@@ -82,7 +82,7 @@ export function UploadModal() {
     if (isOpen) {
       if (editingObservation) {
         setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
-        setNotes(editingObservation.occurrenceRemarks || "");
+        setNotes("");
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
         }

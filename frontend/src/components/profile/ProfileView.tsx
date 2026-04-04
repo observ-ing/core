@@ -278,7 +278,6 @@ export function ProfileView() {
                   </Typography>
                   <Typography variant="caption" color="text.disabled" noWrap>
                     {formatTimeAgo(new Date(occ.createdAt))}
-                    {occ.verbatimLocality && ` · ${occ.verbatimLocality}`}
                   </Typography>
                 </CardContent>
               </CardActionArea>
