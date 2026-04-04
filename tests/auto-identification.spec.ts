@@ -76,14 +76,10 @@ authTest.describe("Auto-Identification on Upload", () => {
       await authExpect(option).toBeVisible();
       await option.click();
 
-      const geolocateBtn = page.getByRole("button", { name: /Geolocate/i });
-      await geolocateBtn.scrollIntoViewIfNeeded();
-      await geolocateBtn.click();
-      await page
-        .getByText(/latitude|location|coordinates/i)
-        .first()
-        .waitFor({ state: "visible", timeout: 5000 })
-        .catch(() => {});
+      const latInput = page.getByLabel("Latitude");
+      await latInput.scrollIntoViewIfNeeded();
+      await latInput.fill("37.7749");
+      await page.getByLabel("Longitude").fill("-122.4194");
 
       await page.getByRole("button", { name: /Submit/i }).click();
       await page.waitForURL(/\/observation\//, { timeout: 15_000 });
