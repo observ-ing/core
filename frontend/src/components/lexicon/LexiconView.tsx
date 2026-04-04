@@ -69,7 +69,7 @@ function isLexiconSchema(obj: unknown): obj is LexiconSchema {
 function extractSchema(mod: unknown): LexiconSchema | null {
   if (mod == null || typeof mod !== "object") return null;
   // Vite dev wraps JSON in { default: ... }, Rolldown production inlines the object directly
-  const obj: unknown = "default" in mod ? (mod as Record<string, unknown>)["default"] : mod;
+  const obj: unknown = "default" in mod ? (mod satisfies Record<string, unknown>)["default"] : mod;
   return isLexiconSchema(obj) ? obj : null;
 }
 
