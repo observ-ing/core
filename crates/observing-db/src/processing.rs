@@ -71,7 +71,7 @@ pub fn occurrence_from_json(
     did: String,
 ) -> Result<ParsedOccurrence, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: Occurrence<'_> =
+    let record: Occurrence =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     // Try flat coordinates first (bio.lexicons.temp.occurrence), then fall back
@@ -209,7 +209,7 @@ pub fn identification_from_json(
     fallback_time: DateTime<Utc>,
 ) -> Result<UpsertIdentificationParams, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: Identification<'_> =
+    let record: Identification =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let date_identified = parse_naive_datetime(&record.created_at.to_string())
@@ -247,7 +247,7 @@ pub fn comment_from_json(
     fallback_time: DateTime<Utc>,
 ) -> Result<UpsertCommentParams, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: Comment<'_> =
+    let record: Comment =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let created_at = parse_naive_datetime(&record.created_at.to_string())
@@ -275,7 +275,7 @@ pub fn interaction_from_json(
     fallback_time: DateTime<Utc>,
 ) -> Result<UpsertInteractionParams, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: Interaction<'_> =
+    let record: Interaction =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(fallback_time);
@@ -342,7 +342,7 @@ pub fn like_from_json(
     fallback_time: DateTime<Utc>,
 ) -> Result<CreateLikeParams, ProcessingError> {
     let record_str = record_json.to_string();
-    let record: observing_lexicons::ing_observ::temp::like::Like<'_> =
+    let record: observing_lexicons::ing_observ::temp::like::Like =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let created_at = parse_naive_datetime(&record.created_at.to_string())

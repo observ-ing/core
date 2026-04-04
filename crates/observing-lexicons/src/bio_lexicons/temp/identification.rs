@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -28,66 +30,56 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "bio.lexicons.temp.identification",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Identification<'a> {
+pub struct Identification<S: BosStr = DefaultStr> {
     ///Taxonomic class (Darwin Core dwc:class).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub class: Option<CowStr<'a>>,
+    pub class: Option<S>,
     ///Taxonomic family (Darwin Core dwc:family).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub family: Option<CowStr<'a>>,
+    pub family: Option<S>,
     ///Taxonomic genus (Darwin Core dwc:genus).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub genus: Option<CowStr<'a>>,
+    pub genus: Option<S>,
     ///Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub identification_remarks: Option<CowStr<'a>>,
+    pub identification_remarks: Option<S>,
     ///Taxonomic kingdom (Darwin Core dwc:kingdom).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub kingdom: Option<CowStr<'a>>,
+    pub kingdom: Option<S>,
     ///Taxonomic order (Darwin Core dwc:order).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub order: Option<CowStr<'a>>,
+    pub order: Option<S>,
     ///Taxonomic phylum (Darwin Core dwc:phylum).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub phylum: Option<CowStr<'a>>,
+    pub phylum: Option<S>,
     ///The full scientific name (Darwin Core dwc:scientificName).
-    #[serde(borrow)]
-    pub scientific_name: CowStr<'a>,
+    pub scientific_name: S,
     ///The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub scientific_name_authorship: Option<CowStr<'a>>,
+    pub scientific_name_authorship: Option<S>,
     ///A strong reference (CID + URI) to the observation being identified.
-    #[serde(borrow)]
-    pub subject: StrongRef<'a>,
+    pub subject: StrongRef<S>,
     ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub taxon_rank: Option<IdentificationTaxonRank<'a>>,
+    pub taxon_rank: Option<IdentificationTaxonRank<S>>,
     ///Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub vernacular_name: Option<CowStr<'a>>,
+    pub vernacular_name: Option<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum IdentificationTaxonRank<'a> {
+pub enum IdentificationTaxonRank<S: BosStr = DefaultStr> {
     Kingdom,
     Phylum,
     Class,
@@ -98,10 +90,10 @@ pub enum IdentificationTaxonRank<'a> {
     Subspecies,
     Variety,
     Form,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> IdentificationTaxonRank<'a> {
+impl<S: BosStr> IdentificationTaxonRank<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Kingdom => "kingdom",
@@ -117,11 +109,9 @@ impl<'a> IdentificationTaxonRank<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for IdentificationTaxonRank<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "kingdom" => Self::Kingdom,
             "phylum" => Self::Phylum,
             "class" => Self::Class,
@@ -132,71 +122,54 @@ impl<'a> From<&'a str> for IdentificationTaxonRank<'a> {
             "subspecies" => Self::Subspecies,
             "variety" => Self::Variety,
             "form" => Self::Form,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for IdentificationTaxonRank<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "kingdom" => Self::Kingdom,
-            "phylum" => Self::Phylum,
-            "class" => Self::Class,
-            "order" => Self::Order,
-            "family" => Self::Family,
-            "genus" => Self::Genus,
-            "species" => Self::Species,
-            "subspecies" => Self::Subspecies,
-            "variety" => Self::Variety,
-            "form" => Self::Form,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for IdentificationTaxonRank<'a> {
+impl<S: BosStr> core::fmt::Display for IdentificationTaxonRank<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for IdentificationTaxonRank<'a> {
+impl<S: BosStr> AsRef<str> for IdentificationTaxonRank<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for IdentificationTaxonRank<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for IdentificationTaxonRank<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for IdentificationTaxonRank<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for IdentificationTaxonRank<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for IdentificationTaxonRank<'a> {
+impl<S: BosStr + Default> Default for IdentificationTaxonRank<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for IdentificationTaxonRank<'_> {
-    type Output = IdentificationTaxonRank<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for IdentificationTaxonRank<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = IdentificationTaxonRank<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             IdentificationTaxonRank::Kingdom => IdentificationTaxonRank::Kingdom,
@@ -218,21 +191,16 @@ impl jacquard_common::IntoStatic for IdentificationTaxonRank<'_> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct IdentificationGetRecordOutput<'a> {
+pub struct IdentificationGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Identification<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Identification<S>,
 }
 
-impl<'a> Identification<'a> {
-    pub fn uri(
-        uri: impl Into<CowStr<'a>>,
-    ) -> Result<RecordUri<'a, IdentificationRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Identification<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, IdentificationRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -243,18 +211,17 @@ pub struct IdentificationRecord;
 impl XrpcResp for IdentificationRecord {
     const NSID: &'static str = "bio.lexicons.temp.identification";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = IdentificationGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = IdentificationGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<IdentificationGetRecordOutput<'_>> for Identification<'_> {
-    fn from(output: IdentificationGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<IdentificationGetRecordOutput<S>> for Identification<S> {
+    fn from(output: IdentificationGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Identification<'_> {
+impl<S: BosStr> Collection for Identification<S> {
     const NSID: &'static str = "bio.lexicons.temp.identification";
     type Record = IdentificationRecord;
 }
@@ -264,7 +231,7 @@ impl Collection for IdentificationRecord {
     type Record = IdentificationRecord;
 }
 
-impl<'a> LexiconSchema for Identification<'a> {
+impl<S: BosStr> LexiconSchema for Identification<S> {
     fn nsid() -> &'static str {
         "bio.lexicons.temp.identification"
     }
@@ -411,17 +378,17 @@ pub mod identification_state {
         type ScientificName = Unset;
     }
     ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
         type Subject = Set<members::subject>;
-        type ScientificName = S::ScientificName;
+        type ScientificName = St::ScientificName;
     }
     ///State transition - sets the `scientific_name` field to Set
-    pub struct SetScientificName<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetScientificName<S> {}
-    impl<S: State> State for SetScientificName<S> {
-        type Subject = S::Subject;
+    pub struct SetScientificName<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetScientificName<St> {}
+    impl<St: State> State for SetScientificName<St> {
+        type Subject = St::Subject;
         type ScientificName = Set<members::scientific_name>;
     }
     /// Marker types for field names
@@ -434,222 +401,222 @@ pub mod identification_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct IdentificationBuilder<'a, S: identification_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
-        Option<StrongRef<'a>>,
-        Option<IdentificationTaxonRank<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<S>,
+        Option<StrongRef<S>>,
+        Option<IdentificationTaxonRank<S>>,
+        Option<S>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Identification<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> IdentificationBuilder<'a, identification_state::Empty> {
+impl<S: BosStr> Identification<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> IdentificationBuilder<S, identification_state::Empty> {
         IdentificationBuilder::new()
     }
 }
 
-impl<'a> IdentificationBuilder<'a, identification_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
             _fields: (
                 None, None, None, None, None, None, None, None, None, None, None, None,
             ),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `class` field (optional)
-    pub fn class(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn class(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `class` field to an Option value (optional)
-    pub fn maybe_class(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_class(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `family` field (optional)
-    pub fn family(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn family(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `family` field to an Option value (optional)
-    pub fn maybe_family(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_family(mut self, value: Option<S>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `genus` field (optional)
-    pub fn genus(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn genus(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `genus` field to an Option value (optional)
-    pub fn maybe_genus(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_genus(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `identificationRemarks` field (optional)
-    pub fn identification_remarks(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn identification_remarks(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `identificationRemarks` field to an Option value (optional)
-    pub fn maybe_identification_remarks(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_identification_remarks(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `kingdom` field (optional)
-    pub fn kingdom(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn kingdom(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `kingdom` field to an Option value (optional)
-    pub fn maybe_kingdom(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_kingdom(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `order` field (optional)
-    pub fn order(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn order(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.5 = value.into();
         self
     }
     /// Set the `order` field to an Option value (optional)
-    pub fn maybe_order(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_order(mut self, value: Option<S>) -> Self {
         self._fields.5 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `phylum` field (optional)
-    pub fn phylum(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn phylum(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.6 = value.into();
         self
     }
     /// Set the `phylum` field to an Option value (optional)
-    pub fn maybe_phylum(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_phylum(mut self, value: Option<S>) -> Self {
         self._fields.6 = value;
         self
     }
 }
 
-impl<'a, S> IdentificationBuilder<'a, S>
+impl<S: BosStr, St> IdentificationBuilder<S, St>
 where
-    S: identification_state::State,
-    S::ScientificName: identification_state::IsUnset,
+    St: identification_state::State,
+    St::ScientificName: identification_state::IsUnset,
 {
     /// Set the `scientificName` field (required)
     pub fn scientific_name(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> IdentificationBuilder<'a, identification_state::SetScientificName<S>> {
+        value: impl Into<S>,
+    ) -> IdentificationBuilder<S, identification_state::SetScientificName<St>> {
         self._fields.7 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `scientificNameAuthorship` field (optional)
-    pub fn scientific_name_authorship(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn scientific_name_authorship(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.8 = value.into();
         self
     }
     /// Set the `scientificNameAuthorship` field to an Option value (optional)
-    pub fn maybe_scientific_name_authorship(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_scientific_name_authorship(mut self, value: Option<S>) -> Self {
         self._fields.8 = value;
         self
     }
 }
 
-impl<'a, S> IdentificationBuilder<'a, S>
+impl<S: BosStr, St> IdentificationBuilder<S, St>
 where
-    S: identification_state::State,
-    S::Subject: identification_state::IsUnset,
+    St: identification_state::State,
+    St::Subject: identification_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> IdentificationBuilder<'a, identification_state::SetSubject<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> IdentificationBuilder<S, identification_state::SetSubject<St>> {
         self._fields.9 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `taxonRank` field (optional)
-    pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<'a>>>) -> Self {
+    pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
         self._fields.10 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
-    pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<'a>>) -> Self {
+    pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<S>>) -> Self {
         self._fields.10 = value;
         self
     }
 }
 
-impl<'a, S: identification_state::State> IdentificationBuilder<'a, S> {
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `vernacularName` field (optional)
-    pub fn vernacular_name(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn vernacular_name(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.11 = value.into();
         self
     }
     /// Set the `vernacularName` field to an Option value (optional)
-    pub fn maybe_vernacular_name(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_vernacular_name(mut self, value: Option<S>) -> Self {
         self._fields.11 = value;
         self
     }
 }
 
-impl<'a, S> IdentificationBuilder<'a, S>
+impl<S: BosStr, St> IdentificationBuilder<S, St>
 where
-    S: identification_state::State,
-    S::Subject: identification_state::IsSet,
-    S::ScientificName: identification_state::IsSet,
+    St: identification_state::State,
+    St::Subject: identification_state::IsSet,
+    St::ScientificName: identification_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Identification<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Identification<S> {
         Identification {
             class: self._fields.0,
             family: self._fields.1,
@@ -666,14 +633,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Identification<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Identification<S> {
         Identification {
             class: self._fields.0,
             family: self._fields.1,

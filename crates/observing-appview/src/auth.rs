@@ -64,7 +64,7 @@ pub async fn require_auth(pool: &PgPool, cookies: &CookieJar) -> Result<AuthUser
 
 /// Build a `StrongRef` from raw URI and CID strings, returning a user-facing
 /// error when either value fails to parse.
-pub fn build_strong_ref(uri: &str, cid: &str) -> Result<StrongRef<'static>, AppError> {
+pub fn build_strong_ref(uri: &str, cid: &str) -> Result<StrongRef, AppError> {
     Ok(StrongRef::new()
         .uri(AtUri::from_str(uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?)
         .cid(Cid::from_str(cid).map_err(|_| AppError::BadRequest("Invalid CID".into()))?)

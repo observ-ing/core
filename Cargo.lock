@@ -2076,9 +2076,9 @@ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
 
 [[package]]
 name = "jacquard-common"
-version = "0.11.0"
+version = "0.12.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9631f08f1e65d19e204bc6774d00b4e0b69fb649d7d7ac59ccf97797bd9a196e"
+checksum = "e830579811d60e29209c9466d034225d5e045ecdc2b3c55282709bd07da97869"
 dependencies = [
  "base64",
  "bon",
@@ -2126,9 +2126,9 @@ dependencies = [
 
 [[package]]
 name = "jacquard-derive"
-version = "0.11.0"
+version = "0.12.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22904bd0f9a959591e14ee9e1dab91a9110209cb8b292930e584134f96a83ece"
+checksum = "93f83b8049e4e7916e0f6764c3deaf5e55a7ffbab26c379415e9b1d4d645d957"
 dependencies = [
  "heck 0.5.0",
  "jacquard-lexicon",
@@ -2139,9 +2139,9 @@ dependencies = [
 
 [[package]]
 name = "jacquard-lexicon"
-version = "0.11.1"
+version = "0.12.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fd7863d4f56a49f07391b5f775e82be12e6381156642ee83574f481ca73e8b0e"
+checksum = "64935ef85dd24f60f467082c21ad52f739a02dd402a2adf40e5794e3de949e1f"
 dependencies = [
  "cid",
  "dashmap",

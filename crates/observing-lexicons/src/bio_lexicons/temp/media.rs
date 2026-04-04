@@ -10,14 +10,16 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::blob::BlobRef;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -29,53 +31,55 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// Width and height of an image, used for proper display before loading.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AspectRatio<'a> {
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct AspectRatio<S: BosStr = DefaultStr> {
     pub height: i64,
     pub width: i64,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// A media record for a biodiversity observation. Stores image blobs with metadata such as alt text, aspect ratio, and license.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "bio.lexicons.temp.media",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Media<'a> {
+pub struct Media<S: BosStr = DefaultStr> {
     ///Alt text description of the image for accessibility.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub alt: Option<CowStr<'a>>,
+    pub alt: Option<S>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub aspect_ratio: Option<media::AspectRatio<'a>>,
+    pub aspect_ratio: Option<media::AspectRatio<S>>,
     ///The image blob reference.
-    #[serde(borrow)]
-    pub image: BlobRef<'a>,
+    pub image: BlobRef<S>,
     ///SPDX license identifier for this media (maps to Dublin Core dcterms:license).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub license: Option<MediaLicense<'a>>,
+    pub license: Option<MediaLicense<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// SPDX license identifier for this media (maps to Dublin Core dcterms:license).
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum MediaLicense<'a> {
+pub enum MediaLicense<S: BosStr = DefaultStr> {
     Cc010,
     CcBy40,
     CcByNc40,
     CcBySa40,
     CcByNcSa40,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> MediaLicense<'a> {
+impl<S: BosStr> MediaLicense<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Cc010 => "CC0-1.0",
@@ -86,76 +90,62 @@ impl<'a> MediaLicense<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for MediaLicense<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "CC0-1.0" => Self::Cc010,
             "CC-BY-4.0" => Self::CcBy40,
             "CC-BY-NC-4.0" => Self::CcByNc40,
             "CC-BY-SA-4.0" => Self::CcBySa40,
             "CC-BY-NC-SA-4.0" => Self::CcByNcSa40,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for MediaLicense<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "CC0-1.0" => Self::Cc010,
-            "CC-BY-4.0" => Self::CcBy40,
-            "CC-BY-NC-4.0" => Self::CcByNc40,
-            "CC-BY-SA-4.0" => Self::CcBySa40,
-            "CC-BY-NC-SA-4.0" => Self::CcByNcSa40,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for MediaLicense<'a> {
+impl<S: BosStr> core::fmt::Display for MediaLicense<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for MediaLicense<'a> {
+impl<S: BosStr> AsRef<str> for MediaLicense<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for MediaLicense<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for MediaLicense<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for MediaLicense<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for MediaLicense<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for MediaLicense<'a> {
+impl<S: BosStr + Default> Default for MediaLicense<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for MediaLicense<'_> {
-    type Output = MediaLicense<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for MediaLicense<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = MediaLicense<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             MediaLicense::Cc010 => MediaLicense::Cc010,
@@ -172,23 +162,20 @@ impl jacquard_common::IntoStatic for MediaLicense<'_> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct MediaGetRecordOutput<'a> {
+pub struct MediaGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Media<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Media<S>,
 }
 
-impl<'a> Media<'a> {
-    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, MediaRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Media<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, MediaRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
-impl<'a> LexiconSchema for AspectRatio<'a> {
+impl<S: BosStr> LexiconSchema for AspectRatio<S> {
     fn nsid() -> &'static str {
         "bio.lexicons.temp.media"
     }
@@ -230,18 +217,17 @@ pub struct MediaRecord;
 impl XrpcResp for MediaRecord {
     const NSID: &'static str = "bio.lexicons.temp.media";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = MediaGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = MediaGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<MediaGetRecordOutput<'_>> for Media<'_> {
-    fn from(output: MediaGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<MediaGetRecordOutput<S>> for Media<S> {
+    fn from(output: MediaGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Media<'_> {
+impl<S: BosStr> Collection for Media<S> {
     const NSID: &'static str = "bio.lexicons.temp.media";
     type Record = MediaRecord;
 }
@@ -251,7 +237,7 @@ impl Collection for MediaRecord {
     type Record = MediaRecord;
 }
 
-impl<'a> LexiconSchema for Media<'a> {
+impl<S: BosStr> LexiconSchema for Media<S> {
     fn nsid() -> &'static str {
         "bio.lexicons.temp.media"
     }
@@ -348,17 +334,17 @@ pub mod aspect_ratio_state {
         type Width = Unset;
     }
     ///State transition - sets the `height` field to Set
-    pub struct SetHeight<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHeight<S> {}
-    impl<S: State> State for SetHeight<S> {
+    pub struct SetHeight<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetHeight<St> {}
+    impl<St: State> State for SetHeight<St> {
         type Height = Set<members::height>;
-        type Width = S::Width;
+        type Width = St::Width;
     }
     ///State transition - sets the `width` field to Set
-    pub struct SetWidth<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetWidth<S> {}
-    impl<S: State> State for SetWidth<S> {
-        type Height = S::Height;
+    pub struct SetWidth<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetWidth<St> {}
+    impl<St: State> State for SetWidth<St> {
+        type Height = St::Height;
         type Width = Set<members::width>;
     }
     /// Marker types for field names
@@ -371,91 +357,85 @@ pub mod aspect_ratio_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct AspectRatioBuilder<'a, S: aspect_ratio_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct AspectRatioBuilder<S: BosStr, St: aspect_ratio_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> AspectRatio<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AspectRatioBuilder<'a, aspect_ratio_state::Empty> {
+impl<S: BosStr> AspectRatio<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> AspectRatioBuilder<S, aspect_ratio_state::Empty> {
         AspectRatioBuilder::new()
     }
 }
 
-impl<'a> AspectRatioBuilder<'a, aspect_ratio_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> AspectRatioBuilder<S, aspect_ratio_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         AspectRatioBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AspectRatioBuilder<'a, S>
+impl<S: BosStr, St> AspectRatioBuilder<S, St>
 where
-    S: aspect_ratio_state::State,
-    S::Height: aspect_ratio_state::IsUnset,
+    St: aspect_ratio_state::State,
+    St::Height: aspect_ratio_state::IsUnset,
 {
     /// Set the `height` field (required)
     pub fn height(
         mut self,
         value: impl Into<i64>,
-    ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetHeight<S>> {
+    ) -> AspectRatioBuilder<S, aspect_ratio_state::SetHeight<St>> {
         self._fields.0 = Option::Some(value.into());
         AspectRatioBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AspectRatioBuilder<'a, S>
+impl<S: BosStr, St> AspectRatioBuilder<S, St>
 where
-    S: aspect_ratio_state::State,
-    S::Width: aspect_ratio_state::IsUnset,
+    St: aspect_ratio_state::State,
+    St::Width: aspect_ratio_state::IsUnset,
 {
     /// Set the `width` field (required)
     pub fn width(
         mut self,
         value: impl Into<i64>,
-    ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetWidth<S>> {
+    ) -> AspectRatioBuilder<S, aspect_ratio_state::SetWidth<St>> {
         self._fields.1 = Option::Some(value.into());
         AspectRatioBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> AspectRatioBuilder<'a, S>
+impl<S: BosStr, St> AspectRatioBuilder<S, St>
 where
-    S: aspect_ratio_state::State,
-    S::Height: aspect_ratio_state::IsSet,
-    S::Width: aspect_ratio_state::IsSet,
+    St: aspect_ratio_state::State,
+    St::Height: aspect_ratio_state::IsSet,
+    St::Width: aspect_ratio_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> AspectRatio<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> AspectRatio<S> {
         AspectRatio {
             height: self._fields.0.unwrap(),
             width: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> AspectRatio<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> AspectRatio<S> {
         AspectRatio {
             height: self._fields.0.unwrap(),
             width: self._fields.1.unwrap(),
@@ -587,9 +567,9 @@ pub mod media_state {
         type Image = Unset;
     }
     ///State transition - sets the `image` field to Set
-    pub struct SetImage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetImage<S> {}
-    impl<S: State> State for SetImage<S> {
+    pub struct SetImage<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetImage<St> {}
+    impl<St: State> State for SetImage<St> {
         type Image = Set<members::image>;
     }
     /// Marker types for field names
@@ -600,101 +580,101 @@ pub mod media_state {
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct MediaBuilder<'a, S: media_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct MediaBuilder<S: BosStr, St: media_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
-        Option<media::AspectRatio<'a>>,
-        Option<BlobRef<'a>>,
-        Option<MediaLicense<'a>>,
+        Option<S>,
+        Option<media::AspectRatio<S>>,
+        Option<BlobRef<S>>,
+        Option<MediaLicense<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Media<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> MediaBuilder<'a, media_state::Empty> {
+impl<S: BosStr> Media<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> MediaBuilder<S, media_state::Empty> {
         MediaBuilder::new()
     }
 }
 
-impl<'a> MediaBuilder<'a, media_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> MediaBuilder<S, media_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         MediaBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: media_state::State> MediaBuilder<'a, S> {
+impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     /// Set the `alt` field (optional)
-    pub fn alt(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn alt(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `alt` field to an Option value (optional)
-    pub fn maybe_alt(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_alt(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: media_state::State> MediaBuilder<'a, S> {
+impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     /// Set the `aspectRatio` field (optional)
-    pub fn aspect_ratio(mut self, value: impl Into<Option<media::AspectRatio<'a>>>) -> Self {
+    pub fn aspect_ratio(mut self, value: impl Into<Option<media::AspectRatio<S>>>) -> Self {
         self._fields.1 = value.into();
         self
     }
     /// Set the `aspectRatio` field to an Option value (optional)
-    pub fn maybe_aspect_ratio(mut self, value: Option<media::AspectRatio<'a>>) -> Self {
+    pub fn maybe_aspect_ratio(mut self, value: Option<media::AspectRatio<S>>) -> Self {
         self._fields.1 = value;
         self
     }
 }
 
-impl<'a, S> MediaBuilder<'a, S>
+impl<S: BosStr, St> MediaBuilder<S, St>
 where
-    S: media_state::State,
-    S::Image: media_state::IsUnset,
+    St: media_state::State,
+    St::Image: media_state::IsUnset,
 {
     /// Set the `image` field (required)
     pub fn image(
         mut self,
-        value: impl Into<BlobRef<'a>>,
-    ) -> MediaBuilder<'a, media_state::SetImage<S>> {
+        value: impl Into<BlobRef<S>>,
+    ) -> MediaBuilder<S, media_state::SetImage<St>> {
         self._fields.2 = Option::Some(value.into());
         MediaBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: media_state::State> MediaBuilder<'a, S> {
+impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     /// Set the `license` field (optional)
-    pub fn license(mut self, value: impl Into<Option<MediaLicense<'a>>>) -> Self {
+    pub fn license(mut self, value: impl Into<Option<MediaLicense<S>>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `license` field to an Option value (optional)
-    pub fn maybe_license(mut self, value: Option<MediaLicense<'a>>) -> Self {
+    pub fn maybe_license(mut self, value: Option<MediaLicense<S>>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S> MediaBuilder<'a, S>
+impl<S: BosStr, St> MediaBuilder<S, St>
 where
-    S: media_state::State,
-    S::Image: media_state::IsSet,
+    St: media_state::State,
+    St::Image: media_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Media<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Media<S> {
         Media {
             alt: self._fields.0,
             aspect_ratio: self._fields.1,
@@ -703,14 +683,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Media<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Media<S> {
         Media {
             alt: self._fields.0,
             aspect_ratio: self._fields.1,

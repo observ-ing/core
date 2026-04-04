@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -30,59 +32,58 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// A subject in an interaction - can reference an existing occurrence or just specify a taxon.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct InteractionSubject<'a> {
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct InteractionSubject<S: BosStr = DefaultStr> {
     ///Reference to an existing occurrence record.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub occurrence: Option<StrongRef<'a>>,
+    pub occurrence: Option<StrongRef<S>>,
     ///Index of the subject within the occurrence (for multi-subject observations).  Defaults to `0`.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(default = "_default_interaction_subject_subject_index")]
     pub subject_index: Option<i64>,
     ///Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub taxon: Option<Taxon<'a>>,
+    pub taxon: Option<Taxon<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Species interaction documenting ecological relationship between organisms.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "ing.observ.temp.interaction",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Interaction<'a> {
+pub struct Interaction<S: BosStr = DefaultStr> {
     ///Additional notes about the interaction.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub comment: Option<CowStr<'a>>,
+    pub comment: Option<S>,
     ///Timestamp when this record was created.
     pub created_at: Datetime,
     ///Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.  Defaults to `"AtoB"`.
     #[serde(default = "_default_interaction_direction")]
-    #[serde(borrow)]
-    pub direction: CowStr<'a>,
+    pub direction: S,
     ///Type of ecological interaction between the subjects.
-    #[serde(borrow)]
-    pub interaction_type: InteractionInteractionType<'a>,
+    pub interaction_type: InteractionInteractionType<S>,
     ///The first subject (actor) in the interaction.
-    #[serde(borrow)]
-    pub subject_a: interaction::InteractionSubject<'a>,
+    pub subject_a: interaction::InteractionSubject<S>,
     ///The second subject (recipient) in the interaction.
-    #[serde(borrow)]
-    pub subject_b: interaction::InteractionSubject<'a>,
+    pub subject_b: interaction::InteractionSubject<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Type of ecological interaction between the subjects.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum InteractionInteractionType<'a> {
+pub enum InteractionInteractionType<S: BosStr = DefaultStr> {
     Predation,
     Pollination,
     Parasitism,
@@ -94,10 +95,10 @@ pub enum InteractionInteractionType<'a> {
     Transportation,
     Oviposition,
     SeedDispersal,
-    Other(CowStr<'a>),
+    Other(S),
 }
 
-impl<'a> InteractionInteractionType<'a> {
+impl<S: BosStr> InteractionInteractionType<S> {
     pub fn as_str(&self) -> &str {
         match self {
             Self::Predation => "predation",
@@ -114,11 +115,9 @@ impl<'a> InteractionInteractionType<'a> {
             Self::Other(s) => s.as_ref(),
         }
     }
-}
-
-impl<'a> From<&'a str> for InteractionInteractionType<'a> {
-    fn from(s: &'a str) -> Self {
-        match s {
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
             "predation" => Self::Predation,
             "pollination" => Self::Pollination,
             "parasitism" => Self::Parasitism,
@@ -130,72 +129,54 @@ impl<'a> From<&'a str> for InteractionInteractionType<'a> {
             "transportation" => Self::Transportation,
             "oviposition" => Self::Oviposition,
             "seed_dispersal" => Self::SeedDispersal,
-            _ => Self::Other(CowStr::from(s)),
+            _ => Self::Other(s),
         }
     }
 }
 
-impl<'a> From<String> for InteractionInteractionType<'a> {
-    fn from(s: String) -> Self {
-        match s.as_str() {
-            "predation" => Self::Predation,
-            "pollination" => Self::Pollination,
-            "parasitism" => Self::Parasitism,
-            "herbivory" => Self::Herbivory,
-            "symbiosis" => Self::Symbiosis,
-            "mutualism" => Self::Mutualism,
-            "competition" => Self::Competition,
-            "shelter" => Self::Shelter,
-            "transportation" => Self::Transportation,
-            "oviposition" => Self::Oviposition,
-            "seed_dispersal" => Self::SeedDispersal,
-            _ => Self::Other(CowStr::from(s)),
-        }
-    }
-}
-
-impl<'a> core::fmt::Display for InteractionInteractionType<'a> {
+impl<S: BosStr> core::fmt::Display for InteractionInteractionType<S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}", self.as_str())
     }
 }
 
-impl<'a> AsRef<str> for InteractionInteractionType<'a> {
+impl<S: BosStr> AsRef<str> for InteractionInteractionType<S> {
     fn as_ref(&self) -> &str {
         self.as_str()
     }
 }
 
-impl<'a> serde::Serialize for InteractionInteractionType<'a> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+impl<S: BosStr> Serialize for InteractionInteractionType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
     where
-        S: serde::Serializer,
+        Ser: serde::Serializer,
     {
         serializer.serialize_str(self.as_str())
     }
 }
 
-impl<'de, 'a> serde::Deserialize<'de> for InteractionInteractionType<'a>
-where
-    'de: 'a,
-{
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for InteractionInteractionType<S> {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
-        let s = <&'de str>::deserialize(deserializer)?;
-        Ok(Self::from(s))
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
     }
 }
 
-impl<'a> Default for InteractionInteractionType<'a> {
+impl<S: BosStr + Default> Default for InteractionInteractionType<S> {
     fn default() -> Self {
         Self::Other(Default::default())
     }
 }
 
-impl jacquard_common::IntoStatic for InteractionInteractionType<'_> {
-    type Output = InteractionInteractionType<'static>;
+impl<S: BosStr> jacquard_common::IntoStatic for InteractionInteractionType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = InteractionInteractionType<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
             InteractionInteractionType::Predation => InteractionInteractionType::Predation,
@@ -222,23 +203,20 @@ impl jacquard_common::IntoStatic for InteractionInteractionType<'_> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct InteractionGetRecordOutput<'a> {
+pub struct InteractionGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Interaction<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Interaction<S>,
 }
 
-impl<'a> Interaction<'a> {
-    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, InteractionRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Interaction<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, InteractionRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
-impl<'a> LexiconSchema for InteractionSubject<'a> {
+impl<S: BosStr> LexiconSchema for InteractionSubject<S> {
     fn nsid() -> &'static str {
         "ing.observ.temp.interaction"
     }
@@ -278,18 +256,17 @@ pub struct InteractionRecord;
 impl XrpcResp for InteractionRecord {
     const NSID: &'static str = "ing.observ.temp.interaction";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = InteractionGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = InteractionGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<InteractionGetRecordOutput<'_>> for Interaction<'_> {
-    fn from(output: InteractionGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<InteractionGetRecordOutput<S>> for Interaction<S> {
+    fn from(output: InteractionGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Interaction<'_> {
+impl<S: BosStr> Collection for Interaction<S> {
     const NSID: &'static str = "ing.observ.temp.interaction";
     type Record = InteractionRecord;
 }
@@ -299,7 +276,7 @@ impl Collection for InteractionRecord {
     type Record = InteractionRecord;
 }
 
-impl<'a> LexiconSchema for Interaction<'a> {
+impl<S: BosStr> LexiconSchema for Interaction<S> {
     fn nsid() -> &'static str {
         "ing.observ.temp.interaction"
     }
@@ -339,7 +316,7 @@ fn _default_interaction_subject_subject_index() -> Option<i64> {
     Some(0i64)
 }
 
-impl Default for InteractionSubject<'_> {
+impl Default for InteractionSubject {
     fn default() -> Self {
         Self {
             occurrence: None,
@@ -496,8 +473,8 @@ fn lexicon_doc_ing_observ_temp_interaction() -> LexiconDoc<'static> {
     }
 }
 
-fn _default_interaction_direction() -> CowStr<'static> {
-    CowStr::from("AtoB")
+fn _default_interaction_direction<S: FromStaticStr>() -> S {
+    S::from_static("AtoB")
 }
 
 pub mod interaction_state {
@@ -510,239 +487,239 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Direction;
-        type InteractionType;
         type SubjectA;
-        type SubjectB;
+        type InteractionType;
+        type Direction;
         type CreatedAt;
+        type SubjectB;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Direction = Unset;
-        type InteractionType = Unset;
         type SubjectA = Unset;
-        type SubjectB = Unset;
+        type InteractionType = Unset;
+        type Direction = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `direction` field to Set
-    pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetDirection<S> {}
-    impl<S: State> State for SetDirection<S> {
-        type Direction = Set<members::direction>;
-        type InteractionType = S::InteractionType;
-        type SubjectA = S::SubjectA;
-        type SubjectB = S::SubjectB;
-        type CreatedAt = S::CreatedAt;
-    }
-    ///State transition - sets the `interaction_type` field to Set
-    pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetInteractionType<S> {}
-    impl<S: State> State for SetInteractionType<S> {
-        type Direction = S::Direction;
-        type InteractionType = Set<members::interaction_type>;
-        type SubjectA = S::SubjectA;
-        type SubjectB = S::SubjectB;
-        type CreatedAt = S::CreatedAt;
+        type SubjectB = Unset;
     }
     ///State transition - sets the `subject_a` field to Set
-    pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjectA<S> {}
-    impl<S: State> State for SetSubjectA<S> {
-        type Direction = S::Direction;
-        type InteractionType = S::InteractionType;
+    pub struct SetSubjectA<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubjectA<St> {}
+    impl<St: State> State for SetSubjectA<St> {
         type SubjectA = Set<members::subject_a>;
-        type SubjectB = S::SubjectB;
-        type CreatedAt = S::CreatedAt;
+        type InteractionType = St::InteractionType;
+        type Direction = St::Direction;
+        type CreatedAt = St::CreatedAt;
+        type SubjectB = St::SubjectB;
     }
-    ///State transition - sets the `subject_b` field to Set
-    pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjectB<S> {}
-    impl<S: State> State for SetSubjectB<S> {
-        type Direction = S::Direction;
-        type InteractionType = S::InteractionType;
-        type SubjectA = S::SubjectA;
-        type SubjectB = Set<members::subject_b>;
-        type CreatedAt = S::CreatedAt;
+    ///State transition - sets the `interaction_type` field to Set
+    pub struct SetInteractionType<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetInteractionType<St> {}
+    impl<St: State> State for SetInteractionType<St> {
+        type SubjectA = St::SubjectA;
+        type InteractionType = Set<members::interaction_type>;
+        type Direction = St::Direction;
+        type CreatedAt = St::CreatedAt;
+        type SubjectB = St::SubjectB;
+    }
+    ///State transition - sets the `direction` field to Set
+    pub struct SetDirection<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDirection<St> {}
+    impl<St: State> State for SetDirection<St> {
+        type SubjectA = St::SubjectA;
+        type InteractionType = St::InteractionType;
+        type Direction = Set<members::direction>;
+        type CreatedAt = St::CreatedAt;
+        type SubjectB = St::SubjectB;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Direction = S::Direction;
-        type InteractionType = S::InteractionType;
-        type SubjectA = S::SubjectA;
-        type SubjectB = S::SubjectB;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type SubjectA = St::SubjectA;
+        type InteractionType = St::InteractionType;
+        type Direction = St::Direction;
         type CreatedAt = Set<members::created_at>;
+        type SubjectB = St::SubjectB;
+    }
+    ///State transition - sets the `subject_b` field to Set
+    pub struct SetSubjectB<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubjectB<St> {}
+    impl<St: State> State for SetSubjectB<St> {
+        type SubjectA = St::SubjectA;
+        type InteractionType = St::InteractionType;
+        type Direction = St::Direction;
+        type CreatedAt = St::CreatedAt;
+        type SubjectB = Set<members::subject_b>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `direction` field
-        pub struct direction(());
-        ///Marker type for the `interaction_type` field
-        pub struct interaction_type(());
         ///Marker type for the `subject_a` field
         pub struct subject_a(());
-        ///Marker type for the `subject_b` field
-        pub struct subject_b(());
+        ///Marker type for the `interaction_type` field
+        pub struct interaction_type(());
+        ///Marker type for the `direction` field
+        pub struct direction(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `subject_b` field
+        pub struct subject_b(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct InteractionBuilder<'a, S: interaction_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct InteractionBuilder<S: BosStr, St: interaction_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<Datetime>,
-        Option<CowStr<'a>>,
-        Option<InteractionInteractionType<'a>>,
-        Option<interaction::InteractionSubject<'a>>,
-        Option<interaction::InteractionSubject<'a>>,
+        Option<S>,
+        Option<InteractionInteractionType<S>>,
+        Option<interaction::InteractionSubject<S>>,
+        Option<interaction::InteractionSubject<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Interaction<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> InteractionBuilder<'a, interaction_state::Empty> {
+impl<S: BosStr> Interaction<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> InteractionBuilder<S, interaction_state::Empty> {
         InteractionBuilder::new()
     }
 }
 
-impl<'a> InteractionBuilder<'a, interaction_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> InteractionBuilder<S, interaction_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         InteractionBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: interaction_state::State> InteractionBuilder<'a, S> {
+impl<S: BosStr, St: interaction_state::State> InteractionBuilder<S, St> {
     /// Set the `comment` field (optional)
-    pub fn comment(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `comment` field to an Option value (optional)
-    pub fn maybe_comment(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_comment(mut self, value: Option<S>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::CreatedAt: interaction_state::IsUnset,
+    St: interaction_state::State,
+    St::CreatedAt: interaction_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> InteractionBuilder<'a, interaction_state::SetCreatedAt<S>> {
+    ) -> InteractionBuilder<S, interaction_state::SetCreatedAt<St>> {
         self._fields.1 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::Direction: interaction_state::IsUnset,
+    St: interaction_state::State,
+    St::Direction: interaction_state::IsUnset,
 {
     /// Set the `direction` field (required)
     pub fn direction(
         mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> InteractionBuilder<'a, interaction_state::SetDirection<S>> {
+        value: impl Into<S>,
+    ) -> InteractionBuilder<S, interaction_state::SetDirection<St>> {
         self._fields.2 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::InteractionType: interaction_state::IsUnset,
+    St: interaction_state::State,
+    St::InteractionType: interaction_state::IsUnset,
 {
     /// Set the `interactionType` field (required)
     pub fn interaction_type(
         mut self,
-        value: impl Into<InteractionInteractionType<'a>>,
-    ) -> InteractionBuilder<'a, interaction_state::SetInteractionType<S>> {
+        value: impl Into<InteractionInteractionType<S>>,
+    ) -> InteractionBuilder<S, interaction_state::SetInteractionType<St>> {
         self._fields.3 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::SubjectA: interaction_state::IsUnset,
+    St: interaction_state::State,
+    St::SubjectA: interaction_state::IsUnset,
 {
     /// Set the `subjectA` field (required)
     pub fn subject_a(
         mut self,
-        value: impl Into<interaction::InteractionSubject<'a>>,
-    ) -> InteractionBuilder<'a, interaction_state::SetSubjectA<S>> {
+        value: impl Into<interaction::InteractionSubject<S>>,
+    ) -> InteractionBuilder<S, interaction_state::SetSubjectA<St>> {
         self._fields.4 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::SubjectB: interaction_state::IsUnset,
+    St: interaction_state::State,
+    St::SubjectB: interaction_state::IsUnset,
 {
     /// Set the `subjectB` field (required)
     pub fn subject_b(
         mut self,
-        value: impl Into<interaction::InteractionSubject<'a>>,
-    ) -> InteractionBuilder<'a, interaction_state::SetSubjectB<S>> {
+        value: impl Into<interaction::InteractionSubject<S>>,
+    ) -> InteractionBuilder<S, interaction_state::SetSubjectB<St>> {
         self._fields.5 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> InteractionBuilder<'a, S>
+impl<S: BosStr, St> InteractionBuilder<S, St>
 where
-    S: interaction_state::State,
-    S::Direction: interaction_state::IsSet,
-    S::InteractionType: interaction_state::IsSet,
-    S::SubjectA: interaction_state::IsSet,
-    S::SubjectB: interaction_state::IsSet,
-    S::CreatedAt: interaction_state::IsSet,
+    St: interaction_state::State,
+    St::SubjectA: interaction_state::IsSet,
+    St::InteractionType: interaction_state::IsSet,
+    St::Direction: interaction_state::IsSet,
+    St::CreatedAt: interaction_state::IsSet,
+    St::SubjectB: interaction_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Interaction<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Interaction<S> {
         Interaction {
             comment: self._fields.0,
             created_at: self._fields.1.unwrap(),
@@ -753,14 +730,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Interaction<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Interaction<S> {
         Interaction {
             comment: self._fields.0,
             created_at: self._fields.1.unwrap(),

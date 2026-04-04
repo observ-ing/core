@@ -1,6 +1,8 @@
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_lexicons::ing_observ::temp::identification::{Identification, Taxon};
+use observing_lexicons::ing_observ::temp::identification::{
+    Identification, IdentificationRecord, Taxon, TaxonTaxonRank,
+};
 use serde_json::Value;
 
 use crate::auth;
@@ -45,7 +47,9 @@ pub async fn build_identification_record(
 
     let taxon = Taxon {
         scientific_name: scientific_name.into(),
-        taxon_rank: taxon_rank.as_deref().map(Into::into),
+        taxon_rank: taxon_rank
+            .as_deref()
+            .map(|s| TaxonTaxonRank::from_value(s.into())),
         vernacular_name: vernacular_name.as_deref().map(Into::into),
         kingdom: kingdom.as_deref().map(Into::into),
         phylum: phylum.as_deref().map(Into::into),
@@ -70,5 +74,5 @@ pub async fn build_identification_record(
 
 /// The NSID for identifications, re-exported for convenience.
 pub fn identification_nsid() -> &'static str {
-    Identification::NSID
+    IdentificationRecord::NSID
 }
