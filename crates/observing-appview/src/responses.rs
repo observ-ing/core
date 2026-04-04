@@ -62,18 +62,9 @@ pub struct ExploreFeedResponse {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HomeFeedMeta {
-    pub followed_count: usize,
-    pub nearby_count: usize,
-    pub total_follows: usize,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 pub struct HomeFeedResponse {
     pub occurrences: Vec<OccurrenceResponse>,
     pub cursor: Option<String>,
-    pub meta: HomeFeedMeta,
 }
 
 // --- Occurrence responses ---

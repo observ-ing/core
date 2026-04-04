@@ -90,13 +90,7 @@ export interface ExploreFeedResponse extends FeedResponse {
   meta?: { filters?: FeedFilters };
 }
 
-export interface HomeFeedResponse extends FeedResponse {
-  meta?: {
-    followedCount: number;
-    nearbyCount: number;
-    totalFollows: number;
-  };
-}
+export interface HomeFeedResponse extends FeedResponse {}
 
 // ============================================================================
 // Profile Types

@@ -1,7 +1,7 @@
 use crate::occurrence_columns;
 use crate::types::{
-    ExploreFeedOptions, HomeFeedOptions, HomeFeedResult, IdentificationRow, OccurrenceRow,
-    ProfileCounts, ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
+    ExploreFeedOptions, HomeFeedOptions, IdentificationRow, OccurrenceRow, ProfileCounts,
+    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
@@ -224,122 +224,37 @@ pub async fn get_profile_feed(
     })
 }
 
-/// Get the home feed (followed users + nearby occurrences)
+/// Get the home feed (all occurrences, reverse chronological)
 pub async fn get_home_feed(
     executor: impl sqlx::PgExecutor<'_>,
-    followed_dids: &[String],
     options: &HomeFeedOptions,
     hidden_dids: &[String],
-) -> Result<HomeFeedResult, sqlx::Error> {
+) -> Result<Vec<OccurrenceRow>, sqlx::Error> {
+    let mut qb = QueryBuilder::<Postgres>::new(concat!(
+        "SELECT ",
+        occurrence_columns!(),
+        " FROM occurrences WHERE TRUE"
+    ));
+
+    if !hidden_dids.is_empty() {
+        qb.push(" AND did != ALL(");
+        qb.push_bind(hidden_dids.to_vec());
+        qb.push(")");
+    }
+
+    if let Some(ref cursor) = options.cursor {
+        qb.push(" AND created_at < ");
+        qb.push_bind(cursor.clone());
+        qb.push("::timestamptz");
+    }
+
     let limit = options.limit.unwrap_or(20);
-    let nearby_radius = options.nearby_radius.unwrap_or(50000.0);
-
-    let has_follows = !followed_dids.is_empty();
-    let has_location = options.lat.is_some() && options.lng.is_some();
-
-    if !has_follows && !has_location {
-        return Ok(HomeFeedResult {
-            rows: Vec::new(),
-            followed_count: 0,
-            nearby_count: 0,
-        });
-    }
-
-    let mut qb = QueryBuilder::<Postgres>::new("WITH ");
-
-    if has_follows {
-        qb.push("follows_feed AS (SELECT *, 'follows'::text as source FROM occurrences WHERE did = ANY(");
-        qb.push_bind(followed_dids.to_vec());
-        qb.push(")");
-        if !hidden_dids.is_empty() {
-            qb.push(" AND did != ALL(");
-            qb.push_bind(hidden_dids.to_vec());
-            qb.push(")");
-        }
-        if let Some(ref cursor) = options.cursor {
-            qb.push(" AND created_at < ");
-            qb.push_bind(cursor.clone());
-            qb.push("::timestamptz");
-        }
-        qb.push(")");
-    }
-
-    if has_location {
-        if has_follows {
-            qb.push(", ");
-        }
-        qb.push("nearby_feed AS (SELECT *, 'nearby'::text as source FROM occurrences WHERE ST_DWithin(location, ST_SetSRID(ST_MakePoint(");
-        qb.push_bind(options.lng.unwrap());
-        qb.push(", ");
-        qb.push_bind(options.lat.unwrap());
-        qb.push("), 4326)::geography, ");
-        qb.push_bind(nearby_radius);
-        qb.push(")");
-        if !hidden_dids.is_empty() {
-            qb.push(" AND did != ALL(");
-            qb.push_bind(hidden_dids.to_vec());
-            qb.push(")");
-        }
-        if let Some(ref cursor) = options.cursor {
-            qb.push(" AND created_at < ");
-            qb.push_bind(cursor.clone());
-            qb.push("::timestamptz");
-        }
-        qb.push(")");
-    }
-
-    qb.push(", combined AS (SELECT DISTINCT ON (uri) * FROM (");
-    if has_follows {
-        qb.push("SELECT * FROM follows_feed");
-    }
-    if has_follows && has_location {
-        qb.push(" UNION ALL ");
-    }
-    if has_location {
-        qb.push("SELECT * FROM nearby_feed");
-    }
-    qb.push(") sub ORDER BY uri, created_at DESC) ");
-
-    qb.push(
-        r#"
-        SELECT
-            uri, cid, did, scientific_name, event_date,
-            ST_Y(location::geometry) as latitude,
-            ST_X(location::geometry) as longitude,
-            coordinate_uncertainty_meters,
-            continent, country, country_code, state_province, county, municipality, locality, water_body,
-            verbatim_locality, occurrence_remarks,
-            associated_media, recorded_by,
-            taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, "order", family, genus,
-            created_at, source,
-            NULL::float8 as distance_meters,
-            NULL::text as observer_role
-        FROM combined
-        ORDER BY created_at DESC
-        LIMIT "#,
-    );
+    qb.push(" ORDER BY created_at DESC LIMIT ");
     qb.push_bind(limit);
 
-    let rows = qb
-        .build_query_as::<OccurrenceRow>()
+    qb.build_query_as::<OccurrenceRow>()
         .fetch_all(executor)
-        .await?;
-
-    let mut followed_count = 0;
-    let mut nearby_count = 0;
-    for row in &rows {
-        match row.source.as_deref() {
-            Some("follows") => followed_count += 1,
-            Some("nearby") => nearby_count += 1,
-            _ => {}
-        }
-    }
-
-    Ok(HomeFeedResult {
-        rows,
-        followed_count,
-        nearby_count,
-    })
+        .await
 }
 
 /// Get occurrences matching a taxon by name and rank

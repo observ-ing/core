@@ -97,19 +97,9 @@ export async function fetchExploreFeed(
   return fetchApi(`${API_BASE}/api/feeds/explore?${params}`, "Failed to load explore feed");
 }
 
-export async function fetchHomeFeed(
-  cursor?: string,
-  location?: { lat: number; lng: number; nearbyRadius?: number },
-): Promise<HomeFeedResponse> {
+export async function fetchHomeFeed(cursor?: string): Promise<HomeFeedResponse> {
   const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
-  if (location) {
-    params.set("lat", location.lat.toString());
-    params.set("lng", location.lng.toString());
-    if (location.nearbyRadius) {
-      params.set("nearbyRadius", location.nearbyRadius.toString());
-    }
-  }
 
   const response = await fetch(`${API_BASE}/api/feeds/home?${params}`, {
     credentials: "include",

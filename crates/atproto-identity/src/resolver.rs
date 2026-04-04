@@ -7,13 +7,12 @@ use reqwest::Client;
 use tracing::{debug, error};
 
 use crate::types::{
-    DidDocument, FollowsResponse, Profile, ProfileResponse, ProfilesResponse,
-    ResolveHandleResponse, ResolveResult, SearchActorsTypeaheadResponse,
+    DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
+    SearchActorsTypeaheadResponse,
 };
 
 const DEFAULT_SERVICE_URL: &str = "https://public.api.bsky.app";
 const CACHE_TTL_SECS: u64 = 300; // 5 minutes
-const FOLLOWS_CACHE_TTL_SECS: u64 = 60; // 1 minute
 const BATCH_SIZE: usize = 25;
 
 /// Resolves AT Protocol identities (handles ↔ DIDs) and fetches profiles
@@ -22,7 +21,6 @@ pub struct IdentityResolver {
     service_url: String,
     identity_cache: Cache<String, ResolveResult>,
     profile_cache: Cache<String, Arc<Profile>>,
-    follows_cache: Cache<String, Arc<Vec<String>>>,
 }
 
 impl IdentityResolver {
@@ -48,17 +46,11 @@ impl IdentityResolver {
             .time_to_live(Duration::from_secs(CACHE_TTL_SECS))
             .build();
 
-        let follows_cache = Cache::builder()
-            .max_capacity(1_000)
-            .time_to_live(Duration::from_secs(FOLLOWS_CACHE_TTL_SECS))
-            .build();
-
         Self {
             client,
             service_url: service_url.to_string(),
             identity_cache,
             profile_cache,
-            follows_cache,
         }
     }
 
@@ -329,54 +321,6 @@ impl IdentityResolver {
                 Vec::new()
             }
         }
-    }
-
-    /// Get a user's follows (DIDs they follow), paginating up to 1000
-    pub async fn get_follows(&self, actor: &str) -> Vec<String> {
-        // Check cache
-        if let Some(cached) = self.follows_cache.get(actor).await {
-            return cached.as_ref().clone();
-        }
-
-        let mut follows = Vec::new();
-        let mut cursor: Option<String> = None;
-
-        loop {
-            let mut url = format!(
-                "{}/xrpc/app.bsky.graph.getFollows?actor={actor}&limit=100",
-                self.service_url
-            );
-            if let Some(ref c) = cursor {
-                url.push_str(&format!("&cursor={c}"));
-            }
-
-            match self.client.get(&url).send().await {
-                Ok(response) if response.status().is_success() => {
-                    match response.json::<FollowsResponse>().await {
-                        Ok(data) => {
-                            follows.extend(data.follows.into_iter().map(|f| f.did));
-                            cursor = data.cursor;
-                            if cursor.is_none() || follows.len() >= 1000 {
-                                break;
-                            }
-                        }
-                        Err(e) => {
-                            error!("Failed to parse follows response: {e}");
-                            break;
-                        }
-                    }
-                }
-                _ => break,
-            }
-        }
-
-        // Cache
-        let follows_arc = Arc::new(follows.clone());
-        self.follows_cache
-            .insert(actor.to_string(), follows_arc)
-            .await;
-
-        follows
     }
 }
 

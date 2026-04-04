@@ -87,14 +87,3 @@ pub(crate) struct ProfilesResponse {
 pub(crate) struct SearchActorsTypeaheadResponse {
     pub(crate) actors: Vec<ProfileResponse>,
 }
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct FollowsResponse {
-    pub(crate) follows: Vec<FollowEntry>,
-    pub(crate) cursor: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct FollowEntry {
-    pub(crate) did: String,
-}
