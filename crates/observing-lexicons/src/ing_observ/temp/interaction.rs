@@ -510,83 +510,83 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SubjectB;
         type Direction;
-        type CreatedAt;
+        type SubjectB;
         type SubjectA;
+        type CreatedAt;
         type InteractionType;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SubjectB = Unset;
         type Direction = Unset;
-        type CreatedAt = Unset;
+        type SubjectB = Unset;
         type SubjectA = Unset;
+        type CreatedAt = Unset;
         type InteractionType = Unset;
-    }
-    ///State transition - sets the `subject_b` field to Set
-    pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubjectB<S> {}
-    impl<S: State> State for SetSubjectB<S> {
-        type SubjectB = Set<members::subject_b>;
-        type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
-        type SubjectA = S::SubjectA;
-        type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `direction` field to Set
     pub struct SetDirection<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetDirection<S> {}
     impl<S: State> State for SetDirection<S> {
-        type SubjectB = S::SubjectB;
         type Direction = Set<members::direction>;
-        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
         type SubjectA = S::SubjectA;
+        type CreatedAt = S::CreatedAt;
         type InteractionType = S::InteractionType;
     }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type SubjectB = S::SubjectB;
+    ///State transition - sets the `subject_b` field to Set
+    pub struct SetSubjectB<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetSubjectB<S> {}
+    impl<S: State> State for SetSubjectB<S> {
         type Direction = S::Direction;
-        type CreatedAt = Set<members::created_at>;
+        type SubjectB = Set<members::subject_b>;
         type SubjectA = S::SubjectA;
+        type CreatedAt = S::CreatedAt;
         type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `subject_a` field to Set
     pub struct SetSubjectA<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetSubjectA<S> {}
     impl<S: State> State for SetSubjectA<S> {
-        type SubjectB = S::SubjectB;
         type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
         type SubjectA = Set<members::subject_a>;
+        type CreatedAt = S::CreatedAt;
+        type InteractionType = S::InteractionType;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type Direction = S::Direction;
+        type SubjectB = S::SubjectB;
+        type SubjectA = S::SubjectA;
+        type CreatedAt = Set<members::created_at>;
         type InteractionType = S::InteractionType;
     }
     ///State transition - sets the `interaction_type` field to Set
     pub struct SetInteractionType<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetInteractionType<S> {}
     impl<S: State> State for SetInteractionType<S> {
-        type SubjectB = S::SubjectB;
         type Direction = S::Direction;
-        type CreatedAt = S::CreatedAt;
+        type SubjectB = S::SubjectB;
         type SubjectA = S::SubjectA;
+        type CreatedAt = S::CreatedAt;
         type InteractionType = Set<members::interaction_type>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject_b` field
-        pub struct subject_b(());
         ///Marker type for the `direction` field
         pub struct direction(());
-        ///Marker type for the `created_at` field
-        pub struct created_at(());
+        ///Marker type for the `subject_b` field
+        pub struct subject_b(());
         ///Marker type for the `subject_a` field
         pub struct subject_a(());
+        ///Marker type for the `created_at` field
+        pub struct created_at(());
         ///Marker type for the `interaction_type` field
         pub struct interaction_type(());
     }
@@ -735,10 +735,10 @@ where
 impl<'a, S> InteractionBuilder<'a, S>
 where
     S: interaction_state::State,
-    S::SubjectB: interaction_state::IsSet,
     S::Direction: interaction_state::IsSet,
-    S::CreatedAt: interaction_state::IsSet,
+    S::SubjectB: interaction_state::IsSet,
     S::SubjectA: interaction_state::IsSet,
+    S::CreatedAt: interaction_state::IsSet,
     S::InteractionType: interaction_state::IsSet,
 {
     /// Build the final struct

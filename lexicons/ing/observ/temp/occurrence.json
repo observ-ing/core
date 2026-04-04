@@ -25,12 +25,12 @@
             "description": "The original textual description of the place (Darwin Core dwc:verbatimLocality).",
             "maxLength": 1024
           },
-          "blobs": {
+          "associatedMedia": {
             "type": "array",
-            "description": "Array of image references documenting the observation.",
+            "description": "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
             "items": {
               "type": "ref",
-              "ref": "#imageEmbed"
+              "ref": "com.atproto.repo.strongRef"
             },
             "maxLength": 10
           },
@@ -152,7 +152,7 @@
     },
     "imageEmbed": {
       "type": "object",
-      "description": "A reference to an uploaded image blob.",
+      "description": "Deprecated: use associatedMedia with bio.lexicons.temp.media references instead.",
       "required": ["image", "alt"],
       "properties": {
         "image": {

@@ -68,8 +68,9 @@ pub async fn create_occurrence(
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
-    // Upload blobs and create media records
-    let mut blobs = Vec::new();
+    // Upload blobs, create media records, and collect strong refs
+    let mut blob_entries = Vec::new(); // For DB storage (blob CIDs for image serving)
+    let mut media_refs = Vec::new(); // For the AT Protocol record (strong refs to media)
     if let Some(images) = &body.images {
         use base64::Engine;
         for img in images {
@@ -86,19 +87,27 @@ pub async fn create_occurrence(
                 .map_err(|e| AppError::Internal(format!("Failed to upload blob: {e}")))?;
             let blob_value = serde_json::to_value(&blob_resp.blob)
                 .map_err(|e| AppError::Internal(format!("Failed to serialize blob: {e}")))?;
-            blobs.push(json!({ "image": blob_value, "alt": "" }));
+            blob_entries.push(json!({ "image": blob_value, "alt": "" }));
 
-            // Create a bio.lexicons.temp.media record for forward migration
+            // Create a bio.lexicons.temp.media record
             let media_record_value = json!({
                 "$type": Media::NSID,
                 "image": blob_value,
             });
             let did_for_media = atrium_api::types::string::Did::new(user.did.clone())
                 .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-            if let Err(e) =
-                auth::create_at_record(&agent, did_for_media, Media::NSID, media_record_value).await
+            match auth::create_at_record(&agent, did_for_media, Media::NSID, media_record_value)
+                .await
             {
-                warn!(error = ?e, "Failed to create media record (non-fatal)");
+                Ok(media_resp) => {
+                    media_refs.push(json!({
+                        "uri": media_resp.uri.to_string(),
+                        "cid": media_resp.cid.as_ref().to_string(),
+                    }));
+                }
+                Err(e) => {
+                    warn!(error = ?e, "Failed to create media record");
+                }
             }
         }
     }
@@ -182,8 +191,8 @@ pub async fn create_occurrence(
             .build();
 
         let mut rv = auth::serialize_at_record(&record)?;
-        if !blobs.is_empty() {
-            rv["blobs"] = json!(blobs);
+        if !media_refs.is_empty() {
+            rv["associatedMedia"] = json!(media_refs);
         }
         rv
     };
@@ -201,12 +210,17 @@ pub async fn create_occurrence(
 
     // Immediate DB upsert for visibility — uses the same shared conversion
     // as the ingester so field mapping is always consistent.
-    if let Ok(parsed) = observing_db::processing::occurrence_from_json(
+    if let Ok(mut parsed) = observing_db::processing::occurrence_from_json(
         &record_value_for_db,
         uri.clone(),
         cid.clone(),
         user.did.clone(),
     ) {
+        // Set blob entries directly — the PDS record uses associatedMedia (strong refs)
+        // but the DB stores blob entries for efficient image serving.
+        if !blob_entries.is_empty() {
+            parsed.params.associated_media = Some(json!(blob_entries));
+        }
         if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
             warn!(error = %e, "Failed to upsert occurrence into local DB");
         }

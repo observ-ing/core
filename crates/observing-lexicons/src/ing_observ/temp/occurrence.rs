@@ -23,6 +23,7 @@ use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
+use crate::com_atproto::repo::strong_ref::StrongRef;
 use crate::ing_observ::temp::occurrence;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
@@ -37,7 +38,7 @@ pub struct AspectRatio<'a> {
     pub width: i64,
 }
 
-/// A reference to an uploaded image blob.
+/// Deprecated: use associatedMedia with bio.lexicons.temp.media references instead.
 
 #[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
@@ -249,10 +250,10 @@ impl jacquard_common::IntoStatic for LocationContinent<'_> {
     tag = "$type"
 )]
 pub struct Occurrence<'a> {
-    ///Array of image references documenting the observation.
+    ///Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub blobs: Option<Vec<occurrence::ImageEmbed<'a>>>,
+    pub associated_media: Option<Vec<StrongRef<'a>>>,
     ///Timestamp when this record was created.
     pub created_at: Datetime,
     ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
@@ -658,11 +659,11 @@ impl<'a> LexiconSchema for Occurrence<'a> {
         lexicon_doc_ing_observ_temp_occurrence()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.blobs {
+        if let Some(ref value) = self.associated_media {
             #[allow(unused_comparisons)]
             if value.len() > 10usize {
                 return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("blobs"),
+                    path: ValidationPath::from_field("associated_media"),
                     max: 10usize,
                     actual: value.len(),
                 });
@@ -894,20 +895,25 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
             map.insert(
                 SmolStr::new_static("imageEmbed"),
                 LexUserType::Object(LexObject {
-                    description: Some(CowStr::new_static("A reference to an uploaded image blob.")),
-                    required: Some(vec![
-                        SmolStr::new_static("image"),
-                        SmolStr::new_static("alt"),
-                    ]),
+                    description: Some(
+                        CowStr::new_static(
+                            "Deprecated: use associatedMedia with bio.lexicons.temp.media references instead.",
+                        ),
+                    ),
+                    required: Some(
+                        vec![SmolStr::new_static("image"), SmolStr::new_static("alt")],
+                    ),
                     properties: {
                         #[allow(unused_mut)]
                         let mut map = BTreeMap::new();
                         map.insert(
                             SmolStr::new_static("alt"),
                             LexObjectProperty::String(LexString {
-                                description: Some(CowStr::new_static(
-                                    "Alt text description of the image for accessibility.",
-                                )),
+                                description: Some(
+                                    CowStr::new_static(
+                                        "Alt text description of the image for accessibility.",
+                                    ),
+                                ),
                                 max_length: Some(1000usize),
                                 ..Default::default()
                             }),
@@ -921,9 +927,7 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
                         );
                         map.insert(
                             SmolStr::new_static("image"),
-                            LexObjectProperty::Blob(LexBlob {
-                                ..Default::default()
-                            }),
+                            LexObjectProperty::Blob(LexBlob { ..Default::default() }),
                         );
                         map
                     },
@@ -1154,15 +1158,15 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
                             #[allow(unused_mut)]
                             let mut map = BTreeMap::new();
                             map.insert(
-                                SmolStr::new_static("blobs"),
+                                SmolStr::new_static("associatedMedia"),
                                 LexObjectProperty::Array(LexArray {
                                     description: Some(
                                         CowStr::new_static(
-                                            "Array of image references documenting the observation.",
+                                            "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
                                         ),
                                     ),
                                     items: LexArrayItem::Ref(LexRef {
-                                        r#ref: CowStr::new_static("#imageEmbed"),
+                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
                                         ..Default::default()
                                     }),
                                     max_length: Some(10usize),
@@ -1274,37 +1278,37 @@ pub mod image_embed_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Alt;
         type Image;
+        type Alt;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Alt = Unset;
         type Image = Unset;
-    }
-    ///State transition - sets the `alt` field to Set
-    pub struct SetAlt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAlt<S> {}
-    impl<S: State> State for SetAlt<S> {
-        type Alt = Set<members::alt>;
-        type Image = S::Image;
+        type Alt = Unset;
     }
     ///State transition - sets the `image` field to Set
     pub struct SetImage<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetImage<S> {}
     impl<S: State> State for SetImage<S> {
-        type Alt = S::Alt;
         type Image = Set<members::image>;
+        type Alt = S::Alt;
+    }
+    ///State transition - sets the `alt` field to Set
+    pub struct SetAlt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetAlt<S> {}
+    impl<S: State> State for SetAlt<S> {
+        type Image = S::Image;
+        type Alt = Set<members::alt>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `alt` field
-        pub struct alt(());
         ///Marker type for the `image` field
         pub struct image(());
+        ///Marker type for the `alt` field
+        pub struct alt(());
     }
 }
 
@@ -1391,8 +1395,8 @@ where
 impl<'a, S> ImageEmbedBuilder<'a, S>
 where
     S: image_embed_state::State,
-    S::Alt: image_embed_state::IsSet,
     S::Image: image_embed_state::IsSet,
+    S::Alt: image_embed_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> ImageEmbed<'a> {
@@ -1434,51 +1438,51 @@ pub mod occurrence_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Location;
         type CreatedAt;
         type EventDate;
-        type Location;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Location = Unset;
         type CreatedAt = Unset;
         type EventDate = Unset;
-        type Location = Unset;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedAt = Set<members::created_at>;
-        type EventDate = S::EventDate;
-        type Location = S::Location;
-    }
-    ///State transition - sets the `event_date` field to Set
-    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventDate<S> {}
-    impl<S: State> State for SetEventDate<S> {
-        type CreatedAt = S::CreatedAt;
-        type EventDate = Set<members::event_date>;
-        type Location = S::Location;
     }
     ///State transition - sets the `location` field to Set
     pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetLocation<S> {}
     impl<S: State> State for SetLocation<S> {
+        type Location = Set<members::location>;
         type CreatedAt = S::CreatedAt;
         type EventDate = S::EventDate;
-        type Location = Set<members::location>;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type Location = S::Location;
+        type CreatedAt = Set<members::created_at>;
+        type EventDate = S::EventDate;
+    }
+    ///State transition - sets the `event_date` field to Set
+    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetEventDate<S> {}
+    impl<S: State> State for SetEventDate<S> {
+        type Location = S::Location;
+        type CreatedAt = S::CreatedAt;
+        type EventDate = Set<members::event_date>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `location` field
+        pub struct location(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
         ///Marker type for the `event_date` field
         pub struct event_date(());
-        ///Marker type for the `location` field
-        pub struct location(());
     }
 }
 
@@ -1486,7 +1490,7 @@ pub mod occurrence_state {
 pub struct OccurrenceBuilder<'a, S: occurrence_state::State> {
     _state: PhantomData<fn() -> S>,
     _fields: (
-        Option<Vec<occurrence::ImageEmbed<'a>>>,
+        Option<Vec<StrongRef<'a>>>,
         Option<Datetime>,
         Option<Datetime>,
         Option<OccurrenceLicense<'a>>,
@@ -1517,13 +1521,13 @@ impl<'a> OccurrenceBuilder<'a, occurrence_state::Empty> {
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
-    /// Set the `blobs` field (optional)
-    pub fn blobs(mut self, value: impl Into<Option<Vec<occurrence::ImageEmbed<'a>>>>) -> Self {
+    /// Set the `associatedMedia` field (optional)
+    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<'a>>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
-    /// Set the `blobs` field to an Option value (optional)
-    pub fn maybe_blobs(mut self, value: Option<Vec<occurrence::ImageEmbed<'a>>>) -> Self {
+    /// Set the `associatedMedia` field to an Option value (optional)
+    pub fn maybe_associated_media(mut self, value: Option<Vec<StrongRef<'a>>>) -> Self {
         self._fields.0 = value;
         self
     }
@@ -1641,14 +1645,14 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 impl<'a, S> OccurrenceBuilder<'a, S>
 where
     S: occurrence_state::State,
+    S::Location: occurrence_state::IsSet,
     S::CreatedAt: occurrence_state::IsSet,
     S::EventDate: occurrence_state::IsSet,
-    S::Location: occurrence_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Occurrence<'a> {
         Occurrence {
-            blobs: self._fields.0,
+            associated_media: self._fields.0,
             created_at: self._fields.1.unwrap(),
             event_date: self._fields.2.unwrap(),
             license: self._fields.3,
@@ -1668,7 +1672,7 @@ where
         >,
     ) -> Occurrence<'a> {
         Occurrence {
-            blobs: self._fields.0,
+            associated_media: self._fields.0,
             created_at: self._fields.1.unwrap(),
             event_date: self._fields.2.unwrap(),
             license: self._fields.3,
