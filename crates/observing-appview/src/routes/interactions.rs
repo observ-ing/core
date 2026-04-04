@@ -4,7 +4,9 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::InteractionDirection;
 use observing_lexicons::ing_observ::temp::identification::Taxon;
-use observing_lexicons::ing_observ::temp::interaction::{Interaction, InteractionSubject};
+use observing_lexicons::ing_observ::temp::interaction::{
+    Interaction, InteractionInteractionType, InteractionRecord, InteractionSubject,
+};
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
@@ -61,7 +63,7 @@ pub struct CreateInteractionRequest {
 
 fn build_interaction_subject(
     req: &InteractionSubjectRequest,
-) -> Result<InteractionSubject<'_>, AppError> {
+) -> Result<InteractionSubject, AppError> {
     let occurrence = match (&req.occurrence_uri, &req.occurrence_cid) {
         (Some(uri), Some(cid)) => Some(auth::build_strong_ref(uri, cid)?),
         _ => None,
@@ -104,7 +106,9 @@ pub async fn create_interaction(
     let record = Interaction::new()
         .subject_a(subject_a)
         .subject_b(subject_b)
-        .interaction_type(&*body.interaction_type)
+        .interaction_type(InteractionInteractionType::from_value(
+            body.interaction_type.as_str().into(),
+        ))
         .direction(direction)
         .created_at(Datetime::now())
         .maybe_comment(body.comment.as_deref().map(Into::into))
@@ -113,7 +117,8 @@ pub async fn create_interaction(
     let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
-    let resp = auth::create_at_record(&agent, did_parsed, Interaction::NSID, record_value).await?;
+    let resp =
+        auth::create_at_record(&agent, did_parsed, InteractionRecord::NSID, record_value).await?;
 
     info!(uri = %resp.uri, "Created interaction");
 

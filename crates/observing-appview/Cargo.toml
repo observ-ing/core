@@ -14,7 +14,7 @@ observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
 
 # AT Protocol types (for record construction)
-jacquard-common = "0.11"
+jacquard-common = "0.12.0-beta.2"
 
 # Async runtime
 tokio = { workspace = true }

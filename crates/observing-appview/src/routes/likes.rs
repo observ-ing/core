@@ -4,7 +4,7 @@ use chrono::Utc;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::CreateLikeParams;
-use observing_lexicons::ing_observ::temp::like::Like;
+use observing_lexicons::ing_observ::temp::like::{Like, LikeRecord};
 use serde::Deserialize;
 use tracing::{info, warn};
 use ts_rs::TS;
@@ -40,7 +40,7 @@ pub async fn create_like(
     let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
-    let output = auth::create_at_record(&agent, did_parsed, Like::NSID, record_value).await?;
+    let output = auth::create_at_record(&agent, did_parsed, LikeRecord::NSID, record_value).await?;
 
     let uri = output.uri.clone();
     let cid = output.cid.as_ref().to_string();

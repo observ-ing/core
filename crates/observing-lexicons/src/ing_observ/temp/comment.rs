@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -28,45 +30,41 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// A comment on an observation. Used for general discussion, questions, or additional context about an observation.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "ing.observ.temp.comment",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Comment<'a> {
+pub struct Comment<S: BosStr = DefaultStr> {
     ///The text content of the comment.
-    #[serde(borrow)]
-    pub body: CowStr<'a>,
+    pub body: S,
     ///Timestamp when this comment was created.
     pub created_at: Datetime,
     ///Optional reference to another comment this is replying to, for threaded discussions.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub reply_to: Option<StrongRef<'a>>,
+    pub reply_to: Option<StrongRef<S>>,
     ///A strong reference (CID + URI) to the observation being commented on.
-    #[serde(borrow)]
-    pub subject: StrongRef<'a>,
+    pub subject: StrongRef<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct CommentGetRecordOutput<'a> {
+pub struct CommentGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Comment<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Comment<S>,
 }
 
-impl<'a> Comment<'a> {
-    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, CommentRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Comment<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, CommentRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -77,18 +75,17 @@ pub struct CommentRecord;
 impl XrpcResp for CommentRecord {
     const NSID: &'static str = "ing.observ.temp.comment";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = CommentGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = CommentGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<CommentGetRecordOutput<'_>> for Comment<'_> {
-    fn from(output: CommentGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<CommentGetRecordOutput<S>> for Comment<S> {
+    fn from(output: CommentGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Comment<'_> {
+impl<S: BosStr> Collection for Comment<S> {
     const NSID: &'static str = "ing.observ.temp.comment";
     type Record = CommentRecord;
 }
@@ -98,7 +95,7 @@ impl Collection for CommentRecord {
     type Record = CommentRecord;
 }
 
-impl<'a> LexiconSchema for Comment<'a> {
+impl<S: BosStr> LexiconSchema for Comment<S> {
     fn nsid() -> &'static str {
         "ing.observ.temp.comment"
     }
@@ -134,163 +131,160 @@ pub mod comment_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Subject;
         type Body;
         type CreatedAt;
+        type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Subject = Unset;
         type Body = Unset;
         type CreatedAt = Unset;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetSubject<S> {}
-    impl<S: State> State for SetSubject<S> {
-        type Subject = Set<members::subject>;
-        type Body = S::Body;
-        type CreatedAt = S::CreatedAt;
+        type Subject = Unset;
     }
     ///State transition - sets the `body` field to Set
-    pub struct SetBody<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetBody<S> {}
-    impl<S: State> State for SetBody<S> {
-        type Subject = S::Subject;
+    pub struct SetBody<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetBody<St> {}
+    impl<St: State> State for SetBody<St> {
         type Body = Set<members::body>;
-        type CreatedAt = S::CreatedAt;
+        type CreatedAt = St::CreatedAt;
+        type Subject = St::Subject;
     }
     ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type Subject = S::Subject;
-        type Body = S::Body;
+    pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
+    impl<St: State> State for SetCreatedAt<St> {
+        type Body = St::Body;
         type CreatedAt = Set<members::created_at>;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type Body = St::Body;
+        type CreatedAt = St::CreatedAt;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject` field
-        pub struct subject(());
         ///Marker type for the `body` field
         pub struct body(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `subject` field
+        pub struct subject(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct CommentBuilder<'a, S: comment_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct CommentBuilder<S: BosStr, St: comment_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<CowStr<'a>>,
+        Option<S>,
         Option<Datetime>,
-        Option<StrongRef<'a>>,
-        Option<StrongRef<'a>>,
+        Option<StrongRef<S>>,
+        Option<StrongRef<S>>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Comment<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> CommentBuilder<'a, comment_state::Empty> {
+impl<S: BosStr> Comment<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> CommentBuilder<S, comment_state::Empty> {
         CommentBuilder::new()
     }
 }
 
-impl<'a> CommentBuilder<'a, comment_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> CommentBuilder<S, comment_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         CommentBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CommentBuilder<'a, S>
+impl<S: BosStr, St> CommentBuilder<S, St>
 where
-    S: comment_state::State,
-    S::Body: comment_state::IsUnset,
+    St: comment_state::State,
+    St::Body: comment_state::IsUnset,
 {
     /// Set the `body` field (required)
-    pub fn body(
-        mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> CommentBuilder<'a, comment_state::SetBody<S>> {
+    pub fn body(mut self, value: impl Into<S>) -> CommentBuilder<S, comment_state::SetBody<St>> {
         self._fields.0 = Option::Some(value.into());
         CommentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CommentBuilder<'a, S>
+impl<S: BosStr, St> CommentBuilder<S, St>
 where
-    S: comment_state::State,
-    S::CreatedAt: comment_state::IsUnset,
+    St: comment_state::State,
+    St::CreatedAt: comment_state::IsUnset,
 {
     /// Set the `createdAt` field (required)
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> CommentBuilder<'a, comment_state::SetCreatedAt<S>> {
+    ) -> CommentBuilder<S, comment_state::SetCreatedAt<St>> {
         self._fields.1 = Option::Some(value.into());
         CommentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: comment_state::State> CommentBuilder<'a, S> {
+impl<S: BosStr, St: comment_state::State> CommentBuilder<S, St> {
     /// Set the `replyTo` field (optional)
-    pub fn reply_to(mut self, value: impl Into<Option<StrongRef<'a>>>) -> Self {
+    pub fn reply_to(mut self, value: impl Into<Option<StrongRef<S>>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `replyTo` field to an Option value (optional)
-    pub fn maybe_reply_to(mut self, value: Option<StrongRef<'a>>) -> Self {
+    pub fn maybe_reply_to(mut self, value: Option<StrongRef<S>>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S> CommentBuilder<'a, S>
+impl<S: BosStr, St> CommentBuilder<S, St>
 where
-    S: comment_state::State,
-    S::Subject: comment_state::IsUnset,
+    St: comment_state::State,
+    St::Subject: comment_state::IsUnset,
 {
     /// Set the `subject` field (required)
     pub fn subject(
         mut self,
-        value: impl Into<StrongRef<'a>>,
-    ) -> CommentBuilder<'a, comment_state::SetSubject<S>> {
+        value: impl Into<StrongRef<S>>,
+    ) -> CommentBuilder<S, comment_state::SetSubject<St>> {
         self._fields.3 = Option::Some(value.into());
         CommentBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> CommentBuilder<'a, S>
+impl<S: BosStr, St> CommentBuilder<S, St>
 where
-    S: comment_state::State,
-    S::Subject: comment_state::IsSet,
-    S::Body: comment_state::IsSet,
-    S::CreatedAt: comment_state::IsSet,
+    St: comment_state::State,
+    St::Body: comment_state::IsSet,
+    St::CreatedAt: comment_state::IsSet,
+    St::Subject: comment_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> Comment<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Comment<S> {
         Comment {
             body: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),
@@ -299,14 +293,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Comment<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Comment<S> {
         Comment {
             body: self._fields.0.unwrap(),
             created_at: self._fields.1.unwrap(),

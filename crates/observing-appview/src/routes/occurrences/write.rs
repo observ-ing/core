@@ -2,8 +2,8 @@ use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_lexicons::bio_lexicons::temp::media::Media;
-use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
+use observing_lexicons::bio_lexicons::temp::media::MediaRecord;
+use observing_lexicons::bio_lexicons::temp::occurrence::{Occurrence, OccurrenceRecord};
 use serde::Deserialize;
 use serde_json::json;
 use tracing::{info, warn};
@@ -91,13 +91,18 @@ pub async fn create_occurrence(
 
             // Create a bio.lexicons.temp.media record
             let media_record_value = json!({
-                "$type": Media::NSID,
+                "$type": MediaRecord::NSID,
                 "image": blob_value,
             });
             let did_for_media = atrium_api::types::string::Did::new(user.did.clone())
                 .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
-            match auth::create_at_record(&agent, did_for_media, Media::NSID, media_record_value)
-                .await
+            match auth::create_at_record(
+                &agent,
+                did_for_media,
+                MediaRecord::NSID,
+                media_record_value,
+            )
+            .await
             {
                 Ok(media_resp) => {
                     media_refs.push(json!({
@@ -128,11 +133,9 @@ pub async fn create_occurrence(
 
     // Build occurrence record with flat coordinates (bio.lexicons.temp.occurrence)
     let record_value = {
-        let lat_str: jacquard_common::CowStr<'_> = body.latitude.to_string().into();
-        let lng_str: jacquard_common::CowStr<'_> = body.longitude.to_string().into();
         let record = Occurrence::new()
-            .decimal_latitude(lat_str)
-            .decimal_longitude(lng_str)
+            .decimal_latitude(body.latitude.to_string())
+            .decimal_longitude(body.longitude.to_string())
             .coordinate_uncertainty_in_meters(
                 body.coordinate_uncertainty_in_meters
                     .unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY) as i64,
@@ -191,7 +194,8 @@ pub async fn create_occurrence(
     let record_value_for_db = record_value.clone();
 
     // Create AT Protocol record
-    let resp = auth::create_at_record(&agent, did_parsed, Occurrence::NSID, record_value).await?;
+    let resp =
+        auth::create_at_record(&agent, did_parsed, OccurrenceRecord::NSID, record_value).await?;
 
     let uri = resp.uri.to_string();
     let cid = resp.cid.as_ref().to_string();

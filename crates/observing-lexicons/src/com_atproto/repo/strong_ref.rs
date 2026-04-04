@@ -10,11 +10,14 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
+use jacquard_common::{BosStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::string::{AtUri, Cid};
-use jacquard_derive::{lexicon, IntoStatic};
+use jacquard_common::types::value::Data;
+use jacquard_derive::IntoStatic;
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
@@ -22,17 +25,19 @@ use jacquard_lexicon::schema::LexiconSchema;
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct StrongRef<'a> {
-    #[serde(borrow)]
-    pub cid: Cid<'a>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct StrongRef<S: BosStr = DefaultStr> {
+    pub cid: Cid<S>,
+    pub uri: AtUri<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-impl<'a> LexiconSchema for StrongRef<'a> {
+impl<S: BosStr> LexiconSchema for StrongRef<S> {
     fn nsid() -> &'static str {
         "com.atproto.repo.strongRef"
     }
@@ -57,125 +62,119 @@ pub mod strong_ref_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Uri;
         type Cid;
+        type Uri;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Uri = Unset;
         type Cid = Unset;
-    }
-    ///State transition - sets the `uri` field to Set
-    pub struct SetUri<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetUri<S> {}
-    impl<S: State> State for SetUri<S> {
-        type Uri = Set<members::uri>;
-        type Cid = S::Cid;
+        type Uri = Unset;
     }
     ///State transition - sets the `cid` field to Set
-    pub struct SetCid<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCid<S> {}
-    impl<S: State> State for SetCid<S> {
-        type Uri = S::Uri;
+    pub struct SetCid<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetCid<St> {}
+    impl<St: State> State for SetCid<St> {
         type Cid = Set<members::cid>;
+        type Uri = St::Uri;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Cid = St::Cid;
+        type Uri = Set<members::uri>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `uri` field
-        pub struct uri(());
         ///Marker type for the `cid` field
         pub struct cid(());
+        ///Marker type for the `uri` field
+        pub struct uri(());
     }
 }
 
-/// Builder for constructing an instance of this type
-pub struct StrongRefBuilder<'a, S: strong_ref_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<Cid<'a>>, Option<AtUri<'a>>),
-    _lifetime: PhantomData<&'a ()>,
+/// Builder for constructing an instance of this type.
+pub struct StrongRefBuilder<S: BosStr, St: strong_ref_state::State> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<Cid<S>>, Option<AtUri<S>>),
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> StrongRef<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> StrongRefBuilder<'a, strong_ref_state::Empty> {
+impl<S: BosStr> StrongRef<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> StrongRefBuilder<S, strong_ref_state::Empty> {
         StrongRefBuilder::new()
     }
 }
 
-impl<'a> StrongRefBuilder<'a, strong_ref_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> StrongRefBuilder<S, strong_ref_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         StrongRefBuilder {
             _state: PhantomData,
             _fields: (None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> StrongRefBuilder<'a, S>
+impl<S: BosStr, St> StrongRefBuilder<S, St>
 where
-    S: strong_ref_state::State,
-    S::Cid: strong_ref_state::IsUnset,
+    St: strong_ref_state::State,
+    St::Cid: strong_ref_state::IsUnset,
 {
     /// Set the `cid` field (required)
     pub fn cid(
         mut self,
-        value: impl Into<Cid<'a>>,
-    ) -> StrongRefBuilder<'a, strong_ref_state::SetCid<S>> {
+        value: impl Into<Cid<S>>,
+    ) -> StrongRefBuilder<S, strong_ref_state::SetCid<St>> {
         self._fields.0 = Option::Some(value.into());
         StrongRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> StrongRefBuilder<'a, S>
+impl<S: BosStr, St> StrongRefBuilder<S, St>
 where
-    S: strong_ref_state::State,
-    S::Uri: strong_ref_state::IsUnset,
+    St: strong_ref_state::State,
+    St::Uri: strong_ref_state::IsUnset,
 {
     /// Set the `uri` field (required)
     pub fn uri(
         mut self,
-        value: impl Into<AtUri<'a>>,
-    ) -> StrongRefBuilder<'a, strong_ref_state::SetUri<S>> {
+        value: impl Into<AtUri<S>>,
+    ) -> StrongRefBuilder<S, strong_ref_state::SetUri<St>> {
         self._fields.1 = Option::Some(value.into());
         StrongRefBuilder {
             _state: PhantomData,
             _fields: self._fields,
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S> StrongRefBuilder<'a, S>
+impl<S: BosStr, St> StrongRefBuilder<S, St>
 where
-    S: strong_ref_state::State,
-    S::Uri: strong_ref_state::IsSet,
-    S::Cid: strong_ref_state::IsSet,
+    St: strong_ref_state::State,
+    St::Cid: strong_ref_state::IsSet,
+    St::Uri: strong_ref_state::IsSet,
 {
-    /// Build the final struct
-    pub fn build(self) -> StrongRef<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> StrongRef<S> {
         StrongRef {
             cid: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> StrongRef<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> StrongRef<S> {
         StrongRef {
             cid: self._fields.0.unwrap(),
             uri: self._fields.1.unwrap(),

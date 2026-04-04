@@ -2,7 +2,9 @@ use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_lexicons::ing_observ::temp::identification::{Identification, Taxon};
+use observing_lexicons::ing_observ::temp::identification::{
+    Identification, IdentificationRecord, Taxon, TaxonTaxonRank,
+};
 use serde::Deserialize;
 use tracing::{info, warn};
 use ts_rs::TS;
@@ -78,7 +80,10 @@ pub async fn create_identification(
 
     let taxon = Taxon {
         scientific_name: (&*body.scientific_name).into(),
-        taxon_rank: fields.taxon_rank.as_deref().map(Into::into),
+        taxon_rank: fields
+            .taxon_rank
+            .as_deref()
+            .map(|s| TaxonTaxonRank::from_value(s.into())),
         vernacular_name: fields.vernacular_name.as_deref().map(Into::into),
         kingdom: fields.kingdom.as_deref().map(Into::into),
         phylum: fields.phylum.as_deref().map(Into::into),
@@ -102,8 +107,8 @@ pub async fn create_identification(
     let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
-    let resp =
-        auth::create_at_record(&agent, did_parsed, Identification::NSID, record_value).await?;
+    let resp = auth::create_at_record(&agent, did_parsed, IdentificationRecord::NSID, record_value)
+        .await?;
 
     info!(uri = %resp.uri, "Created identification");
 

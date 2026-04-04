@@ -2,7 +2,7 @@ use axum::extract::State;
 use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_lexicons::ing_observ::temp::comment::Comment;
+use observing_lexicons::ing_observ::temp::comment::{Comment, CommentRecord};
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
@@ -51,7 +51,8 @@ pub async fn create_comment(
     let record_value = auth::serialize_at_record(&record)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
-    let resp = auth::create_at_record(&agent, did_parsed, Comment::NSID, record_value).await?;
+    let resp =
+        auth::create_at_record(&agent, did_parsed, CommentRecord::NSID, record_value).await?;
 
     info!(uri = %resp.uri, "Created comment");
 

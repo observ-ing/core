@@ -10,13 +10,15 @@ use alloc::collections::BTreeMap;
 
 #[allow(unused_imports)]
 use core::marker::PhantomData;
-use jacquard_common::CowStr;
+use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
+use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
 use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
@@ -28,51 +30,47 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.
 
-#[lexicon]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(
     rename_all = "camelCase",
     rename = "bio.lexicons.temp.occurrence",
-    tag = "$type"
+    tag = "$type",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
-pub struct Occurrence<'a> {
+pub struct Occurrence<S: BosStr = DefaultStr> {
     ///Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub associated_media: Option<Vec<StrongRef<'a>>>,
+    pub associated_media: Option<Vec<StrongRef<S>>>,
     ///The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coordinate_uncertainty_in_meters: Option<i64>,
     ///The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub decimal_latitude: Option<CowStr<'a>>,
+    pub decimal_latitude: Option<S>,
     ///The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub decimal_longitude: Option<CowStr<'a>>,
+    pub decimal_longitude: Option<S>,
     ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_date: Option<Datetime>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
 #[serde(rename_all = "camelCase")]
-pub struct OccurrenceGetRecordOutput<'a> {
+pub struct OccurrenceGetRecordOutput<S: BosStr = DefaultStr> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub cid: Option<Cid<'a>>,
-    #[serde(borrow)]
-    pub uri: AtUri<'a>,
-    #[serde(borrow)]
-    pub value: Occurrence<'a>,
+    pub cid: Option<Cid<S>>,
+    pub uri: AtUri<S>,
+    pub value: Occurrence<S>,
 }
 
-impl<'a> Occurrence<'a> {
-    pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, OccurrenceRecord>, UriError> {
-        RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
+impl<S: BosStr> Occurrence<S> {
+    pub fn uri(uri: S) -> Result<RecordUri<S, OccurrenceRecord>, UriError> {
+        RecordUri::try_from_uri(AtUri::new(uri)?)
     }
 }
 
@@ -83,18 +81,17 @@ pub struct OccurrenceRecord;
 impl XrpcResp for OccurrenceRecord {
     const NSID: &'static str = "bio.lexicons.temp.occurrence";
     const ENCODING: &'static str = "application/json";
-    type Output<'de> = OccurrenceGetRecordOutput<'de>;
-    type Err<'de> = RecordError<'de>;
+    type Output<S: BosStr> = OccurrenceGetRecordOutput<S>;
+    type Err = RecordError;
 }
 
-impl From<OccurrenceGetRecordOutput<'_>> for Occurrence<'_> {
-    fn from(output: OccurrenceGetRecordOutput<'_>) -> Self {
-        use jacquard_common::IntoStatic;
-        output.value.into_static()
+impl<S: BosStr> From<OccurrenceGetRecordOutput<S>> for Occurrence<S> {
+    fn from(output: OccurrenceGetRecordOutput<S>) -> Self {
+        output.value
     }
 }
 
-impl Collection for Occurrence<'_> {
+impl<S: BosStr> Collection for Occurrence<S> {
     const NSID: &'static str = "bio.lexicons.temp.occurrence";
     type Record = OccurrenceRecord;
 }
@@ -104,7 +101,7 @@ impl Collection for OccurrenceRecord {
     type Record = OccurrenceRecord;
 }
 
-impl<'a> LexiconSchema for Occurrence<'a> {
+impl<S: BosStr> LexiconSchema for Occurrence<S> {
     fn nsid() -> &'static str {
         "bio.lexicons.temp.occurrence"
     }
@@ -157,51 +154,51 @@ pub mod occurrence_state {
     pub mod members {}
 }
 
-/// Builder for constructing an instance of this type
-pub struct OccurrenceBuilder<'a, S: occurrence_state::State> {
-    _state: PhantomData<fn() -> S>,
+/// Builder for constructing an instance of this type.
+pub struct OccurrenceBuilder<S: BosStr, St: occurrence_state::State> {
+    _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Vec<StrongRef<'a>>>,
+        Option<Vec<StrongRef<S>>>,
         Option<i64>,
-        Option<CowStr<'a>>,
-        Option<CowStr<'a>>,
+        Option<S>,
+        Option<S>,
         Option<Datetime>,
     ),
-    _lifetime: PhantomData<&'a ()>,
+    _type: PhantomData<fn() -> S>,
 }
 
-impl<'a> Occurrence<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> OccurrenceBuilder<'a, occurrence_state::Empty> {
+impl<S: BosStr> Occurrence<S> {
+    /// Create a new builder for this type.
+    pub fn new() -> OccurrenceBuilder<S, occurrence_state::Empty> {
         OccurrenceBuilder::new()
     }
 }
 
-impl<'a> OccurrenceBuilder<'a, occurrence_state::Empty> {
-    /// Create a new builder with all fields unset
+impl<S: BosStr> OccurrenceBuilder<S, occurrence_state::Empty> {
+    /// Create a new builder with all fields unset.
     pub fn new() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
             _fields: (None, None, None, None, None),
-            _lifetime: PhantomData,
+            _type: PhantomData,
         }
     }
 }
 
-impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `associatedMedia` field (optional)
-    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<'a>>>>) -> Self {
+    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
     /// Set the `associatedMedia` field to an Option value (optional)
-    pub fn maybe_associated_media(mut self, value: Option<Vec<StrongRef<'a>>>) -> Self {
+    pub fn maybe_associated_media(mut self, value: Option<Vec<StrongRef<S>>>) -> Self {
         self._fields.0 = value;
         self
     }
 }
 
-impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `coordinateUncertaintyInMeters` field (optional)
     pub fn coordinate_uncertainty_in_meters(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -214,33 +211,33 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     }
 }
 
-impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `decimalLatitude` field (optional)
-    pub fn decimal_latitude(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn decimal_latitude(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
         self
     }
     /// Set the `decimalLatitude` field to an Option value (optional)
-    pub fn maybe_decimal_latitude(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_decimal_latitude(mut self, value: Option<S>) -> Self {
         self._fields.2 = value;
         self
     }
 }
 
-impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `decimalLongitude` field (optional)
-    pub fn decimal_longitude(mut self, value: impl Into<Option<CowStr<'a>>>) -> Self {
+    pub fn decimal_longitude(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
         self
     }
     /// Set the `decimalLongitude` field to an Option value (optional)
-    pub fn maybe_decimal_longitude(mut self, value: Option<CowStr<'a>>) -> Self {
+    pub fn maybe_decimal_longitude(mut self, value: Option<S>) -> Self {
         self._fields.3 = value;
         self
     }
 }
 
-impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `eventDate` field (optional)
     pub fn event_date(mut self, value: impl Into<Option<Datetime>>) -> Self {
         self._fields.4 = value.into();
@@ -253,12 +250,12 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
     }
 }
 
-impl<'a, S> OccurrenceBuilder<'a, S>
+impl<S: BosStr, St> OccurrenceBuilder<S, St>
 where
-    S: occurrence_state::State,
+    St: occurrence_state::State,
 {
-    /// Build the final struct
-    pub fn build(self) -> Occurrence<'a> {
+    /// Build the final struct.
+    pub fn build(self) -> Occurrence<S> {
         Occurrence {
             associated_media: self._fields.0,
             coordinate_uncertainty_in_meters: self._fields.1,
@@ -268,14 +265,8 @@ where
             extra_data: Default::default(),
         }
     }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> Occurrence<'a> {
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Occurrence<S> {
         Occurrence {
             associated_media: self._fields.0,
             coordinate_uncertainty_in_meters: self._fields.1,
