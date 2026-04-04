@@ -401,7 +401,7 @@ async fn backfill_occurrences(
     };
 
     // Fetch from both the current and legacy collection NSIDs — PDS repos may
-    // still have records under the old name until migrated.
+    // still have records under the old name.
     let mut records = list_records(client, &pds, did, OCCURRENCE_COLLECTION)
         .await
         .unwrap_or_default();
