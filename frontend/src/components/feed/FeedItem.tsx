@@ -10,7 +10,6 @@ import {
   MenuItem,
   Card,
   CardHeader,
-  CardMedia,
   CardContent,
   CardActions,
   CardActionArea,
@@ -26,6 +25,7 @@ import { getImageUrl } from "../../services/api";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
 import { formatTimeAgo, getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
 interface FeedItemProps {
@@ -222,15 +222,10 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         />
 
         {imageUrl && (
-          <CardMedia
-            component="img"
-            image={imageUrl}
+          <ImageWithSkeleton
+            src={imageUrl}
             alt={species || "Observation photo"}
-            loading="lazy"
-            sx={{
-              maxHeight: FEED_IMAGE_MAX_HEIGHT,
-              objectFit: "cover",
-            }}
+            sx={{ maxHeight: FEED_IMAGE_MAX_HEIGHT }}
           />
         )}
 
