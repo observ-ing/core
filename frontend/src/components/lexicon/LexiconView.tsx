@@ -71,10 +71,11 @@ const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
   .map((mod) => mod.default)
   .sort((a, b) => a.id.localeCompare(b.id));
 
-const isInHouse = (schema: LexiconSchema) => schema.id.startsWith("ing.observ.");
+const isProjectLexicon = (schema: LexiconSchema) =>
+  schema.id.startsWith("ing.observ.") || schema.id.startsWith("bio.lexicons.");
 
-const inHouseLexicons = allLexicons.filter(isInHouse);
-const externalLexicons = allLexicons.filter((s) => !isInHouse(s));
+const projectLexicons = allLexicons.filter(isProjectLexicon);
+const externalLexicons = allLexicons.filter((s) => !isProjectLexicon(s));
 
 function formatType(prop: LexiconProperty): string {
   if (prop.type === "ref" && prop.ref) {
@@ -297,9 +298,9 @@ export function LexiconView() {
       </Typography>
 
       <Typography variant="h5" fontWeight={600} sx={{ mt: 2, mb: 2 }}>
-        Observ.ing Lexicons
+        Project Lexicons
       </Typography>
-      {inHouseLexicons.map((schema) => (
+      {projectLexicons.map((schema) => (
         <LexiconCard key={schema.id} schema={schema} />
       ))}
 
