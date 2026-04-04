@@ -136,14 +136,13 @@ jobs:
           components: rustfmt
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          tool: jacquard-lexgen@0.11.1
+          tool: jacquard-lexgen@0.12.0-beta.2
       - name: Check generated lexicon types are up to date
         run: |
           ./scripts/generate-rust-types.sh
           cargo fmt -p observing-lexicons
           cargo check -p observing-lexicons
-          # TODO: restore git diff --exit-code once jacquard-codegen produces deterministic output
-          # https://tangled.org/nonbinary.computer/jacquard/issues/TODO
+          # TODO: restore git diff --exit-code once jacquard-codegen state field ordering is fully deterministic
           # git diff --exit-code crates/observing-lexicons/src/
 
   rust-test:

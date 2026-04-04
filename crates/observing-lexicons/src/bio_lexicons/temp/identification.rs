@@ -367,37 +367,37 @@ pub mod identification_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type Subject;
         type ScientificName;
+        type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type Subject = Unset;
         type ScientificName = Unset;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
-    impl<St: State> sealed::Sealed for SetSubject<St> {}
-    impl<St: State> State for SetSubject<St> {
-        type Subject = Set<members::subject>;
-        type ScientificName = St::ScientificName;
+        type Subject = Unset;
     }
     ///State transition - sets the `scientific_name` field to Set
     pub struct SetScientificName<St: State = Empty>(PhantomData<fn() -> St>);
     impl<St: State> sealed::Sealed for SetScientificName<St> {}
     impl<St: State> State for SetScientificName<St> {
-        type Subject = St::Subject;
         type ScientificName = Set<members::scientific_name>;
+        type Subject = St::Subject;
+    }
+    ///State transition - sets the `subject` field to Set
+    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubject<St> {}
+    impl<St: State> State for SetSubject<St> {
+        type ScientificName = St::ScientificName;
+        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject` field
-        pub struct subject(());
         ///Marker type for the `scientific_name` field
         pub struct scientific_name(());
+        ///Marker type for the `subject` field
+        pub struct subject(());
     }
 }
 
@@ -612,8 +612,8 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
 impl<S: BosStr, St> IdentificationBuilder<S, St>
 where
     St: identification_state::State,
-    St::Subject: identification_state::IsSet,
     St::ScientificName: identification_state::IsSet,
+    St::Subject: identification_state::IsSet,
 {
     /// Build the final struct.
     pub fn build(self) -> Identification<S> {
