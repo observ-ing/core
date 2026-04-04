@@ -149,43 +149,6 @@
           "description": "The greater depth of a range of depth below the local surface in meters (Darwin Core dwc:maximumDepthInMeters)."
         }
       }
-    },
-    "imageEmbed": {
-      "type": "object",
-      "description": "Deprecated: use associatedMedia with bio.lexicons.temp.media references instead.",
-      "required": ["image", "alt"],
-      "properties": {
-        "image": {
-          "type": "blob",
-          "accept": ["image/jpeg", "image/png", "image/webp"],
-          "maxSize": 10000000,
-          "description": "The image blob reference."
-        },
-        "alt": {
-          "type": "string",
-          "description": "Alt text description of the image for accessibility.",
-          "maxLength": 1000
-        },
-        "aspectRatio": {
-          "type": "ref",
-          "ref": "#aspectRatio"
-        }
-      }
-    },
-    "aspectRatio": {
-      "type": "object",
-      "description": "Width and height of an image, used for proper display before loading.",
-      "required": ["width", "height"],
-      "properties": {
-        "width": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "height": {
-          "type": "integer",
-          "minimum": 1
-        }
-      }
     }
   }
 }
