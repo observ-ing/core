@@ -74,26 +74,13 @@ pub fn occurrence_from_json(
     let record: Occurrence<'_> =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
-    // Try flat coordinates first (bio.lexicons.temp.occurrence), then fall back
-    // to nested location object (legacy ing.observ.temp.occurrence records on PDS).
-    let location = record_json.get("location");
     let lat = record
         .decimal_latitude
         .as_deref()
-        .or_else(|| {
-            location
-                .and_then(|l| l.get("decimalLatitude"))
-                .and_then(|v| v.as_str())
-        })
         .and_then(|s| s.parse::<f64>().ok());
     let lng = record
         .decimal_longitude
         .as_deref()
-        .or_else(|| {
-            location
-                .and_then(|l| l.get("decimalLongitude"))
-                .and_then(|v| v.as_str())
-        })
         .and_then(|s| s.parse::<f64>().ok());
 
     let (lat, lng) = match (lat, lng) {
@@ -109,13 +96,6 @@ pub fn occurrence_from_json(
         .event_date
         .as_ref()
         .and_then(|d| parse_datetime(&d.to_string()))
-        .or_else(|| {
-            // Fallback: read eventDate from raw JSON (legacy records)
-            record_json
-                .get("eventDate")
-                .and_then(|v| v.as_str())
-                .and_then(parse_datetime)
-        })
         .ok_or_else(|| ProcessingError::InvalidField("missing valid eventDate".into()))?;
 
     // Extension fields: read from raw JSON (not part of bio.lexicons.temp.occurrence schema)
@@ -134,12 +114,10 @@ pub fn occurrence_from_json(
                 .collect()
         });
 
-    // Read a string field from top-level JSON, falling back to nested location object.
     let str_field = |key: &str| -> Option<String> {
         record_json
             .get(key)
             .and_then(|v| v.as_str())
-            .or_else(|| location.and_then(|l| l.get(key)).and_then(|v| v.as_str()))
             .map(Into::into)
     };
 
@@ -154,11 +132,6 @@ pub fn occurrence_from_json(
             latitude: lat,
             coordinate_uncertainty_meters: record
                 .coordinate_uncertainty_in_meters
-                .or_else(|| {
-                    location
-                        .and_then(|l| l.get("coordinateUncertaintyInMeters"))
-                        .and_then(|v| v.as_i64())
-                })
                 .map(|v| v as i32),
             continent: str_field("continent"),
             country: str_field("country"),

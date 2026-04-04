@@ -193,10 +193,7 @@ async fn main() -> Result<()> {
                             .and_then(|r| r.get("subject"))
                             .and_then(|s| s.get("uri"))
                             .and_then(|u| u.as_str())
-                            .is_some_and(|uri| {
-                                uri.contains(OCCURRENCE_COLLECTION)
-                                    || uri.contains("ing.observ.temp.occurrence")
-                            });
+                            .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
 
                         if is_occurrence_like || action == "delete" {
                             let r = if action == "delete" {

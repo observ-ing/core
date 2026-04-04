@@ -7,4 +7,3 @@ pub mod comment;
 pub mod identification;
 pub mod interaction;
 pub mod like;
-pub mod occurrence;
