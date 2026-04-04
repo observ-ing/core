@@ -111,7 +111,7 @@ function PropertyTable({
 
   return (
     <TableContainer>
-      <Table size="small">
+      <Table size="small" sx={{ minWidth: 600 }}>
         <TableHead>
           <TableRow>
             <TableCell sx={{ fontWeight: 600 }}>Field</TableCell>
@@ -152,7 +152,7 @@ function PropertyTable({
                 <Typography
                   variant="body2"
                   component="code"
-                  sx={{ fontFamily: "monospace", fontSize: "0.8rem", whiteSpace: "nowrap" }}
+                  sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
                 >
                   {formatType(prop)}
                 </Typography>
@@ -241,7 +241,7 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
           {def.description}
         </Typography>
       )}
-      <Collapse in={open}>
+      <Collapse in={open} sx={{ minWidth: 0, "& .MuiCollapse-wrapperInner": { minWidth: 0 } }}>
         <Box sx={{ ml: 2 }}>
           <PropertyTable properties={properties} required={required} />
         </Box>
@@ -255,7 +255,7 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
   const otherDefs = Object.entries(schema.defs).filter(([k]) => k !== "main");
 
   return (
-    <Card variant="outlined" sx={{ mb: 3 }}>
+    <Card variant="outlined" sx={{ mb: 3, overflow: "hidden" }}>
       <CardContent>
         <Typography variant="h6" component="code" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
           {schema.id}
@@ -280,7 +280,7 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
 export function LexiconView() {
   usePageTitle("Lexicons");
   return (
-    <Box sx={{ maxWidth: 960, mx: "auto", p: { xs: 2, md: 3 } }}>
+    <Box sx={{ maxWidth: 960, width: "100%", mx: "auto", p: { xs: 2, md: 3 }, minWidth: 0 }}>
       <Typography variant="h4" fontWeight={700} gutterBottom>
         Lexicons
       </Typography>
