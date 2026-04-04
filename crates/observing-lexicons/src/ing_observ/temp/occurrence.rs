@@ -14,7 +14,6 @@ use jacquard_common::CowStr;
 
 #[allow(unused_imports)]
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
-use jacquard_common::types::blob::BlobRef;
 use jacquard_common::types::collection::{Collection, RecordError};
 use jacquard_common::types::string::{AtUri, Cid, Datetime};
 use jacquard_common::types::uri::{RecordUri, UriError};
@@ -23,37 +22,11 @@ use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
+use crate::com_atproto::repo::strong_ref::StrongRef;
 use crate::ing_observ::temp::occurrence;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
-/// Width and height of an image, used for proper display before loading.
-
-#[lexicon]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct AspectRatio<'a> {
-    pub height: i64,
-    pub width: i64,
-}
-
-/// A reference to an uploaded image blob.
-
-#[lexicon]
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
-#[serde(rename_all = "camelCase")]
-pub struct ImageEmbed<'a> {
-    ///Alt text description of the image for accessibility.
-    #[serde(borrow)]
-    pub alt: CowStr<'a>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(borrow)]
-    pub aspect_ratio: Option<occurrence::AspectRatio<'a>>,
-    ///The image blob reference.
-    #[serde(borrow)]
-    pub image: BlobRef<'a>,
-}
-
 /// Geographic coordinates following Darwin Core standards.
 
 #[lexicon]
@@ -249,10 +222,10 @@ impl jacquard_common::IntoStatic for LocationContinent<'_> {
     tag = "$type"
 )]
 pub struct Occurrence<'a> {
-    ///Array of image references documenting the observation.
+    ///Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(borrow)]
-    pub blobs: Option<Vec<occurrence::ImageEmbed<'a>>>,
+    pub associated_media: Option<Vec<StrongRef<'a>>>,
     ///Timestamp when this record was created.
     pub created_at: Datetime,
     ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
@@ -400,108 +373,6 @@ pub struct OccurrenceGetRecordOutput<'a> {
 impl<'a> Occurrence<'a> {
     pub fn uri(uri: impl Into<CowStr<'a>>) -> Result<RecordUri<'a, OccurrenceRecord>, UriError> {
         RecordUri::try_from_uri(AtUri::new_cow(uri.into())?)
-    }
-}
-
-impl<'a> LexiconSchema for AspectRatio<'a> {
-    fn nsid() -> &'static str {
-        "ing.observ.temp.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "aspectRatio"
-    }
-    fn lexicon_doc() -> LexiconDoc<'static> {
-        lexicon_doc_ing_observ_temp_occurrence()
-    }
-    fn validate(&self) -> Result<(), ConstraintError> {
-        {
-            let value = &self.height;
-            if *value < 1i64 {
-                return Err(ConstraintError::Minimum {
-                    path: ValidationPath::from_field("height"),
-                    min: 1i64,
-                    actual: *value,
-                });
-            }
-        }
-        {
-            let value = &self.width;
-            if *value < 1i64 {
-                return Err(ConstraintError::Minimum {
-                    path: ValidationPath::from_field("width"),
-                    min: 1i64,
-                    actual: *value,
-                });
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<'a> LexiconSchema for ImageEmbed<'a> {
-    fn nsid() -> &'static str {
-        "ing.observ.temp.occurrence"
-    }
-    fn def_name() -> &'static str {
-        "imageEmbed"
-    }
-    fn lexicon_doc() -> LexiconDoc<'static> {
-        lexicon_doc_ing_observ_temp_occurrence()
-    }
-    fn validate(&self) -> Result<(), ConstraintError> {
-        {
-            let value = &self.alt;
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 1000usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("alt"),
-                    max: 1000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        {
-            let value = &self.image;
-            {
-                let size = value.blob().size;
-                if size > 10000000usize {
-                    return Err(ConstraintError::BlobTooLarge {
-                        path: ValidationPath::from_field("image"),
-                        max: 10000000usize,
-                        actual: size,
-                    });
-                }
-            }
-        }
-        {
-            let value = &self.image;
-            {
-                let mime = value.blob().mime_type.as_str();
-                let accepted: &[&str] = &["image/jpeg", "image/png", "image/webp"];
-                let matched = accepted.iter().any(|pattern| {
-                    if *pattern == "*/*" {
-                        true
-                    } else if pattern.ends_with("/*") {
-                        let prefix = &pattern[..pattern.len() - 2];
-                        mime.starts_with(prefix) && mime.as_bytes().get(prefix.len()) == Some(&b'/')
-                    } else {
-                        mime == *pattern
-                    }
-                });
-                if !matched {
-                    return Err(ConstraintError::BlobMimeTypeNotAccepted {
-                        path: ValidationPath::from_field("image"),
-                        accepted: vec![
-                            "image/jpeg".to_string(),
-                            "image/png".to_string(),
-                            "image/webp".to_string(),
-                        ],
-                        actual: mime.to_string(),
-                    });
-                }
-            }
-        }
-        Ok(())
     }
 }
 
@@ -658,11 +529,11 @@ impl<'a> LexiconSchema for Occurrence<'a> {
         lexicon_doc_ing_observ_temp_occurrence()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.blobs {
+        if let Some(ref value) = self.associated_media {
             #[allow(unused_comparisons)]
             if value.len() > 10usize {
                 return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("blobs"),
+                    path: ValidationPath::from_field("associated_media"),
                     max: 10usize,
                     actual: value.len(),
                 });
@@ -712,141 +583,8 @@ impl<'a> LexiconSchema for Occurrence<'a> {
     }
 }
 
-pub mod aspect_ratio_state {
-
-    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
-    #[allow(unused)]
-    use ::core::marker::PhantomData;
-    mod sealed {
-        pub trait Sealed {}
-    }
-    /// State trait tracking which required fields have been set
-    pub trait State: sealed::Sealed {
-        type Height;
-        type Width;
-    }
-    /// Empty state - all required fields are unset
-    pub struct Empty(());
-    impl sealed::Sealed for Empty {}
-    impl State for Empty {
-        type Height = Unset;
-        type Width = Unset;
-    }
-    ///State transition - sets the `height` field to Set
-    pub struct SetHeight<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetHeight<S> {}
-    impl<S: State> State for SetHeight<S> {
-        type Height = Set<members::height>;
-        type Width = S::Width;
-    }
-    ///State transition - sets the `width` field to Set
-    pub struct SetWidth<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetWidth<S> {}
-    impl<S: State> State for SetWidth<S> {
-        type Height = S::Height;
-        type Width = Set<members::width>;
-    }
-    /// Marker types for field names
-    #[allow(non_camel_case_types)]
-    pub mod members {
-        ///Marker type for the `height` field
-        pub struct height(());
-        ///Marker type for the `width` field
-        pub struct width(());
-    }
-}
-
-/// Builder for constructing an instance of this type
-pub struct AspectRatioBuilder<'a, S: aspect_ratio_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (Option<i64>, Option<i64>),
-    _lifetime: PhantomData<&'a ()>,
-}
-
-impl<'a> AspectRatio<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> AspectRatioBuilder<'a, aspect_ratio_state::Empty> {
-        AspectRatioBuilder::new()
-    }
-}
-
-impl<'a> AspectRatioBuilder<'a, aspect_ratio_state::Empty> {
-    /// Create a new builder with all fields unset
-    pub fn new() -> Self {
-        AspectRatioBuilder {
-            _state: PhantomData,
-            _fields: (None, None),
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> AspectRatioBuilder<'a, S>
-where
-    S: aspect_ratio_state::State,
-    S::Height: aspect_ratio_state::IsUnset,
-{
-    /// Set the `height` field (required)
-    pub fn height(
-        mut self,
-        value: impl Into<i64>,
-    ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetHeight<S>> {
-        self._fields.0 = Option::Some(value.into());
-        AspectRatioBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> AspectRatioBuilder<'a, S>
-where
-    S: aspect_ratio_state::State,
-    S::Width: aspect_ratio_state::IsUnset,
-{
-    /// Set the `width` field (required)
-    pub fn width(
-        mut self,
-        value: impl Into<i64>,
-    ) -> AspectRatioBuilder<'a, aspect_ratio_state::SetWidth<S>> {
-        self._fields.1 = Option::Some(value.into());
-        AspectRatioBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> AspectRatioBuilder<'a, S>
-where
-    S: aspect_ratio_state::State,
-    S::Height: aspect_ratio_state::IsSet,
-    S::Width: aspect_ratio_state::IsSet,
-{
-    /// Build the final struct
-    pub fn build(self) -> AspectRatio<'a> {
-        AspectRatio {
-            height: self._fields.0.unwrap(),
-            width: self._fields.1.unwrap(),
-            extra_data: Default::default(),
-        }
-    }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> AspectRatio<'a> {
-        AspectRatio {
-            height: self._fields.0.unwrap(),
-            width: self._fields.1.unwrap(),
-            extra_data: Some(extra_data),
-        }
-    }
+fn _default_location_geodetic_datum() -> Option<CowStr<'static>> {
+    Some(CowStr::from("WGS84"))
 }
 
 fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
@@ -859,77 +597,6 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
         id: CowStr::new_static("ing.observ.temp.occurrence"),
         defs: {
             let mut map = BTreeMap::new();
-            map.insert(
-                SmolStr::new_static("aspectRatio"),
-                LexUserType::Object(LexObject {
-                    description: Some(CowStr::new_static(
-                        "Width and height of an image, used for proper display before loading.",
-                    )),
-                    required: Some(vec![
-                        SmolStr::new_static("width"),
-                        SmolStr::new_static("height"),
-                    ]),
-                    properties: {
-                        #[allow(unused_mut)]
-                        let mut map = BTreeMap::new();
-                        map.insert(
-                            SmolStr::new_static("height"),
-                            LexObjectProperty::Integer(LexInteger {
-                                minimum: Some(1i64),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("width"),
-                            LexObjectProperty::Integer(LexInteger {
-                                minimum: Some(1i64),
-                                ..Default::default()
-                            }),
-                        );
-                        map
-                    },
-                    ..Default::default()
-                }),
-            );
-            map.insert(
-                SmolStr::new_static("imageEmbed"),
-                LexUserType::Object(LexObject {
-                    description: Some(CowStr::new_static("A reference to an uploaded image blob.")),
-                    required: Some(vec![
-                        SmolStr::new_static("image"),
-                        SmolStr::new_static("alt"),
-                    ]),
-                    properties: {
-                        #[allow(unused_mut)]
-                        let mut map = BTreeMap::new();
-                        map.insert(
-                            SmolStr::new_static("alt"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(CowStr::new_static(
-                                    "Alt text description of the image for accessibility.",
-                                )),
-                                max_length: Some(1000usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("aspectRatio"),
-                            LexObjectProperty::Ref(LexRef {
-                                r#ref: CowStr::new_static("#aspectRatio"),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("image"),
-                            LexObjectProperty::Blob(LexBlob {
-                                ..Default::default()
-                            }),
-                        );
-                        map
-                    },
-                    ..Default::default()
-                }),
-            );
             map.insert(
                 SmolStr::new_static("location"),
                 LexUserType::Object(LexObject {
@@ -1154,15 +821,15 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
                             #[allow(unused_mut)]
                             let mut map = BTreeMap::new();
                             map.insert(
-                                SmolStr::new_static("blobs"),
+                                SmolStr::new_static("associatedMedia"),
                                 LexObjectProperty::Array(LexArray {
                                     description: Some(
                                         CowStr::new_static(
-                                            "Array of image references documenting the observation.",
+                                            "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
                                         ),
                                     ),
                                     items: LexArrayItem::Ref(LexRef {
-                                        r#ref: CowStr::new_static("#imageEmbed"),
+                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
                                         ..Default::default()
                                     }),
                                     max_length: Some(10usize),
@@ -1264,166 +931,6 @@ fn lexicon_doc_ing_observ_temp_occurrence() -> LexiconDoc<'static> {
     }
 }
 
-pub mod image_embed_state {
-
-    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
-    #[allow(unused)]
-    use ::core::marker::PhantomData;
-    mod sealed {
-        pub trait Sealed {}
-    }
-    /// State trait tracking which required fields have been set
-    pub trait State: sealed::Sealed {
-        type Alt;
-        type Image;
-    }
-    /// Empty state - all required fields are unset
-    pub struct Empty(());
-    impl sealed::Sealed for Empty {}
-    impl State for Empty {
-        type Alt = Unset;
-        type Image = Unset;
-    }
-    ///State transition - sets the `alt` field to Set
-    pub struct SetAlt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetAlt<S> {}
-    impl<S: State> State for SetAlt<S> {
-        type Alt = Set<members::alt>;
-        type Image = S::Image;
-    }
-    ///State transition - sets the `image` field to Set
-    pub struct SetImage<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetImage<S> {}
-    impl<S: State> State for SetImage<S> {
-        type Alt = S::Alt;
-        type Image = Set<members::image>;
-    }
-    /// Marker types for field names
-    #[allow(non_camel_case_types)]
-    pub mod members {
-        ///Marker type for the `alt` field
-        pub struct alt(());
-        ///Marker type for the `image` field
-        pub struct image(());
-    }
-}
-
-/// Builder for constructing an instance of this type
-pub struct ImageEmbedBuilder<'a, S: image_embed_state::State> {
-    _state: PhantomData<fn() -> S>,
-    _fields: (
-        Option<CowStr<'a>>,
-        Option<occurrence::AspectRatio<'a>>,
-        Option<BlobRef<'a>>,
-    ),
-    _lifetime: PhantomData<&'a ()>,
-}
-
-impl<'a> ImageEmbed<'a> {
-    /// Create a new builder for this type
-    pub fn new() -> ImageEmbedBuilder<'a, image_embed_state::Empty> {
-        ImageEmbedBuilder::new()
-    }
-}
-
-impl<'a> ImageEmbedBuilder<'a, image_embed_state::Empty> {
-    /// Create a new builder with all fields unset
-    pub fn new() -> Self {
-        ImageEmbedBuilder {
-            _state: PhantomData,
-            _fields: (None, None, None),
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> ImageEmbedBuilder<'a, S>
-where
-    S: image_embed_state::State,
-    S::Alt: image_embed_state::IsUnset,
-{
-    /// Set the `alt` field (required)
-    pub fn alt(
-        mut self,
-        value: impl Into<CowStr<'a>>,
-    ) -> ImageEmbedBuilder<'a, image_embed_state::SetAlt<S>> {
-        self._fields.0 = Option::Some(value.into());
-        ImageEmbedBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S: image_embed_state::State> ImageEmbedBuilder<'a, S> {
-    /// Set the `aspectRatio` field (optional)
-    pub fn aspect_ratio(mut self, value: impl Into<Option<occurrence::AspectRatio<'a>>>) -> Self {
-        self._fields.1 = value.into();
-        self
-    }
-    /// Set the `aspectRatio` field to an Option value (optional)
-    pub fn maybe_aspect_ratio(mut self, value: Option<occurrence::AspectRatio<'a>>) -> Self {
-        self._fields.1 = value;
-        self
-    }
-}
-
-impl<'a, S> ImageEmbedBuilder<'a, S>
-where
-    S: image_embed_state::State,
-    S::Image: image_embed_state::IsUnset,
-{
-    /// Set the `image` field (required)
-    pub fn image(
-        mut self,
-        value: impl Into<BlobRef<'a>>,
-    ) -> ImageEmbedBuilder<'a, image_embed_state::SetImage<S>> {
-        self._fields.2 = Option::Some(value.into());
-        ImageEmbedBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _lifetime: PhantomData,
-        }
-    }
-}
-
-impl<'a, S> ImageEmbedBuilder<'a, S>
-where
-    S: image_embed_state::State,
-    S::Alt: image_embed_state::IsSet,
-    S::Image: image_embed_state::IsSet,
-{
-    /// Build the final struct
-    pub fn build(self) -> ImageEmbed<'a> {
-        ImageEmbed {
-            alt: self._fields.0.unwrap(),
-            aspect_ratio: self._fields.1,
-            image: self._fields.2.unwrap(),
-            extra_data: Default::default(),
-        }
-    }
-    /// Build the final struct with custom extra_data
-    pub fn build_with_data(
-        self,
-        extra_data: BTreeMap<
-            jacquard_common::deps::smol_str::SmolStr,
-            jacquard_common::types::value::Data<'a>,
-        >,
-    ) -> ImageEmbed<'a> {
-        ImageEmbed {
-            alt: self._fields.0.unwrap(),
-            aspect_ratio: self._fields.1,
-            image: self._fields.2.unwrap(),
-            extra_data: Some(extra_data),
-        }
-    }
-}
-
-fn _default_location_geodetic_datum() -> Option<CowStr<'static>> {
-    Some(CowStr::from("WGS84"))
-}
-
 pub mod occurrence_state {
 
     pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
@@ -1434,51 +941,51 @@ pub mod occurrence_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Location;
         type CreatedAt;
         type EventDate;
-        type Location;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Location = Unset;
         type CreatedAt = Unset;
         type EventDate = Unset;
-        type Location = Unset;
-    }
-    ///State transition - sets the `created_at` field to Set
-    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
-    impl<S: State> State for SetCreatedAt<S> {
-        type CreatedAt = Set<members::created_at>;
-        type EventDate = S::EventDate;
-        type Location = S::Location;
-    }
-    ///State transition - sets the `event_date` field to Set
-    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
-    impl<S: State> sealed::Sealed for SetEventDate<S> {}
-    impl<S: State> State for SetEventDate<S> {
-        type CreatedAt = S::CreatedAt;
-        type EventDate = Set<members::event_date>;
-        type Location = S::Location;
     }
     ///State transition - sets the `location` field to Set
     pub struct SetLocation<S: State = Empty>(PhantomData<fn() -> S>);
     impl<S: State> sealed::Sealed for SetLocation<S> {}
     impl<S: State> State for SetLocation<S> {
+        type Location = Set<members::location>;
         type CreatedAt = S::CreatedAt;
         type EventDate = S::EventDate;
-        type Location = Set<members::location>;
+    }
+    ///State transition - sets the `created_at` field to Set
+    pub struct SetCreatedAt<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetCreatedAt<S> {}
+    impl<S: State> State for SetCreatedAt<S> {
+        type Location = S::Location;
+        type CreatedAt = Set<members::created_at>;
+        type EventDate = S::EventDate;
+    }
+    ///State transition - sets the `event_date` field to Set
+    pub struct SetEventDate<S: State = Empty>(PhantomData<fn() -> S>);
+    impl<S: State> sealed::Sealed for SetEventDate<S> {}
+    impl<S: State> State for SetEventDate<S> {
+        type Location = S::Location;
+        type CreatedAt = S::CreatedAt;
+        type EventDate = Set<members::event_date>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `location` field
+        pub struct location(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
         ///Marker type for the `event_date` field
         pub struct event_date(());
-        ///Marker type for the `location` field
-        pub struct location(());
     }
 }
 
@@ -1486,7 +993,7 @@ pub mod occurrence_state {
 pub struct OccurrenceBuilder<'a, S: occurrence_state::State> {
     _state: PhantomData<fn() -> S>,
     _fields: (
-        Option<Vec<occurrence::ImageEmbed<'a>>>,
+        Option<Vec<StrongRef<'a>>>,
         Option<Datetime>,
         Option<Datetime>,
         Option<OccurrenceLicense<'a>>,
@@ -1517,13 +1024,13 @@ impl<'a> OccurrenceBuilder<'a, occurrence_state::Empty> {
 }
 
 impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
-    /// Set the `blobs` field (optional)
-    pub fn blobs(mut self, value: impl Into<Option<Vec<occurrence::ImageEmbed<'a>>>>) -> Self {
+    /// Set the `associatedMedia` field (optional)
+    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<'a>>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
-    /// Set the `blobs` field to an Option value (optional)
-    pub fn maybe_blobs(mut self, value: Option<Vec<occurrence::ImageEmbed<'a>>>) -> Self {
+    /// Set the `associatedMedia` field to an Option value (optional)
+    pub fn maybe_associated_media(mut self, value: Option<Vec<StrongRef<'a>>>) -> Self {
         self._fields.0 = value;
         self
     }
@@ -1641,14 +1148,14 @@ impl<'a, S: occurrence_state::State> OccurrenceBuilder<'a, S> {
 impl<'a, S> OccurrenceBuilder<'a, S>
 where
     S: occurrence_state::State,
+    S::Location: occurrence_state::IsSet,
     S::CreatedAt: occurrence_state::IsSet,
     S::EventDate: occurrence_state::IsSet,
-    S::Location: occurrence_state::IsSet,
 {
     /// Build the final struct
     pub fn build(self) -> Occurrence<'a> {
         Occurrence {
-            blobs: self._fields.0,
+            associated_media: self._fields.0,
             created_at: self._fields.1.unwrap(),
             event_date: self._fields.2.unwrap(),
             license: self._fields.3,
@@ -1668,7 +1175,7 @@ where
         >,
     ) -> Occurrence<'a> {
         Occurrence {
-            blobs: self._fields.0,
+            associated_media: self._fields.0,
             created_at: self._fields.1.unwrap(),
             event_date: self._fields.2.unwrap(),
             license: self._fields.3,
