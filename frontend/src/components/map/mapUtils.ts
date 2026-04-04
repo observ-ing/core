@@ -17,7 +17,7 @@ export function createMap(
   });
 
   map.addControl(new maplibregl.AttributionControl({ compact: true }));
-  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
   // Collapse attribution behind the (i) button once tiles load
   map.once("load", () => {
