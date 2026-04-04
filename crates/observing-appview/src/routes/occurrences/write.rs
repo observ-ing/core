@@ -6,6 +6,7 @@ use observing_lexicons::bio_lexicons::temp::media::Media;
 use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
 use serde::Deserialize;
 use serde_json::json;
+use chrono::Utc;
 use tracing::{info, warn};
 use ts_rs::TS;
 
@@ -126,7 +127,7 @@ pub async fn create_occurrence(
         .parse()
         .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
 
-    // Build occurrence record with flat coordinates (bio.lexicons.temp.occurrence)
+    // Build occurrence record with only schema fields (bio.lexicons.temp.occurrence)
     let record_value = {
         let lat_str: jacquard_common::CowStr<'_> = body.latitude.to_string().into();
         let lng_str: jacquard_common::CowStr<'_> = body.longitude.to_string().into();
@@ -142,46 +143,8 @@ pub async fn create_occurrence(
 
         let mut rv = auth::serialize_at_record(&record)?;
 
-        // Extension fields beyond the bio.lexicons.temp.occurrence schema
         if !media_refs.is_empty() {
             rv["associatedMedia"] = json!(media_refs);
-        }
-        rv["createdAt"] = json!(now.as_str());
-        if let Some(ref notes) = body.notes {
-            rv["notes"] = json!(notes);
-        }
-        if let Some(ref recorded_by) = body.recorded_by {
-            if !recorded_by.is_empty() {
-                rv["recordedBy"] = json!(recorded_by);
-            }
-        }
-
-        // Reverse geocoded geography fields
-        if let Some(ref g) = geo {
-            if let Some(ref v) = g.continent {
-                rv["continent"] = json!(v);
-            }
-            if let Some(ref v) = g.country {
-                rv["country"] = json!(v);
-            }
-            if let Some(ref v) = g.country_code {
-                rv["countryCode"] = json!(v);
-            }
-            if let Some(ref v) = g.state_province {
-                rv["stateProvince"] = json!(v);
-            }
-            if let Some(ref v) = g.county {
-                rv["county"] = json!(v);
-            }
-            if let Some(ref v) = g.municipality {
-                rv["municipality"] = json!(v);
-            }
-            if let Some(ref v) = g.locality {
-                rv["locality"] = json!(v);
-            }
-            if let Some(ref v) = g.water_body {
-                rv["waterBody"] = json!(v);
-            }
         }
 
         rv
@@ -210,6 +173,21 @@ pub async fn create_occurrence(
         // but the DB stores blob entries for efficient image serving.
         if !blob_entries.is_empty() {
             parsed.params.associated_media = Some(json!(blob_entries));
+        }
+        // Set DB-only fields not stored in the PDS record
+        parsed.params.created_at = Utc::now();
+        if let Some(ref notes) = body.notes {
+            parsed.params.occurrence_remarks = Some(notes.clone());
+        }
+        if let Some(ref g) = geo {
+            parsed.params.continent = g.continent.clone();
+            parsed.params.country = g.country.clone();
+            parsed.params.country_code = g.country_code.clone();
+            parsed.params.state_province = g.state_province.clone();
+            parsed.params.county = g.county.clone();
+            parsed.params.municipality = g.municipality.clone();
+            parsed.params.locality = g.locality.clone();
+            parsed.params.water_body = g.water_body.clone();
         }
         if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
             warn!(error = %e, "Failed to upsert occurrence into local DB");

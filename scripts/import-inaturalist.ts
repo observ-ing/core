@@ -180,16 +180,10 @@ async function main() {
       decimalLatitude: String(lat),
       decimalLongitude: String(lng),
       eventDate: new Date(eventDate).toISOString(),
-      createdAt: new Date(obs.created_at).toISOString(),
     };
     if (obs.positional_accuracy) {
       occurrenceRecord["coordinateUncertaintyInMeters"] = obs.positional_accuracy;
     }
-
-    if (obs.place_guess) occurrenceRecord["verbatimLocality"] = obs.place_guess;
-    if (obs.description) occurrenceRecord["notes"] = obs.description;
-    if (license) occurrenceRecord["license"] = license;
-    if (blobs.length > 0) occurrenceRecord["blobs"] = blobs;
 
     // Create the occurrence record on the PDS
     try {

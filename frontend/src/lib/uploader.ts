@@ -73,16 +73,10 @@ export class OccurrenceUploader {
       decimalLongitude: String(data.location.decimalLongitude),
       eventDate: data.eventDate,
       associatedMedia: mediaRefs,
-      createdAt: new Date().toISOString(),
     };
     if (data.location.coordinateUncertaintyInMeters != null) {
       record["coordinateUncertaintyInMeters"] = data.location.coordinateUncertaintyInMeters;
     }
-    if (data.basisOfRecord) record["basisOfRecord"] = data.basisOfRecord;
-    if (data.scientificName) record["scientificName"] = data.scientificName;
-    if (data.verbatimLocality) record["verbatimLocality"] = data.verbatimLocality;
-    if (data.habitat) record["habitat"] = data.habitat;
-    if (data.occurrenceRemarks) record["occurrenceRemarks"] = data.occurrenceRemarks;
 
     if (!this.agent.session) {
       throw new Error("Not logged in");
