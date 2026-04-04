@@ -487,85 +487,85 @@ pub mod interaction_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
-        type SubjectA;
-        type Direction;
-        type SubjectB;
         type CreatedAt;
+        type Direction;
         type InteractionType;
+        type SubjectA;
+        type SubjectB;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
-        type SubjectA = Unset;
-        type Direction = Unset;
-        type SubjectB = Unset;
         type CreatedAt = Unset;
+        type Direction = Unset;
         type InteractionType = Unset;
-    }
-    ///State transition - sets the `subject_a` field to Set
-    pub struct SetSubjectA<St: State = Empty>(PhantomData<fn() -> St>);
-    impl<St: State> sealed::Sealed for SetSubjectA<St> {}
-    impl<St: State> State for SetSubjectA<St> {
-        type SubjectA = Set<members::subject_a>;
-        type Direction = St::Direction;
-        type SubjectB = St::SubjectB;
-        type CreatedAt = St::CreatedAt;
-        type InteractionType = St::InteractionType;
-    }
-    ///State transition - sets the `direction` field to Set
-    pub struct SetDirection<St: State = Empty>(PhantomData<fn() -> St>);
-    impl<St: State> sealed::Sealed for SetDirection<St> {}
-    impl<St: State> State for SetDirection<St> {
-        type SubjectA = St::SubjectA;
-        type Direction = Set<members::direction>;
-        type SubjectB = St::SubjectB;
-        type CreatedAt = St::CreatedAt;
-        type InteractionType = St::InteractionType;
-    }
-    ///State transition - sets the `subject_b` field to Set
-    pub struct SetSubjectB<St: State = Empty>(PhantomData<fn() -> St>);
-    impl<St: State> sealed::Sealed for SetSubjectB<St> {}
-    impl<St: State> State for SetSubjectB<St> {
-        type SubjectA = St::SubjectA;
-        type Direction = St::Direction;
-        type SubjectB = Set<members::subject_b>;
-        type CreatedAt = St::CreatedAt;
-        type InteractionType = St::InteractionType;
+        type SubjectA = Unset;
+        type SubjectB = Unset;
     }
     ///State transition - sets the `created_at` field to Set
     pub struct SetCreatedAt<St: State = Empty>(PhantomData<fn() -> St>);
     impl<St: State> sealed::Sealed for SetCreatedAt<St> {}
     impl<St: State> State for SetCreatedAt<St> {
-        type SubjectA = St::SubjectA;
-        type Direction = St::Direction;
-        type SubjectB = St::SubjectB;
         type CreatedAt = Set<members::created_at>;
+        type Direction = St::Direction;
         type InteractionType = St::InteractionType;
+        type SubjectA = St::SubjectA;
+        type SubjectB = St::SubjectB;
+    }
+    ///State transition - sets the `direction` field to Set
+    pub struct SetDirection<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetDirection<St> {}
+    impl<St: State> State for SetDirection<St> {
+        type CreatedAt = St::CreatedAt;
+        type Direction = Set<members::direction>;
+        type InteractionType = St::InteractionType;
+        type SubjectA = St::SubjectA;
+        type SubjectB = St::SubjectB;
     }
     ///State transition - sets the `interaction_type` field to Set
     pub struct SetInteractionType<St: State = Empty>(PhantomData<fn() -> St>);
     impl<St: State> sealed::Sealed for SetInteractionType<St> {}
     impl<St: State> State for SetInteractionType<St> {
-        type SubjectA = St::SubjectA;
-        type Direction = St::Direction;
-        type SubjectB = St::SubjectB;
         type CreatedAt = St::CreatedAt;
+        type Direction = St::Direction;
         type InteractionType = Set<members::interaction_type>;
+        type SubjectA = St::SubjectA;
+        type SubjectB = St::SubjectB;
+    }
+    ///State transition - sets the `subject_a` field to Set
+    pub struct SetSubjectA<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubjectA<St> {}
+    impl<St: State> State for SetSubjectA<St> {
+        type CreatedAt = St::CreatedAt;
+        type Direction = St::Direction;
+        type InteractionType = St::InteractionType;
+        type SubjectA = Set<members::subject_a>;
+        type SubjectB = St::SubjectB;
+    }
+    ///State transition - sets the `subject_b` field to Set
+    pub struct SetSubjectB<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetSubjectB<St> {}
+    impl<St: State> State for SetSubjectB<St> {
+        type CreatedAt = St::CreatedAt;
+        type Direction = St::Direction;
+        type InteractionType = St::InteractionType;
+        type SubjectA = St::SubjectA;
+        type SubjectB = Set<members::subject_b>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
-        ///Marker type for the `subject_a` field
-        pub struct subject_a(());
-        ///Marker type for the `direction` field
-        pub struct direction(());
-        ///Marker type for the `subject_b` field
-        pub struct subject_b(());
         ///Marker type for the `created_at` field
         pub struct created_at(());
+        ///Marker type for the `direction` field
+        pub struct direction(());
         ///Marker type for the `interaction_type` field
         pub struct interaction_type(());
+        ///Marker type for the `subject_a` field
+        pub struct subject_a(());
+        ///Marker type for the `subject_b` field
+        pub struct subject_b(());
     }
 }
 
@@ -712,11 +712,11 @@ where
 impl<S: BosStr, St> InteractionBuilder<S, St>
 where
     St: interaction_state::State,
-    St::SubjectA: interaction_state::IsSet,
-    St::Direction: interaction_state::IsSet,
-    St::SubjectB: interaction_state::IsSet,
     St::CreatedAt: interaction_state::IsSet,
+    St::Direction: interaction_state::IsSet,
     St::InteractionType: interaction_state::IsSet,
+    St::SubjectA: interaction_state::IsSet,
+    St::SubjectB: interaction_state::IsSet,
 {
     /// Build the final struct.
     pub fn build(self) -> Interaction<S> {
