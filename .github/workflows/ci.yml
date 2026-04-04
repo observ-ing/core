@@ -135,7 +135,7 @@ jobs:
         with:
           components: rustfmt
       - name: Install jacquard-codegen from fork (deterministic field ordering fix)
-        run: cargo install --git https://tangled.org/rwell.org/jacquard.git --branch fix-builder-determinism jacquard-lexgen
+        run: RUSTFLAGS="" cargo install --git https://tangled.org/rwell.org/jacquard.git --branch fix-builder-determinism jacquard-lexgen
       - name: Check generated lexicon types are up to date
         run: |
           ./scripts/generate-rust-types.sh
