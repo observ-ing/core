@@ -125,3 +125,15 @@ export const {
 export type { ThemeMode };
 
 export default uiSlice.reducer;
+
+// Non-Redux bridge for passing File objects to the upload modal.
+// File objects are non-serializable and cannot be stored in Redux state.
+let _pendingFiles: File[] = [];
+export function setPendingUploadFiles(files: File[]) {
+  _pendingFiles = files;
+}
+export function consumePendingUploadFiles(): File[] {
+  const files = _pendingFiles;
+  _pendingFiles = [];
+  return files;
+}

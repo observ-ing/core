@@ -20,7 +20,7 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { closeUploadModal, addToast } from "../../store/uiSlice";
+import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
 import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
 import { ModalOverlay } from "./ModalOverlay";
@@ -107,9 +107,15 @@ export function UploadModal() {
             }) || [];
         setCoObservers(existingCoObservers);
         setExistingImages(editingObservation.images || []);
-      } else if (currentLocation) {
-        setLat(currentLocation.lat.toFixed(6));
-        setLng(currentLocation.lng.toFixed(6));
+      } else {
+        if (currentLocation) {
+          setLat(currentLocation.lat.toFixed(6));
+          setLng(currentLocation.lng.toFixed(6));
+        }
+        const pending = consumePendingUploadFiles();
+        if (pending.length > 0) {
+          addFiles(pending);
+        }
       }
     }
   }, [isOpen, currentLocation, editingObservation]);
@@ -138,9 +144,7 @@ export function UploadModal() {
     setCoObservers((prev) => prev.filter((co) => co.did !== did));
   };
 
-  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-
+  const addFiles = (files: File[]) => {
     for (const file of files) {
       if (!VALID_TYPES.includes(file.type)) {
         dispatch(
@@ -182,7 +186,10 @@ export function UploadModal() {
         }
       }
     }
+  };
 
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files || []));
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }

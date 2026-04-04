@@ -4,7 +4,7 @@ import AddIcon from "@mui/icons-material/Add";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { openUploadModal } from "../../store/uiSlice";
+import { openUploadModal, setPendingUploadFiles } from "../../store/uiSlice";
 
 export function FAB() {
   const dispatch = useAppDispatch();
@@ -27,6 +27,7 @@ export function FAB() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
+      setPendingUploadFiles(Array.from(files));
       dispatch(openUploadModal());
     }
     // Reset input so same file can be selected again
