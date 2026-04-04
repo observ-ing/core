@@ -5,12 +5,12 @@
  * 1. Capture/select photo
  * 2. Extract EXIF data (date/location)
  * 3. Upload blob to PDS
- * 4. Write ing.observ.temp.occurrence record to the user's repo
+ * 4. Write bio.lexicons.temp.occurrence record to the user's repo
  */
 
 import type { AtpAgent, BlobRef } from "@atproto/api";
 
-const OCCURRENCE_COLLECTION = "ing.observ.temp.occurrence";
+const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
 const MEDIA_COLLECTION = "bio.lexicons.temp.media";
 
 interface UploadConfig {
@@ -66,24 +66,23 @@ export class OccurrenceUploader {
     const blobRefs = await this.uploadImages(data.images);
     const mediaRefs = await this.createMediaRecords(blobRefs);
 
-    // Create the occurrence record
-    const record = {
+    // Create the occurrence record (flat coordinates per bio.lexicons.temp.occurrence)
+    const record: Record<string, unknown> = {
       $type: OCCURRENCE_COLLECTION,
-      basisOfRecord: data.basisOfRecord || "HumanObservation",
-      scientificName: data.scientificName,
+      decimalLatitude: String(data.location.decimalLatitude),
+      decimalLongitude: String(data.location.decimalLongitude),
       eventDate: data.eventDate,
-      location: {
-        decimalLatitude: data.location.decimalLatitude,
-        decimalLongitude: data.location.decimalLongitude,
-        coordinateUncertaintyInMeters: data.location.coordinateUncertaintyInMeters,
-        geodeticDatum: data.location.geodeticDatum || "WGS84",
-      },
-      verbatimLocality: data.verbatimLocality,
-      habitat: data.habitat,
-      occurrenceRemarks: data.occurrenceRemarks,
       associatedMedia: mediaRefs,
       createdAt: new Date().toISOString(),
     };
+    if (data.location.coordinateUncertaintyInMeters != null) {
+      record["coordinateUncertaintyInMeters"] = data.location.coordinateUncertaintyInMeters;
+    }
+    if (data.basisOfRecord) record["basisOfRecord"] = data.basisOfRecord;
+    if (data.scientificName) record["scientificName"] = data.scientificName;
+    if (data.verbatimLocality) record["verbatimLocality"] = data.verbatimLocality;
+    if (data.habitat) record["habitat"] = data.habitat;
+    if (data.occurrenceRemarks) record["occurrenceRemarks"] = data.occurrenceRemarks;
 
     if (!this.agent.session) {
       throw new Error("Not logged in");

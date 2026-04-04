@@ -10,7 +10,7 @@ import {
 } from "./helpers/mock-observation";
 
 const AUTO_ID_RKEY = "autoidtest123";
-const AUTO_ID_URI = `at://${MOCK_OBS_DID}/ing.observ.temp.occurrence/${AUTO_ID_RKEY}`;
+const AUTO_ID_URI = `at://${MOCK_OBS_DID}/bio.lexicons.temp.occurrence/${AUTO_ID_RKEY}`;
 
 authTest.describe("Auto-Identification on Upload", () => {
   // TC-AUTOID-001: Uploading with a species auto-creates the first identification

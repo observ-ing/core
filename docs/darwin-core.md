@@ -2,7 +2,7 @@
 
 Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. Fields marked with ✅ are implemented, ⚠️ are partially implemented or mapped differently, and ❌ are not yet implemented.
 
-## ing.observ.temp.occurrence
+## bio.lexicons.temp.occurrence
 
 An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence).
 
@@ -64,7 +64,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `blobs` | dwc:associatedMedia | ✅ | Array of image references |
 | `license` | dcterms:license | ✅ | SPDX identifiers (CC0, CC-BY, etc.) |
 | `createdAt` | — | ✅ | Record creation timestamp (Observ.ing-specific) |
-| (AT Protocol URI) | dwc:occurrenceID | ⚠️ | `at://did:plc:.../ing.observ.temp.occurrence/...` |
+| (AT Protocol URI) | dwc:occurrenceID | ⚠️ | `at://did:plc:.../bio.lexicons.temp.occurrence/...` |
 | (DID) | dwc:recordedBy | ⚠️ | Derived from AT Protocol identity |
 | — | dwc:basisOfRecord | ❌ | Always assumed `HumanObservation` |
 | — | dwc:occurrenceStatus | ❌ | Always assumed `present` |
@@ -90,7 +90,7 @@ A taxonomic determination (dwc:Identification) for an occurrence. The identifica
 ```json
 {
   "subject": {
-    "uri": "at://did:plc:abc.../ing.observ.temp.occurrence/123",
+    "uri": "at://did:plc:abc.../bio.lexicons.temp.occurrence/123",
     "cid": "bafyrei..."
   },
   "taxon": {

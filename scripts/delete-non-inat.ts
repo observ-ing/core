@@ -1,5 +1,5 @@
 /**
- * Delete all ing.observ.temp.occurrence records that were NOT imported from iNaturalist.
+ * Delete all bio.lexicons.temp.occurrence records that were NOT imported from iNaturalist.
  * iNaturalist-imported records are identified by having taxonId starting with "inat:".
  *
  * Usage:
@@ -8,7 +8,7 @@
 
 import { AtpAgent } from "@atproto/api";
 
-const COLLECTION = "ing.observ.temp.occurrence";
+const COLLECTION = "bio.lexicons.temp.occurrence";
 
 async function main() {
   const [atpHandle, atpPassword] = process.argv.slice(2);

@@ -9,9 +9,9 @@ use crate::types::{
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
+use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
 use observing_lexicons::ing_observ::temp::{
     comment::Comment, identification::Identification, interaction::Interaction,
-    occurrence::Occurrence,
 };
 use serde_json::Value;
 
@@ -75,17 +75,13 @@ pub fn occurrence_from_json(
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let lat = record
-        .location
         .decimal_latitude
-        .as_ref()
-        .parse::<f64>()
-        .ok();
+        .as_deref()
+        .and_then(|s| s.parse::<f64>().ok());
     let lng = record
-        .location
         .decimal_longitude
-        .as_ref()
-        .parse::<f64>()
-        .ok();
+        .as_deref()
+        .and_then(|s| s.parse::<f64>().ok());
 
     let (lat, lng) = match (lat, lng) {
         (Some(lat), Some(lng)) => (lat, lng),
@@ -96,14 +92,30 @@ pub fn occurrence_from_json(
         }
     };
 
-    let event_date = parse_datetime(&record.event_date.to_string())
+    let event_date = record
+        .event_date
+        .as_ref()
+        .and_then(|d| parse_datetime(&d.to_string()))
         .ok_or_else(|| ProcessingError::InvalidField("missing valid eventDate".into()))?;
 
-    let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(event_date);
+    // Extension fields: read from raw JSON (not part of bio.lexicons.temp.occurrence schema)
+    let created_at = record_json
+        .get("createdAt")
+        .and_then(|v| v.as_str())
+        .and_then(parse_datetime)
+        .unwrap_or(event_date);
 
-    let recorded_by = record
-        .recorded_by
-        .map(|v| v.into_iter().map(|s| s.to_string()).collect());
+    let recorded_by: Option<Vec<String>> = record_json
+        .get("recordedBy")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(Into::into)).collect());
+
+    let str_field = |key: &str| -> Option<String> {
+        record_json
+            .get(key)
+            .and_then(|v| v.as_str())
+            .map(Into::into)
+    };
 
     Ok(ParsedOccurrence {
         params: UpsertOccurrenceParams {
@@ -115,19 +127,18 @@ pub fn occurrence_from_json(
             longitude: lng,
             latitude: lat,
             coordinate_uncertainty_meters: record
-                .location
                 .coordinate_uncertainty_in_meters
                 .map(|v| v as i32),
-            continent: record.location.continent.map(|v| v.to_string()),
-            country: record.location.country.map(Into::into),
-            country_code: record.location.country_code.map(Into::into),
-            state_province: record.location.state_province.map(Into::into),
-            county: record.location.county.map(Into::into),
-            municipality: record.location.municipality.map(Into::into),
-            locality: record.location.locality.map(Into::into),
-            water_body: record.location.water_body.map(Into::into),
-            verbatim_locality: record.verbatim_locality.map(Into::into),
-            occurrence_remarks: record.notes.map(Into::into),
+            continent: str_field("continent"),
+            country: str_field("country"),
+            country_code: str_field("countryCode"),
+            state_province: str_field("stateProvince"),
+            county: str_field("county"),
+            municipality: str_field("municipality"),
+            locality: str_field("locality"),
+            water_body: str_field("waterBody"),
+            verbatim_locality: str_field("verbatimLocality"),
+            occurrence_remarks: str_field("notes"),
             // Try legacy "blobs" field first (inline image embeds), then skip
             // "associatedMedia" (strong refs that require media record resolution).
             // The appview write path provides blob entries directly via parsed.params.

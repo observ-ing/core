@@ -10,13 +10,13 @@
  * This script:
  *   1. Fetches the last 100 geo-tagged observations from iNaturalist
  *   2. Downloads each photo and uploads it as a blob to your PDS
- *   3. Creates ing.observ.temp.occurrence records on your PDS
+ *   3. Creates bio.lexicons.temp.occurrence records on your PDS
  */
 
 import { AtpAgent } from "@atproto/api";
 
 const INAT_API = "https://api.inaturalist.org/v1";
-const OCCURRENCE_COLLECTION = "ing.observ.temp.occurrence";
+const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
 const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
 
 const LICENSE_MAP: Record<string, string> = {
@@ -174,20 +174,17 @@ async function main() {
     // Map license
     const license = obs.license_code ? LICENSE_MAP[obs.license_code] : undefined;
 
-    // Build the occurrence record (no taxonomy — that goes on identification)
+    // Build the occurrence record (flat coordinates per bio.lexicons.temp.occurrence)
     const occurrenceRecord: Record<string, any> = {
       $type: OCCURRENCE_COLLECTION,
+      decimalLatitude: String(lat),
+      decimalLongitude: String(lng),
       eventDate: new Date(eventDate).toISOString(),
-      location: {
-        decimalLatitude: String(lat),
-        decimalLongitude: String(lng),
-        ...(obs.positional_accuracy && {
-          coordinateUncertaintyInMeters: obs.positional_accuracy,
-        }),
-        geodeticDatum: "WGS84",
-      },
       createdAt: new Date(obs.created_at).toISOString(),
     };
+    if (obs.positional_accuracy) {
+      occurrenceRecord["coordinateUncertaintyInMeters"] = obs.positional_accuracy;
+    }
 
     if (obs.place_guess) occurrenceRecord["verbatimLocality"] = obs.place_guess;
     if (obs.description) occurrenceRecord["notes"] = obs.description;

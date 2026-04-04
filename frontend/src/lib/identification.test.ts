@@ -21,7 +21,7 @@ describe("IdentificationService", () => {
                 value: {
                   $type: "ing.observ.temp.identification",
                   subject: {
-                    uri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+                    uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
                     cid: "subject-cid",
                   },
                   taxon: { scientificName: "Quercus alba", taxonRank: "species" },
@@ -44,7 +44,7 @@ describe("IdentificationService", () => {
 
   describe("validateInput", () => {
     const validInput = {
-      occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+      occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
       occurrenceCid: "bafyrei123",
       scientificName: "Quercus alba",
     };
@@ -159,7 +159,7 @@ describe("IdentificationService", () => {
 
       await expect(
         noSessionService.identify({
-          occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+          occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
           occurrenceCid: "bafyrei123",
           scientificName: "Quercus alba",
         }),
@@ -168,7 +168,7 @@ describe("IdentificationService", () => {
 
     it("returns uri and cid on success", async () => {
       const result = await service.identify({
-        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+        occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
       });
@@ -181,7 +181,7 @@ describe("IdentificationService", () => {
 
     it("creates record with correct structure", async () => {
       await service.identify({
-        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+        occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
         taxonRank: "species",
@@ -196,7 +196,7 @@ describe("IdentificationService", () => {
           record: expect.objectContaining({
             $type: "ing.observ.temp.identification",
             subject: {
-              uri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+              uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
               cid: "bafyrei123",
             },
             taxon: {
@@ -212,7 +212,7 @@ describe("IdentificationService", () => {
 
     it("uses default values when optional fields not provided", async () => {
       await service.identify({
-        occurrenceUri: "at://did:plc:test/ing.observ.temp.occurrence/1",
+        occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
       });
@@ -233,7 +233,7 @@ describe("IdentificationService", () => {
   describe("agree", () => {
     it("creates an agreement identification", async () => {
       await service.agree(
-        "at://did:plc:test/ing.observ.temp.occurrence/1",
+        "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         "bafyrei123",
         "Quercus alba",
       );
@@ -254,7 +254,7 @@ describe("IdentificationService", () => {
   describe("suggestId", () => {
     it("creates a non-agreement identification", async () => {
       await service.suggestId(
-        "at://did:plc:test/ing.observ.temp.occurrence/1",
+        "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         "bafyrei123",
         "Quercus rubra",
       );
@@ -273,7 +273,7 @@ describe("IdentificationService", () => {
 
     it("accepts optional parameters", async () => {
       await service.suggestId(
-        "at://did:plc:test/ing.observ.temp.occurrence/1",
+        "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         "bafyrei123",
         "Quercus rubra",
         {

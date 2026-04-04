@@ -26,7 +26,7 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 
-const OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
+const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
 const IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
 const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
@@ -155,7 +155,7 @@ fn has_known_subject(record: &Record) -> bool {
         .and_then(|u| u.as_str());
 
     match subject_uri {
-        Some(uri) => uri.contains("/ing.observ."),
+        Some(uri) => uri.contains("/ing.observ.") || uri.contains("/bio.lexicons."),
         None => true, // No subject (e.g. occurrences) — always process
     }
 }
@@ -170,7 +170,7 @@ fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> b
         .and_then(|s| s.get("uri"))
         .and_then(|u| u.as_str())
     {
-        if uri.contains("/ing.observ.temp.occurrence/") && !known_uris.contains(uri) {
+        if uri.contains("/bio.lexicons.temp.occurrence/") && !known_uris.contains(uri) {
             return false;
         }
     }
@@ -183,7 +183,7 @@ fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> b
             .and_then(|o| o.get("uri"))
             .and_then(|u| u.as_str())
         {
-            if uri.contains("/ing.observ.temp.occurrence/") && !known_uris.contains(uri) {
+            if uri.contains("/bio.lexicons.temp.occurrence/") && !known_uris.contains(uri) {
                 return false;
             }
         }

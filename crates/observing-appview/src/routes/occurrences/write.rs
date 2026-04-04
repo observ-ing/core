@@ -3,7 +3,7 @@ use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::bio_lexicons::temp::media::Media;
-use observing_lexicons::ing_observ::temp::occurrence::{Location, Occurrence};
+use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
 use serde::Deserialize;
 use serde_json::json;
 use tracing::{info, warn};
@@ -126,74 +126,64 @@ pub async fn create_occurrence(
         .parse()
         .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
 
-    // Build location using typed Location struct
-    let location = Location {
-        decimal_latitude: body.latitude.to_string().into(),
-        decimal_longitude: body.longitude.to_string().into(),
-        coordinate_uncertainty_in_meters: Some(
-            body.coordinate_uncertainty_in_meters
-                .unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY) as i64,
-        ),
-        geodetic_datum: Some("WGS84".into()),
-        continent: geo
-            .as_ref()
-            .and_then(|g| g.continent.as_deref())
-            .map(Into::into),
-        country: geo
-            .as_ref()
-            .and_then(|g| g.country.as_deref())
-            .map(Into::into),
-        country_code: geo
-            .as_ref()
-            .and_then(|g| g.country_code.as_deref())
-            .map(Into::into),
-        state_province: geo
-            .as_ref()
-            .and_then(|g| g.state_province.as_deref())
-            .map(Into::into),
-        county: geo
-            .as_ref()
-            .and_then(|g| g.county.as_deref())
-            .map(Into::into),
-        municipality: geo
-            .as_ref()
-            .and_then(|g| g.municipality.as_deref())
-            .map(Into::into),
-        locality: geo
-            .as_ref()
-            .and_then(|g| g.locality.as_deref())
-            .map(Into::into),
-        water_body: geo
-            .as_ref()
-            .and_then(|g| g.water_body.as_deref())
-            .map(Into::into),
-        maximum_depth_in_meters: None,
-        maximum_elevation_in_meters: None,
-        minimum_depth_in_meters: None,
-        minimum_elevation_in_meters: None,
-        extra_data: None,
-    };
-
-    // Build record in a block so CowStr borrows are released before variables are moved
+    // Build occurrence record with flat coordinates (bio.lexicons.temp.occurrence)
     let record_value = {
-        let recorded_by_cowstrs: Option<Vec<jacquard_common::CowStr<'_>>> = body
-            .recorded_by
-            .as_ref()
-            .filter(|r| !r.is_empty())
-            .map(|r| r.iter().map(|s| s.as_str().into()).collect());
-
+        let lat_str: jacquard_common::CowStr<'_> = body.latitude.to_string().into();
+        let lng_str: jacquard_common::CowStr<'_> = body.longitude.to_string().into();
         let record = Occurrence::new()
+            .decimal_latitude(lat_str)
+            .decimal_longitude(lng_str)
+            .coordinate_uncertainty_in_meters(
+                body.coordinate_uncertainty_in_meters
+                    .unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY) as i64,
+            )
             .event_date(event_date)
-            .location(location)
-            .created_at(now)
-            .maybe_notes(body.notes.as_deref().map(Into::into))
-            .maybe_recorded_by(recorded_by_cowstrs)
             .build();
 
         let mut rv = auth::serialize_at_record(&record)?;
+
+        // Extension fields beyond the bio.lexicons.temp.occurrence schema
         if !media_refs.is_empty() {
             rv["associatedMedia"] = json!(media_refs);
         }
+        rv["createdAt"] = json!(now.as_str());
+        if let Some(ref notes) = body.notes {
+            rv["notes"] = json!(notes);
+        }
+        if let Some(ref recorded_by) = body.recorded_by {
+            if !recorded_by.is_empty() {
+                rv["recordedBy"] = json!(recorded_by);
+            }
+        }
+
+        // Reverse geocoded geography fields
+        if let Some(ref g) = geo {
+            if let Some(ref v) = g.continent {
+                rv["continent"] = json!(v);
+            }
+            if let Some(ref v) = g.country {
+                rv["country"] = json!(v);
+            }
+            if let Some(ref v) = g.country_code {
+                rv["countryCode"] = json!(v);
+            }
+            if let Some(ref v) = g.state_province {
+                rv["stateProvince"] = json!(v);
+            }
+            if let Some(ref v) = g.county {
+                rv["county"] = json!(v);
+            }
+            if let Some(ref v) = g.municipality {
+                rv["municipality"] = json!(v);
+            }
+            if let Some(ref v) = g.locality {
+                rv["locality"] = json!(v);
+            }
+            if let Some(ref v) = g.water_body {
+                rv["waterBody"] = json!(v);
+            }
+        }
+
         rv
     };
 
