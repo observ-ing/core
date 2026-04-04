@@ -63,9 +63,7 @@ interface LexiconSchema {
 }
 
 function isLexiconSchema(obj: unknown): obj is LexiconSchema {
-  return (
-    obj != null && typeof obj === "object" && "lexicon" in obj && "id" in obj && "defs" in obj
-  );
+  return obj != null && typeof obj === "object" && "lexicon" in obj && "id" in obj && "defs" in obj;
 }
 
 function extractSchema(mod: unknown): LexiconSchema | null {
