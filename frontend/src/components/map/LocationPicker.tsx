@@ -222,9 +222,13 @@ export function LocationPicker({
     const parsed = parseFloat(value);
     const [min, max] = axis === "lat" ? [-90, 90] : [-180, 180];
     if (isNaN(parsed) || parsed < min || parsed > max) return;
-    if (!latInput || !lngInput) return;
 
-    const otherValue = parseFloat(axis === "lat" ? lngInput : latInput);
+    // Use the fresh `value` for the current axis; the other axis comes from
+    // state which is up-to-date from the previous render cycle.
+    const otherInput = axis === "lat" ? lngInput : latInput;
+    if (!otherInput) return;
+
+    const otherValue = parseFloat(otherInput);
     if (isNaN(otherValue)) return;
 
     const lat = axis === "lat" ? parsed : otherValue;
