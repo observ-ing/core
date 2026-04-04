@@ -128,9 +128,7 @@ export class OccurrenceUploader {
   /**
    * Create bio.lexicons.temp.media records and return strong refs
    */
-  private async createMediaRecords(
-    blobRefs: BlobRef[],
-  ): Promise<{ uri: string; cid: string }[]> {
+  private async createMediaRecords(blobRefs: BlobRef[]): Promise<{ uri: string; cid: string }[]> {
     if (!this.agent.session) {
       throw new Error("Not logged in");
     }
