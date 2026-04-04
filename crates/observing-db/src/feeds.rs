@@ -1,7 +1,7 @@
 use crate::occurrence_columns;
 use crate::types::{
-    ExploreFeedOptions, HomeFeedOptions, IdentificationRow, OccurrenceRow,
-    ProfileCounts, ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
+    ExploreFeedOptions, HomeFeedOptions, IdentificationRow, OccurrenceRow, ProfileCounts,
+    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 

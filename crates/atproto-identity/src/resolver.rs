@@ -7,8 +7,8 @@ use reqwest::Client;
 use tracing::{debug, error};
 
 use crate::types::{
-    DidDocument, Profile, ProfileResponse, ProfilesResponse,
-    ResolveHandleResponse, ResolveResult, SearchActorsTypeaheadResponse,
+    DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
+    SearchActorsTypeaheadResponse,
 };
 
 const DEFAULT_SERVICE_URL: &str = "https://public.api.bsky.app";
@@ -322,7 +322,6 @@ impl IdentityResolver {
             }
         }
     }
-
 }
 
 impl Default for IdentityResolver {

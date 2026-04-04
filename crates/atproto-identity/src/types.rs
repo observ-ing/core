@@ -87,4 +87,3 @@ pub(crate) struct ProfilesResponse {
 pub(crate) struct SearchActorsTypeaheadResponse {
     pub(crate) actors: Vec<ProfileResponse>,
 }
-
