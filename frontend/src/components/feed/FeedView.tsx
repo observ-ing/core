@@ -1,6 +1,5 @@
 import { useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
-import { Box, Container, Typography, Button, CircularProgress } from "@mui/material";
+import { Box, Container, Typography, CircularProgress } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
@@ -20,9 +19,7 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const { observations, isLoading, currentTab, hasMore, homeFeedMeta } = useAppSelector(
-    (state) => state.feed,
-  );
+  const { observations, isLoading, currentTab, hasMore } = useAppSelector((state) => state.feed);
   const contentRef = useRef<HTMLDivElement>(null);
 
   // Sync route tab with store
@@ -152,18 +149,9 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
               {!isLoading && observations.length === 0 && (
                 <Box sx={{ p: 4, textAlign: "center" }}>
-                  <Typography color="text.secondary" sx={{ mb: 1 }}>
-                    No observations from people you follow yet.
+                  <Typography color="text.secondary">
+                    No observations yet. Be the first to post!
                   </Typography>
-                  {homeFeedMeta && homeFeedMeta.totalFollows > 0 && (
-                    <Typography variant="body2" color="text.disabled" sx={{ mb: 2 }}>
-                      You follow {homeFeedMeta.totalFollows} people, but none have posted
-                      observations.
-                    </Typography>
-                  )}
-                  <Button variant="outlined" color="primary" component={Link} to="/explore">
-                    Browse all observations
-                  </Button>
                 </Box>
               )}
 

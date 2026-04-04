@@ -7,9 +7,7 @@ use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
 use crate::error::AppError;
-use crate::responses::{
-    ExploreFeedResponse, ExploreFilters, ExploreMeta, HomeFeedMeta, HomeFeedResponse,
-};
+use crate::responses::{ExploreFeedResponse, ExploreFilters, ExploreMeta, HomeFeedResponse};
 use crate::state::AppState;
 
 #[derive(Deserialize)]
@@ -89,10 +87,6 @@ pub async fn get_explore(
 pub struct HomeParams {
     limit: Option<i64>,
     cursor: Option<String>,
-    lat: Option<f64>,
-    lng: Option<f64>,
-    #[serde(rename = "nearbyRadius")]
-    nearby_radius: Option<f64>,
 }
 
 pub async fn get_home(
@@ -106,30 +100,19 @@ pub async fn get_home(
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
         .min(constants::MAX_FEED_LIMIT);
 
-    let followed_dids = state.resolver.get_follows(&viewer).await;
-    let (followed_dids, total_follows) = home_feed_dids(&viewer, followed_dids);
-
     let options = HomeFeedOptions {
         limit: Some(limit),
         cursor: params.cursor,
-        lat: params.lat,
-        lng: params.lng,
-        nearby_radius: params.nearby_radius,
     };
 
-    let result = observing_db::feeds::get_home_feed(
-        &state.pool,
-        &followed_dids,
-        &options,
-        &state.hidden_dids,
-    )
-    .await?;
+    let rows =
+        observing_db::feeds::get_home_feed(&state.pool, &options, &state.hidden_dids).await?;
 
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
         &state.taxonomy,
-        &result.rows,
+        &rows,
         Some(&viewer),
     )
     .await;
@@ -143,56 +126,5 @@ pub async fn get_home(
     Ok(Json(HomeFeedResponse {
         occurrences,
         cursor: next_cursor,
-        meta: HomeFeedMeta {
-            followed_count: result.followed_count,
-            nearby_count: result.nearby_count,
-            total_follows,
-        },
     }))
-}
-
-/// Build the list of DIDs whose observations should appear in the home feed.
-/// Always includes the viewer's own DID alongside their followed DIDs.
-/// Returns (dids, total_follows) where total_follows excludes the viewer.
-fn home_feed_dids(viewer: &str, mut followed_dids: Vec<String>) -> (Vec<String>, usize) {
-    let total_follows = followed_dids.len();
-    if !followed_dids.contains(&viewer.to_string()) {
-        followed_dids.push(viewer.to_string());
-    }
-    (followed_dids, total_follows)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_home_feed_dids_includes_viewer() {
-        let (dids, count) = home_feed_dids("did:plc:viewer", vec!["did:plc:friend".into()]);
-        assert!(dids.contains(&"did:plc:viewer".to_string()));
-        assert!(dids.contains(&"did:plc:friend".to_string()));
-        assert_eq!(count, 1);
-    }
-
-    #[test]
-    fn test_home_feed_dids_no_duplicate_if_viewer_follows_self() {
-        let (dids, _) = home_feed_dids("did:plc:viewer", vec!["did:plc:viewer".into()]);
-        assert_eq!(dids.len(), 1);
-    }
-
-    #[test]
-    fn test_home_feed_dids_empty_follows() {
-        let (dids, count) = home_feed_dids("did:plc:viewer", vec![]);
-        assert_eq!(dids, vec!["did:plc:viewer".to_string()]);
-        assert_eq!(count, 0);
-    }
-
-    #[test]
-    fn test_home_feed_dids_total_follows_excludes_viewer() {
-        let (_, count) = home_feed_dids(
-            "did:plc:viewer",
-            vec!["did:plc:a".into(), "did:plc:b".into()],
-        );
-        assert_eq!(count, 2);
-    }
 }

@@ -1,7 +1,7 @@
 //! AT Protocol Identity Resolver
 //!
-//! Resolves AT Protocol identities (handles to DIDs and vice versa),
-//! fetches Bluesky profiles, and retrieves follow graphs.
+//! Resolves AT Protocol identities (handles to DIDs and vice versa)
+//! and fetches Bluesky profiles.
 //! All lookups are cached using moka async caches.
 
 mod resolver;

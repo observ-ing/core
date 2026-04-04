@@ -29,7 +29,6 @@ describe("feedSlice", () => {
     filters: {},
     isAuthenticated: false,
     userLocation: null,
-    homeFeedMeta: null,
   };
 
   const createTestStore = (preloadedState?: {
@@ -60,7 +59,6 @@ describe("feedSlice", () => {
       expect(state.hasMore).toBe(true);
       expect(state.filters).toEqual({});
       expect(state.userLocation).toBeNull();
-      expect(state.homeFeedMeta).toBeNull();
     });
   });
 
@@ -72,7 +70,6 @@ describe("feedSlice", () => {
           cursor: "abc",
           currentTab: "explore",
           hasMore: false,
-          homeFeedMeta: { followedCount: 5, nearbyCount: 10, totalFollows: 20 },
         },
       });
 
@@ -83,7 +80,6 @@ describe("feedSlice", () => {
       expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
-      expect(state.homeFeedMeta).toBeNull();
     });
   });
 
@@ -94,7 +90,6 @@ describe("feedSlice", () => {
           observations: [{ uri: "test" } as any],
           cursor: "abc",
           hasMore: false,
-          homeFeedMeta: { followedCount: 5, nearbyCount: 10, totalFollows: 20 },
         },
       });
 
@@ -104,7 +99,6 @@ describe("feedSlice", () => {
       expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
-      expect(state.homeFeedMeta).toBeNull();
     });
   });
 
@@ -191,27 +185,17 @@ describe("feedSlice", () => {
       const mockResponse = {
         occurrences: [{ uri: "at://home1" }],
         cursor: "homecursor",
-        meta: { followedCount: 5, nearbyCount: 3, totalFollows: 10 },
       };
       vi.mocked(api.fetchHomeFeed).mockResolvedValue(mockResponse as any);
 
       const store = createTestStore({
         auth: { user: { did: "did:plc:test", handle: "test" }, isLoading: false },
-        feed: { currentTab: "home", userLocation: { lat: 40, lng: -74 } },
+        feed: { currentTab: "home" },
       });
 
       await store.dispatch(loadFeed());
 
-      expect(api.fetchHomeFeed).toHaveBeenCalledWith(undefined, {
-        lat: 40,
-        lng: -74,
-        nearbyRadius: 50000,
-      });
-      expect(store.getState().feed.homeFeedMeta).toEqual({
-        followedCount: 5,
-        nearbyCount: 3,
-        totalFollows: 10,
-      });
+      expect(api.fetchHomeFeed).toHaveBeenCalledWith(undefined);
     });
 
     it("sets isLoading during request", async () => {
@@ -301,7 +285,6 @@ describe("feedSlice", () => {
       vi.mocked(api.fetchHomeFeed).mockResolvedValue({
         occurrences: [],
         cursor: undefined,
-        meta: { followedCount: 0, nearbyCount: 0, totalFollows: 0 },
       } as any);
 
       const store = createTestStore({
@@ -311,7 +294,7 @@ describe("feedSlice", () => {
 
       await store.dispatch(loadInitialFeed());
 
-      expect(api.fetchHomeFeed).toHaveBeenCalledWith(undefined, undefined);
+      expect(api.fetchHomeFeed).toHaveBeenCalledWith(undefined);
     });
 
     it("passes filters for explore feed", async () => {
@@ -356,27 +339,6 @@ describe("feedSlice", () => {
       await store.dispatch(loadInitialFeed());
 
       expect(store.getState().feed.isLoading).toBe(false);
-    });
-
-    it("populates homeFeedMeta from response", async () => {
-      vi.mocked(api.fetchHomeFeed).mockResolvedValue({
-        occurrences: [],
-        cursor: undefined,
-        meta: { followedCount: 10, nearbyCount: 5, totalFollows: 50 },
-      } as any);
-
-      const store = createTestStore({
-        auth: { user: { did: "did:plc:user", handle: "user" }, isLoading: false },
-        feed: { currentTab: "home" },
-      });
-
-      await store.dispatch(loadInitialFeed());
-
-      expect(store.getState().feed.homeFeedMeta).toEqual({
-        followedCount: 10,
-        nearbyCount: 5,
-        totalFollows: 50,
-      });
     });
   });
 });

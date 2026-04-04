@@ -425,22 +425,11 @@ pub struct ProfileCounts {
     pub species: i64,
 }
 
-/// Result of a home feed query
-#[derive(Debug, Clone)]
-pub struct HomeFeedResult {
-    pub rows: Vec<OccurrenceRow>,
-    pub followed_count: usize,
-    pub nearby_count: usize,
-}
-
 /// Options for home feed queries
 #[derive(Debug, Clone, Default)]
 pub struct HomeFeedOptions {
     pub limit: Option<i64>,
     pub cursor: Option<String>,
-    pub lat: Option<f64>,
-    pub lng: Option<f64>,
-    pub nearby_radius: Option<f64>,
 }
 
 /// Options for taxon occurrence queries

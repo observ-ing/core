@@ -191,7 +191,7 @@ describe("api", () => {
   });
 
   describe("fetchHomeFeed", () => {
-    it("fetches home feed without location", async () => {
+    it("fetches home feed", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
@@ -204,18 +204,17 @@ describe("api", () => {
       });
     });
 
-    it("includes location parameters", async () => {
+    it("includes cursor parameter", async () => {
       mockFetch.mockResolvedValue({
         ok: true,
         json: () => Promise.resolve({}),
       });
 
-      await api.fetchHomeFeed("cursor", { lat: 40, lng: -74, nearbyRadius: 100 });
+      await api.fetchHomeFeed("cursor");
 
-      expect(mockFetch).toHaveBeenCalledWith(
-        "/api/feeds/home?limit=20&cursor=cursor&lat=40&lng=-74&nearbyRadius=100",
-        { credentials: "include" },
-      );
+      expect(mockFetch).toHaveBeenCalledWith("/api/feeds/home?limit=20&cursor=cursor", {
+        credentials: "include",
+      });
     });
 
     it("throws authentication error on 401", async () => {

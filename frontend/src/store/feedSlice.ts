@@ -8,35 +8,10 @@ import type {
 } from "../services/types";
 import * as api from "../services/api";
 
-const DEFAULT_NEARBY_RADIUS = 50000;
-
-type HomeFeedMeta = {
-  followedCount: number;
-  nearbyCount: number;
-  totalFollows: number;
-};
-
-function isHomeFeedMeta(value: unknown): value is HomeFeedMeta {
-  return (
-    value != null &&
-    typeof value === "object" &&
-    "followedCount" in value &&
-    "nearbyCount" in value &&
-    "totalFollows" in value
-  );
-}
-
 function resetFeedState(state: FeedState) {
   state.observations = [];
   state.cursor = undefined;
   state.hasMore = true;
-  state.homeFeedMeta = null;
-}
-
-function applyHomeFeedMeta(state: FeedState, payload: ExploreFeedResponse | HomeFeedResponse) {
-  if ("meta" in payload && isHomeFeedMeta(payload.meta)) {
-    state.homeFeedMeta = payload.meta;
-  }
 }
 
 interface ThunkApiConfig {
@@ -52,30 +27,25 @@ interface FeedState {
   filters: FeedFilters;
   isAuthenticated: boolean;
   userLocation: { lat: number; lng: number } | null;
-  homeFeedMeta: HomeFeedMeta | null;
 }
 
 const initialState: FeedState = {
   observations: [],
   cursor: undefined,
   isLoading: false,
-  currentTab: "explore", // Default to explore to show all posts
+  currentTab: "explore",
   hasMore: true,
   filters: {},
   isAuthenticated: false,
   userLocation: null,
-  homeFeedMeta: null,
 };
 
 function fetchFeedData(state: { feed: FeedState; auth: { user: unknown } }, cursor?: string) {
-  const { currentTab, filters, userLocation } = state.feed;
+  const { currentTab, filters } = state.feed;
   const isAuthenticated = !!state.auth?.user;
 
   if (currentTab === "home" && isAuthenticated) {
-    return api.fetchHomeFeed(
-      cursor,
-      userLocation ? { ...userLocation, nearbyRadius: DEFAULT_NEARBY_RADIUS } : undefined,
-    );
+    return api.fetchHomeFeed(cursor);
   }
   return api.fetchExploreFeed(cursor, filters);
 }
@@ -126,7 +96,6 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        applyHomeFeedMeta(state, action.payload);
       })
       .addCase(loadFeed.rejected, (state) => {
         state.isLoading = false;
@@ -141,7 +110,6 @@ const feedSlice = createSlice({
         state.cursor = action.payload.cursor;
         state.hasMore = !!action.payload.cursor;
         state.isLoading = false;
-        applyHomeFeedMeta(state, action.payload);
       })
       .addCase(loadInitialFeed.rejected, (state) => {
         state.isLoading = false;
