@@ -62,13 +62,19 @@ interface LexiconSchema {
   defs: Record<string, LexiconDef>;
 }
 
-function hasDefault(mod: unknown): mod is { default: LexiconSchema } {
-  return mod != null && typeof mod === "object" && "default" in mod;
+function extractSchema(mod: unknown): LexiconSchema | null {
+  if (mod == null || typeof mod !== "object") return null;
+  // Vite dev wraps JSON in { default: ... }, Rolldown production inlines the object directly
+  const obj = "default" in mod ? (mod as { default: unknown }).default : mod;
+  if (obj != null && typeof obj === "object" && "lexicon" in obj && "id" in obj && "defs" in obj) {
+    return obj as LexiconSchema;
+  }
+  return null;
 }
 
 const allLexicons: LexiconSchema[] = Object.values(lexiconModules)
-  .filter(hasDefault)
-  .map((mod) => mod.default)
+  .map(extractSchema)
+  .filter((s): s is LexiconSchema => s != null)
   .sort((a, b) => a.id.localeCompare(b.id));
 
 const isProjectLexicon = (schema: LexiconSchema) =>
