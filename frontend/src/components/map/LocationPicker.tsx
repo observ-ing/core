@@ -285,10 +285,7 @@ export function LocationPicker({
       <Box sx={{ position: "relative" }}>
         <Box
           ref={mapContainer}
-          sx={[
-            mapContainerSx,
-            theme.palette.mode === "dark" && darkMapFilter,
-          ]}
+          sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
         />
         <IconButton
           size="small"
