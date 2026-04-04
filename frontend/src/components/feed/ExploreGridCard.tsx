@@ -1,10 +1,11 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import { Box, Typography, Card, CardActionArea, CardMedia, CardContent } from "@mui/material";
+import { Box, Typography, Card, CardActionArea, CardContent } from "@mui/material";
 import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
 import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 
 interface ExploreGridCardProps {
   observation: Occurrence;
@@ -28,12 +29,10 @@ export const ExploreGridCard = memo(function ExploreGridCard({
         }}
       >
         {observation.images[0] ? (
-          <CardMedia
-            component="img"
-            image={getImageUrl(observation.images[0])}
+          <ImageWithSkeleton
+            src={getImageUrl(observation.images[0])}
             alt={species || "Observation"}
-            loading="lazy"
-            sx={{ aspectRatio: "1", objectFit: "cover" }}
+            sx={{ aspectRatio: "1" }}
           />
         ) : (
           <Box

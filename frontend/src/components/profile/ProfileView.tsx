@@ -12,7 +12,6 @@ import {
   Stack,
   Card,
   CardActionArea,
-  CardMedia,
   CardContent,
 } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -23,6 +22,7 @@ import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
 import { formatTimeAgo, getDisplayName, getObservationUrl } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
@@ -238,12 +238,10 @@ export function ProfileView() {
                 sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
               >
                 {occ.images[0] ? (
-                  <CardMedia
-                    component="img"
-                    image={getImageUrl(occ.images[0])}
+                  <ImageWithSkeleton
+                    src={getImageUrl(occ.images[0])}
                     alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
-                    loading="lazy"
-                    sx={{ aspectRatio: "1", objectFit: "cover" }}
+                    sx={{ aspectRatio: "1" }}
                   />
                 ) : (
                   <Box
