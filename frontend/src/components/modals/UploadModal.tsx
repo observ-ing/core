@@ -61,7 +61,6 @@ export function UploadModal() {
   const isEditMode = !!editingObservation;
 
   const [species, setSpecies] = useState("");
-  const [notes, setNotes] = useState("");
   const [license, setLicense] = useState("CC-BY-4.0");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
@@ -82,7 +81,6 @@ export function UploadModal() {
     if (isOpen) {
       if (editingObservation) {
         setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
-        setNotes("");
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
         }
@@ -123,7 +121,6 @@ export function UploadModal() {
   const handleClose = () => {
     dispatch(closeUploadModal());
     setSpecies("");
-    setNotes("");
     setLicense("CC-BY-4.0");
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
@@ -323,7 +320,6 @@ export function UploadModal() {
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(notes ? { notes } : {}),
           license,
           eventDate: new Date(observationDate).toISOString(),
           ...(coObservers.length > 0 ? { recordedBy: coObservers.map((co) => co.did) } : {}),
@@ -350,7 +346,6 @@ export function UploadModal() {
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(notes ? { notes } : {}),
           license,
           eventDate,
           ...(imageData.length > 0 ? { images: imageData } : {}),
@@ -556,17 +551,6 @@ export function UploadModal() {
               />
             ) : undefined
           }
-        />
-
-        <TextField
-          fullWidth
-          label="Notes (optional)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Describe what you observed..."
-          multiline
-          rows={2}
-          margin="normal"
         />
 
         <FormControl fullWidth margin="normal">
