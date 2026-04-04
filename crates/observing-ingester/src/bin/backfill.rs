@@ -27,6 +27,8 @@ use sqlx::PgPool;
 use tracing::{error, info, warn};
 
 const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
+/// Legacy NSID — PDS repos may still have records under the old collection name.
+const LEGACY_OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
 const IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
 const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
@@ -160,6 +162,11 @@ fn has_known_subject(record: &Record) -> bool {
     }
 }
 
+/// Check if a URI references an occurrence record (current or legacy NSID).
+fn is_occurrence_uri(uri: &str) -> bool {
+    uri.contains("/bio.lexicons.temp.occurrence/") || uri.contains("/ing.observ.temp.occurrence/")
+}
+
 /// Check that any referenced occurrence URIs actually exist in our fetched data.
 /// This filters out records pointing to phantom occurrences (e.g. from partial migrations).
 fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> bool {
@@ -170,7 +177,7 @@ fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> b
         .and_then(|s| s.get("uri"))
         .and_then(|u| u.as_str())
     {
-        if uri.contains("/bio.lexicons.temp.occurrence/") && !known_uris.contains(uri) {
+        if is_occurrence_uri(uri) && !known_uris.contains(uri) {
             return false;
         }
     }
@@ -183,7 +190,7 @@ fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> b
             .and_then(|o| o.get("uri"))
             .and_then(|u| u.as_str())
         {
-            if uri.contains("/bio.lexicons.temp.occurrence/") && !known_uris.contains(uri) {
+            if is_occurrence_uri(uri) && !known_uris.contains(uri) {
                 return false;
             }
         }
@@ -278,7 +285,7 @@ fn parse_record(
                 .get("subject")
                 .and_then(|s| s.get("uri"))
                 .and_then(|u| u.as_str())
-                .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
+                .is_some_and(is_occurrence_uri);
 
             if is_occurrence_like {
                 processing::like_from_json(
@@ -353,7 +360,7 @@ async fn process_and_store(
                 .get("subject")
                 .and_then(|s| s.get("uri"))
                 .and_then(|u| u.as_str())
-                .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
+                .is_some_and(is_occurrence_uri);
 
             if !is_occurrence_like {
                 return Ok(());
@@ -393,13 +400,15 @@ async fn backfill_occurrences(
         }
     };
 
-    let records = match list_records(client, &pds, did, OCCURRENCE_COLLECTION).await {
-        Ok(r) => r,
-        Err(e) => {
-            warn!("[{did}] Failed to list occurrences: {e}");
-            return (0, 0, uris);
-        }
-    };
+    // Fetch from both the current and legacy collection NSIDs — PDS repos may
+    // still have records under the old name until migrated.
+    let mut records = list_records(client, &pds, did, OCCURRENCE_COLLECTION)
+        .await
+        .unwrap_or_default();
+    let legacy = list_records(client, &pds, did, LEGACY_OCCURRENCE_COLLECTION)
+        .await
+        .unwrap_or_default();
+    records.extend(legacy);
 
     if records.is_empty() {
         return (0, 0, uris);
@@ -519,13 +528,22 @@ async fn main() {
 
         let mut collections_vec = Vec::new();
         for &(short_name, collection) in &collections {
-            let records = match list_records(&client, &pds, did, collection).await {
+            let mut records = match list_records(&client, &pds, did, collection).await {
                 Ok(r) => r,
                 Err(e) => {
                     warn!("[{did}] Failed to list {short_name}: {e}");
                     continue;
                 }
             };
+
+            // Also fetch from legacy NSID for occurrences (PDS may not be migrated yet)
+            if collection == OCCURRENCE_COLLECTION {
+                if let Ok(legacy) =
+                    list_records(&client, &pds, did, LEGACY_OCCURRENCE_COLLECTION).await
+                {
+                    records.extend(legacy);
+                }
+            }
 
             if !records.is_empty() {
                 info!("[{did}] Found {} {short_name} records", records.len());

@@ -108,7 +108,11 @@ pub fn occurrence_from_json(
     let recorded_by: Option<Vec<String>> = record_json
         .get("recordedBy")
         .and_then(|v| v.as_array())
-        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(Into::into)).collect());
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(Into::into))
+                .collect()
+        });
 
     let str_field = |key: &str| -> Option<String> {
         record_json
