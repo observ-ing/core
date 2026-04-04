@@ -1,5 +1,6 @@
 import type { StyleSpecification } from "maplibre-gl";
-import type { SxProps, Theme } from "@mui/material";
+import type { Theme } from "@mui/material";
+import type { SystemStyleObject } from "@mui/system";
 
 export const mapStyle: StyleSpecification = {
   version: 8,
@@ -27,8 +28,18 @@ export const mapStyle: StyleSpecification = {
 };
 
 /** CSS filter applied to the map canvas to invert Voyager tiles for dark mode. */
-export const darkMapFilter: SxProps<Theme> = {
+export const darkMapFilter: SystemStyleObject<Theme> = {
   "& .maplibregl-canvas": {
     filter: "invert(1) hue-rotate(180deg)",
   },
+};
+
+/** Shared styles for the map container element. */
+export const mapContainerSx: SystemStyleObject<Theme> = {
+  width: "100%",
+  height: 200,
+  borderRadius: 1,
+  overflow: "hidden",
+  border: 1,
+  borderColor: "divider",
 };

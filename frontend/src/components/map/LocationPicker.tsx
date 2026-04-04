@@ -14,8 +14,8 @@ import SearchIcon from "@mui/icons-material/Search";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle, darkMapFilter } from "./mapStyle";
-import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON } from "./mapUtils";
+import { darkMapFilter, mapContainerSx } from "./mapStyle";
+import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON, createMap } from "./mapUtils";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -152,28 +152,12 @@ export function LocationPicker({
     const safeLat = latitude && Number.isFinite(latitude) ? latitude : 0;
     const safeLng = longitude && Number.isFinite(longitude) ? longitude : 0;
 
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
-      style: mapStyle,
+    const mapInstance = createMap(mapContainer.current, {
       center: [safeLng, safeLat],
       zoom: latitude && longitude ? 12 : 1,
-      attributionControl: false,
     });
 
-    mapInstance.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-    );
-    mapInstance.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right",
-    );
-
     mapInstance.on("load", () => {
-      // Start with attribution collapsed behind the (i) button
-      mapContainer.current
-        ?.querySelector(".maplibregl-ctrl-attrib")
-        ?.classList.remove("maplibregl-compact-show");
-
       // Add uncertainty circle source and layers
       mapInstance.addSource("uncertainty", {
         type: "geojson",
@@ -301,15 +285,10 @@ export function LocationPicker({
       <Box sx={{ position: "relative" }}>
         <Box
           ref={mapContainer}
-          sx={{
-            width: "100%",
-            height: 200,
-            borderRadius: 1,
-            overflow: "hidden",
-            border: 1,
-            borderColor: "divider",
-            ...(theme.palette.mode === "dark" && darkMapFilter),
-          }}
+          sx={[
+            mapContainerSx,
+            theme.palette.mode === "dark" && darkMapFilter,
+          ]}
         />
         <IconButton
           size="small"

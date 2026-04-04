@@ -1,7 +1,31 @@
-import type maplibregl from "maplibre-gl";
+import maplibregl from "maplibre-gl";
+import { mapStyle } from "./mapStyle";
 
 /** Approximate meters per degree of latitude at the equator */
 export const METERS_PER_DEGREE = 111320;
+
+/** Create a map instance with standard controls and collapsed attribution. */
+export function createMap(
+  container: HTMLElement,
+  options: Omit<maplibregl.MapOptions, "container" | "style" | "attributionControl">,
+): maplibregl.Map {
+  const map = new maplibregl.Map({
+    ...options,
+    container,
+    style: mapStyle,
+    attributionControl: false,
+  });
+
+  map.addControl(new maplibregl.AttributionControl({ compact: true }));
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "bottom-right");
+
+  // Collapse attribution behind the (i) button once tiles load
+  map.once("load", () => {
+    container.querySelector(".maplibregl-ctrl-attrib")?.classList.remove("maplibregl-compact-show");
+  });
+
+  return map;
+}
 
 /** Color used for uncertainty circles and map markers */
 export const MAP_MARKER_COLOR = "#22c55e";

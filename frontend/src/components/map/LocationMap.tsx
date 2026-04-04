@@ -1,14 +1,15 @@
 import { useEffect, useRef } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
-import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle, darkMapFilter } from "./mapStyle";
+import { darkMapFilter, mapContainerSx } from "./mapStyle";
 import {
   createCircleGeoJSON,
+  createMap,
   getRadiusBounds,
   MAP_MARKER_COLOR,
   addUncertaintyLayers,
 } from "./mapUtils";
+import maplibregl from "maplibre-gl";
 
 export interface LocationMapProps {
   latitude: number;
@@ -32,29 +33,14 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       map.current = null;
     }
 
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
-      style: mapStyle,
+    const mapInstance = createMap(mapContainer.current, {
       center: [longitude, latitude],
       zoom: 14,
       interactive: true,
       scrollZoom: false,
-      attributionControl: false,
     });
 
-    mapInstance.addControl(
-      new maplibregl.AttributionControl({ compact: true }),
-    );
-    mapInstance.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right",
-    );
-
     mapInstance.on("load", () => {
-      // Start with attribution collapsed behind the (i) button
-      mapContainer.current
-        ?.querySelector(".maplibregl-ctrl-attrib")
-        ?.classList.remove("maplibregl-compact-show");
       // Add marker
       new maplibregl.Marker({ color: MAP_MARKER_COLOR })
         .setLngLat([longitude, latitude])
@@ -88,18 +74,15 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
   if (!validCoords) {
     return (
       <Box
-        sx={{
-          width: "100%",
-          height: 200,
-          borderRadius: 1,
-          overflow: "hidden",
-          border: 1,
-          borderColor: "divider",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          bgcolor: "action.hover",
-        }}
+        sx={[
+          mapContainerSx,
+          {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "action.hover",
+          },
+        ]}
       >
         <Typography variant="body2" color="text.secondary">
           Location unavailable
@@ -111,16 +94,11 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
   return (
     <Box
       ref={mapContainer}
-      sx={{
-        position: "relative",
-        width: "100%",
-        height: 200,
-        borderRadius: 1,
-        overflow: "hidden",
-        border: 1,
-        borderColor: "divider",
-        ...(theme.palette.mode === "dark" && darkMapFilter),
-      }}
+      sx={[
+        { position: "relative" },
+        mapContainerSx,
+        theme.palette.mode === "dark" && darkMapFilter,
+      ]}
     />
   );
 }
