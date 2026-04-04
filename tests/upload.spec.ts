@@ -227,12 +227,12 @@ authTest.describe("Upload Modal - Logged In", () => {
         .waitFor({ state: "visible", timeout: 10_000 })
         .catch(() => {});
 
-      // Set location via the "Use My Location" button (geolocation mocked in fixture)
-      const useLocationBtn = page.getByRole("button", {
-        name: /Use My Location/i,
+      // Set location via the geolocate control (geolocation mocked in fixture)
+      const geolocateBtn = page.getByRole("button", {
+        name: /Geolocate/i,
       });
-      await useLocationBtn.scrollIntoViewIfNeeded();
-      await useLocationBtn.click();
+      await geolocateBtn.scrollIntoViewIfNeeded();
+      await geolocateBtn.click();
       // Wait for location text to appear instead of fixed delay
       await page
         .getByText(/latitude|location|coordinates/i)
