@@ -11,6 +11,7 @@
 import type { AtpAgent, BlobRef } from "@atproto/api";
 
 const OCCURRENCE_COLLECTION = "ing.observ.temp.occurrence";
+const MEDIA_COLLECTION = "bio.lexicons.temp.media";
 
 interface UploadConfig {
   pdsUrl: string;
@@ -61,8 +62,9 @@ export class OccurrenceUploader {
     // Validate data
     this.validateOccurrence(data);
 
-    // Upload images as blobs
+    // Upload images as blobs and create media records
     const blobRefs = await this.uploadImages(data.images);
+    const mediaRefs = await this.createMediaRecords(blobRefs);
 
     // Create the occurrence record
     const record = {
@@ -79,10 +81,7 @@ export class OccurrenceUploader {
       verbatimLocality: data.verbatimLocality,
       habitat: data.habitat,
       occurrenceRemarks: data.occurrenceRemarks,
-      associatedMedia: blobRefs.map((ref, i) => ({
-        image: ref,
-        alt: `Photo ${i + 1}${data.scientificName ? ` of ${data.scientificName}` : ""}`,
-      })),
+      associatedMedia: mediaRefs,
       createdAt: new Date().toISOString(),
     };
 
@@ -124,6 +123,30 @@ export class OccurrenceUploader {
     }
 
     return blobRefs;
+  }
+
+  /**
+   * Create bio.lexicons.temp.media records and return strong refs
+   */
+  private async createMediaRecords(blobRefs: BlobRef[]): Promise<{ uri: string; cid: string }[]> {
+    if (!this.agent.session) {
+      throw new Error("Not logged in");
+    }
+
+    const refs: { uri: string; cid: string }[] = [];
+    for (const blob of blobRefs) {
+      // eslint-disable-next-line no-await-in-loop
+      const response = await this.agent.com.atproto.repo.createRecord({
+        repo: this.agent.session.did,
+        collection: MEDIA_COLLECTION,
+        record: {
+          $type: MEDIA_COLLECTION,
+          image: blob,
+        },
+      });
+      refs.push({ uri: response.data.uri, cid: response.data.cid });
+    }
+    return refs;
   }
 
   /**
