@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
 import { openUploadModal } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 test.describe("Accessibility", () => {
   // TC-A11Y-001: Keyboard navigation
@@ -40,6 +41,7 @@ authTest.describe("Accessibility - Authenticated", () => {
 
   // TC-A11Y-003: Autocomplete keyboard navigation
   authTest("arrow keys navigate autocomplete suggestions", async ({ authenticatedPage: page }) => {
+    await mockTaxaSearchRoute(page);
     await page.goto("/");
     await openUploadModal(page);
 

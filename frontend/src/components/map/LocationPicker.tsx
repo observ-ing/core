@@ -12,8 +12,8 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapStyle, darkMapFilter } from "./mapStyle";
-import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON } from "./mapUtils";
+import { darkMapFilter, mapContainerSx } from "./mapStyle";
+import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON, createMap } from "./mapUtils";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -148,17 +148,19 @@ export function LocationPicker({
     const safeLat = latitude && Number.isFinite(latitude) ? latitude : 0;
     const safeLng = longitude && Number.isFinite(longitude) ? longitude : 0;
 
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
-      style: mapStyle,
+    const { map: mapInstance, geolocateControl } = createMap(mapContainer.current, {
       center: [safeLng, safeLat],
       zoom: latitude && longitude ? 12 : 1,
     });
 
-    mapInstance.addControl(
-      new maplibregl.NavigationControl({ showCompass: false }),
-      "bottom-right",
-    );
+    // Update marker and inputs when user geolocates via the built-in control
+    geolocateControl.on("geolocate", (e: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = e.coords;
+      updateMarker(lng, lat);
+      onChange(lat, lng);
+      setLatInput(lat.toFixed(6));
+      setLngInput(lng.toFixed(6));
+    });
 
     mapInstance.on("load", () => {
       // Add uncertainty circle source and layers
@@ -220,9 +222,13 @@ export function LocationPicker({
     const parsed = parseFloat(value);
     const [min, max] = axis === "lat" ? [-90, 90] : [-180, 180];
     if (isNaN(parsed) || parsed < min || parsed > max) return;
-    if (!latInput || !lngInput) return;
 
-    const otherValue = parseFloat(axis === "lat" ? lngInput : latInput);
+    // Use the fresh `value` for the current axis; the other axis comes from
+    // state which is up-to-date from the previous render cycle.
+    const otherInput = axis === "lat" ? lngInput : latInput;
+    if (!otherInput) return;
+
+    const otherValue = parseFloat(otherInput);
     if (isNaN(otherValue)) return;
 
     const lat = axis === "lat" ? parsed : otherValue;
@@ -287,15 +293,7 @@ export function LocationPicker({
 
       <Box
         ref={mapContainer}
-        sx={{
-          width: "100%",
-          height: 200,
-          borderRadius: 1,
-          overflow: "hidden",
-          border: 1,
-          borderColor: "divider",
-          ...(theme.palette.mode === "dark" && darkMapFilter),
-        }}
+        sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
       />
 
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>

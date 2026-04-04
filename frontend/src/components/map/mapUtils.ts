@@ -1,7 +1,34 @@
-import type maplibregl from "maplibre-gl";
+import maplibregl from "maplibre-gl";
+import { mapStyle } from "./mapStyle";
 
 /** Approximate meters per degree of latitude at the equator */
 export const METERS_PER_DEGREE = 111320;
+
+interface CreateMapResult {
+  map: maplibregl.Map;
+  geolocateControl: maplibregl.GeolocateControl;
+}
+
+/** Create a map instance with standard controls. */
+export function createMap(
+  container: HTMLElement,
+  options: Omit<maplibregl.MapOptions, "container" | "style">,
+): CreateMapResult {
+  const map = new maplibregl.Map({
+    ...options,
+    container,
+    style: mapStyle,
+  });
+
+  map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+
+  const geolocateControl = new maplibregl.GeolocateControl({
+    positionOptions: { enableHighAccuracy: true },
+  });
+  map.addControl(geolocateControl, "top-left");
+
+  return { map, geolocateControl };
+}
 
 /** Color used for uncertainty circles and map markers */
 export const MAP_MARKER_COLOR = "#22c55e";

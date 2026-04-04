@@ -126,18 +126,11 @@ authTest.describe("Upload Modal - Logged In", () => {
       await option.click();
     }
 
-    // Set location via the "Use My Location" button (geolocation mocked in fixture)
-    const useLocationBtn = page.getByRole("button", {
-      name: /Use My Location/i,
-    });
-    await useLocationBtn.scrollIntoViewIfNeeded();
-    await useLocationBtn.click();
-    // Wait for location text to appear instead of fixed delay
-    await page
-      .getByText(/latitude|location|coordinates/i)
-      .first()
-      .waitFor({ state: "visible", timeout: 5000 })
-      .catch(() => {});
+    // Set location via coordinate inputs
+    const latInput = page.getByLabel("Latitude");
+    await latInput.scrollIntoViewIfNeeded();
+    await latInput.fill("37.7749");
+    await page.getByLabel("Longitude").fill("-122.4194");
 
     const submitButton = page.getByRole("button", { name: /Submit/i });
     if (await submitButton.isEnabled()) {
@@ -227,18 +220,11 @@ authTest.describe("Upload Modal - Logged In", () => {
         .waitFor({ state: "visible", timeout: 10_000 })
         .catch(() => {});
 
-      // Set location via the "Use My Location" button (geolocation mocked in fixture)
-      const useLocationBtn = page.getByRole("button", {
-        name: /Use My Location/i,
-      });
-      await useLocationBtn.scrollIntoViewIfNeeded();
-      await useLocationBtn.click();
-      // Wait for location text to appear instead of fixed delay
-      await page
-        .getByText(/latitude|location|coordinates/i)
-        .first()
-        .waitFor({ state: "visible", timeout: 5000 })
-        .catch(() => {});
+      // Set location via coordinate inputs
+      const latInput = page.getByLabel("Latitude");
+      await latInput.scrollIntoViewIfNeeded();
+      await latInput.fill("37.7749");
+      await page.getByLabel("Longitude").fill("-122.4194");
 
       const submitButton = page.getByRole("button", { name: /Submit/i });
       await submitButton.click();
