@@ -3,4 +3,4 @@
 /**
  * Response returned when an AT Protocol record is created.
  */
-export type RecordCreatedResponse = { success: boolean, uri: string, cid: string, };
+export type RecordCreatedResponse = { success: boolean; uri: string; cid: string };
