@@ -13,6 +13,22 @@ import type { AtpAgent, BlobRef } from "@atproto/api";
 const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
 const MEDIA_COLLECTION = "bio.lexicons.temp.media";
 
+/**
+ * The subset of AtpAgent required by OccurrenceUploader.
+ * Defined structurally so tests can provide narrow mocks.
+ */
+export interface UploaderAgent {
+  session?: { did: string } | undefined;
+  com: {
+    atproto: {
+      repo: {
+        createRecord: AtpAgent["com"]["atproto"]["repo"]["createRecord"];
+      };
+    };
+  };
+  uploadBlob: AtpAgent["uploadBlob"];
+}
+
 interface UploadConfig {
   pdsUrl: string;
 }
@@ -39,10 +55,10 @@ interface ExifData {
 }
 
 export class OccurrenceUploader {
-  private agent: AtpAgent;
+  private agent: UploaderAgent;
   private config: UploadConfig;
 
-  constructor(agent: AtpAgent, config: Partial<UploadConfig> = {}) {
+  constructor(agent: UploaderAgent, config: Partial<UploadConfig> = {}) {
     this.agent = agent;
     this.config = {
       pdsUrl: config.pdsUrl || "https://bsky.social",

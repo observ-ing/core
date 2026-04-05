@@ -9,6 +9,14 @@ import feedReducer, {
   setUserLocation,
 } from "./feedSlice";
 import authReducer from "./authSlice";
+import type {
+  Occurrence,
+  ExploreFeedResponse,
+  HomeFeedResponse,
+  User,
+  FeedTab,
+  FeedFilters,
+} from "../services/types";
 
 vi.mock("../services/api", () => ({
   fetchHomeFeed: vi.fn(),
@@ -19,28 +27,74 @@ vi.mock("../services/api", () => ({
 
 import * as api from "../services/api";
 
+function makeOccurrence(overrides: Partial<Occurrence> = {}): Occurrence {
+  return {
+    uri: "at://test",
+    cid: "test-cid",
+    observer: { did: "did:plc:default", handle: "default.bsky.social" },
+    observers: [],
+    subjects: [],
+    eventDate: "2024-01-01",
+    location: { latitude: 0, longitude: 0 },
+    images: [],
+    createdAt: "2024-01-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function makeFeedResponse(
+  occurrences: Occurrence[] = [],
+  cursor?: string,
+): ExploreFeedResponse & HomeFeedResponse {
+  return cursor === undefined ? { occurrences } : { occurrences, cursor };
+}
+
+interface FeedOverrides {
+  observations?: Occurrence[];
+  cursor?: string | undefined;
+  isLoading?: boolean;
+  currentTab?: FeedTab;
+  hasMore?: boolean;
+  filters?: FeedFilters;
+  isAuthenticated?: boolean;
+  userLocation?: { lat: number; lng: number } | null;
+}
+
+interface AuthOverrides {
+  user: User | null;
+  isLoading: boolean;
+}
+
+interface FeedStateShape {
+  observations: Occurrence[];
+  cursor: string | undefined;
+  isLoading: boolean;
+  currentTab: FeedTab;
+  hasMore: boolean;
+  filters: FeedFilters;
+  isAuthenticated: boolean;
+  userLocation: { lat: number; lng: number } | null;
+}
+
 describe("feedSlice", () => {
-  const defaultFeedState = {
+  const defaultFeedState: FeedStateShape = {
     observations: [],
     cursor: undefined,
     isLoading: false,
-    currentTab: "explore" as const,
+    currentTab: "explore",
     hasMore: true,
     filters: {},
     isAuthenticated: false,
     userLocation: null,
   };
 
-  const createTestStore = (preloadedState?: {
-    feed?: Partial<typeof defaultFeedState>;
-    auth?: { user: { did: string; handle: string } | null; isLoading: boolean };
-  }) =>
+  const createTestStore = (preloadedState?: { feed?: FeedOverrides; auth?: AuthOverrides }) =>
     configureStore({
       reducer: { feed: feedReducer, auth: authReducer },
       preloadedState: {
         feed: { ...defaultFeedState, ...preloadedState?.feed },
         auth: preloadedState?.auth ?? { user: null, isLoading: false },
-      } as any,
+      },
     });
 
   beforeEach(() => {
@@ -66,7 +120,7 @@ describe("feedSlice", () => {
     it("switches tab and resets state", () => {
       const store = createTestStore({
         feed: {
-          observations: [{ uri: "test" } as any],
+          observations: [makeOccurrence({ uri: "test" })],
           cursor: "abc",
           currentTab: "explore",
           hasMore: false,
@@ -87,7 +141,7 @@ describe("feedSlice", () => {
     it("resets feed state", () => {
       const store = createTestStore({
         feed: {
-          observations: [{ uri: "test" } as any],
+          observations: [makeOccurrence({ uri: "test" })],
           cursor: "abc",
           hasMore: false,
         },
@@ -106,7 +160,7 @@ describe("feedSlice", () => {
     it("sets filters and resets feed", () => {
       const store = createTestStore({
         feed: {
-          observations: [{ uri: "test" } as any],
+          observations: [makeOccurrence({ uri: "test" })],
           cursor: "abc",
           hasMore: false,
           filters: {},
@@ -147,11 +201,11 @@ describe("feedSlice", () => {
 
   describe("loadFeed thunk", () => {
     it("loads explore feed when not authenticated", async () => {
-      const mockResponse = {
-        occurrences: [{ uri: "at://test1" }, { uri: "at://test2" }],
-        cursor: "next123",
-      };
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue(mockResponse as any);
+      const mockResponse = makeFeedResponse(
+        [makeOccurrence({ uri: "at://test1" }), makeOccurrence({ uri: "at://test2" })],
+        "next123",
+      );
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(mockResponse);
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
@@ -167,11 +221,13 @@ describe("feedSlice", () => {
     });
 
     it("loads explore feed when on explore tab even if authenticated", async () => {
-      const mockResponse = { occurrences: [], cursor: undefined };
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue(mockResponse as any);
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(makeFeedResponse());
 
       const store = createTestStore({
-        auth: { user: { did: "did:plc:test", handle: "test" }, isLoading: false },
+        auth: {
+          user: { did: "did:plc:test", handle: "test" },
+          isLoading: false,
+        },
         feed: { currentTab: "explore" },
       });
 
@@ -182,14 +238,14 @@ describe("feedSlice", () => {
     });
 
     it("loads home feed when authenticated and on home tab", async () => {
-      const mockResponse = {
-        occurrences: [{ uri: "at://home1" }],
-        cursor: "homecursor",
-      };
-      vi.mocked(api.fetchHomeFeed).mockResolvedValue(mockResponse as any);
+      const mockResponse = makeFeedResponse([makeOccurrence({ uri: "at://home1" })], "homecursor");
+      vi.mocked(api.fetchHomeFeed).mockResolvedValue(mockResponse);
 
       const store = createTestStore({
-        auth: { user: { did: "did:plc:test", handle: "test" }, isLoading: false },
+        auth: {
+          user: { did: "did:plc:test", handle: "test" },
+          isLoading: false,
+        },
         feed: { currentTab: "home" },
       });
 
@@ -198,7 +254,7 @@ describe("feedSlice", () => {
       expect(api.fetchHomeFeed).toHaveBeenCalledWith(undefined);
     });
 
-    it("sets isLoading during request", async () => {
+    it("sets isLoading during request", () => {
       vi.mocked(api.fetchExploreFeed).mockImplementation(
         () => new Promise(() => {}), // Never resolves
       );
@@ -213,16 +269,13 @@ describe("feedSlice", () => {
     });
 
     it("appends to existing occurrences on load more", async () => {
-      const mockResponse = {
-        occurrences: [{ uri: "at://new" }],
-        cursor: undefined,
-      };
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue(mockResponse as any);
+      const mockResponse = makeFeedResponse([makeOccurrence({ uri: "at://new" })]);
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(mockResponse);
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
         feed: {
-          observations: [{ uri: "at://existing" } as any],
+          observations: [makeOccurrence({ uri: "at://existing" })],
           cursor: "prev",
         },
       });
@@ -235,10 +288,7 @@ describe("feedSlice", () => {
     });
 
     it("sets hasMore to false when no cursor", async () => {
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue({
-        occurrences: [],
-        cursor: undefined,
-      } as any);
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(makeFeedResponse());
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
@@ -264,14 +314,13 @@ describe("feedSlice", () => {
 
   describe("loadInitialFeed thunk", () => {
     it("clears occurrences before loading", async () => {
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue({
-        occurrences: [{ uri: "at://new" }],
-        cursor: undefined,
-      } as any);
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(
+        makeFeedResponse([makeOccurrence({ uri: "at://new" })]),
+      );
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
-        feed: { occurrences: [{ uri: "at://old" } as any] },
+        feed: { observations: [makeOccurrence({ uri: "at://old" })] },
       });
 
       await store.dispatch(loadInitialFeed());
@@ -282,13 +331,13 @@ describe("feedSlice", () => {
     });
 
     it("loads home feed for authenticated user on home tab", async () => {
-      vi.mocked(api.fetchHomeFeed).mockResolvedValue({
-        occurrences: [],
-        cursor: undefined,
-      } as any);
+      vi.mocked(api.fetchHomeFeed).mockResolvedValue(makeFeedResponse());
 
       const store = createTestStore({
-        auth: { user: { did: "did:plc:user", handle: "user" }, isLoading: false },
+        auth: {
+          user: { did: "did:plc:user", handle: "user" },
+          isLoading: false,
+        },
         feed: { currentTab: "home" },
       });
 
@@ -298,10 +347,7 @@ describe("feedSlice", () => {
     });
 
     it("passes filters for explore feed", async () => {
-      vi.mocked(api.fetchExploreFeed).mockResolvedValue({
-        occurrences: [],
-        cursor: undefined,
-      } as any);
+      vi.mocked(api.fetchExploreFeed).mockResolvedValue(makeFeedResponse());
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
@@ -318,7 +364,7 @@ describe("feedSlice", () => {
 
       const store = createTestStore({
         auth: { user: null, isLoading: false },
-        feed: { cursor: "oldcursor", occurrences: [{ uri: "old" } as any] },
+        feed: { cursor: "oldcursor", observations: [makeOccurrence({ uri: "old" })] },
       });
 
       store.dispatch(loadInitialFeed());
