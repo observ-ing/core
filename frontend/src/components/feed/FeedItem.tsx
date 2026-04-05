@@ -222,7 +222,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           <ImageWithSkeleton
             src={imageUrl}
             alt={species || "Observation photo"}
-            sx={{ maxHeight: FEED_IMAGE_MAX_HEIGHT }}
+            sx={{ height: FEED_IMAGE_MAX_HEIGHT }}
           />
         )}
 
