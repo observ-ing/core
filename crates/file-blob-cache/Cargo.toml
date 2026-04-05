@@ -3,7 +3,7 @@ name = "file-blob-cache"
 version = "0.1.0"
 edition = "2021"
 description = "File-based blob cache with TTL expiration and LRU eviction"
-license = "AGPL-3.0-only"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 chrono = { workspace = true }

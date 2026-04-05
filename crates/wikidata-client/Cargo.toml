@@ -3,7 +3,7 @@ name = "wikidata-client"
 version = "0.1.0"
 edition = "2021"
 description = "Rust client for the Wikidata SPARQL API"
-license = "AGPL-3.0-only"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 # HTTP client

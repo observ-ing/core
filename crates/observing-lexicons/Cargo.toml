@@ -3,7 +3,7 @@ name = "observing-lexicons"
 version = "0.1.0"
 edition = "2021"
 description = "Generated AT Protocol record types from lexicon schemas"
-license = "AGPL-3.0-only"
+license = "MIT OR Apache-2.0"
 
 [features]
 default = ["bio_lexicons", "com_atproto", "ing_observ"]
