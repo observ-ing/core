@@ -61,24 +61,31 @@ authTest.describe("E2E CRUD flow", () => {
       await idDone;
     });
 
-    // Won't work until we deal with https://github.com/observ-ing/core/issues/142
-    // // Step 4: update notes
-    // await authTest.step("update notes", async () => {
-    //   const moreButton = page.getByLabel("More options").first();
-    //   await expect(moreButton).toBeVisible({ timeout: 10000 });
-    //   await moreButton.click();
-    //   await page.getByRole("menuitem", { name: "Edit" }).click();
-    //   await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
+    // Step 4: edit occurrence (PUT /api/occurrences — added in #231)
+    await authTest.step("update occurrence", async () => {
+      const moreButton = page.getByLabel("More options").first();
+      await expect(moreButton).toBeVisible({ timeout: 10000 });
+      await moreButton.click();
+      await page.getByRole("menuitem", { name: "Edit" }).click();
+      await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
-    //   const notesInput = page.getByLabel("Notes");
-    //   await notesInput.clear();
-    //   await notesInput.fill("Updated during e2e test");
+      // Nudge the latitude to trigger a real edit. The `notes` field was
+      // removed from the occurrence schema, and lat/lng are always present
+      // on existing records — so this exercises the PUT round-trip without
+      // depending on optional fields.
+      const latInput = page.getByLabel("Latitude");
+      await latInput.scrollIntoViewIfNeeded();
+      await latInput.fill("37.8000");
 
-    //   await page.getByRole("button", { name: "Save Changes" }).click();
-    //   // Wait for modal to close and updated notes to appear on the detail page
-    //   await expect(page.getByText("Edit Observation")).not.toBeVisible({ timeout: 15_000 });
-    //   await expect(page.getByText("Updated during e2e test")).toBeVisible({ timeout: 15_000 });
-    // });
+      const updateDone = page.waitForResponse(
+        (resp) => resp.request().method() === "PUT" && resp.url().includes("/api/occurrences"),
+        { timeout: 15_000 },
+      );
+      await page.getByRole("button", { name: "Save Changes" }).click();
+      const resp = await updateDone;
+      expect(resp.status()).toBe(200);
+      await expect(page.getByText("Edit Observation")).not.toBeVisible({ timeout: 15_000 });
+    });
 
     // Step 5: delete occurrence
     await authTest.step("delete occurrence", async () => {
