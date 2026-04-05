@@ -3,7 +3,7 @@ name = "observing-species-id"
 version = "0.1.0"
 edition = "2021"
 description = "BioCLIP-based species identification service for Observ.ing"
-license = "AGPL-3.0-only"
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 # ONNX inference

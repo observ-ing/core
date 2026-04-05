@@ -3,7 +3,7 @@ name = "observing-db"
 version = "0.1.0"
 edition = "2021"
 description = "Shared database layer for Observ.ing services"
-license = "AGPL-3.0-only"
+license = "MIT OR Apache-2.0"
 
 [features]
 default = []
