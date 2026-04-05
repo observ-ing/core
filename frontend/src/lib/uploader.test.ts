@@ -1,38 +1,29 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { OccurrenceUploader } from "./uploader.js";
-import type { AtpAgent } from "@atproto/api";
+import { BlobRef } from "@atproto/api";
+import { OccurrenceUploader, type UploaderAgent } from "./uploader.js";
 
-// Mock File class for Node.js environment
-class MockFile {
-  name: string;
-  type: string;
-  size: number;
-  lastModified: number;
-
-  constructor(
-    parts: BlobPart[],
-    name: string,
-    options: { type?: string; lastModified?: number } = {},
-  ) {
-    this.name = name;
-    this.type = options.type || "";
-    this.lastModified = options.lastModified || Date.now();
-    // Calculate size from parts
-    this.size = parts.reduce((acc, part) => {
-      if (typeof part === "string") return acc + part.length;
-      if (part instanceof ArrayBuffer) return acc + part.byteLength;
-      return acc;
-    }, 0);
-  }
-
-  async arrayBuffer(): Promise<ArrayBuffer> {
-    return new ArrayBuffer(this.size);
-  }
+// Helper to create mock files using native File (Node 20+)
+function createMockFile(name: string, type: string, sizeInBytes: number): File {
+  return new File(["x".repeat(sizeInBytes)], name, { type });
 }
 
-// Helper to create mock files
-function createMockFile(name: string, type: string, sizeInBytes: number): File {
-  const file = new MockFile(["x".repeat(sizeInBytes)], name, { type }) as unknown as File;
+// Helper to create a File with specific bytes and optional lastModified timestamp
+function createMockFileWithBytes(bytes: number[], lastModified?: number): File {
+  const buffer = new Uint8Array(bytes);
+  const options: FilePropertyBag = { type: "image/jpeg" };
+  if (lastModified !== undefined) {
+    options.lastModified = lastModified;
+  }
+  return new File([buffer], "test.jpg", options);
+}
+
+// Helper to create a File whose arrayBuffer() rejects, for error-path testing
+function createErrorFile(): File {
+  const file = new File(["ignored"], "test.jpg", { type: "image/jpeg" });
+  // Override arrayBuffer to simulate a read error
+  Object.defineProperty(file, "arrayBuffer", {
+    value: () => Promise.reject(new Error("Read error")),
+  });
   return file;
 }
 
@@ -52,26 +43,43 @@ function createValidOccurrence(
 }
 
 describe("OccurrenceUploader", () => {
-  let mockAgent: Partial<AtpAgent>;
+  let createRecord: ReturnType<
+    typeof vi.fn<UploaderAgent["com"]["atproto"]["repo"]["createRecord"]>
+  >;
+  let uploadBlob: ReturnType<typeof vi.fn<UploaderAgent["uploadBlob"]>>;
   let uploader: OccurrenceUploader;
 
-  beforeEach(() => {
-    mockAgent = {
-      session: { did: "did:plc:test", handle: "test.bsky.social" } as AtpAgent["session"],
-      uploadBlob: vi.fn().mockResolvedValue({
-        data: { blob: { ref: { $link: "blobref" }, mimeType: "image/jpeg", size: 1000 } },
-      }),
-      com: {
-        atproto: {
-          repo: {
-            createRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1", cid: "test-cid" },
-            }),
-          },
-        },
-      } as unknown as AtpAgent["com"],
+  function makeAgent(session: UploaderAgent["session"]): UploaderAgent {
+    return {
+      session,
+      uploadBlob,
+      com: { atproto: { repo: { createRecord } } },
     };
-    uploader = new OccurrenceUploader(mockAgent as AtpAgent);
+  }
+  const defaultSession = { did: "did:plc:test" };
+
+  beforeEach(() => {
+    createRecord = vi.fn(async () => ({
+      success: true,
+      data: {
+        uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
+        cid: "test-cid",
+        commit: { cid: "commit-cid", rev: "rev-1" },
+        validationStatus: "valid",
+      },
+      headers: {},
+    }));
+    uploadBlob = vi.fn(async () => ({
+      success: true,
+      data: {
+        blob: BlobRef.fromJsonRef({
+          cid: "bafkreihdwdcefgh4dqkjv67uzcmw7ojee6xedzdetojuzjevtenxquvyku",
+          mimeType: "image/jpeg",
+        }),
+      },
+      headers: {},
+    }));
+    uploader = new OccurrenceUploader(makeAgent(defaultSession));
   });
 
   describe("validateOccurrence", () => {
@@ -101,7 +109,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts today's date", async () => {
@@ -110,7 +118,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -166,7 +174,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts latitude at boundary 90", async () => {
@@ -176,7 +184,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts longitude at boundary -180", async () => {
@@ -186,7 +194,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts longitude at boundary 180", async () => {
@@ -196,7 +204,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -239,7 +247,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts png images", async () => {
@@ -249,7 +257,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts webp images", async () => {
@@ -259,7 +267,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts image at exactly 10MB", async () => {
@@ -270,7 +278,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts multiple valid images", async () => {
@@ -284,7 +292,7 @@ describe("OccurrenceUploader", () => {
 
         await uploader.upload(data);
 
-        expect(mockAgent.uploadBlob).toHaveBeenCalledTimes(3);
+        expect(uploadBlob).toHaveBeenCalledTimes(3);
       });
 
       it("throws if any image in array is invalid type", async () => {
@@ -325,25 +333,6 @@ describe("OccurrenceUploader", () => {
   });
 
   describe("extractExif", () => {
-    // Helper to create a mock file with specific bytes
-    function createMockFileWithBytes(bytes: number[], lastModified?: number): File {
-      const buffer = new ArrayBuffer(bytes.length);
-      const view = new Uint8Array(buffer);
-      bytes.forEach((b, i) => {
-        view[i] = b;
-      });
-
-      const file = {
-        name: "test.jpg",
-        type: "image/jpeg",
-        size: bytes.length,
-        lastModified: lastModified || Date.now(),
-        arrayBuffer: () => Promise.resolve(buffer),
-      } as unknown as File;
-
-      return file;
-    }
-
     it("returns empty object for non-JPEG file", async () => {
       // PNG file signature (not JPEG)
       const pngFile = createMockFileWithBytes([0x89, 0x50, 0x4e, 0x47]);
@@ -423,13 +412,7 @@ describe("OccurrenceUploader", () => {
     });
 
     it("handles error during parsing gracefully", async () => {
-      const errorFile = {
-        name: "test.jpg",
-        type: "image/jpeg",
-        size: 100,
-        lastModified: Date.now(),
-        arrayBuffer: () => Promise.reject(new Error("Read error")),
-      } as unknown as File;
+      const errorFile = createErrorFile();
 
       const result = await uploader.extractExif(errorFile);
 

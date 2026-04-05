@@ -10,6 +10,27 @@ import { getErrorMessage } from "./utils";
 
 const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
 
+type AtpRepoOps = AtpAgent["com"]["atproto"]["repo"];
+
+/**
+ * The subset of AtpAgent required by IdentificationService.
+ * Defined structurally so tests can provide narrow mocks.
+ */
+export interface IdentificationAgent {
+  session?: { did: string } | undefined;
+  com: {
+    atproto: {
+      repo: {
+        createRecord: AtpRepoOps["createRecord"];
+        deleteRecord: AtpRepoOps["deleteRecord"];
+        getRecord: AtpRepoOps["getRecord"];
+        putRecord: AtpRepoOps["putRecord"];
+        listRecords: AtpRepoOps["listRecords"];
+      };
+    };
+  };
+}
+
 interface IdentificationInput {
   /** URI of the occurrence being identified */
   occurrenceUri: string;
@@ -67,9 +88,9 @@ interface IdentificationResult {
 }
 
 export class IdentificationService {
-  private agent: AtpAgent;
+  private agent: IdentificationAgent;
 
-  constructor(agent: AtpAgent) {
+  constructor(agent: IdentificationAgent) {
     this.agent = agent;
   }
 

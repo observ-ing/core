@@ -1,45 +1,85 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { IdentificationService } from "./identification.js";
-import type { AtpAgent } from "@atproto/api";
+import { IdentificationService, type IdentificationAgent } from "./identification.js";
 
 describe("IdentificationService", () => {
-  let mockAgent: Partial<AtpAgent>;
+  let createRecord: ReturnType<
+    typeof vi.fn<IdentificationAgent["com"]["atproto"]["repo"]["createRecord"]>
+  >;
+  let deleteRecord: ReturnType<
+    typeof vi.fn<IdentificationAgent["com"]["atproto"]["repo"]["deleteRecord"]>
+  >;
+  let getRecord: ReturnType<
+    typeof vi.fn<IdentificationAgent["com"]["atproto"]["repo"]["getRecord"]>
+  >;
+  let putRecord: ReturnType<
+    typeof vi.fn<IdentificationAgent["com"]["atproto"]["repo"]["putRecord"]>
+  >;
+  let listRecords: ReturnType<
+    typeof vi.fn<IdentificationAgent["com"]["atproto"]["repo"]["listRecords"]>
+  >;
   let service: IdentificationService;
 
-  beforeEach(() => {
-    mockAgent = {
-      session: { did: "did:plc:test", handle: "test.bsky.social" } as AtpAgent["session"],
+  function makeAgent(session: IdentificationAgent["session"]): IdentificationAgent {
+    return {
+      session,
       com: {
         atproto: {
-          repo: {
-            createRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/ing.observ.temp.identification/1", cid: "test-cid" },
-            }),
-            deleteRecord: vi.fn().mockResolvedValue({}),
-            getRecord: vi.fn().mockResolvedValue({
-              data: {
-                value: {
-                  $type: "ing.observ.temp.identification",
-                  subject: {
-                    uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
-                    cid: "subject-cid",
-                  },
-                  taxon: { scientificName: "Quercus alba", taxonRank: "species" },
-                  createdAt: "2024-01-01T00:00:00Z",
-                },
-              },
-            }),
-            putRecord: vi.fn().mockResolvedValue({
-              data: { uri: "at://did:plc:test/ing.observ.temp.identification/1", cid: "new-cid" },
-            }),
-            listRecords: vi.fn().mockResolvedValue({
-              data: { records: [] },
-            }),
-          },
+          repo: { createRecord, deleteRecord, getRecord, putRecord, listRecords },
         },
-      } as unknown as AtpAgent["com"],
+      },
     };
-    service = new IdentificationService(mockAgent as AtpAgent);
+  }
+  const defaultSession = { did: "did:plc:test" };
+
+  beforeEach(() => {
+    createRecord = vi.fn(async () => ({
+      success: true,
+      data: {
+        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        cid: "test-cid",
+        commit: { cid: "commit-cid", rev: "rev-1" },
+        validationStatus: "valid",
+      },
+      headers: {},
+    }));
+    deleteRecord = vi.fn(async () => ({
+      success: true,
+      data: { commit: { cid: "commit-cid", rev: "rev-1" } },
+      headers: {},
+    }));
+    getRecord = vi.fn(async () => ({
+      success: true,
+      data: {
+        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        cid: "test-cid",
+        value: {
+          $type: "ing.observ.temp.identification",
+          subject: {
+            uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
+            cid: "subject-cid",
+          },
+          taxon: { scientificName: "Quercus alba", taxonRank: "species" },
+          createdAt: "2024-01-01T00:00:00Z",
+        },
+      },
+      headers: {},
+    }));
+    putRecord = vi.fn(async () => ({
+      success: true,
+      data: {
+        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        cid: "new-cid",
+        commit: { cid: "commit-cid", rev: "rev-1" },
+        validationStatus: "valid",
+      },
+      headers: {},
+    }));
+    listRecords = vi.fn(async () => ({
+      success: true,
+      data: { records: [] },
+      headers: {},
+    }));
+    service = new IdentificationService(makeAgent(defaultSession));
   });
 
   describe("validateInput", () => {
@@ -71,7 +111,7 @@ describe("IdentificationService", () => {
       it("accepts valid at:// URI", async () => {
         await service.identify(validInput);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -85,7 +125,7 @@ describe("IdentificationService", () => {
       it("accepts valid CID", async () => {
         await service.identify(validInput);
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -113,19 +153,19 @@ describe("IdentificationService", () => {
         const maxName = "A".repeat(256);
         await service.identify({ ...validInput, scientificName: maxName });
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts typical species name", async () => {
         await service.identify({ ...validInput, scientificName: "Homo sapiens" });
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts subspecies with three parts", async () => {
         await service.identify({ ...validInput, scientificName: "Canis lupus familiaris" });
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -141,21 +181,20 @@ describe("IdentificationService", () => {
         const maxComment = "A".repeat(3000);
         await service.identify({ ...validInput, comment: maxComment });
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
 
       it("accepts empty comment (optional field)", async () => {
         await service.identify({ ...validInput, comment: undefined });
 
-        expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalled();
+        expect(createRecord).toHaveBeenCalled();
       });
     });
   });
 
   describe("identify", () => {
     it("throws if not logged in", async () => {
-      const noSessionAgent = { session: undefined } as AtpAgent;
-      const noSessionService = new IdentificationService(noSessionAgent);
+      const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(
         noSessionService.identify({
@@ -189,7 +228,7 @@ describe("IdentificationService", () => {
         isAgreement: true,
       });
 
-      expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
           collection: "ing.observ.temp.identification",
@@ -217,7 +256,7 @@ describe("IdentificationService", () => {
         scientificName: "Quercus alba",
       });
 
-      expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -238,7 +277,7 @@ describe("IdentificationService", () => {
         "Quercus alba",
       );
 
-      expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -259,7 +298,7 @@ describe("IdentificationService", () => {
         "Quercus rubra",
       );
 
-      expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -282,7 +321,7 @@ describe("IdentificationService", () => {
         },
       );
 
-      expect(mockAgent.com!.atproto.repo.createRecord).toHaveBeenCalledWith(
+      expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -298,8 +337,7 @@ describe("IdentificationService", () => {
 
   describe("withdraw", () => {
     it("throws if not logged in", async () => {
-      const noSessionAgent = { session: undefined } as AtpAgent;
-      const noSessionService = new IdentificationService(noSessionAgent);
+      const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(
         noSessionService.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123"),
@@ -309,7 +347,7 @@ describe("IdentificationService", () => {
     it("extracts rkey from URI and deletes record", async () => {
       await service.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123");
 
-      expect(mockAgent.com!.atproto.repo.deleteRecord).toHaveBeenCalledWith({
+      expect(deleteRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
         collection: "ing.observ.temp.identification",
         rkey: "abc123",
@@ -319,8 +357,7 @@ describe("IdentificationService", () => {
 
   describe("update", () => {
     it("throws if not logged in", async () => {
-      const noSessionAgent = { session: undefined } as AtpAgent;
-      const noSessionService = new IdentificationService(noSessionAgent);
+      const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(
         noSessionService.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
@@ -335,12 +372,12 @@ describe("IdentificationService", () => {
         { scientificName: "Quercus rubra" },
       );
 
-      expect(mockAgent.com!.atproto.repo.getRecord).toHaveBeenCalledWith({
+      expect(getRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
         collection: "ing.observ.temp.identification",
         rkey: "abc123",
       });
-      expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect(putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
           collection: "ing.observ.temp.identification",
@@ -363,7 +400,7 @@ describe("IdentificationService", () => {
         comment: "New comment",
       });
 
-      expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect(putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             taxon: expect.objectContaining({
@@ -381,7 +418,7 @@ describe("IdentificationService", () => {
         comment: "",
       });
 
-      expect(mockAgent.com!.atproto.repo.putRecord).toHaveBeenCalledWith(
+      expect(putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
             comment: "",
@@ -393,8 +430,7 @@ describe("IdentificationService", () => {
 
   describe("getMyIdentifications", () => {
     it("throws if not logged in", async () => {
-      const noSessionAgent = { session: undefined } as AtpAgent;
-      const noSessionService = new IdentificationService(noSessionAgent);
+      const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(noSessionService.getMyIdentifications()).rejects.toThrow("Not logged in");
     });
@@ -402,7 +438,7 @@ describe("IdentificationService", () => {
     it("lists records with default limit", async () => {
       await service.getMyIdentifications();
 
-      expect(mockAgent.com!.atproto.repo.listRecords).toHaveBeenCalledWith({
+      expect(listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
         collection: "ing.observ.temp.identification",
         limit: 50,
@@ -412,7 +448,7 @@ describe("IdentificationService", () => {
     it("lists records with custom limit", async () => {
       await service.getMyIdentifications(100);
 
-      expect(mockAgent.com!.atproto.repo.listRecords).toHaveBeenCalledWith({
+      expect(listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
         collection: "ing.observ.temp.identification",
         limit: 100,
@@ -424,9 +460,11 @@ describe("IdentificationService", () => {
         { uri: "at://test/1", cid: "cid1", value: { taxon: { scientificName: "Species A" } } },
         { uri: "at://test/2", cid: "cid2", value: { taxon: { scientificName: "Species B" } } },
       ];
-      vi.mocked(mockAgent.com!.atproto.repo.listRecords).mockResolvedValueOnce({
+      listRecords.mockResolvedValueOnce({
+        success: true,
         data: { records: mockRecords },
-      } as never);
+        headers: {},
+      });
 
       const result = await service.getMyIdentifications();
 
