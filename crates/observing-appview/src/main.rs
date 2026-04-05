@@ -129,7 +129,8 @@ async fn main() {
         // Occurrences write (no wildcard)
         .route(
             "/api/occurrences",
-            post(routes::occurrences::create_occurrence),
+            post(routes::occurrences::create_occurrence)
+                .put(routes::occurrences::update_occurrence),
         )
         // Feeds
         .route("/api/feeds/explore", get(routes::feeds::get_explore))
