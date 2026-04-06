@@ -14,40 +14,34 @@ import {
   Tooltip,
   Skeleton,
 } from "@mui/material";
-import {
-  Login,
-  Logout,
-  GitHub,
-  Schema,
-} from "@mui/icons-material";
-import { openLoginModal } from "../../store/uiSlice";
+import { Login, Logout, GitHub, Schema } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems, getThemeIcon } from "./NavConfig";
 
-export const DRAWER_WIDTH = 280;
+export const DRAWER_WIDTH = 240;
 
 interface SidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
+  unreadCount: number;
 }
 
-export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps) {
   const {
     user,
     isAuthLoading,
     themeMode,
-    unreadCount,
     isActive,
+    handleLogin,
     handleLogout,
     cycleTheme,
     getThemeTooltip,
-    dispatch,
   } = useNavigation();
 
-  const handleLogin = () => {
-    dispatch(openLoginModal());
+  const onLogin = () => {
+    handleLogin();
     onMobileClose();
   };
 
@@ -109,8 +103,8 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               }}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText 
-                primary={item.label} 
+              <ListItemText
+                primary={item.label}
                 primaryTypographyProps={{ fontWeight: isActive(item.path) ? 700 : 500 }}
               />
             </ListItemButton>
@@ -155,7 +149,15 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
         {/* Theme & User */}
         <Box sx={{ p: 1 }}>
-          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, px: 1 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              mb: 2,
+              px: 1,
+            }}
+          >
             <Typography variant="caption" color="text.secondary" fontWeight={600}>
               THEME
             </Typography>
@@ -194,7 +196,12 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   {getDisplayName(user, "User")}
                 </Typography>
                 {user.handle && (
-                  <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    noWrap
+                    sx={{ display: "block" }}
+                  >
                     @{user.handle}
                   </Typography>
                 )}
@@ -205,7 +212,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </Box>
           ) : (
             <ListItemButton
-              onClick={handleLogin}
+              onClick={onLogin}
               sx={{
                 borderRadius: 2,
                 bgcolor: "primary.main",
@@ -218,9 +225,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
                 <Login />
               </ListItemIcon>
-              <ListItemText 
-                primary="Log in" 
-                primaryTypographyProps={{ fontWeight: 700, textAlign: "center" }} 
+              <ListItemText
+                primary="Log in"
+                primaryTypographyProps={{ fontWeight: 700, textAlign: "center" }}
               />
             </ListItemButton>
           )}

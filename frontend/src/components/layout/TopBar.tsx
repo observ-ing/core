@@ -9,7 +9,6 @@ import {
   Tooltip,
   Avatar,
   Typography,
-  Badge,
   Skeleton,
   useTheme,
   useMediaQuery,
@@ -20,16 +19,7 @@ import {
   Divider,
   alpha,
 } from "@mui/material";
-import {
-  Notifications as NotificationsIcon,
-  Person,
-  Login,
-  Logout,
-  GitHub,
-  Schema,
-  Menu as MenuIcon,
-} from "@mui/icons-material";
-import { openLoginModal } from "../../store/uiSlice";
+import { Person, Login, Logout, GitHub, Schema, Menu as MenuIcon } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
@@ -37,23 +27,23 @@ import { getNavItems, getThemeIcon } from "./NavConfig";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
+  unreadCount: number;
 }
 
-export function TopBar({ onMobileMenuClick }: TopBarProps) {
+export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const {
     user,
     isAuthLoading,
     themeMode,
-    unreadCount,
     isActive,
+    handleLogin,
     handleLogout,
     cycleTheme,
     getThemeTooltip,
-    dispatch,
   } = useNavigation();
-  
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
@@ -69,9 +59,11 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
     handleLogout();
   };
 
-  const navItems = getNavItems(user, unreadCount).filter(
-    item => item.label === "Home" || item.label === "Explore"
+  const allNavItems = getNavItems(user, unreadCount);
+  const mainNavItems = allNavItems.filter(
+    (item) => item.label === "Home" || item.label === "Explore",
   );
+  const notificationItem = allNavItems.find((item) => item.label === "Notifications");
 
   return (
     <AppBar
@@ -131,7 +123,7 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
           {/* Desktop Nav */}
           {!isMobile && (
             <Box sx={{ display: "flex", gap: 1 }}>
-              {navItems.map((item) => (
+              {mainNavItems.map((item) => (
                 <Button
                   key={item.label}
                   component={Link}
@@ -178,12 +170,10 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
             </>
           )}
 
-          {user && (
+          {notificationItem && (
             <Tooltip title="Notifications">
-              <IconButton component={Link} to="/notifications" color="inherit">
-                <Badge badgeContent={unreadCount} color="error">
-                  <NotificationsIcon />
-                </Badge>
+              <IconButton component={Link} to={notificationItem.path} color="inherit">
+                {notificationItem.icon}
               </IconButton>
             </Tooltip>
           )}
@@ -198,7 +188,7 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
             <Skeleton variant="circular" width={40} height={40} />
           ) : user ? (
             <>
-              <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }}>
+              <IconButton onClick={handleProfileMenuOpen} sx={{ p: 0.5 }} aria-label="Account menu">
                 <Avatar
                   {...(user.avatar ? { src: user.avatar } : {})}
                   sx={{ width: 40, height: 40, border: 2, borderColor: "divider" }}
@@ -255,10 +245,9 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
           ) : (
             <Button
               variant="contained"
-              onClick={() => dispatch(openLoginModal())}
+              onClick={handleLogin}
               startIcon={<Login />}
               sx={{
-                display: { xs: "none", md: "inline-flex" },
                 borderRadius: 2,
                 px: 3,
                 fontWeight: 700,

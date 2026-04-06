@@ -35,8 +35,11 @@ export const getNavItems = (user: { did: string } | null, unreadCount: number) =
 
 export const getThemeIcon = (themeMode: ThemeMode) => {
   switch (themeMode) {
-    case "light": return <LightMode />;
-    case "dark": return <DarkMode />;
-    default: return <SettingsBrightness />;
+    case "light":
+      return <LightMode />;
+    case "dark":
+      return <DarkMode />;
+    default:
+      return <SettingsBrightness />;
   }
 };
