@@ -6,7 +6,8 @@ import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
-import { Sidebar, DRAWER_WIDTH } from "./components/layout/Sidebar";
+import { Sidebar } from "./components/layout/Sidebar";
+import { TopBar } from "./components/layout/TopBar";
 import { LandingPage } from "./components/landing/LandingPage";
 import { FeedView } from "./components/feed/FeedView";
 import { ObservationDetail } from "./components/observation/ObservationDetail";
@@ -50,56 +51,57 @@ function AppContent() {
   const showLanding = !user && !isAuthLoading && location.pathname === "/";
 
   return (
-    <>
+    <Box sx={{ display: "flex", flex: 1, flexDirection: "column", overflow: "hidden" }}>
       {!showLanding && (
-        <Alert
-          severity="warning"
-          sx={{
-            borderRadius: 0,
-            py: 1,
-            flexShrink: 0,
-            ml: { md: `${DRAWER_WIDTH}px` },
-            "& .MuiAlert-message": {
-              width: "100%",
-              textAlign: "center",
-            },
-          }}
-        >
-          <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any
-          time without notice.
-        </Alert>
+        <>
+          <TopBar onMobileMenuClick={handleDrawerToggle} />
+          <Alert
+            severity="warning"
+            sx={{
+              borderRadius: 0,
+              py: 0.5,
+              flexShrink: 0,
+              borderBottom: 1,
+              borderColor: "warning.main",
+              "& .MuiAlert-message": {
+                width: "100%",
+                textAlign: "center",
+              },
+            }}
+          >
+            <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any
+            time without notice.
+          </Alert>
+          <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />
+        </>
       )}
-      <Box sx={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {!showLanding && <Sidebar mobileOpen={mobileOpen} onMobileClose={handleDrawerToggle} />}
-        <Box
-          component="main"
-          sx={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            overflow: "auto",
-            width: showLanding ? "100%" : { md: `calc(100% - ${DRAWER_WIDTH}px)` },
-          }}
-        >
-          <Routes>
-            <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
-            <Route path="/explore" element={<FeedView tab="explore" />} />
-            <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
-            <Route path="/profile/:did" element={<ProfileView />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
-            <Route path="/taxon/:id" element={<TaxonDetail />} />
-            <Route path="/lexicons" element={<LexiconView />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Box>
+      <Box
+        component="main"
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "auto",
+        }}
+      >
+        <Routes>
+          <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
+          <Route path="/explore" element={<FeedView tab="explore" />} />
+          <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
+          <Route path="/profile/:did" element={<ProfileView />} />
+          <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
+          <Route path="/taxon/:id" element={<TaxonDetail />} />
+          <Route path="/lexicons" element={<LexiconView />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
       </Box>
       {!showLanding && <FAB />}
       <LoginModal />
       <UploadModal />
       <DeleteConfirmDialog />
       <ToastContainer />
-    </>
+    </Box>
   );
 }
 

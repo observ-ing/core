@@ -15,7 +15,6 @@ import {
   IconButton,
   Tooltip,
   Skeleton,
-  useMediaQuery,
   useTheme,
 } from "@mui/material";
 import {
@@ -30,7 +29,6 @@ import {
   Logout,
   GitHub,
   Schema,
-  Menu as MenuIcon,
 } from "@mui/icons-material";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { logout } from "../../store/authSlice";
@@ -39,7 +37,7 @@ import { fetchUnreadCount } from "../../services/api";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 
-export const DRAWER_WIDTH = 240;
+export const DRAWER_WIDTH = 280;
 
 interface SidebarProps {
   mobileOpen: boolean;
@@ -47,8 +45,6 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const location = useLocation();
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
@@ -66,9 +62,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
     const poll = () => {
       fetchUnreadCount()
         .then((data) => setUnreadCount(data.count))
-        .catch(() => {
-          // Ignore polling failures — count stays at its last known value
-        });
+        .catch(() => {});
     };
     poll();
     intervalRef.current = setInterval(poll, 30_000);
@@ -113,34 +107,28 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
 
   const getThemeIcon = () => {
     switch (themeMode) {
-      case "light":
-        return <LightMode />;
-      case "dark":
-        return <DarkMode />;
-      default:
-        return <SettingsBrightness />;
+      case "light": return <LightMode />;
+      case "dark": return <DarkMode />;
+      default: return <SettingsBrightness />;
     }
   };
 
   const getThemeTooltip = () => {
     switch (themeMode) {
-      case "light":
-        return "Light mode";
-      case "dark":
-        return "Dark mode";
-      default:
-        return "System theme";
+      case "light": return "Light mode";
+      case "dark": return "Dark mode";
+      default: return "System theme";
     }
   };
 
   const handleLogin = () => {
     dispatch(openLoginModal());
-    if (isMobile) onMobileClose();
+    onMobileClose();
   };
 
   const handleLogout = () => {
     dispatch(logout());
-    if (isMobile) onMobileClose();
+    onMobileClose();
   };
 
   const drawerContent = (
@@ -149,14 +137,13 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       <Box
         component={Link}
         to="/"
-        onClick={isMobile ? onMobileClose : undefined}
+        onClick={onMobileClose}
         sx={{
-          p: 2,
+          p: 2.5,
           display: "flex",
           alignItems: "center",
-          gap: 1,
+          gap: 1.5,
           textDecoration: "none",
-          "&:hover": { opacity: 0.8 },
         }}
       >
         <img src={logoSvg} alt="" width={28} height={28} />
@@ -164,8 +151,9 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
           variant="h6"
           component="span"
           sx={{
-            fontWeight: 700,
+            fontWeight: 800,
             color: "primary.main",
+            letterSpacing: "-0.02em",
           }}
         >
           Observ.ing
@@ -175,62 +163,44 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
       <Divider />
 
       {/* Navigation */}
-      <List sx={{ flex: 1, pt: 1 }}>
+      <List sx={{ flex: 1, pt: 1, px: 1 }}>
         {navItems.map((item) => (
-          <ListItem key={item.label} disablePadding>
+          <ListItem key={item.label} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
               component={Link}
               to={item.path}
               selected={isActive(item.path)}
-              onClick={isMobile ? onMobileClose : undefined}
+              onClick={onMobileClose}
               sx={{
-                mx: 1,
                 borderRadius: 2,
                 "&.Mui-selected": {
                   bgcolor: "primary.main",
                   color: "primary.contrastText",
-                  "&:hover": {
-                    bgcolor: "primary.dark",
-                  },
-                  "& .MuiListItemIcon-root": {
-                    color: "primary.contrastText",
-                  },
+                  "&:hover": { bgcolor: "primary.dark" },
+                  "& .MuiListItemIcon-root": { color: "primary.contrastText" },
                 },
               }}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.label} />
+              <ListItemText 
+                primary={item.label} 
+                primaryTypographyProps={{ fontWeight: isActive(item.path) ? 700 : 500 }}
+              />
             </ListItemButton>
           </ListItem>
         ))}
       </List>
 
       {/* Bottom section */}
-      <Box>
-        <Divider />
-
-        {/* Links */}
+      <Box sx={{ p: 1 }}>
+        <Divider sx={{ mb: 1 }} />
         <List dense>
-          <ListItem disablePadding>
-            <ListItemButton
-              component="a"
-              href="https://github.com/observ-ing/core"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ mx: 1, borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <GitHub fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Source Code" />
-            </ListItemButton>
-          </ListItem>
           <ListItem disablePadding>
             <ListItemButton
               component={Link}
               to="/lexicons"
-              onClick={isMobile ? onMobileClose : undefined}
-              sx={{ mx: 1, borderRadius: 2 }}
+              onClick={onMobileClose}
+              sx={{ borderRadius: 2 }}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
                 <Schema fontSize="small" />
@@ -238,39 +208,43 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
               <ListItemText primary="Lexicons" />
             </ListItemButton>
           </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component="a"
+              href="https://github.com/observ-ing/core"
+              target="_blank"
+              rel="noopener noreferrer"
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <GitHub fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Source Code" />
+            </ListItemButton>
+          </ListItem>
         </List>
 
-        <Divider />
+        <Divider sx={{ my: 1 }} />
 
         {/* Theme & User */}
-        <Box sx={{ p: 2 }}>
-          <Box
-            sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}
-          >
-            <Typography variant="caption" color="text.secondary">
-              {getThemeTooltip()}
+        <Box sx={{ p: 1 }}>
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2, px: 1 }}>
+            <Typography variant="caption" color="text.secondary" fontWeight={600}>
+              THEME
             </Typography>
-            <Tooltip title="Toggle theme">
-              <IconButton onClick={cycleTheme} size="small">
+            <Tooltip title={getThemeTooltip()}>
+              <IconButton onClick={cycleTheme} size="small" color="inherit">
                 {getThemeIcon()}
               </IconButton>
             </Tooltip>
           </Box>
 
           {isAuthLoading ? (
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                p: 1,
-                borderRadius: 2,
-              }}
-            >
-              <Skeleton variant="circular" width={36} height={36} />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Skeleton variant="text" width="70%" />
-                <Skeleton variant="text" width="50%" sx={{ fontSize: "0.75rem" }} />
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, p: 1 }}>
+              <Skeleton variant="circular" width={40} height={40} />
+              <Box sx={{ flex: 1 }}>
+                <Skeleton variant="text" width="80%" />
+                <Skeleton variant="text" width="60%" />
               </Box>
             </Box>
           ) : user ? (
@@ -279,30 +253,28 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 display: "flex",
                 alignItems: "center",
                 gap: 1.5,
-                p: 1,
-                borderRadius: 2,
+                p: 1.5,
+                borderRadius: 3,
                 bgcolor: "action.hover",
               }}
             >
               <Avatar
                 {...(user.avatar ? { src: user.avatar } : {})}
-                sx={{ width: 36, height: 36 }}
+                sx={{ width: 40, height: 40, border: 1, borderColor: "divider" }}
               />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={600} noWrap>
+                <Typography variant="body2" fontWeight={700} noWrap>
                   {getDisplayName(user, "User")}
                 </Typography>
                 {user.handle && (
-                  <Typography variant="caption" color="text.secondary" noWrap>
+                  <Typography variant="caption" color="text.secondary" noWrap sx={{ display: "block" }}>
                     @{user.handle}
                   </Typography>
                 )}
               </Box>
-              <Tooltip title="Log out">
-                <IconButton size="small" onClick={handleLogout}>
-                  <Logout fontSize="small" />
-                </IconButton>
-              </Tooltip>
+              <IconButton size="small" onClick={handleLogout} color="error">
+                <Logout fontSize="small" />
+              </IconButton>
             </Box>
           ) : (
             <ListItemButton
@@ -311,15 +283,18 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                 borderRadius: 2,
                 bgcolor: "primary.main",
                 color: "primary.contrastText",
-                "&:hover": {
-                  bgcolor: "primary.dark",
-                },
+                "&:hover": { bgcolor: "primary.dark" },
+                justifyContent: "center",
+                py: 1.5,
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40, color: "inherit" }}>
+              <ListItemIcon sx={{ minWidth: 32, color: "inherit" }}>
                 <Login />
               </ListItemIcon>
-              <ListItemText primary="Log in" />
+              <ListItemText 
+                primary="Log in" 
+                primaryTypographyProps={{ fontWeight: 700, textAlign: "center" }} 
+              />
             </ListItemButton>
           )}
         </Box>
@@ -328,63 +303,22 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
   );
 
   return (
-    <>
-      {/* Mobile menu button */}
-      <IconButton
-        color="inherit"
-        aria-label="open drawer"
-        onClick={onMobileClose}
-        sx={{
-          display: { md: "none" },
-          position: "fixed",
-          top: 8,
-          left: 8,
-          zIndex: theme.zIndex.drawer + 1,
+    <Drawer
+      variant="temporary"
+      open={mobileOpen}
+      onClose={onMobileClose}
+      ModalProps={{ keepMounted: true }}
+      sx={{
+        display: { xs: "block", md: "none" },
+        "& .MuiDrawer-paper": {
+          boxSizing: "border-box",
+          width: DRAWER_WIDTH,
           bgcolor: "background.paper",
-          boxShadow: 1,
-          "&:hover": { bgcolor: "background.paper" },
-        }}
-      >
-        <MenuIcon />
-      </IconButton>
-
-      <Box component="nav" sx={{ width: { md: DRAWER_WIDTH }, flexShrink: { md: 0 } }}>
-        {/* Mobile drawer */}
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={onMobileClose}
-          ModalProps={{ keepMounted: true }}
-          sx={{
-            display: { xs: "block", md: "none" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: DRAWER_WIDTH,
-              bgcolor: "background.paper",
-            },
-          }}
-        >
-          {drawerContent}
-        </Drawer>
-
-        {/* Desktop drawer */}
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: "none", md: "block" },
-            "& .MuiDrawer-paper": {
-              boxSizing: "border-box",
-              width: DRAWER_WIDTH,
-              bgcolor: "background.paper",
-              borderRight: 1,
-              borderColor: "divider",
-            },
-          }}
-          open
-        >
-          {drawerContent}
-        </Drawer>
-      </Box>
-    </>
+          backgroundImage: "none",
+        },
+      }}
+    >
+      {drawerContent}
+    </Drawer>
   );
 }
