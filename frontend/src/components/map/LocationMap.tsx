@@ -38,7 +38,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       zoom: 14,
       interactive: true,
       scrollZoom: false,
-    });
+    }, { geolocate: false });
 
     mapInstance.on("load", () => {
       // Add marker
