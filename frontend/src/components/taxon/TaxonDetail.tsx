@@ -283,9 +283,8 @@ export function TaxonDetail() {
             </Typography>
           )}
 
-          {/* Rank and Conservation Status */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
-            <Chip label={taxon.rank} size="small" color="default" />
+          {/* Stats + External Links */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: "wrap" }}>
             {taxon.conservationStatus && (
               <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
                 <span>
@@ -294,10 +293,6 @@ export function TaxonDetail() {
               </Tooltip>
             )}
             {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
-          </Stack>
-
-          {/* Stats + External Links */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: "wrap" }}>
             <Typography variant="body2" color="text.secondary">
               {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
               Observ.ing
