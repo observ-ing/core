@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import { Link } from "react-router-dom";
 import {
   AppBar,
   Toolbar,
@@ -21,26 +21,19 @@ import {
   alpha,
 } from "@mui/material";
 import {
-  Home,
-  Explore,
   Notifications as NotificationsIcon,
   Person,
-  DarkMode,
-  LightMode,
-  SettingsBrightness,
   Login,
   Logout,
   GitHub,
   Schema,
   Menu as MenuIcon,
-  MoreVert,
 } from "@mui/icons-material";
-import { useAppSelector, useAppDispatch } from "../../store";
-import { logout } from "../../store/authSlice";
-import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlice";
-import { fetchUnreadCount } from "../../services/api";
+import { openLoginModal } from "../../store/uiSlice";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
+import { useNavigation } from "../../hooks/useNavigation";
+import { getNavItems, getThemeIcon } from "./NavConfig";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -49,38 +42,19 @@ interface TopBarProps {
 export function TopBar({ onMobileMenuClick }: TopBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const location = useLocation();
-  const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
-  const isAuthLoading = useAppSelector((state) => state.auth.isLoading);
-  const themeMode = useAppSelector((state) => state.ui.themeMode);
+  const {
+    user,
+    isAuthLoading,
+    themeMode,
+    unreadCount,
+    isActive,
+    handleLogout,
+    cycleTheme,
+    getThemeTooltip,
+    dispatch,
+  } = useNavigation();
   
-  const [unreadCount, setUnreadCount] = useState(0);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Poll unread count when logged in
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
-    const poll = () => {
-      fetchUnreadCount()
-        .then((data) => setUnreadCount(data.count))
-        .catch(() => {});
-    };
-    poll();
-    intervalRef.current = setInterval(poll, 30_000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [user]);
-
-  const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
-  };
 
   const handleProfileMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -90,29 +64,14 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
     setAnchorEl(null);
   };
 
-  const handleLogout = () => {
+  const onLogout = () => {
     handleProfileMenuClose();
-    dispatch(logout());
+    handleLogout();
   };
 
-  const cycleTheme = () => {
-    const nextMode: ThemeMode =
-      themeMode === "system" ? "light" : themeMode === "light" ? "dark" : "system";
-    dispatch(setThemeMode(nextMode));
-  };
-
-  const getThemeIcon = () => {
-    switch (themeMode) {
-      case "light": return <LightMode />;
-      case "dark": return <DarkMode />;
-      default: return <SettingsBrightness />;
-    }
-  };
-
-  const navItems = [
-    { label: "Home", icon: <Home />, path: "/" },
-    { label: "Explore", icon: <Explore />, path: "/explore" },
-  ];
+  const navItems = getNavItems(user, unreadCount).filter(
+    item => item.label === "Home" || item.label === "Explore"
+  );
 
   return (
     <AppBar
@@ -229,9 +188,9 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
             </Tooltip>
           )}
 
-          <Tooltip title="Toggle theme">
+          <Tooltip title={getThemeTooltip()}>
             <IconButton onClick={cycleTheme} color="inherit">
-              {getThemeIcon()}
+              {getThemeIcon(themeMode)}
             </IconButton>
           </Tooltip>
 
@@ -285,7 +244,7 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
                   </ListItemIcon>
                   <ListItemText primary="Profile" />
                 </MenuItem>
-                <MenuItem onClick={handleLogout}>
+                <MenuItem onClick={onLogout}>
                   <ListItemIcon>
                     <Logout fontSize="small" />
                   </ListItemIcon>

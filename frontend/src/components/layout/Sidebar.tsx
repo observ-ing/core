@@ -1,7 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
-  Badge,
   Drawer,
   List,
   ListItem,
@@ -15,27 +13,18 @@ import {
   IconButton,
   Tooltip,
   Skeleton,
-  useTheme,
 } from "@mui/material";
 import {
-  Home,
-  Explore,
-  Notifications as NotificationsIcon,
-  Person,
-  DarkMode,
-  LightMode,
-  SettingsBrightness,
   Login,
   Logout,
   GitHub,
   Schema,
 } from "@mui/icons-material";
-import { useAppSelector, useAppDispatch } from "../../store";
-import { logout } from "../../store/authSlice";
-import { openLoginModal, setThemeMode, type ThemeMode } from "../../store/uiSlice";
-import { fetchUnreadCount } from "../../services/api";
+import { openLoginModal } from "../../store/uiSlice";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
+import { useNavigation } from "../../hooks/useNavigation";
+import { getNavItems, getThemeIcon } from "./NavConfig";
 
 export const DRAWER_WIDTH = 280;
 
@@ -45,91 +34,29 @@ interface SidebarProps {
 }
 
 export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
-  const location = useLocation();
-  const dispatch = useAppDispatch();
-  const user = useAppSelector((state) => state.auth.user);
-  const isAuthLoading = useAppSelector((state) => state.auth.isLoading);
-  const themeMode = useAppSelector((state) => state.ui.themeMode);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  // Poll unread count when logged in
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
-    const poll = () => {
-      fetchUnreadCount()
-        .then((data) => setUnreadCount(data.count))
-        .catch(() => {});
-    };
-    poll();
-    intervalRef.current = setInterval(poll, 30_000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [user]);
-
-  const navItems = [
-    { label: "Home", icon: <Home />, path: "/" },
-    { label: "Explore", icon: <Explore />, path: "/explore" },
-    ...(user
-      ? [
-          {
-            label: "Notifications",
-            icon: (
-              <Badge badgeContent={unreadCount} color="error" max={99}>
-                <NotificationsIcon />
-              </Badge>
-            ),
-            path: "/notifications",
-          },
-          {
-            label: "Profile",
-            icon: <Person />,
-            path: `/profile/${encodeURIComponent(user.did)}`,
-          },
-        ]
-      : []),
-  ];
-
-  const isActive = (path: string) => {
-    if (path === "/") return location.pathname === "/";
-    return location.pathname.startsWith(path);
-  };
-
-  const cycleTheme = () => {
-    const nextMode: ThemeMode =
-      themeMode === "system" ? "light" : themeMode === "light" ? "dark" : "system";
-    dispatch(setThemeMode(nextMode));
-  };
-
-  const getThemeIcon = () => {
-    switch (themeMode) {
-      case "light": return <LightMode />;
-      case "dark": return <DarkMode />;
-      default: return <SettingsBrightness />;
-    }
-  };
-
-  const getThemeTooltip = () => {
-    switch (themeMode) {
-      case "light": return "Light mode";
-      case "dark": return "Dark mode";
-      default: return "System theme";
-    }
-  };
+  const {
+    user,
+    isAuthLoading,
+    themeMode,
+    unreadCount,
+    isActive,
+    handleLogout,
+    cycleTheme,
+    getThemeTooltip,
+    dispatch,
+  } = useNavigation();
 
   const handleLogin = () => {
     dispatch(openLoginModal());
     onMobileClose();
   };
 
-  const handleLogout = () => {
-    dispatch(logout());
+  const onLogout = () => {
+    handleLogout();
     onMobileClose();
   };
+
+  const navItems = getNavItems(user, unreadCount);
 
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
@@ -234,7 +161,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
             </Typography>
             <Tooltip title={getThemeTooltip()}>
               <IconButton onClick={cycleTheme} size="small" color="inherit">
-                {getThemeIcon()}
+                {getThemeIcon(themeMode)}
               </IconButton>
             </Tooltip>
           </Box>
@@ -272,7 +199,7 @@ export function Sidebar({ mobileOpen, onMobileClose }: SidebarProps) {
                   </Typography>
                 )}
               </Box>
-              <IconButton size="small" onClick={handleLogout} color="error">
+              <IconButton size="small" onClick={onLogout} color="error">
                 <Logout fontSize="small" />
               </IconButton>
             </Box>
