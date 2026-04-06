@@ -46,18 +46,10 @@ export type Occurrence = Omit<GeneratedOccurrence, "subjects"> & {
   subjects: Subject[];
 };
 
-// TaxonDetail: extends with fields returned by the API's enriched taxon endpoint
+// TaxonDetail: extends with observationCount from TaxonDetailWithCount wrapper
 import type { TaxonDetail as GeneratedTaxonDetail } from "../bindings/TaxonDetail";
 export type TaxonDetail = GeneratedTaxonDetail & {
-  ancestors?: TaxonAncestor[];
-  children?: TaxonChild[];
-  gbifUrl?: string;
-  wikidataUrl?: string;
-  extinct?: boolean;
   observationCount?: number;
-  numDescendants?: number;
-  descriptions?: TaxonDescription[];
-  references?: TaxonReference[];
 };
 
 // TaxaResult: extends with synonym resolution fields
@@ -120,30 +112,6 @@ export interface ProfileFeedResponse {
 // ============================================================================
 
 export type IUCNCategory = "EX" | "EW" | "CR" | "EN" | "VU" | "NT" | "LC" | "DD" | "NE";
-
-export interface TaxonAncestor {
-  id: string;
-  name: string;
-  rank: string;
-}
-
-export interface TaxonChild {
-  id: string;
-  scientificName: string;
-  rank: string;
-  photoUrl?: string;
-}
-
-export interface TaxonDescription {
-  description: string;
-  source?: string;
-}
-
-export interface TaxonReference {
-  citation: string;
-  link?: string;
-  doi?: string;
-}
 
 // ============================================================================
 // GeoJSON Types

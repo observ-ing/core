@@ -50,6 +50,55 @@ pub struct ConservationStatus {
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
+pub struct TaxonAncestor {
+    pub id: String,
+    pub name: String,
+    pub rank: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct TaxonDescription {
+    pub description: String,
+    #[ts(optional)]
+    pub r#type: Option<String>,
+    #[ts(optional)]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct TaxonReference {
+    pub citation: String,
+    #[ts(optional)]
+    pub doi: Option<String>,
+    #[ts(optional)]
+    pub link: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct TaxonMedia {
+    pub r#type: String,
+    pub url: String,
+    #[ts(optional)]
+    pub title: Option<String>,
+    #[ts(optional)]
+    pub description: Option<String>,
+    #[ts(optional)]
+    pub source: Option<String>,
+    #[ts(optional)]
+    pub creator: Option<String>,
+    #[ts(optional)]
+    pub license: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
 pub struct TaxonDetail {
     pub id: String,
     pub scientific_name: String,
@@ -79,6 +128,24 @@ pub struct TaxonDetail {
     pub description: Option<String>,
     #[ts(optional)]
     pub wikidata_id: Option<String>,
+    #[serde(default)]
+    pub ancestors: Vec<TaxonAncestor>,
+    #[serde(default)]
+    pub children: Vec<TaxonResult>,
+    #[ts(optional, type = "number")]
+    pub num_descendants: Option<u64>,
+    #[ts(optional)]
+    pub extinct: Option<bool>,
+    #[ts(optional)]
+    pub descriptions: Option<Vec<TaxonDescription>>,
+    #[ts(optional)]
+    pub references: Option<Vec<TaxonReference>>,
+    #[ts(optional)]
+    pub media: Option<Vec<TaxonMedia>>,
+    #[ts(optional)]
+    pub gbif_url: Option<String>,
+    #[ts(optional)]
+    pub wikidata_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
