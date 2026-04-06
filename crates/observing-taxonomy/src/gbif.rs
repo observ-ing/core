@@ -296,6 +296,26 @@ impl GbifClient {
         }
     }
 
+    /// Get children taxa for a parent taxon by name, resolving to GBIF key first
+    pub async fn get_children_by_name(
+        &self,
+        scientific_name: &str,
+        kingdom: Option<&str>,
+        limit: u32,
+    ) -> Result<Vec<TaxonResult>> {
+        let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
+        let usage_key = gbif_match
+            .as_ref()
+            .and_then(|m| m.usage.as_ref())
+            .and_then(|u| u.key);
+
+        if let Some(key) = usage_key {
+            self.get_children(&format!("gbif:{}", key), limit).await
+        } else {
+            Ok(vec![])
+        }
+    }
+
     /// Get children taxa for a parent taxon
     pub async fn get_children(&self, taxon_id: &str, limit: u32) -> Result<Vec<TaxonResult>> {
         let numeric_id = taxon_id.strip_prefix("gbif:").unwrap_or(taxon_id);

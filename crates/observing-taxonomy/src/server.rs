@@ -174,9 +174,24 @@ async fn get_taxon(
     }
 }
 
-/// Get children of a taxon
-async fn get_children(State(state): State<SharedState>, Path(id): Path<String>) -> Response {
-    match state.client.get_children(&id, 20).await {
+/// Get children of a taxon (by ID or name)
+async fn get_children(
+    State(state): State<SharedState>,
+    Path(id_or_name): Path<String>,
+    Query(params): Query<TaxonQuery>,
+) -> Response {
+    let is_id = id_or_name.starts_with("gbif:") || id_or_name.parse::<u64>().is_ok();
+
+    let result = if is_id {
+        state.client.get_children(&id_or_name, 20).await
+    } else {
+        state
+            .client
+            .get_children_by_name(&id_or_name, params.kingdom.as_deref(), 20)
+            .await
+    };
+
+    match result {
         Ok(children) => Json(children).into_response(),
         Err(e) => {
             tracing::error!(error = %e, "Get children failed");

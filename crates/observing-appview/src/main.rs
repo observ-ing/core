@@ -188,6 +188,10 @@ async fn main() {
             get(routes::taxonomy::get_taxon_by_kingdom_name),
         )
         .route(
+            "/api/taxa/{kingdom}/{name}/children",
+            get(routes::taxonomy::get_children_by_kingdom_name),
+        )
+        .route(
             "/api/taxa/{kingdom}/{name}/occurrences",
             get(routes::taxonomy::get_taxon_occurrences_by_kingdom_name),
         )

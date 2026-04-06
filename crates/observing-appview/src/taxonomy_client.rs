@@ -291,4 +291,22 @@ impl TaxonomyClient {
             _ => None,
         }
     }
+
+    /// Get children of a taxon by name with optional kingdom.
+    pub async fn get_children(
+        &self,
+        name: &str,
+        kingdom: Option<&str>,
+    ) -> Option<Vec<TaxonResult>> {
+        let encoded_name = urlencoding::encode(name);
+        let mut url = format!("{}/taxon/{}/children", self.base_url, encoded_name);
+        if let Some(k) = kingdom {
+            url.push_str(&format!("?kingdom={}", k));
+        }
+
+        match self.client.get(&url).send().await {
+            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
+            _ => None,
+        }
+    }
 }
