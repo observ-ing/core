@@ -33,12 +33,16 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
       map.current = null;
     }
 
-    const { map: mapInstance } = createMap(mapContainer.current, {
-      center: [longitude, latitude],
-      zoom: 14,
-      interactive: true,
-      scrollZoom: false,
-    }, { geolocate: false });
+    const { map: mapInstance } = createMap(
+      mapContainer.current,
+      {
+        center: [longitude, latitude],
+        zoom: 14,
+        interactive: true,
+        scrollZoom: false,
+      },
+      { geolocate: false },
+    );
 
     mapInstance.on("load", () => {
       // Add marker
