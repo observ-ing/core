@@ -6,13 +6,14 @@ export const METERS_PER_DEGREE = 111320;
 
 interface CreateMapResult {
   map: maplibregl.Map;
-  geolocateControl: maplibregl.GeolocateControl;
+  geolocateControl: maplibregl.GeolocateControl | undefined;
 }
 
 /** Create a map instance with standard controls. */
 export function createMap(
   container: HTMLElement,
   options: Omit<maplibregl.MapOptions, "container" | "style">,
+  { geolocate = true }: { geolocate?: boolean } = {},
 ): CreateMapResult {
   const map = new maplibregl.Map({
     ...options,
@@ -22,10 +23,13 @@ export function createMap(
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
-  const geolocateControl = new maplibregl.GeolocateControl({
-    positionOptions: { enableHighAccuracy: true },
-  });
-  map.addControl(geolocateControl, "top-left");
+  let geolocateControl: maplibregl.GeolocateControl | undefined;
+  if (geolocate) {
+    geolocateControl = new maplibregl.GeolocateControl({
+      positionOptions: { enableHighAccuracy: true },
+    });
+    map.addControl(geolocateControl, "top-left");
+  }
 
   return { map, geolocateControl };
 }

@@ -154,7 +154,7 @@ export function LocationPicker({
     });
 
     // Update marker and inputs when user geolocates via the built-in control
-    geolocateControl.on("geolocate", (e: GeolocationPosition) => {
+    geolocateControl?.on("geolocate", (e: GeolocationPosition) => {
       const { latitude: lat, longitude: lng } = e.coords;
       updateMarker(lng, lat);
       onChange(lat, lng);
