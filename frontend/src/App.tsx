@@ -13,7 +13,7 @@ import { LandingPage } from "./components/landing/LandingPage";
 import { FeedView } from "./components/feed/FeedView";
 import { ObservationDetail } from "./components/observation/ObservationDetail";
 import { ProfileView } from "./components/profile/ProfileView";
-import { TaxonDetail } from "./components/taxon/TaxonDetail";
+import { TaxonExplorer } from "./components/taxon/TaxonExplorer";
 import { LoginModal } from "./components/modals/LoginModal";
 import { UploadModal } from "./components/modals/UploadModal";
 import { DeleteConfirmDialog } from "./components/modals/DeleteConfirmDialog";
@@ -114,8 +114,8 @@ function AppContent() {
           <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
           <Route path="/profile/:did" element={<ProfileView />} />
           <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/taxon/:kingdom/:name" element={<TaxonDetail />} />
-          <Route path="/taxon/:id" element={<TaxonDetail />} />
+          <Route path="/taxon/:kingdom/:name" element={<TaxonExplorer />} />
+          <Route path="/taxon/:id" element={<TaxonExplorer />} />
           <Route path="/lexicons" element={<LexiconView />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
