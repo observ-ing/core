@@ -258,6 +258,7 @@ export function TopBar({ onMobileMenuClick }: TopBarProps) {
               onClick={() => dispatch(openLoginModal())}
               startIcon={<Login />}
               sx={{
+                display: { xs: "none", md: "inline-flex" },
                 borderRadius: 2,
                 px: 3,
                 fontWeight: 700,
