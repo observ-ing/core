@@ -92,21 +92,21 @@ async function mockNotificationRoutes(
 }
 
 authTest.describe("Notifications", () => {
-  authTest("sidebar shows unread badge", async ({ authenticatedPage: page }) => {
+  authTest("top bar shows unread badge", async ({ authenticatedPage: page }) => {
     await mockNotificationRoutes(page);
     await page.goto("/");
 
-    const badge = page.locator("nav .MuiBadge-badge");
+    const badge = page.locator("header .MuiBadge-badge");
     await authExpect(badge).toBeVisible({ timeout: 10_000 });
     await authExpect(badge).toHaveText("2");
   });
 
-  authTest("sidebar hides badge when no unread", async ({ authenticatedPage: page }) => {
+  authTest("top bar hides badge when no unread", async ({ authenticatedPage: page }) => {
     await mockNotificationRoutes(page, { unreadCount: 0 });
     await page.goto("/");
 
     // MUI hides the badge element when count is 0
-    const badge = page.locator("nav .MuiBadge-badge");
+    const badge = page.locator("header .MuiBadge-badge");
     await authExpect(badge).toBeHidden({ timeout: 10_000 });
   });
 
