@@ -22,6 +22,7 @@ import { ToastContainer } from "./components/common/Toast";
 import { NotFound } from "./components/common/NotFound";
 import { LexiconView } from "./components/lexicon/LexiconView";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
+import { SettingsPage } from "./components/settings/SettingsPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -117,6 +118,7 @@ function AppContent() {
           <Route path="/taxon/:kingdom/:name" element={<TaxonExplorer />} />
           <Route path="/taxon/:id" element={<TaxonExplorer />} />
           <Route path="/lexicons" element={<LexiconView />} />
+          <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>

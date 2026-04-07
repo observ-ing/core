@@ -20,11 +20,19 @@ import {
   Divider,
   alpha,
 } from "@mui/material";
-import { Person, Login, Logout, GitHub, Schema, Menu as MenuIcon } from "@mui/icons-material";
+import {
+  Person,
+  Login,
+  Logout,
+  GitHub,
+  Schema,
+  Settings,
+  Menu as MenuIcon,
+} from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
-import { getNavItems, getThemeIcon } from "./NavConfig";
+import { getNavItems } from "./NavConfig";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -34,16 +42,7 @@ interface TopBarProps {
 export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
-  const {
-    user,
-    isAuthLoading,
-    themeMode,
-    isActive,
-    handleLogin,
-    handleLogout,
-    cycleTheme,
-    getThemeTooltip,
-  } = useNavigation();
+  const { user, isAuthLoading, isActive, handleLogin, handleLogout } = useNavigation();
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -180,9 +179,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
               </Tooltip>
             )}
 
-            <Tooltip title={getThemeTooltip()}>
-              <IconButton onClick={cycleTheme} color="inherit">
-                {getThemeIcon(themeMode)}
+            <Tooltip title="Settings">
+              <IconButton component={Link} to="/settings" color="inherit">
+                <Settings />
               </IconButton>
             </Tooltip>
 
@@ -239,6 +238,12 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                       <Person fontSize="small" />
                     </ListItemIcon>
                     <ListItemText primary="Profile" />
+                  </MenuItem>
+                  <MenuItem component={Link} to="/settings">
+                    <ListItemIcon>
+                      <Settings fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText primary="Settings" />
                   </MenuItem>
                   <MenuItem onClick={onLogout}>
                     <ListItemIcon>
