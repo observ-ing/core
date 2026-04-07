@@ -71,7 +71,7 @@ function AppContent() {
   const showLanding = !user && !isAuthLoading && location.pathname === "/";
 
   return (
-    <Box sx={{ display: "flex", flex: 1, flexDirection: "column", overflow: "hidden" }}>
+    <Box sx={{ display: "flex", flex: 1, flexDirection: "column" }}>
       {!showLanding && (
         <>
           <TopBar onMobileMenuClick={handleDrawerOpen} unreadCount={unreadCount} />
