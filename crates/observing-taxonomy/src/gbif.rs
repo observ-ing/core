@@ -95,10 +95,7 @@ impl GbifClient {
         scientific_name: &str,
     ) -> bool {
         let Some(m) = gbif_match else { return false };
-        let match_type = m
-            .diagnostics
-            .as_ref()
-            .and_then(|d| d.match_type.as_deref());
+        let match_type = m.diagnostics.as_ref().and_then(|d| d.match_type.as_deref());
         if match_type != Some("HIGHERRANK") {
             return false;
         }
