@@ -86,6 +86,28 @@ impl GbifClient {
         Ok(results)
     }
 
+    /// Check if a GBIF match is a HIGHERRANK fallback that doesn't match the query.
+    /// E.g. searching "Fakeus speciesus" in Animalia returns Animalia itself.
+    /// But searching "Corvus" correctly returns the Corvus genus as HIGHERRANK
+    /// (since GBIF expects species-level queries) — we want to keep those.
+    fn is_mismatched_higher_rank(
+        gbif_match: &Option<gbif_api::V2MatchResult>,
+        scientific_name: &str,
+    ) -> bool {
+        let Some(m) = gbif_match else { return false };
+        let match_type = m.diagnostics.as_ref().and_then(|d| d.match_type.as_deref());
+        if match_type != Some("HIGHERRANK") {
+            return false;
+        }
+        // If the returned canonical name matches the input, keep it
+        let canonical = m
+            .usage
+            .as_ref()
+            .and_then(|u| u.canonical_name.as_deref())
+            .unwrap_or("");
+        !canonical.eq_ignore_ascii_case(scientific_name)
+    }
+
     /// Validate a scientific name
     pub async fn validate(&self, name: &str) -> Result<ValidationResult> {
         let Some(gbif_match) = self.api.match_name(name, None).await? else {
@@ -284,6 +306,11 @@ impl GbifClient {
         kingdom: Option<&str>,
     ) -> Result<Option<TaxonDetail>> {
         let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
+
+        if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
+            return Ok(None);
+        }
+
         let usage_key = gbif_match
             .as_ref()
             .and_then(|m| m.usage.as_ref())
@@ -304,6 +331,11 @@ impl GbifClient {
         limit: u32,
     ) -> Result<Vec<TaxonResult>> {
         let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
+
+        if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
+            return Ok(vec![]);
+        }
+
         let usage_key = gbif_match
             .as_ref()
             .and_then(|m| m.usage.as_ref())
@@ -333,7 +365,12 @@ impl GbifClient {
         };
 
         let data = self.api.get_children(key, limit).await?;
-        let results: Vec<TaxonResult> = data.iter().map(|item| self.gbif_to_taxon(item)).collect();
+        let mut seen = std::collections::HashSet::new();
+        let results: Vec<TaxonResult> = data
+            .iter()
+            .map(|item| self.gbif_to_taxon(item))
+            .filter(|t| seen.insert(t.scientific_name.clone()))
+            .collect();
 
         self.cache
             .insert(cache_key, CachedValue::Children(results.clone()))

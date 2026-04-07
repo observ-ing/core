@@ -127,7 +127,9 @@ export function TaxonExplorer() {
 
       // Add the current taxon node
       const currentId = nodeId(k, detail.scientificName);
-      const currentChildren = (detail.children ?? []).map((c) => nodeId(k, c.scientificName));
+      const currentChildren = [
+        ...new Set((detail.children ?? []).map((c) => nodeId(k, c.scientificName))),
+      ];
       const existing = nodes.get(currentId);
       if (existing) {
         existing.childrenLoaded = true;
