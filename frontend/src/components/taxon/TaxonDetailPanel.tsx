@@ -21,7 +21,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
-import { TaxonLink, shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
 
@@ -103,27 +103,6 @@ export function TaxonDetailPanel({
 
       {/* Main Content */}
       <Box sx={{ p: 3 }}>
-        {/* Breadcrumb */}
-        {taxon.ancestors.length > 0 && (
-          <Stack
-            direction="row"
-            spacing={0.5}
-            alignItems="center"
-            sx={{ mb: 1, flexWrap: "wrap", fontSize: "0.75rem" }}
-          >
-            {taxon.ancestors.map((ancestor, idx) => (
-              <Box key={ancestor.id} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                {idx > 0 && (
-                  <Typography variant="caption" color="text.disabled">
-                    /
-                  </Typography>
-                )}
-                <TaxonLink name={ancestor.name} kingdom={taxon.kingdom} rank={ancestor.rank} />
-              </Box>
-            ))}
-          </Stack>
-        )}
-
         {/* Scientific Name */}
         <Typography
           variant="h5"
