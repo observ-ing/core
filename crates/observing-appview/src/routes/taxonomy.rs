@@ -98,6 +98,19 @@ pub async fn get_taxon_by_kingdom_name(
     }))
 }
 
+pub async fn get_children_by_kingdom_name(
+    State(state): State<AppState>,
+    Path((kingdom, name)): Path<(String, String)>,
+) -> Result<Json<Vec<crate::taxonomy_client::TaxonResult>>, AppError> {
+    let name = name.replace('-', " ");
+    let children = state
+        .taxonomy
+        .get_children(&name, Some(&kingdom))
+        .await
+        .unwrap_or_default();
+    Ok(Json(children))
+}
+
 pub async fn get_taxon_occurrences_by_kingdom_name(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

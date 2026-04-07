@@ -363,6 +363,14 @@ export async function fetchTaxonObservations(
   return fetchApi(url, "Failed to fetch taxon observations");
 }
 
+/**
+ * Fetch children of a taxon (for tree lazy-loading).
+ */
+export async function fetchTaxonChildren(kingdom: string, name: string): Promise<TaxaResult[]> {
+  const url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(name)}/children`;
+  return fetchApi(url, "Failed to fetch taxon children");
+}
+
 // ============================================================================
 // Interaction API Functions
 // ============================================================================

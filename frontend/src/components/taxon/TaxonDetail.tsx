@@ -17,6 +17,7 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
+  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -45,6 +46,8 @@ export function TaxonDetail() {
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | undefined>();
   const [hasMore, setHasMore] = useState(true);
+  const [descExpanded, setDescExpanded] = useState(false);
+  const [galleryMounted, setGalleryMounted] = useState(false);
 
   usePageTitle(taxon?.scientificName || "Taxon");
 
@@ -174,6 +177,15 @@ export function TaxonDetail() {
   const gbifUrl = taxon.gbifUrl;
   const wikidataUrl = taxon.wikidataUrl;
 
+  // Hero image: prefer photoUrl, fall back to larger Wikidata thumbnail
+  const heroUrl =
+    taxon.photoUrl ||
+    (() => {
+      const thumb = thumbnails.get(taxon.scientificName);
+      if (!thumb) return undefined;
+      return thumb.replace(/\?width=\d+/, "?width=600");
+    })();
+
   return (
     <Box sx={{ flex: 1, overflow: "auto" }}>
       <Container
@@ -199,12 +211,57 @@ export function TaxonDetail() {
             <ArrowBackIcon />
           </IconButton>
           <Typography variant="subtitle1" fontWeight={500}>
-            Taxon
+            {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
           </Typography>
         </Box>
 
+        {/* Hero Image */}
+        {heroUrl && (
+          <Box
+            sx={{
+              width: "100%",
+              maxHeight: 280,
+              overflow: "hidden",
+              backgroundColor: "action.hover",
+            }}
+          >
+            <Box
+              component="img"
+              src={heroUrl}
+              alt={taxon.scientificName}
+              sx={{
+                width: "100%",
+                maxHeight: 280,
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          </Box>
+        )}
+
         {/* Main Content */}
         <Box sx={{ p: 3 }}>
+          {/* Breadcrumb */}
+          {taxon.ancestors.length > 0 && (
+            <Stack
+              direction="row"
+              spacing={0.5}
+              alignItems="center"
+              sx={{ mb: 1, flexWrap: "wrap", fontSize: "0.75rem" }}
+            >
+              {taxon.ancestors.map((ancestor, idx) => (
+                <Box key={ancestor.id} sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                  {idx > 0 && (
+                    <Typography variant="caption" color="text.disabled">
+                      /
+                    </Typography>
+                  )}
+                  <TaxonLink name={ancestor.name} kingdom={taxon.kingdom} rank={ancestor.rank} />
+                </Box>
+              ))}
+            </Stack>
+          )}
+
           {/* Scientific Name */}
           <Typography
             variant="h5"
@@ -226,23 +283,54 @@ export function TaxonDetail() {
             </Typography>
           )}
 
-          {/* Rank and Conservation Status */}
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2 }}>
-            <Chip label={taxon.rank} size="small" color="default" />
+          {/* Stats + External Links */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: "wrap" }}>
             {taxon.conservationStatus && (
-              <ConservationStatus status={taxon.conservationStatus} showLabel />
+              <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
+                <span>
+                  <ConservationStatus status={taxon.conservationStatus} showLabel />
+                </span>
+              </Tooltip>
             )}
             {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
-          </Stack>
-
-          {/* Stats */}
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-            {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
-            Observ.ing
-            {taxon.numDescendants !== undefined && taxon.numDescendants > 0 && (
-              <> &middot; {taxon.numDescendants.toLocaleString()} descendant taxa</>
+            <Typography variant="body2" color="text.secondary">
+              {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
+              Observ.ing
+              {taxon.numDescendants !== undefined && taxon.numDescendants > 0 && (
+                <> &middot; {taxon.numDescendants.toLocaleString()} descendant taxa</>
+              )}
+            </Typography>
+            {(gbifUrl || wikidataUrl) && (
+              <>
+                {gbifUrl && (
+                  <Chip
+                    component="a"
+                    href={gbifUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    label="GBIF"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                  />
+                )}
+                {wikidataUrl && (
+                  <Chip
+                    component="a"
+                    href={wikidataUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    label="Wikidata"
+                    size="small"
+                    variant="outlined"
+                    clickable
+                    icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                  />
+                )}
+              </>
             )}
-          </Typography>
+          </Stack>
 
           {/* Taxonomy Tree */}
           {((taxon.ancestors?.length ?? 0) > 0 || (taxon.children?.length ?? 0) > 0) && (
@@ -347,21 +435,25 @@ export function TaxonDetail() {
             </Accordion>
           )}
 
-          {/* Media Gallery */}
-          <Accordion defaultExpanded>
+          {/* Media Gallery — lazy-loaded to avoid external API calls until requested */}
+          <Accordion
+            onChange={(_e, expanded) => {
+              if (expanded) setGalleryMounted(true);
+            }}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography variant="subtitle2" color="text.secondary">
                 Media
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
-              <WikiCommonsGallery taxonName={taxon.scientificName} />
+              {galleryMounted ? <WikiCommonsGallery taxonName={taxon.scientificName} /> : null}
             </AccordionDetails>
           </Accordion>
 
           {/* Descriptions */}
           {taxon.descriptions && taxon.descriptions.length > 0 && (
-            <Accordion>
+            <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
                 <Typography variant="subtitle2" color="text.secondary">
                   Description
@@ -374,10 +466,12 @@ export function TaxonDetail() {
                       variant="body2"
                       component="div"
                       sx={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 6,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
+                        ...(!descExpanded && {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 6,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }),
                         "& p": { m: 0 },
                         "& em, & i": { fontStyle: "italic" },
                       }}
@@ -400,6 +494,13 @@ export function TaxonDetail() {
                     )}
                   </Box>
                 ))}
+                <Button
+                  size="small"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  sx={{ mt: 1, textTransform: "none" }}
+                >
+                  {descExpanded ? "Show less" : "Read more"}
+                </Button>
               </AccordionDetails>
             </Accordion>
           )}
@@ -434,38 +535,6 @@ export function TaxonDetail() {
               </AccordionDetails>
             </Accordion>
           )}
-
-          {/* External Links */}
-          {(gbifUrl || wikidataUrl) && (
-            <Stack direction="row" spacing={1} sx={{ mt: 3 }} flexWrap="wrap">
-              {gbifUrl && (
-                <Button
-                  component="a"
-                  href={gbifUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  size="small"
-                  endIcon={<OpenInNewIcon fontSize="small" />}
-                >
-                  View on GBIF
-                </Button>
-              )}
-              {wikidataUrl && (
-                <Button
-                  component="a"
-                  href={wikidataUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  variant="outlined"
-                  size="small"
-                  endIcon={<OpenInNewIcon fontSize="small" />}
-                >
-                  View on Wikidata
-                </Button>
-              )}
-            </Stack>
-          )}
         </Box>
 
         {/* Observations Section */}
@@ -477,8 +546,14 @@ export function TaxonDetail() {
         </Box>
 
         {observations.length === 0 ? (
-          <Box sx={{ p: 3, textAlign: "center" }}>
-            <Typography color="text.secondary">No observations yet</Typography>
+          <Box sx={{ px: 3, py: 5, textAlign: "center" }}>
+            <Typography color="text.secondary" sx={{ mb: 0.5 }}>
+              No observations yet
+            </Typography>
+            <Typography variant="body2" color="text.disabled">
+              Be the first to observe <em>{taxon.commonName || taxon.scientificName}</em> on
+              Observ.ing!
+            </Typography>
           </Box>
         ) : (
           <Box>
