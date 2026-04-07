@@ -1,11 +1,4 @@
-import {
-  Box,
-  Container,
-  Typography,
-  ToggleButtonGroup,
-  ToggleButton,
-  Paper,
-} from "@mui/material";
+import { Box, Container, Typography, ToggleButtonGroup, ToggleButton, Paper } from "@mui/material";
 import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAppDispatch, useAppSelector } from "../../store";
