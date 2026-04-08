@@ -3,7 +3,8 @@ import { Link } from "react-router-dom";
 import { Box, Typography, Card, CardActionArea, CardContent } from "@mui/material";
 import type { Occurrence } from "../../services/types";
 import { getImageUrl } from "../../services/api";
-import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
+import { getObservationUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 
@@ -64,7 +65,7 @@ export const ExploreGridCard = memo(function ExploreGridCard({
             {species || "Unknown species"}
           </Typography>
           <Typography variant="caption" color="text.disabled" noWrap>
-            {formatTimeAgo(new Date(observation.createdAt))}
+            <RelativeTime date={new Date(observation.createdAt)} />
           </Typography>
         </CardContent>
       </CardActionArea>

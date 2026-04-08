@@ -20,7 +20,8 @@ import { useAppSelector, useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import type { Comment } from "../../services/types";
-import { formatRelativeTime, getPdslsUrl } from "../../lib/utils";
+import { getPdslsUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 
 interface CommentSectionProps {
   observationUri: string;
@@ -156,7 +157,7 @@ export function CommentSection({
                       </Typography>
                     </RouterLink>
                     <Typography variant="caption" color="text.secondary">
-                      {formatRelativeTime(comment.created_at)}
+                      <RelativeTime date={new Date(comment.created_at)} withAgo />
                     </Typography>
                     <Box sx={{ ml: "auto" }}>
                       <IconButton

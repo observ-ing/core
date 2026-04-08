@@ -16,7 +16,8 @@ import {
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { fetchNotifications, markNotificationRead, getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
-import { formatTimeAgo, getObservationUrl } from "../../lib/utils";
+import { getObservationUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 
 export function NotificationsPage() {
   usePageTitle("Notifications");
@@ -150,7 +151,7 @@ export function NotificationsPage() {
                       </Typography>
                     </>
                   }
-                  secondary={formatTimeAgo(new Date(n.createdAt))}
+                  secondary={<RelativeTime date={new Date(n.createdAt)} />}
                 />
               </ListItemButton>
             </ListItem>

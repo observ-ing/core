@@ -20,7 +20,8 @@ import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
 import { fetchProfileFeed, getImageUrl } from "../../services/api";
 import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
-import { formatTimeAgo, getDisplayName, getObservationUrl } from "../../lib/utils";
+import { getDisplayName, getObservationUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
@@ -277,7 +278,7 @@ export function ProfileView() {
                     {occ.communityId || occ.effectiveTaxonomy?.scientificName || "Unknown species"}
                   </Typography>
                   <Typography variant="caption" color="text.disabled" noWrap>
-                    {formatTimeAgo(new Date(occ.createdAt))}
+                    <RelativeTime date={new Date(occ.createdAt)} />
                   </Typography>
                 </CardContent>
               </CardActionArea>
@@ -362,8 +363,9 @@ export function ProfileView() {
                     </Typography>
                   )}
                   <Typography variant="caption" color="text.disabled" noWrap>
-                    {formatTimeAgo(new Date(id.date_identified))}
-                    {id.is_agreement && " · Agrees"}
+                    <RelativeTime date={new Date(id.date_identified)}>
+                      {id.is_agreement && " · Agrees"}
+                    </RelativeTime>
                   </Typography>
                 </CardContent>
               </CardActionArea>
