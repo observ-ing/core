@@ -24,7 +24,8 @@ import { useAppSelector } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
 import { TaxonLink } from "../common/TaxonLink";
-import { formatTimeAgo, getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
@@ -53,7 +54,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
 
   const displayName = getDisplayName(owner);
   const handle = owner.handle ? `@${owner.handle}` : "";
-  const timeAgo = formatTimeAgo(new Date(observation.createdAt));
+  const timeAgo = <RelativeTime date={new Date(observation.createdAt)} />;
 
   const taxonomy = observation.effectiveTaxonomy;
   const species = observation.communityId || taxonomy?.scientificName || undefined;

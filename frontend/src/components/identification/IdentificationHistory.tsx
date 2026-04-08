@@ -15,7 +15,8 @@ import HistoryIcon from "@mui/icons-material/History";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification, Profile } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
-import { formatRelativeTime, getPdslsUrl } from "../../lib/utils";
+import { getPdslsUrl } from "../../lib/utils";
+import { RelativeTime } from "../common/RelativeTime";
 
 interface ObserverInitialId {
   scientificName: string;
@@ -171,7 +172,7 @@ export function IdentificationHistory({
                     </Typography>
                   </RouterLink>
                   <Typography variant="caption" color="text.secondary">
-                    {formatRelativeTime(observerInitialId.date)}
+                    <RelativeTime date={new Date(observerInitialId.date)} withAgo />
                   </Typography>
                   <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                 </Stack>
@@ -230,7 +231,7 @@ export function IdentificationHistory({
                       </Typography>
                     </RouterLink>
                     <Typography variant="caption" color="text.secondary">
-                      {formatRelativeTime(id.date_identified)}
+                      <RelativeTime date={new Date(id.date_identified)} withAgo />
                     </Typography>
                     {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
                     {!isSuperseded && id.is_agreement && (
