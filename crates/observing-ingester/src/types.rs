@@ -41,20 +41,32 @@ impl Default for IngesterConfig {
             database_url: String::new(),
             cursor: None,
             port: 8080,
-            collections: ALL_COLLECTIONS
-                .iter()
-                .map(|(_, nsid)| nsid.to_string())
-                .collect(),
+            collections: {
+                let mut c: Vec<String> = ALL_COLLECTIONS
+                    .iter()
+                    .map(|(_, nsid)| nsid.to_string())
+                    .collect();
+                // Also subscribe to legacy NSIDs for backward compatibility
+                for nsid in LEGACY_COLLECTIONS {
+                    c.push(nsid.to_string());
+                }
+                c
+            },
         }
     }
 }
 
 /// The collection types we care about
 pub const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
-pub const IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
+pub const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.identification";
+/// Legacy NSID — PDS repos may still have records under the old collection name.
+pub const LEGACY_IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
 pub const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 pub const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
 pub const LIKE_COLLECTION: &str = "ing.observ.temp.like";
+
+/// Legacy NSIDs that may still exist on user PDS repos.
+pub const LEGACY_COLLECTIONS: &[&str] = &[LEGACY_IDENTIFICATION_COLLECTION];
 
 /// All known collection short names and their full NSIDs.
 pub const ALL_COLLECTIONS: &[(&str, &str)] = &[
@@ -104,7 +116,10 @@ mod tests {
         assert_eq!(config.port, 8080);
         assert!(config.cursor.is_none());
         assert!(config.database_url.is_empty());
-        assert_eq!(config.collections.len(), ALL_COLLECTIONS.len());
+        assert_eq!(
+            config.collections.len(),
+            ALL_COLLECTIONS.len() + LEGACY_COLLECTIONS.len()
+        );
     }
 
     #[test]
@@ -172,7 +187,10 @@ mod tests {
     #[test]
     fn test_collection_constants() {
         assert_eq!(OCCURRENCE_COLLECTION, "bio.lexicons.temp.occurrence");
-        assert_eq!(IDENTIFICATION_COLLECTION, "ing.observ.temp.identification");
+        assert_eq!(
+            IDENTIFICATION_COLLECTION,
+            "bio.lexicons.temp.identification"
+        );
         assert_eq!(COMMENT_COLLECTION, "ing.observ.temp.comment");
         assert_eq!(INTERACTION_COLLECTION, "ing.observ.temp.interaction");
         assert_eq!(LIKE_COLLECTION, "ing.observ.temp.like");

@@ -2,13 +2,13 @@
  * Identification Component
  *
  * Handles the "Agree" / "Suggest ID" functionality that writes
- * ing.observ.temp.identification records to the user's repo.
+ * bio.lexicons.temp.identification records to the user's repo.
  */
 
 import type { AtpAgent } from "@atproto/api";
 import { getErrorMessage } from "./utils";
 
-const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
+const IDENTIFICATION_COLLECTION = "bio.lexicons.temp.identification";
 
 type AtpRepoOps = AtpAgent["com"]["atproto"]["repo"];
 
@@ -42,8 +42,6 @@ interface IdentificationInput {
   scientificName: string;
   /** Taxonomic rank */
   taxonRank?: TaxonRank | undefined;
-  /** Comment explaining the identification */
-  comment?: string | undefined;
   /** Whether this is an agreement with existing ID */
   isAgreement?: boolean | undefined;
 }
@@ -61,9 +59,10 @@ type TaxonRank =
 
 interface IdentificationRecord {
   $type: string;
-  subject: { uri: string; cid: string };
-  taxon: { scientificName: string; taxonRank?: string };
-  comment?: string;
+  occurrence: { uri: string; cid: string };
+  scientificName: string;
+  taxonRank?: string;
+  kingdom?: string;
   isAgreement?: boolean;
   createdAt: string;
 }
@@ -74,9 +73,8 @@ function assertIdentificationRecord(value: unknown): asserts value is Identifica
     typeof v !== "object" ||
     v === null ||
     !("$type" in v) ||
-    !("subject" in v) ||
-    !("taxon" in v) ||
-    !("createdAt" in v)
+    !("occurrence" in v) ||
+    !("scientificName" in v)
   ) {
     throw new Error("Invalid identification record");
   }
@@ -107,16 +105,14 @@ export class IdentificationService {
 
     const record = {
       $type: IDENTIFICATION_COLLECTION,
-      subject: {
+      occurrence: {
         uri: input.occurrenceUri,
         cid: input.occurrenceCid,
       },
+      scientificName: input.scientificName,
+      taxonRank: input.taxonRank || "species",
+      // App-specific fields (not in upstream lexicon)
       subjectIndex: input.subjectIndex ?? 0,
-      taxon: {
-        scientificName: input.scientificName,
-        taxonRank: input.taxonRank || "species",
-      },
-      comment: input.comment,
       isAgreement: input.isAgreement || false,
       createdAt: new Date().toISOString(),
     };
@@ -161,7 +157,6 @@ export class IdentificationService {
     options: {
       subjectIndex?: number;
       taxonRank?: TaxonRank;
-      comment?: string;
     } = {},
   ): Promise<IdentificationResult> {
     return this.identify({
@@ -170,7 +165,6 @@ export class IdentificationService {
       subjectIndex: options.subjectIndex ?? 0,
       scientificName: taxonName,
       ...(options.taxonRank ? { taxonRank: options.taxonRank } : {}),
-      ...(options.comment ? { comment: options.comment } : {}),
       isAgreement: false,
     });
   }
@@ -222,18 +216,11 @@ export class IdentificationService {
     // Merge updates
     const updatedRecord = {
       ...existingRecord,
-      taxon: {
-        scientificName: updates.scientificName ?? existingRecord.taxon.scientificName,
-        ...(updates.taxonRank
-          ? { taxonRank: updates.taxonRank }
-          : existingRecord.taxon.taxonRank
-            ? { taxonRank: existingRecord.taxon.taxonRank }
-            : {}),
-      },
-      ...(updates.comment !== undefined
-        ? { comment: updates.comment }
-        : existingRecord.comment
-          ? { comment: existingRecord.comment }
+      scientificName: updates.scientificName ?? existingRecord.scientificName,
+      ...(updates.taxonRank
+        ? { taxonRank: updates.taxonRank }
+        : existingRecord.taxonRank
+          ? { taxonRank: existingRecord.taxonRank }
           : {}),
     };
 
@@ -286,10 +273,6 @@ export class IdentificationService {
       throw new Error("Scientific name too long (max 256 characters)");
     }
 
-    if (input.comment && input.comment.length > 3000) {
-      throw new Error("Comment too long (max 3000 characters)");
-    }
-
     // Validate URI format
     if (!input.occurrenceUri.startsWith("at://")) {
       throw new Error("Invalid occurrence URI format");
@@ -334,10 +317,6 @@ export function createIdentificationUI(
           <input type="text" id="taxon-input" placeholder="Enter species name..." />
           <div id="taxon-suggestions"></div>
         </div>
-        <div class="form-group">
-          <label for="comment-input">Comment (optional)</label>
-          <textarea id="comment-input" rows="2"></textarea>
-        </div>
         <div class="form-actions">
           <button class="btn btn-cancel" data-action="cancel">Cancel</button>
           <button class="btn btn-submit" data-action="submit">Submit ID</button>
@@ -377,9 +356,8 @@ export function createIdentificationUI(
 
   submitBtn?.addEventListener("click", async () => {
     const taxonInput = container.querySelector<HTMLInputElement>("#taxon-input");
-    const commentInput = container.querySelector<HTMLTextAreaElement>("#comment-input");
 
-    if (!taxonInput || !commentInput) {
+    if (!taxonInput) {
       return;
     }
 
@@ -389,10 +367,7 @@ export function createIdentificationUI(
     }
 
     try {
-      const trimmedComment = commentInput.value.trim();
-      await service.suggestId(occurrence.uri, occurrence.cid, taxonInput.value.trim(), {
-        ...(trimmedComment ? { comment: trimmedComment } : {}),
-      });
+      await service.suggestId(occurrence.uri, occurrence.cid, taxonInput.value.trim());
       showToast?.("Your identification has been submitted!", "success");
       suggestForm?.classList.add("hidden");
       onSuccess?.();

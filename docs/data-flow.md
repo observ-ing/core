@@ -187,7 +187,7 @@ flowchart TB
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "ing.observ.temp.identification", ... })
+   │  createRecord({ collection: "bio.lexicons.temp.identification", ... })
    │
    ▼
 4. PDS emits event to Jetstream firehose
@@ -208,7 +208,7 @@ Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │
    │  Filtered for:
    │  - bio.lexicons.temp.occurrence
-   │  - ing.observ.temp.identification
+   │  - bio.lexicons.temp.identification
    │  - ing.observ.temp.comment
    │  - ing.observ.temp.interaction
    │  - ing.observ.temp.like

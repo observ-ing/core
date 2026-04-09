@@ -17,7 +17,7 @@ import { AtpAgent } from "@atproto/api";
 
 const INAT_API = "https://api.inaturalist.org/v1";
 const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
-const IDENTIFICATION_COLLECTION = "ing.observ.temp.identification";
+const IDENTIFICATION_COLLECTION = "bio.lexicons.temp.identification";
 
 const LICENSE_MAP: Record<string, string> = {
   cc0: "CC0-1.0",
@@ -205,16 +205,17 @@ async function main() {
         if (taxon.rank) taxonObj["taxonRank"] = taxon.rank;
         if (taxonomy["kingdom"]) taxonObj["kingdom"] = taxonomy["kingdom"];
 
-        const identRecord = {
+        const identRecord: Record<string, any> = {
           $type: IDENTIFICATION_COLLECTION,
-          subject: {
+          occurrence: {
             uri: createResp.data.uri,
             cid: createResp.data.cid,
           },
+          scientificName: taxonObj["scientificName"],
+          ...(taxonObj["taxonRank"] && { taxonRank: taxonObj["taxonRank"] }),
+          ...(taxonObj["kingdom"] && { kingdom: taxonObj["kingdom"] }),
           subjectIndex: 0,
-          taxon: taxonObj,
           isAgreement: false,
-          confidence: "high",
           createdAt: new Date(obs.created_at).toISOString(),
         };
 

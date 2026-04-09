@@ -25,7 +25,6 @@ use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
 use crate::com_atproto::repo::strong_ref::StrongRef;
-use crate::ing_observ::temp::identification::Taxon;
 use crate::ing_observ::temp::interaction;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
@@ -47,7 +46,7 @@ pub struct InteractionSubject<S: BosStr = DefaultStr> {
     pub subject_index: Option<i64>,
     ///Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub taxon: Option<Taxon<S>>,
+    pub taxon: Option<interaction::Taxon<S>>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
@@ -210,6 +209,137 @@ pub struct InteractionGetRecordOutput<S: BosStr = DefaultStr> {
     pub value: Interaction<S>,
 }
 
+/// Taxonomic information following Darwin Core Taxon class (dwc:Taxon).
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct Taxon<S: BosStr = DefaultStr> {
+    ///Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kingdom: Option<S>,
+    ///The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).
+    pub scientific_name: S,
+    ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub taxon_rank: Option<TaxonTaxonRank<S>>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+/// The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum TaxonTaxonRank<S: BosStr = DefaultStr> {
+    Kingdom,
+    Phylum,
+    Class,
+    Order,
+    Family,
+    Genus,
+    Species,
+    Subspecies,
+    Variety,
+    Form,
+    Other(S),
+}
+
+impl<S: BosStr> TaxonTaxonRank<S> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Kingdom => "kingdom",
+            Self::Phylum => "phylum",
+            Self::Class => "class",
+            Self::Order => "order",
+            Self::Family => "family",
+            Self::Genus => "genus",
+            Self::Species => "species",
+            Self::Subspecies => "subspecies",
+            Self::Variety => "variety",
+            Self::Form => "form",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
+            "kingdom" => Self::Kingdom,
+            "phylum" => Self::Phylum,
+            "class" => Self::Class,
+            "order" => Self::Order,
+            "family" => Self::Family,
+            "genus" => Self::Genus,
+            "species" => Self::Species,
+            "subspecies" => Self::Subspecies,
+            "variety" => Self::Variety,
+            "form" => Self::Form,
+            _ => Self::Other(s),
+        }
+    }
+}
+
+impl<S: BosStr> core::fmt::Display for TaxonTaxonRank<S> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<S: BosStr> AsRef<str> for TaxonTaxonRank<S> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<S: BosStr> Serialize for TaxonTaxonRank<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for TaxonTaxonRank<S> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
+    }
+}
+
+impl<S: BosStr + Default> Default for TaxonTaxonRank<S> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl<S: BosStr> jacquard_common::IntoStatic for TaxonTaxonRank<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = TaxonTaxonRank<S::Output>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            TaxonTaxonRank::Kingdom => TaxonTaxonRank::Kingdom,
+            TaxonTaxonRank::Phylum => TaxonTaxonRank::Phylum,
+            TaxonTaxonRank::Class => TaxonTaxonRank::Class,
+            TaxonTaxonRank::Order => TaxonTaxonRank::Order,
+            TaxonTaxonRank::Family => TaxonTaxonRank::Family,
+            TaxonTaxonRank::Genus => TaxonTaxonRank::Genus,
+            TaxonTaxonRank::Species => TaxonTaxonRank::Species,
+            TaxonTaxonRank::Subspecies => TaxonTaxonRank::Subspecies,
+            TaxonTaxonRank::Variety => TaxonTaxonRank::Variety,
+            TaxonTaxonRank::Form => TaxonTaxonRank::Form,
+            TaxonTaxonRank::Other(v) => TaxonTaxonRank::Other(v.into_static()),
+        }
+    }
+}
+
 impl<S: BosStr> Interaction<S> {
     pub fn uri(uri: S) -> Result<RecordUri<S, InteractionRecord>, UriError> {
         RecordUri::try_from_uri(AtUri::new(uri)?)
@@ -312,6 +442,52 @@ impl<S: BosStr> LexiconSchema for Interaction<S> {
     }
 }
 
+impl<S: BosStr> LexiconSchema for Taxon<S> {
+    fn nsid() -> &'static str {
+        "ing.observ.temp.interaction"
+    }
+    fn def_name() -> &'static str {
+        "taxon"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_ing_observ_temp_interaction()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.kingdom {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("kingdom"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.scientific_name;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 256usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("scientific_name"),
+                    max: 256usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        if let Some(ref value) = self.taxon_rank {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 32usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("taxon_rank"),
+                    max: 32usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 fn _default_interaction_subject_subject_index() -> Option<i64> {
     Some(0i64)
 }
@@ -366,9 +542,7 @@ fn lexicon_doc_ing_observ_temp_interaction() -> LexiconDoc<'static> {
                         map.insert(
                             SmolStr::new_static("taxon"),
                             LexObjectProperty::Ref(LexRef {
-                                r#ref: CowStr::new_static(
-                                    "ing.observ.temp.identification#taxon",
-                                ),
+                                r#ref: CowStr::new_static("#taxon"),
                                 ..Default::default()
                             }),
                         );
@@ -464,6 +638,59 @@ fn lexicon_doc_ing_observ_temp_interaction() -> LexiconDoc<'static> {
                         },
                         ..Default::default()
                     }),
+                    ..Default::default()
+                }),
+            );
+            map.insert(
+                SmolStr::new_static("taxon"),
+                LexUserType::Object(LexObject {
+                    description: Some(
+                        CowStr::new_static(
+                            "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
+                        ),
+                    ),
+                    required: Some(vec![SmolStr::new_static("scientificName")]),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("kingdom"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(
+                                    CowStr::new_static(
+                                        "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
+                                    ),
+                                ),
+                                max_length: Some(64usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("scientificName"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(
+                                    CowStr::new_static(
+                                        "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
+                                    ),
+                                ),
+                                max_length: Some(256usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("taxonRank"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(
+                                    CowStr::new_static(
+                                        "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
+                                    ),
+                                ),
+                                max_length: Some(32usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map
+                    },
                     ..Default::default()
                 }),
             );

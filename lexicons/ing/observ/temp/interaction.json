@@ -75,8 +75,32 @@
         },
         "taxon": {
           "type": "ref",
-          "ref": "ing.observ.temp.identification#taxon",
+          "ref": "#taxon",
           "description": "Taxonomic information for the organism (for unobserved subjects or to specify the taxon)."
+        }
+      }
+    },
+    "taxon": {
+      "type": "object",
+      "description": "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
+      "required": ["scientificName"],
+      "properties": {
+        "scientificName": {
+          "type": "string",
+          "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
+          "maxLength": 256
+        },
+        "taxonRank": {
+          "type": "string",
+          "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
+          "knownValues": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
+          "default": "species",
+          "maxLength": 32
+        },
+        "kingdom": {
+          "type": "string",
+          "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
+          "maxLength": 64
         }
       }
     }
