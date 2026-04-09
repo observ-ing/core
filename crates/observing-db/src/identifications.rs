@@ -11,24 +11,23 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
-            taxon_rank, identification_remarks, taxon_id, is_agreement, date_identified,
+            taxon_rank, taxon_id, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order", family, genus
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             subject_index = $6,
             scientific_name = $7,
             taxon_rank = COALESCE($8, identifications.taxon_rank),
-            identification_remarks = $9,
-            taxon_id = COALESCE($10, identifications.taxon_id),
-            is_agreement = $11,
-            vernacular_name = COALESCE($13, identifications.vernacular_name),
-            kingdom = COALESCE($14, identifications.kingdom),
-            phylum = COALESCE($15, identifications.phylum),
-            class = COALESCE($16, identifications.class),
-            "order" = COALESCE($17, identifications."order"),
-            family = COALESCE($18, identifications.family),
-            genus = COALESCE($19, identifications.genus),
+            taxon_id = COALESCE($9, identifications.taxon_id),
+            is_agreement = $10,
+            vernacular_name = COALESCE($12, identifications.vernacular_name),
+            kingdom = COALESCE($13, identifications.kingdom),
+            phylum = COALESCE($14, identifications.phylum),
+            class = COALESCE($15, identifications.class),
+            "order" = COALESCE($16, identifications."order"),
+            family = COALESCE($17, identifications.family),
+            genus = COALESCE($18, identifications.genus),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -39,7 +38,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.subject_index,
         p.scientific_name,
         p.taxon_rank as _,
-        p.identification_remarks as _,
         p.taxon_id as _,
         p.is_agreement,
         chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(p.date_identified, chrono::Utc),
@@ -80,7 +78,7 @@ pub async fn get_for_occurrence(
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
-            taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+            taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
@@ -104,7 +102,7 @@ pub async fn get_for_subject(
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
-            taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+            taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
@@ -132,7 +130,7 @@ pub async fn get_for_subjects_batch(
         r#"
         SELECT
             uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
-            taxon_rank, identification_qualifier, taxon_id, identification_remarks,
+            taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications

@@ -347,21 +347,6 @@ export function ProfileView() {
                   )}
                 </Box>
                 <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
-                  {id.identification_remarks && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                        mb: 0.5,
-                      }}
-                    >
-                      {id.identification_remarks}
-                    </Typography>
-                  )}
                   <Typography variant="caption" color="text.disabled" noWrap>
                     <RelativeTime date={new Date(id.date_identified)}>
                       {id.is_agreement && " · Agrees"}

@@ -123,8 +123,6 @@ pub struct IdentificationRow {
     #[ts(optional)]
     pub taxon_id: Option<String>,
     #[ts(optional)]
-    pub identification_remarks: Option<String>,
-    #[ts(optional)]
     pub identification_verification_status: Option<String>,
     #[ts(optional)]
     pub type_status: Option<String>,
@@ -300,7 +298,6 @@ pub struct UpsertIdentificationParams {
     pub scientific_name: String,
     pub taxon_rank: Option<String>,
     pub taxon_id: Option<String>,
-    pub identification_remarks: Option<String>,
     pub is_agreement: bool,
     pub date_identified: NaiveDateTime,
     pub vernacular_name: Option<String>,

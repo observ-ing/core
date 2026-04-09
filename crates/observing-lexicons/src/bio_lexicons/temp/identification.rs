@@ -38,9 +38,6 @@ use serde::{Deserialize, Serialize};
     bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
 pub struct Identification<S: BosStr = DefaultStr> {
-    ///Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub identification_remarks: Option<S>,
     ///Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<S>,
@@ -221,16 +218,6 @@ impl<S: BosStr> LexiconSchema for Identification<S> {
         lexicon_doc_bio_lexicons_temp_identification()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.identification_remarks {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 3000usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("identification_remarks"),
-                    max: 3000usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.kingdom {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
@@ -315,7 +302,6 @@ pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<S>,
-        Option<S>,
         Option<StrongRef<S>>,
         Option<S>,
         Option<IdentificationTaxonRank<S>>,
@@ -335,34 +321,21 @@ impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None),
+            _fields: (None, None, None, None),
             _type: PhantomData,
         }
     }
 }
 
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `identificationRemarks` field (optional)
-    pub fn identification_remarks(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.0 = value.into();
-        self
-    }
-    /// Set the `identificationRemarks` field to an Option value (optional)
-    pub fn maybe_identification_remarks(mut self, value: Option<S>) -> Self {
-        self._fields.0 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `kingdom` field (optional)
     pub fn kingdom(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.1 = value.into();
+        self._fields.0 = value.into();
         self
     }
     /// Set the `kingdom` field to an Option value (optional)
     pub fn maybe_kingdom(mut self, value: Option<S>) -> Self {
-        self._fields.1 = value;
+        self._fields.0 = value;
         self
     }
 }
@@ -377,7 +350,7 @@ where
         mut self,
         value: impl Into<StrongRef<S>>,
     ) -> IdentificationBuilder<S, identification_state::SetOccurrence<St>> {
-        self._fields.2 = Option::Some(value.into());
+        self._fields.1 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -396,7 +369,7 @@ where
         mut self,
         value: impl Into<S>,
     ) -> IdentificationBuilder<S, identification_state::SetScientificName<St>> {
-        self._fields.3 = Option::Some(value.into());
+        self._fields.2 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -408,12 +381,12 @@ where
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `taxonRank` field (optional)
     pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
-        self._fields.4 = value.into();
+        self._fields.3 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
     pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<S>>) -> Self {
-        self._fields.4 = value;
+        self._fields.3 = value;
         self
     }
 }
@@ -427,22 +400,20 @@ where
     /// Build the final struct.
     pub fn build(self) -> Identification<S> {
         Identification {
-            identification_remarks: self._fields.0,
-            kingdom: self._fields.1,
-            occurrence: self._fields.2.unwrap(),
-            scientific_name: self._fields.3.unwrap(),
-            taxon_rank: self._fields.4,
+            kingdom: self._fields.0,
+            occurrence: self._fields.1.unwrap(),
+            scientific_name: self._fields.2.unwrap(),
+            taxon_rank: self._fields.3,
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data.
     pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Identification<S> {
         Identification {
-            identification_remarks: self._fields.0,
-            kingdom: self._fields.1,
-            occurrence: self._fields.2.unwrap(),
-            scientific_name: self._fields.3.unwrap(),
-            taxon_rank: self._fields.4,
+            kingdom: self._fields.0,
+            occurrence: self._fields.1.unwrap(),
+            scientific_name: self._fields.2.unwrap(),
+            taxon_rank: self._fields.3,
             extra_data: Some(extra_data),
         }
     }
@@ -477,18 +448,6 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                         properties: {
                             #[allow(unused_mut)]
                             let mut map = BTreeMap::new();
-                            map.insert(
-                                SmolStr::new_static("identificationRemarks"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
-                                        ),
-                                    ),
-                                    max_length: Some(3000usize),
-                                    ..Default::default()
-                                }),
-                            );
                             map.insert(
                                 SmolStr::new_static("kingdom"),
                                 LexObjectProperty::String(LexString {
