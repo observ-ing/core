@@ -280,10 +280,7 @@ impl TaxonomyClient {
     }
 
     /// Get taxon by GBIF ID or name
-    pub async fn get_by_id(
-        &self,
-        id: &str,
-    ) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
+    pub async fn get_by_id(&self, id: &str) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
         let url = format!("{}/taxon/{}", self.base_url, id);
 
         match self.client.get(&url).send().await {
