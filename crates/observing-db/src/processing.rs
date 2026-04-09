@@ -178,8 +178,7 @@ pub fn occurrence_from_json(
 
 /// Convert an identification record JSON to database params.
 ///
-/// Handles both the current flat format (`bio.lexicons.temp.identification`)
-/// and legacy nested-taxon format (`ing.observ.temp.identification`).
+/// Expects the flat `bio.lexicons.temp.identification` format.
 ///
 /// `fallback_time` is used when `createdAt` cannot be parsed from the record
 /// (typically the firehose event time).
@@ -190,57 +189,34 @@ pub fn identification_from_json(
     did: String,
     fallback_time: DateTime<Utc>,
 ) -> Result<UpsertIdentificationParams, ProcessingError> {
-    // Handle both flat (bio.lexicons.temp) and nested taxon (legacy ing.observ.temp) formats
     let scientific_name = record_json
         .get("scientificName")
         .and_then(|v| v.as_str())
-        .or_else(|| {
-            record_json
-                .get("taxon")
-                .and_then(|t| t.get("scientificName"))
-                .and_then(|v| v.as_str())
-        })
         .ok_or_else(|| ProcessingError::InvalidField("missing scientificName".into()))?
         .to_string();
 
-    // "occurrence" (current) or "subject" (legacy) reference
-    let subject = record_json
+    let occurrence = record_json
         .get("occurrence")
-        .or_else(|| record_json.get("subject"))
-        .ok_or_else(|| {
-            ProcessingError::InvalidField("missing occurrence/subject reference".into())
-        })?;
-    let subject_uri = subject
+        .ok_or_else(|| ProcessingError::InvalidField("missing occurrence reference".into()))?;
+    let subject_uri = occurrence
         .get("uri")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ProcessingError::InvalidField("missing subject uri".into()))?
+        .ok_or_else(|| ProcessingError::InvalidField("missing occurrence uri".into()))?
         .to_string();
-    let subject_cid = subject
+    let subject_cid = occurrence
         .get("cid")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| ProcessingError::InvalidField("missing subject cid".into()))?
+        .ok_or_else(|| ProcessingError::InvalidField("missing occurrence cid".into()))?
         .to_string();
 
     let taxon_rank = record_json
         .get("taxonRank")
         .and_then(|v| v.as_str())
-        .or_else(|| {
-            record_json
-                .get("taxon")
-                .and_then(|t| t.get("taxonRank"))
-                .and_then(|v| v.as_str())
-        })
         .map(|s| s.to_string());
 
     let kingdom = record_json
         .get("kingdom")
         .and_then(|v| v.as_str())
-        .or_else(|| {
-            record_json
-                .get("taxon")
-                .and_then(|t| t.get("kingdom"))
-                .and_then(|v| v.as_str())
-        })
         .map(|s| s.to_string());
 
     let subject_index = record_json
@@ -253,11 +229,9 @@ pub fn identification_from_json(
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    // identificationRemarks (current) or comment (legacy)
     let identification_remarks = record_json
         .get("identificationRemarks")
         .and_then(|v| v.as_str())
-        .or_else(|| record_json.get("comment").and_then(|v| v.as_str()))
         .map(|s| s.to_string());
 
     let taxon_id = record_json
