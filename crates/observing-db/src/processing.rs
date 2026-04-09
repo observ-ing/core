@@ -209,13 +209,13 @@ pub fn identification_from_json(
         identification_remarks: record.comment.map(|s| s.to_string()),
         is_agreement: record.is_agreement.unwrap_or(false),
         date_identified,
-        vernacular_name: record.taxon.vernacular_name.map(|s| s.to_string()),
+        vernacular_name: None,
         kingdom: record.taxon.kingdom.map(|s| s.to_string()),
-        phylum: record.taxon.phylum.map(|s| s.to_string()),
-        class: record.taxon.class.map(|s| s.to_string()),
-        order: record.taxon.order.map(|s| s.to_string()),
-        family: record.taxon.family.map(|s| s.to_string()),
-        genus: record.taxon.genus.map(|s| s.to_string()),
+        phylum: None,
+        class: None,
+        order: None,
+        family: None,
+        genus: None,
     })
 }
 

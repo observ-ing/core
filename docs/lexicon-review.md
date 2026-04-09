@@ -29,7 +29,7 @@ Research comparing our lexicons against GBIF data models, Darwin Core standards,
 | GBIF Field | Why It Matters | Recommendation |
 |---|---|---|
 | **`identificationQualifier`** | Values like `cf.` (compare with) and `aff.` (has affinity with) — standard taxonomic hedging. GBIF treats these as first-class. | Add as optional string, `maxLength: 16`, `knownValues: ["cf.", "aff."]` |
-| **`scientificNameAuthorship`** | The authority citation (e.g., "L." for Linnaeus). GBIF stores this alongside every name. | Add as optional string, `maxLength: 256` |
+| **`scientificNameAuthorship`** | The authority citation (e.g., "L." for Linnaeus). GBIF stores this alongside every name. | Removed from lexicon — per DwC spec, `scientificName` should include authorship when known. |
 | **`taxonId` deprecation** | We deprecated `taxonId`, but GBIF's `taxonID` is how every occurrence links to the backbone taxonomy. Server-side resolution (kingdom + name → GBIF match) is fine, but storing the resolved `taxonKey` in the identification gives a stable anchor. | Consider un-deprecating or renaming to `gbifKey` — store the GBIF backbone key when the server resolves it. This makes GBIF export trivial. Alternatively, keep it server-side-only in the DB (not the lexicon). |
 
 ### 1C. Field Naming Alignment
@@ -134,7 +134,7 @@ Every system in the biodiversity data ecosystem — GBIF, Darwin Core, Catalogue
 7. Add per-image metadata (`license`, `created`) to `#imageEmbed`
 8. Switch `confidence` from `enum` to `knownValues`
 9. Add `island` / `islandGroup` to `#location`
-10. Add `scientificNameAuthorship` to identification
+10. ~~Add `scientificNameAuthorship` to identification~~ (removed — included in `scientificName` per DwC spec)
 
 ### Nice-to-have (ecosystem interop)
 

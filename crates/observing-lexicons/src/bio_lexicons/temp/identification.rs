@@ -38,40 +38,19 @@ use serde::{Deserialize, Serialize};
     bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
 pub struct Identification<S: BosStr = DefaultStr> {
-    ///Taxonomic class (Darwin Core dwc:class).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub class: Option<S>,
-    ///Taxonomic family (Darwin Core dwc:family).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<S>,
-    ///Taxonomic genus (Darwin Core dwc:genus).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub genus: Option<S>,
     ///Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub identification_remarks: Option<S>,
-    ///Taxonomic kingdom (Darwin Core dwc:kingdom).
+    ///Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<S>,
-    ///Taxonomic order (Darwin Core dwc:order).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order: Option<S>,
-    ///Taxonomic phylum (Darwin Core dwc:phylum).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phylum: Option<S>,
-    ///The full scientific name (Darwin Core dwc:scientificName).
+    ///A strong reference (CID + URI) to the occurrence being identified.
+    pub occurrence: StrongRef<S>,
+    ///The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).
     pub scientific_name: S,
-    ///The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scientific_name_authorship: Option<S>,
-    ///A strong reference (CID + URI) to the observation being identified.
-    pub subject: StrongRef<S>,
     ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub taxon_rank: Option<IdentificationTaxonRank<S>>,
-    ///Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub vernacular_name: Option<S>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
@@ -242,36 +221,6 @@ impl<S: BosStr> LexiconSchema for Identification<S> {
         lexicon_doc_bio_lexicons_temp_identification()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.class {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("class"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.family {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("family"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.genus {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("genus"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.identification_remarks {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 3000usize {
@@ -292,26 +241,6 @@ impl<S: BosStr> LexiconSchema for Identification<S> {
                 });
             }
         }
-        if let Some(ref value) = self.order {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("order"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.phylum {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("phylum"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         {
             let value = &self.scientific_name;
             #[allow(unused_comparisons)]
@@ -323,32 +252,12 @@ impl<S: BosStr> LexiconSchema for Identification<S> {
                 });
             }
         }
-        if let Some(ref value) = self.scientific_name_authorship {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("scientific_name_authorship"),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.taxon_rank {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 32usize {
                 return Err(ConstraintError::MaxLength {
                     path: ValidationPath::from_field("taxon_rank"),
                     max: 32usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.vernacular_name {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("vernacular_name"),
-                    max: 256usize,
                     actual: <str>::len(value.as_ref()),
                 });
             }
@@ -367,37 +276,37 @@ pub mod identification_state {
     }
     /// State trait tracking which required fields have been set
     pub trait State: sealed::Sealed {
+        type Occurrence;
         type ScientificName;
-        type Subject;
     }
     /// Empty state - all required fields are unset
     pub struct Empty(());
     impl sealed::Sealed for Empty {}
     impl State for Empty {
+        type Occurrence = Unset;
         type ScientificName = Unset;
-        type Subject = Unset;
+    }
+    ///State transition - sets the `occurrence` field to Set
+    pub struct SetOccurrence<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetOccurrence<St> {}
+    impl<St: State> State for SetOccurrence<St> {
+        type Occurrence = Set<members::occurrence>;
+        type ScientificName = St::ScientificName;
     }
     ///State transition - sets the `scientific_name` field to Set
     pub struct SetScientificName<St: State = Empty>(PhantomData<fn() -> St>);
     impl<St: State> sealed::Sealed for SetScientificName<St> {}
     impl<St: State> State for SetScientificName<St> {
+        type Occurrence = St::Occurrence;
         type ScientificName = Set<members::scientific_name>;
-        type Subject = St::Subject;
-    }
-    ///State transition - sets the `subject` field to Set
-    pub struct SetSubject<St: State = Empty>(PhantomData<fn() -> St>);
-    impl<St: State> sealed::Sealed for SetSubject<St> {}
-    impl<St: State> State for SetSubject<St> {
-        type ScientificName = St::ScientificName;
-        type Subject = Set<members::subject>;
     }
     /// Marker types for field names
     #[allow(non_camel_case_types)]
     pub mod members {
+        ///Marker type for the `occurrence` field
+        pub struct occurrence(());
         ///Marker type for the `scientific_name` field
         pub struct scientific_name(());
-        ///Marker type for the `subject` field
-        pub struct subject(());
     }
 }
 
@@ -407,16 +316,9 @@ pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
     _fields: (
         Option<S>,
         Option<S>,
-        Option<S>,
-        Option<S>,
-        Option<S>,
-        Option<S>,
-        Option<S>,
-        Option<S>,
-        Option<S>,
         Option<StrongRef<S>>,
-        Option<IdentificationTaxonRank<S>>,
         Option<S>,
+        Option<IdentificationTaxonRank<S>>,
     ),
     _type: PhantomData<fn() -> S>,
 }
@@ -433,62 +335,21 @@ impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
-            _fields: (
-                None, None, None, None, None, None, None, None, None, None, None, None,
-            ),
+            _fields: (None, None, None, None, None),
             _type: PhantomData,
         }
     }
 }
 
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `class` field (optional)
-    pub fn class(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.0 = value.into();
-        self
-    }
-    /// Set the `class` field to an Option value (optional)
-    pub fn maybe_class(mut self, value: Option<S>) -> Self {
-        self._fields.0 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `family` field (optional)
-    pub fn family(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.1 = value.into();
-        self
-    }
-    /// Set the `family` field to an Option value (optional)
-    pub fn maybe_family(mut self, value: Option<S>) -> Self {
-        self._fields.1 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `genus` field (optional)
-    pub fn genus(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.2 = value.into();
-        self
-    }
-    /// Set the `genus` field to an Option value (optional)
-    pub fn maybe_genus(mut self, value: Option<S>) -> Self {
-        self._fields.2 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `identificationRemarks` field (optional)
     pub fn identification_remarks(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.3 = value.into();
+        self._fields.0 = value.into();
         self
     }
     /// Set the `identificationRemarks` field to an Option value (optional)
     pub fn maybe_identification_remarks(mut self, value: Option<S>) -> Self {
-        self._fields.3 = value;
+        self._fields.0 = value;
         self
     }
 }
@@ -496,39 +357,32 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `kingdom` field (optional)
     pub fn kingdom(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.4 = value.into();
+        self._fields.1 = value.into();
         self
     }
     /// Set the `kingdom` field to an Option value (optional)
     pub fn maybe_kingdom(mut self, value: Option<S>) -> Self {
-        self._fields.4 = value;
+        self._fields.1 = value;
         self
     }
 }
 
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `order` field (optional)
-    pub fn order(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.5 = value.into();
-        self
-    }
-    /// Set the `order` field to an Option value (optional)
-    pub fn maybe_order(mut self, value: Option<S>) -> Self {
-        self._fields.5 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `phylum` field (optional)
-    pub fn phylum(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.6 = value.into();
-        self
-    }
-    /// Set the `phylum` field to an Option value (optional)
-    pub fn maybe_phylum(mut self, value: Option<S>) -> Self {
-        self._fields.6 = value;
-        self
+impl<S: BosStr, St> IdentificationBuilder<S, St>
+where
+    St: identification_state::State,
+    St::Occurrence: identification_state::IsUnset,
+{
+    /// Set the `occurrence` field (required)
+    pub fn occurrence(
+        mut self,
+        value: impl Into<StrongRef<S>>,
+    ) -> IdentificationBuilder<S, identification_state::SetOccurrence<St>> {
+        self._fields.2 = Option::Some(value.into());
+        IdentificationBuilder {
+            _state: PhantomData,
+            _fields: self._fields,
+            _type: PhantomData,
+        }
     }
 }
 
@@ -542,39 +396,7 @@ where
         mut self,
         value: impl Into<S>,
     ) -> IdentificationBuilder<S, identification_state::SetScientificName<St>> {
-        self._fields.7 = Option::Some(value.into());
-        IdentificationBuilder {
-            _state: PhantomData,
-            _fields: self._fields,
-            _type: PhantomData,
-        }
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `scientificNameAuthorship` field (optional)
-    pub fn scientific_name_authorship(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.8 = value.into();
-        self
-    }
-    /// Set the `scientificNameAuthorship` field to an Option value (optional)
-    pub fn maybe_scientific_name_authorship(mut self, value: Option<S>) -> Self {
-        self._fields.8 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St> IdentificationBuilder<S, St>
-where
-    St: identification_state::State,
-    St::Subject: identification_state::IsUnset,
-{
-    /// Set the `subject` field (required)
-    pub fn subject(
-        mut self,
-        value: impl Into<StrongRef<S>>,
-    ) -> IdentificationBuilder<S, identification_state::SetSubject<St>> {
-        self._fields.9 = Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -586,25 +408,12 @@ where
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `taxonRank` field (optional)
     pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
-        self._fields.10 = value.into();
+        self._fields.4 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
     pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<S>>) -> Self {
-        self._fields.10 = value;
-        self
-    }
-}
-
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
-    /// Set the `vernacularName` field (optional)
-    pub fn vernacular_name(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.11 = value.into();
-        self
-    }
-    /// Set the `vernacularName` field to an Option value (optional)
-    pub fn maybe_vernacular_name(mut self, value: Option<S>) -> Self {
-        self._fields.11 = value;
+        self._fields.4 = value;
         self
     }
 }
@@ -612,42 +421,28 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
 impl<S: BosStr, St> IdentificationBuilder<S, St>
 where
     St: identification_state::State,
+    St::Occurrence: identification_state::IsSet,
     St::ScientificName: identification_state::IsSet,
-    St::Subject: identification_state::IsSet,
 {
     /// Build the final struct.
     pub fn build(self) -> Identification<S> {
         Identification {
-            class: self._fields.0,
-            family: self._fields.1,
-            genus: self._fields.2,
-            identification_remarks: self._fields.3,
-            kingdom: self._fields.4,
-            order: self._fields.5,
-            phylum: self._fields.6,
-            scientific_name: self._fields.7.unwrap(),
-            scientific_name_authorship: self._fields.8,
-            subject: self._fields.9.unwrap(),
-            taxon_rank: self._fields.10,
-            vernacular_name: self._fields.11,
+            identification_remarks: self._fields.0,
+            kingdom: self._fields.1,
+            occurrence: self._fields.2.unwrap(),
+            scientific_name: self._fields.3.unwrap(),
+            taxon_rank: self._fields.4,
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data.
     pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Identification<S> {
         Identification {
-            class: self._fields.0,
-            family: self._fields.1,
-            genus: self._fields.2,
-            identification_remarks: self._fields.3,
-            kingdom: self._fields.4,
-            order: self._fields.5,
-            phylum: self._fields.6,
-            scientific_name: self._fields.7.unwrap(),
-            scientific_name_authorship: self._fields.8,
-            subject: self._fields.9.unwrap(),
-            taxon_rank: self._fields.10,
-            vernacular_name: self._fields.11,
+            identification_remarks: self._fields.0,
+            kingdom: self._fields.1,
+            occurrence: self._fields.2.unwrap(),
+            scientific_name: self._fields.3.unwrap(),
+            taxon_rank: self._fields.4,
             extra_data: Some(extra_data),
         }
     }
@@ -675,49 +470,13 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                     record: LexRecordRecord::Object(LexObject {
                         required: Some(
                             vec![
-                                SmolStr::new_static("subject"),
+                                SmolStr::new_static("occurrence"),
                                 SmolStr::new_static("scientificName")
                             ],
                         ),
                         properties: {
                             #[allow(unused_mut)]
                             let mut map = BTreeMap::new();
-                            map.insert(
-                                SmolStr::new_static("class"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Taxonomic class (Darwin Core dwc:class).",
-                                        ),
-                                    ),
-                                    max_length: Some(64usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("family"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Taxonomic family (Darwin Core dwc:family).",
-                                        ),
-                                    ),
-                                    max_length: Some(64usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("genus"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Taxonomic genus (Darwin Core dwc:genus).",
-                                        ),
-                                    ),
-                                    max_length: Some(64usize),
-                                    ..Default::default()
-                                }),
-                            );
                             map.insert(
                                 SmolStr::new_static("identificationRemarks"),
                                 LexObjectProperty::String(LexString {
@@ -735,7 +494,7 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "Taxonomic kingdom (Darwin Core dwc:kingdom).",
+                                            "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
                                         ),
                                     ),
                                     max_length: Some(64usize),
@@ -743,26 +502,9 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                                 }),
                             );
                             map.insert(
-                                SmolStr::new_static("order"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Taxonomic order (Darwin Core dwc:order).",
-                                        ),
-                                    ),
-                                    max_length: Some(64usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("phylum"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Taxonomic phylum (Darwin Core dwc:phylum).",
-                                        ),
-                                    ),
-                                    max_length: Some(64usize),
+                                SmolStr::new_static("occurrence"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
                                     ..Default::default()
                                 }),
                             );
@@ -771,29 +513,10 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "The full scientific name (Darwin Core dwc:scientificName).",
+                                            "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
                                         ),
                                     ),
                                     max_length: Some(256usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("scientificNameAuthorship"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).",
-                                        ),
-                                    ),
-                                    max_length: Some(256usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("subject"),
-                                LexObjectProperty::Ref(LexRef {
-                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
                                     ..Default::default()
                                 }),
                             );
@@ -806,18 +529,6 @@ fn lexicon_doc_bio_lexicons_temp_identification() -> LexiconDoc<'static> {
                                         ),
                                     ),
                                     max_length: Some(32usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("vernacularName"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).",
-                                        ),
-                                    ),
-                                    max_length: Some(256usize),
                                     ..Default::default()
                                 }),
                             );

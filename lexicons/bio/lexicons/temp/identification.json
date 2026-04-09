@@ -8,21 +8,16 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "scientificName"],
+        "required": ["occurrence", "scientificName"],
         "properties": {
-          "subject": {
+          "occurrence": {
             "type": "ref",
             "ref": "com.atproto.repo.strongRef",
-            "description": "A strong reference (CID + URI) to the observation being identified."
+            "description": "A strong reference (CID + URI) to the occurrence being identified."
           },
           "scientificName": {
             "type": "string",
-            "description": "The full scientific name (Darwin Core dwc:scientificName).",
-            "maxLength": 256
-          },
-          "scientificNameAuthorship": {
-            "type": "string",
-            "description": "The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).",
+            "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
             "maxLength": 256
           },
           "taxonRank": {
@@ -32,39 +27,9 @@
             "default": "species",
             "maxLength": 32
           },
-          "vernacularName": {
-            "type": "string",
-            "description": "Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).",
-            "maxLength": 256
-          },
           "kingdom": {
             "type": "string",
-            "description": "Taxonomic kingdom (Darwin Core dwc:kingdom).",
-            "maxLength": 64
-          },
-          "phylum": {
-            "type": "string",
-            "description": "Taxonomic phylum (Darwin Core dwc:phylum).",
-            "maxLength": 64
-          },
-          "class": {
-            "type": "string",
-            "description": "Taxonomic class (Darwin Core dwc:class).",
-            "maxLength": 64
-          },
-          "order": {
-            "type": "string",
-            "description": "Taxonomic order (Darwin Core dwc:order).",
-            "maxLength": 64
-          },
-          "family": {
-            "type": "string",
-            "description": "Taxonomic family (Darwin Core dwc:family).",
-            "maxLength": 64
-          },
-          "genus": {
-            "type": "string",
-            "description": "Taxonomic genus (Darwin Core dwc:genus).",
+            "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
             "maxLength": 64
           },
           "identificationRemarks": {

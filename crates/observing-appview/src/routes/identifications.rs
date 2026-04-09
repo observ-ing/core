@@ -84,13 +84,7 @@ pub async fn create_identification(
             .taxon_rank
             .as_deref()
             .map(|s| TaxonTaxonRank::from_value(s.into())),
-        vernacular_name: fields.vernacular_name.as_deref().map(Into::into),
         kingdom: fields.kingdom.as_deref().map(Into::into),
-        phylum: fields.phylum.as_deref().map(Into::into),
-        class: fields.class.as_deref().map(Into::into),
-        order: fields.order.as_deref().map(Into::into),
-        family: fields.family.as_deref().map(Into::into),
-        genus: fields.genus.as_deref().map(Into::into),
         ..Default::default()
     };
 
