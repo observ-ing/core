@@ -59,7 +59,15 @@ test.describe("Explore Filters", () => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const taxonInput = page.getByLabel("Taxon");
     await expect(taxonInput).toBeVisible();
-    await taxonInput.fill("Quercus");
+
+    // Use pressSequentially to simulate real keystrokes; fill() sets the
+    // value in one shot which can miss the input events that trigger the
+    // debounced search.
+    const searchResponse = page.waitForResponse((r) =>
+      r.url().includes("/api/taxa/search") && r.status() === 200,
+    );
+    await taxonInput.pressSequentially("Quercus", { delay: 50 });
+    await searchResponse;
 
     await expect(page.locator(".MuiAutocomplete-popper")).toBeVisible();
   });
