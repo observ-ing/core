@@ -147,16 +147,21 @@ async fn list_records(
     Ok(all_records)
 }
 
+/// Extract the occurrence URI from a record's `subject.uri` or `occurrence.uri` field.
+/// Identifications use `occurrence`, while comments and likes use `subject`.
+fn record_occurrence_uri(record: &Record) -> Option<&str> {
+    record
+        .value
+        .get("subject")
+        .or_else(|| record.value.get("occurrence"))
+        .and_then(|s| s.get("uri"))
+        .and_then(|u| u.as_str())
+}
+
 /// Check if a record's subject references a known collection namespace.
 /// Records referencing old/unknown namespaces are skipped during backfill.
 fn has_known_subject(record: &Record) -> bool {
-    let subject_uri = record
-        .value
-        .get("subject")
-        .and_then(|s| s.get("uri"))
-        .and_then(|u| u.as_str());
-
-    match subject_uri {
+    match record_occurrence_uri(record) {
         Some(uri) => uri.contains("/ing.observ.") || uri.contains("/bio.lexicons."),
         None => true, // No subject (e.g. occurrences) — always process
     }
@@ -170,13 +175,8 @@ fn is_occurrence_uri(uri: &str) -> bool {
 /// Check that any referenced occurrence URIs actually exist in our fetched data.
 /// This filters out records pointing to phantom occurrences (e.g. from partial migrations).
 fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> bool {
-    // Check subject.uri for identifications/comments/likes
-    if let Some(uri) = record
-        .value
-        .get("subject")
-        .and_then(|s| s.get("uri"))
-        .and_then(|u| u.as_str())
-    {
+    // Check subject.uri or occurrence.uri for identifications/comments/likes
+    if let Some(uri) = record_occurrence_uri(record) {
         if is_occurrence_uri(uri) && !known_uris.contains(uri) {
             return false;
         }
@@ -198,17 +198,12 @@ fn subject_occurrence_exists(record: &Record, known_uris: &HashSet<String>) -> b
     true
 }
 
-/// Extract referenced DIDs from subject.uri fields in non-occurrence records.
+/// Extract referenced DIDs from subject/occurrence URI fields in non-occurrence records.
 fn extract_referenced_dids(records: &[&Record], exclude: &HashSet<String>) -> HashSet<String> {
     let mut dids = HashSet::new();
     for record in records {
-        // subject.uri (identifications, comments, likes)
-        if let Some(uri) = record
-            .value
-            .get("subject")
-            .and_then(|s| s.get("uri"))
-            .and_then(|u| u.as_str())
-        {
+        // subject.uri or occurrence.uri (identifications, comments, likes)
+        if let Some(uri) = record_occurrence_uri(record) {
             if let Some(did) = did_from_uri(uri) {
                 if !exclude.contains(did) {
                     dids.insert(did.to_string());
