@@ -82,35 +82,14 @@ pub struct IdentificationGetRecordOutput<S: BosStr = DefaultStr> {
     bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
 pub struct Taxon<S: BosStr = DefaultStr> {
-    ///Taxonomic class (Darwin Core dwc:class).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub class: Option<S>,
-    ///Taxonomic family (Darwin Core dwc:family).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<S>,
-    ///Taxonomic genus (Darwin Core dwc:genus).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub genus: Option<S>,
-    ///Taxonomic kingdom (Darwin Core dwc:kingdom).
+    ///Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<S>,
-    ///Taxonomic order (Darwin Core dwc:order).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order: Option<S>,
-    ///Taxonomic phylum (Darwin Core dwc:phylum).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phylum: Option<S>,
-    ///The full scientific name (Darwin Core dwc:scientificName).
+    ///The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).
     pub scientific_name: S,
-    ///The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub scientific_name_authorship: Option<S>,
     ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub taxon_rank: Option<TaxonTaxonRank<S>>,
-    ///Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub vernacular_name: Option<S>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
@@ -323,61 +302,11 @@ impl<S: BosStr> LexiconSchema for Taxon<S> {
         lexicon_doc_ing_observ_temp_identification()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.class {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("class"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.family {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("family"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.genus {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("genus"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.kingdom {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 64usize {
                 return Err(ConstraintError::MaxLength {
                     path: ValidationPath::from_field("kingdom"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.order {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("order"),
-                    max: 64usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.phylum {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 64usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("phylum"),
                     max: 64usize,
                     actual: <str>::len(value.as_ref()),
                 });
@@ -394,32 +323,12 @@ impl<S: BosStr> LexiconSchema for Taxon<S> {
                 });
             }
         }
-        if let Some(ref value) = self.scientific_name_authorship {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("scientific_name_authorship"),
-                    max: 256usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
         if let Some(ref value) = self.taxon_rank {
             #[allow(unused_comparisons)]
             if <str>::len(value.as_ref()) > 32usize {
                 return Err(ConstraintError::MaxLength {
                     path: ValidationPath::from_field("taxon_rank"),
                     max: 32usize,
-                    actual: <str>::len(value.as_ref()),
-                });
-            }
-        }
-        if let Some(ref value) = self.vernacular_name {
-            #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 256usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("vernacular_name"),
-                    max: 256usize,
                     actual: <str>::len(value.as_ref()),
                 });
             }
@@ -785,71 +694,11 @@ fn lexicon_doc_ing_observ_temp_identification() -> LexiconDoc<'static> {
                         #[allow(unused_mut)]
                         let mut map = BTreeMap::new();
                         map.insert(
-                            SmolStr::new_static("class"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Taxonomic class (Darwin Core dwc:class).",
-                                    ),
-                                ),
-                                max_length: Some(64usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("family"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Taxonomic family (Darwin Core dwc:family).",
-                                    ),
-                                ),
-                                max_length: Some(64usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("genus"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Taxonomic genus (Darwin Core dwc:genus).",
-                                    ),
-                                ),
-                                max_length: Some(64usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
                             SmolStr::new_static("kingdom"),
                             LexObjectProperty::String(LexString {
                                 description: Some(
                                     CowStr::new_static(
-                                        "Taxonomic kingdom (Darwin Core dwc:kingdom).",
-                                    ),
-                                ),
-                                max_length: Some(64usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("order"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Taxonomic order (Darwin Core dwc:order).",
-                                    ),
-                                ),
-                                max_length: Some(64usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("phylum"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Taxonomic phylum (Darwin Core dwc:phylum).",
+                                        "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
                                     ),
                                 ),
                                 max_length: Some(64usize),
@@ -861,19 +710,7 @@ fn lexicon_doc_ing_observ_temp_identification() -> LexiconDoc<'static> {
                             LexObjectProperty::String(LexString {
                                 description: Some(
                                     CowStr::new_static(
-                                        "The full scientific name (Darwin Core dwc:scientificName).",
-                                    ),
-                                ),
-                                max_length: Some(256usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("scientificNameAuthorship"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "The authorship information for the scientificName (Darwin Core dwc:scientificNameAuthorship).",
+                                        "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
                                     ),
                                 ),
                                 max_length: Some(256usize),
@@ -889,18 +726,6 @@ fn lexicon_doc_ing_observ_temp_identification() -> LexiconDoc<'static> {
                                     ),
                                 ),
                                 max_length: Some(32usize),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("vernacularName"),
-                            LexObjectProperty::String(LexString {
-                                description: Some(
-                                    CowStr::new_static(
-                                        "Common name for the taxon in the identifier's language (Darwin Core dwc:vernacularName).",
-                                    ),
-                                ),
-                                max_length: Some(256usize),
                                 ..Default::default()
                             }),
                         );

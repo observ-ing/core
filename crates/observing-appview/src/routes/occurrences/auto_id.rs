@@ -21,25 +21,13 @@ pub async fn build_identification_record(
 ) -> Result<Value, AppError> {
     let mut taxon_id = None;
     let mut taxon_rank = None;
-    let mut vernacular_name = None;
     let mut kingdom = None;
-    let mut phylum = None;
-    let mut class = None;
-    let mut order = None;
-    let mut family = None;
-    let mut genus = None;
 
     if let Some(validation) = state.taxonomy.validate(scientific_name).await {
         if let Some(ref t) = validation.taxon {
             taxon_id = Some(t.id.clone());
             taxon_rank = Some(t.rank.clone());
-            vernacular_name = t.common_name.clone();
             kingdom = t.kingdom.clone();
-            phylum = t.phylum.clone();
-            class = t.class.clone();
-            order = t.order.clone();
-            family = t.family.clone();
-            genus = t.genus.clone();
         }
     }
 
@@ -50,13 +38,7 @@ pub async fn build_identification_record(
         taxon_rank: taxon_rank
             .as_deref()
             .map(|s| TaxonTaxonRank::from_value(s.into())),
-        vernacular_name: vernacular_name.as_deref().map(Into::into),
         kingdom: kingdom.as_deref().map(Into::into),
-        phylum: phylum.as_deref().map(Into::into),
-        class: class.as_deref().map(Into::into),
-        order: order.as_deref().map(Into::into),
-        family: family.as_deref().map(Into::into),
-        genus: genus.as_deref().map(Into::into),
         ..Default::default()
     };
 

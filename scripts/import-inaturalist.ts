@@ -203,13 +203,7 @@ async function main() {
           scientificName: taxon.name,
         };
         if (taxon.rank) taxonObj["taxonRank"] = taxon.rank;
-        if (taxon.preferred_common_name) taxonObj["vernacularName"] = taxon.preferred_common_name;
         if (taxonomy["kingdom"]) taxonObj["kingdom"] = taxonomy["kingdom"];
-        if (taxonomy["phylum"]) taxonObj["phylum"] = taxonomy["phylum"];
-        if (taxonomy["class"]) taxonObj["class"] = taxonomy["class"];
-        if (taxonomy["order"]) taxonObj["order"] = taxonomy["order"];
-        if (taxonomy["family"]) taxonObj["family"] = taxonomy["family"];
-        if (taxonomy["genus"]) taxonObj["genus"] = taxonomy["genus"];
 
         const identRecord = {
           $type: IDENTIFICATION_COLLECTION,

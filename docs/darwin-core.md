@@ -94,16 +94,9 @@ A taxonomic determination (dwc:Identification) for an occurrence. The identifica
     "cid": "bafyrei..."
   },
   "taxon": {
-    "scientificName": "Eschscholzia californica",
-    "scientificNameAuthorship": "Cham.",
+    "scientificName": "Eschscholzia californica Cham.",
     "taxonRank": "species",
-    "vernacularName": "California Poppy",
-    "kingdom": "Plantae",
-    "phylum": "Tracheophyta",
-    "class": "Magnoliopsida",
-    "order": "Ranunculales",
-    "family": "Papaveraceae",
-    "genus": "Eschscholzia"
+    "kingdom": "Plantae"
   },
   "comment": "Distinctive orange petals and feathery leaves",
   "isAgreement": false,
@@ -133,17 +126,17 @@ A taxonomic determination (dwc:Identification) for an occurrence. The identifica
 
 | Observ.ing Field | GBIF / Darwin Core | Status | Description |
 |--------------|-------------------|--------|-------------|
-| `taxon.scientificName` | dwc:scientificName | ✅ | The full scientific name |
-| `taxon.scientificNameAuthorship` | dwc:scientificNameAuthorship | ✅ | Authorship of the scientific name |
+| `taxon.scientificName` | dwc:scientificName | ✅ | The full scientific name, with authorship if known |
 | `taxon.taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
-| `taxon.vernacularName` | dwc:vernacularName | ✅ | Common name |
-| `taxon.kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom |
-| `taxon.phylum` | dwc:phylum | ✅ | Taxonomic phylum |
-| `taxon.class` | dwc:class | ✅ | Taxonomic class |
-| `taxon.order` | dwc:order | ✅ | Taxonomic order |
-| `taxon.family` | dwc:family | ✅ | Taxonomic family |
-| `taxon.genus` | dwc:genus | ✅ | Taxonomic genus |
+| `taxon.kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom (for homonym disambiguation) |
 | `taxonId` | dwc:taxonID | ⚠️ | DEPRECATED — External taxon ID (e.g., gbif:2878688) |
+| — | dwc:scientificNameAuthorship | ❌ | Removed — included in scientificName per DwC spec |
+| — | dwc:vernacularName | ❌ | Removed — derivable from taxonomy backbone |
+| — | dwc:phylum | ❌ | Removed — derivable from taxonomy backbone |
+| — | dwc:class | ❌ | Removed — derivable from taxonomy backbone |
+| — | dwc:order | ❌ | Removed — derivable from taxonomy backbone |
+| — | dwc:family | ❌ | Removed — derivable from taxonomy backbone |
+| — | dwc:genus | ❌ | Removed — derivable from taxonomy backbone |
 | — | dwc:specificEpithet | ❌ | Species epithet |
 | — | dwc:infraspecificEpithet | ❌ | Subspecies/variety epithet |
 
