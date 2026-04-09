@@ -323,20 +323,18 @@ export async function submitComment(data: {
  * - legacy ID: fetchTaxon("gbif:12345")
  */
 export async function fetchTaxon(kingdomOrId: string, name?: string): Promise<TaxonDetail | null> {
-  try {
-    let url: string;
-    if (name) {
-      url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/${encodeURIComponent(name)}`;
-    } else {
-      url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}`;
-    }
-    const response = await fetch(url);
-    if (!response.ok) return null;
-    return response.json();
-  } catch (e) {
-    console.error("fetchTaxon error:", e);
-    return null;
+  let url: string;
+  if (name) {
+    url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}/${encodeURIComponent(name)}`;
+  } else {
+    url = `${API_BASE}/api/taxa/${encodeURIComponent(kingdomOrId)}`;
   }
+  const response = await fetch(url);
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new Error(`Failed to load taxon (${response.status})`);
+  }
+  return response.json();
 }
 
 /**

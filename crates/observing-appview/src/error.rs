@@ -45,3 +45,9 @@ impl From<sqlx::Error> for AppError {
         AppError::Database(e)
     }
 }
+
+impl From<crate::taxonomy_client::TaxonomyClientError> for AppError {
+    fn from(e: crate::taxonomy_client::TaxonomyClientError) -> Self {
+        AppError::Internal(e.to_string())
+    }
+}

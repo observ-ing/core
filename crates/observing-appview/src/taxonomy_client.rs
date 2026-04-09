@@ -1,8 +1,19 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::time::Duration;
 use tracing::error;
 use ts_rs::TS;
+
+/// Error from the taxonomy service (timeout, connection failure, 5xx, etc.)
+#[derive(Debug)]
+pub struct TaxonomyClientError(pub String);
+
+impl fmt::Display for TaxonomyClientError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "taxonomy service error: {}", self.0)
+    }
+}
 
 /// HTTP client for the taxonomy Rust service
 pub struct TaxonomyClient {
@@ -269,17 +280,35 @@ impl TaxonomyClient {
     }
 
     /// Get taxon by GBIF ID or name
-    pub async fn get_by_id(&self, id: &str) -> Option<TaxonDetail> {
+    pub async fn get_by_id(&self, id: &str) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
         let url = format!("{}/taxon/{}", self.base_url, id);
 
         match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
+            Ok(resp) if resp.status().is_success() => Ok(resp
+                .json()
+                .await
+                .map_err(|e| TaxonomyClientError(e.to_string()))?),
+            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
+            Ok(resp) => {
+                error!(status = %resp.status(), "Taxonomy get_by_id failed");
+                Err(TaxonomyClientError(format!(
+                    "upstream returned {}",
+                    resp.status()
+                )))
+            }
+            Err(e) => {
+                error!(error = %e, "Taxonomy get_by_id request failed");
+                Err(TaxonomyClientError(e.to_string()))
+            }
         }
     }
 
     /// Get taxon by name with optional kingdom.
-    pub async fn get_by_name(&self, name: &str, kingdom: Option<&str>) -> Option<TaxonDetail> {
+    pub async fn get_by_name(
+        &self,
+        name: &str,
+        kingdom: Option<&str>,
+    ) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
         let encoded_name = urlencoding::encode(name);
         let mut url = format!("{}/taxon/{}", self.base_url, encoded_name);
         if let Some(k) = kingdom {
@@ -287,8 +316,22 @@ impl TaxonomyClient {
         }
 
         match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
+            Ok(resp) if resp.status().is_success() => Ok(resp
+                .json()
+                .await
+                .map_err(|e| TaxonomyClientError(e.to_string()))?),
+            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
+            Ok(resp) => {
+                error!(status = %resp.status(), %name, "Taxonomy get_by_name failed");
+                Err(TaxonomyClientError(format!(
+                    "upstream returned {}",
+                    resp.status()
+                )))
+            }
+            Err(e) => {
+                error!(error = %e, %name, "Taxonomy get_by_name request failed");
+                Err(TaxonomyClientError(e.to_string()))
+            }
         }
     }
 
@@ -297,7 +340,7 @@ impl TaxonomyClient {
         &self,
         name: &str,
         kingdom: Option<&str>,
-    ) -> Option<Vec<TaxonResult>> {
+    ) -> Result<Option<Vec<TaxonResult>>, TaxonomyClientError> {
         let encoded_name = urlencoding::encode(name);
         let mut url = format!("{}/taxon/{}/children", self.base_url, encoded_name);
         if let Some(k) = kingdom {
@@ -305,8 +348,23 @@ impl TaxonomyClient {
         }
 
         match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
+            Ok(resp) if resp.status().is_success() => Ok(Some(
+                resp.json()
+                    .await
+                    .map_err(|e| TaxonomyClientError(e.to_string()))?,
+            )),
+            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
+            Ok(resp) => {
+                error!(status = %resp.status(), %name, "Taxonomy get_children failed");
+                Err(TaxonomyClientError(format!(
+                    "upstream returned {}",
+                    resp.status()
+                )))
+            }
+            Err(e) => {
+                error!(error = %e, %name, "Taxonomy get_children request failed");
+                Err(TaxonomyClientError(e.to_string()))
+            }
         }
     }
 }
