@@ -80,7 +80,7 @@ pub async fn get_taxon_by_kingdom_name(
     let detail = state
         .taxonomy
         .get_by_name(&name, Some(&kingdom))
-        .await
+        .await?
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
     let count = observing_db::feeds::count_occurrences_by_taxon(
@@ -107,6 +107,7 @@ pub async fn get_children_by_kingdom_name(
         .taxonomy
         .get_children(&name, Some(&kingdom))
         .await
+        .unwrap_or(None)
         .unwrap_or_default();
     Ok(Json(children))
 }
@@ -124,7 +125,11 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     let name = name.replace('-', " ");
 
     // Look up taxon to get rank
-    let detail = state.taxonomy.get_by_name(&name, Some(&kingdom)).await;
+    let detail = state
+        .taxonomy
+        .get_by_name(&name, Some(&kingdom))
+        .await
+        .unwrap_or(None);
     let rank = detail
         .as_ref()
         .map(|d| d.rank.clone())
@@ -170,7 +175,7 @@ pub async fn get_taxon_by_id(
     let detail = state
         .taxonomy
         .get_by_id(&id)
-        .await
+        .await?
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
     let count = observing_db::feeds::count_occurrences_by_taxon(
@@ -200,7 +205,7 @@ pub async fn get_taxon_occurrences_by_id(
         .min(constants::MAX_FEED_LIMIT);
 
     // Look up taxon to get name + rank
-    let detail = state.taxonomy.get_by_id(&id).await;
+    let detail = state.taxonomy.get_by_id(&id).await.unwrap_or(None);
 
     let (name, rank, kingdom) = match detail {
         Some(ref d) => (d.scientific_name.clone(), d.rank.clone(), d.kingdom.clone()),

@@ -241,10 +241,16 @@ export function TaxonExplorer() {
       setError(null);
 
       let result: TaxonDetail | null;
-      if (lookupKingdom && lookupName) {
-        result = await fetchTaxon(lookupKingdom, lookupName);
-      } else {
-        result = await fetchTaxon(lookupId ?? lookupKingdom ?? "");
+      try {
+        if (lookupKingdom && lookupName) {
+          result = await fetchTaxon(lookupKingdom, lookupName);
+        } else {
+          result = await fetchTaxon(lookupId ?? lookupKingdom ?? "");
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Failed to load taxon");
+        setLoading(false);
+        return;
       }
 
       if (result) {

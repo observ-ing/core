@@ -361,6 +361,7 @@ async fn resolve_effective_taxonomy(
     if let Some(detail) = taxonomy
         .get_by_name(effective_name, occurrence_kingdom)
         .await
+        .unwrap_or(None)
     {
         return Some(EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
