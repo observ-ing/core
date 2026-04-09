@@ -30,8 +30,6 @@ const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
 /// Legacy NSID — PDS repos may still have records under the old collection name.
 const LEGACY_OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
 const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.identification";
-/// Legacy NSID — PDS repos may still have records under the old collection name.
-const LEGACY_IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
 const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
 const LIKE_COLLECTION: &str = "ing.observ.temp.like";
@@ -254,7 +252,7 @@ fn parse_record(
                 did.to_string(),
             )?;
         }
-        IDENTIFICATION_COLLECTION | LEGACY_IDENTIFICATION_COLLECTION => {
+        IDENTIFICATION_COLLECTION => {
             processing::identification_from_json(
                 &record.value,
                 record.uri.clone(),
@@ -326,7 +324,7 @@ async fn process_and_store(
             let co_observers = processing::extract_co_observers(parsed.recorded_by.as_deref(), did);
             observing_db::observers::sync(pool, &record.uri, did, &co_observers).await?;
         }
-        IDENTIFICATION_COLLECTION | LEGACY_IDENTIFICATION_COLLECTION => {
+        IDENTIFICATION_COLLECTION => {
             let params = processing::identification_from_json(
                 &record.value,
                 record.uri.clone(),
@@ -546,14 +544,6 @@ async fn main() {
                     records.extend(legacy);
                 }
             }
-            if collection == IDENTIFICATION_COLLECTION {
-                if let Ok(legacy) =
-                    list_records(&client, &pds, did, LEGACY_IDENTIFICATION_COLLECTION).await
-                {
-                    records.extend(legacy);
-                }
-            }
-
             if !records.is_empty() {
                 info!("[{did}] Found {} {short_name} records", records.len());
             }
