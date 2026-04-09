@@ -20,7 +20,7 @@ const mockNotifications = [
     actorDid: "did:plc:other2",
     kind: "identification",
     subjectUri: "at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/bio.lexicons.temp.occurrence/seed1",
-    referenceUri: "at://did:plc:other2/ing.observ.temp.identification/1",
+    referenceUri: "at://did:plc:other2/bio.lexicons.temp.identification/1",
     read: false,
     createdAt: new Date(Date.now() - 120_000).toISOString(),
     actor: {

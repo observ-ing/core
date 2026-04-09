@@ -36,7 +36,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 }
 ```
 
-> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `ing.observ.temp.identification` records, which allows users to submit observations without knowing the species and enables community identification.
+> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `bio.lexicons.temp.identification` records, which allows users to submit observations without knowing the species and enables community identification.
 
 ### Fields
 
@@ -81,64 +81,45 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | — | dwc:samplingEffort | ❌ | Effort expended during sampling |
 | — | dwc:eventRemarks | ❌ | Notes about the sampling event |
 
-## ing.observ.temp.identification
+## bio.lexicons.temp.identification
 
-A taxonomic determination (dwc:Identification) for an occurrence. The identification record contains both Identification-class fields and an embedded Taxon object (dwc:Taxon) following the same structure as [GBIF's Identification History extension](https://rs.gbif.org/extension/dwc/identification.xml).
+A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstream [lexicons.bio](https://github.com/lexicons-bio/lexicons.bio) schema with flat fields (no nested taxon object). App-specific fields (`subjectIndex`, `isAgreement`, `createdAt`) are stored as extra JSON fields in the AT Protocol record.
 
 ### Example
 
 ```json
 {
-  "subject": {
+  "occurrence": {
     "uri": "at://did:plc:abc.../bio.lexicons.temp.occurrence/123",
     "cid": "bafyrei..."
   },
-  "taxon": {
-    "scientificName": "Eschscholzia californica Cham.",
-    "taxonRank": "species",
-    "kingdom": "Plantae"
-  },
-  "comment": "Distinctive orange petals and feathery leaves",
+  "scientificName": "Eschscholzia californica Cham.",
+  "taxonRank": "species",
+  "kingdom": "Plantae",
+  "subjectIndex": 0,
   "isAgreement": false,
-  "confidence": "high",
   "createdAt": "2024-01-15T11:00:00Z"
 }
 ```
 
-### Identification Fields
+### Fields
 
 | Observ.ing Field | GBIF / Darwin Core | Status | Description |
 |--------------|-------------------|--------|-------------|
-| `subject` | — | ✅ | AT Protocol strong reference to the occurrence (Observ.ing-specific) |
-| `subjectIndex` | — | ✅ | Index when multiple organisms in one observation (Observ.ing-specific) |
-| `comment` | dwc:identificationRemarks | ✅ | Notes about the identification |
-| `isAgreement` | — | ✅ | Whether ID agrees with community consensus (Observ.ing-specific) |
-| `confidence` | — | ✅ | Identifier's confidence level: low/medium/high (Observ.ing-specific) |
-| `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made |
+| `occurrence` | — | ✅ | AT Protocol strong reference to the occurrence |
+| `scientificName` | dwc:scientificName | ✅ | The full scientific name, with authorship if known |
+| `taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
+| `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom (for homonym disambiguation) |
+| `identificationRemarks` | dwc:identificationRemarks | ✅ | Notes about the identification |
+| `subjectIndex` | — | ✅ | Index when multiple organisms in one observation (app-specific) |
+| `isAgreement` | — | ✅ | Whether ID agrees with community consensus (app-specific) |
+| `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made (app-specific) |
 | (AT Protocol URI) | dwc:identificationID | ⚠️ | AT URI serves as identifier |
 | (DID) | dwc:identifiedBy | ⚠️ | Derived from AT Protocol identity |
 | — | dwc:identificationQualifier | ❌ | Qualifier like "cf." or "aff." |
 | — | dwc:identificationVerificationStatus | ❌ | Verification status |
 | — | dwc:identificationReferences | ❌ | References used for identification |
 | — | dwc:typeStatus | ❌ | Type specimen status |
-
-### Taxon Fields (embedded `#taxon` object)
-
-| Observ.ing Field | GBIF / Darwin Core | Status | Description |
-|--------------|-------------------|--------|-------------|
-| `taxon.scientificName` | dwc:scientificName | ✅ | The full scientific name, with authorship if known |
-| `taxon.taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
-| `taxon.kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom (for homonym disambiguation) |
-| `taxonId` | dwc:taxonID | ⚠️ | DEPRECATED — External taxon ID (e.g., gbif:2878688) |
-| — | dwc:scientificNameAuthorship | ❌ | Removed — included in scientificName per DwC spec |
-| — | dwc:vernacularName | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:phylum | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:class | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:order | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:family | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:genus | ❌ | Removed — derivable from taxonomy backbone |
-| — | dwc:specificEpithet | ❌ | Species epithet |
-| — | dwc:infraspecificEpithet | ❌ | Subspecies/variety epithet |
 
 ## References
 

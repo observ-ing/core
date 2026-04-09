@@ -34,7 +34,7 @@ Observ.ing is a decentralized biodiversity observation platform built on AT Prot
 | Lexicon | Purpose | Status |
 |---------|---------|--------|
 | `bio.lexicons.temp.occurrence` | Biodiversity observations | Production-ready core |
-| `ing.observ.temp.identification` | Taxonomic identifications | Production-ready core |
+| `bio.lexicons.temp.identification` | Taxonomic identifications | Production-ready core |
 
 ### Strengths of Current Design
 

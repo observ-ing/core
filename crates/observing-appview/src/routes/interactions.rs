@@ -3,9 +3,8 @@ use axum::Json;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::InteractionDirection;
-use observing_lexicons::ing_observ::temp::identification::Taxon;
 use observing_lexicons::ing_observ::temp::interaction::{
-    Interaction, InteractionInteractionType, InteractionRecord, InteractionSubject,
+    Interaction, InteractionInteractionType, InteractionRecord, InteractionSubject, Taxon,
 };
 use serde::Deserialize;
 use tracing::info;

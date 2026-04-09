@@ -29,7 +29,9 @@ use tracing::{error, info, warn};
 const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
 /// Legacy NSID — PDS repos may still have records under the old collection name.
 const LEGACY_OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
-const IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
+const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.identification";
+/// Legacy NSID — PDS repos may still have records under the old collection name.
+const LEGACY_IDENTIFICATION_COLLECTION: &str = "ing.observ.temp.identification";
 const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
 const LIKE_COLLECTION: &str = "ing.observ.temp.like";
@@ -252,7 +254,7 @@ fn parse_record(
                 did.to_string(),
             )?;
         }
-        IDENTIFICATION_COLLECTION => {
+        IDENTIFICATION_COLLECTION | LEGACY_IDENTIFICATION_COLLECTION => {
             processing::identification_from_json(
                 &record.value,
                 record.uri.clone(),
@@ -324,7 +326,7 @@ async fn process_and_store(
             let co_observers = processing::extract_co_observers(parsed.recorded_by.as_deref(), did);
             observing_db::observers::sync(pool, &record.uri, did, &co_observers).await?;
         }
-        IDENTIFICATION_COLLECTION => {
+        IDENTIFICATION_COLLECTION | LEGACY_IDENTIFICATION_COLLECTION => {
             let params = processing::identification_from_json(
                 &record.value,
                 record.uri.clone(),
@@ -536,10 +538,17 @@ async fn main() {
                 }
             };
 
-            // Also fetch from legacy NSID for occurrences (PDS may not be migrated yet)
+            // Also fetch from legacy NSIDs (PDS repos may not be migrated yet)
             if collection == OCCURRENCE_COLLECTION {
                 if let Ok(legacy) =
                     list_records(&client, &pds, did, LEGACY_OCCURRENCE_COLLECTION).await
+                {
+                    records.extend(legacy);
+                }
+            }
+            if collection == IDENTIFICATION_COLLECTION {
+                if let Ok(legacy) =
+                    list_records(&client, &pds, did, LEGACY_IDENTIFICATION_COLLECTION).await
                 {
                     records.extend(legacy);
                 }

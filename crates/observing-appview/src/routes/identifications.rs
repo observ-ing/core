@@ -1,9 +1,8 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use jacquard_common::types::string::Datetime;
-use observing_lexicons::ing_observ::temp::identification::{
-    Identification, IdentificationRecord, Taxon, TaxonTaxonRank,
+use observing_lexicons::bio_lexicons::temp::identification::{
+    Identification, IdentificationRecord, IdentificationTaxonRank,
 };
 use serde::Deserialize;
 use tracing::{info, warn};
@@ -51,8 +50,6 @@ pub struct CreateIdentificationRequest {
     #[ts(optional)]
     taxon_rank: Option<String>,
     #[ts(optional)]
-    comment: Option<String>,
-    #[ts(optional)]
     is_agreement: Option<bool>,
 }
 
@@ -76,29 +73,37 @@ pub async fn create_identification(
     )
     .await;
 
-    let subject = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
-
-    let taxon = Taxon {
-        scientific_name: (&*body.scientific_name).into(),
-        taxon_rank: fields
-            .taxon_rank
-            .as_deref()
-            .map(|s| TaxonTaxonRank::from_value(s.into())),
-        kingdom: fields.kingdom.as_deref().map(Into::into),
-        ..Default::default()
-    };
+    let occurrence = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
 
     let record = Identification::new()
-        .taxon(taxon)
-        .created_at(Datetime::now())
-        .subject(subject)
-        .subject_index(body.subject_index.map(|i| i as i64))
-        .is_agreement(body.is_agreement.unwrap_or(false))
-        .maybe_comment(body.comment.as_deref().map(Into::into))
-        .maybe_taxon_id(fields.taxon_id.as_deref().map(Into::into))
+        .occurrence(occurrence)
+        .scientific_name(&*body.scientific_name)
+        .maybe_taxon_rank(
+            fields
+                .taxon_rank
+                .as_deref()
+                .map(|s| IdentificationTaxonRank::from_value(s.into())),
+        )
+        .maybe_kingdom(fields.kingdom.as_deref().map(Into::into))
         .build();
 
-    let record_value = auth::serialize_at_record(&record)?;
+    let mut record_value = auth::serialize_at_record(&record)?;
+
+    // App-specific fields (not in upstream lexicon, stored as extra data in the AT Protocol record)
+    if let Some(obj) = record_value.as_object_mut() {
+        obj.insert(
+            "createdAt".to_string(),
+            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+        );
+        obj.insert(
+            "subjectIndex".to_string(),
+            serde_json::json!(body.subject_index.unwrap_or(0)),
+        );
+        obj.insert(
+            "isAgreement".to_string(),
+            serde_json::json!(body.is_agreement.unwrap_or(false)),
+        );
+    }
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let resp = auth::create_at_record(&agent, did_parsed, IdentificationRecord::NSID, record_value)

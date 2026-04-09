@@ -13,7 +13,8 @@ use crate::error::{IngesterError, Result};
 use crate::server::{start_server, ServerState, SharedState};
 use crate::types::{
     resolve_collection_names, IngesterConfig, RecentEvent, ALL_COLLECTIONS, COMMENT_COLLECTION,
-    IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+    IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LEGACY_IDENTIFICATION_COLLECTION,
+    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
 };
 use chrono::Utc;
 use clap::Parser;
@@ -161,7 +162,7 @@ async fn main() -> Result<()> {
                         };
                         (r, "occurrence")
                     }
-                    IDENTIFICATION_COLLECTION => {
+                    IDENTIFICATION_COLLECTION | LEGACY_IDENTIFICATION_COLLECTION => {
                         let r = if action == "delete" {
                             db.delete_identification(&uri).await
                         } else {

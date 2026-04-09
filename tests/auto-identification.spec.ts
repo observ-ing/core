@@ -43,7 +43,7 @@ authTest.describe("Auto-Identification on Upload", () => {
         },
         identifications: [
           {
-            uri: `at://${MOCK_OBS_DID}/ing.observ.temp.identification/${MOCK_OBS_RKEY}`,
+            uri: `at://${MOCK_OBS_DID}/bio.lexicons.temp.identification/${MOCK_OBS_RKEY}`,
             cid: "bafyid1",
             did: MOCK_OBS_DID,
             subject_uri: AUTO_ID_URI,

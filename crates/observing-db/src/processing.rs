@@ -10,9 +10,7 @@ use crate::types::{
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
-use observing_lexicons::ing_observ::temp::{
-    comment::Comment, identification::Identification, interaction::Interaction,
-};
+use observing_lexicons::ing_observ::temp::{comment::Comment, interaction::Interaction};
 use serde_json::Value;
 
 /// Errors that can occur during record processing
@@ -180,7 +178,10 @@ pub fn occurrence_from_json(
 
 /// Convert an identification record JSON to database params.
 ///
-/// `fallback_time` is used when `created_at` cannot be parsed from the record
+/// Handles both the current flat format (`bio.lexicons.temp.identification`)
+/// and legacy nested-taxon format (`ing.observ.temp.identification`).
+///
+/// `fallback_time` is used when `createdAt` cannot be parsed from the record
 /// (typically the firehose event time).
 pub fn identification_from_json(
     record_json: &Value,
@@ -189,28 +190,102 @@ pub fn identification_from_json(
     did: String,
     fallback_time: DateTime<Utc>,
 ) -> Result<UpsertIdentificationParams, ProcessingError> {
-    let record_str = record_json.to_string();
-    let record: Identification =
-        serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
+    // Handle both flat (bio.lexicons.temp) and nested taxon (legacy ing.observ.temp) formats
+    let scientific_name = record_json
+        .get("scientificName")
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            record_json
+                .get("taxon")
+                .and_then(|t| t.get("scientificName"))
+                .and_then(|v| v.as_str())
+        })
+        .ok_or_else(|| ProcessingError::InvalidField("missing scientificName".into()))?
+        .to_string();
 
-    let date_identified = parse_naive_datetime(&record.created_at.to_string())
+    // "occurrence" (current) or "subject" (legacy) reference
+    let subject = record_json
+        .get("occurrence")
+        .or_else(|| record_json.get("subject"))
+        .ok_or_else(|| {
+            ProcessingError::InvalidField("missing occurrence/subject reference".into())
+        })?;
+    let subject_uri = subject
+        .get("uri")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ProcessingError::InvalidField("missing subject uri".into()))?
+        .to_string();
+    let subject_cid = subject
+        .get("cid")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| ProcessingError::InvalidField("missing subject cid".into()))?
+        .to_string();
+
+    let taxon_rank = record_json
+        .get("taxonRank")
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            record_json
+                .get("taxon")
+                .and_then(|t| t.get("taxonRank"))
+                .and_then(|v| v.as_str())
+        })
+        .map(|s| s.to_string());
+
+    let kingdom = record_json
+        .get("kingdom")
+        .and_then(|v| v.as_str())
+        .or_else(|| {
+            record_json
+                .get("taxon")
+                .and_then(|t| t.get("kingdom"))
+                .and_then(|v| v.as_str())
+        })
+        .map(|s| s.to_string());
+
+    let subject_index = record_json
+        .get("subjectIndex")
+        .and_then(|v| v.as_i64())
+        .unwrap_or(0) as i32;
+
+    let is_agreement = record_json
+        .get("isAgreement")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
+
+    // identificationRemarks (current) or comment (legacy)
+    let identification_remarks = record_json
+        .get("identificationRemarks")
+        .and_then(|v| v.as_str())
+        .or_else(|| record_json.get("comment").and_then(|v| v.as_str()))
+        .map(|s| s.to_string());
+
+    let taxon_id = record_json
+        .get("taxonId")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
+    let date_identified = record_json
+        .get("createdAt")
+        .and_then(|v| v.as_str())
+        .and_then(parse_naive_datetime)
         .unwrap_or_else(|| fallback_time.naive_utc());
 
     Ok(UpsertIdentificationParams {
         uri,
         cid,
         did,
-        subject_uri: record.subject.uri.to_string(),
-        subject_cid: record.subject.cid.to_string(),
-        subject_index: record.subject_index.unwrap_or(0) as i32,
-        scientific_name: record.taxon.scientific_name.to_string(),
-        taxon_rank: record.taxon.taxon_rank.map(|s| s.to_string()),
-        taxon_id: record.taxon_id.map(|s| s.to_string()),
-        identification_remarks: record.comment.map(|s| s.to_string()),
-        is_agreement: record.is_agreement.unwrap_or(false),
+        subject_uri,
+        subject_cid,
+        subject_index,
+        scientific_name,
+        taxon_rank,
+        taxon_id,
+        identification_remarks,
+        is_agreement,
         date_identified,
         vernacular_name: None,
-        kingdom: record.taxon.kingdom.map(|s| s.to_string()),
+        kingdom,
         phylum: None,
         class: None,
         order: None,

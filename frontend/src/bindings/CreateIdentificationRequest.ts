@@ -6,6 +6,5 @@ export type CreateIdentificationRequest = {
   subjectIndex?: number;
   scientificName: string;
   taxonRank?: string;
-  comment?: string;
   isAgreement?: boolean;
 };

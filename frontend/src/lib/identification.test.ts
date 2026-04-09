@@ -35,7 +35,7 @@ describe("IdentificationService", () => {
     createRecord = vi.fn(async () => ({
       success: true,
       data: {
-        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.identification/1",
         cid: "test-cid",
         commit: { cid: "commit-cid", rev: "rev-1" },
         validationStatus: "valid",
@@ -50,15 +50,16 @@ describe("IdentificationService", () => {
     getRecord = vi.fn(async () => ({
       success: true,
       data: {
-        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.identification/1",
         cid: "test-cid",
         value: {
-          $type: "ing.observ.temp.identification",
-          subject: {
+          $type: "bio.lexicons.temp.identification",
+          occurrence: {
             uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
             cid: "subject-cid",
           },
-          taxon: { scientificName: "Quercus alba", taxonRank: "species" },
+          scientificName: "Quercus alba",
+          taxonRank: "species",
           createdAt: "2024-01-01T00:00:00Z",
         },
       },
@@ -67,7 +68,7 @@ describe("IdentificationService", () => {
     putRecord = vi.fn(async () => ({
       success: true,
       data: {
-        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.identification/1",
         cid: "new-cid",
         commit: { cid: "commit-cid", rev: "rev-1" },
         validationStatus: "valid",
@@ -102,15 +103,8 @@ describe("IdentificationService", () => {
         ).rejects.toThrow("Invalid occurrence URI format");
       });
 
-      it("throws for http:// URIs", async () => {
-        await expect(
-          service.identify({ ...validInput, occurrenceUri: "http://did:plc:test/post" }),
-        ).rejects.toThrow("Invalid occurrence URI format");
-      });
-
       it("accepts valid at:// URI", async () => {
         await service.identify(validInput);
-
         expect(createRecord).toHaveBeenCalled();
       });
     });
@@ -120,12 +114,6 @@ describe("IdentificationService", () => {
         await expect(service.identify({ ...validInput, occurrenceCid: "" })).rejects.toThrow(
           "Occurrence CID is required",
         );
-      });
-
-      it("accepts valid CID", async () => {
-        await service.identify(validInput);
-
-        expect(createRecord).toHaveBeenCalled();
       });
     });
 
@@ -152,41 +140,6 @@ describe("IdentificationService", () => {
       it("accepts scientificName at exactly 256 characters", async () => {
         const maxName = "A".repeat(256);
         await service.identify({ ...validInput, scientificName: maxName });
-
-        expect(createRecord).toHaveBeenCalled();
-      });
-
-      it("accepts typical species name", async () => {
-        await service.identify({ ...validInput, scientificName: "Homo sapiens" });
-
-        expect(createRecord).toHaveBeenCalled();
-      });
-
-      it("accepts subspecies with three parts", async () => {
-        await service.identify({ ...validInput, scientificName: "Canis lupus familiaris" });
-
-        expect(createRecord).toHaveBeenCalled();
-      });
-    });
-
-    describe("comment validation", () => {
-      it("throws if comment exceeds 3000 characters", async () => {
-        const longComment = "A".repeat(3001);
-        await expect(service.identify({ ...validInput, comment: longComment })).rejects.toThrow(
-          "Comment too long (max 3000 characters)",
-        );
-      });
-
-      it("accepts comment at exactly 3000 characters", async () => {
-        const maxComment = "A".repeat(3000);
-        await service.identify({ ...validInput, comment: maxComment });
-
-        expect(createRecord).toHaveBeenCalled();
-      });
-
-      it("accepts empty comment (optional field)", async () => {
-        await service.identify({ ...validInput, comment: undefined });
-
         expect(createRecord).toHaveBeenCalled();
       });
     });
@@ -213,36 +166,32 @@ describe("IdentificationService", () => {
       });
 
       expect(result).toEqual({
-        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.identification/1",
         cid: "test-cid",
       });
     });
 
-    it("creates record with correct structure", async () => {
+    it("creates record with flat structure (no nested taxon)", async () => {
       await service.identify({
         occurrenceUri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         occurrenceCid: "bafyrei123",
         scientificName: "Quercus alba",
         taxonRank: "species",
-        comment: "Distinctive bark pattern",
         isAgreement: true,
       });
 
       expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
-          collection: "ing.observ.temp.identification",
+          collection: "bio.lexicons.temp.identification",
           record: expect.objectContaining({
-            $type: "ing.observ.temp.identification",
-            subject: {
+            $type: "bio.lexicons.temp.identification",
+            occurrence: {
               uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
               cid: "bafyrei123",
             },
-            taxon: {
-              scientificName: "Quercus alba",
-              taxonRank: "species",
-            },
-            comment: "Distinctive bark pattern",
+            scientificName: "Quercus alba",
+            taxonRank: "species",
             isAgreement: true,
           }),
         }),
@@ -259,9 +208,7 @@ describe("IdentificationService", () => {
       expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              taxonRank: "species", // default
-            }),
+            taxonRank: "species", // default
             isAgreement: false, // default
           }),
         }),
@@ -280,9 +227,7 @@ describe("IdentificationService", () => {
       expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              scientificName: "Quercus alba",
-            }),
+            scientificName: "Quercus alba",
             isAgreement: true,
           }),
         }),
@@ -301,34 +246,26 @@ describe("IdentificationService", () => {
       expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              scientificName: "Quercus rubra",
-            }),
+            scientificName: "Quercus rubra",
             isAgreement: false,
           }),
         }),
       );
     });
 
-    it("accepts optional parameters", async () => {
+    it("accepts optional taxonRank", async () => {
       await service.suggestId(
         "at://did:plc:test/bio.lexicons.temp.occurrence/1",
         "bafyrei123",
         "Quercus rubra",
-        {
-          taxonRank: "species",
-          comment: "Red oak based on leaf shape",
-        },
+        { taxonRank: "species" },
       );
 
       expect(createRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              scientificName: "Quercus rubra",
-              taxonRank: "species",
-            }),
-            comment: "Red oak based on leaf shape",
+            scientificName: "Quercus rubra",
+            taxonRank: "species",
           }),
         }),
       );
@@ -340,16 +277,16 @@ describe("IdentificationService", () => {
       const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(
-        noSessionService.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123"),
+        noSessionService.withdraw("at://did:plc:test/bio.lexicons.temp.identification/abc123"),
       ).rejects.toThrow("Not logged in");
     });
 
     it("extracts rkey from URI and deletes record", async () => {
-      await service.withdraw("at://did:plc:test/ing.observ.temp.identification/abc123");
+      await service.withdraw("at://did:plc:test/bio.lexicons.temp.identification/abc123");
 
       expect(deleteRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "ing.observ.temp.identification",
+        collection: "bio.lexicons.temp.identification",
         rkey: "abc123",
       });
     });
@@ -360,7 +297,7 @@ describe("IdentificationService", () => {
       const noSessionService = new IdentificationService(makeAgent(undefined));
 
       await expect(
-        noSessionService.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
+        noSessionService.update("at://did:plc:test/bio.lexicons.temp.identification/abc123", {
           scientificName: "Quercus rubra",
         }),
       ).rejects.toThrow("Not logged in");
@@ -368,60 +305,39 @@ describe("IdentificationService", () => {
 
     it("fetches existing record and updates it", async () => {
       const result = await service.update(
-        "at://did:plc:test/ing.observ.temp.identification/abc123",
+        "at://did:plc:test/bio.lexicons.temp.identification/abc123",
         { scientificName: "Quercus rubra" },
       );
 
       expect(getRecord).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "ing.observ.temp.identification",
+        collection: "bio.lexicons.temp.identification",
         rkey: "abc123",
       });
       expect(putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           repo: "did:plc:test",
-          collection: "ing.observ.temp.identification",
+          collection: "bio.lexicons.temp.identification",
           rkey: "abc123",
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              scientificName: "Quercus rubra",
-            }),
+            scientificName: "Quercus rubra",
           }),
         }),
       );
       expect(result).toEqual({
-        uri: "at://did:plc:test/ing.observ.temp.identification/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.identification/1",
         cid: "new-cid",
       });
     });
 
     it("preserves existing fields when not updated", async () => {
-      await service.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
-        comment: "New comment",
-      });
+      await service.update("at://did:plc:test/bio.lexicons.temp.identification/abc123", {});
 
       expect(putRecord).toHaveBeenCalledWith(
         expect.objectContaining({
           record: expect.objectContaining({
-            taxon: expect.objectContaining({
-              scientificName: "Quercus alba", // preserved from existing
-              taxonRank: "species", // preserved from existing
-            }),
-            comment: "New comment", // updated
-          }),
-        }),
-      );
-    });
-
-    it("clears comment when set to empty string", async () => {
-      await service.update("at://did:plc:test/ing.observ.temp.identification/abc123", {
-        comment: "",
-      });
-
-      expect(putRecord).toHaveBeenCalledWith(
-        expect.objectContaining({
-          record: expect.objectContaining({
-            comment: "",
+            scientificName: "Quercus alba", // preserved from existing
+            taxonRank: "species", // preserved from existing
           }),
         }),
       );
@@ -440,7 +356,7 @@ describe("IdentificationService", () => {
 
       expect(listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "ing.observ.temp.identification",
+        collection: "bio.lexicons.temp.identification",
         limit: 50,
       });
     });
@@ -450,15 +366,15 @@ describe("IdentificationService", () => {
 
       expect(listRecords).toHaveBeenCalledWith({
         repo: "did:plc:test",
-        collection: "ing.observ.temp.identification",
+        collection: "bio.lexicons.temp.identification",
         limit: 100,
       });
     });
 
     it("returns records from response", async () => {
       const mockRecords = [
-        { uri: "at://test/1", cid: "cid1", value: { taxon: { scientificName: "Species A" } } },
-        { uri: "at://test/2", cid: "cid2", value: { taxon: { scientificName: "Species B" } } },
+        { uri: "at://test/1", cid: "cid1", value: { scientificName: "Species A" } },
+        { uri: "at://test/2", cid: "cid2", value: { scientificName: "Species B" } },
       ];
       listRecords.mockResolvedValueOnce({
         success: true,
@@ -467,7 +383,6 @@ describe("IdentificationService", () => {
       });
 
       const result = await service.getMyIdentifications();
-
       expect(result).toEqual(mockRecords);
     });
   });

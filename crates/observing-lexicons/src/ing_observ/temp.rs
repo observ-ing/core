@@ -4,6 +4,5 @@
 // Any manual changes will be overwritten on the next regeneration.
 
 pub mod comment;
-pub mod identification;
 pub mod interaction;
 pub mod like;
