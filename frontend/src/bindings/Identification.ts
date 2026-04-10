@@ -16,7 +16,6 @@ export type Identification = {
   taxon_rank?: string;
   identification_qualifier?: string;
   taxon_id?: string;
-  identification_remarks?: string;
   identification_verification_status?: string;
   type_status?: string;
   is_agreement?: boolean;

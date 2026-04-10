@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id, identification_remarks,\n            identification_verification_status, type_status, is_agreement, date_identified,\n            vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus, confidence\n        FROM identifications\n        WHERE subject_uri = ANY($1) AND subject_index = 0\n        ORDER BY subject_uri, date_identified DESC\n        ",
+  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id,\n                    identification_verification_status, type_status, is_agreement, date_identified,\n                    vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus\n                FROM identifications\n                WHERE did = $1\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -55,73 +55,64 @@
       },
       {
         "ordinal": 10,
-        "name": "identification_remarks",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 11,
         "name": "identification_verification_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 11,
         "name": "type_status",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "is_agreement",
         "type_info": "Bool"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "date_identified",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "vernacular_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "genus",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 22,
-        "name": "confidence",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "TextArray"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -138,9 +129,7 @@
       true,
       true,
       true,
-      true,
       false,
-      true,
       true,
       true,
       true,
@@ -150,5 +139,5 @@
       true
     ]
   },
-  "hash": "ebc74f72d0479a34eac1cd41bf2b3db918e4ae1a9f0e9a72e74a2d961542eefa"
+  "hash": "bf13a8b670656e576054d29330696f10f8d46810fc5829eaf5dcb72ed273f3aa"
 }

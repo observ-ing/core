@@ -229,11 +229,6 @@ pub fn identification_from_json(
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
 
-    let identification_remarks = record_json
-        .get("identificationRemarks")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
-
     let taxon_id = record_json
         .get("taxonId")
         .and_then(|v| v.as_str())
@@ -255,7 +250,6 @@ pub fn identification_from_json(
         scientific_name,
         taxon_rank,
         taxon_id,
-        identification_remarks,
         is_agreement,
         date_identified,
         vernacular_name: None,

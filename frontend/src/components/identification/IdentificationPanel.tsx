@@ -1,14 +1,5 @@
 import { useState, useCallback, type FormEvent } from "react";
-import {
-  Box,
-  Typography,
-  Button,
-  TextField,
-  Stack,
-  Paper,
-  Divider,
-  CircularProgress,
-} from "@mui/material";
+import { Box, Typography, Button, Stack, Paper, Divider, CircularProgress } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import NatureIcon from "@mui/icons-material/Nature";
@@ -53,7 +44,6 @@ export function IdentificationPanel({
   const dispatch = useAppDispatch();
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
-  const [comment, setComment] = useState("");
   const [identifyingNewOrganism, setIdentifyingNewOrganism] = useState(false);
 
   // Calculate the next available subject index for new organisms
@@ -80,13 +70,11 @@ export function IdentificationPanel({
 
   const suggestFn = useCallback(() => {
     const targetSubjectIndex = identifyingNewOrganism ? nextSubjectIndex : subjectIndex;
-    const trimmedComment = comment.trim();
     return submitIdentification({
       occurrenceUri: observation.uri,
       occurrenceCid: observation.cid,
       subjectIndex: targetSubjectIndex,
       scientificName: taxonName.trim(),
-      ...(trimmedComment ? { comment: trimmedComment } : {}),
       isAgreement: false,
     });
   }, [
@@ -96,7 +84,6 @@ export function IdentificationPanel({
     identifyingNewOrganism,
     nextSubjectIndex,
     taxonName,
-    comment,
   ]);
 
   const { isSubmitting: isSuggesting, handleSubmit: doSuggest } = useFormSubmit(suggestFn, {
@@ -106,7 +93,6 @@ export function IdentificationPanel({
     onSuccess: () => {
       setShowSuggestForm(false);
       setTaxonName("");
-      setComment("");
       setIdentifyingNewOrganism(false);
       onSuccess?.();
     },
@@ -225,17 +211,6 @@ export function IdentificationPanel({
               </Button>
             )}
           </Stack>
-
-          <TextField
-            fullWidth
-            label="Comment (optional)"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            multiline
-            rows={2}
-            margin="normal"
-            size="small"
-          />
 
           {identifyingNewOrganism && (
             <Paper

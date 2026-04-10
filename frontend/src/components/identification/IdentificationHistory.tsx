@@ -179,11 +179,6 @@ export function IdentificationHistory({
                       rank={id.taxon_rank}
                     />
                   </Box>
-                  {id.identification_remarks && (
-                    <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                      "{id.identification_remarks}"
-                    </Typography>
-                  )}
                 </Box>
                 <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
                   <IconButton

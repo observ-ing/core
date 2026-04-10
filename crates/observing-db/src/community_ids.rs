@@ -171,7 +171,6 @@ mod tests {
             taxon_rank: Some("species".to_string()),
             identification_qualifier: None,
             taxon_id: None,
-            identification_remarks: None,
             identification_verification_status: None,
             type_status: None,
             is_agreement: Some(is_agreement),
