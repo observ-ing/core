@@ -490,16 +490,7 @@ export function ObservationDetail() {
                     throw error;
                   }
                 }}
-                observerInitialId={
-                  taxonomy?.scientificName
-                    ? {
-                        scientificName: taxonomy.scientificName,
-                        observer: observation.observer,
-                        date: observation.createdAt,
-                        kingdom: taxonomy.kingdom,
-                      }
-                    : undefined
-                }
+                observerDid={observation.observer.did}
                 footer={
                   user ? (
                     <IdentificationPanel

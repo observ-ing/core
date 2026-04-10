@@ -13,25 +13,18 @@ import {
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import type { Identification, Profile } from "../../services/types";
+import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
-
-interface ObserverInitialId {
-  scientificName: string;
-  observer: Profile;
-  date: string;
-  kingdom?: string | undefined;
-}
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
   subjectIndex?: number | undefined;
   /** Fallback kingdom to use if identification doesn't have kingdom data */
   kingdom?: string | undefined;
-  /** Observer's original scientificName from the observation payload */
-  observerInitialId?: ObserverInitialId | undefined;
+  /** DID of the observation's creator, used to show "Observer's ID" badge */
+  observerDid?: string | undefined;
   /** Optional content rendered at the bottom of the panel (e.g. login prompt, add ID form) */
   footer?: React.ReactNode | undefined;
   /** Current user's DID, used to show delete button on own identifications */
@@ -44,7 +37,7 @@ export function IdentificationHistory({
   identifications,
   subjectIndex = 0,
   kingdom,
-  observerInitialId,
+  observerDid,
   footer,
   currentUserDid,
   onDeleteIdentification,
@@ -80,14 +73,13 @@ export function IdentificationHistory({
     }
   }
 
-  // Only show observer's initial ID for subject 0
-  const showObserverInitialId = observerInitialId && subjectIndex === 0;
+  // Find the observer's earliest (first) identification for the "Observer's ID" badge
+  const observerFirstIdUri =
+    observerDid && subjectIndex === 0
+      ? filteredIds.find((id) => id.did === observerDid)?.uri
+      : undefined;
 
-  // Observer's initial ID is superseded if they have any later identification
-  const observerInitialIdSuperseded =
-    showObserverInitialId && filteredIds.some((id) => id.did === observerInitialId.observer.did);
-
-  if (filteredIds.length === 0 && !showObserverInitialId) {
+  if (filteredIds.length === 0) {
     return (
       <Paper
         elevation={0}
@@ -124,73 +116,12 @@ export function IdentificationHistory({
           Identification History
         </Typography>
         <Chip
-          label={filteredIds.length + (showObserverInitialId ? 1 : 0)}
+          label={filteredIds.length}
           size="small"
           sx={{ ml: "auto", height: 20, fontSize: "0.75rem" }}
         />
       </Stack>
       <Stack spacing={2}>
-        {showObserverInitialId && (
-          <Box
-            key="observer-initial-id"
-            sx={{
-              pl: 2,
-              borderLeft: 3,
-              borderColor: observerInitialIdSuperseded ? "text.disabled" : "info.main",
-              transition: "background-color 0.2s ease",
-              borderRadius: "0 4px 4px 0",
-              py: 1,
-              opacity: observerInitialIdSuperseded ? 0.5 : 1,
-              "&:hover": { bgcolor: "action.hover" },
-            }}
-          >
-            <Stack direction="row" spacing={1.5} alignItems="flex-start">
-              <RouterLink to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}>
-                <Avatar
-                  {...(observerInitialId.observer.avatar
-                    ? { src: observerInitialId.observer.avatar }
-                    : {})}
-                  sx={{ width: 32, height: 32 }}
-                >
-                  {
-                    (observerInitialId.observer.displayName ||
-                      observerInitialId.observer.handle ||
-                      "?")[0]
-                  }
-                </Avatar>
-              </RouterLink>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <RouterLink
-                    to={`/profile/${encodeURIComponent(observerInitialId.observer.did)}`}
-                    style={{ textDecoration: "none" }}
-                  >
-                    <Typography variant="body2" fontWeight="medium" color="text.primary">
-                      {observerInitialId.observer.displayName ||
-                        observerInitialId.observer.handle ||
-                        "Unknown"}
-                    </Typography>
-                  </RouterLink>
-                  <Typography variant="caption" color="text.secondary">
-                    <RelativeTime date={new Date(observerInitialId.date)} withAgo />
-                  </Typography>
-                  <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
-                </Stack>
-                <Box
-                  sx={{
-                    mt: 0.5,
-                    textDecoration: observerInitialIdSuperseded ? "line-through" : "none",
-                  }}
-                >
-                  <TaxonLink
-                    name={observerInitialId.scientificName}
-                    kingdom={observerInitialId.kingdom || kingdom}
-                  />
-                </Box>
-              </Box>
-            </Stack>
-          </Box>
-        )}
         {filteredIds.map((id) => {
           const isSuperseded = supersededUris.has(id.uri);
           return (
@@ -233,6 +164,9 @@ export function IdentificationHistory({
                     <Typography variant="caption" color="text.secondary">
                       <RelativeTime date={new Date(id.date_identified)} withAgo />
                     </Typography>
+                    {id.uri === observerFirstIdUri && (
+                      <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
+                    )}
                     {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
                     {!isSuperseded && id.is_agreement && (
                       <Chip label="Agrees" size="small" color="success" variant="outlined" />
