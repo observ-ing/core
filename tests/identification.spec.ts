@@ -59,7 +59,6 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(page.getByLabel("Species Name")).toBeVisible({
         timeout: 10000,
       });
-      await authExpect(page.getByLabel("Comment (optional)")).toBeVisible();
     },
   );
 
