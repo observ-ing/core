@@ -99,7 +99,10 @@ fn autocomplete_to_taxon(item: &AutocompleteTaxon) -> Option<TaxonResult> {
         common_name: item.preferred_common_name.clone(),
         photo_url,
         rank,
-        kingdom: item.iconic_taxon_name.as_deref().and_then(iconic_to_kingdom),
+        kingdom: item
+            .iconic_taxon_name
+            .as_deref()
+            .and_then(iconic_to_kingdom),
         phylum: None,
         class: None,
         order: None,

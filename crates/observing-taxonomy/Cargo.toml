@@ -9,6 +9,16 @@ license = "MIT OR Apache-2.0"
 # GBIF API client
 gbif-api = { path = "../gbif-api" }
 
+# iNaturalist API client (secondary taxa source for clades like Angiospermae)
+inaturalist = "0.9.0"
+
+# `inaturalist` pulls in reqwest 0.12 with default-features=false and no TLS,
+# so its default Client fails on HTTPS ("scheme is not http"). Aliased here
+# purely to unify features — cargo merges feature sets across direct+transitive
+# deps, so adding rustls-tls via this alias enables it on the shared 0.12
+# instance that `inaturalist` already uses. Not referenced in code.
+reqwest_0_12_tls_enabler = { package = "reqwest", version = "0.12", default-features = false, features = ["rustls-tls"] }
+
 # Wikidata SPARQL client
 wikidata-client = { path = "../wikidata-client" }
 
