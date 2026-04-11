@@ -2783,6 +2783,7 @@ dependencies = [
 name = "observing-ingester"
 version = "0.1.0"
 dependencies = [
+ "atproto-identity",
  "axum",
  "chrono",
  "clap",

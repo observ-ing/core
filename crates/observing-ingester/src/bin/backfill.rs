@@ -17,6 +17,7 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Duration;
 
+use atproto_identity::{Did, DidMethod};
 use chrono::Utc;
 use clap::Parser;
 use observing_db::processing;
@@ -87,15 +88,22 @@ fn did_from_uri(uri: &str) -> Option<&str> {
     uri.strip_prefix("at://")?.split('/').next()
 }
 
-/// Resolve a DID to its PDS endpoint via plc.directory.
+/// Resolve a DID to its PDS endpoint via plc.directory or did:web.
 async fn resolve_pds(client: &Client, did: &str) -> Option<String> {
-    let url = if did.starts_with("did:plc:") {
-        format!("https://plc.directory/{did}")
-    } else if let Some(rest) = did.strip_prefix("did:web:") {
-        let domain = rest.replace("%3A", ":");
-        format!("https://{domain}/.well-known/did.json")
-    } else {
-        return None;
+    let parsed = match Did::parse(did) {
+        Ok(d) => d,
+        Err(e) => {
+            warn!(did, error = %e, "Skipping resolve_pds for invalid DID");
+            return None;
+        }
+    };
+
+    let url = match parsed.method() {
+        DidMethod::Plc(_) => format!("https://plc.directory/{}", parsed.as_str()),
+        DidMethod::Web(host) => {
+            let domain = host.replace("%3A", ":");
+            format!("https://{domain}/.well-known/did.json")
+        }
     };
 
     let doc: serde_json::Value = client.get(&url).send().await.ok()?.json().await.ok()?;
