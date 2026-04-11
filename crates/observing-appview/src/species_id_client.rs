@@ -1,7 +1,6 @@
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tracing::error;
 use ts_rs::TS;
 
 /// HTTP client for the species identification service
@@ -62,14 +61,19 @@ impl SpeciesIdClient {
         }
     }
 
-    /// Identify species from a base64-encoded image
+    /// Identify species from a base64-encoded image.
+    ///
+    /// Errors are propagated to the caller (network failure, non-2xx status
+    /// from the upstream service, or JSON decode failure) so the route can
+    /// log them with full context instead of collapsing everything into a
+    /// generic `None`.
     pub async fn identify(
         &self,
         image_base64: &str,
         latitude: Option<f64>,
         longitude: Option<f64>,
         limit: Option<usize>,
-    ) -> Option<IdentifyResponse> {
+    ) -> Result<IdentifyResponse, reqwest::Error> {
         let url = format!("{}/identify", self.base_url);
 
         let body = IdentifyRequestBody {
@@ -79,16 +83,13 @@ impl SpeciesIdClient {
             limit: limit.unwrap_or(5),
         };
 
-        match self.client.post(&url).json(&body).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            Ok(resp) => {
-                error!(status = %resp.status(), "Species identification request failed");
-                None
-            }
-            Err(e) => {
-                error!(error = %e, "Species identification request failed");
-                None
-            }
-        }
+        self.client
+            .post(&url)
+            .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
     }
 }
