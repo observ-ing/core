@@ -33,6 +33,12 @@ async function extractErrorMessage(response: Response, defaultMessage: string): 
   return defaultMessage;
 }
 
+/**
+ * Generic JSON fetch helper. NOTE: the `T` type parameter is NOT verified
+ * at runtime — callers are trusting that the server returns the right
+ * shape. For sites where the server response crosses a trust boundary
+ * or is likely to drift, narrow the result explicitly at the call site.
+ */
 async function fetchApi<T>(url: string, errorMessage: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   if (!response.ok) {
@@ -47,8 +53,12 @@ export async function checkAuth(): Promise<User | null> {
       credentials: "include",
     });
     if (response.ok) {
-      const data = await response.json();
-      return data.user ?? null;
+      const data: unknown = await response.json();
+      if (typeof data === "object" && data !== null && "user" in data) {
+        const user = (data as { user: unknown }).user;
+        return (user ?? null) as User | null;
+      }
+      return null;
     }
     return null;
   } catch {
@@ -174,8 +184,12 @@ export async function searchActors(query: string): Promise<ActorSearchResult[]> 
   const response = await fetch(`${API_BASE}/api/actors/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
-  const data = await response.json();
-  return data.actors || [];
+  const data: unknown = await response.json();
+  if (typeof data === "object" && data !== null && "actors" in data) {
+    const actors = (data as { actors: unknown }).actors;
+    if (Array.isArray(actors)) return actors as ActorSearchResult[];
+  }
+  return [];
 }
 
 export async function searchTaxa(query: string): Promise<TaxaResult[]> {
@@ -184,8 +198,12 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   const response = await fetch(`${API_BASE}/api/taxa/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
-  const data = await response.json();
-  return data.results || [];
+  const data: unknown = await response.json();
+  if (typeof data === "object" && data !== null && "results" in data) {
+    const results = (data as { results: unknown }).results;
+    if (Array.isArray(results)) return results as TaxaResult[];
+  }
+  return [];
 }
 
 export async function submitObservation(data: {
