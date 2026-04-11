@@ -5,6 +5,7 @@ import type {
   FeedFilters,
   ExploreFeedResponse,
   HomeFeedResponse,
+  User,
 } from "../services/types";
 import * as api from "../services/api";
 
@@ -15,7 +16,7 @@ function resetFeedState(state: FeedState) {
 }
 
 interface ThunkApiConfig {
-  state: { feed: FeedState; auth: { user: unknown } };
+  state: { feed: FeedState; auth: { user: User | null } };
 }
 
 interface FeedState {
@@ -40,9 +41,12 @@ const initialState: FeedState = {
   userLocation: null,
 };
 
-function fetchFeedData(state: { feed: FeedState; auth: { user: unknown } }, cursor?: string) {
+function fetchFeedData(
+  state: { feed: FeedState; auth: { user: User | null } },
+  cursor?: string,
+) {
   const { currentTab, filters } = state.feed;
-  const isAuthenticated = !!state.auth?.user;
+  const isAuthenticated = state.auth.user !== null;
 
   if (currentTab === "home" && isAuthenticated) {
     return api.fetchHomeFeed(cursor);
