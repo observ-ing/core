@@ -156,8 +156,8 @@ impl IdentityResolver {
     async fn get_did_document(&self, did: &str) -> Option<DidDocument> {
         let url = if did.starts_with("did:plc:") {
             format!("https://plc.directory/{did}")
-        } else if did.starts_with("did:web:") {
-            let domain = did.strip_prefix("did:web:").unwrap().replace("%3A", ":");
+        } else if let Some(rest) = did.strip_prefix("did:web:") {
+            let domain = rest.replace("%3A", ":");
             format!("https://{domain}/.well-known/did.json")
         } else {
             return None;
