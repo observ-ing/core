@@ -1,8 +1,8 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
 
 /** Navigate to the mock observation detail page. */
-async function navigateToDetail(page: any) {
+async function navigateToDetail(page: Page) {
   await navigateToMockedDetail(page);
 }
 

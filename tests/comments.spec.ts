@@ -1,16 +1,16 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Request } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
 
 /** Navigate to the mock observation detail page. */
-async function navigateToDetail(page: any, _expectFn: any) {
+async function navigateToDetail(page: Page) {
   await navigateToMockedDetail(page);
 }
 
 test.describe("Comments - Logged Out", () => {
   // TC-CMT-001: Login prompt for comments
   test("shows login prompt when logged out", async ({ page }) => {
-    await navigateToDetail(page, expect);
+    await navigateToDetail(page);
     await expect(page.getByText("Log in to add a comment")).toBeVisible();
   });
 });
@@ -18,7 +18,7 @@ test.describe("Comments - Logged Out", () => {
 authTest.describe("Comments - Logged In", () => {
   // TC-CMT-002: Add button opens comment form
   authTest("Add button opens comment form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
@@ -33,7 +33,7 @@ authTest.describe("Comments - Logged In", () => {
 
   // TC-CMT-003: Cancel closes comment form
   authTest("Cancel closes comment form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
@@ -59,7 +59,7 @@ authTest.describe("Comments - Logged In", () => {
       }
       return route.continue();
     });
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
@@ -73,7 +73,7 @@ authTest.describe("Comments - Logged In", () => {
       .fill("This is a test comment");
 
     const postRequest = page.waitForRequest(
-      (req: any) => req.method() === "POST" && req.url().includes("/api/comments"),
+      (req: Request) => req.method() === "POST" && req.url().includes("/api/comments"),
     );
     await page.getByRole("button", { name: "Post" }).click();
     const req = await postRequest;

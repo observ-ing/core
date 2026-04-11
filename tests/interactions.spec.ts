@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Request } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
 
@@ -15,14 +15,14 @@ function muiSelect(page: Page, label: string) {
 }
 
 /** Navigate to the mock observation detail page. */
-async function navigateToDetail(page: any, _expectFn: any) {
+async function navigateToDetail(page: Page) {
   await navigateToMockedDetail(page);
 }
 
 test.describe("Interactions - Logged Out", () => {
   // TC-INT-001: Login prompt
   test("shows login prompt when logged out", async ({ page }) => {
-    await navigateToDetail(page, expect);
+    await navigateToDetail(page);
     await expect(page.getByText("Log in to add interactions")).toBeVisible();
   });
 });
@@ -30,13 +30,13 @@ test.describe("Interactions - Logged Out", () => {
 authTest.describe("Interactions - Logged In", () => {
   // TC-INT-002: Section visible
   authTest("Species Interactions section is visible", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     await authExpect(page.getByText("Species Interactions")).toBeVisible();
   });
 
   // TC-INT-003: Add button opens form
   authTest("Add button opens interaction form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     // Find the Add button near the Species Interactions heading
     const addBtn = page
       .getByRole("heading", { name: "Species Interactions" })
@@ -64,7 +64,7 @@ authTest.describe("Interactions - Logged In", () => {
         }
         return route.continue();
       });
-      await navigateToDetail(page, authExpect);
+      await navigateToDetail(page);
       const addBtn = page
         .getByRole("heading", { name: "Species Interactions" })
         .locator("xpath=ancestor::div[1]")
@@ -75,7 +75,7 @@ authTest.describe("Interactions - Logged In", () => {
       await page.getByLabel("Other organism (Subject B)").fill("Apis mellifera");
 
       const postRequest = page.waitForRequest(
-        (req: any) => req.method() === "POST" && req.url().includes("/api/interactions"),
+        (req: Request) => req.method() === "POST" && req.url().includes("/api/interactions"),
       );
       await page.getByRole("button", { name: "Add Interaction" }).click();
       const req = await postRequest;
@@ -86,7 +86,7 @@ authTest.describe("Interactions - Logged In", () => {
 
   // TC-INT-005: Cancel closes form
   authTest("Cancel closes the interaction form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page, authExpect);
+    await navigateToDetail(page);
     const addBtn = page
       .getByRole("heading", { name: "Species Interactions" })
       .locator("xpath=ancestor::div[1]")
