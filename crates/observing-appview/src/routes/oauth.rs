@@ -203,13 +203,19 @@ pub async fn me(
             profile.avatar.clone(),
         ),
         None => {
-            // Fall back to DID document for handle (works even if Bluesky API is down)
-            let handle = state
-                .resolver
-                .resolve_did(&did)
-                .await
-                .and_then(|r| r.handle)
-                .unwrap_or_else(|| did.clone());
+            // Fall back to DID document for handle (works even if Bluesky API is down).
+            // The session_did cookie has already been validated as a Did above
+            // (atrium's validator), so re-parsing through our newtype should
+            // succeed; if it doesn't, just fall back to the raw string.
+            let handle = match atproto_identity::Did::parse(&did) {
+                Ok(parsed) => state
+                    .resolver
+                    .resolve_did(&parsed)
+                    .await
+                    .and_then(|r| r.handle)
+                    .unwrap_or_else(|| did.clone()),
+                Err(_) => did.clone(),
+            };
             (handle, None, None)
         }
     };
