@@ -3,7 +3,7 @@
 //! Provides /health, /blob/:did/:cid, and /thumb/:did/:cid endpoints.
 
 use crate::types::HealthResponse;
-use atproto_blob_resolver::BlobResolver;
+use atproto_blob_resolver::{BlobResolver, Did};
 use axum::{
     body::Body,
     extract::{Path, State},
@@ -76,11 +76,30 @@ async fn health(State(state): State<SharedState>) -> Json<HealthResponse> {
     })
 }
 
+/// Parse a path-segment DID, returning a 400 response if it does not pass
+/// AT Protocol DID validation.
+fn parse_path_did(did: &str) -> std::result::Result<Did, (StatusCode, Json<ErrorResponse>)> {
+    Did::parse(did).map_err(|e| {
+        warn!(did = %did, error = %e, "Rejecting blob request with invalid DID");
+        (
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                error: format!("Invalid DID: {e}"),
+            }),
+        )
+    })
+}
+
 /// Get a blob by DID and CID
 async fn get_blob(
     State(state): State<SharedState>,
     Path((did, cid)): Path<(String, String)>,
 ) -> Response {
+    let did = match parse_path_did(&did) {
+        Ok(d) => d,
+        Err(resp) => return resp.into_response(),
+    };
+
     match fetch_and_cache_blob(&state, &did, &cid).await {
         Ok((data, content_type, from_cache)) => {
             let cache_header = if from_cache { "HIT" } else { "MISS" };
@@ -111,6 +130,11 @@ async fn get_thumb(
     State(state): State<SharedState>,
     Path((did, cid)): Path<(String, String)>,
 ) -> Response {
+    let did = match parse_path_did(&did) {
+        Ok(d) => d,
+        Err(resp) => return resp.into_response(),
+    };
+
     // For now, just return the full blob
     // Future: integrate image resizing
     match fetch_and_cache_blob(&state, &did, &cid).await {
@@ -141,11 +165,13 @@ async fn get_thumb(
 /// Fetch a blob, using cache if available
 async fn fetch_and_cache_blob(
     state: &ServerState,
-    did: &str,
+    did: &Did,
     cid: &str,
 ) -> Result<(Vec<u8>, String, bool), Box<dyn std::error::Error + Send + Sync>> {
+    let did_str = did.as_str();
+
     // Check cache first
-    if let Some((data, content_type)) = state.cache.get(did, cid).await {
+    if let Some((data, content_type)) = state.cache.get(did_str, cid).await {
         return Ok((data, content_type, true));
     }
 
@@ -158,7 +184,7 @@ async fn fetch_and_cache_blob(
     // Fetch from PDS
     let (data, content_type) = state
         .fetcher
-        .fetch_blob(&pds_url, did, cid)
+        .fetch_blob(&pds_url, did_str, cid)
         .await
         .map_err(|e| {
             error!(did = %did, cid = %cid, error = %e, "Failed to fetch blob from PDS");
@@ -166,7 +192,7 @@ async fn fetch_and_cache_blob(
         })?;
 
     // Cache the blob
-    if let Err(e) = state.cache.put(did, cid, &data, &content_type).await {
+    if let Err(e) = state.cache.put(did_str, cid, &data, &content_type).await {
         warn!(did = %did, cid = %cid, error = %e, "Failed to cache blob");
         // Continue even if caching fails
     }
@@ -229,7 +255,7 @@ mod tests {
         let response = router
             .oneshot(
                 Request::builder()
-                    .uri("/blob/did:plc:nonexistent/bafytest")
+                    .uri("/blob/did:plc:aaaaaaaaaaaaaaaaaaaaaaaa/bafytest")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -249,7 +275,7 @@ mod tests {
         let response = router
             .oneshot(
                 Request::builder()
-                    .uri("/thumb/did:plc:nonexistent/bafytest")
+                    .uri("/thumb/did:plc:aaaaaaaaaaaaaaaaaaaaaaaa/bafytest")
                     .body(Body::empty())
                     .unwrap(),
             )
@@ -257,6 +283,28 @@ mod tests {
             .unwrap();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    }
+
+    #[tokio::test]
+    async fn test_blob_endpoint_rejects_invalid_did() {
+        let dir = tempdir().unwrap();
+        let state = create_test_state(dir.path().to_path_buf());
+        state.cache.init().await.unwrap();
+        let router = create_router(state);
+
+        // "did:plc:nope" is too short for the 24-char base32 plc identifier,
+        // so the path-segment parser must reject it before any network call.
+        let response = router
+            .oneshot(
+                Request::builder()
+                    .uri("/blob/did:plc:nope/bafytest")
+                    .body(Body::empty())
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
     }
 
     #[test]
