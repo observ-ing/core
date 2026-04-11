@@ -16,6 +16,46 @@ import type {
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
 
+// ---------------------------------------------------------------------------
+// Runtime shape guards for trust-boundary responses.
+//
+// The `consistent-type-assertions` lint rule bans `as` casts, so every
+// narrowing from `unknown` to a concrete type goes through a type predicate
+// here. The predicates do shallow validation of the fields TypeScript needs
+// for downstream code — they are not full schema validators.
+// ---------------------------------------------------------------------------
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isActorSearchResult(value: unknown): value is ActorSearchResult {
+  return isObject(value) && typeof value["did"] === "string" && typeof value["handle"] === "string";
+}
+
+function isTaxaResult(value: unknown): value is TaxaResult {
+  return (
+    isObject(value) &&
+    typeof value["id"] === "string" &&
+    typeof value["scientificName"] === "string" &&
+    typeof value["rank"] === "string" &&
+    typeof value["source"] === "string"
+  );
+}
+
+function toUser(value: unknown): User | null {
+  if (!isObject(value)) return null;
+  const did = value["did"];
+  const handle = value["handle"];
+  if (typeof did !== "string" || typeof handle !== "string") return null;
+  const user: User = { did, handle };
+  const displayName = value["displayName"];
+  if (typeof displayName === "string") user.displayName = displayName;
+  const avatar = value["avatar"];
+  if (typeof avatar === "string") user.avatar = avatar;
+  return user;
+}
+
 /**
  * Extract an error message from a failed fetch response.
  * Tries to parse the response body as JSON and extract `.error`,
@@ -54,9 +94,8 @@ export async function checkAuth(): Promise<User | null> {
     });
     if (response.ok) {
       const data: unknown = await response.json();
-      if (typeof data === "object" && data !== null && "user" in data) {
-        const user = (data as { user: unknown }).user;
-        return (user ?? null) as User | null;
+      if (isObject(data)) {
+        return toUser(data["user"]);
       }
       return null;
     }
@@ -185,9 +224,8 @@ export async function searchActors(query: string): Promise<ActorSearchResult[]> 
   if (!response.ok) return [];
 
   const data: unknown = await response.json();
-  if (typeof data === "object" && data !== null && "actors" in data) {
-    const actors = (data as { actors: unknown }).actors;
-    if (Array.isArray(actors)) return actors as ActorSearchResult[];
+  if (isObject(data) && Array.isArray(data["actors"])) {
+    return data["actors"].filter(isActorSearchResult);
   }
   return [];
 }
@@ -199,9 +237,8 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   if (!response.ok) return [];
 
   const data: unknown = await response.json();
-  if (typeof data === "object" && data !== null && "results" in data) {
-    const results = (data as { results: unknown }).results;
-    if (Array.isArray(results)) return results as TaxaResult[];
+  if (isObject(data) && Array.isArray(data["results"])) {
+    return data["results"].filter(isTaxaResult);
   }
   return [];
 }
