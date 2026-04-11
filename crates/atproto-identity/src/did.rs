@@ -139,14 +139,8 @@ mod tests {
 
     #[test]
     fn rejects_empty_identifier() {
-        assert_eq!(
-            Did::parse("did:plc:"),
-            Err(DidParseError::EmptyIdentifier)
-        );
-        assert_eq!(
-            Did::parse("did:web:"),
-            Err(DidParseError::EmptyIdentifier)
-        );
+        assert_eq!(Did::parse("did:plc:"), Err(DidParseError::EmptyIdentifier));
+        assert_eq!(Did::parse("did:web:"), Err(DidParseError::EmptyIdentifier));
     }
 
     #[test]
