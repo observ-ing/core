@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Page, type Route } from "@playwright/test";
 import {
   mockOwnObservationFeed,
   mockObservationDetailRoute,
@@ -6,11 +6,11 @@ import {
 } from "./helpers/mock-observation";
 
 /** Navigate from explore grid to an observation detail page, then to the observer's profile. */
-async function navigateToProfile(page: any) {
+async function navigateToProfile(page: Page) {
   await mockOwnObservationFeed(page);
   await mockObservationDetailRoute(page);
   await mockInteractionsRoute(page);
-  await page.route("**/api/profiles/*", (route: any) =>
+  await page.route("**/api/profiles/*", (route: Route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -23,14 +23,14 @@ async function navigateToProfile(page: any) {
       }),
     }),
   );
-  await page.route("**/api/feeds/profile/**", (route: any) =>
+  await page.route("**/api/feeds/profile/**", (route: Route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({ occurrences: [], cursor: null }),
     }),
   );
-  await page.route("**/api/identifications/by-observer/**", (route: any) =>
+  await page.route("**/api/identifications/by-observer/**", (route: Route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
