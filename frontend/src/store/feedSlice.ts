@@ -41,10 +41,7 @@ const initialState: FeedState = {
   userLocation: null,
 };
 
-function fetchFeedData(
-  state: { feed: FeedState; auth: { user: User | null } },
-  cursor?: string,
-) {
+function fetchFeedData(state: { feed: FeedState; auth: { user: User | null } }, cursor?: string) {
   const { currentTab, filters } = state.feed;
   const isAuthenticated = state.auth.user !== null;
 
