@@ -1,6 +1,6 @@
 use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
-use tracing::debug;
+use tracing::{debug, error};
 
 use crate::auth::AuthUser;
 use crate::species_id_client::IdentifyResponse;
@@ -50,17 +50,20 @@ pub async fn identify(
         .identify(&body.image, body.latitude, body.longitude, body.limit)
         .await
     {
-        Some(mut response) => {
+        Ok(mut response) => {
             enrich_common_names(&state, &mut response).await;
             Json(response).into_response()
         }
-        None => (
-            StatusCode::BAD_GATEWAY,
-            Json(ErrorResponse {
-                error: "Species identification failed".into(),
-            }),
-        )
-            .into_response(),
+        Err(e) => {
+            error!(error = %e, "Species identification failed");
+            (
+                StatusCode::BAD_GATEWAY,
+                Json(ErrorResponse {
+                    error: "Species identification failed".into(),
+                }),
+            )
+                .into_response()
+        }
     }
 }
 
