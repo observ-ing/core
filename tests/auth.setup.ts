@@ -32,13 +32,20 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   await page.getByRole("button", { name: "Continue" }).click();
 
   // 4. The app redirects to Bluesky's OAuth authorization page.
-  //    Wait for navigation away from our app.
-  await page.waitForURL(/(?!.*127\.0\.0\.1).*/, { timeout: 15000 });
+  //    Wait for navigation away from our app. We must use a predicate function
+  //    here — a negative-lookahead regex like /(?!.*127\.0\.0\.1).*/ matches
+  //    any URL (the engine retries at each position and finds a suffix where
+  //    the lookahead succeeds), so waitForURL would return immediately without
+  //    actually waiting for the redirect.
+  await page.waitForURL((url) => url.hostname !== "127.0.0.1" && url.hostname !== "localhost", {
+    timeout: 15000,
+  });
+  await page.waitForLoadState("domcontentloaded");
 
   // 5. Handle the Bluesky sign-in page.
   //    The identifier is pre-filled and disabled. Just fill the password.
   const passwordField = page.locator('input[name="password"]');
-  await expect(passwordField).toBeVisible({ timeout: 10000 });
+  await expect(passwordField).toBeVisible({ timeout: 15000 });
   await passwordField.fill(password);
 
   // 6. Click "Sign in"
