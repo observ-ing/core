@@ -188,8 +188,8 @@ export function TaxonExplorer() {
     [lookupKingdom],
   );
 
-  /** Merge lazily-loaded children into the tree */
-  const mergeChildren = useCallback((parentId: string, children: TaxaResult[]) => {
+  /** Add children to a parent node without rebuilding the tree (mutates nodesRef) */
+  const addChildrenToNodes = useCallback((parentId: string, children: TaxaResult[]) => {
     const nodes = nodesRef.current;
     const parent = nodes.get(parentId);
     if (!parent) return;
@@ -211,22 +211,31 @@ export function TaxonExplorer() {
         });
       }
     }
+  }, []);
 
-    // Find the root and rebuild
-    let rootId = parentId;
-    // Walk up to find the root (simple: find node with no parent)
+  /** Find the root (a node with no parent) and rebuild treeItems from it */
+  const rebuildTreeFromRoot = useCallback(() => {
+    const nodes = nodesRef.current;
     const allChildIds = new Set<string>();
     for (const n of nodes.values()) {
       for (const cid of n.childIds) allChildIds.add(cid);
     }
     for (const n of nodes.values()) {
       if (!allChildIds.has(n.id)) {
-        rootId = n.id;
-        break;
+        setTreeItems(buildItems(n.id, nodes));
+        return;
       }
     }
-    setTreeItems(buildItems(rootId, nodes));
   }, []);
+
+  /** Merge lazily-loaded children into the tree (single-parent convenience) */
+  const mergeChildren = useCallback(
+    (parentId: string, children: TaxaResult[]) => {
+      addChildrenToNodes(parentId, children);
+      rebuildTreeFromRoot();
+    },
+    [addChildrenToNodes, rebuildTreeFromRoot],
+  );
 
   // Fetch taxon data when URL changes
   useEffect(() => {
@@ -257,6 +266,33 @@ export function TaxonExplorer() {
         setTaxon(result);
         mergeIntoTree(result);
 
+        // Fetch siblings of each ancestor in parallel so the tree shows
+        // aunts/uncles (and direct siblings of the current taxon) without
+        // waiting for user interaction. Runs in the background — don't await.
+        const k = result.kingdom || lookupKingdom || "";
+        const ancestors = result.ancestors ?? [];
+        if (ancestors.length > 0) {
+          Promise.all(
+            ancestors.map(async (a) => {
+              const isKingdom = a.rank === "kingdom";
+              const ancestorId = isKingdom ? a.name : nodeId(k, a.name);
+              // Kingdom-rank ancestors are looked up with their own name as the kingdom param
+              const lookupK = isKingdom ? a.name : k;
+              try {
+                const children = await fetchTaxonChildren(lookupK, a.name);
+                return { ancestorId, children };
+              } catch {
+                return null;
+              }
+            }),
+          ).then((settled) => {
+            for (const entry of settled) {
+              if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
+            }
+            rebuildTreeFromRoot();
+          });
+        }
+
         try {
           let obsResult;
           if (lookupKingdom && lookupName) {
@@ -278,7 +314,7 @@ export function TaxonExplorer() {
     }
 
     loadTaxon();
-  }, [lookupKingdom, lookupName, lookupId, mergeIntoTree]);
+  }, [lookupKingdom, lookupName, lookupId, mergeIntoTree, addChildrenToNodes, rebuildTreeFromRoot]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
