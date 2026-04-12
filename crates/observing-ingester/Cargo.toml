@@ -12,6 +12,9 @@ tokio = { workspace = true }
 # Jetstream client
 jetstream-client = { path = "../jetstream-client" }
 
+# DID newtype
+atproto-identity = { path = "../atproto-identity" }
+
 # Database
 sqlx = { workspace = true }
 observing-db = { path = "../observing-db", features = ["processing"] }

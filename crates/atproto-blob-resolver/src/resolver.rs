@@ -2,6 +2,7 @@
 
 use crate::error::{BlobResolverError, Result};
 use crate::types::PlcDirectoryResponse;
+use atproto_identity::{Did, DidMethod};
 use reqwest::Client;
 use tracing::{debug, warn};
 
@@ -19,27 +20,17 @@ impl BlobResolver {
     }
 
     /// Resolve a DID to its PDS URL
-    pub async fn resolve_pds_url(&self, did: &str) -> Result<String> {
-        // Handle did:plc: DIDs via plc.directory
-        if did.starts_with("did:plc:") {
-            return self.resolve_plc_did(did).await;
+    pub async fn resolve_pds_url(&self, did: &Did) -> Result<String> {
+        match did.method() {
+            DidMethod::Plc(_) => self.resolve_plc_did(did).await,
+            DidMethod::Web(host) => self.resolve_web_did(did, host),
         }
-
-        // Handle did:web: DIDs by constructing URL from domain
-        if did.starts_with("did:web:") {
-            return self.resolve_web_did(did);
-        }
-
-        Err(BlobResolverError::DidResolution(format!(
-            "Unsupported DID method: {}",
-            did
-        )))
     }
 
     /// Resolve a did:plc: DID via plc.directory
-    async fn resolve_plc_did(&self, did: &str) -> Result<String> {
-        let url = format!("https://plc.directory/{}", did);
-        debug!(did, url = %url, "Resolving PLC DID");
+    async fn resolve_plc_did(&self, did: &Did) -> Result<String> {
+        let url = format!("https://plc.directory/{}", did.as_str());
+        debug!(did = %did, url = %url, "Resolving PLC DID");
 
         let response = self.client.get(&url).send().await?;
 
@@ -65,19 +56,16 @@ impl BlobResolver {
                 BlobResolverError::DidResolution("No PDS service found in DID document".to_string())
             })?;
 
-        debug!(did, pds_url = %pds_url, "Resolved PDS URL");
+        debug!(did = %did, pds_url = %pds_url, "Resolved PDS URL");
         Ok(pds_url)
     }
 
-    /// Resolve a did:web: DID by constructing URL from domain
-    fn resolve_web_did(&self, did: &str) -> Result<String> {
-        let domain = did
-            .strip_prefix("did:web:")
-            .ok_or_else(|| BlobResolverError::DidResolution("Invalid did:web format".to_string()))?
-            .replace("%3A", ":");
-
+    /// Resolve a did:web: DID by constructing URL from the host portion.
+    /// `host` is the method-specific identifier yielded by `DidMethod::Web`.
+    fn resolve_web_did(&self, did: &Did, host: &str) -> Result<String> {
+        let domain = host.replace("%3A", ":");
         let url = format!("https://{}", domain);
-        debug!(did, url = %url, "Resolved web DID");
+        debug!(did = %did, url = %url, "Resolved web DID");
         Ok(url)
     }
 
@@ -136,39 +124,35 @@ impl Default for BlobResolver {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_resolve_web_did() {
-        let resolver = BlobResolver::new();
-
-        // Simple domain
-        let result = resolver.resolve_web_did("did:web:example.com");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "https://example.com");
-
-        // Domain with port (URL encoded colon)
-        let result = resolver.resolve_web_did("did:web:example.com%3A8080");
-        assert!(result.is_ok());
-        assert_eq!(result.unwrap(), "https://example.com:8080");
+    fn web_did(s: &str) -> Did {
+        Did::parse(s).expect("test fixture must parse")
     }
 
     #[test]
-    fn test_resolve_web_did_invalid() {
+    fn test_resolve_web_did_simple_domain() {
         let resolver = BlobResolver::new();
+        let did = web_did("did:web:example.com");
+        let DidMethod::Web(host) = did.method() else {
+            panic!("expected web method")
+        };
 
-        // Invalid prefix
-        let result = resolver.resolve_web_did("did:plc:abc123");
-        assert!(result.is_err());
+        let result = resolver.resolve_web_did(&did, host).unwrap();
+        assert_eq!(result, "https://example.com");
     }
 
-    #[tokio::test]
-    async fn test_resolve_pds_url_unsupported_method() {
+    #[test]
+    fn test_resolve_web_did_url_encoded_port() {
         let resolver = BlobResolver::new();
+        let did = web_did("did:web:example.com%3A8080");
+        let DidMethod::Web(host) = did.method() else {
+            panic!("expected web method")
+        };
 
-        let result = resolver.resolve_pds_url("did:key:abc123").await;
-        assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("Unsupported DID method"));
+        let result = resolver.resolve_web_did(&did, host).unwrap();
+        assert_eq!(result, "https://example.com:8080");
     }
+
+    // Unsupported-method coverage now lives at the type boundary: Did::parse
+    // refuses anything other than did:plc:/did:web:, so resolve_pds_url cannot
+    // be reached with an unsupported method in the first place.
 }

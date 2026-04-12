@@ -4,8 +4,9 @@ use std::time::Duration;
 
 use moka::future::Cache;
 use reqwest::Client;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
+use crate::did::{Did, DidMethod};
 use crate::types::{
     DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
     SearchActorsTypeaheadResponse,
@@ -70,20 +71,33 @@ impl IdentityResolver {
             Ok(response) if response.status().is_success() => {
                 match response.json::<ResolveHandleResponse>().await {
                     Ok(data) => {
-                        let mut result = ResolveResult {
-                            did: data.did.clone(),
-                            handle: Some(handle.to_string()),
-                            pds_endpoint: None,
+                        let did = match Did::parse(&data.did) {
+                            Ok(d) => d,
+                            Err(e) => {
+                                warn!(
+                                    handle,
+                                    raw_did = %data.did,
+                                    error = %e,
+                                    "resolveHandle returned a DID that failed validation",
+                                );
+                                return None;
+                            }
                         };
 
-                        // Get PDS endpoint
-                        result.pds_endpoint = self.get_pds_endpoint(&data.did).await;
+                        let pds_endpoint = self.get_pds_endpoint(&did).await;
+                        let result = ResolveResult {
+                            did: did.clone(),
+                            handle: Some(handle.to_string()),
+                            pds_endpoint,
+                        };
 
                         // Cache by both handle and DID
                         self.identity_cache
                             .insert(handle.to_string(), result.clone())
                             .await;
-                        self.identity_cache.insert(data.did, result.clone()).await;
+                        self.identity_cache
+                            .insert(did.as_str().to_string(), result.clone())
+                            .await;
 
                         Some(result)
                     }
@@ -108,16 +122,16 @@ impl IdentityResolver {
     }
 
     /// Resolve a DID to its document and extract handle
-    pub async fn resolve_did(&self, did: &str) -> Option<ResolveResult> {
+    pub async fn resolve_did(&self, did: &Did) -> Option<ResolveResult> {
         // Check cache
-        if let Some(cached) = self.identity_cache.get(did).await {
+        if let Some(cached) = self.identity_cache.get(did.as_str()).await {
             return Some(cached);
         }
 
         let doc = self.get_did_document(did).await?;
 
         let mut result = ResolveResult {
-            did: did.to_string(),
+            did: did.clone(),
             handle: None,
             pds_endpoint: None,
         };
@@ -141,7 +155,7 @@ impl IdentityResolver {
 
         // Cache
         self.identity_cache
-            .insert(did.to_string(), result.clone())
+            .insert(did.as_str().to_string(), result.clone())
             .await;
         if let Some(ref handle) = result.handle {
             self.identity_cache
@@ -153,14 +167,13 @@ impl IdentityResolver {
     }
 
     /// Get the DID document for a DID
-    async fn get_did_document(&self, did: &str) -> Option<DidDocument> {
-        let url = if did.starts_with("did:plc:") {
-            format!("https://plc.directory/{did}")
-        } else if let Some(rest) = did.strip_prefix("did:web:") {
-            let domain = rest.replace("%3A", ":");
-            format!("https://{domain}/.well-known/did.json")
-        } else {
-            return None;
+    async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
+        let url = match did.method() {
+            DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
+            DidMethod::Web(host) => {
+                let domain = host.replace("%3A", ":");
+                format!("https://{domain}/.well-known/did.json")
+            }
         };
 
         match self.client.get(&url).send().await {
@@ -172,7 +185,7 @@ impl IdentityResolver {
     }
 
     /// Get the PDS endpoint for a DID
-    pub async fn get_pds_endpoint(&self, did: &str) -> Option<String> {
+    pub async fn get_pds_endpoint(&self, did: &Did) -> Option<String> {
         let doc = self.get_did_document(did).await?;
         doc.service?
             .iter()

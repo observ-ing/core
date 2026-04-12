@@ -188,6 +188,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "atproto-blob-resolver"
 version = "0.1.0"
 dependencies = [
+ "atproto-identity",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -2782,6 +2783,7 @@ dependencies = [
 name = "observing-ingester"
 version = "0.1.0"
 dependencies = [
+ "atproto-identity",
  "axum",
  "chrono",
  "clap",

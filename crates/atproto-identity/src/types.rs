@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::did::Did;
+
 /// AT Protocol profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,7 +20,7 @@ pub struct Profile {
 /// Result of resolving a handle or DID
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolveResult {
-    pub did: String,
+    pub did: Did,
     pub handle: Option<String>,
     pub pds_endpoint: Option<String>,
 }
