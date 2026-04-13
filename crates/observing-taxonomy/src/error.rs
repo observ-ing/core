@@ -8,6 +8,10 @@ pub enum TaxonomyError {
     Gbif(gbif_api::GbifError),
     /// Configuration error
     Config(String),
+    /// Upstream error surfaced via request coalescing. The original error
+    /// type (reqwest / serde_json) isn't Clone, so coalesced callers receive
+    /// a stringified copy of the failure.
+    Upstream(String),
 }
 
 impl fmt::Display for TaxonomyError {
@@ -15,6 +19,7 @@ impl fmt::Display for TaxonomyError {
         match self {
             Self::Gbif(e) => write!(f, "{}", e),
             Self::Config(msg) => write!(f, "Configuration error: {}", msg),
+            Self::Upstream(msg) => write!(f, "Upstream error: {}", msg),
         }
     }
 }
@@ -23,7 +28,7 @@ impl std::error::Error for TaxonomyError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Gbif(e) => Some(e),
-            Self::Config(_) => None,
+            Self::Config(_) | Self::Upstream(_) => None,
         }
     }
 }

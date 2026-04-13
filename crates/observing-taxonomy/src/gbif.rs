@@ -1,6 +1,6 @@
 //! GBIF-based taxonomy client with caching
 
-use crate::error::Result;
+use crate::error::{Result, TaxonomyError};
 use crate::types::*;
 use crate::wikidata::WikidataClient;
 use gbif_api::{
@@ -8,6 +8,7 @@ use gbif_api::{
 };
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::warn;
 
@@ -37,6 +38,10 @@ pub struct GbifClient {
 enum CachedValue {
     SearchResults(Vec<TaxonResult>),
     TaxonDetail(Box<TaxonDetail>),
+    /// Result of a by-name lookup. `None` means the name resolved to no
+    /// accepted taxon (a genuine miss), distinct from an upstream failure
+    /// which is surfaced via `Err` instead of being cached.
+    NameLookup(Option<Box<TaxonDetail>>),
     Children(Vec<TaxonResult>),
 }
 
@@ -299,8 +304,49 @@ impl GbifClient {
         Ok(Some(taxon_detail))
     }
 
-    /// Get detailed taxon information by scientific name
+    /// Get detailed taxon information by scientific name.
+    ///
+    /// Concurrent callers for the same `(kingdom, name)` pair share a single
+    /// in-flight lookup via `try_get_with`. Before this, two simultaneous
+    /// requests (e.g. React StrictMode's double-fire of an effect) each
+    /// issued their own `match_name` call, and a flaky GBIF response on one
+    /// of them surfaced as a spurious "taxon not found" — see #269.
+    ///
+    /// Successful resolutions (including genuine misses) are cached; errors
+    /// propagate to all waiters as `TaxonomyError::Upstream` and are NOT
+    /// cached, so a later retry can succeed.
     pub async fn get_by_name(
+        &self,
+        scientific_name: &str,
+        kingdom: Option<&str>,
+    ) -> Result<Option<TaxonDetail>> {
+        let cache_key = format!(
+            "by_name:{}:{}",
+            kingdom.unwrap_or(""),
+            scientific_name.to_lowercase()
+        );
+
+        let attempt: std::result::Result<CachedValue, Arc<String>> = self
+            .cache
+            .try_get_with(cache_key, async {
+                match self.get_by_name_uncached(scientific_name, kingdom).await {
+                    Ok(opt) => Ok(CachedValue::NameLookup(opt.map(Box::new))),
+                    Err(e) => Err(e.to_string()),
+                }
+            })
+            .await;
+
+        match attempt {
+            Ok(CachedValue::NameLookup(opt)) => Ok(opt.map(|b| *b)),
+            Ok(_) => unreachable!("by_name cache key always holds NameLookup"),
+            Err(arc_msg) => Err(TaxonomyError::Upstream((*arc_msg).clone())),
+        }
+    }
+
+    /// Uncached name lookup. Callers should go through `get_by_name` which
+    /// wraps this in request coalescing — this is only separated out so the
+    /// coalescing layer has a clean future to pass into `try_get_with`.
+    async fn get_by_name_uncached(
         &self,
         scientific_name: &str,
         kingdom: Option<&str>,
