@@ -446,6 +446,7 @@ impl GbifClient {
             ("order", data.order_key, data.order.as_deref()),
             ("family", data.family_key, data.family.as_deref()),
             ("genus", data.genus_key, data.genus.as_deref()),
+            ("species", data.species_key, data.species.as_deref()),
         ];
 
         for (rank, key, name) in rank_fields {
