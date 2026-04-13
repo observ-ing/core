@@ -249,68 +249,73 @@ export function TaxonExplorer() {
       setLoading(true);
       setError(null);
 
+      // Fetch taxon + observations in parallel so we can swap both in atomically
+      // once ready, instead of updating the header before observations arrive.
+      const taxonPromise =
+        lookupKingdom && lookupName
+          ? fetchTaxon(lookupKingdom, lookupName)
+          : fetchTaxon(lookupId ?? lookupKingdom ?? "");
+
+      const obsPromise: Promise<{ occurrences: Occurrence[]; cursor?: string }> = (async () => {
+        try {
+          return lookupKingdom && lookupName
+            ? await fetchTaxonObservations(lookupKingdom, lookupName)
+            : await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "");
+        } catch {
+          return { occurrences: [] };
+        }
+      })();
+
       let result: TaxonDetail | null;
       try {
-        if (lookupKingdom && lookupName) {
-          result = await fetchTaxon(lookupKingdom, lookupName);
-        } else {
-          result = await fetchTaxon(lookupId ?? lookupKingdom ?? "");
-        }
+        result = await taxonPromise;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load taxon");
         setLoading(false);
         return;
       }
 
-      if (result) {
-        setTaxon(result);
-        mergeIntoTree(result);
-
-        // Fetch siblings of each ancestor in parallel so the tree shows
-        // aunts/uncles (and direct siblings of the current taxon) without
-        // waiting for user interaction. Runs in the background — don't await.
-        const k = result.kingdom || lookupKingdom || "";
-        const ancestors = result.ancestors ?? [];
-        if (ancestors.length > 0) {
-          Promise.all(
-            ancestors.map(async (a) => {
-              const isKingdom = a.rank === "kingdom";
-              const ancestorId = isKingdom ? a.name : nodeId(k, a.name);
-              // Kingdom-rank ancestors are looked up with their own name as the kingdom param
-              const lookupK = isKingdom ? a.name : k;
-              try {
-                const children = await fetchTaxonChildren(lookupK, a.name);
-                return { ancestorId, children };
-              } catch {
-                return null;
-              }
-            }),
-          ).then((settled) => {
-            for (const entry of settled) {
-              if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
-            }
-            rebuildTreeFromRoot();
-          });
-        }
-
-        try {
-          let obsResult;
-          if (lookupKingdom && lookupName) {
-            obsResult = await fetchTaxonObservations(lookupKingdom, lookupName);
-          } else {
-            obsResult = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "");
-          }
-          setObservations(obsResult.occurrences);
-          setCursor(obsResult.cursor);
-          setHasMore(!!obsResult.cursor);
-        } catch {
-          setObservations([]);
-          setHasMore(false);
-        }
-      } else {
+      if (!result) {
         setError("Taxon not found");
+        setLoading(false);
+        return;
       }
+
+      const obsResult = await obsPromise;
+
+      setTaxon(result);
+      mergeIntoTree(result);
+      setObservations(obsResult.occurrences);
+      setCursor(obsResult.cursor);
+      setHasMore(!!obsResult.cursor);
       setLoading(false);
+
+      // Fetch siblings of each ancestor in parallel so the tree shows
+      // aunts/uncles (and direct siblings of the current taxon) without
+      // waiting for user interaction. Runs in the background — don't await.
+      const k = result.kingdom || lookupKingdom || "";
+      const ancestors = result.ancestors ?? [];
+      if (ancestors.length > 0) {
+        Promise.all(
+          ancestors.map(async (a) => {
+            const isKingdom = a.rank === "kingdom";
+            const ancestorId = isKingdom ? a.name : nodeId(k, a.name);
+            // Kingdom-rank ancestors are looked up with their own name as the kingdom param
+            const lookupK = isKingdom ? a.name : k;
+            try {
+              const children = await fetchTaxonChildren(lookupK, a.name);
+              return { ancestorId, children };
+            } catch {
+              return null;
+            }
+          }),
+        ).then((settled) => {
+          for (const entry of settled) {
+            if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
+          }
+          rebuildTreeFromRoot();
+        });
+      }
     }
 
     loadTaxon();
@@ -344,6 +349,9 @@ export function TaxonExplorer() {
   };
 
   const handleTreeSelect = (id: string) => {
+    // Freeze the tree while a load is in progress so users can't start a
+    // second navigation mid-fetch.
+    if (loading) return;
     const node = nodesRef.current.get(id);
     if (!node) return;
     setMobileTreeOpen(false);
@@ -355,6 +363,7 @@ export function TaxonExplorer() {
   };
 
   const handleTreeExpansionToggle = async (id: string, isExpanded: boolean) => {
+    if (loading) return;
     if (!isExpanded) return;
     const node = nodesRef.current.get(id);
     if (!node || node.childrenLoaded) return;
@@ -375,12 +384,16 @@ export function TaxonExplorer() {
     expandedItems,
     selectedItems: selectedItem,
     loadingNodeId,
+    disabled: loading,
     onExpandedItemsChange: setExpandedItems,
     onSelectedItemsChange: handleTreeSelect,
     onItemExpansionToggle: handleTreeExpansionToggle,
   };
 
-  if (loading) {
+  // Only show the skeleton on the very first load. On subsequent navigations
+  // we keep the current taxon visible until the new one is fully loaded, so
+  // the detail panel transitions smoothly instead of flashing empty.
+  if (loading && !taxon) {
     return (
       <Box sx={{ display: "flex", height: "100%", overflow: "hidden" }}>
         <Box
