@@ -9,6 +9,7 @@ interface TaxonTreePanelProps {
   expandedItems: string[];
   selectedItems: string;
   loadingNodeId: string | null;
+  disabled?: boolean;
   onExpandedItemsChange: (ids: string[]) => void;
   onSelectedItemsChange: (id: string) => void;
   onItemExpansionToggle: (id: string, isExpanded: boolean) => void;
@@ -55,12 +56,22 @@ export function TaxonTreePanel({
   expandedItems,
   selectedItems,
   loadingNodeId,
+  disabled,
   onExpandedItemsChange,
   onSelectedItemsChange,
   onItemExpansionToggle,
 }: TaxonTreePanelProps) {
   return (
-    <Box sx={{ p: 1, height: "100%", overflow: "auto" }}>
+    <Box
+      sx={{
+        p: 1,
+        height: "100%",
+        overflow: "auto",
+        pointerEvents: disabled ? "none" : "auto",
+        opacity: disabled ? 0.5 : 1,
+        transition: "opacity 0.15s",
+      }}
+    >
       <Typography variant="subtitle2" color="text.secondary" sx={{ px: 1, py: 1 }}>
         Classification
       </Typography>
