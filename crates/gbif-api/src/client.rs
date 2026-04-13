@@ -1,7 +1,8 @@
 //! GBIF API HTTP client
 
-use crate::error::Result;
+use crate::error::{GbifError, Result};
 use crate::types::*;
+use reqwest::StatusCode;
 use std::time::Duration;
 
 /// Client for interacting with the GBIF (Global Biodiversity Information Facility) API
@@ -117,14 +118,22 @@ impl GbifClient {
 
     /// Get detailed species information by GBIF key
     ///
+    /// Returns `Ok(None)` only on a genuine 404 (species key does not exist).
+    /// Other non-success statuses (rate limits, 5xx) become `Err(UpstreamStatus)`
+    /// so callers don't mistake transient upstream issues for "not found".
+    ///
     /// # Arguments
     /// * `key` - The GBIF species key (numeric ID)
     pub async fn get_species(&self, key: u64) -> Result<Option<SpeciesDetail>> {
         let url = format!("{}/species/{}", Self::V1_BASE_URL, key);
         let response = self.http.get(&url).send().await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if status == StatusCode::NOT_FOUND {
             return Ok(None);
+        }
+        if !status.is_success() {
+            return Err(GbifError::UpstreamStatus(status));
         }
 
         Ok(Some(response.json().await?))
@@ -134,6 +143,11 @@ impl GbifClient {
     ///
     /// This is the preferred method for name matching as it includes
     /// IUCN conservation status and classification hierarchy.
+    ///
+    /// `Ok(None)` is reserved for genuine "no match" responses: a 404, or a
+    /// 2xx body with no `usage` field. Transient upstream failures (429, 5xx,
+    /// timeouts) become `Err(UpstreamStatus)` so callers don't silently
+    /// cache/return "not found" when GBIF is flaky.
     ///
     /// # Arguments
     /// * `name` - Scientific name to match
@@ -154,8 +168,12 @@ impl GbifClient {
 
         let response = self.http.get(url).send().await?;
 
-        if !response.status().is_success() {
+        let status = response.status();
+        if status == StatusCode::NOT_FOUND {
             return Ok(None);
+        }
+        if !status.is_success() {
+            return Err(GbifError::UpstreamStatus(status));
         }
 
         let data: V2MatchResult = response.json().await?;
