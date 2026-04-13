@@ -72,7 +72,7 @@ function AppContent() {
   const showLanding = !user && !isAuthLoading && location.pathname === "/";
 
   return (
-    <Box sx={{ display: "flex", flex: 1, flexDirection: "column" }}>
+    <Box sx={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
       {!showLanding && (
         <>
           <TopBar onMobileMenuClick={handleDrawerOpen} unreadCount={unreadCount} />
@@ -107,6 +107,7 @@ function AppContent() {
           display: "flex",
           flexDirection: "column",
           overflow: "auto",
+          minHeight: 0,
         }}
       >
         <Routes>
