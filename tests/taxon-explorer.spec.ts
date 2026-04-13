@@ -178,4 +178,97 @@ test.describe("Taxon Explorer - Classification tree", () => {
       await expect(treeitem(name, rank)).toBeVisible();
     }
   });
+
+  test("navigating between taxa keeps old content visible and freezes the tree", async ({
+    page,
+  }) => {
+    // Mock routes with a delayed taxon detail so we can inspect the mid-load UI.
+    // Children and occurrences are fast — only the detail fetch waits.
+    let releaseDetail: (() => void) | null = null;
+
+    await page.route("**/api/taxa/**", async (route: Route) => {
+      const url = new URL(route.request().url());
+      const path = url.pathname;
+
+      const childrenMatch = path.match(/^\/api\/taxa\/[^/]+\/([^/]+)\/children$/);
+      if (childrenMatch?.[1]) {
+        const name = decodeURIComponent(childrenMatch[1]);
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(SIBLING_FIXTURES[name] ?? []),
+        });
+      }
+
+      if (/^\/api\/taxa\/[^/]+\/[^/]+\/occurrences$/.test(path)) {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ occurrences: [], cursor: null }),
+        });
+      }
+
+      const detailMatch = path.match(/^\/api\/taxa\/[^/]+\/([^/]+)$/);
+      if (detailMatch?.[1]) {
+        const name = decodeURIComponent(detailMatch[1]);
+        const body =
+          name === "Quercus agrifolia"
+            ? QUERCUS_AGRIFOLIA_DETAIL
+            : {
+                ...QUERCUS_AGRIFOLIA_DETAIL,
+                id: "2878290",
+                scientificName: "Quercus alba",
+                commonName: "White Oak",
+                species: "Quercus alba",
+              };
+        // Only delay the second navigation — the first load should resolve
+        // immediately so we can reach the interactive state quickly.
+        if (name !== "Quercus agrifolia") {
+          await new Promise<void>((resolve) => {
+            releaseDetail = resolve;
+          });
+        }
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(body),
+        });
+      }
+
+      return route.continue();
+    });
+
+    await page.goto("/taxon/Plantae/Quercus-agrifolia");
+
+    // First load completes normally — the heading and tree become visible.
+    const heading = page.getByRole("heading", { name: "Quercus agrifolia", level: 5 });
+    await expect(heading).toBeVisible();
+
+    const tree = page.getByRole("tree");
+    await expect(tree).toBeVisible();
+
+    // The tree panel container carries the disabled styling (opacity +
+    // pointer-events). In desktop layout there are two copies (desktop
+    // sidebar + mobile drawer); pick the visible one.
+    const treePanel = page.getByTestId("taxon-tree-panel").filter({ visible: true });
+    await expect(treePanel).toHaveCSS("opacity", "1");
+
+    // Click a sibling species — Quercus alba. This kicks off a detail fetch
+    // that we're holding open until `releaseDetail()` is called.
+    const quercusAlba = tree.getByRole("treeitem", { name: "Quercus alba species", exact: true });
+    await quercusAlba.click();
+
+    // Mid-load assertions: old heading still visible, tree dimmed, disabled.
+    await expect(heading).toBeVisible();
+    await expect(treePanel).toHaveCSS("opacity", "0.5");
+    await expect(treePanel).toHaveCSS("pointer-events", "none");
+
+    // Now release the pending detail fetch and verify the new taxon takes over.
+    expect(releaseDetail).not.toBeNull();
+    releaseDetail?.();
+
+    await expect(page.getByRole("heading", { name: "Quercus alba", level: 5 })).toBeVisible();
+    await expect(treePanel).toHaveCSS("opacity", "1");
+    await expect(treePanel).toHaveCSS("pointer-events", "auto");
+  });
 });

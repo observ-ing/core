@@ -63,6 +63,7 @@ export function TaxonTreePanel({
 }: TaxonTreePanelProps) {
   return (
     <Box
+      data-testid="taxon-tree-panel"
       sx={{
         p: 1,
         height: "100%",
