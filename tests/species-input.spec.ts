@@ -73,4 +73,27 @@ authTest.describe("Species Input", () => {
       await authExpect(page.locator(".MuiAutocomplete-popper")).not.toBeVisible();
     },
   );
+
+  authTest(
+    "selecting an autocomplete suggestion auto-fills and disables the kingdom select",
+    async ({ authenticatedPage: page }) => {
+      await searchSpecies(page, "quercus");
+      await page.locator(".MuiAutocomplete-option").first().click();
+      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
+      await authExpect(kingdomCombo).toHaveText("Plants");
+      await authExpect(kingdomCombo).toHaveAttribute("aria-disabled", "true");
+    },
+  );
+
+  authTest(
+    "free-text species enables the kingdom select and clears any prior match",
+    async ({ authenticatedPage: page }) => {
+      await searchSpecies(page, "quercus");
+      await page.locator(".MuiAutocomplete-option").first().click();
+      const speciesInput = page.getByLabel(/Species/i);
+      await speciesInput.fill("My Custom Species");
+      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
+      await authExpect(kingdomCombo).not.toHaveAttribute("aria-disabled", "true");
+    },
+  );
 });
