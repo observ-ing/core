@@ -28,17 +28,9 @@ import { setFilters, loadInitialFeed } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { LocationPicker } from "../map/LocationPicker";
+import { KINGDOMS as KINGDOM_OPTIONS } from "../../lib/kingdoms";
 
-const KINGDOMS = [
-  { value: "", label: "All Kingdoms" },
-  { value: "Animalia", label: "Animals" },
-  { value: "Plantae", label: "Plants" },
-  { value: "Fungi", label: "Fungi" },
-  { value: "Bacteria", label: "Bacteria" },
-  { value: "Archaea", label: "Archaea" },
-  { value: "Protozoa", label: "Protozoa" },
-  { value: "Chromista", label: "Chromista" },
-];
+const KINGDOMS = [{ value: "", label: "All Kingdoms" }, ...KINGDOM_OPTIONS];
 
 const DEFAULT_RADIUS = 10000; // 10km
 

@@ -22,12 +22,14 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
 import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
+import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { ActorAutocomplete } from "../common/ActorAutocomplete";
 import { AiSuggestions } from "../identification/AiSuggestions";
 import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
+import { KINGDOMS } from "../../lib/kingdoms";
 
 interface ImagePreview {
   file: File;
@@ -60,6 +62,8 @@ export function UploadModal() {
   const isEditMode = !!editingObservation;
 
   const [species, setSpecies] = useState("");
+  const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
+  const [kingdom, setKingdom] = useState("");
   const [license, setLicense] = useState("CC-BY-4.0");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
@@ -80,6 +84,8 @@ export function UploadModal() {
     if (isOpen) {
       if (editingObservation) {
         setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
+        setKingdom(editingObservation.effectiveTaxonomy?.kingdom || "");
+        setMatchedTaxon(null);
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
         }
@@ -120,6 +126,8 @@ export function UploadModal() {
   const handleClose = () => {
     dispatch(closeUploadModal());
     setSpecies("");
+    setMatchedTaxon(null);
+    setKingdom("");
     setLicense("CC-BY-4.0");
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
@@ -294,6 +302,17 @@ export function UploadModal() {
       return;
     }
 
+    const trimmedSpecies = species.trim();
+    if (trimmedSpecies && !matchedTaxon && !kingdom) {
+      dispatch(
+        addToast({
+          message: "Please select a kingdom for the species name you entered",
+          type: "error",
+        }),
+      );
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -312,10 +331,10 @@ export function UploadModal() {
           return url.split("/").at(-1) ?? "";
         });
 
-        const trimmedSpecies = species.trim();
         const result = await updateObservation({
           uri: editingObservation.uri,
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
+          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
@@ -339,9 +358,9 @@ export function UploadModal() {
       } else {
         const eventDate = new Date(observationDate).toISOString();
 
-        const trimmedSpecies = species.trim();
         const result = await submitObservation({
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
+          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
@@ -536,7 +555,19 @@ export function UploadModal() {
 
         <TaxaAutocomplete
           value={species}
-          onChange={setSpecies}
+          onChange={(name) => {
+            setSpecies(name);
+            if (name === "") {
+              setMatchedTaxon(null);
+              setKingdom("");
+            }
+          }}
+          onMatchChange={(match) => {
+            setMatchedTaxon(match);
+            if (match?.kingdom) {
+              setKingdom(match.kingdom);
+            }
+          }}
           label="Species (optional)"
           placeholder="e.g. Eschscholzia californica - leave blank if unknown"
           bottomContent={
@@ -551,6 +582,30 @@ export function UploadModal() {
             ) : undefined
           }
         />
+
+        <FormControl
+          fullWidth
+          margin="normal"
+          required={!!species.trim() && !matchedTaxon}
+          disabled={!!matchedTaxon}
+        >
+          <InputLabel id="kingdom-label">Kingdom</InputLabel>
+          <Select
+            labelId="kingdom-label"
+            value={kingdom}
+            label="Kingdom"
+            onChange={(e) => setKingdom(e.target.value)}
+          >
+            <MenuItem value="">
+              <em>None</em>
+            </MenuItem>
+            {KINGDOMS.map((k) => (
+              <MenuItem key={k.value} value={k.value}>
+                {k.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
 
         <FormControl fullWidth margin="normal">
           <InputLabel id="license-label">License</InputLabel>

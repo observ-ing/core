@@ -9,6 +9,12 @@ import { MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
 interface TaxaAutocompleteProps {
   value: string;
   onChange: (name: string) => void;
+  /**
+   * Fires whenever the user picks a suggestion (with the full TaxaResult)
+   * or types free text that no longer corresponds to a pick (with null).
+   * Lets callers know whether they have authoritative taxonomy data.
+   */
+  onMatchChange?: (match: TaxaResult | null) => void;
   label?: string;
   placeholder?: string;
   size?: "small" | "medium";
@@ -20,6 +26,7 @@ interface TaxaAutocompleteProps {
 export function TaxaAutocomplete({
   value,
   onChange,
+  onMatchChange,
   label = "Species Name",
   placeholder = "Search by common or scientific name...",
   size,
@@ -40,15 +47,19 @@ export function TaxaAutocomplete({
         loading={loading}
         getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
         inputValue={value}
-        onInputChange={(_, v) => {
+        onInputChange={(_, v, reason) => {
           onChange(v);
+          if (reason === "input") onMatchChange?.(null);
           handleSearch(v);
         }}
         onChange={(_, v) => {
-          if (v) {
-            const name = typeof v === "string" ? v : v.scientificName;
-            onChange(name);
+          if (v && typeof v !== "string") {
+            onChange(v.scientificName);
+            onMatchChange?.(v);
             clearOptions();
+          } else if (typeof v === "string") {
+            onChange(v);
+            onMatchChange?.(null);
           }
         }}
         filterOptions={(x) => x}
