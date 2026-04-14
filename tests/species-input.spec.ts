@@ -86,6 +86,36 @@ authTest.describe("Species Input", () => {
   );
 
   authTest(
+    "searching by common name 'cat' and selecting Felis catus auto-fills Animals",
+    async ({ authenticatedPage: page }) => {
+      await searchSpecies(page, "cat");
+      await page.locator(".MuiAutocomplete-option").first().click();
+      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
+      await authExpect(kingdomCombo).toHaveText("Animals");
+      await authExpect(kingdomCombo).toHaveAttribute("aria-disabled", "true");
+    },
+  );
+
+  // Simulates user typing a species, seeing suggestions, then pressing Enter
+  // instead of clicking a suggestion. freeSolo mode should still auto-fill
+  // kingdom if the typed text exactly matches a loaded option.
+  authTest(
+    "typing 'Felis catus' and pressing Enter auto-fills kingdom",
+    async ({ authenticatedPage: page }) => {
+      const speciesInput = page.getByRole("combobox", { name: /Species/i });
+      await speciesInput.click();
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.pressSequentially("cat", { delay: 50 }),
+      ]);
+      await authExpect(page.locator(".MuiAutocomplete-option").first()).toBeVisible();
+      await speciesInput.press("Enter");
+      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
+      await authExpect(kingdomCombo).toHaveText("Animals");
+    },
+  );
+
+  authTest(
     "free-text species enables the kingdom select and clears any prior match",
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "quercus");

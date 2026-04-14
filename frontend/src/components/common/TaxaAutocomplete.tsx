@@ -43,6 +43,7 @@ export function TaxaAutocomplete({
     <Box>
       <Autocomplete
         freeSolo
+        autoHighlight
         options={options}
         loading={loading}
         getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
@@ -58,8 +59,16 @@ export function TaxaAutocomplete({
             onMatchChange?.(v);
             clearOptions();
           } else if (typeof v === "string") {
+            // freeSolo commits typed text as a string. If it matches a loaded
+            // option (user typed the full name then blurred), surface that
+            // option so the caller can pre-fill fields like kingdom.
+            const match =
+              options.find((o) => o.scientificName === v) ??
+              options.find((o) => o.commonName === v) ??
+              null;
             onChange(v);
-            onMatchChange?.(null);
+            onMatchChange?.(match);
+            if (match) clearOptions();
           }
         }}
         filterOptions={(x) => x}

@@ -3,6 +3,22 @@ import type { TaxaResult } from "../../frontend/src/bindings/TaxaResult";
 
 /** Canned taxa results keyed by query substring (lowercase). */
 const TAXA_FIXTURES: Record<string, TaxaResult[]> = {
+  cat: [
+    {
+      id: "2435035",
+      scientificName: "Felis catus",
+      commonName: "Feral Cat",
+      rank: "SPECIES",
+      kingdom: "Animalia",
+      phylum: "Chordata",
+      class: "Mammalia",
+      order: "Carnivora",
+      family: "Felidae",
+      genus: "Felis",
+      species: "Felis catus",
+      source: "gbif",
+    },
+  ],
   "california poppy": [
     {
       id: "3189396",
