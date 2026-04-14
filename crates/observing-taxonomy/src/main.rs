@@ -4,6 +4,7 @@
 
 mod error;
 mod gbif;
+mod inat;
 mod server;
 mod types;
 mod wikidata;

@@ -1,6 +1,7 @@
 //! GBIF-based taxonomy client with caching
 
 use crate::error::Result;
+use crate::inat::InatClient;
 use crate::types::*;
 use crate::wikidata::WikidataClient;
 use gbif_api::{
@@ -10,6 +11,85 @@ use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tracing::warn;
+
+/// Merge GBIF and iNat search results.
+///
+/// GBIF's `/species/search` is full-text over descriptions and vernacular names,
+/// so queries like "angiosperm" return genera that merely *mention* angiosperms
+/// in their descriptions (Agnoea, Meloidodera, …) while missing the clade itself,
+/// because Angiospermae isn't in GBIF's backbone. iNaturalist's taxonomy includes
+/// those informal high-rank clades and uses prefix matching on names.
+///
+/// Strategy: use iNat purely to fill clade-level gaps in GBIF.
+///
+/// 1. If GBIF already has any above-genus result in its hits, trust GBIF —
+///    for queries like "carnivora" where GBIF returns the Carnivora order
+///    directly, promoting iNat would only surface less-relevant ancestors.
+/// 2. Otherwise, promote iNat's above-genus results (kingdom through tribe)
+///    to the front, skipping any that duplicate GBIF scientific names.
+/// 3. Lower-rank iNat results (genus/species/subspecies) are never merged:
+///    GBIF covers those well and interleaving iNat species above GBIF genus
+///    hits degrades the UX for queries like "corvus" and "oak".
+///
+/// Dedupe is by scientific name, case-insensitive. GBIF wins ties.
+fn merge_results(gbif: Vec<TaxonResult>, inat: Vec<TaxonResult>, limit: u32) -> Vec<TaxonResult> {
+    let limit = limit as usize;
+
+    let gbif_has_above_genus = gbif.iter().any(|t| is_above_genus_rank(&t.rank));
+
+    let promoted: Vec<TaxonResult> = if gbif_has_above_genus {
+        Vec::new()
+    } else {
+        let gbif_names: std::collections::HashSet<String> = gbif
+            .iter()
+            .map(|t| t.scientific_name.to_lowercase())
+            .collect();
+        inat.into_iter()
+            .filter(|t| is_above_genus_rank(&t.rank))
+            .filter(|t| !gbif_names.contains(&t.scientific_name.to_lowercase()))
+            .collect()
+    };
+
+    let mut merged = promoted;
+    for taxon in gbif {
+        if merged.len() >= limit {
+            break;
+        }
+        merged.push(taxon);
+    }
+    merged.truncate(limit);
+    merged
+}
+
+/// Returns true when a rank sits above genus on the Linnaean ladder.
+fn is_above_genus_rank(rank: &str) -> bool {
+    matches!(
+        rank,
+        "stateofmatter"
+            | "kingdom"
+            | "subkingdom"
+            | "phylum"
+            | "subphylum"
+            | "superclass"
+            | "class"
+            | "subclass"
+            | "infraclass"
+            | "superorder"
+            | "order"
+            | "suborder"
+            | "infraorder"
+            | "parvorder"
+            | "zoosection"
+            | "zoosubsection"
+            | "superfamily"
+            | "epifamily"
+            | "family"
+            | "subfamily"
+            | "supertribe"
+            | "tribe"
+            | "subtribe"
+    )
+}
 
 /// Build a path-based taxon identifier: "{kingdom}/{name}" or just "{name}" for kingdom rank
 fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) -> String {
@@ -24,9 +104,12 @@ fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) ->
     }
 }
 
-/// Taxonomy client that wraps GBIF API with caching and app-specific type conversion
+/// Taxonomy client that wraps GBIF API with caching and app-specific type conversion.
+/// Also queries iNaturalist as a secondary source for taxa that GBIF's backbone
+/// omits (e.g. informal clades like Angiospermae).
 pub struct GbifClient {
     api: GbifApiClient,
+    inat: InatClient,
     wikidata: WikidataClient,
     cache: Cache<String, CachedValue>,
     hits: AtomicU64,
@@ -45,6 +128,7 @@ impl GbifClient {
 
     pub fn new() -> Self {
         let api = GbifApiClient::new();
+        let inat = InatClient::new();
         let wikidata = WikidataClient::new();
 
         let cache = Cache::builder()
@@ -54,6 +138,7 @@ impl GbifClient {
 
         Self {
             api,
+            inat,
             wikidata,
             cache,
             hits: AtomicU64::new(0),
@@ -69,7 +154,11 @@ impl GbifClient {
         }
     }
 
-    /// Search for taxa matching a query
+    /// Search for taxa matching a query.
+    ///
+    /// Queries GBIF and iNaturalist in parallel and merges the results.
+    /// GBIF is authoritative for most searches, but iNat fills gaps for
+    /// informal clades (e.g. Angiospermae) that GBIF's backbone omits.
     pub async fn search(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
         let cache_key = format!("search:{}:{}", query.to_lowercase(), limit);
 
@@ -79,11 +168,18 @@ impl GbifClient {
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
 
-        let results = self.search_gbif(query, limit).await?;
+        let (gbif_results, inat_results) = tokio::join!(
+            self.search_gbif(query, limit),
+            self.inat.search(query, limit)
+        );
+
+        let gbif_results = gbif_results?;
+        let merged = merge_results(gbif_results, inat_results, limit);
+
         self.cache
-            .insert(cache_key, CachedValue::SearchResults(results.clone()))
+            .insert(cache_key, CachedValue::SearchResults(merged.clone()))
             .await;
-        Ok(results)
+        Ok(merged)
     }
 
     /// Check if a GBIF match is a HIGHERRANK fallback that doesn't match the query.
@@ -108,51 +204,66 @@ impl GbifClient {
         !canonical.eq_ignore_ascii_case(scientific_name)
     }
 
-    /// Validate a scientific name
+    /// Validate a scientific name. Tries GBIF first; if GBIF has no exact
+    /// match, falls back to iNaturalist to cover taxa missing from GBIF's
+    /// backbone (e.g. Angiospermae).
     pub async fn validate(&self, name: &str) -> Result<ValidationResult> {
-        let Some(gbif_match) = self.api.match_name(name, None).await? else {
-            return Ok(ValidationResult {
-                valid: false,
-                matched_name: None,
-                taxon: None,
-                suggestions: Some(vec![]),
-            });
-        };
+        let gbif_result = self.api.match_name(name, None).await?;
 
-        let Some(usage) = &gbif_match.usage else {
-            return Ok(ValidationResult {
-                valid: false,
-                matched_name: None,
-                taxon: None,
-                suggestions: Some(vec![]),
-            });
-        };
+        if let Some(gbif_match) = gbif_result {
+            if let Some(usage) = &gbif_match.usage {
+                let match_type = gbif_match
+                    .diagnostics
+                    .as_ref()
+                    .and_then(|d| d.match_type.as_deref());
+                let taxon = self.gbif_v2_to_taxon(
+                    usage,
+                    gbif_match.additional_status.as_deref(),
+                    gbif_match.classification.as_deref(),
+                );
 
-        let match_type = gbif_match
-            .diagnostics
-            .as_ref()
-            .and_then(|d| d.match_type.as_deref());
-        let taxon = self.gbif_v2_to_taxon(
-            usage,
-            gbif_match.additional_status.as_deref(),
-            gbif_match.classification.as_deref(),
-        );
+                if match_type == Some("EXACT") {
+                    return Ok(ValidationResult {
+                        valid: true,
+                        matched_name: usage.canonical_name.clone().or_else(|| usage.name.clone()),
+                        taxon: Some(taxon),
+                        suggestions: None,
+                    });
+                }
 
-        if match_type == Some("EXACT") {
-            Ok(ValidationResult {
-                valid: true,
-                matched_name: usage.canonical_name.clone().or_else(|| usage.name.clone()),
-                taxon: Some(taxon),
-                suggestions: None,
-            })
-        } else {
-            Ok(ValidationResult {
-                valid: false,
-                matched_name: None,
-                taxon: None,
-                suggestions: Some(vec![taxon]),
-            })
+                if let Some(inat_taxon) = self.inat.find_exact(name).await {
+                    return Ok(ValidationResult {
+                        valid: true,
+                        matched_name: Some(inat_taxon.scientific_name.clone()),
+                        taxon: Some(inat_taxon),
+                        suggestions: None,
+                    });
+                }
+
+                return Ok(ValidationResult {
+                    valid: false,
+                    matched_name: None,
+                    taxon: None,
+                    suggestions: Some(vec![taxon]),
+                });
+            }
         }
+
+        if let Some(inat_taxon) = self.inat.find_exact(name).await {
+            return Ok(ValidationResult {
+                valid: true,
+                matched_name: Some(inat_taxon.scientific_name.clone()),
+                taxon: Some(inat_taxon),
+                suggestions: None,
+            });
+        }
+
+        Ok(ValidationResult {
+            valid: false,
+            matched_name: None,
+            taxon: None,
+            suggestions: Some(vec![]),
+        })
     }
 
     /// Get detailed taxon information by GBIF ID
@@ -823,5 +934,95 @@ mod tests {
         );
         let result = client.search_result_to_taxon(&item);
         assert_eq!(result.common_name.as_deref(), Some("Powdery Mildew Fungi"));
+    }
+
+    fn stub_taxon(name: &str, rank: &str, source: &str) -> TaxonResult {
+        TaxonResult {
+            id: format!("{}:{}", source, name),
+            scientific_name: name.to_string(),
+            common_name: None,
+            photo_url: None,
+            rank: rank.to_string(),
+            kingdom: None,
+            phylum: None,
+            class: None,
+            order: None,
+            family: None,
+            genus: None,
+            species: None,
+            source: source.to_string(),
+            conservation_status: None,
+            is_synonym: false,
+            accepted_name: None,
+        }
+    }
+
+    #[test]
+    fn merge_promotes_inat_clade_when_gbif_has_only_low_rank_noise() {
+        let gbif = vec![
+            stub_taxon("Agnoea", "genus", "gbif"),
+            stub_taxon("Meloidodera", "genus", "gbif"),
+        ];
+        let inat = vec![
+            stub_taxon("Angiospermae", "subphylum", "inat"),
+            stub_taxon("Heliotropium angiospermum", "species", "inat"),
+        ];
+        let merged = merge_results(gbif, inat, 10);
+        assert_eq!(merged[0].scientific_name, "Angiospermae");
+        assert_eq!(merged[0].source, "inat");
+        assert_eq!(merged[1].scientific_name, "Agnoea");
+        assert!(merged
+            .iter()
+            .all(|t| t.scientific_name != "Heliotropium angiospermum"));
+    }
+
+    #[test]
+    fn merge_skips_inat_when_gbif_already_has_above_genus_hit() {
+        let gbif = vec![
+            stub_taxon("Carnivora", "order", "gbif"),
+            stub_taxon("Rhipicephalus carnivoralis", "species", "gbif"),
+        ];
+        let inat = vec![
+            stub_taxon("Laurasiatheria", "superorder", "inat"),
+            stub_taxon("Eupleridae", "family", "inat"),
+        ];
+        let merged = merge_results(gbif, inat, 10);
+        assert_eq!(merged[0].scientific_name, "Carnivora");
+        assert!(merged.iter().all(|t| t.source == "gbif"));
+    }
+
+    #[test]
+    fn merge_never_promotes_low_rank_inat_results() {
+        let gbif = vec![
+            stub_taxon("Corvus", "genus", "gbif"),
+            stub_taxon("Corvus corax", "species", "gbif"),
+        ];
+        let inat = vec![
+            stub_taxon("Corvus brachyrhynchos", "species", "inat"),
+            stub_taxon("Corvus corone", "species", "inat"),
+        ];
+        let merged = merge_results(gbif, inat, 10);
+        assert!(merged.iter().all(|t| t.source == "gbif"));
+        assert_eq!(merged[0].scientific_name, "Corvus");
+    }
+
+    #[test]
+    fn merge_dedupes_by_scientific_name_case_insensitive() {
+        let gbif = vec![stub_taxon("aves", "class", "gbif")];
+        let inat = vec![stub_taxon("Aves", "class", "inat")];
+        let merged = merge_results(gbif, inat, 10);
+        assert_eq!(merged.len(), 1);
+        assert_eq!(merged[0].source, "gbif");
+    }
+
+    #[test]
+    fn merge_respects_limit() {
+        let gbif: Vec<TaxonResult> = (0..10)
+            .map(|i| stub_taxon(&format!("Genus{}", i), "genus", "gbif"))
+            .collect();
+        let inat = vec![stub_taxon("SomeClade", "order", "inat")];
+        let merged = merge_results(gbif, inat, 5);
+        assert_eq!(merged.len(), 5);
+        assert_eq!(merged[0].scientific_name, "SomeClade");
     }
 }
