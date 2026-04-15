@@ -157,13 +157,9 @@ export function ExploreFilterPanel() {
               }
             }}
             filterOptions={(x) => x}
-            renderInput={(params) => {
-              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-              const p = params as object;
-              return (
-                <TextField {...p} size="small" label="Taxon" placeholder="Search species..." />
-              );
-            }}
+            renderInput={(params) => (
+              <TextField {...params} size="small" label="Taxon" placeholder="Search species..." />
+            )}
             renderOption={(props, option) => {
               const { key, ...otherProps } = props;
               return (
