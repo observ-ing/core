@@ -425,21 +425,19 @@ pub async fn enrich_observers(
     resolver: &IdentityResolver,
     rows: &[ObserverRow],
 ) -> Vec<ObserverInfo> {
-    let dids: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
-    let profiles = resolver.get_profiles(&dids).await;
-
-    rows.iter()
-        .map(|o| {
-            let p = profile_summary(&o.did, &profiles);
-            ObserverInfo {
-                did: o.did.clone(),
-                role: o.role.clone(),
-                handle: p.handle,
-                display_name: p.display_name,
-                avatar: p.avatar,
-            }
-        })
-        .collect()
+    enrich_rows(
+        resolver,
+        rows,
+        |r| &r.did,
+        |row, profile| ObserverInfo {
+            did: row.did.clone(),
+            role: row.role.clone(),
+            handle: profile.handle,
+            display_name: profile.display_name,
+            avatar: profile.avatar,
+        },
+    )
+    .await
 }
 
 #[cfg(test)]
