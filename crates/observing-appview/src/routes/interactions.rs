@@ -40,8 +40,6 @@ pub struct InteractionSubjectRequest {
     #[ts(optional)]
     occurrence_cid: Option<String>,
     #[ts(optional)]
-    subject_index: Option<i32>,
-    #[ts(optional)]
     scientific_name: Option<String>,
     #[ts(optional)]
     kingdom: Option<String>,
@@ -76,7 +74,6 @@ fn build_interaction_subject(
 
     Ok(InteractionSubject {
         occurrence,
-        subject_index: req.subject_index.map(|i| i as i64),
         taxon,
         extra_data: None,
     })

@@ -9,23 +9,21 @@ pub async fn upsert(
         r#"
         INSERT INTO interactions (
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+            subject_a_occurrence_uri, subject_a_occurrence_cid,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+            subject_b_occurrence_uri, subject_b_occurrence_cid,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, NOW())
         ON CONFLICT (uri) DO UPDATE SET
             cid = EXCLUDED.cid,
             subject_a_occurrence_uri = EXCLUDED.subject_a_occurrence_uri,
             subject_a_occurrence_cid = EXCLUDED.subject_a_occurrence_cid,
-            subject_a_subject_index = EXCLUDED.subject_a_subject_index,
             subject_a_taxon_name = EXCLUDED.subject_a_taxon_name,
             subject_a_kingdom = EXCLUDED.subject_a_kingdom,
             subject_b_occurrence_uri = EXCLUDED.subject_b_occurrence_uri,
             subject_b_occurrence_cid = EXCLUDED.subject_b_occurrence_cid,
-            subject_b_subject_index = EXCLUDED.subject_b_subject_index,
             subject_b_taxon_name = EXCLUDED.subject_b_taxon_name,
             subject_b_kingdom = EXCLUDED.subject_b_kingdom,
             interaction_type = EXCLUDED.interaction_type,
@@ -38,12 +36,10 @@ pub async fn upsert(
         p.did,
         p.subject_a_occurrence_uri as _,
         p.subject_a_occurrence_cid as _,
-        p.subject_a_subject_index,
         p.subject_a_taxon_name as _,
         p.subject_a_kingdom as _,
         p.subject_b_occurrence_uri as _,
         p.subject_b_occurrence_cid as _,
-        p.subject_b_subject_index,
         p.subject_b_taxon_name as _,
         p.subject_b_kingdom as _,
         p.interaction_type,
@@ -74,9 +70,9 @@ pub async fn get_for_occurrence(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+            subject_a_occurrence_uri, subject_a_occurrence_cid,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+            subject_b_occurrence_uri, subject_b_occurrence_cid,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
@@ -100,9 +96,9 @@ pub async fn get_by_type(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+            subject_a_occurrence_uri, subject_a_occurrence_cid,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+            subject_b_occurrence_uri, subject_b_occurrence_cid,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
@@ -127,9 +123,9 @@ pub async fn get(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid, subject_a_subject_index,
+            subject_a_occurrence_uri, subject_a_occurrence_cid,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid, subject_b_subject_index,
+            subject_b_occurrence_uri, subject_b_occurrence_cid,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT DISTINCT ON (occurrence_uri)\n            occurrence_uri as \"occurrence_uri!\", scientific_name\n        FROM community_ids\n        WHERE occurrence_uri = ANY($1) AND subject_index = 0\n        ORDER BY occurrence_uri, id_count DESC\n        ",
+  "query": "\n        SELECT DISTINCT ON (occurrence_uri)\n            occurrence_uri as \"occurrence_uri!\", scientific_name\n        FROM community_ids\n        WHERE occurrence_uri = ANY($1)\n        ORDER BY occurrence_uri, id_count DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -24,5 +24,5 @@
       true
     ]
   },
-  "hash": "2729f87b5433844cda3fa1817e2b5d9ed92026493680b28f6256c98ac6aadf0e"
+  "hash": "607d2be0d4f3f6ea786a95ac8d983a3b698c22121e02654274e9afc22fc833f4"
 }

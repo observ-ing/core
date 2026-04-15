@@ -114,7 +114,6 @@ pub struct IdentificationRow {
     pub did: String,
     pub subject_uri: String,
     pub subject_cid: String,
-    pub subject_index: i32,
     pub scientific_name: String,
     #[ts(optional)]
     pub taxon_rank: Option<String>,
@@ -187,8 +186,6 @@ pub struct InteractionRow {
     #[ts(optional)]
     pub subject_a_occurrence_cid: Option<String>,
     #[ts(optional)]
-    pub subject_a_subject_index: Option<i32>,
-    #[ts(optional)]
     pub subject_a_taxon_name: Option<String>,
     #[ts(optional)]
     pub subject_a_kingdom: Option<String>,
@@ -197,8 +194,6 @@ pub struct InteractionRow {
     pub subject_b_occurrence_uri: Option<String>,
     #[ts(optional)]
     pub subject_b_occurrence_cid: Option<String>,
-    #[ts(optional)]
-    pub subject_b_subject_index: Option<i32>,
     #[ts(optional)]
     pub subject_b_taxon_name: Option<String>,
     #[ts(optional)]
@@ -226,7 +221,6 @@ pub struct ObserverRow {
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
 pub struct CommunityIdRow {
     pub occurrence_uri: String,
-    pub subject_index: i32,
     pub scientific_name: String,
     pub kingdom: Option<String>,
     pub id_count: i64,
@@ -240,14 +234,6 @@ pub struct OccurrencePrivateDataRow {
     pub exact_longitude: f64,
     pub geoprivacy: String,
     pub effective_geoprivacy: Option<String>,
-}
-
-/// Subject info (aggregated from identifications)
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct SubjectInfo {
-    pub subject_index: i32,
-    pub identification_count: i64,
-    pub latest_identification: Option<DateTime<Utc>>,
 }
 
 /// Parameters for upserting an occurrence
@@ -294,7 +280,6 @@ pub struct UpsertIdentificationParams {
     pub did: String,
     pub subject_uri: String,
     pub subject_cid: String,
-    pub subject_index: i32,
     pub scientific_name: String,
     pub taxon_rank: Option<String>,
     pub taxon_id: Option<String>,
@@ -331,12 +316,10 @@ pub struct UpsertInteractionParams {
     pub did: String,
     pub subject_a_occurrence_uri: Option<String>,
     pub subject_a_occurrence_cid: Option<String>,
-    pub subject_a_subject_index: i32,
     pub subject_a_taxon_name: Option<String>,
     pub subject_a_kingdom: Option<String>,
     pub subject_b_occurrence_uri: Option<String>,
     pub subject_b_occurrence_cid: Option<String>,
-    pub subject_b_subject_index: i32,
     pub subject_b_taxon_name: Option<String>,
     pub subject_b_kingdom: Option<String>,
     pub interaction_type: String,

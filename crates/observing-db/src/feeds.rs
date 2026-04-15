@@ -176,7 +176,7 @@ pub async fn get_profile_feed(
                 IdentificationRow,
                 r#"
                 SELECT
-                    uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+                    uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
                     identification_verification_status, type_status, is_agreement, date_identified,
                     vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
@@ -196,7 +196,7 @@ pub async fn get_profile_feed(
                 IdentificationRow,
                 r#"
                 SELECT
-                    uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+                    uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
                     identification_verification_status, type_status, is_agreement, date_identified,
                     vernacular_name, kingdom, phylum, class, "order" as order_, family, genus

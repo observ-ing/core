@@ -9,9 +9,6 @@ import {
   Stack,
   IconButton,
   ButtonBase,
-  Tabs,
-  Tab,
-  Chip,
   Menu,
   MenuItem,
   List,
@@ -61,7 +58,6 @@ export function ObservationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedSubject, setSelectedSubject] = useState(0);
   const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -188,16 +184,9 @@ export function ObservationDetail() {
   const displayName = getDisplayName(observation.observer);
   const handle = observation.observer.handle ? `@${observation.observer.handle}` : "";
 
-  // Find the current subject's data
-  const currentSubject = observation.subjects?.find((s) => s.index === selectedSubject);
-
   const taxonomy = observation.effectiveTaxonomy;
 
-  const species =
-    currentSubject?.communityId || observation.communityId || taxonomy?.scientificName || undefined;
-
-  // Check if there are multiple subjects
-  const hasMultipleSubjects = observation.subjects && observation.subjects.length > 1;
+  const species = observation.communityId || taxonomy?.scientificName || undefined;
 
   // Check if current user owns this observation
   const isOwner = user?.did === observation.observer.did;
@@ -384,7 +373,7 @@ export function ObservationDetail() {
             />
           </ListItem>
 
-          {/* Observation Details (shared across all subjects) */}
+          {/* Observation Details */}
           <List disablePadding sx={{ mt: 1 }}>
             <ListItem disableGutters alignItems="flex-start">
               <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
@@ -433,47 +422,11 @@ export function ObservationDetail() {
             </Box>
           </List>
 
-          {/* Subject-specific content (identification) */}
           <Box sx={{ mt: 3 }}>
-            {/* Subject Tabs - only show if multiple subjects */}
-            {hasMultipleSubjects && (
-              <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                <Tabs
-                  value={selectedSubject}
-                  onChange={(_, newValue) => setSelectedSubject(newValue)}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                >
-                  {observation.subjects.map((subject) => (
-                    <Tab
-                      key={subject.index}
-                      value={subject.index}
-                      label={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body2">Subject {subject.index + 1}</Typography>
-                          {subject.communityId && (
-                            <Chip
-                              label={subject.communityId}
-                              size="small"
-                              sx={{
-                                fontStyle: subject.communityId.includes(" ") ? "italic" : "normal",
-                                maxWidth: 120,
-                              }}
-                            />
-                          )}
-                        </Stack>
-                      }
-                    />
-                  ))}
-                </Tabs>
-              </Box>
-            )}
-
             {/* Identification History */}
             <Box sx={{ mt: 2 }}>
               <IdentificationHistory
                 identifications={identifications}
-                subjectIndex={selectedSubject}
                 kingdom={taxonomy?.kingdom}
                 currentUserDid={user?.did}
                 onDeleteIdentification={async (uri) => {
@@ -498,7 +451,7 @@ export function ObservationDetail() {
                         uri: observation.uri,
                         cid: observation.cid,
                         scientificName: taxonomy?.scientificName,
-                        communityId: currentSubject?.communityId || observation.communityId,
+                        communityId: observation.communityId,
                       }}
                       imageUrl={
                         observation.images[0] != null
@@ -507,8 +460,6 @@ export function ObservationDetail() {
                       }
                       latitude={observation.location?.latitude}
                       longitude={observation.location?.longitude}
-                      subjectIndex={selectedSubject}
-                      existingSubjectCount={observation.subjects?.length ?? 1}
                       onSuccess={handleIdentificationSuccess}
                     />
                   ) : (
@@ -530,9 +481,8 @@ export function ObservationDetail() {
                 uri: observation.uri,
                 cid: observation.cid,
                 scientificName: taxonomy?.scientificName,
-                communityId: currentSubject?.communityId || observation.communityId,
+                communityId: observation.communityId,
               }}
-              subjects={observation.subjects || [{ index: 0, identificationCount: 0 }]}
               onSuccess={handleIdentificationSuccess}
             />
           </Box>
