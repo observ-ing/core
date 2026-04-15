@@ -110,5 +110,4 @@ authTest.describe("Identification - Logged In", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
     await authExpect(page.getByLabel("Species Name")).not.toBeVisible();
   });
-
 });
