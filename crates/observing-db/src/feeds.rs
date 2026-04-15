@@ -28,19 +28,19 @@ pub async fn get_explore_feed(
         qb.push_bind(format!("{taxon}%"));
     }
 
-    if let Some(ref kingdom) = options.kingdom {
+    if let Some(kingdom) = options.kingdom.as_deref() {
         qb.push(" AND kingdom = ");
-        qb.push_bind(kingdom.clone());
+        qb.push_bind(kingdom);
     }
 
-    if let Some(ref start_date) = options.start_date {
+    if let Some(start_date) = options.start_date.as_deref() {
         qb.push(" AND event_date >= ");
-        qb.push_bind(start_date.clone());
+        qb.push_bind(start_date);
     }
 
-    if let Some(ref end_date) = options.end_date {
+    if let Some(end_date) = options.end_date.as_deref() {
         qb.push(" AND event_date <= ");
-        qb.push_bind(end_date.clone());
+        qb.push_bind(end_date);
     }
 
     if let (Some(lat), Some(lng)) = (options.lat, options.lng) {
@@ -54,9 +54,9 @@ pub async fn get_explore_feed(
         qb.push(")");
     }
 
-    if let Some(ref cursor) = options.cursor {
+    if let Some(cursor) = options.cursor.as_deref() {
         qb.push(" AND created_at < ");
-        qb.push_bind(cursor.clone());
+        qb.push_bind(cursor);
         qb.push("::timestamptz");
     }
 
@@ -238,9 +238,9 @@ pub async fn get_home_feed(
         qb.push(")");
     }
 
-    if let Some(ref cursor) = options.cursor {
+    if let Some(cursor) = options.cursor.as_deref() {
         qb.push(" AND created_at < ");
-        qb.push_bind(cursor.clone());
+        qb.push_bind(cursor);
         qb.push("::timestamptz");
     }
 
@@ -278,16 +278,16 @@ pub async fn get_occurrences_by_taxon(
         qb.push(")");
     }
 
-    if let Some(ref kingdom) = options.kingdom {
+    if let Some(kingdom) = options.kingdom.as_deref() {
         if rank_lower != "kingdom" {
             qb.push(" AND kingdom = ");
-            qb.push_bind(kingdom.clone());
+            qb.push_bind(kingdom);
         }
     }
 
-    if let Some(ref cursor) = options.cursor {
+    if let Some(cursor) = options.cursor.as_deref() {
         qb.push(" AND created_at < ");
-        qb.push_bind(cursor.clone());
+        qb.push_bind(cursor);
         qb.push("::timestamptz");
     }
 
