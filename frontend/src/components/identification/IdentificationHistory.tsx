@@ -20,7 +20,6 @@ import { RelativeTime } from "../common/RelativeTime";
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
-  subjectIndex?: number | undefined;
   /** Fallback kingdom to use if identification doesn't have kingdom data */
   kingdom?: string | undefined;
   /** DID of the observation's creator, used to show "Observer's ID" badge */
@@ -35,7 +34,6 @@ export interface IdentificationHistoryProps {
 
 export function IdentificationHistory({
   identifications,
-  subjectIndex = 0,
   kingdom,
   observerDid,
   footer,
@@ -52,15 +50,15 @@ export function IdentificationHistory({
   const handleMenuClose = (uri: string) => {
     setMenuAnchorEl((prev) => ({ ...prev, [uri]: null }));
   };
-  // Filter identifications by subject index and sort oldest first
-  const filteredIds = identifications
-    .filter((id) => id.subject_index === subjectIndex)
-    .sort((a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime());
+  // Sort oldest first
+  const sortedIds = [...identifications].sort(
+    (a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime(),
+  );
 
   // Build set of superseded identification URIs (user has a newer ID)
   const supersededUris = new Set<string>();
   const latestByUser = new Map<string, Identification>();
-  for (const id of filteredIds) {
+  for (const id of sortedIds) {
     const existing = latestByUser.get(id.did);
     if (
       !existing ||
@@ -74,12 +72,11 @@ export function IdentificationHistory({
   }
 
   // Find the observer's earliest (first) identification for the "Observer's ID" badge
-  const observerFirstIdUri =
-    observerDid && subjectIndex === 0
-      ? filteredIds.find((id) => id.did === observerDid)?.uri
-      : undefined;
+  const observerFirstIdUri = observerDid
+    ? sortedIds.find((id) => id.did === observerDid)?.uri
+    : undefined;
 
-  if (filteredIds.length === 0) {
+  if (sortedIds.length === 0) {
     return (
       <Paper
         elevation={0}
@@ -116,13 +113,13 @@ export function IdentificationHistory({
           Identification History
         </Typography>
         <Chip
-          label={filteredIds.length}
+          label={sortedIds.length}
           size="small"
           sx={{ ml: "auto", height: 20, fontSize: "0.75rem" }}
         />
       </Stack>
       <Stack spacing={2}>
-        {filteredIds.map((id) => {
+        {sortedIds.map((id) => {
           const isSuperseded = supersededUris.has(id.uri);
           return (
             <Box

@@ -26,7 +26,7 @@ import {
   type InteractionResponse,
 } from "../../services/api";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
-import type { Subject, TaxaResult } from "../../services/types";
+import type { TaxaResult } from "../../services/types";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { formatDate, MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
 
@@ -58,11 +58,10 @@ interface InteractionPanelProps {
     scientificName?: string | undefined;
     communityId?: string | undefined;
   };
-  subjects: Subject[];
   onSuccess?: (() => void) | undefined;
 }
 
-export function InteractionPanel({ observation, subjects, onSuccess }: InteractionPanelProps) {
+export function InteractionPanel({ observation, onSuccess }: InteractionPanelProps) {
   const user = useAppSelector((state) => state.auth.user);
   const [interactions, setInteractions] = useState<InteractionResponse[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,7 +69,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
   const [error, setError] = useState<string | null>(null);
 
   // Form state
-  const [subjectAIndex, setSubjectAIndex] = useState(0);
   const [subjectBType, setSubjectBType] = useState<"occurrence" | "taxon">("taxon");
   const [subjectBTaxon, setSubjectBTaxon] = useState("");
   const [subjectBKingdom, setSubjectBKingdom] = useState("");
@@ -114,15 +112,12 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
   };
 
   const submitFn = useCallback(() => {
-    const selectedSubject = subjects.find((s) => s.index === subjectAIndex) || subjects[0];
-    const subjectAName =
-      selectedSubject?.communityId || observation.communityId || observation.scientificName;
+    const subjectAName = observation.communityId || observation.scientificName;
     const trimmedComment = comment.trim();
     return submitInteraction({
       subjectA: {
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
-        subjectIndex: subjectAIndex,
         ...(subjectAName ? { scientificName: subjectAName } : {}),
       },
       subjectB: {
@@ -133,16 +128,7 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
       direction,
       ...(trimmedComment ? { comment: trimmedComment } : {}),
     });
-  }, [
-    subjects,
-    subjectAIndex,
-    observation,
-    comment,
-    subjectBTaxon,
-    subjectBKingdom,
-    interactionType,
-    direction,
-  ]);
+  }, [observation, comment, subjectBTaxon, subjectBKingdom, interactionType, direction]);
 
   const { isSubmitting: submitting, handleSubmit: doSubmit } = useFormSubmit(submitFn, {
     onSuccess: async () => {
@@ -295,25 +281,6 @@ export function InteractionPanel({ observation, subjects, onSuccess }: Interacti
           )}
 
           <Stack spacing={2}>
-            {/* Subject A - select from occurrence subjects */}
-            {subjects.length > 1 && (
-              <FormControl size="small" fullWidth>
-                <InputLabel>Subject A (this observation)</InputLabel>
-                <Select
-                  value={subjectAIndex}
-                  label="Subject A (this observation)"
-                  onChange={(e) => setSubjectAIndex(Number(e.target.value))}
-                >
-                  {subjects.map((subject) => (
-                    <MenuItem key={subject.index} value={subject.index}>
-                      Subject {subject.index + 1}
-                      {subject.communityId && ` - ${subject.communityId}`}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            )}
-
             {/* Subject B - taxon name input */}
             <Box sx={{ position: "relative" }}>
               <TextField

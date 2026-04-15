@@ -287,7 +287,7 @@ ORDER BY event_date DESC;
 -- Get consensus taxonomy for an occurrence
 SELECT scientific_name, COUNT(*) as votes
 FROM identifications
-WHERE subject_uri = 'at://...' AND subject_index = 0
+WHERE subject_uri = 'at://...'
 GROUP BY scientific_name, kingdom
 ORDER BY votes DESC
 LIMIT 1;

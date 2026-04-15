@@ -110,20 +110,4 @@ authTest.describe("Identification - Logged In", () => {
     await page.getByRole("button", { name: "Cancel" }).click();
     await authExpect(page.getByLabel("Species Name")).not.toBeVisible();
   });
-
-  // TC-ID-005: Add Another Organism shows info box
-  authTest(
-    "Add Another Organism shows info box with next subject index",
-    async ({ authenticatedPage: page }) => {
-      await navigateToDetail(page);
-      const addOrgBtn = page.getByRole("button", {
-        name: "Add Another Organism",
-      });
-      await authExpect(addOrgBtn).toBeVisible({ timeout: 10000 });
-      await addOrgBtn.click();
-
-      await authExpect(page.getByText(/Adding organism #\d+/)).toBeVisible();
-      await authExpect(page.getByLabel("Species Name")).toBeVisible();
-    },
-  );
 });

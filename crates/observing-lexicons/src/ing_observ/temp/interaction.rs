@@ -31,7 +31,7 @@ use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
 /// A subject in an interaction - can reference an existing occurrence or just specify a taxon.
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic, Default)]
 #[serde(
     rename_all = "camelCase",
     bound(deserialize = "S: Deserialize<'de> + BosStr")
@@ -40,10 +40,6 @@ pub struct InteractionSubject<S: BosStr = DefaultStr> {
     ///Reference to an existing occurrence record.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub occurrence: Option<StrongRef<S>>,
-    ///Index of the subject within the occurrence (for multi-subject observations).  Defaults to `0`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(default = "_default_interaction_subject_subject_index")]
-    pub subject_index: Option<i64>,
     ///Taxonomic information for the organism (for unobserved subjects or to specify the taxon).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub taxon: Option<interaction::Taxon<S>>,
@@ -357,24 +353,6 @@ impl<S: BosStr> LexiconSchema for InteractionSubject<S> {
         lexicon_doc_ing_observ_temp_interaction()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.subject_index {
-            if *value > 99i64 {
-                return Err(ConstraintError::Maximum {
-                    path: ValidationPath::from_field("subject_index"),
-                    max: 99i64,
-                    actual: *value,
-                });
-            }
-        }
-        if let Some(ref value) = self.subject_index {
-            if *value < 0i64 {
-                return Err(ConstraintError::Minimum {
-                    path: ValidationPath::from_field("subject_index"),
-                    min: 0i64,
-                    actual: *value,
-                });
-            }
-        }
         Ok(())
     }
 }
@@ -488,21 +466,6 @@ impl<S: BosStr> LexiconSchema for Taxon<S> {
     }
 }
 
-fn _default_interaction_subject_subject_index() -> Option<i64> {
-    Some(0i64)
-}
-
-impl Default for InteractionSubject {
-    fn default() -> Self {
-        Self {
-            occurrence: None,
-            subject_index: Some(0i64),
-            taxon: None,
-            extra_data: Default::default(),
-        }
-    }
-}
-
 fn lexicon_doc_ing_observ_temp_interaction() -> LexiconDoc<'static> {
     use alloc::collections::BTreeMap;
     #[allow(unused_imports)]
@@ -528,14 +491,6 @@ fn lexicon_doc_ing_observ_temp_interaction() -> LexiconDoc<'static> {
                             SmolStr::new_static("occurrence"),
                             LexObjectProperty::Ref(LexRef {
                                 r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
-                                ..Default::default()
-                            }),
-                        );
-                        map.insert(
-                            SmolStr::new_static("subjectIndex"),
-                            LexObjectProperty::Integer(LexInteger {
-                                minimum: Some(0i64),
-                                maximum: Some(99i64),
                                 ..Default::default()
                             }),
                         );

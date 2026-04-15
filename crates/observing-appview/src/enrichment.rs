@@ -24,7 +24,8 @@ pub struct OccurrenceResponse {
     pub community_id: Option<String>,
     #[ts(optional)]
     pub effective_taxonomy: Option<EffectiveTaxonomy>,
-    pub subjects: Vec<SubjectResponse>,
+    #[ts(type = "number")]
+    pub identification_count: i64,
     pub event_date: String,
     pub location: LocationResponse,
     pub images: Vec<String>,
@@ -80,16 +81,6 @@ pub struct LocationResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub uncertainty_meters: Option<i32>,
-}
-
-#[derive(Debug, Clone, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, rename = "Subject", export_to = "bindings/")]
-pub struct SubjectResponse {
-    #[serde(rename = "index")]
-    pub subject_index: i32,
-    #[ts(type = "number")]
-    pub identification_count: i64,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -190,14 +181,7 @@ pub async fn enrich_occurrences(
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
 
     // Stage 1: Batch-fetch all DB data concurrently
-    let (
-        like_counts,
-        viewer_likes,
-        observers_by_uri,
-        subjects_by_uri,
-        community_ids,
-        identifications_by_uri,
-    ) = tokio::join!(
+    let (like_counts, viewer_likes, observers_by_uri, community_ids, identifications_by_uri) = tokio::join!(
         async {
             observing_db::likes::get_counts_for_occurrences(pool, &uris)
                 .await
@@ -214,11 +198,6 @@ pub async fn enrich_occurrences(
         },
         async {
             observing_db::observers::get_for_occurrences(pool, &uris)
-                .await
-                .unwrap_or_default()
-        },
-        async {
-            observing_db::identifications::get_subjects_for_occurrences(pool, &uris)
                 .await
                 .unwrap_or_default()
         },
@@ -268,22 +247,10 @@ pub async fn enrich_occurrences(
     let mut results = Vec::with_capacity(rows.len());
 
     for (i, row) in rows.iter().enumerate() {
-        let subject_data = subjects_by_uri.get(&row.uri).cloned().unwrap_or_default();
-        let has_subject_0 = subject_data.iter().any(|s| s.subject_index == 0);
-
-        let mut subjects: Vec<SubjectResponse> = Vec::new();
-        if !has_subject_0 {
-            subjects.push(SubjectResponse {
-                subject_index: 0,
-                identification_count: 0,
-            });
-        }
-        for si in &subject_data {
-            subjects.push(SubjectResponse {
-                subject_index: si.subject_index,
-                identification_count: si.identification_count,
-            });
-        }
+        let identification_count = identifications_by_uri
+            .get(&row.uri)
+            .map(|ids| ids.len() as i64)
+            .unwrap_or(0);
 
         let community_id = community_ids.get(&row.uri).cloned();
         let effective_taxonomy = taxonomies[i].clone();
@@ -312,7 +279,7 @@ pub async fn enrich_occurrences(
             observers: observer_infos,
             community_id,
             effective_taxonomy,
-            subjects,
+            identification_count,
             event_date: row.event_date.to_rfc3339(),
             location: LocationResponse {
                 latitude: row.latitude,

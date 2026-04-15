@@ -11,7 +11,6 @@ export type Identification = {
   did: string;
   subject_uri: string;
   subject_cid: string;
-  subject_index: number;
   scientific_name: string;
   taxon_rank?: string;
   identification_qualifier?: string;

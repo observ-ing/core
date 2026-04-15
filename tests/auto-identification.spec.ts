@@ -48,7 +48,6 @@ authTest.describe("Auto-Identification on Upload", () => {
             did: MOCK_OBS_DID,
             subject_uri: AUTO_ID_URI,
             subject_cid: "bafytest",
-            subject_index: 0,
             scientific_name: "Quercus alba",
             vernacular_name: "White Oak",
             kingdom: "Plantae",

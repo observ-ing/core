@@ -2,6 +2,7 @@ import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
 import { openUploadModal } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 const FAB = 'button[aria-label="Create actions"]';
 
@@ -17,6 +18,7 @@ test.describe("Upload Modal - Logged Out", () => {
 authTest.describe("Upload Modal - Logged In", () => {
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
+    await mockTaxaSearchRoute(page);
   });
 
   // TC-UPLOAD-010: FAB visible when logged in

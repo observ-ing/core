@@ -3,7 +3,6 @@ import type { EffectiveTaxonomy } from "./EffectiveTaxonomy";
 import type { Location } from "./Location";
 import type { Observer } from "./Observer";
 import type { Profile } from "./Profile";
-import type { Subject } from "./Subject";
 
 /**
  * Enriched occurrence ready for API response
@@ -15,7 +14,7 @@ export type Occurrence = {
   observers: Array<Observer>;
   communityId?: string;
   effectiveTaxonomy?: EffectiveTaxonomy;
-  subjects: Array<Subject>;
+  identificationCount: number;
   eventDate: string;
   location: Location;
   images: Array<string>;

@@ -49,7 +49,6 @@ pub async fn build_identification_record(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
         );
-        obj.insert("subjectIndex".to_string(), serde_json::json!(0));
         obj.insert("isAgreement".to_string(), serde_json::json!(false));
     }
 

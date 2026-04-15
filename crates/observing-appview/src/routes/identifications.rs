@@ -28,7 +28,7 @@ pub async fn get_for_occurrence(
     let identifications = enrichment::enrich_identifications(&state.resolver, &rows).await;
 
     let community_id =
-        observing_db::identifications::get_community_id(&state.pool, &occurrence_uri, 0).await?;
+        observing_db::identifications::get_community_id(&state.pool, &occurrence_uri).await?;
 
     Ok(Json(IdentificationListResponse {
         identifications,
@@ -44,8 +44,6 @@ pub async fn get_for_occurrence(
 pub struct CreateIdentificationRequest {
     occurrence_uri: String,
     occurrence_cid: String,
-    #[ts(optional)]
-    subject_index: Option<i32>,
     scientific_name: String,
     #[ts(optional)]
     taxon_rank: Option<String>,
@@ -94,10 +92,6 @@ pub async fn create_identification(
         obj.insert(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
-        );
-        obj.insert(
-            "subjectIndex".to_string(),
-            serde_json::json!(body.subject_index.unwrap_or(0)),
         );
         obj.insert(
             "isAgreement".to_string(),

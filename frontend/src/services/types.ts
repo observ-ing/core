@@ -29,22 +29,14 @@ export type { CreateLikeRequest } from "../bindings/CreateLikeRequest";
 export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
 export type { InteractionSubjectRequest } from "../bindings/InteractionSubjectRequest";
 export type { CreateInteractionRequest } from "../bindings/CreateInteractionRequest";
+import type { Occurrence } from "../bindings/Occurrence";
+export type { Occurrence };
 export type { ObserverRole } from "../bindings/ObserverRole";
 export type { InteractionDirection } from "../bindings/InteractionDirection";
 
 // ============================================================================
 // Extended generated types
 // ============================================================================
-
-// Subject: extends with communityId (populated client-side from identification consensus)
-import type { Subject as GeneratedSubject } from "../bindings/Subject";
-export type Subject = GeneratedSubject & { communityId?: string };
-
-// Occurrence: override subjects to use the extended Subject type
-import type { Occurrence as GeneratedOccurrence } from "../bindings/Occurrence";
-export type Occurrence = Omit<GeneratedOccurrence, "subjects"> & {
-  subjects: Subject[];
-};
 
 // TaxonDetail: extends with observationCount from TaxonDetailWithCount wrapper
 import type { TaxonDetail as GeneratedTaxonDetail } from "../bindings/TaxonDetail";
