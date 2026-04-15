@@ -14,6 +14,8 @@ pub struct Config {
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
+    /// Bearer token for the admin API. When unset, admin routes return 503.
+    pub admin_token: Option<String>,
 }
 
 impl Config {
@@ -74,6 +76,8 @@ impl Config {
             .map(|s| parse_hidden_dids(&s))
             .unwrap_or_default();
 
+        let admin_token = env::var("ADMIN_TOKEN").ok().filter(|s| !s.is_empty());
+
         Self {
             port,
             database_url,
@@ -83,6 +87,7 @@ impl Config {
             species_id_service_url,
             public_url,
             hidden_dids,
+            admin_token,
         }
     }
 }

@@ -42,6 +42,8 @@ pub struct AppState {
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
+    /// Bearer token for the admin API. When `None`, admin routes return 503.
+    pub admin_token: Option<String>,
 }
 
 /// Create an OAuthClient.

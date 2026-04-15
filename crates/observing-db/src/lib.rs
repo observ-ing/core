@@ -1,3 +1,4 @@
+pub mod admin;
 pub mod comments;
 pub mod community_ids;
 pub mod feeds;

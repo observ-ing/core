@@ -11,6 +11,7 @@ pub enum AppError {
     Forbidden(String),
     Internal(String),
     Database(sqlx::Error),
+    ServiceUnavailable(String),
 }
 
 impl IntoResponse for AppError {
@@ -34,6 +35,7 @@ impl IntoResponse for AppError {
                     "Internal server error".into(),
                 )
             }
+            AppError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
         };
 
         (status, axum::Json(json!({ "error": message }))).into_response()
