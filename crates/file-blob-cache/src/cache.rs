@@ -121,13 +121,13 @@ impl BlobCache {
             created_at: Utc::now(),
         };
 
-        {
-            let mut entries = self.entries.write().await;
-            entries.insert(key.clone(), entry);
-        }
-
         self.current_size.fetch_add(size, Ordering::Relaxed);
         debug!(key = %key, size, "Cached blob");
+
+        {
+            let mut entries = self.entries.write().await;
+            entries.insert(key, entry);
+        }
 
         Ok(())
     }
