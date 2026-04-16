@@ -21,7 +21,7 @@ tokio = { workspace = true }
 
 # Web framework
 axum = { workspace = true, features = ["macros"] }
-axum-extra = { version = "0.10", features = ["cookie"] }
+axum-extra = { version = "0.12", features = ["cookie"] }
 tower-http = { workspace = true, features = ["cors", "compression-full", "fs"] }
 tower = { workspace = true }
 
@@ -53,7 +53,7 @@ atrium-api = "0.25"
 atrium-common = "0.1"
 atrium-identity = "0.1"
 atrium-oauth = "0.1"
-hickory-resolver = "0.24"
+hickory-resolver = "0.26"
 
 # Async trait support (needed for Store implementations)
 async-trait = "0.1"
