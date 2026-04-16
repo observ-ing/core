@@ -1,6 +1,6 @@
 use atrium_identity::handle::DnsTxtResolver;
-use hickory_resolver::TokioResolver;
 use hickory_resolver::proto::rr::RData;
+use hickory_resolver::TokioResolver;
 
 pub struct HickoryDnsTxtResolver {
     resolver: TokioResolver,
