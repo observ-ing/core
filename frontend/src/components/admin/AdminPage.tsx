@@ -26,8 +26,10 @@ import {
   AdminError,
   type CollectionSummary,
   type DeleteResponse,
+  type TableSummary,
   deleteCollection,
   listCollections,
+  listTables,
 } from "../../services/admin";
 
 export function AdminPage() {
@@ -37,16 +39,18 @@ export function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<number | null>(null);
   const [collections, setCollections] = useState<CollectionSummary[]>([]);
+  const [tables, setTables] = useState<TableSummary[]>([]);
   const [total, setTotal] = useState(0);
   const [target, setTarget] = useState<CollectionSummary | null>(null);
 
   const refresh = () => {
     setLoading(true);
     setError(null);
-    listCollections()
-      .then((res) => {
-        setCollections(res.collections);
-        setTotal(res.total);
+    Promise.all([listCollections(), listTables()])
+      .then(([cRes, tRes]) => {
+        setCollections(cRes.collections);
+        setTotal(cRes.total);
+        setTables(tRes.tables);
       })
       .catch((e: unknown) => {
         if (e instanceof AdminError) {
@@ -129,6 +133,44 @@ export function AdminPage() {
                     Purge
                   </Button>
                 </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </Paper>
+
+      <Typography variant="h5" sx={{ mt: 5, mb: 2 }}>
+        Other tables
+      </Typography>
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        Internal tables (not lexicon records). Read-only. OAuth state and sessions are intentionally
+        excluded.
+      </Typography>
+      <Paper>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Table</TableCell>
+              <TableCell>Columns</TableCell>
+              <TableCell align="right">Count</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {tables.map((t) => (
+              <TableRow key={t.name}>
+                <TableCell sx={{ fontFamily: "monospace" }}>
+                  <Link
+                    component={RouterLink}
+                    to={`/admin/tables/${encodeURIComponent(t.name)}`}
+                    underline="hover"
+                  >
+                    {t.name}
+                  </Link>
+                </TableCell>
+                <TableCell sx={{ fontSize: "0.75rem", color: "text.secondary" }}>
+                  {t.columns.join(", ")}
+                </TableCell>
+                <TableCell align="right">{t.count.toLocaleString()}</TableCell>
               </TableRow>
             ))}
           </TableBody>

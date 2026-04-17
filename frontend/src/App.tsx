@@ -25,6 +25,7 @@ import { NotificationsPage } from "./components/notifications/NotificationsPage"
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { AdminPage } from "./components/admin/AdminPage";
 import { CollectionDetailPage } from "./components/admin/CollectionDetailPage";
+import { TableDetailPage } from "./components/admin/TableDetailPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -124,6 +125,7 @@ function AppContent() {
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/collections/:nsid" element={<CollectionDetailPage />} />
+          <Route path="/admin/tables/:name" element={<TableDetailPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
