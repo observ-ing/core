@@ -202,6 +202,143 @@ pub async fn list_records(
     Ok(summaries)
 }
 
+/// Metadata for a non-lexicon table the admin interface can browse read-only.
+///
+/// Unlike `KnownCollection` (lexicon-scoped records keyed by NSID), these are
+/// internal tables. OAuth/session stores are intentionally excluded.
+pub struct KnownTable {
+    pub name: &'static str,
+    /// Explicit allowlist of columns. Never `SELECT *`. Each entry is a
+    /// `(select_expr, display_name)` pair — the expression is used in the
+    /// SELECT clause (aliased to `display_name`) and the name is used as the
+    /// JSON key and column header. Expressions are constants from this source
+    /// file, never user input.
+    pub columns: &'static [(&'static str, &'static str)],
+    pub order_by: &'static str,
+}
+
+pub const KNOWN_TABLES: &[KnownTable] = &[
+    KnownTable {
+        name: "ingester_state",
+        columns: &[
+            ("key", "key"),
+            ("value", "value"),
+            ("updated_at", "updated_at"),
+        ],
+        order_by: "updated_at DESC NULLS LAST",
+    },
+    KnownTable {
+        name: "occurrence_observers",
+        columns: &[
+            ("occurrence_uri", "occurrence_uri"),
+            ("observer_did", "observer_did"),
+            ("role", "role"),
+            ("added_at", "added_at"),
+        ],
+        order_by: "added_at DESC NULLS LAST",
+    },
+    KnownTable {
+        name: "occurrence_private_data",
+        columns: &[
+            ("uri", "uri"),
+            ("ST_AsText(exact_location)", "exact_location"),
+            ("geoprivacy", "geoprivacy"),
+            ("effective_geoprivacy", "effective_geoprivacy"),
+            ("created_at", "created_at"),
+            ("updated_at", "updated_at"),
+        ],
+        order_by: "updated_at DESC NULLS LAST",
+    },
+    KnownTable {
+        name: "sensitive_species",
+        columns: &[
+            ("scientific_name", "scientific_name"),
+            ("kingdom", "kingdom"),
+            ("geoprivacy", "geoprivacy"),
+            ("reason", "reason"),
+            ("source", "source"),
+        ],
+        order_by: "scientific_name",
+    },
+    KnownTable {
+        name: "notifications",
+        columns: &[
+            ("id", "id"),
+            ("recipient_did", "recipient_did"),
+            ("actor_did", "actor_did"),
+            ("kind", "kind"),
+            ("subject_uri", "subject_uri"),
+            ("reference_uri", "reference_uri"),
+            ("read", "read"),
+            ("created_at", "created_at"),
+        ],
+        order_by: "created_at DESC",
+    },
+    KnownTable {
+        name: "community_ids",
+        columns: &[
+            ("occurrence_uri", "occurrence_uri"),
+            ("subject_index", "subject_index"),
+            ("scientific_name", "scientific_name"),
+            ("kingdom", "kingdom"),
+            ("id_count", "id_count"),
+            ("agreement_count", "agreement_count"),
+        ],
+        order_by: "occurrence_uri",
+    },
+];
+
+impl KnownTable {
+    pub fn column_names(&self) -> Vec<&'static str> {
+        self.columns.iter().map(|(_, name)| *name).collect()
+    }
+}
+
+pub fn lookup_table(name: &str) -> Option<&'static KnownTable> {
+    KNOWN_TABLES.iter().find(|t| t.name == name)
+}
+
+pub async fn table_count(pool: &PgPool, name: &str) -> Result<i64, sqlx::Error> {
+    let Some(meta) = lookup_table(name) else {
+        return Ok(0);
+    };
+    let sql = format!("SELECT COUNT(*) FROM {}", meta.name);
+    sqlx::query_scalar(&sql).fetch_one(pool).await
+}
+
+/// List rows from an allowlisted non-lexicon table, returned as JSON objects.
+///
+/// Uses Postgres `row_to_json` so column-type handling (timestamps, booleans,
+/// bigints, nullables) is done server-side — no per-type Rust decoding. The
+/// table name and column list come from the `KNOWN_TABLES` allowlist, never
+/// user input, so no injection risk.
+pub async fn list_table_rows(
+    pool: &PgPool,
+    name: &str,
+    limit: i64,
+    offset: i64,
+) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    let Some(meta) = lookup_table(name) else {
+        return Ok(Vec::new());
+    };
+    let cols = meta
+        .columns
+        .iter()
+        .map(|(expr, name)| format!("{expr} AS {name}"))
+        .collect::<Vec<_>>()
+        .join(", ");
+    let sql = format!(
+        "SELECT row_to_json(t) AS row FROM (SELECT {} FROM {} ORDER BY {} LIMIT $1 OFFSET $2) t",
+        cols, meta.name, meta.order_by,
+    );
+    let rows: Vec<(serde_json::Value,)> = sqlx::query_as(&sql)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await?;
+    Ok(rows.into_iter().map(|(v,)| v).collect())
+}
+
 /// Delete all rows belonging to an NSID. Returns the number of rows affected.
 /// Callers are responsible for guarding this with a confirmation token.
 pub async fn delete_by_nsid(pool: &PgPool, nsid: &str) -> Result<u64, sqlx::Error> {

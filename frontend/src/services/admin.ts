@@ -93,6 +93,39 @@ export function listRecords(
   return adminFetch(`/admin/collections/${encodeURIComponent(nsid)}/records${qs ? `?${qs}` : ""}`);
 }
 
+export interface TableSummary {
+  name: string;
+  columns: string[];
+  count: number;
+}
+
+export interface TablesListResponse {
+  tables: TableSummary[];
+}
+
+export interface ListTableRowsResponse {
+  name: string;
+  columns: string[];
+  rows: Record<string, unknown>[];
+  limit: number;
+  offset: number;
+}
+
+export function listTables(): Promise<TablesListResponse> {
+  return adminFetch("/admin/tables");
+}
+
+export function listTableRows(
+  name: string,
+  opts: { limit?: number; offset?: number } = {},
+): Promise<ListTableRowsResponse> {
+  const params = new URLSearchParams();
+  if (opts.limit != null) params.set("limit", String(opts.limit));
+  if (opts.offset != null) params.set("offset", String(opts.offset));
+  const qs = params.toString();
+  return adminFetch(`/admin/tables/${encodeURIComponent(name)}/rows${qs ? `?${qs}` : ""}`);
+}
+
 export function deleteCollection(nsid: string, opts: { dryRun: boolean }): Promise<DeleteResponse> {
   const params = new URLSearchParams({
     confirm: nsid,

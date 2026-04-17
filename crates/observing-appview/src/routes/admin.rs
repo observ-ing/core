@@ -145,6 +145,73 @@ pub async fn list_records(
     }))
 }
 
+#[derive(Serialize)]
+pub struct TableSummary {
+    pub name: &'static str,
+    pub columns: Vec<&'static str>,
+    pub count: i64,
+}
+
+#[derive(Serialize)]
+pub struct TablesListResponse {
+    pub tables: Vec<TableSummary>,
+}
+
+/// `GET /admin/tables` — list all browsable non-lexicon tables with counts.
+pub async fn list_tables(
+    _auth: AdminAuth,
+    State(state): State<AppState>,
+) -> Result<Json<TablesListResponse>, AppError> {
+    let mut out = Vec::with_capacity(db_admin::KNOWN_TABLES.len());
+    for meta in db_admin::KNOWN_TABLES {
+        let count = db_admin::table_count(&state.pool, meta.name).await?;
+        out.push(TableSummary {
+            name: meta.name,
+            columns: meta.column_names(),
+            count,
+        });
+    }
+    Ok(Json(TablesListResponse { tables: out }))
+}
+
+#[derive(Deserialize)]
+pub struct ListTableRowsQuery {
+    #[serde(default = "default_limit")]
+    pub limit: i64,
+    #[serde(default)]
+    pub offset: i64,
+}
+
+#[derive(Serialize)]
+pub struct ListTableRowsResponse {
+    pub name: &'static str,
+    pub columns: Vec<&'static str>,
+    pub rows: Vec<serde_json::Value>,
+    pub limit: i64,
+    pub offset: i64,
+}
+
+/// `GET /admin/tables/{name}/rows` — paginated rows for an allowlisted table.
+pub async fn list_table_rows(
+    _auth: AdminAuth,
+    State(state): State<AppState>,
+    Path(name): Path<String>,
+    Query(params): Query<ListTableRowsQuery>,
+) -> Result<Json<ListTableRowsResponse>, AppError> {
+    let meta = db_admin::lookup_table(&name)
+        .ok_or_else(|| AppError::NotFound(format!("Unknown table: {name}")))?;
+    let limit = params.limit.clamp(1, 500);
+    let offset = params.offset.max(0);
+    let rows = db_admin::list_table_rows(&state.pool, &name, limit, offset).await?;
+    Ok(Json(ListTableRowsResponse {
+        name: meta.name,
+        columns: meta.column_names(),
+        rows,
+        limit,
+        offset,
+    }))
+}
+
 #[derive(Deserialize)]
 pub struct DeleteCollectionQuery {
     /// Must match the NSID in the path. Prevents accidental deletion.
