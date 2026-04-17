@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
   Button,
@@ -10,6 +11,7 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
+  Link,
   Paper,
   Table,
   TableBody,
@@ -103,7 +105,15 @@ export function AdminPage() {
           <TableBody>
             {collections.map((c) => (
               <TableRow key={c.nsid}>
-                <TableCell sx={{ fontFamily: "monospace" }}>{c.nsid}</TableCell>
+                <TableCell sx={{ fontFamily: "monospace" }}>
+                  <Link
+                    component={RouterLink}
+                    to={`/admin/collections/${encodeURIComponent(c.nsid)}`}
+                    underline="hover"
+                  >
+                    {c.nsid}
+                  </Link>
+                </TableCell>
                 <TableCell sx={{ fontFamily: "monospace" }}>{c.table}</TableCell>
                 <TableCell align="right">{c.count.toLocaleString()}</TableCell>
                 <TableCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
