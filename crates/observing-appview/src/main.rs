@@ -215,6 +215,10 @@ async fn main() {
             "/admin/collections/{nsid}/records",
             get(routes::admin::list_records),
         )
+        .route(
+            "/admin/collections/{nsid}/record",
+            get(routes::admin::get_record),
+        )
         .route("/admin/tables", get(routes::admin::list_tables))
         .route(
             "/admin/tables/{name}/rows",

@@ -23,8 +23,10 @@ import {
   type CollectionDetail,
   type RecordSummary,
   getCollection,
+  getRecord,
   listRecords,
 } from "../../services/admin";
+import { RowDetailDialog } from "./RowDetailDialog";
 
 const PAGE_SIZE = 50;
 
@@ -41,6 +43,23 @@ export function CollectionDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<number | null>(null);
+  const [detailUri, setDetailUri] = useState<string | null>(null);
+  const [detailData, setDetailData] = useState<unknown>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+
+  const openDetail = (uri: string) => {
+    setDetailUri(uri);
+    setDetailData(null);
+    setDetailError(null);
+    setDetailLoading(true);
+    getRecord(nsid, uri)
+      .then(setDetailData)
+      .catch((e: unknown) => {
+        setDetailError(e instanceof Error ? e.message : "Failed to load record");
+      })
+      .finally(() => setDetailLoading(false));
+  };
 
   useEffect(() => {
     if (!nsid) return;
@@ -158,7 +177,12 @@ export function CollectionDetailPage() {
           </TableHead>
           <TableBody>
             {records.map((r) => (
-              <TableRow key={r.uri}>
+              <TableRow
+                key={r.uri}
+                hover
+                sx={{ cursor: "pointer" }}
+                onClick={() => openDetail(r.uri)}
+              >
                 <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{r.did}</TableCell>
                 <TableCell sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}>{r.rkey}</TableCell>
                 <TableCell sx={{ fontFamily: "monospace", fontSize: "0.75rem" }}>{r.uri}</TableCell>
@@ -199,6 +223,16 @@ export function CollectionDetailPage() {
           </Button>
         </Stack>
       </Box>
+
+      {detailUri && (
+        <RowDetailDialog
+          title={detailUri}
+          data={detailData}
+          loading={detailLoading}
+          error={detailError}
+          onClose={() => setDetailUri(null)}
+        />
+      )}
     </Container>
   );
 }

@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { AdminError, type ListTableRowsResponse, listTableRows } from "../../services/admin";
+import { RowDetailDialog } from "./RowDetailDialog";
 
 const PAGE_SIZE = 50;
 
@@ -31,6 +32,7 @@ export function TableDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<number | null>(null);
+  const [detailRow, setDetailRow] = useState<Record<string, unknown> | null>(null);
 
   useEffect(() => {
     if (!name) return;
@@ -96,7 +98,7 @@ export function TableDetailPage() {
           </TableHead>
           <TableBody>
             {data.rows.map((row, i) => (
-              <TableRow key={i}>
+              <TableRow key={i} hover sx={{ cursor: "pointer" }} onClick={() => setDetailRow(row)}>
                 {data.columns.map((col) => (
                   <TableCell
                     key={col}
@@ -141,6 +143,14 @@ export function TableDetailPage() {
           </Button>
         </Stack>
       </Box>
+
+      {detailRow && (
+        <RowDetailDialog
+          title={String(detailRow[data.columns[0] ?? ""] ?? "Row detail")}
+          data={detailRow}
+          onClose={() => setDetailRow(null)}
+        />
+      )}
     </Container>
   );
 }

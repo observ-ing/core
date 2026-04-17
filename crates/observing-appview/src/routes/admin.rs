@@ -213,6 +213,27 @@ pub async fn list_table_rows(
 }
 
 #[derive(Deserialize)]
+pub struct GetRecordQuery {
+    pub uri: String,
+}
+
+/// `GET /admin/collections/{nsid}/record?uri=...` — full row JSON for one record.
+pub async fn get_record(
+    _auth: AdminAuth,
+    State(state): State<AppState>,
+    Path(nsid): Path<String>,
+    Query(params): Query<GetRecordQuery>,
+) -> Result<Json<serde_json::Value>, AppError> {
+    if db_admin::lookup(&nsid).is_none() {
+        return Err(AppError::NotFound(format!("Unknown NSID: {nsid}")));
+    }
+    let row = db_admin::get_record(&state.pool, &nsid, &params.uri)
+        .await?
+        .ok_or_else(|| AppError::NotFound(format!("Record not found: {}", params.uri)))?;
+    Ok(Json(row))
+}
+
+#[derive(Deserialize)]
 pub struct DeleteCollectionQuery {
     /// Must match the NSID in the path. Prevents accidental deletion.
     pub confirm: String,

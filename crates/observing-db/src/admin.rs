@@ -202,6 +202,68 @@ pub async fn list_records(
     Ok(summaries)
 }
 
+/// Full-detail SELECT column list for a lexicon table, with PostGIS geometry
+/// columns cast to WKT so `row_to_json` can serialize them.
+fn record_detail_columns(table: &str) -> &'static str {
+    match table {
+        "occurrences" => {
+            "uri, cid, did, scientific_name, event_date, \
+             ST_AsText(location) AS location, coordinate_uncertainty_meters, \
+             continent, country, country_code, state_province, county, \
+             municipality, locality, water_body, verbatim_locality, \
+             occurrence_remarks, associated_media, recorded_by, taxon_id, \
+             taxon_rank, vernacular_name, kingdom, phylum, class, \"order\", \
+             family, genus, created_at, indexed_at"
+        }
+        "identifications" => {
+            "uri, cid, did, subject_uri, subject_cid, subject_index, \
+             scientific_name, taxon_rank, identification_qualifier, taxon_id, \
+             identification_verification_status, type_status, is_agreement, \
+             date_identified, indexed_at, vernacular_name, kingdom, phylum, \
+             class, \"order\", family, genus"
+        }
+        "comments" => {
+            "uri, cid, did, subject_uri, subject_cid, body, reply_to_uri, \
+             reply_to_cid, created_at, indexed_at"
+        }
+        "likes" => "uri, cid, did, subject_uri, subject_cid, created_at, indexed_at",
+        "interactions" => {
+            "uri, cid, did, subject_a_occurrence_uri, subject_a_occurrence_cid, \
+             subject_a_subject_index, subject_a_taxon_name, subject_a_kingdom, \
+             subject_b_occurrence_uri, subject_b_occurrence_cid, \
+             subject_b_subject_index, subject_b_taxon_name, subject_b_kingdom, \
+             interaction_type, direction, comment, created_at, indexed_at"
+        }
+        _ => "*",
+    }
+}
+
+/// Fetch the full row for a single lexicon record, returned as a JSON object.
+///
+/// The URI must match the NSID's `at://<did>/<nsid>/<rkey>` pattern to prevent
+/// reading rows of a different collection through an adjacent NSID's detail
+/// endpoint.
+pub async fn get_record(
+    pool: &PgPool,
+    nsid: &str,
+    uri: &str,
+) -> Result<Option<serde_json::Value>, sqlx::Error> {
+    let Some(meta) = lookup(nsid) else {
+        return Ok(None);
+    };
+    if !uri.starts_with("at://") || !uri.contains(&format!("/{}/", nsid)) {
+        return Ok(None);
+    }
+    let cols = record_detail_columns(meta.table);
+    let sql = format!(
+        "SELECT row_to_json(t) FROM (SELECT {cols} FROM {table} WHERE uri = $1) t",
+        table = meta.table,
+    );
+    let row: Option<(serde_json::Value,)> =
+        sqlx::query_as(&sql).bind(uri).fetch_optional(pool).await?;
+    Ok(row.map(|(v,)| v))
+}
+
 /// Metadata for a non-lexicon table the admin interface can browse read-only.
 ///
 /// Unlike `KnownCollection` (lexicon-scoped records keyed by NSID), these are

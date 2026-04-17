@@ -126,6 +126,11 @@ export function listTableRows(
   return adminFetch(`/admin/tables/${encodeURIComponent(name)}/rows${qs ? `?${qs}` : ""}`);
 }
 
+export function getRecord(nsid: string, uri: string): Promise<Record<string, unknown>> {
+  const params = new URLSearchParams({ uri });
+  return adminFetch(`/admin/collections/${encodeURIComponent(nsid)}/record?${params.toString()}`);
+}
+
 export function deleteCollection(nsid: string, opts: { dryRun: boolean }): Promise<DeleteResponse> {
   const params = new URLSearchParams({
     confirm: nsid,
