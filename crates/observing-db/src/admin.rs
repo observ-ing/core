@@ -205,77 +205,94 @@ pub async fn list_records(
 /// Metadata for a non-lexicon table the admin interface can browse read-only.
 ///
 /// Unlike `KnownCollection` (lexicon-scoped records keyed by NSID), these are
-/// internal tables: OAuth/session stores are intentionally excluded, and
-/// `occurrence_private_data.exact_location` is excluded from `columns` because
-/// surfacing exact coords would defeat the whole point of that table.
+/// internal tables. OAuth/session stores are intentionally excluded.
 pub struct KnownTable {
     pub name: &'static str,
-    /// Explicit allowlist of columns to return. Never `SELECT *` — some columns
-    /// are privacy-sensitive (e.g. `exact_location`) and must not leak.
-    pub columns: &'static [&'static str],
+    /// Explicit allowlist of columns. Never `SELECT *`. Each entry is a
+    /// `(select_expr, display_name)` pair — the expression is used in the
+    /// SELECT clause (aliased to `display_name`) and the name is used as the
+    /// JSON key and column header. Expressions are constants from this source
+    /// file, never user input.
+    pub columns: &'static [(&'static str, &'static str)],
     pub order_by: &'static str,
 }
 
 pub const KNOWN_TABLES: &[KnownTable] = &[
     KnownTable {
         name: "ingester_state",
-        columns: &["key", "value", "updated_at"],
+        columns: &[
+            ("key", "key"),
+            ("value", "value"),
+            ("updated_at", "updated_at"),
+        ],
         order_by: "updated_at DESC NULLS LAST",
     },
     KnownTable {
         name: "occurrence_observers",
-        columns: &["occurrence_uri", "observer_did", "role", "added_at"],
+        columns: &[
+            ("occurrence_uri", "occurrence_uri"),
+            ("observer_did", "observer_did"),
+            ("role", "role"),
+            ("added_at", "added_at"),
+        ],
         order_by: "added_at DESC NULLS LAST",
     },
     KnownTable {
         name: "occurrence_private_data",
         columns: &[
-            "uri",
-            "geoprivacy",
-            "effective_geoprivacy",
-            "created_at",
-            "updated_at",
+            ("uri", "uri"),
+            ("ST_AsText(exact_location)", "exact_location"),
+            ("geoprivacy", "geoprivacy"),
+            ("effective_geoprivacy", "effective_geoprivacy"),
+            ("created_at", "created_at"),
+            ("updated_at", "updated_at"),
         ],
         order_by: "updated_at DESC NULLS LAST",
     },
     KnownTable {
         name: "sensitive_species",
         columns: &[
-            "scientific_name",
-            "kingdom",
-            "geoprivacy",
-            "reason",
-            "source",
+            ("scientific_name", "scientific_name"),
+            ("kingdom", "kingdom"),
+            ("geoprivacy", "geoprivacy"),
+            ("reason", "reason"),
+            ("source", "source"),
         ],
         order_by: "scientific_name",
     },
     KnownTable {
         name: "notifications",
         columns: &[
-            "id",
-            "recipient_did",
-            "actor_did",
-            "kind",
-            "subject_uri",
-            "reference_uri",
-            "read",
-            "created_at",
+            ("id", "id"),
+            ("recipient_did", "recipient_did"),
+            ("actor_did", "actor_did"),
+            ("kind", "kind"),
+            ("subject_uri", "subject_uri"),
+            ("reference_uri", "reference_uri"),
+            ("read", "read"),
+            ("created_at", "created_at"),
         ],
         order_by: "created_at DESC",
     },
     KnownTable {
         name: "community_ids",
         columns: &[
-            "occurrence_uri",
-            "subject_index",
-            "scientific_name",
-            "kingdom",
-            "id_count",
-            "agreement_count",
+            ("occurrence_uri", "occurrence_uri"),
+            ("subject_index", "subject_index"),
+            ("scientific_name", "scientific_name"),
+            ("kingdom", "kingdom"),
+            ("id_count", "id_count"),
+            ("agreement_count", "agreement_count"),
         ],
         order_by: "occurrence_uri",
     },
 ];
+
+impl KnownTable {
+    pub fn column_names(&self) -> Vec<&'static str> {
+        self.columns.iter().map(|(_, name)| *name).collect()
+    }
+}
 
 pub fn lookup_table(name: &str) -> Option<&'static KnownTable> {
     KNOWN_TABLES.iter().find(|t| t.name == name)
@@ -304,7 +321,12 @@ pub async fn list_table_rows(
     let Some(meta) = lookup_table(name) else {
         return Ok(Vec::new());
     };
-    let cols = meta.columns.join(", ");
+    let cols = meta
+        .columns
+        .iter()
+        .map(|(expr, name)| format!("{expr} AS {name}"))
+        .collect::<Vec<_>>()
+        .join(", ");
     let sql = format!(
         "SELECT row_to_json(t) AS row FROM (SELECT {} FROM {} ORDER BY {} LIMIT $1 OFFSET $2) t",
         cols, meta.name, meta.order_by,
