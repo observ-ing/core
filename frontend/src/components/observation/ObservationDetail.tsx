@@ -17,8 +17,11 @@ import {
   ListItemAvatar,
   ListItemText,
   Tooltip,
+  Modal,
+  Fade,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import CloseIcon from "@mui/icons-material/Close";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -58,6 +61,7 @@ export function ObservationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -327,19 +331,30 @@ export function ObservationDetail() {
         {/* Images */}
         {observation.images.length > 0 && (
           <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
-            <Box
-              component="img"
-              src={getImageUrl(observation.images[activeImageIndex] ?? "")}
-              alt={species}
+            <ButtonBase
+              onClick={() => setLightboxOpen(true)}
+              aria-label="Enlarge photo"
               sx={{
-                width: "100%",
-                maxHeight: 400,
-                objectFit: "contain",
                 display: "block",
+                width: "100%",
                 borderRadius: { xs: 0, sm: 2 },
-                boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                overflow: "hidden",
+                cursor: "zoom-in",
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                alt={species}
+                sx={{
+                  width: "100%",
+                  maxHeight: 400,
+                  objectFit: "contain",
+                  display: "block",
+                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                }}
+              />
+            </ButtonBase>
             {observation.images.length > 1 && (
               <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
                 {observation.images.map((img, idx) => (
@@ -536,6 +551,66 @@ export function ObservationDetail() {
           </Box>
         </Box>
       </Container>
+
+      {observation.images.length > 0 && (
+        <Modal
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          closeAfterTransition
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            bgcolor: "rgba(0, 0, 0, 0.9)",
+          }}
+        >
+          <Fade in={lightboxOpen}>
+            <Box
+              onClick={() => setLightboxOpen(false)}
+              sx={{
+                outline: "none",
+                width: "100%",
+                height: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                p: { xs: 2, sm: 4 },
+                cursor: "zoom-out",
+              }}
+            >
+              <IconButton
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setLightboxOpen(false);
+                }}
+                aria-label="Close"
+                sx={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  color: "common.white",
+                  bgcolor: "rgba(0, 0, 0, 0.4)",
+                  "&:hover": { bgcolor: "rgba(0, 0, 0, 0.6)" },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+              <Box
+                component="img"
+                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                alt={species}
+                onClick={(e) => e.stopPropagation()}
+                sx={{
+                  maxWidth: "100%",
+                  maxHeight: "100%",
+                  objectFit: "contain",
+                  cursor: "default",
+                }}
+              />
+            </Box>
+          </Fade>
+        </Modal>
+      )}
     </Box>
   );
 }
