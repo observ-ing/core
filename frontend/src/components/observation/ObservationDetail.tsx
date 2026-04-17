@@ -216,7 +216,12 @@ export function ObservationDetail() {
           <IconButton onClick={handleBack} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="subtitle1" fontWeight={500}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 500,
+            }}
+          >
             Observation
           </Typography>
           <Box sx={{ ml: "auto" }}>
@@ -266,14 +271,26 @@ export function ObservationDetail() {
             </Typography>
           )}
           {taxonomy?.vernacularName && (
-            <Typography variant="body1" color="text.secondary">
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {taxonomy.vernacularName}
             </Typography>
           )}
         </Box>
 
         {/* Like button */}
-        <Stack direction="row" alignItems="center" sx={{ px: 3, pb: 1 }}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            px: 3,
+            pb: 1,
+          }}
+        >
           <Tooltip title={!user ? "Log in to like" : ""}>
             <span>
               <IconButton
@@ -295,7 +312,13 @@ export function ObservationDetail() {
             </span>
           </Tooltip>
           {likeCount > 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ ml: -0.25 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                ml: -0.25,
+              }}
+            >
               {likeCount}
             </Typography>
           )}
@@ -367,9 +390,11 @@ export function ObservationDetail() {
             </ListItemAvatar>
             <ListItemText
               primary={displayName}
-              primaryTypographyProps={{ fontWeight: 600 }}
               secondary={handle || undefined}
-              secondaryTypographyProps={{ color: "text.disabled" }}
+              slotProps={{
+                primary: { sx: { fontWeight: 600 } },
+                secondary: { sx: { color: "text.disabled" } },
+              }}
             />
           </ListItem>
 
@@ -381,9 +406,11 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Observed"
-                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
                 secondary={formatDate(observation.eventDate)}
-                secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
+                slotProps={{
+                  primary: { variant: "caption", color: "text.secondary" },
+                  secondary: { variant: "body1", color: "text.primary" },
+                }}
               />
             </ListItem>
 
@@ -393,23 +420,31 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Coordinates"
-                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
                 secondary={
                   <>
                     {observation.location.latitude.toFixed(5)},{" "}
                     {observation.location.longitude.toFixed(5)}
                     {observation.location.uncertaintyMeters && (
-                      <Typography component="span" variant="body2" color="text.disabled">
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        sx={{
+                          color: "text.disabled",
+                        }}
+                      >
                         {" "}
                         (±{observation.location.uncertaintyMeters}m)
                       </Typography>
                     )}
                   </>
                 }
-                secondaryTypographyProps={{
-                  variant: "body1",
-                  color: "text.primary",
-                  component: "div",
+                slotProps={{
+                  primary: { variant: "caption", color: "text.secondary" },
+                  secondary: {
+                    variant: "body1",
+                    color: "text.primary",
+                    component: "div",
+                  },
                 }}
               />
             </ListItem>
@@ -465,8 +500,11 @@ export function ObservationDetail() {
                   ) : (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 2, textAlign: "center" }}
+                      sx={{
+                        color: "text.secondary",
+                        mt: 2,
+                        textAlign: "center",
+                      }}
                     >
                       Log in to add an identification
                     </Typography>

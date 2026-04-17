@@ -116,7 +116,13 @@ export function ExploreFilterPanel() {
           "&:hover": { bgcolor: "action.hover" },
         }}
       >
-        <Stack direction="row" spacing={1} alignItems="center">
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+          }}
+        >
           <FilterListIcon color="action" />
           <Typography variant="subtitle2">Filters</Typography>
           {activeFilterCount > 0 && (
@@ -130,7 +136,6 @@ export function ExploreFilterPanel() {
         </Stack>
         <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
       </Box>
-
       {/* Collapsible filter content */}
       <Collapse in={isExpanded}>
         <Divider />
@@ -184,11 +189,21 @@ export function ExploreFilterPanel() {
                     />
                   )}
                   <Box>
-                    <Typography variant="body2" fontWeight={500}>
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontWeight: 500,
+                      }}
+                    >
                       {option.scientificName}
                     </Typography>
                     {option.commonName && (
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         {option.commonName}
                       </Typography>
                     )}
@@ -231,8 +246,20 @@ export function ExploreFilterPanel() {
 
           {/* Location Filter */}
           <Box sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-              <Typography variant="body2" color="text.secondary">
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                mb: 1,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Location
               </Typography>
               {useLocation && (
@@ -279,7 +306,13 @@ export function ExploreFilterPanel() {
           </Box>
 
           {/* Action Buttons */}
-          <Stack direction="row" spacing={1} justifyContent="flex-end">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              justifyContent: "flex-end",
+            }}
+          >
             <Button
               variant="text"
               color="inherit"

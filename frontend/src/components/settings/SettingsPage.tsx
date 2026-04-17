@@ -16,15 +16,33 @@ export function SettingsPage() {
   return (
     <Box sx={{ flex: 1, overflow: "auto", height: "100%" }}>
       <Container maxWidth="sm" sx={{ py: 3 }}>
-        <Typography variant="h5" fontWeight={700} sx={{ mb: 3 }}>
+        <Typography
+          variant="h5"
+          sx={{
+            fontWeight: 700,
+            mb: 3,
+          }}
+        >
           Settings
         </Typography>
 
         <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" fontWeight={600} sx={{ mb: 0.5 }}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 600,
+              mb: 0.5,
+            }}
+          >
             Appearance
           </Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+            }}
+          >
             Choose how Observ.ing looks to you. Select a single theme, or sync with your system
             settings.
           </Typography>

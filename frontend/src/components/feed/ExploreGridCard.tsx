@@ -45,7 +45,12 @@ export const ExploreGridCard = memo(function ExploreGridCard({
               justifyContent: "center",
             }}
           >
-            <Typography color="text.disabled" variant="body2">
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.disabled",
+              }}
+            >
               No image
             </Typography>
           </Box>
@@ -64,7 +69,13 @@ export const ExploreGridCard = memo(function ExploreGridCard({
           >
             {species || "Unknown species"}
           </Typography>
-          <Typography variant="caption" color="text.disabled" noWrap>
+          <Typography
+            variant="caption"
+            noWrap
+            sx={{
+              color: "text.disabled",
+            }}
+          >
             <RelativeTime date={new Date(observation.createdAt)} />
           </Typography>
         </CardContent>

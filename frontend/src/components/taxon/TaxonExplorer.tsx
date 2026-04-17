@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Container, Typography, Button, Drawer } from "@mui/material";
-import type { TreeViewBaseItem } from "@mui/x-tree-view";
+import type { TreeViewDefaultItemModelProperties } from "@mui/x-tree-view";
 import { fetchTaxon, fetchTaxonObservations, fetchTaxonChildren } from "../../services/api";
 import type { TaxonDetail, Occurrence, TaxaResult } from "../../services/types";
 import { slugToName, nameToSlug } from "../../lib/taxonSlug";
@@ -27,7 +27,7 @@ function nodeId(kingdom: string, name: string): string {
   return `${kingdom}/${name}`;
 }
 
-export interface TaxonTreeItem extends TreeViewBaseItem {
+export interface TaxonTreeItem extends TreeViewDefaultItemModelProperties {
   rank: string;
   children?: TaxonTreeItem[];
 }

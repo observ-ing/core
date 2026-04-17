@@ -106,7 +106,12 @@ export function NotificationsPage() {
             mb: 2,
           }}
         >
-          <Typography variant="h5" fontWeight={700}>
+          <Typography
+            variant="h5"
+            sx={{
+              fontWeight: 700,
+            }}
+          >
             Notifications
           </Typography>
           {hasUnread && (
@@ -117,7 +122,13 @@ export function NotificationsPage() {
         </Box>
 
         {!isLoading && notifications.length === 0 && (
-          <Typography color="text.secondary" sx={{ textAlign: "center", mt: 4 }}>
+          <Typography
+            sx={{
+              color: "text.secondary",
+              textAlign: "center",
+              mt: 4,
+            }}
+          >
             No notifications yet
           </Typography>
         )}
@@ -143,7 +154,13 @@ export function NotificationsPage() {
                 <ListItemText
                   primary={
                     <>
-                      <Typography component="span" variant="body2" fontWeight={600}>
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        sx={{
+                          fontWeight: 600,
+                        }}
+                      >
                         @{n.actor?.handle || n.actorDid}
                       </Typography>{" "}
                       <Typography component="span" variant="body2">

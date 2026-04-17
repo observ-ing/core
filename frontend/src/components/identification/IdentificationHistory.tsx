@@ -88,7 +88,12 @@ export function IdentificationHistory({
           borderColor: "divider",
         }}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           No identifications yet. Be the first to suggest an ID!
         </Typography>
         {footer}
@@ -107,9 +112,21 @@ export function IdentificationHistory({
         borderColor: "divider",
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
         <HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           Identification History
         </Typography>
         <Chip
@@ -139,7 +156,13 @@ export function IdentificationHistory({
                 "&:hover": { bgcolor: "action.hover" },
               }}
             >
-              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{
+                  alignItems: "flex-start",
+                }}
+              >
                 <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
                   <Avatar
                     {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
@@ -149,16 +172,34 @@ export function IdentificationHistory({
                   </Avatar>
                 </RouterLink>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                    }}
+                  >
                     <RouterLink
                       to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
                       style={{ textDecoration: "none" }}
                     >
-                      <Typography variant="body2" fontWeight="medium" color="text.primary">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: "medium",
+                          color: "text.primary",
+                        }}
+                      >
                         {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
                       </Typography>
                     </RouterLink>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       <RelativeTime date={new Date(id.date_identified)} withAgo />
                     </Typography>
                     {id.uri === observerFirstIdUri && (

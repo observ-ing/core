@@ -99,9 +99,21 @@ export function IdentificationPanel({
   return (
     <Box sx={{ mt: 2 }}>
       <Divider sx={{ mb: 2 }} />
-      <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        sx={{
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
         <Box>
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Community ID
           </Typography>
           <Typography
@@ -114,8 +126,14 @@ export function IdentificationPanel({
           </Typography>
         </Box>
       </Stack>
-
-      <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+      <Stack
+        direction="row"
+        spacing={1}
+        useFlexGap
+        sx={{
+          flexWrap: "wrap",
+        }}
+      >
         <Button
           variant="outlined"
           color="primary"
@@ -137,10 +155,15 @@ export function IdentificationPanel({
           Suggest Different ID
         </Button>
       </Stack>
-
       {showSuggestForm && (
         <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          <Stack direction="row" spacing={1} alignItems="flex-start">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "flex-start",
+            }}
+          >
             <Box sx={{ flex: 1 }}>
               <TaxaAutocomplete
                 value={taxonName}
@@ -175,7 +198,14 @@ export function IdentificationPanel({
             )}
           </Stack>
 
-          <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              justifyContent: "flex-end",
+              mt: 2,
+            }}
+          >
             <Button
               color="inherit"
               size="small"

@@ -44,10 +44,24 @@ export function NotFound() {
       >
         404
       </Typography>
-      <Typography variant="h6" component="h2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="h6"
+        component="h2"
+        sx={{
+          color: "text.secondary",
+          mb: 1,
+        }}
+      >
         Page not found
       </Typography>
-      <Typography variant="body2" color="text.disabled" sx={{ mb: 4, maxWidth: 300 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.disabled",
+          mb: 4,
+          maxWidth: 300,
+        }}
+      >
         The page you're looking for doesn't exist or has been moved.
       </Typography>
       <Stack direction="row" spacing={2}>
