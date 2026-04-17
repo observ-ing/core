@@ -148,7 +148,7 @@ pub async fn list_records(
 #[derive(Serialize)]
 pub struct TableSummary {
     pub name: &'static str,
-    pub columns: &'static [&'static str],
+    pub columns: Vec<&'static str>,
     pub count: i64,
 }
 
@@ -167,7 +167,7 @@ pub async fn list_tables(
         let count = db_admin::table_count(&state.pool, meta.name).await?;
         out.push(TableSummary {
             name: meta.name,
-            columns: meta.columns,
+            columns: meta.column_names(),
             count,
         });
     }
@@ -185,7 +185,7 @@ pub struct ListTableRowsQuery {
 #[derive(Serialize)]
 pub struct ListTableRowsResponse {
     pub name: &'static str,
-    pub columns: &'static [&'static str],
+    pub columns: Vec<&'static str>,
     pub rows: Vec<serde_json::Value>,
     pub limit: i64,
     pub offset: i64,
@@ -205,7 +205,7 @@ pub async fn list_table_rows(
     let rows = db_admin::list_table_rows(&state.pool, &name, limit, offset).await?;
     Ok(Json(ListTableRowsResponse {
         name: meta.name,
-        columns: meta.columns,
+        columns: meta.column_names(),
         rows,
         limit,
         offset,
