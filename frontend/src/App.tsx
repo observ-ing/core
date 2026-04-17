@@ -24,6 +24,7 @@ import { LexiconView } from "./components/lexicon/LexiconView";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { AdminPage } from "./components/admin/AdminPage";
+import { CollectionDetailPage } from "./components/admin/CollectionDetailPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -122,6 +123,7 @@ function AppContent() {
           <Route path="/lexicons" element={<LexiconView />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
+          <Route path="/admin/collections/:nsid" element={<CollectionDetailPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
