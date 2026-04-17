@@ -2845,6 +2845,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "at-uri-parser",
+ "atproto-blob-resolver",
  "atproto-identity",
  "atrium-api",
  "atrium-common",
@@ -2854,9 +2855,12 @@ dependencies = [
  "axum-extra",
  "base64",
  "chrono",
+ "file-blob-cache",
  "futures",
+ "gbif-api",
  "hickory-resolver",
  "jacquard-common",
+ "moka",
  "nominatim-client",
  "observing-db",
  "observing-lexicons",
@@ -2871,6 +2875,7 @@ dependencies = [
  "tracing-subscriber",
  "ts-rs",
  "urlencoding",
+ "wikidata-client",
 ]
 
 [[package]]
@@ -2922,26 +2927,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "observing-media-proxy"
-version = "0.1.0"
-dependencies = [
- "atproto-blob-resolver",
- "axum",
- "chrono",
- "file-blob-cache",
- "serde",
- "serde_json",
- "tempfile",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-stackdriver",
- "tracing-subscriber",
- "url",
-]
-
-[[package]]
 name = "observing-species-id"
 version = "0.1.0"
 dependencies = [
@@ -2960,27 +2945,6 @@ dependencies = [
  "tracing",
  "tracing-stackdriver",
  "tracing-subscriber",
-]
-
-[[package]]
-name = "observing-taxonomy"
-version = "0.1.0"
-dependencies = [
- "axum",
- "chrono",
- "futures",
- "gbif-api",
- "moka",
- "reqwest 0.13.2",
- "serde",
- "serde_json",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-stackdriver",
- "tracing-subscriber",
- "wikidata-client",
 ]
 
 [[package]]

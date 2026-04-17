@@ -1,24 +1,37 @@
-use reqwest::Client;
+//! Public response types for the taxonomy API and a thin in-process
+//! [`TaxonomyClient`] facade over [`crate::taxonomy::GbifClient`].
+//!
+//! Response shapes (`TaxonResult`, `TaxonDetail`, `ValidateResponse`, …) are
+//! retained here as the canonical TS-bound types so generated bindings stay
+//! stable across the service collapse.
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::time::Duration;
-use tracing::error;
 use ts_rs::TS;
 
-/// Error from the taxonomy service (timeout, connection failure, 5xx, etc.)
+use crate::taxonomy::GbifClient;
+
+/// Error from the taxonomy resolver. Used to keep the `?`/`From` plumbing in
+/// route handlers identical to the previous HTTP-client-era code.
 #[derive(Debug)]
 pub struct TaxonomyClientError(pub String);
 
 impl fmt::Display for TaxonomyClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "taxonomy service error: {}", self.0)
+        write!(f, "taxonomy error: {}", self.0)
     }
 }
 
-/// HTTP client for the taxonomy Rust service
+impl From<gbif_api::GbifError> for TaxonomyClientError {
+    fn from(e: gbif_api::GbifError) -> Self {
+        Self(e.to_string())
+    }
+}
+
+/// In-process taxonomy facade. Wraps [`GbifClient`] so routes can stay
+/// agnostic to whether resolution happens locally or over HTTP.
 pub struct TaxonomyClient {
-    client: Client,
-    base_url: String,
+    inner: GbifClient,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -200,7 +213,7 @@ pub struct TaxonFields {
 }
 
 impl TaxonFields {
-    /// Validate a scientific name via the taxonomy service and extract the
+    /// Validate a scientific name via the taxonomy resolver and extract the
     /// classification fields from the response.
     ///
     /// `rank_override` is an optional caller-supplied rank (e.g. from user
@@ -236,135 +249,62 @@ impl TaxonFields {
 }
 
 impl TaxonomyClient {
-    pub fn new(base_url: &str) -> Self {
-        let client = Client::builder()
-            .timeout(Duration::from_secs(10))
-            .build()
-            .expect("Failed to create HTTP client");
-
+    /// Construct a new client backed by an in-memory GBIF + Wikidata stack.
+    pub fn new() -> Self {
         Self {
-            client,
-            base_url: base_url.to_string(),
+            inner: GbifClient::new(),
         }
     }
 
-    /// Search taxa by name
+    /// Snapshot of the inner GBIF cache (entries / hits / misses).
+    #[allow(dead_code)] // exposed for future health/diagnostics endpoint
+    pub fn cache_stats(&self) -> crate::taxonomy::CacheStats {
+        self.inner.cache_stats()
+    }
+
+    /// Search taxa by name. Returns `None` only on internal failure; the
+    /// inner client logs and returns an empty list for empty/erroring queries
+    /// so most callers can use `.unwrap_or_default()`.
     pub async fn search(&self, query: &str, limit: Option<u32>) -> Option<Vec<TaxonResult>> {
-        let limit = limit.unwrap_or(10);
-        let url = format!("{}/search?q={}&limit={}", self.base_url, query, limit);
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => {
-                // The taxonomy service returns a raw array, not wrapped in { results: [...] }
-                resp.json::<Vec<TaxonResult>>().await.ok()
-            }
-            Ok(resp) => {
-                error!(status = %resp.status(), "Taxonomy search failed");
-                None
-            }
-            Err(e) => {
-                error!(error = %e, "Taxonomy search request failed");
-                None
-            }
-        }
+        Some(self.inner.search(query, limit.unwrap_or(10)).await)
     }
 
-    /// Validate a taxon name
+    /// Validate a taxon name. Returns `None` if the lookup itself failed —
+    /// preserved for parity with the prior HTTP client.
     pub async fn validate(&self, name: &str) -> Option<ValidateResponse> {
-        let url = format!("{}/validate?name={}", self.base_url, name);
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => resp.json().await.ok(),
-            _ => None,
-        }
+        Some(self.inner.validate(name).await)
     }
 
-    /// Get taxon by GBIF ID or name
+    /// Get taxon detail by GBIF ID (`gbif:NNN` or bare numeric).
     pub async fn get_by_id(&self, id: &str) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
-        let url = format!("{}/taxon/{}", self.base_url, id);
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => Ok(resp
-                .json()
-                .await
-                .map_err(|e| TaxonomyClientError(e.to_string()))?),
-            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
-            Ok(resp) => {
-                error!(status = %resp.status(), "Taxonomy get_by_id failed");
-                Err(TaxonomyClientError(format!(
-                    "upstream returned {}",
-                    resp.status()
-                )))
-            }
-            Err(e) => {
-                error!(error = %e, "Taxonomy get_by_id request failed");
-                Err(TaxonomyClientError(e.to_string()))
-            }
-        }
+        Ok(self.inner.get_by_id(id).await?)
     }
 
-    /// Get taxon by name with optional kingdom.
+    /// Get taxon detail by scientific name with optional kingdom hint.
     pub async fn get_by_name(
         &self,
         name: &str,
         kingdom: Option<&str>,
     ) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
-        let encoded_name = urlencoding::encode(name);
-        let mut url = format!("{}/taxon/{}", self.base_url, encoded_name);
-        if let Some(k) = kingdom {
-            url.push_str(&format!("?kingdom={}", k));
-        }
-
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => Ok(resp
-                .json()
-                .await
-                .map_err(|e| TaxonomyClientError(e.to_string()))?),
-            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
-            Ok(resp) => {
-                error!(status = %resp.status(), %name, "Taxonomy get_by_name failed");
-                Err(TaxonomyClientError(format!(
-                    "upstream returned {}",
-                    resp.status()
-                )))
-            }
-            Err(e) => {
-                error!(error = %e, %name, "Taxonomy get_by_name request failed");
-                Err(TaxonomyClientError(e.to_string()))
-            }
-        }
+        Ok(self.inner.get_by_name(name, kingdom).await?)
     }
 
-    /// Get children of a taxon by name with optional kingdom.
+    /// Get children of a taxon by scientific name with optional kingdom hint.
+    /// Returns `Ok(None)` only on lookup failure; an empty parent yields
+    /// `Ok(Some(vec![]))`.
     pub async fn get_children(
         &self,
         name: &str,
         kingdom: Option<&str>,
     ) -> Result<Option<Vec<TaxonResult>>, TaxonomyClientError> {
-        let encoded_name = urlencoding::encode(name);
-        let mut url = format!("{}/taxon/{}/children", self.base_url, encoded_name);
-        if let Some(k) = kingdom {
-            url.push_str(&format!("?kingdom={}", k));
-        }
+        Ok(Some(
+            self.inner.get_children_by_name(name, kingdom, 20).await?,
+        ))
+    }
+}
 
-        match self.client.get(&url).send().await {
-            Ok(resp) if resp.status().is_success() => Ok(Some(
-                resp.json()
-                    .await
-                    .map_err(|e| TaxonomyClientError(e.to_string()))?,
-            )),
-            Ok(resp) if resp.status() == reqwest::StatusCode::NOT_FOUND => Ok(None),
-            Ok(resp) => {
-                error!(status = %resp.status(), %name, "Taxonomy get_children failed");
-                Err(TaxonomyClientError(format!(
-                    "upstream returned {}",
-                    resp.status()
-                )))
-            }
-            Err(e) => {
-                error!(error = %e, %name, "Taxonomy get_children request failed");
-                Err(TaxonomyClientError(e.to_string()))
-            }
-        }
+impl Default for TaxonomyClient {
+    fn default() -> Self {
+        Self::new()
     }
 }

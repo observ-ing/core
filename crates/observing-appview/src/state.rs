@@ -2,6 +2,7 @@ use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
+use crate::media::MediaCache;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
 use crate::species_id_client::SpeciesIdClient;
@@ -38,7 +39,9 @@ pub struct AppState {
     pub taxonomy: Arc<TaxonomyClient>,
     pub species_id: Option<Arc<SpeciesIdClient>>,
     pub oauth_client: Arc<OAuthClientType>,
-    pub media_proxy_url: String,
+    /// In-process AT Protocol blob cache + PDS fetcher (formerly the
+    /// `observing-media-proxy` service).
+    pub media: Arc<MediaCache>,
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
