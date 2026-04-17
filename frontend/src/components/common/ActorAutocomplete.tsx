@@ -66,6 +66,7 @@ export function ActorAutocomplete({
             label={label}
             placeholder={placeholder}
             slotProps={{
+              ...params.slotProps,
               input: {
                 ...(params.slotProps.input || {}),
                 endAdornment: (

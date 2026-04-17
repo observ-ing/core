@@ -75,6 +75,7 @@ export function TaxaAutocomplete({
               placeholder={placeholder}
               margin={margin}
               slotProps={{
+                ...params.slotProps,
                 input: {
                   ...(params.slotProps.input || {}),
                   endAdornment: (

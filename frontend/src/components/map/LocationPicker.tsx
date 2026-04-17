@@ -275,6 +275,7 @@ export function LocationPicker({
               size="small"
               placeholder="Search for a place..."
               slotProps={{
+                ...params.slotProps,
                 input: {
                   ...params.slotProps.input,
                   startAdornment: (
