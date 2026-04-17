@@ -57,21 +57,20 @@ export function ActorAutocomplete({
       filterOptions={(x) => x}
       size="small"
       renderInput={(params) => {
-        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-        const p = params as object;
+        const { InputProps, ...rest } = params;
         return (
           <TextField
-            {...p}
+            {...rest}
             fullWidth
             label={label}
             placeholder={placeholder}
             slotProps={{
               input: {
-                ...(params.InputProps || {}),
+                ...(InputProps || {}),
                 endAdornment: (
                   <>
                     {loading && <CircularProgress color="inherit" size={20} />}
-                    {params.InputProps?.endAdornment}
+                    {InputProps?.endAdornment}
                   </>
                 ),
               },
