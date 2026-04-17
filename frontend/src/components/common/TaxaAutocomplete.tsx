@@ -65,22 +65,21 @@ export function TaxaAutocomplete({
         filterOptions={(x) => x}
         {...(size ? { size } : {})}
         renderInput={(params) => {
-          // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-          const p = params as object;
+          const { InputProps, ...rest } = params;
           return (
             <TextField
-              {...p}
+              {...rest}
               fullWidth
               label={label}
               placeholder={placeholder}
               margin={margin}
               slotProps={{
                 input: {
-                  ...(params.InputProps || {}),
+                  ...(InputProps || {}),
                   endAdornment: (
                     <>
                       {loading && <CircularProgress color="inherit" size={20} />}
-                      {params.InputProps?.endAdornment}
+                      {InputProps?.endAdornment}
                     </>
                   ),
                 },
