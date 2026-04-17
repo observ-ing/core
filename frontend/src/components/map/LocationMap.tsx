@@ -88,7 +88,12 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
           },
         ]}
       >
-        <Typography variant="body2" color="text.secondary">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Location unavailable
         </Typography>
       </Box>

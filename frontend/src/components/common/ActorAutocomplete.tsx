@@ -67,11 +67,11 @@ export function ActorAutocomplete({
             placeholder={placeholder}
             slotProps={{
               input: {
-                ...(params.InputProps || {}),
+                ...(params.slotProps.input || {}),
                 endAdornment: (
                   <>
                     {loading && <CircularProgress color="inherit" size={20} />}
-                    {params.InputProps?.endAdornment}
+                    {params.slotProps.input?.endAdornment}
                   </>
                 ),
               },
@@ -83,7 +83,14 @@ export function ActorAutocomplete({
         const { key, ...otherProps } = props;
         return (
           <Box component="li" key={key} {...otherProps}>
-            <Stack direction="row" spacing={1.5} alignItems="center" sx={{ py: 0.5 }}>
+            <Stack
+              direction="row"
+              spacing={1.5}
+              sx={{
+                alignItems: "center",
+                py: 0.5,
+              }}
+            >
               <Avatar
                 src={option.avatar ?? ""}
                 alt={option.handle}
@@ -91,11 +98,23 @@ export function ActorAutocomplete({
               />
               <Box sx={{ minWidth: 0 }}>
                 {option.displayName && (
-                  <Typography variant="body2" fontWeight={600} noWrap>
+                  <Typography
+                    variant="body2"
+                    noWrap
+                    sx={{
+                      fontWeight: 600,
+                    }}
+                  >
                     {option.displayName}
                   </Typography>
                 )}
-                <Typography variant="caption" color="text.secondary" noWrap>
+                <Typography
+                  variant="caption"
+                  noWrap
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   @{option.handle}
                 </Typography>
               </Box>

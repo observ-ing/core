@@ -74,7 +74,13 @@ export function DeleteConfirmDialog() {
         <Typography>
           Are you sure you want to delete this observation of <strong>{species}</strong>?
         </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 1,
+          }}
+        >
           This action cannot be undone. All identifications and comments will also be deleted.
         </Typography>
       </DialogContent>

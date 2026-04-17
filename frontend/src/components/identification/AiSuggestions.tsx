@@ -52,16 +52,19 @@ export function AiSuggestions({
           AI Suggest
         </Button>
       )}
-
       {isLoading && autoFetch && (
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
           <CircularProgress size={16} />
-          <Typography variant="caption" color="text.secondary">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             Identifying species...
           </Typography>
         </Box>
       )}
-
       <AiSuggestionChips suggestions={suggestions} onSelect={onSelect} />
     </Box>
   );
@@ -79,7 +82,12 @@ export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsPr
     <Box sx={{ mb: 1 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
         <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-        <Typography variant="caption" color="text.secondary">
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           AI suggestions
         </Typography>
       </Box>
@@ -101,15 +109,23 @@ export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsPr
                 >
                   <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
                   {s.commonName && (
-                    <Typography variant="caption" component="span" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      component="span"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       {s.commonName}
                     </Typography>
                   )}
                   <Typography
                     variant="caption"
                     component="span"
-                    color="text.secondary"
-                    sx={{ ml: "auto" }}
+                    sx={{
+                      color: "text.secondary",
+                      ml: "auto",
+                    }}
                   >
                     {Math.round(s.confidence * 100)}%
                   </Typography>

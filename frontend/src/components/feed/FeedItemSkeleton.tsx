@@ -11,7 +11,14 @@ export function FeedItemSkeleton() {
       <Box sx={{ display: "flex", gap: 1, p: 2 }}>
         <Skeleton variant="circular" width={40} height={40} />
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Stack direction="row" spacing={1} alignItems="baseline" flexWrap="wrap">
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              alignItems: "baseline",
+              flexWrap: "wrap",
+            }}
+          >
             <Skeleton variant="text" width="30%" height={20} />
             <Skeleton variant="text" width="20%" height={16} />
           </Stack>

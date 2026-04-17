@@ -86,7 +86,13 @@ export function ProfileView() {
   if (!did) {
     return (
       <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography color="text.secondary">Profile not found</Typography>
+        <Typography
+          sx={{
+            color: "text.secondary",
+          }}
+        >
+          Profile not found
+        </Typography>
       </Container>
     );
   }
@@ -117,17 +123,36 @@ export function ProfileView() {
         <ProfileHeaderSkeleton />
       ) : (
         <Box sx={PROFILE_HEADER_SX}>
-          <Stack direction="row" spacing={2} alignItems="center">
+          <Stack
+            direction="row"
+            spacing={2}
+            sx={{
+              alignItems: "center",
+            }}
+          >
             <Avatar
               {...(profile?.avatar ? { src: profile.avatar } : {})}
               alt={profile?.displayName || profile?.handle || did}
               sx={{ width: PROFILE_AVATAR_SIZE, height: PROFILE_AVATAR_SIZE }}
             />
             <Box>
-              <Typography variant="h5" fontWeight={600}>
+              <Typography
+                variant="h5"
+                sx={{
+                  fontWeight: 600,
+                }}
+              >
                 {getDisplayName({ ...profile, did })}
               </Typography>
-              {profile?.handle && <Typography color="text.disabled">@{profile.handle}</Typography>}
+              {profile?.handle && (
+                <Typography
+                  sx={{
+                    color: "text.disabled",
+                  }}
+                >
+                  @{profile.handle}
+                </Typography>
+              )}
             </Box>
           </Stack>
 
@@ -135,52 +160,94 @@ export function ProfileView() {
           {counts && (
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" component="span" fontWeight={700} color="primary.main">
+                <Typography
+                  variant="h6"
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                    color: "primary.main",
+                  }}
+                >
                   {counts.observations.toLocaleString()}
                 </Typography>
                 <Stack
                   direction="row"
-                  alignItems="center"
-                  justifyContent="center"
                   spacing={0.5}
-                  sx={{ mt: 0.5 }}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mt: 0.5,
+                  }}
                 >
                   <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Observations
                   </Typography>
                 </Stack>
               </Box>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" component="span" fontWeight={700} color="secondary.main">
+                <Typography
+                  variant="h6"
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                    color: "secondary.main",
+                  }}
+                >
                   {counts.identifications.toLocaleString()}
                 </Typography>
                 <Stack
                   direction="row"
-                  alignItems="center"
-                  justifyContent="center"
                   spacing={0.5}
-                  sx={{ mt: 0.5 }}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mt: 0.5,
+                  }}
                 >
                   <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     IDs
                   </Typography>
                 </Stack>
               </Box>
               <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography variant="h6" component="span" fontWeight={700} color="success.main">
+                <Typography
+                  variant="h6"
+                  component="span"
+                  sx={{
+                    fontWeight: 700,
+                    color: "success.main",
+                  }}
+                >
                   {counts.species.toLocaleString()}
                 </Typography>
                 <Stack
                   direction="row"
-                  alignItems="center"
-                  justifyContent="center"
                   spacing={0.5}
-                  sx={{ mt: 0.5 }}
+                  sx={{
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mt: 0.5,
+                  }}
                 >
                   <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography variant="caption" color="text.secondary">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     Species
                   </Typography>
                 </Stack>
@@ -203,7 +270,6 @@ export function ProfileView() {
           </Button>
         </Box>
       )}
-
       {/* Tabs */}
       <Tabs
         value={activeTab}
@@ -217,7 +283,6 @@ export function ProfileView() {
         <Tab label="Observations" value="observations" />
         <Tab label="IDs" value="identifications" />
       </Tabs>
-
       {/* Observations Grid */}
       {activeTab === "observations" && (
         <Box
@@ -254,7 +319,12 @@ export function ProfileView() {
                       justifyContent: "center",
                     }}
                   >
-                    <Typography color="text.disabled" variant="body2">
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "text.disabled",
+                      }}
+                    >
                       No image
                     </Typography>
                   </Box>
@@ -277,7 +347,13 @@ export function ProfileView() {
                   >
                     {occ.communityId || occ.effectiveTaxonomy?.scientificName || "Unknown species"}
                   </Typography>
-                  <Typography variant="caption" color="text.disabled" noWrap>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     <RelativeTime date={new Date(occ.createdAt)} />
                   </Typography>
                 </CardContent>
@@ -294,7 +370,6 @@ export function ProfileView() {
           )}
         </Box>
       )}
-
       {/* Identifications Grid */}
       {activeTab === "identifications" && (
         <Box
@@ -341,13 +416,24 @@ export function ProfileView() {
                     {id.scientific_name}
                   </Typography>
                   {id.vernacular_name && (
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       {id.vernacular_name}
                     </Typography>
                   )}
                 </Box>
                 <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
-                  <Typography variant="caption" color="text.disabled" noWrap>
+                  <Typography
+                    variant="caption"
+                    noWrap
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     <RelativeTime date={new Date(id.date_identified)}>
                       {id.is_agreement && " · Agrees"}
                     </RelativeTime>
@@ -366,19 +452,22 @@ export function ProfileView() {
           )}
         </Box>
       )}
-
       {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress color="primary" size={24} />
         </Box>
       )}
-
       {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
         <Box sx={{ p: 4, textAlign: "center" }}>
-          <Typography color="text.secondary">No activity yet</Typography>
+          <Typography
+            sx={{
+              color: "text.secondary",
+            }}
+          >
+            No activity yet
+          </Typography>
         </Box>
       )}
-
       {hasMore && !isLoading && (
         <Box sx={{ p: 2, textAlign: "center" }}>
           <Button variant="outlined" onClick={() => loadData(true)}>

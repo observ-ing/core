@@ -51,7 +51,13 @@ export function LoginModal() {
       <form onSubmit={handleSubmit}>
         <DialogTitle>Log in</DialogTitle>
         <DialogContent>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 2,
+            }}
+          >
             Observ.ing uses the{" "}
             <Link href="https://atproto.com" target="_blank" rel="noopener noreferrer">
               AT Protocol

@@ -204,18 +204,20 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                   open={Boolean(anchorEl)}
                   onClose={handleProfileMenuClose}
                   onClick={handleProfileMenuClose}
-                  PaperProps={{
-                    elevation: 4,
-                    sx: {
-                      mt: 1.5,
-                      minWidth: 200,
-                      borderRadius: 2,
-                      "& .MuiMenuItem-root": {
-                        px: 2,
-                        py: 1,
-                        borderRadius: 1,
-                        mx: 1,
-                        my: 0.5,
+                  slotProps={{
+                    paper: {
+                      elevation: 4,
+                      sx: {
+                        mt: 1.5,
+                        minWidth: 200,
+                        borderRadius: 2,
+                        "& .MuiMenuItem-root": {
+                          px: 2,
+                          py: 1,
+                          borderRadius: 1,
+                          mx: 1,
+                          my: 0.5,
+                        },
                       },
                     },
                   }}
@@ -223,11 +225,23 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                   anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
                 >
                   <Box sx={{ px: 2, py: 1.5 }}>
-                    <Typography variant="subtitle1" fontWeight={700} noWrap>
+                    <Typography
+                      variant="subtitle1"
+                      noWrap
+                      sx={{
+                        fontWeight: 700,
+                      }}
+                    >
                       {getDisplayName(user, "User")}
                     </Typography>
                     {user.handle && (
-                      <Typography variant="body2" color="text.secondary" noWrap>
+                      <Typography
+                        variant="body2"
+                        noWrap
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
                         @{user.handle}
                       </Typography>
                     )}

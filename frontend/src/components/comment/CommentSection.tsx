@@ -13,7 +13,7 @@ import {
   MenuItem,
   Chip,
 } from "@mui/material";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
+import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { submitComment } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
@@ -91,9 +91,21 @@ export function CommentSection({
         borderColor: "divider",
       }}
     >
-      <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        sx={{
+          alignItems: "center",
+          mb: 2,
+        }}
+      >
         <ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography variant="subtitle2" fontWeight={600}>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            fontWeight: 600,
+          }}
+        >
           Discussion
         </Typography>
         {comments.length > 0 && (
@@ -110,13 +122,17 @@ export function CommentSection({
           </Button>
         )}
       </Stack>
-
       {comments.length === 0 && !showForm && (
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2,
+          }}
+        >
           No comments yet. Start a discussion!
         </Typography>
       )}
-
       {comments.length > 0 && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           {comments.map((comment) => (
@@ -135,7 +151,13 @@ export function CommentSection({
                 },
               }}
             >
-              <Stack direction="row" spacing={1.5} alignItems="flex-start">
+              <Stack
+                direction="row"
+                spacing={1.5}
+                sx={{
+                  alignItems: "flex-start",
+                }}
+              >
                 <RouterLink
                   to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}
                 >
@@ -147,16 +169,33 @@ export function CommentSection({
                   </Avatar>
                 </RouterLink>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack direction="row" spacing={1} alignItems="center">
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: "center",
+                    }}
+                  >
                     <RouterLink
                       to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}
                       style={{ textDecoration: "none" }}
                     >
-                      <Typography variant="body2" fontWeight="medium" color="text.primary">
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          fontWeight: "medium",
+                          color: "text.primary",
+                        }}
+                      >
                         {comment.commenter?.displayName || comment.commenter?.handle || "Unknown"}
                       </Typography>
                     </RouterLink>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: "text.secondary",
+                      }}
+                    >
                       <RelativeTime date={new Date(comment.created_at)} withAgo />
                     </Typography>
                     <Box sx={{ ml: "auto" }}>
@@ -196,7 +235,6 @@ export function CommentSection({
           ))}
         </Stack>
       )}
-
       {user && showForm && (
         <Box component="form" onSubmit={handleSubmit}>
           <TextField
@@ -209,7 +247,14 @@ export function CommentSection({
             size="small"
             placeholder="Share your thoughts, ask questions..."
           />
-          <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 1 }}>
+          <Stack
+            direction="row"
+            spacing={1}
+            sx={{
+              justifyContent: "flex-end",
+              mt: 1,
+            }}
+          >
             <Button
               color="inherit"
               onClick={() => {
@@ -233,7 +278,13 @@ export function CommentSection({
         </Box>
       )}
       {!user && (
-        <Typography variant="body2" color="text.secondary" sx={{ textAlign: "center" }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            textAlign: "center",
+          }}
+        >
           Log in to add a comment
         </Typography>
       )}

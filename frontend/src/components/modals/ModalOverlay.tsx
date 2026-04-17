@@ -15,8 +15,8 @@ export function ModalOverlay({ isOpen, onClose, children, maxWidth = "sm" }: Mod
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth
-      PaperProps={{
-        sx: { maxHeight: "90vh" },
+      slotProps={{
+        paper: { sx: { maxHeight: "90vh" } },
       }}
     >
       <DialogContent sx={{ p: 3 }}>{children}</DialogContent>

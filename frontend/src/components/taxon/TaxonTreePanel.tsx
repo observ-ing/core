@@ -36,9 +36,11 @@ function renderTreeItems(items: TaxonTreeItem[], selectedId: string, loadingNode
           </Typography>
           <Typography
             variant="caption"
-            color="text.disabled"
             component="span"
-            sx={{ flexShrink: 0 }}
+            sx={{
+              color: "text.disabled",
+              flexShrink: 0,
+            }}
           >
             {item.rank}
           </Typography>
@@ -72,7 +74,14 @@ export function TaxonTreePanel({
         transition: "opacity 0.15s",
       }}
     >
-      <Typography variant="subtitle2" color="text.secondary" sx={{ px: 1, py: 1 }}>
+      <Typography
+        variant="subtitle2"
+        sx={{
+          color: "text.secondary",
+          px: 1,
+          py: 1,
+        }}
+      >
         Classification
       </Typography>
       <SimpleTreeView

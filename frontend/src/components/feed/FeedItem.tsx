@@ -136,7 +136,14 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   );
 
   const titleEl = (
-    <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap">
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{
+        alignItems: "baseline",
+        flexWrap: "wrap",
+      }}
+    >
       <Typography
         component={Link}
         to={`/profile/${encodeURIComponent(owner.did)}`}
@@ -166,7 +173,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         </Tooltip>
       )}
       {handle && (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.disabled",
+          }}
+        >
           {handle}
         </Typography>
       )}
@@ -261,7 +273,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           </span>
         </Tooltip>
         {likeCount > 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {likeCount}
           </Typography>
         )}

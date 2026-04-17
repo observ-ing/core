@@ -243,10 +243,15 @@ export function LocationPicker({
 
   return (
     <Box sx={{ mt: 2 }}>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 1,
+        }}
+      >
         Location
       </Typography>
-
       <Autocomplete
         freeSolo
         options={searchResults}
@@ -269,13 +274,15 @@ export function LocationPicker({
               {...spreadParams}
               size="small"
               placeholder="Search for a place..."
-              InputProps={{
-                ...params.InputProps,
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
-                  </InputAdornment>
-                ),
+              slotProps={{
+                input: {
+                  ...params.slotProps.input,
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
+                    </InputAdornment>
+                  ),
+                },
               }}
               sx={{ mb: 1 }}
             />
@@ -290,19 +297,17 @@ export function LocationPicker({
           );
         }}
       />
-
       <Box
         ref={mapContainer}
         sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
       />
-
       <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
         <TextField
           size="small"
           label="Latitude"
           value={latInput}
           onChange={(e) => handleLatChange(e.target.value)}
-          inputProps={{ inputMode: "decimal" }}
+          slotProps={{ htmlInput: { inputMode: "decimal" } }}
           sx={{ flex: 1 }}
         />
         <TextField
@@ -310,18 +315,29 @@ export function LocationPicker({
           label="Longitude"
           value={lngInput}
           onChange={(e) => handleLngChange(e.target.value)}
-          inputProps={{ inputMode: "decimal" }}
+          slotProps={{ htmlInput: { inputMode: "decimal" } }}
           sx={{ flex: 1 }}
         />
       </Stack>
-
-      <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+      <Typography
+        variant="caption"
+        sx={{
+          color: "text.disabled",
+          display: "block",
+          mt: 0.5,
+        }}
+      >
         Search, click map, or enter coordinates
       </Typography>
-
       {onUncertaintyChange && (
         <Box sx={{ mt: 2 }}>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+              mb: 1,
+            }}
+          >
             Coordinate Uncertainty:{" "}
             {uncertaintyMeters >= 1000
               ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km`
@@ -360,7 +376,12 @@ export function LocationPicker({
               },
             }}
           />
-          <Typography variant="caption" color="text.disabled">
+          <Typography
+            variant="caption"
+            sx={{
+              color: "text.disabled",
+            }}
+          >
             Adjust the circle to indicate location precision
           </Typography>
         </Box>

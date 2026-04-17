@@ -76,11 +76,11 @@ export function TaxaAutocomplete({
               margin={margin}
               slotProps={{
                 input: {
-                  ...(params.InputProps || {}),
+                  ...(params.slotProps.input || {}),
                   endAdornment: (
                     <>
                       {loading && <CircularProgress color="inherit" size={20} />}
-                      {params.InputProps?.endAdornment}
+                      {params.slotProps.input?.endAdornment}
                     </>
                   ),
                 },
@@ -118,8 +118,21 @@ export function TaxaAutocomplete({
                 />
               )}
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Typography fontWeight={600}>{option.scientificName}</Typography>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontWeight: 600,
+                    }}
+                  >
+                    {option.scientificName}
+                  </Typography>
                   {option.isSynonym && (
                     <Typography
                       variant="caption"
@@ -139,12 +152,22 @@ export function TaxaAutocomplete({
                   )}
                 </Stack>
                 {option.isSynonym && option.acceptedName && (
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     → {option.acceptedName}
                   </Typography>
                 )}
                 {option.commonName && !option.isSynonym && (
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     {option.commonName}
                   </Typography>
                 )}

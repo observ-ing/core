@@ -91,7 +91,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
               <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
               <ListItemText
                 primary={item.label}
-                primaryTypographyProps={{ fontWeight: isActive(item.path) ? 700 : 500 }}
+                slotProps={{ primary: { sx: { fontWeight: isActive(item.path) ? 700 : 500 } } }}
               />
             </ListItemButton>
           </ListItem>
@@ -157,7 +157,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
             </ListItemIcon>
             <ListItemText
               primary="Log in"
-              primaryTypographyProps={{ fontWeight: 700, textAlign: "center" }}
+              slotProps={{ primary: { sx: { fontWeight: 700, textAlign: "center" } } }}
             />
           </ListItemButton>
         )}

@@ -67,7 +67,13 @@ export function TaxonDetailPanel({
         <IconButton onClick={onBack} sx={{ mr: 1 }}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography variant="subtitle1" fontWeight={500} sx={{ flex: 1 }}>
+        <Typography
+          variant="subtitle1"
+          sx={{
+            fontWeight: 500,
+            flex: 1,
+          }}
+        >
           {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
         </Typography>
         {onToggleTree && (
@@ -76,7 +82,6 @@ export function TaxonDetailPanel({
           </IconButton>
         )}
       </Box>
-
       {/* Hero Image */}
       {heroUrl && (
         <Box
@@ -100,7 +105,6 @@ export function TaxonDetailPanel({
           />
         </Box>
       )}
-
       {/* Main Content */}
       <Box sx={{ p: 3 }}>
         {/* Scientific Name */}
@@ -119,13 +123,28 @@ export function TaxonDetailPanel({
 
         {/* Common Name */}
         {taxon.commonName && (
-          <Typography variant="h6" component="p" color="text.secondary" sx={{ mt: 0.5 }}>
+          <Typography
+            variant="h6"
+            component="p"
+            sx={{
+              color: "text.secondary",
+              mt: 0.5,
+            }}
+          >
             {taxon.commonName}
           </Typography>
         )}
 
         {/* Stats + External Links */}
-        <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 2, flexWrap: "wrap" }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            alignItems: "center",
+            mt: 2,
+            flexWrap: "wrap",
+          }}
+        >
           {taxon.conservationStatus && (
             <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
               <span>
@@ -134,7 +153,12 @@ export function TaxonDetailPanel({
             </Tooltip>
           )}
           {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
             Observ.ing
             {taxon.numDescendants !== undefined && taxon.numDescendants > 0 && (
@@ -181,7 +205,12 @@ export function TaxonDetailPanel({
           }}
         >
           <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography variant="subtitle2" color="text.secondary">
+            <Typography
+              variant="subtitle2"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               Media
             </Typography>
           </AccordionSummary>
@@ -194,7 +223,12 @@ export function TaxonDetailPanel({
         {taxon.descriptions && taxon.descriptions.length > 0 && (
           <Accordion defaultExpanded>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle2" color="text.secondary">
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 Description
               </Typography>
             </AccordionSummary>
@@ -225,8 +259,11 @@ export function TaxonDetailPanel({
                   {d.source && (
                     <Typography
                       variant="caption"
-                      color="text.secondary"
-                      sx={{ mt: 0.5, display: "block" }}
+                      sx={{
+                        color: "text.secondary",
+                        mt: 0.5,
+                        display: "block",
+                      }}
                     >
                       Source: {d.source}
                     </Typography>
@@ -248,14 +285,25 @@ export function TaxonDetailPanel({
         {taxon.references && taxon.references.length > 0 && (
           <Accordion>
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography variant="subtitle2" color="text.secondary">
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
                 References ({taxon.references.length})
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
               <Stack spacing={0.5}>
                 {taxon.references.slice(0, 5).map((r, idx) => (
-                  <Typography key={idx} variant="caption" color="text.secondary">
+                  <Typography
+                    key={idx}
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     {r.link || r.doi ? (
                       <MuiLink
                         href={r.link || `https://doi.org/${r.doi}`}
@@ -275,21 +323,34 @@ export function TaxonDetailPanel({
           </Accordion>
         )}
       </Box>
-
       {/* Observations Section */}
       <Divider />
       <Box sx={{ px: 3, py: 2 }}>
-        <Typography variant="subtitle2" color="text.secondary">
+        <Typography
+          variant="subtitle2"
+          sx={{
+            color: "text.secondary",
+          }}
+        >
           Recent Observations
         </Typography>
       </Box>
-
       {observations.length === 0 ? (
         <Box sx={{ px: 3, py: 5, textAlign: "center" }}>
-          <Typography color="text.secondary" sx={{ mb: 0.5 }}>
+          <Typography
+            sx={{
+              color: "text.secondary",
+              mb: 0.5,
+            }}
+          >
             No observations yet
           </Typography>
-          <Typography variant="body2" color="text.disabled">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.disabled",
+            }}
+          >
             Be the first to observe <em>{taxon.commonName || taxon.scientificName}</em> on
             Observ.ing!
           </Typography>
