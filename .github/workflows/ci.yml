@@ -327,7 +327,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b,ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5 \
             --set-secrets=DB_PASSWORD=observing-db-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
