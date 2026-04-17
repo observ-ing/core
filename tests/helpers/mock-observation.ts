@@ -45,7 +45,7 @@ export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occur
       vernacularName: "White Oak",
       kingdom: "Plantae",
     },
-    subjects: [{ index: 0, identificationCount: 1 }],
+    identificationCount: 1,
     images: [],
     eventDate: "2024-06-15",
     location: { latitude: 37.7749, longitude: -122.4194 },

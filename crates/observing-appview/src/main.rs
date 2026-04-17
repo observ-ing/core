@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod media;
 mod middleware;
 mod oauth_store;
 mod resolver;
@@ -10,6 +11,7 @@ mod responses;
 mod routes;
 mod species_id_client;
 mod state;
+mod taxonomy;
 mod taxonomy_client;
 mod validation;
 
@@ -67,13 +69,15 @@ async fn main() {
         .as_deref()
         .map(|url| Arc::new(SpeciesIdClient::new(url)));
 
+    let media = media::MediaCache::from_env().await;
+
     let state = AppState {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
-        taxonomy: Arc::new(TaxonomyClient::new(&config.taxonomy_service_url)),
+        taxonomy: Arc::new(TaxonomyClient::new()),
         species_id,
         oauth_client: Arc::new(oauth_client),
-        media_proxy_url: config.media_proxy_url.clone(),
+        media,
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
@@ -211,8 +215,10 @@ async fn main() {
             "/admin/collections/{nsid}/records",
             get(routes::admin::list_records),
         )
-        // Media proxy
-        .route("/media/{*path}", get(routes::media::proxy))
+        // Media (blob/thumb cache, formerly observing-media-proxy)
+        .route("/media/health", get(routes::media::health))
+        .route("/media/blob/{did}/{cid}", get(routes::media::get_blob))
+        .route("/media/thumb/{did}/{cid}", get(routes::media::get_thumb))
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(CompressionLayer::new())
         .layer(cors)

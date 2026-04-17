@@ -136,7 +136,14 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   );
 
   const titleEl = (
-    <Stack direction="row" alignItems="baseline" spacing={1} flexWrap="wrap">
+    <Stack
+      direction="row"
+      spacing={1}
+      sx={{
+        alignItems: "baseline",
+        flexWrap: "wrap",
+      }}
+    >
       <Typography
         component={Link}
         to={`/profile/${encodeURIComponent(owner.did)}`}
@@ -166,7 +173,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         </Tooltip>
       )}
       {handle && (
-        <Typography variant="body2" color="text.disabled">
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.disabled",
+          }}
+        >
           {handle}
         </Typography>
       )}
@@ -228,52 +240,20 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         )}
 
         <CardContent>
-          {/* Species display - show multiple if multi-subject */}
-          {observation.subjects && observation.subjects.length > 1 ? (
-            <Stack spacing={0.25}>
-              {observation.subjects.slice(0, 3).map((subject, idx) => (
-                <Box
-                  key={subject.index}
-                  sx={{
-                    fontSize: idx === 0 ? "1.1rem" : "0.9rem",
-                    opacity: idx === 0 ? 1 : 0.8,
-                  }}
-                >
-                  {subject.communityId ? (
-                    <TaxonLink
-                      name={subject.communityId}
-                      kingdom={taxonomy?.kingdom}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  ) : (
-                    <Typography sx={{ fontStyle: "italic", color: "primary.main" }}>
-                      Unknown
-                    </Typography>
-                  )}
-                </Box>
-              ))}
-              {observation.subjects.length > 3 && (
-                <Typography variant="caption" color="text.disabled">
-                  +{observation.subjects.length - 3} more
-                </Typography>
-              )}
-            </Stack>
-          ) : (
-            <Box sx={{ fontSize: "1.1rem" }}>
-              {species ? (
-                <TaxonLink
-                  name={species}
-                  kingdom={taxonomy?.kingdom}
-                  rank={undefined}
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
-                  Unidentified
-                </Typography>
-              )}
-            </Box>
-          )}
+          <Box sx={{ fontSize: "1.1rem" }}>
+            {species ? (
+              <TaxonLink
+                name={species}
+                kingdom={taxonomy?.kingdom}
+                rank={undefined}
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
+                Unidentified
+              </Typography>
+            )}
+          </Box>
         </CardContent>
       </CardActionArea>
       <CardActions disableSpacing sx={{ pt: 0 }}>
@@ -293,7 +273,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           </span>
         </Tooltip>
         {likeCount > 0 && (
-          <Typography variant="body2" color="text.secondary">
+          <Typography
+            variant="body2"
+            sx={{
+              color: "text.secondary",
+            }}
+          >
             {likeCount}
           </Typography>
         )}

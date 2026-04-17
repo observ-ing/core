@@ -9,9 +9,6 @@ import {
   Stack,
   IconButton,
   ButtonBase,
-  Tabs,
-  Tab,
-  Chip,
   Menu,
   MenuItem,
   List,
@@ -41,6 +38,7 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
+import { PhotoLightbox } from "./PhotoLightbox";
 import {
   formatDate,
   getDisplayName,
@@ -61,7 +59,7 @@ export function ObservationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
-  const [selectedSubject, setSelectedSubject] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -188,16 +186,9 @@ export function ObservationDetail() {
   const displayName = getDisplayName(observation.observer);
   const handle = observation.observer.handle ? `@${observation.observer.handle}` : "";
 
-  // Find the current subject's data
-  const currentSubject = observation.subjects?.find((s) => s.index === selectedSubject);
-
   const taxonomy = observation.effectiveTaxonomy;
 
-  const species =
-    currentSubject?.communityId || observation.communityId || taxonomy?.scientificName || undefined;
-
-  // Check if there are multiple subjects
-  const hasMultipleSubjects = observation.subjects && observation.subjects.length > 1;
+  const species = observation.communityId || taxonomy?.scientificName || undefined;
 
   // Check if current user owns this observation
   const isOwner = user?.did === observation.observer.did;
@@ -227,7 +218,12 @@ export function ObservationDetail() {
           <IconButton onClick={handleBack} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography variant="subtitle1" fontWeight={500}>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 500,
+            }}
+          >
             Observation
           </Typography>
           <Box sx={{ ml: "auto" }}>
@@ -277,14 +273,26 @@ export function ObservationDetail() {
             </Typography>
           )}
           {taxonomy?.vernacularName && (
-            <Typography variant="body1" color="text.secondary">
+            <Typography
+              variant="body1"
+              sx={{
+                color: "text.secondary",
+              }}
+            >
               {taxonomy.vernacularName}
             </Typography>
           )}
         </Box>
 
         {/* Like button */}
-        <Stack direction="row" alignItems="center" sx={{ px: 3, pb: 1 }}>
+        <Stack
+          direction="row"
+          sx={{
+            alignItems: "center",
+            px: 3,
+            pb: 1,
+          }}
+        >
           <Tooltip title={!user ? "Log in to like" : ""}>
             <span>
               <IconButton
@@ -306,7 +314,13 @@ export function ObservationDetail() {
             </span>
           </Tooltip>
           {likeCount > 0 && (
-            <Typography variant="body2" color="text.secondary" sx={{ ml: -0.25 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.secondary",
+                ml: -0.25,
+              }}
+            >
               {likeCount}
             </Typography>
           )}
@@ -315,19 +329,30 @@ export function ObservationDetail() {
         {/* Images */}
         {observation.images.length > 0 && (
           <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
-            <Box
-              component="img"
-              src={getImageUrl(observation.images[activeImageIndex] ?? "")}
-              alt={species}
+            <ButtonBase
+              onClick={() => setLightboxOpen(true)}
+              aria-label="Enlarge photo"
               sx={{
-                width: "100%",
-                maxHeight: 400,
-                objectFit: "contain",
                 display: "block",
+                width: "100%",
                 borderRadius: { xs: 0, sm: 2 },
-                boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                overflow: "hidden",
+                cursor: "zoom-in",
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                alt={species}
+                sx={{
+                  width: "100%",
+                  maxHeight: 400,
+                  objectFit: "contain",
+                  display: "block",
+                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                }}
+              />
+            </ButtonBase>
             {observation.images.length > 1 && (
               <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
                 {observation.images.map((img, idx) => (
@@ -378,13 +403,15 @@ export function ObservationDetail() {
             </ListItemAvatar>
             <ListItemText
               primary={displayName}
-              primaryTypographyProps={{ fontWeight: 600 }}
               secondary={handle || undefined}
-              secondaryTypographyProps={{ color: "text.disabled" }}
+              slotProps={{
+                primary: { sx: { fontWeight: 600 } },
+                secondary: { sx: { color: "text.disabled" } },
+              }}
             />
           </ListItem>
 
-          {/* Observation Details (shared across all subjects) */}
+          {/* Observation Details */}
           <List disablePadding sx={{ mt: 1 }}>
             <ListItem disableGutters alignItems="flex-start">
               <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
@@ -392,9 +419,11 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Observed"
-                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
                 secondary={formatDate(observation.eventDate)}
-                secondaryTypographyProps={{ variant: "body1", color: "text.primary" }}
+                slotProps={{
+                  primary: { variant: "caption", color: "text.secondary" },
+                  secondary: { variant: "body1", color: "text.primary" },
+                }}
               />
             </ListItem>
 
@@ -404,23 +433,31 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Coordinates"
-                primaryTypographyProps={{ variant: "caption", color: "text.secondary" }}
                 secondary={
                   <>
                     {observation.location.latitude.toFixed(5)},{" "}
                     {observation.location.longitude.toFixed(5)}
                     {observation.location.uncertaintyMeters && (
-                      <Typography component="span" variant="body2" color="text.disabled">
+                      <Typography
+                        component="span"
+                        variant="body2"
+                        sx={{
+                          color: "text.disabled",
+                        }}
+                      >
                         {" "}
                         (±{observation.location.uncertaintyMeters}m)
                       </Typography>
                     )}
                   </>
                 }
-                secondaryTypographyProps={{
-                  variant: "body1",
-                  color: "text.primary",
-                  component: "div",
+                slotProps={{
+                  primary: { variant: "caption", color: "text.secondary" },
+                  secondary: {
+                    variant: "body1",
+                    color: "text.primary",
+                    component: "div",
+                  },
                 }}
               />
             </ListItem>
@@ -433,47 +470,11 @@ export function ObservationDetail() {
             </Box>
           </List>
 
-          {/* Subject-specific content (identification) */}
           <Box sx={{ mt: 3 }}>
-            {/* Subject Tabs - only show if multiple subjects */}
-            {hasMultipleSubjects && (
-              <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
-                <Tabs
-                  value={selectedSubject}
-                  onChange={(_, newValue) => setSelectedSubject(newValue)}
-                  variant="scrollable"
-                  scrollButtons="auto"
-                >
-                  {observation.subjects.map((subject) => (
-                    <Tab
-                      key={subject.index}
-                      value={subject.index}
-                      label={
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Typography variant="body2">Subject {subject.index + 1}</Typography>
-                          {subject.communityId && (
-                            <Chip
-                              label={subject.communityId}
-                              size="small"
-                              sx={{
-                                fontStyle: subject.communityId.includes(" ") ? "italic" : "normal",
-                                maxWidth: 120,
-                              }}
-                            />
-                          )}
-                        </Stack>
-                      }
-                    />
-                  ))}
-                </Tabs>
-              </Box>
-            )}
-
             {/* Identification History */}
             <Box sx={{ mt: 2 }}>
               <IdentificationHistory
                 identifications={identifications}
-                subjectIndex={selectedSubject}
                 kingdom={taxonomy?.kingdom}
                 currentUserDid={user?.did}
                 onDeleteIdentification={async (uri) => {
@@ -498,7 +499,7 @@ export function ObservationDetail() {
                         uri: observation.uri,
                         cid: observation.cid,
                         scientificName: taxonomy?.scientificName,
-                        communityId: currentSubject?.communityId || observation.communityId,
+                        communityId: observation.communityId,
                       }}
                       imageUrl={
                         observation.images[0] != null
@@ -507,15 +508,16 @@ export function ObservationDetail() {
                       }
                       latitude={observation.location?.latitude}
                       longitude={observation.location?.longitude}
-                      subjectIndex={selectedSubject}
-                      existingSubjectCount={observation.subjects?.length ?? 1}
                       onSuccess={handleIdentificationSuccess}
                     />
                   ) : (
                     <Typography
                       variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 2, textAlign: "center" }}
+                      sx={{
+                        color: "text.secondary",
+                        mt: 2,
+                        textAlign: "center",
+                      }}
                     >
                       Log in to add an identification
                     </Typography>
@@ -530,9 +532,8 @@ export function ObservationDetail() {
                 uri: observation.uri,
                 cid: observation.cid,
                 scientificName: taxonomy?.scientificName,
-                communityId: currentSubject?.communityId || observation.communityId,
+                communityId: observation.communityId,
               }}
-              subjects={observation.subjects || [{ index: 0, identificationCount: 0 }]}
               onSuccess={handleIdentificationSuccess}
             />
           </Box>
@@ -548,6 +549,15 @@ export function ObservationDetail() {
           </Box>
         </Box>
       </Container>
+
+      {observation.images.length > 0 && (
+        <PhotoLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+          alt={species}
+        />
+      )}
     </Box>
   );
 }

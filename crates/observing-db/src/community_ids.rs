@@ -166,7 +166,6 @@ mod tests {
             did: did.to_string(),
             subject_uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1".to_string(),
             subject_cid: "cid".to_string(),
-            subject_index: 0,
             scientific_name: name.to_string(),
             taxon_rank: Some("species".to_string()),
             identification_qualifier: None,

@@ -1,4 +1,4 @@
-use crate::types::{IdentificationRow, SubjectInfo, UpsertIdentificationParams};
+use crate::types::{IdentificationRow, UpsertIdentificationParams};
 use sqlx::PgPool;
 use std::collections::HashMap;
 
@@ -10,24 +10,23 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
     sqlx::query!(
         r#"
         INSERT INTO identifications (
-            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+            uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, taxon_id, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order", family, genus
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
-            subject_index = $6,
-            scientific_name = $7,
-            taxon_rank = COALESCE($8, identifications.taxon_rank),
-            taxon_id = COALESCE($9, identifications.taxon_id),
-            is_agreement = $10,
-            vernacular_name = COALESCE($12, identifications.vernacular_name),
-            kingdom = COALESCE($13, identifications.kingdom),
-            phylum = COALESCE($14, identifications.phylum),
-            class = COALESCE($15, identifications.class),
-            "order" = COALESCE($16, identifications."order"),
-            family = COALESCE($17, identifications.family),
-            genus = COALESCE($18, identifications.genus),
+            scientific_name = $6,
+            taxon_rank = COALESCE($7, identifications.taxon_rank),
+            taxon_id = COALESCE($8, identifications.taxon_id),
+            is_agreement = $9,
+            vernacular_name = COALESCE($11, identifications.vernacular_name),
+            kingdom = COALESCE($12, identifications.kingdom),
+            phylum = COALESCE($13, identifications.phylum),
+            class = COALESCE($14, identifications.class),
+            "order" = COALESCE($15, identifications."order"),
+            family = COALESCE($16, identifications.family),
+            genus = COALESCE($17, identifications.genus),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -35,7 +34,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.did,
         p.subject_uri,
         p.subject_cid,
-        p.subject_index,
         p.scientific_name,
         p.taxon_rank as _,
         p.taxon_id as _,
@@ -77,46 +75,21 @@ pub async fn get_for_occurrence(
         IdentificationRow,
         r#"
         SELECT
-            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+            uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = $1
-        ORDER BY subject_index, date_identified DESC
-        "#,
-        occurrence_uri,
-    )
-    .fetch_all(executor)
-    .await
-}
-
-/// Get identifications for a specific subject within an occurrence
-pub async fn get_for_subject(
-    executor: impl sqlx::PgExecutor<'_>,
-    occurrence_uri: &str,
-    subject_index: i32,
-) -> Result<Vec<IdentificationRow>, sqlx::Error> {
-    sqlx::query_as!(
-        IdentificationRow,
-        r#"
-        SELECT
-            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
-            taxon_rank, identification_qualifier, taxon_id,
-            identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
-        FROM identifications
-        WHERE subject_uri = $1 AND subject_index = $2
         ORDER BY date_identified DESC
         "#,
         occurrence_uri,
-        subject_index,
     )
     .fetch_all(executor)
     .await
 }
 
-/// Get identifications for subject_index=0 across multiple occurrences (batch)
+/// Get identifications for multiple occurrences (batch)
 pub async fn get_for_subjects_batch(
     executor: impl sqlx::PgExecutor<'_>,
     uris: &[String],
@@ -129,12 +102,12 @@ pub async fn get_for_subjects_batch(
         IdentificationRow,
         r#"
         SELECT
-            uri, cid, did, subject_uri, subject_cid, subject_index, scientific_name,
+            uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
             vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
-        WHERE subject_uri = ANY($1) AND subject_index = 0
+        WHERE subject_uri = ANY($1)
         ORDER BY subject_uri, date_identified DESC
         "#,
         uris,
@@ -150,89 +123,27 @@ pub async fn get_for_subjects_batch(
     Ok(map)
 }
 
-/// Get subject info (aggregated) for an occurrence
-pub async fn get_subjects(
-    executor: impl sqlx::PgExecutor<'_>,
-    occurrence_uri: &str,
-) -> Result<Vec<SubjectInfo>, sqlx::Error> {
-    sqlx::query_as!(
-        SubjectInfo,
-        r#"
-        SELECT
-            subject_index,
-            COUNT(*) as "identification_count!",
-            MAX(date_identified) as latest_identification
-        FROM identifications
-        WHERE subject_uri = $1
-        GROUP BY subject_index
-        ORDER BY subject_index
-        "#,
-        occurrence_uri,
-    )
-    .fetch_all(executor)
-    .await
-}
-
-/// Get subject info (aggregated) for multiple occurrences (batch)
-pub async fn get_subjects_for_occurrences(
-    executor: impl sqlx::PgExecutor<'_>,
-    uris: &[String],
-) -> Result<HashMap<String, Vec<SubjectInfo>>, sqlx::Error> {
-    if uris.is_empty() {
-        return Ok(HashMap::new());
-    }
-
-    let rows = sqlx::query!(
-        r#"
-        SELECT
-            subject_uri,
-            subject_index,
-            COUNT(*) as "identification_count!",
-            MAX(date_identified) as latest_identification
-        FROM identifications
-        WHERE subject_uri = ANY($1)
-        GROUP BY subject_uri, subject_index
-        ORDER BY subject_uri, subject_index
-        "#,
-        uris,
-    )
-    .fetch_all(executor)
-    .await?;
-
-    let mut map: HashMap<String, Vec<SubjectInfo>> = HashMap::new();
-    for row in rows {
-        map.entry(row.subject_uri).or_default().push(SubjectInfo {
-            subject_index: row.subject_index,
-            identification_count: row.identification_count,
-            latest_identification: row.latest_identification,
-        });
-    }
-    Ok(map)
-}
-
-/// Get the community ID (winning taxon) for an occurrence/subject
+/// Get the community ID (winning taxon) for an occurrence
 pub async fn get_community_id(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
-    subject_index: i32,
 ) -> Result<Option<String>, sqlx::Error> {
     let row = sqlx::query!(
         r#"
         SELECT scientific_name
         FROM community_ids
-        WHERE occurrence_uri = $1 AND subject_index = $2
+        WHERE occurrence_uri = $1
         ORDER BY id_count DESC
         LIMIT 1
         "#,
         occurrence_uri,
-        subject_index,
     )
     .fetch_optional(executor)
     .await?;
     Ok(row.and_then(|r| r.scientific_name))
 }
 
-/// Get community IDs (winning taxon) for multiple occurrences at subject_index=0 (batch)
+/// Get community IDs (winning taxon) for multiple occurrences (batch)
 pub async fn get_community_ids_for_occurrences(
     executor: impl sqlx::PgExecutor<'_>,
     uris: &[String],
@@ -246,7 +157,7 @@ pub async fn get_community_ids_for_occurrences(
         SELECT DISTINCT ON (occurrence_uri)
             occurrence_uri as "occurrence_uri!", scientific_name
         FROM community_ids
-        WHERE occurrence_uri = ANY($1) AND subject_index = 0
+        WHERE occurrence_uri = ANY($1)
         ORDER BY occurrence_uri, id_count DESC
         "#,
         uris,

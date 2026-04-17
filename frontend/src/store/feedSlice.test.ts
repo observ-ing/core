@@ -33,7 +33,7 @@ function makeOccurrence(overrides: Partial<Occurrence> = {}): Occurrence {
     cid: "test-cid",
     observer: { did: "did:plc:default", handle: "default.bsky.social" },
     observers: [],
-    subjects: [],
+    identificationCount: 0,
     eventDate: "2024-01-01",
     location: { latitude: 0, longitude: 0 },
     images: [],

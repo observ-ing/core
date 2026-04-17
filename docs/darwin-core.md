@@ -83,7 +83,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 
 ## bio.lexicons.temp.identification
 
-A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstream [lexicons.bio](https://github.com/lexicons-bio/lexicons.bio) schema with flat fields (no nested taxon object). App-specific fields (`subjectIndex`, `isAgreement`, `createdAt`) are stored as extra JSON fields in the AT Protocol record.
+A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstream [lexicons.bio](https://github.com/lexicons-bio/lexicons.bio) schema with flat fields (no nested taxon object). App-specific fields (`isAgreement`, `createdAt`) are stored as extra JSON fields in the AT Protocol record.
 
 ### Example
 
@@ -96,7 +96,6 @@ A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstr
   "scientificName": "Eschscholzia californica Cham.",
   "taxonRank": "species",
   "kingdom": "Plantae",
-  "subjectIndex": 0,
   "isAgreement": false,
   "createdAt": "2024-01-15T11:00:00Z"
 }
@@ -111,7 +110,6 @@ A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstr
 | `taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
 | `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom (for homonym disambiguation) |
 | `identificationRemarks` | dwc:identificationRemarks | ✅ | Notes about the identification |
-| `subjectIndex` | — | ✅ | Index when multiple organisms in one observation (app-specific) |
 | `isAgreement` | — | ✅ | Whether ID agrees with community consensus (app-specific) |
 | `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made (app-specific) |
 | (AT Protocol URI) | dwc:identificationID | ⚠️ | AT URI serves as identifier |

@@ -3,7 +3,6 @@
 export type InteractionSubjectRequest = {
   occurrenceUri?: string;
   occurrenceCid?: string;
-  subjectIndex?: number;
   scientificName?: string;
   kingdom?: string;
 };

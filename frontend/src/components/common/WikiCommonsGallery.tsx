@@ -117,7 +117,12 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
 
   if (images.length === 0) {
     return (
-      <Typography variant="body2" color="text.secondary">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+        }}
+      >
         No images found on Wikimedia Commons.
       </Typography>
     );

@@ -7,7 +7,12 @@ interface FeedEndIndicatorProps {
 export function FeedEndIndicator({ count }: FeedEndIndicatorProps) {
   return (
     <Box sx={{ display: "flex", justifyContent: "center", p: 3, pb: 4 }}>
-      <Typography variant="body2" color="text.disabled">
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.disabled",
+        }}
+      >
         {count != null
           ? `You've reached the end — ${count} observations`
           : "You've reached the end"}

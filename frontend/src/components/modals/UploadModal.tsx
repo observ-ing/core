@@ -263,11 +263,9 @@ export function UploadModal() {
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => {
-      const newImages = [...prev];
-      const removed = newImages[index];
+      const removed = prev[index];
       if (removed) URL.revokeObjectURL(removed.preview);
-      newImages.splice(index, 1);
-      return newImages;
+      return prev.filter((_, i) => i !== index);
     });
   };
 
@@ -430,13 +428,17 @@ export function UploadModal() {
           Posting as {user.handle ? `@${user.handle}` : user.did}
         </Alert>
       )}
-
       <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
         {isEditMode ? "Edit Observation" : "New Observation"}
       </Typography>
-
       <form onSubmit={handleSubmit}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 1,
+          }}
+        >
           Photos (optional)
         </Typography>
 
@@ -549,7 +551,14 @@ export function UploadModal() {
           </Button>
         )}
 
-        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.disabled",
+            display: "block",
+            mt: 0.5,
+          }}
+        >
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
 
@@ -623,7 +632,14 @@ export function UploadModal() {
           </Select>
         </FormControl>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 2, mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mt: 2,
+            mb: 1,
+          }}
+        >
           Co-observers (optional)
         </Typography>
 
@@ -646,7 +662,14 @@ export function UploadModal() {
           </Stack>
         )}
 
-        <Typography variant="caption" color="text.disabled" sx={{ display: "block", mt: 0.5 }}>
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.disabled",
+            display: "block",
+            mt: 0.5,
+          }}
+        >
           Add other observers who participated in this sighting
         </Typography>
 
@@ -670,7 +693,14 @@ export function UploadModal() {
           onUncertaintyChange={setUncertaintyMeters}
         />
 
-        <Stack direction="row" spacing={1} justifyContent="flex-end" sx={{ mt: 2 }}>
+        <Stack
+          direction="row"
+          spacing={1}
+          sx={{
+            justifyContent: "flex-end",
+            mt: 2,
+          }}
+        >
           <Button onClick={handleClose} color="inherit">
             Cancel
           </Button>

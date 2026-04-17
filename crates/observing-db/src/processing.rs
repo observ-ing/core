@@ -219,12 +219,6 @@ pub fn identification_from_json(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    let subject_index = record_json
-        .get("subjectIndex")
-        .and_then(|v| v.as_i64())
-        .and_then(|v| i32::try_from(v).ok())
-        .unwrap_or(0);
-
     let is_agreement = record_json
         .get("isAgreement")
         .and_then(|v| v.as_bool())
@@ -247,7 +241,6 @@ pub fn identification_from_json(
         did,
         subject_uri,
         subject_cid,
-        subject_index,
         scientific_name,
         taxon_rank,
         taxon_id,
@@ -319,11 +312,6 @@ pub fn interaction_from_json(
             .occurrence
             .as_ref()
             .map(|o| o.cid.to_string()),
-        subject_a_subject_index: record
-            .subject_a
-            .subject_index
-            .and_then(|v| i32::try_from(v).ok())
-            .unwrap_or(0),
         subject_a_taxon_name: record
             .subject_a
             .taxon
@@ -344,11 +332,6 @@ pub fn interaction_from_json(
             .occurrence
             .as_ref()
             .map(|o| o.cid.to_string()),
-        subject_b_subject_index: record
-            .subject_b
-            .subject_index
-            .and_then(|v| i32::try_from(v).ok())
-            .unwrap_or(0),
         subject_b_taxon_name: record
             .subject_b
             .taxon

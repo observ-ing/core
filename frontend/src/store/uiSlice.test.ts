@@ -33,7 +33,6 @@ describe("uiSlice", () => {
       displayName: "Test User",
       avatar: null,
     },
-    subjects: [],
     communityId: null,
     researchGrade: false,
     effectiveTaxonomy: null,

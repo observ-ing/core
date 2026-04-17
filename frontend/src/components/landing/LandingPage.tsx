@@ -71,8 +71,12 @@ export function LandingPage() {
           </Typography>
           <Typography
             variant="body1"
-            color="text.secondary"
-            sx={{ fontSize: { xs: "1rem", md: "1.15rem" }, mb: 4, lineHeight: 1.6 }}
+            sx={{
+              color: "text.secondary",
+              fontSize: { xs: "1rem", md: "1.15rem" },
+              mb: 4,
+              lineHeight: 1.6,
+            }}
           >
             A decentralized platform for biodiversity observations, built on the AT Protocol. Record
             what you see, keep what you create.
@@ -93,7 +97,6 @@ export function LandingPage() {
           </Box>
         </Container>
       </Box>
-
       {/* Feature cards */}
       <Container maxWidth="md" sx={{ pb: 8 }}>
         <Box
@@ -115,7 +118,12 @@ export function LandingPage() {
                 <Typography variant="h6" component="h2" sx={{ mb: 0.5, fontWeight: 700 }}>
                   {feature.title}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
                   {feature.description}
                 </Typography>
               </CardContent>
@@ -123,7 +131,6 @@ export function LandingPage() {
           ))}
         </Box>
       </Container>
-
       {/* Footer links */}
       <Box
         sx={{

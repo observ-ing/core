@@ -3,7 +3,6 @@
 export type CreateIdentificationRequest = {
   occurrenceUri: string;
   occurrenceCid: string;
-  subjectIndex?: number;
   scientificName: string;
   taxonRank?: string;
   isAgreement?: boolean;

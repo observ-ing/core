@@ -68,7 +68,6 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
           </Container>
         </Box>
       )}
-
       <Box
         ref={contentRef}
         onScroll={handleScroll}
@@ -116,7 +115,11 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
               {!isLoading && observations.length === 0 && (
                 <Box sx={{ p: 4, textAlign: "center" }}>
-                  <Typography color="text.secondary">
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     No observations yet. Be the first to post!
                   </Typography>
                 </Box>
@@ -149,7 +152,11 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
               {!isLoading && observations.length === 0 && (
                 <Box sx={{ p: 4, textAlign: "center" }}>
-                  <Typography color="text.secondary">
+                  <Typography
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
                     No observations yet. Be the first to post!
                   </Typography>
                 </Box>

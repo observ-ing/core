@@ -66,13 +66,6 @@
           "ref": "com.atproto.repo.strongRef",
           "description": "Reference to an existing occurrence record."
         },
-        "subjectIndex": {
-          "type": "integer",
-          "description": "Index of the subject within the occurrence (for multi-subject observations).",
-          "minimum": 0,
-          "maximum": 99,
-          "default": 0
-        },
         "taxon": {
           "type": "ref",
           "ref": "#taxon",

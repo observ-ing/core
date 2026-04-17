@@ -12,8 +12,7 @@ processes:
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
       - PORT=3000
-      - MEDIA_PROXY_URL=http://localhost:3001
-      - TAXONOMY_SERVICE_URL=http://localhost:3003
+      - CACHE_DIR=./cache/media
       - SPECIES_ID_SERVICE_URL=http://localhost:3005
     readiness_probe:
       http_get:
@@ -32,17 +31,6 @@ processes:
       appview:
         condition: process_healthy
 
-  media-proxy:
-    command: cargo run -p observing-media-proxy
-    environment:
-      - PORT=3001
-      - CACHE_DIR=./cache/media
-    readiness_probe:
-      http_get:
-        host: localhost
-        port: 3001
-        path: /health
-
   ingester:
     command: cargo run
     working_dir: crates/observing-ingester
@@ -51,16 +39,6 @@ processes:
     depends_on:
       cloud-sql-proxy:
         condition: process_healthy
-
-  taxonomy:
-    command: cargo run -p observing-taxonomy
-    environment:
-      - PORT=3003
-    readiness_probe:
-      http_get:
-        host: localhost
-        port: 3003
-        path: /health
 
   species-id:
     command: cargo run -p observing-species-id

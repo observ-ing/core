@@ -287,7 +287,6 @@ export function getImageUrl(path: string): string {
 export async function submitIdentification(data: {
   occurrenceUri: string;
   occurrenceCid: string;
-  subjectIndex?: number;
   scientificName: string;
   taxonRank?: string;
   isAgreement?: boolean;
@@ -378,12 +377,10 @@ export interface InteractionResponse {
   did: string;
   subject_a_occurrence_uri: string | null;
   subject_a_occurrence_cid: string | null;
-  subject_a_subject_index: number;
   subject_a_taxon_name: string | null;
   subject_a_kingdom: string | null;
   subject_b_occurrence_uri: string | null;
   subject_b_occurrence_cid: string | null;
-  subject_b_subject_index: number;
   subject_b_taxon_name: string | null;
   subject_b_kingdom: string | null;
   interaction_type: string;
@@ -402,14 +399,12 @@ export async function submitInteraction(data: {
   subjectA: {
     occurrenceUri?: string;
     occurrenceCid?: string;
-    subjectIndex?: number;
     scientificName?: string;
     kingdom?: string;
   };
   subjectB: {
     occurrenceUri?: string;
     occurrenceCid?: string;
-    subjectIndex?: number;
     scientificName?: string;
     kingdom?: string;
   };

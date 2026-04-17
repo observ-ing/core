@@ -184,16 +184,33 @@ function PropertyTable({
                 )}
               </TableCell>
               <TableCell>
-                <Typography variant="body2" color="text.secondary" sx={{ fontSize: "0.8rem" }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    color: "text.secondary",
+                    fontSize: "0.8rem",
+                  }}
+                >
                   {prop.description}
                 </Typography>
                 {prop.maxLength != null && (
-                  <Typography variant="caption" color="text.disabled">
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                    }}
+                  >
                     max length: {prop.maxLength}
                   </Typography>
                 )}
                 {prop.default != null && (
-                  <Typography variant="caption" color="text.disabled" sx={{ display: "block" }}>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.disabled",
+                      display: "block",
+                    }}
+                  >
                     default: {String(prop.default)}
                   </Typography>
                 )}
@@ -237,7 +254,14 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         )}
       </Box>
       {def.description && name !== "main" && (
-        <Typography variant="body2" color="text.secondary" sx={{ ml: 5, mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            ml: 5,
+            mb: 1,
+          }}
+        >
           {def.description}
         </Typography>
       )}
@@ -262,7 +286,14 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
         </Typography>
 
         {mainDef?.description && (
-          <Typography variant="body1" color="text.secondary" sx={{ mt: 1, mb: 2 }}>
+          <Typography
+            variant="body1"
+            sx={{
+              color: "text.secondary",
+              mt: 1,
+              mb: 2,
+            }}
+          >
             {mainDef.description}
           </Typography>
         )}
@@ -281,10 +312,22 @@ export function LexiconView() {
   usePageTitle("Lexicons");
   return (
     <Box sx={{ maxWidth: 960, width: "100%", mx: "auto", p: { xs: 2, md: 3 }, minWidth: 0 }}>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
+      <Typography
+        variant="h4"
+        gutterBottom
+        sx={{
+          fontWeight: 700,
+        }}
+      >
         Lexicons
       </Typography>
-      <Typography variant="body1" color="text.secondary" sx={{ mb: 3 }}>
+      <Typography
+        variant="body1"
+        sx={{
+          color: "text.secondary",
+          mb: 3,
+        }}
+      >
         Observ.ing is built on the{" "}
         <MuiLink href="https://atproto.com" target="_blank" rel="noopener noreferrer">
           AT Protocol
@@ -303,18 +346,36 @@ export function LexiconView() {
         </MuiLink>{" "}
         biodiversity standards.
       </Typography>
-
-      <Typography variant="h5" fontWeight={600} sx={{ mt: 2, mb: 2 }}>
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 600,
+          mt: 2,
+          mb: 2,
+        }}
+      >
         Project Lexicons
       </Typography>
       {projectLexicons.map((schema) => (
         <LexiconCard key={schema.id} schema={schema} />
       ))}
-
-      <Typography variant="h5" fontWeight={600} sx={{ mt: 4, mb: 1 }}>
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 600,
+          mt: 4,
+          mb: 1,
+        }}
+      >
         External Lexicons
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mb: 2,
+        }}
+      >
         Third-party AT Protocol lexicons used by Observ.ing.
       </Typography>
       {externalLexicons.map((schema) => (
