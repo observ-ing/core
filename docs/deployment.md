@@ -6,11 +6,9 @@ Services deployed via GitHub Actions (`.github/workflows/ci.yml`):
 
 | Service | Build arg | Public | Cloud SQL | Notes |
 |---------|-----------|--------|-----------|-------|
-| observing-appview | `SERVICE=observing-appview` | Yes | Yes | REST API + OAuth + serves frontend |
+| observing-appview | `SERVICE=observing-appview` | Yes | Yes | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
 | observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | min-instances=1 (always running) |
-| observing-media-proxy | `SERVICE=observing-media-proxy` | Yes | No | Stateless image cache |
 | observing-species-id | `SERVICE=observing-species-id` | Yes | No | BioCLIP species identification (2 CPU, 4 GiB) |
-| observing-taxonomy | `SERVICE=observing-taxonomy` | Yes | No | GBIF taxonomy lookups with caching |
 
 All services are built from the root `Dockerfile` using `--build-arg SERVICE=<name>`.
 
@@ -40,22 +38,18 @@ DB_PASSWORD=...
 JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe
 ```
 
-### Media Proxy
-
-```bash
-MEDIA_PROXY_PORT=3001
-CACHE_DIR=./cache/media
-```
-
 ### AppView
 
 ```bash
 PORT=3000
 PUBLIC_URL=https://your-domain.run.app
-TAXONOMY_SERVICE_URL=https://observing-taxonomy-xxx.run.app
-MEDIA_PROXY_URL=https://observing-media-proxy-xxx.run.app
 SPECIES_ID_SERVICE_URL=https://observing-species-id-xxx.run.app  # Optional
 HIDDEN_DIDS=did:plc:abc123  # Comma-separated DIDs to hide from feeds
+
+# Media cache (in-process, served at /media/{blob,thumb}/{did}/{cid})
+CACHE_DIR=./cache/media
+MAX_CACHE_SIZE=...      # Optional, bytes
+CACHE_TTL_SECS=...      # Optional, seconds
 ```
 
 ### Species ID
@@ -64,12 +58,4 @@ HIDDEN_DIDS=did:plc:abc123  # Comma-separated DIDs to hide from feeds
 PORT=3005
 MODEL_DIR=/app/models/bioclip
 ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
-```
-
-### Taxonomy
-
-```bash
-PORT=8080
-RUST_LOG=observing_taxonomy=info
-LOG_FORMAT=json  # For GCP Cloud Logging
 ```

@@ -1,10 +1,17 @@
 //! GBIF-based taxonomy client with caching
+//!
+//! Adapted from the previous `observing-taxonomy` crate. Returns the
+//! [`crate::taxonomy_client`] response types directly so that route handlers
+//! and TS bindings remain unchanged.
 
-use crate::error::Result;
-use crate::types::*;
-use crate::wikidata::WikidataClient;
+use crate::taxonomy::wikidata::WikidataClient;
+use crate::taxonomy_client::{
+    ConservationStatus, TaxonAncestor, TaxonDescription, TaxonDetail, TaxonMedia, TaxonReference,
+    TaxonResult, ValidateResponse,
+};
 use gbif_api::{
-    GbifClient as GbifApiClient, SearchResult, SpeciesDetail, SuggestResult, V2NameUsage,
+    GbifClient as GbifApiClient, IucnCategory, SearchResult, SpeciesDetail, SuggestResult,
+    V2NameUsage,
 };
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -22,6 +29,26 @@ fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) ->
     } else {
         scientific_name.to_string()
     }
+}
+
+/// Convert an [`IucnCategory`] to its serialized string form (e.g. "EX", "CR").
+///
+/// The previous taxonomy service serialized this enum directly to JSON; we
+/// preserve the wire format here so the appview's `ConservationStatus`
+/// (whose `category` field is a `String`) carries identical values.
+fn iucn_to_string(category: IucnCategory) -> String {
+    match category {
+        IucnCategory::EX => "EX",
+        IucnCategory::EW => "EW",
+        IucnCategory::CR => "CR",
+        IucnCategory::EN => "EN",
+        IucnCategory::VU => "VU",
+        IucnCategory::NT => "NT",
+        IucnCategory::LC => "LC",
+        IucnCategory::DD => "DD",
+        IucnCategory::NE => "NE",
+    }
+    .to_string()
 }
 
 /// Taxonomy client that wraps GBIF API with caching and app-specific type conversion
@@ -61,6 +88,7 @@ impl GbifClient {
         }
     }
 
+    #[allow(dead_code)] // exposed for future health/diagnostics endpoint
     pub fn cache_stats(&self) -> CacheStats {
         CacheStats {
             entries: self.cache.entry_count(),
@@ -70,20 +98,20 @@ impl GbifClient {
     }
 
     /// Search for taxa matching a query
-    pub async fn search(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
+    pub async fn search(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
         let cache_key = format!("search:{}:{}", query.to_lowercase(), limit);
 
         if let Some(CachedValue::SearchResults(results)) = self.cache.get(&cache_key).await {
             self.hits.fetch_add(1, Ordering::Relaxed);
-            return Ok(results);
+            return results;
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
 
-        let results = self.search_gbif(query, limit).await?;
+        let results = self.search_gbif(query, limit).await;
         self.cache
             .insert(cache_key, CachedValue::SearchResults(results.clone()))
             .await;
-        Ok(results)
+        results
     }
 
     /// Check if a GBIF match is a HIGHERRANK fallback that doesn't match the query.
@@ -109,23 +137,26 @@ impl GbifClient {
     }
 
     /// Validate a scientific name
-    pub async fn validate(&self, name: &str) -> Result<ValidationResult> {
-        let Some(gbif_match) = self.api.match_name(name, None).await? else {
-            return Ok(ValidationResult {
-                valid: false,
-                matched_name: None,
-                taxon: None,
-                suggestions: Some(vec![]),
-            });
+    pub async fn validate(&self, name: &str) -> ValidateResponse {
+        let gbif_match = match self.api.match_name(name, None).await {
+            Ok(Some(m)) => m,
+            _ => {
+                return ValidateResponse {
+                    valid: false,
+                    matched_name: None,
+                    taxon: None,
+                    suggestions: Some(vec![]),
+                };
+            }
         };
 
         let Some(usage) = &gbif_match.usage else {
-            return Ok(ValidationResult {
+            return ValidateResponse {
                 valid: false,
                 matched_name: None,
                 taxon: None,
                 suggestions: Some(vec![]),
-            });
+            };
         };
 
         let match_type = gbif_match
@@ -139,24 +170,27 @@ impl GbifClient {
         );
 
         if match_type == Some("EXACT") {
-            Ok(ValidationResult {
+            ValidateResponse {
                 valid: true,
                 matched_name: usage.canonical_name.clone().or_else(|| usage.name.clone()),
                 taxon: Some(taxon),
                 suggestions: None,
-            })
+            }
         } else {
-            Ok(ValidationResult {
+            ValidateResponse {
                 valid: false,
                 matched_name: None,
                 taxon: None,
                 suggestions: Some(vec![taxon]),
-            })
+            }
         }
     }
 
     /// Get detailed taxon information by GBIF ID
-    pub async fn get_by_id(&self, taxon_id: &str) -> Result<Option<TaxonDetail>> {
+    pub async fn get_by_id(
+        &self,
+        taxon_id: &str,
+    ) -> Result<Option<TaxonDetail>, gbif_api::GbifError> {
         let numeric_id = taxon_id.strip_prefix("gbif:").unwrap_or(taxon_id);
         let cache_key = format!("detail:{}", numeric_id);
 
@@ -251,24 +285,22 @@ impl GbifClient {
         let photo_url = media.first().map(|m| m.url.clone());
 
         let taxon_detail = TaxonDetail {
-            base: TaxonResult {
-                id: build_taxon_path(resolved_name, &resolved_rank, data.kingdom.as_deref()),
-                scientific_name: resolved_name.to_string(),
-                common_name: data.vernacular_name,
-                photo_url,
-                rank: resolved_rank,
-                kingdom: data.kingdom,
-                phylum: data.phylum,
-                class: data.class,
-                order: data.order,
-                family: data.family,
-                genus: data.genus,
-                species: data.species,
-                source: "gbif".to_string(),
-                conservation_status,
-                is_synonym: false,
-                accepted_name: None,
-            },
+            id: build_taxon_path(resolved_name, &resolved_rank, data.kingdom.as_deref()),
+            scientific_name: resolved_name.to_string(),
+            common_name: data.vernacular_name,
+            photo_url,
+            rank: resolved_rank,
+            kingdom: data.kingdom,
+            phylum: data.phylum,
+            class: data.class,
+            order: data.order,
+            family: data.family,
+            genus: data.genus,
+            species: data.species,
+            source: "gbif".to_string(),
+            conservation_status,
+            description: None,
+            wikidata_id: None,
             ancestors,
             children,
             num_descendants: data.num_descendants,
@@ -304,7 +336,7 @@ impl GbifClient {
         &self,
         scientific_name: &str,
         kingdom: Option<&str>,
-    ) -> Result<Option<TaxonDetail>> {
+    ) -> Result<Option<TaxonDetail>, gbif_api::GbifError> {
         let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
 
         if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
@@ -329,7 +361,7 @@ impl GbifClient {
         scientific_name: &str,
         kingdom: Option<&str>,
         limit: u32,
-    ) -> Result<Vec<TaxonResult>> {
+    ) -> Result<Vec<TaxonResult>, gbif_api::GbifError> {
         let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
 
         if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
@@ -349,7 +381,11 @@ impl GbifClient {
     }
 
     /// Get children taxa for a parent taxon
-    pub async fn get_children(&self, taxon_id: &str, limit: u32) -> Result<Vec<TaxonResult>> {
+    pub async fn get_children(
+        &self,
+        taxon_id: &str,
+        limit: u32,
+    ) -> Result<Vec<TaxonResult>, gbif_api::GbifError> {
         let numeric_id = taxon_id.strip_prefix("gbif:").unwrap_or(taxon_id);
         let cache_key = format!("children:{}:{}", numeric_id, limit);
 
@@ -383,7 +419,7 @@ impl GbifClient {
         let gbif_match = self.api.match_name(name, None).await.ok()??;
         let category = GbifApiClient::extract_iucn_status(&gbif_match)?;
         Some(ConservationStatus {
-            category,
+            category: iucn_to_string(category),
             source: "IUCN".to_string(),
         })
     }
@@ -393,7 +429,7 @@ impl GbifClient {
     /// Uses the full-text search endpoint which searches both scientific and vernacular names.
     /// Searches only the GBIF Backbone Taxonomy for authoritative results with accurate
     /// taxonomic status (accepted vs synonym).
-    async fn search_gbif(&self, query: &str, limit: u32) -> Result<Vec<TaxonResult>> {
+    async fn search_gbif(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
         // Search backbone only - no status filter so we get both accepted and synonyms
         let data = self.api.search(query, limit, None, true).await;
 
@@ -401,7 +437,7 @@ impl GbifClient {
             Ok(d) => d,
             Err(e) => {
                 warn!(query = %query, error = ?e, "GBIF search failed");
-                return Ok(vec![]);
+                return vec![];
             }
         };
 
@@ -433,7 +469,7 @@ impl GbifClient {
             }
         });
 
-        Ok(futures::future::join_all(enriched_futures).await)
+        futures::future::join_all(enriched_futures).await
     }
 
     /// Build ancestors from GBIF species detail
@@ -497,8 +533,6 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
-            is_synonym: false,
-            accepted_name: None,
         }
     }
 
@@ -551,13 +585,6 @@ impl GbifClient {
                     .and_then(|v| v.vernacular_name.clone())
             });
 
-        // Check if this is a synonym (status contains "SYNONYM")
-        let is_synonym = item
-            .taxonomic_status
-            .as_ref()
-            .map(|s| s.contains("SYNONYM"))
-            .unwrap_or(false);
-
         TaxonResult {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
             scientific_name: name.to_string(),
@@ -573,12 +600,6 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
-            is_synonym,
-            accepted_name: if is_synonym {
-                item.accepted.clone()
-            } else {
-                None
-            },
         }
     }
 
@@ -599,9 +620,9 @@ impl GbifClient {
                 {
                     s.status_code
                         .as_ref()
-                        .and_then(|code| code.parse().ok())
+                        .and_then(|code| code.parse::<IucnCategory>().ok())
                         .map(|category| ConservationStatus {
-                            category,
+                            category: iucn_to_string(category),
                             source: "IUCN".to_string(),
                         })
                 } else {
@@ -668,8 +689,6 @@ impl GbifClient {
                 .or_else(|| usage.species.clone()),
             source: "gbif".to_string(),
             conservation_status,
-            is_synonym: false,
-            accepted_name: None,
         }
     }
 }
@@ -678,6 +697,15 @@ impl Default for GbifClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Cache hit/miss/entry-count snapshot.
+#[allow(dead_code)] // exposed for future health/diagnostics endpoint
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct CacheStats {
+    pub entries: u64,
+    pub hits: u64,
+    pub misses: u64,
 }
 
 #[cfg(test)]
