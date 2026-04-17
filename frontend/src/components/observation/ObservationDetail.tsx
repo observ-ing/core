@@ -17,11 +17,8 @@ import {
   ListItemAvatar,
   ListItemText,
   Tooltip,
-  Modal,
-  Fade,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import CloseIcon from "@mui/icons-material/Close";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
@@ -41,6 +38,7 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
+import { PhotoLightbox } from "./PhotoLightbox";
 import {
   formatDate,
   getDisplayName,
@@ -553,63 +551,12 @@ export function ObservationDetail() {
       </Container>
 
       {observation.images.length > 0 && (
-        <Modal
+        <PhotoLightbox
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
-          closeAfterTransition
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            bgcolor: "rgba(0, 0, 0, 0.9)",
-          }}
-        >
-          <Fade in={lightboxOpen}>
-            <Box
-              onClick={() => setLightboxOpen(false)}
-              sx={{
-                outline: "none",
-                width: "100%",
-                height: "100%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                p: { xs: 2, sm: 4 },
-                cursor: "zoom-out",
-              }}
-            >
-              <IconButton
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setLightboxOpen(false);
-                }}
-                aria-label="Close"
-                sx={{
-                  position: "absolute",
-                  top: 16,
-                  right: 16,
-                  color: "common.white",
-                  bgcolor: "rgba(0, 0, 0, 0.4)",
-                  "&:hover": { bgcolor: "rgba(0, 0, 0, 0.6)" },
-                }}
-              >
-                <CloseIcon />
-              </IconButton>
-              <Box
-                component="img"
-                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
-                alt={species}
-                onClick={(e) => e.stopPropagation()}
-                sx={{
-                  maxWidth: "100%",
-                  maxHeight: "100%",
-                  objectFit: "contain",
-                  cursor: "default",
-                }}
-              />
-            </Box>
-          </Fade>
-        </Modal>
+          src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+          alt={species}
+        />
       )}
     </Box>
   );
