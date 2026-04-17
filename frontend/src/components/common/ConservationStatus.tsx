@@ -24,6 +24,8 @@ const CATEGORY_INFO: Record<string, { label: string; color: string }> = {
   NE: { label: "Not Evaluated", color: "#ffffff" },
 };
 
+const DARK_TEXT_CATEGORIES: ReadonlySet<string> = new Set(["VU", "NT", "LC", "DD", "NE"]);
+
 /**
  * Displays IUCN Red List conservation status as a colored badge
  */
@@ -35,7 +37,7 @@ export function ConservationStatus({
   const info = CATEGORY_INFO[status.category];
   if (!info) return null;
 
-  const needsDarkText = ["VU", "NT", "LC", "DD", "NE"].includes(status.category);
+  const needsDarkText = DARK_TEXT_CATEGORIES.has(status.category);
 
   return (
     <Chip
