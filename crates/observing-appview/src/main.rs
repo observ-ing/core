@@ -215,6 +215,11 @@ async fn main() {
             "/admin/collections/{nsid}/records",
             get(routes::admin::list_records),
         )
+        .route("/admin/tables", get(routes::admin::list_tables))
+        .route(
+            "/admin/tables/{name}/rows",
+            get(routes::admin::list_table_rows),
+        )
         // Media (blob/thumb cache, formerly observing-media-proxy)
         .route("/media/health", get(routes::media::health))
         .route("/media/blob/{did}/{cid}", get(routes::media::get_blob))
