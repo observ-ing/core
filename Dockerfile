@@ -9,7 +9,7 @@
 # when SERVICE=observing-appview.
 #
 # Supported SERVICE values:
-#   observing-appview, observing-ingester, observing-media-proxy, observing-species-id, observing-taxonomy
+#   observing-appview, observing-ingester, observing-species-id
 
 ARG SERVICE=observing-appview
 
@@ -114,21 +114,6 @@ EXPOSE 8080
 CMD ["/app/observing-ingester"]
 
 # ---------------------------------------------------------------------------
-# Stage: runtime for media-proxy
-# ---------------------------------------------------------------------------
-FROM runtime-base AS runtime-observing-media-proxy
-
-COPY --from=builder /app/target/release/observing-media-proxy /app/observing-media-proxy
-
-RUN mkdir -p /app/cache/media
-
-ENV RUST_LOG=observing_media_proxy=info
-ENV PORT=3001
-ENV CACHE_DIR=/app/cache/media
-EXPOSE 3001
-CMD ["/app/observing-media-proxy"]
-
-# ---------------------------------------------------------------------------
 # Stage: runtime for species-id
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-species-id
@@ -160,18 +145,6 @@ ENV MODEL_DIR=/app/models/bioclip
 ENV ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
 EXPOSE 3005
 CMD ["/app/observing-species-id"]
-
-# ---------------------------------------------------------------------------
-# Stage: runtime for taxonomy
-# ---------------------------------------------------------------------------
-FROM runtime-base AS runtime-observing-taxonomy
-
-COPY --from=builder /app/target/release/observing-taxonomy /app/observing-taxonomy
-
-ENV RUST_LOG=observing_taxonomy=info
-ENV PORT=8080
-EXPOSE 8080
-CMD ["/app/observing-taxonomy"]
 
 # ---------------------------------------------------------------------------
 # Final stage: select the correct runtime based on SERVICE arg

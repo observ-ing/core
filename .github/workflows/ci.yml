@@ -213,18 +213,17 @@ jobs:
           psql $DATABASE_URL -f tests/seed.sql
       - name: Build frontend
         run: npm run build
-      - name: Build appview and taxonomy service
-        run: cargo build -p observing-appview -p observing-taxonomy
+      - name: Build appview
+        run: cargo build -p observing-appview
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
-          ./target/debug/observing-taxonomy &
           PORT=3000 ./target/debug/observing-appview &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
-            curl -sf http://127.0.0.1:3003/health 2>/dev/null && curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
+            curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
             sleep 2
           done
           echo "Services failed to start"
@@ -251,7 +250,7 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service: [appview, ingester, media-proxy, species-id, taxonomy]
+        service: [appview, ingester, species-id]
     steps:
       - uses: actions/checkout@v4
 
@@ -302,22 +301,6 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      - name: Deploy media-proxy
-        run: |
-          gcloud run deploy observing-media-proxy \
-            --image=$REGISTRY/observing-media-proxy:latest \
-            --region=$REGION \
-            --allow-unauthenticated \
-            --set-env-vars=RUST_LOG=observing_media_proxy=info,LOG_FORMAT=json
-
-      - name: Deploy taxonomy
-        run: |
-          gcloud run deploy observing-taxonomy \
-            --image=$REGISTRY/observing-taxonomy:latest \
-            --region=$REGION \
-            --allow-unauthenticated \
-            --set-env-vars=RUST_LOG=observing_taxonomy=info,LOG_FORMAT=json
-
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -334,8 +317,6 @@ jobs:
       - name: Get service URLs
         id: urls
         run: |
-          echo "media_proxy=$(gcloud run services describe observing-media-proxy --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
-          echo "taxonomy=$(gcloud run services describe observing-taxonomy --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
           echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
       - name: Deploy appview
@@ -346,7 +327,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,MEDIA_PROXY_URL=${{ steps.urls.outputs.media_proxy }},TAXONOMY_SERVICE_URL=${{ steps.urls.outputs.taxonomy }},SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,PUBLIC_URL=$PUBLIC_URL,SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b \
             --set-secrets=DB_PASSWORD=observing-db-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT

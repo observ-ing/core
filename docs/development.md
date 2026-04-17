@@ -84,22 +84,16 @@ process-compose process logs <name>
 process-compose down
 ```
 
-Service names: `cloud-sql-proxy`, `appview`, `frontend`, `media-proxy`, `ingester`
+Service names: `cloud-sql-proxy`, `appview`, `frontend`, `ingester`, `species-id`
 
 ### Individual Services
 
 ```bash
-# AppView (REST API + OAuth + static files on port 3000)
+# AppView (REST API + OAuth + media cache + GBIF taxonomy + static files on port 3000)
 cargo run -p observing-appview
 
 # Ingester (firehose consumer)
 cargo run -p observing-ingester
-
-# Media Proxy (image proxy on port 3001)
-cargo run -p observing-media-proxy
-
-# Taxonomy (GBIF resolver on port 3003)
-cargo run -p observing-taxonomy
 
 # Frontend dev server (serves frontend if `npm run build` hasn't been run)
 npm run dev

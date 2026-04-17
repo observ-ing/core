@@ -9,9 +9,7 @@ flowchart TB
     end
 
     subgraph Services
-        AppView["AppView<br/>(REST API, OAuth, Static Files)"]
-        MediaProxy["Media Proxy<br/>(Image Cache)"]
-        Taxonomy["Taxonomy<br/>(GBIF Resolver)"]
+        AppView["AppView<br/>(REST API, OAuth, Media Cache,<br/>Taxonomy, Static Files)"]
     end
 
     subgraph Data
@@ -25,8 +23,6 @@ flowchart TB
 
     Frontend --> AppView
     AppView --> PostgreSQL
-    AppView --> Taxonomy
-    AppView --> MediaProxy
     PDS --> Ingester
     Ingester --> PostgreSQL
 ```
@@ -35,14 +31,12 @@ flowchart TB
 
 ```
 crates/
-├── observing-appview/     # Unified REST API + OAuth + static serving (Rust/Axum)
+├── observing-appview/     # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
 ├── observing-db/          # Shared database layer (Rust)
 ├── observing-geocoding/   # Nominatim reverse geocoding (Rust)
 ├── observing-identity/    # DID/handle resolution + profile caching (Rust)
 ├── observing-ingester/    # AT Protocol firehose consumer (Rust)
 ├── observing-lexicons/    # Generated AT Protocol record types (Rust)
-├── observing-media-proxy/ # Image caching proxy (Rust)
-├── observing-taxonomy/    # GBIF taxonomy resolver service (Rust)
 └── gbif-api/              # GBIF API client (Rust)
 
 frontend/                  # Web UI (Vite + React + MapLibre GL)
@@ -67,6 +61,8 @@ Unified Rust/Axum server handling all backend concerns:
 - **REST API** - Occurrences, identifications, comments, feeds, profiles, taxonomy, interactions, likes
 - **OAuth** - AT Protocol authentication via `atrium-oauth`
 - **AT Protocol Client** - Record create/update/delete, blob upload via internal RPC
+- **Media Cache** - In-process blob/thumbnail cache served at `/media/{blob,thumb}/{did}/{cid}` (filesystem-backed, LRU)
+- **Taxonomy Resolver** - In-process GBIF + Wikidata lookups served at `/api/taxa/*` (moka in-memory cache)
 - **Static Files** - Serves the built React frontend
 - **Data Enrichment** - Profile resolution, community IDs, image URLs, effective taxonomy
 - **Record Processing** - Uses shared `observing-db` processing module for consistent record-to-DB conversion
@@ -79,21 +75,6 @@ Rust service that monitors the AT Protocol firehose.
 - **Event Processing** - Handles occurrence, identification, comment, interaction, and like records
 - **Record Processing** - Uses shared `observing-db` processing module (same conversion logic as appview)
 - **Built with** - Tokio, SQLx
-
-### Media Proxy (`crates/observing-media-proxy/`)
-
-Rust image caching service.
-
-- **Image Cache** - Caches and proxies image blobs from PDS servers
-- **Stateless** - No database, filesystem cache only
-
-### Taxonomy (`crates/observing-taxonomy/`)
-
-Rust taxonomy resolution service.
-
-- **GBIF Lookups** - Species search, validation, and taxonomy hierarchy
-- **Wikidata** - Species image and metadata enrichment
-- **Caching** - In-memory cache for frequently accessed taxa
 
 ### Frontend (`frontend/`)
 
