@@ -38,6 +38,7 @@ import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
+import { PhotoLightbox } from "./PhotoLightbox";
 import {
   formatDate,
   getDisplayName,
@@ -58,6 +59,7 @@ export function ObservationDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
@@ -327,19 +329,30 @@ export function ObservationDetail() {
         {/* Images */}
         {observation.images.length > 0 && (
           <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
-            <Box
-              component="img"
-              src={getImageUrl(observation.images[activeImageIndex] ?? "")}
-              alt={species}
+            <ButtonBase
+              onClick={() => setLightboxOpen(true)}
+              aria-label="Enlarge photo"
               sx={{
-                width: "100%",
-                maxHeight: 400,
-                objectFit: "contain",
                 display: "block",
+                width: "100%",
                 borderRadius: { xs: 0, sm: 2 },
-                boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                overflow: "hidden",
+                cursor: "zoom-in",
               }}
-            />
+            >
+              <Box
+                component="img"
+                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                alt={species}
+                sx={{
+                  width: "100%",
+                  maxHeight: 400,
+                  objectFit: "contain",
+                  display: "block",
+                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                }}
+              />
+            </ButtonBase>
             {observation.images.length > 1 && (
               <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
                 {observation.images.map((img, idx) => (
@@ -536,6 +549,15 @@ export function ObservationDetail() {
           </Box>
         </Box>
       </Container>
+
+      {observation.images.length > 0 && (
+        <PhotoLightbox
+          open={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+          alt={species}
+        />
+      )}
     </Box>
   );
 }
