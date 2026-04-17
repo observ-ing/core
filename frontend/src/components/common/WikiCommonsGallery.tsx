@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import {
   Box,
   ImageList,
@@ -8,6 +7,7 @@ import {
   Link as MuiLink,
   CircularProgress,
 } from "@mui/material";
+import { useFetch } from "../../hooks/useFetch";
 
 interface CommonsImage {
   thumbUrl: string;
@@ -90,22 +90,11 @@ interface WikiCommonsGalleryProps {
 }
 
 export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGalleryProps) {
-  const [images, setImages] = useState<CommonsImage[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchCommonsImages(taxonName, limit).then((result) => {
-      if (!cancelled) {
-        setImages(result);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [taxonName, limit]);
+  const { data, loading } = useFetch(
+    () => fetchCommonsImages(taxonName, limit),
+    [taxonName, limit],
+  );
+  const images = data ?? [];
 
   if (loading) {
     return (
