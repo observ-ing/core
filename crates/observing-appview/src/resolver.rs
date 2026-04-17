@@ -1,15 +1,18 @@
 use atrium_identity::handle::DnsTxtResolver;
-use hickory_resolver::TokioAsyncResolver;
+use hickory_resolver::proto::rr::RData;
+use hickory_resolver::TokioResolver;
 
 pub struct HickoryDnsTxtResolver {
-    resolver: TokioAsyncResolver,
+    resolver: TokioResolver,
 }
 
 impl Default for HickoryDnsTxtResolver {
     fn default() -> Self {
         Self {
-            resolver: TokioAsyncResolver::tokio_from_system_conf()
-                .expect("failed to create DNS resolver"),
+            resolver: TokioResolver::builder_tokio()
+                .expect("failed to create DNS resolver")
+                .build()
+                .expect("failed to build DNS resolver"),
         }
     }
 }
@@ -23,8 +26,12 @@ impl DnsTxtResolver for HickoryDnsTxtResolver {
             .resolver
             .txt_lookup(query)
             .await?
+            .answers()
             .iter()
-            .map(|txt| txt.to_string())
+            .filter_map(|record| match &record.data {
+                RData::TXT(txt) => Some(txt.to_string()),
+                _ => None,
+            })
             .collect())
     }
 }
