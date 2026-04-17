@@ -1,8 +1,9 @@
 //! Lexicon-scoped admin endpoints: count/list/delete records by NSID.
 //!
-//! All routes require the `ADMIN_TOKEN` env var to be set and a matching
-//! `Authorization: Bearer <token>` header. When `ADMIN_TOKEN` is unset, every
-//! admin route returns 503 so the surface is opt-in by default.
+//! Authenticated via the standard session cookie (`AuthUser`), then the
+//! caller's DID must appear in the `ADMIN_DIDS` allowlist env var. When the
+//! allowlist is empty, every admin route returns 503 so the surface is
+//! opt-in by default.
 
 use axum::extract::{FromRequestParts, Path, Query, State};
 use axum::http::request::Parts;
@@ -10,14 +11,15 @@ use axum::Json;
 use observing_db::admin as db_admin;
 use serde::{Deserialize, Serialize};
 
+use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::state::AppState;
 
-/// Axum extractor that enforces `Authorization: Bearer <ADMIN_TOKEN>`.
-///
-/// Returns 503 (Service Unavailable) when no token is configured — the admin
-/// interface is disabled by default until an operator opts in.
-pub struct AdminAuth;
+/// Axum extractor that requires a logged-in user whose DID is in `ADMIN_DIDS`.
+pub struct AdminAuth {
+    #[allow(dead_code)]
+    pub did: String,
+}
 
 impl FromRequestParts<AppState> for AdminAuth {
     type Rejection = AppError;
@@ -26,36 +28,19 @@ impl FromRequestParts<AppState> for AdminAuth {
         parts: &mut Parts,
         state: &AppState,
     ) -> Result<Self, Self::Rejection> {
-        let Some(expected) = state.admin_token.as_deref() else {
+        if state.admin_dids.is_empty() {
             return Err(AppError::ServiceUnavailable(
-                "Admin interface is disabled (ADMIN_TOKEN not set)".into(),
+                "Admin interface is disabled (ADMIN_DIDS not set)".into(),
             ));
-        };
-        let header = parts
-            .headers
-            .get(axum::http::header::AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .ok_or(AppError::Unauthorized)?;
-        let token = header
-            .strip_prefix("Bearer ")
-            .ok_or(AppError::Unauthorized)?;
-        // Constant-time compare to avoid timing side-channels.
-        if !ct_eq(token.as_bytes(), expected.as_bytes()) {
-            return Err(AppError::Unauthorized);
         }
-        Ok(AdminAuth)
+        let user = AuthUser::from_request_parts(parts, state).await?;
+        if !state.admin_dids.iter().any(|d| d == &user.did) {
+            return Err(AppError::Forbidden(
+                "Your account is not authorized for admin access".into(),
+            ));
+        }
+        Ok(AdminAuth { did: user.did })
     }
-}
-
-fn ct_eq(a: &[u8], b: &[u8]) -> bool {
-    if a.len() != b.len() {
-        return false;
-    }
-    let mut diff = 0u8;
-    for (x, y) in a.iter().zip(b.iter()) {
-        diff |= x ^ y;
-    }
-    diff == 0
 }
 
 #[derive(Serialize)]

@@ -76,7 +76,7 @@ async fn main() {
         media_proxy_url: config.media_proxy_url.clone(),
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
-        admin_token: config.admin_token.clone(),
+        admin_dids: config.admin_dids.clone(),
     };
 
     // CORS

@@ -14,8 +14,8 @@ pub struct Config {
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
-    /// Bearer token for the admin API. When unset, admin routes return 503.
-    pub admin_token: Option<String>,
+    /// DIDs allowed to access admin routes. When empty, admin routes return 503.
+    pub admin_dids: Vec<String>,
 }
 
 impl Config {
@@ -73,10 +73,12 @@ impl Config {
         let public_url = env::var("PUBLIC_URL").ok();
 
         let hidden_dids = env::var("HIDDEN_DIDS")
-            .map(|s| parse_hidden_dids(&s))
+            .map(|s| parse_did_list(&s))
             .unwrap_or_default();
 
-        let admin_token = env::var("ADMIN_TOKEN").ok().filter(|s| !s.is_empty());
+        let admin_dids = env::var("ADMIN_DIDS")
+            .map(|s| parse_did_list(&s))
+            .unwrap_or_default();
 
         Self {
             port,
@@ -87,13 +89,13 @@ impl Config {
             species_id_service_url,
             public_url,
             hidden_dids,
-            admin_token,
+            admin_dids,
         }
     }
 }
 
 /// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
-fn parse_hidden_dids(input: &str) -> Vec<String> {
+fn parse_did_list(input: &str) -> Vec<String> {
     input
         .split(',')
         .map(|d| d.trim().to_string())
@@ -106,38 +108,38 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_hidden_dids_single() {
-        let result = parse_hidden_dids("did:plc:abc123");
+    fn test_parse_did_list_single() {
+        let result = parse_did_list("did:plc:abc123");
         assert_eq!(result, vec!["did:plc:abc123"]);
     }
 
     #[test]
-    fn test_parse_hidden_dids_multiple() {
-        let result = parse_hidden_dids("did:plc:abc,did:plc:def,did:plc:ghi");
+    fn test_parse_did_list_multiple() {
+        let result = parse_did_list("did:plc:abc,did:plc:def,did:plc:ghi");
         assert_eq!(result, vec!["did:plc:abc", "did:plc:def", "did:plc:ghi"]);
     }
 
     #[test]
-    fn test_parse_hidden_dids_with_whitespace() {
-        let result = parse_hidden_dids("  did:plc:abc , did:plc:def  ");
+    fn test_parse_did_list_with_whitespace() {
+        let result = parse_did_list("  did:plc:abc , did:plc:def  ");
         assert_eq!(result, vec!["did:plc:abc", "did:plc:def"]);
     }
 
     #[test]
-    fn test_parse_hidden_dids_empty_string() {
-        let result = parse_hidden_dids("");
+    fn test_parse_did_list_empty_string() {
+        let result = parse_did_list("");
         assert!(result.is_empty());
     }
 
     #[test]
-    fn test_parse_hidden_dids_trailing_comma() {
-        let result = parse_hidden_dids("did:plc:abc,");
+    fn test_parse_did_list_trailing_comma() {
+        let result = parse_did_list("did:plc:abc,");
         assert_eq!(result, vec!["did:plc:abc"]);
     }
 
     #[test]
-    fn test_parse_hidden_dids_only_commas() {
-        let result = parse_hidden_dids(",,,");
+    fn test_parse_did_list_only_commas() {
+        let result = parse_did_list(",,,");
         assert!(result.is_empty());
     }
 }

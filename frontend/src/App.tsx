@@ -23,6 +23,7 @@ import { NotFound } from "./components/common/NotFound";
 import { LexiconView } from "./components/lexicon/LexiconView";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { AdminPage } from "./components/admin/AdminPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -120,6 +121,7 @@ function AppContent() {
           <Route path="/taxon/:id" element={<TaxonExplorer />} />
           <Route path="/lexicons" element={<LexiconView />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
