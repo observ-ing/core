@@ -315,7 +315,7 @@ pub async fn count_occurrences_by_taxon(
     if let Some(kingdom) = kingdom {
         if rank_lower != "kingdom" {
             qb.push(" AND kingdom = ");
-            qb.push_bind(kingdom.to_string());
+            qb.push_bind(kingdom);
         }
     }
 
@@ -324,42 +324,46 @@ pub async fn count_occurrences_by_taxon(
 }
 
 /// Push the appropriate taxon filter condition onto a query builder
-fn push_taxon_filter(qb: &mut QueryBuilder<'_, Postgres>, rank_lower: &str, taxon_name: &str) {
+fn push_taxon_filter<'a>(
+    qb: &mut QueryBuilder<'a, Postgres>,
+    rank_lower: &str,
+    taxon_name: &'a str,
+) {
     match rank_lower {
         "species" | "subspecies" | "variety" => {
             qb.push("scientific_name = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         "genus" => {
             qb.push("(genus = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
             qb.push(" OR scientific_name ILIKE ");
             qb.push_bind(format!("{taxon_name} %"));
             qb.push(")");
         }
         "family" => {
             qb.push("family = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         "order" => {
             qb.push(r#""order" = "#);
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         "class" => {
             qb.push("class = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         "phylum" => {
             qb.push("phylum = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         "kingdom" => {
             qb.push("kingdom = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
         _ => {
             qb.push("scientific_name = ");
-            qb.push_bind(taxon_name.to_string());
+            qb.push_bind(taxon_name);
         }
     }
 }
