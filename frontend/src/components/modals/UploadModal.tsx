@@ -263,11 +263,9 @@ export function UploadModal() {
 
   const handleRemoveImage = (index: number) => {
     setImages((prev) => {
-      const newImages = [...prev];
-      const removed = newImages[index];
+      const removed = prev[index];
       if (removed) URL.revokeObjectURL(removed.preview);
-      newImages.splice(index, 1);
-      return newImages;
+      return prev.filter((_, i) => i !== index);
     });
   };
 
