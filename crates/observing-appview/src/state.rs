@@ -45,6 +45,8 @@ pub struct AppState {
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
+    /// DIDs allowed to access admin routes. When empty, admin routes return 503.
+    pub admin_dids: Vec<String>,
 }
 
 /// Create an OAuthClient.

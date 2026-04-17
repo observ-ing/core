@@ -80,6 +80,7 @@ async fn main() {
         media,
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
+        admin_dids: config.admin_dids.clone(),
     };
 
     // CORS
@@ -203,6 +204,16 @@ async fn main() {
         .route(
             "/api/taxa/{id}/occurrences",
             get(routes::taxonomy::get_taxon_occurrences_by_id),
+        )
+        // Admin (lexicon-scoped record management)
+        .route("/admin/collections", get(routes::admin::list_collections))
+        .route(
+            "/admin/collections/{nsid}",
+            get(routes::admin::get_collection).delete(routes::admin::delete_collection),
+        )
+        .route(
+            "/admin/collections/{nsid}/records",
+            get(routes::admin::list_records),
         )
         // Media (blob/thumb cache, formerly observing-media-proxy)
         .route("/media/health", get(routes::media::health))
