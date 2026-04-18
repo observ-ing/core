@@ -1,7 +1,6 @@
 use atrium_api::types::{BlobRef as AtriumBlobRef, TypedBlobRef};
 use axum::extract::{Path, State};
 use axum::Json;
-use chrono::Utc;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
@@ -95,9 +94,11 @@ pub async fn create_occurrence(
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
-    // Upload blobs, create media records, and collect strong refs
-    // (blob_entries for DB image serving; media_refs for the PDS record)
-    let (blob_entries, media_refs) =
+    // Upload blobs and create media records on the PDS. The DB row will be
+    // populated by the ingester when the firehose commit arrives; the
+    // ingester resolves associatedMedia strong refs back into blob entries
+    // for the `associated_media` column.
+    let (_blob_entries, media_refs) =
         upload_media_records(&agent, &user.did, body.images.as_deref().unwrap_or(&[])).await?;
 
     let record_value = build_occurrence_record_json(
@@ -106,50 +107,28 @@ pub async fn create_occurrence(
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
         media_refs,
+        body.recorded_by.as_deref(),
     )?;
 
-    // Clone record_value before it's consumed by create_record
-    let record_value_for_db = record_value.clone();
-
-    // Create AT Protocol record
+    // Create AT Protocol record. The firehose event that follows will trigger
+    // observing-ingester to parse the same record into DB rows — we no longer
+    // do that here, so there is a single writer for the occurrences,
+    // occurrence_observers, and associated media state.
     let resp =
         auth::create_at_record(&agent, did_parsed, OccurrenceRecord::NSID, record_value).await?;
 
     let uri = resp.uri.to_string();
     let cid = resp.cid.as_ref().to_string();
 
-    info!(uri = %uri, "Created occurrence");
+    info!(uri = %uri, "Created occurrence (PDS); awaiting ingester for DB row");
 
-    // Immediate DB upsert for visibility — uses the same shared conversion
-    // as the ingester so field mapping is always consistent.
-    if let Ok(mut parsed) = observing_db::processing::occurrence_from_json(
-        &record_value_for_db,
-        uri.clone(),
-        cid.clone(),
-        user.did.clone(),
-    ) {
-        // Set blob entries directly — the PDS record uses associatedMedia (strong refs)
-        // but the DB stores blob entries for efficient image serving.
-        parsed.params.set_blobs(blob_entries);
-        parsed.params.created_at = Utc::now();
-        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
-            warn!(error = %e, "Failed to upsert occurrence into local DB");
-        }
-    }
-
-    // Save private location data
+    // Private location data is intentionally never written to the PDS, so the
+    // ingester has no path to populate it. This is still the appview's job.
     if let Err(e) =
         observing_db::private_data::save(&state.pool, &uri, body.latitude, body.longitude, "open")
             .await
     {
         warn!(error = %e, "Failed to save private location data");
-    }
-
-    // Sync observers
-    let co_observers = body.recorded_by.unwrap_or_default();
-    if let Err(e) = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await
-    {
-        warn!(error = %e, "Failed to sync observers");
     }
 
     // Auto-create first identification if a scientific name was provided
@@ -378,6 +357,7 @@ pub async fn update_occurrence(
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
         media_refs,
+        body.recorded_by.as_deref(),
     )?;
 
     let record_value_for_db = record_value.clone();
@@ -552,12 +532,17 @@ async fn upload_media_records(
 /// Build the `bio.lexicons.temp.occurrence` record body (schema fields only)
 /// and serialize it to JSON for the PDS write API. `media_refs` are attached
 /// via the typed builder's `associatedMedia` field. Defaults `eventDate` to now.
+///
+/// `recorded_by` is serialized as the extension field `recordedBy` — it is
+/// not part of the `bio.lexicons.temp.occurrence` schema, but the ingester
+/// reads it back out of the raw record JSON to populate `occurrence_observers`.
 fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
     coordinate_uncertainty_in_meters: Option<i32>,
     event_date: Option<&str>,
     media_refs: Vec<StrongRef>,
+    recorded_by: Option<&[String]>,
 ) -> Result<serde_json::Value, AppError> {
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
@@ -583,11 +568,24 @@ fn build_occurrence_record_json(
         .maybe_associated_media(associated_media)
         .build();
 
-    auth::serialize_at_record(&record)
+    let mut value = auth::serialize_at_record(&record)?;
+    if let Some(dids) = recorded_by {
+        let filtered: Vec<&String> = dids.iter().filter(|d| !d.is_empty()).collect();
+        if !filtered.is_empty() {
+            if let Some(obj) = value.as_object_mut() {
+                obj.insert("recordedBy".to_string(), json!(filtered));
+            }
+        }
+    }
+    Ok(value)
 }
 
-/// Create an identification record on the PDS for the given occurrence and
-/// mirror it into the local DB. Failures are logged, not propagated.
+/// Create an identification record on the PDS for the given occurrence. The
+/// row in `identifications` is populated by the ingester when the firehose
+/// event lands, so this function no longer writes directly to the local DB.
+/// Jetstream delivers commits in repo order, so the preceding occurrence
+/// upsert (needed to satisfy the FK on `identifications.subject_uri`) is
+/// guaranteed to run first.
 async fn create_auto_identification(
     state: &AppState,
     agent: &AgentType,
@@ -603,23 +601,11 @@ async fn create_auto_identification(
         occurrence_cid,
     )
     .await?;
-    let id_value_for_db = id_value.clone();
     let id_did = atrium_api::types::string::Did::new(user_did.to_string())
         .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
     match auth::create_at_record(agent, id_did, auto_id::identification_nsid(), id_value).await {
         Ok(id_resp) => {
-            info!(uri = %id_resp.uri, "Auto-created identification for occurrence");
-            if let Ok(params) = observing_db::processing::identification_from_json(
-                &id_value_for_db,
-                id_resp.uri.to_string(),
-                id_resp.cid.as_ref().to_string(),
-                user_did.to_string(),
-                Utc::now(),
-            ) {
-                if let Err(e) = observing_db::identifications::upsert(&state.pool, &params).await {
-                    warn!(error = %e, "Failed to upsert auto-created identification into local DB");
-                }
-            }
+            info!(uri = %id_resp.uri, "Auto-created identification (PDS); awaiting ingester");
         }
         Err(e) => {
             warn!(error = ?e, "Failed to auto-create identification");

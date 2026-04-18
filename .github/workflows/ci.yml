@@ -207,19 +207,27 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
+      - uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: postgres
       - name: Run database migrations and seed
         run: |
-          for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
+          sqlx migrate run --source crates/observing-db/migrations
           psql $DATABASE_URL -f tests/seed.sql
       - name: Build frontend
         run: npm run build
       - name: Build appview
         run: cargo build -p observing-appview
+      - name: Build ingester
+        run: cargo build -p observing-ingester --bin observing-ingester
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
-          PORT=3000 ./target/debug/observing-appview &
+          PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
+          PORT=8090 ./target/debug/observing-ingester > /tmp/ingester.log 2>&1 &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
@@ -234,6 +242,14 @@ jobs:
           BLUESKY_TEST_EMAIL: ${{ secrets.BLUESKY_TEST_EMAIL }}
           BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
           BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "===== appview log ====="
+          tail -200 /tmp/appview.log || true
+          echo
+          echo "===== ingester log ====="
+          tail -200 /tmp/ingester.log || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
