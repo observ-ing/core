@@ -195,11 +195,8 @@ pub async fn delete_occurrence_catch_all(
     user: AuthUser,
     Path(full_path): Path<String>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    // Try observer removal: path contains /observers/{did}
-    if full_path.contains("/observers/") {
-        let idx = full_path.rfind("/observers/").unwrap();
-        let uri = &full_path[..idx];
-        let observer_did = &full_path[idx + "/observers/".len()..];
+    // Try observer removal: path is `{uri}/observers/{did}`
+    if let Some((uri, observer_did)) = full_path.rsplit_once("/observers/") {
         if let Err(e) = observing_db::observers::remove(&state.pool, uri, observer_did).await {
             warn!(error = %e, "Failed to remove observer");
         }
