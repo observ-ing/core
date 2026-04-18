@@ -395,6 +395,28 @@ pub fn extract_co_observers<T: AsRef<str>>(
 mod tests {
     use super::*;
     use chrono::{Datelike, Timelike};
+    use jacquard_lexicon::schema::LexiconSchema;
+    use observing_lexicons::bio_lexicons::temp::identification::Identification;
+    use observing_lexicons::ing_observ::temp::like::Like;
+
+    /// Asserts the JSON fixture is a structurally valid record under its
+    /// declared lexicon: it deserializes into the typed lexicon struct *and*
+    /// satisfies the schema's runtime constraint checks (maxLength, enum
+    /// values, required fields, etc.). This proves a fixture is something a
+    /// real PDS could produce — not just JSON that happens to flow through a
+    /// `*_from_json` parser. Every happy-path test below validates its
+    /// fixture this way before exercising the parser, so any drift between
+    /// the test fixtures and the lexicon definitions surfaces immediately.
+    fn assert_valid_lexicon<T>(record: &serde_json::Value)
+    where
+        T: serde::de::DeserializeOwned + LexiconSchema,
+    {
+        let typed: T = serde_json::from_value(record.clone())
+            .unwrap_or_else(|e| panic!("fixture failed to deserialize as {}: {e}", T::nsid()));
+        typed.validate().unwrap_or_else(|e| {
+            panic!("fixture violated {} lexicon constraints: {e:?}", T::nsid())
+        });
+    }
 
     #[test]
     fn test_parse_datetime_utc() {
@@ -487,6 +509,8 @@ mod tests {
             "createdAt": "2024-06-15T08:30:45Z"
         });
 
+        assert_valid_lexicon::<Identification>(&record);
+
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&Utc);
@@ -530,6 +554,8 @@ mod tests {
             // no createdAt
         });
 
+        assert_valid_lexicon::<Identification>(&record);
+
         let fallback = DateTime::parse_from_rfc3339("2024-03-20T15:00:00Z")
             .unwrap()
             .with_timezone(&Utc);
@@ -558,6 +584,8 @@ mod tests {
             "body": "Nice find — looks like a juvenile.",
             "createdAt": "2024-06-15T08:30:45Z"
         });
+
+        assert_valid_lexicon::<Comment>(&record);
 
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
@@ -600,6 +628,8 @@ mod tests {
             "body": "Agreed!",
             "createdAt": "2024-06-15T08:35:00Z"
         });
+
+        assert_valid_lexicon::<Comment>(&record);
 
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
@@ -645,6 +675,8 @@ mod tests {
             "comment": "Caught mid-strike.",
             "createdAt": "2024-06-15T08:30:45Z"
         });
+
+        assert_valid_lexicon::<Interaction>(&record);
 
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
@@ -698,6 +730,8 @@ mod tests {
             "createdAt": "2024-06-15T08:30:45Z"
         });
 
+        assert_valid_lexicon::<Interaction>(&record);
+
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
             .with_timezone(&Utc);
@@ -730,6 +764,8 @@ mod tests {
             },
             "createdAt": "2024-06-15T08:30:45Z"
         });
+
+        assert_valid_lexicon::<Like>(&record);
 
         let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
             .unwrap()
@@ -792,6 +828,11 @@ mod tests {
                 }
             ]
         });
+
+        // Pin down that the fixture really is a valid bio.lexicons.temp.occurrence
+        // — the regression is "we lose photos on a structurally valid record",
+        // not "we mishandle malformed input".
+        assert_valid_lexicon::<Occurrence>(&record);
 
         let parsed = occurrence_from_json(
             &record,

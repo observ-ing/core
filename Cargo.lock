@@ -2883,6 +2883,7 @@ name = "observing-db"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "jacquard-lexicon",
  "observing-lexicons",
  "serde",
  "serde_json",

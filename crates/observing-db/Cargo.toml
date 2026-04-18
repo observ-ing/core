@@ -28,3 +28,7 @@ chrono = { workspace = true }
 
 # Optional: AT Protocol lexicon types for record processing
 observing-lexicons = { path = "../observing-lexicons", optional = true }
+
+# Test-only: lexicon constraint validation in processing tests
+[dev-dependencies]
+jacquard-lexicon = "0.12.0-beta.2"
