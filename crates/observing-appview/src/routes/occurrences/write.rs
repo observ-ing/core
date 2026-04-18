@@ -312,17 +312,13 @@ pub async fn update_occurrence(
     let retained_cids = body.retained_blob_cids.clone().unwrap_or_default();
 
     let mut media_refs: Vec<StrongRef> = Vec::new();
-    let mut blob_entries: Vec<BlobEntry> = Vec::new();
 
     if existing_media_refs.len() == existing_blobs.len() {
         for (i, blob) in existing_blobs.iter().enumerate() {
             let blob_cid = blob.image.ref_.cid();
             if retained_cids.iter().any(|cid| cid == blob_cid) {
                 match serde_json::from_value::<StrongRef>(existing_media_refs[i].clone()) {
-                    Ok(strong_ref) => {
-                        media_refs.push(strong_ref);
-                        blob_entries.push(blob.clone());
-                    }
+                    Ok(strong_ref) => media_refs.push(strong_ref),
                     Err(e) => {
                         warn!(error = %e, "Failed to parse existing strong ref; dropping");
                     }
@@ -338,18 +334,10 @@ pub async fn update_occurrence(
         );
     }
 
-    // Upload new images and append their strong refs + blob entries to what was retained
-    let (new_blob_entries, new_media_refs) =
+    // Upload new images and append their strong refs to what was retained
+    let (_new_blob_entries, new_media_refs) =
         upload_media_records(&agent, &user.did, body.images.as_deref().unwrap_or(&[])).await?;
-    blob_entries.extend(new_blob_entries);
     media_refs.extend(new_media_refs);
-
-    // Serialize the blob entries now for the DB upsert below. We can't use
-    // `UpsertOccurrenceParams::set_blobs`, which clears the column on empty
-    // input — the upsert's COALESCE would then keep the stale existing value,
-    // so we must write an explicit (possibly empty) array to replace it.
-    let blob_entries_json = serde_json::to_value(&blob_entries)
-        .map_err(|e| AppError::Internal(format!("Failed to serialize blob entries: {e}")))?;
 
     let record_value = build_occurrence_record_json(
         body.latitude,
@@ -360,9 +348,9 @@ pub async fn update_occurrence(
         body.recorded_by.as_deref(),
     )?;
 
-    let record_value_for_db = record_value.clone();
-
-    // putRecord on the PDS
+    // putRecord on the PDS. The firehose commit that follows triggers the
+    // ingester to refresh the occurrence row and observer links — the appview
+    // no longer writes directly to those tables, mirroring the create flow.
     let resp = agent
         .api
         .com
@@ -394,38 +382,15 @@ pub async fn update_occurrence(
     let uri = resp.uri.clone();
     let cid = resp.cid.as_ref().to_string();
 
-    info!(uri = %uri, "Updated occurrence");
+    info!(uri = %uri, "Updated occurrence (PDS); awaiting ingester for DB refresh");
 
-    // Refresh local DB row
-    if let Ok(mut parsed) = observing_db::processing::occurrence_from_json(
-        &record_value_for_db,
-        uri.clone(),
-        cid.clone(),
-        user.did.clone(),
-    ) {
-        // Always set associated_media to the new list — the upsert uses
-        // COALESCE, so passing an explicit value (even an empty array) is
-        // required to actually replace the existing column.
-        parsed.params.associated_media = Some(blob_entries_json);
-        parsed.params.created_at = existing_db_row.created_at;
-        if let Err(e) = observing_db::occurrences::upsert(&state.pool, &parsed.params).await {
-            warn!(error = %e, "Failed to upsert occurrence into local DB");
-        }
-    }
-
-    // Refresh private location data
+    // Private location data is intentionally never written to the PDS, so the
+    // ingester has no path to populate it. This is still the appview's job.
     if let Err(e) =
         observing_db::private_data::save(&state.pool, &uri, body.latitude, body.longitude, "open")
             .await
     {
         warn!(error = %e, "Failed to save private location data");
-    }
-
-    // Sync observers
-    let co_observers = body.recorded_by.unwrap_or_default();
-    if let Err(e) = observing_db::observers::sync(&state.pool, &uri, &user.did, &co_observers).await
-    {
-        warn!(error = %e, "Failed to sync observers");
     }
 
     // If a scientific name was provided and no existing identification from this

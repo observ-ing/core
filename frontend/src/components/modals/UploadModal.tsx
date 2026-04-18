@@ -277,13 +277,20 @@ export function UploadModal() {
     fileInputRef.current?.click();
   };
 
-  // Poll for observation to appear in database after AT Protocol submission
-  const waitForObservation = async (uri: string, maxAttempts = 30): Promise<boolean> => {
+  // Poll for observation to appear in database after AT Protocol submission.
+  // When targetCid is provided, wait until the stored occurrence CID matches —
+  // required for updates where the URI is stable but the row is stale until
+  // the ingester processes the firehose commit.
+  const waitForObservation = async (
+    uri: string,
+    targetCid?: string,
+    maxAttempts = 30,
+  ): Promise<boolean> => {
     // Sequential polling by design
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       // eslint-disable-next-line no-await-in-loop
       const result = await fetchObservation(uri);
-      if (result?.occurrence) {
+      if (result?.occurrence && (targetCid === undefined || result.occurrence.cid === targetCid)) {
         return true;
       }
       // eslint-disable-next-line no-await-in-loop
@@ -343,8 +350,8 @@ export function UploadModal() {
           retainedBlobCids,
         });
 
-        // Wait for the update to be processed
-        await waitForObservation(result.uri);
+        // Wait for the ingester to refresh the row to the new CID
+        await waitForObservation(result.uri, result.cid);
         observationUri = result.uri;
 
         dispatch(
@@ -369,7 +376,7 @@ export function UploadModal() {
         });
 
         // Wait for the observation to be processed by the ingester
-        const processed = await waitForObservation(result.uri);
+        const processed = await waitForObservation(result.uri, result.cid);
         observationUri = result.uri;
 
         dispatch(
