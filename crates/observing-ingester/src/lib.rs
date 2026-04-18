@@ -4,6 +4,7 @@
 
 pub mod database;
 pub mod error;
+pub mod media_resolver;
 pub mod server;
 pub mod types;
 
