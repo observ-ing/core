@@ -128,8 +128,7 @@ async fn main() {
         .route(
             "/api/occurrences/{*uri}",
             get(routes::occurrences::get_occurrence_or_observers)
-                .post(routes::occurrences::post_occurrence_catch_all)
-                .delete(routes::occurrences::delete_occurrence_catch_all),
+                .delete(routes::occurrences::delete_occurrence),
         )
         // Occurrences write (no wildcard)
         .route(

@@ -52,47 +52,6 @@ pub async fn sync(
     Ok(())
 }
 
-/// Add a single observer to an occurrence
-pub async fn add(
-    executor: impl sqlx::PgExecutor<'_>,
-    occurrence_uri: &str,
-    observer_did: &str,
-    role: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
-        VALUES ($1, $2, $3)
-        ON CONFLICT (occurrence_uri, observer_did) DO UPDATE SET role = $3
-        "#,
-        occurrence_uri,
-        observer_did,
-        role,
-    )
-    .execute(executor)
-    .await?;
-    Ok(())
-}
-
-/// Remove a co-observer from an occurrence (owners cannot be removed this way)
-pub async fn remove(
-    executor: impl sqlx::PgExecutor<'_>,
-    occurrence_uri: &str,
-    observer_did: &str,
-) -> Result<(), sqlx::Error> {
-    sqlx::query!(
-        r#"
-        DELETE FROM occurrence_observers
-        WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'co-observer'
-        "#,
-        occurrence_uri,
-        observer_did,
-    )
-    .execute(executor)
-    .await?;
-    Ok(())
-}
-
 /// Get all observers for an occurrence
 pub async fn get_for_occurrence(
     executor: impl sqlx::PgExecutor<'_>,
@@ -144,23 +103,4 @@ pub async fn get_for_occurrences(
             });
     }
     Ok(map)
-}
-
-/// Check if a user is the owner of an occurrence
-pub async fn is_owner(
-    executor: impl sqlx::PgExecutor<'_>,
-    occurrence_uri: &str,
-    did: &str,
-) -> Result<bool, sqlx::Error> {
-    let row = sqlx::query!(
-        r#"
-        SELECT 1 as exists_ FROM occurrence_observers
-        WHERE occurrence_uri = $1 AND observer_did = $2 AND role = 'owner'
-        "#,
-        occurrence_uri,
-        did,
-    )
-    .fetch_optional(executor)
-    .await?;
-    Ok(row.is_some())
 }
