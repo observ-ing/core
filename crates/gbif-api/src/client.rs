@@ -2,7 +2,25 @@
 
 use crate::error::Result;
 use crate::types::*;
+use std::sync::LazyLock;
 use std::time::Duration;
+
+// Endpoint URLs parsed once at first use. Using LazyLock<Url> keeps the
+// `Url::parse` failure mode out of every request path — if the literal is
+// malformed the process panics the first time the endpoint is touched,
+// which is caught by any test that exercises the client.
+static V1_SPECIES_SUGGEST_URL: LazyLock<reqwest::Url> = LazyLock::new(|| {
+    reqwest::Url::parse(&format!("{}/species/suggest", GbifClient::V1_BASE_URL))
+        .expect("V1_BASE_URL + /species/suggest must be a valid URL")
+});
+static V1_SPECIES_SEARCH_URL: LazyLock<reqwest::Url> = LazyLock::new(|| {
+    reqwest::Url::parse(&format!("{}/species/search", GbifClient::V1_BASE_URL))
+        .expect("V1_BASE_URL + /species/search must be a valid URL")
+});
+static V2_SPECIES_MATCH_URL: LazyLock<reqwest::Url> = LazyLock::new(|| {
+    reqwest::Url::parse(&format!("{}/species/match", GbifClient::V2_BASE_URL))
+        .expect("V2_BASE_URL + /species/match must be a valid URL")
+});
 
 /// Client for interacting with the GBIF (Global Biodiversity Information Facility) API
 ///
@@ -48,8 +66,7 @@ impl GbifClient {
         limit: u32,
         status: Option<&str>,
     ) -> Result<Vec<SuggestResult>> {
-        let mut url =
-            reqwest::Url::parse(&format!("{}/species/suggest", Self::V1_BASE_URL)).unwrap();
+        let mut url = V1_SPECIES_SUGGEST_URL.clone();
         {
             let mut params = url.query_pairs_mut();
             params.append_pair("q", query);
@@ -91,8 +108,7 @@ impl GbifClient {
         status: Option<&str>,
         backbone_only: bool,
     ) -> Result<Vec<SearchResult>> {
-        let mut url =
-            reqwest::Url::parse(&format!("{}/species/search", Self::V1_BASE_URL)).unwrap();
+        let mut url = V1_SPECIES_SEARCH_URL.clone();
         {
             let mut params = url.query_pairs_mut();
             params.append_pair("q", query);
@@ -143,7 +159,7 @@ impl GbifClient {
         name: &str,
         kingdom: Option<&str>,
     ) -> Result<Option<V2MatchResult>> {
-        let mut url = reqwest::Url::parse(&format!("{}/species/match", Self::V2_BASE_URL)).unwrap();
+        let mut url = V2_SPECIES_MATCH_URL.clone();
         {
             let mut params = url.query_pairs_mut();
             params.append_pair("scientificName", name);
