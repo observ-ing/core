@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use axum::extract::State;
 use axum::Json;
 use chrono::Utc;
@@ -5,6 +7,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_lexicons::ing_observ::temp::like::{Like, LikeRecord};
 use serde::Deserialize;
+use tokio::time::sleep;
 use tracing::info;
 use ts_rs::TS;
 
@@ -65,20 +68,39 @@ pub async fn delete_like(
     user: AuthUser,
     Json(body): Json<DeleteLikeRequest>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    // Delete from local DB first (returns the like URI)
-    let like_uri = observing_db::likes::delete_by_subject_and_did(
-        &state.pool,
-        &body.occurrence_uri,
-        &user.did,
-    )
-    .await?;
+    // Short retry window: a rapid like→unlike can race the ingester landing
+    // the freshly-created like row. Without this, the lookup returns None and
+    // we leak a zombie PDS record.
+    let like_uri = find_like_uri_with_retry(&state, &body.occurrence_uri, &user.did).await?;
 
-    // Try to delete from AT Protocol too (non-fatal: local DB is already updated)
     if let Some(ref uri) = like_uri {
+        // Best-effort: ingester will remove the DB row when the delete commit
+        // lands on the firehose.
         let _ = try_delete_atp_record(&state.oauth_client, uri, &user.did).await;
     }
 
     Ok(Json(SuccessResponse { success: true }))
+}
+
+async fn find_like_uri_with_retry(
+    state: &AppState,
+    subject_uri: &str,
+    did: &str,
+) -> Result<Option<String>, AppError> {
+    const MAX_ATTEMPTS: usize = 5;
+    const INTERVAL: Duration = Duration::from_millis(300);
+
+    for attempt in 0..MAX_ATTEMPTS {
+        let uri =
+            observing_db::likes::find_uri_by_subject_and_did(&state.pool, subject_uri, did).await?;
+        if uri.is_some() {
+            return Ok(uri);
+        }
+        if attempt + 1 < MAX_ATTEMPTS {
+            sleep(INTERVAL).await;
+        }
+    }
+    Ok(None)
 }
 
 /// Best-effort deletion of an AT Protocol record. Returns `None` if any step

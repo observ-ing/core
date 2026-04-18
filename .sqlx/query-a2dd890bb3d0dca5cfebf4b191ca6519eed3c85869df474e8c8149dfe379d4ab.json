@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM likes WHERE subject_uri = $1 AND did = $2 RETURNING uri",
+  "query": "SELECT uri FROM likes WHERE subject_uri = $1 AND did = $2",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       false
     ]
   },
-  "hash": "4b9645883c3349e181d810ea2fa1bb0bd0a94fb1363f018c12f1e318db86da3f"
+  "hash": "a2dd890bb3d0dca5cfebf4b191ca6519eed3c85869df474e8c8149dfe379d4ab"
 }

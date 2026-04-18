@@ -32,14 +32,14 @@ pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<()
     Ok(())
 }
 
-/// Delete a like by subject URI and user DID, returning the deleted like's URI
-pub async fn delete_by_subject_and_did(
+/// Look up a like's URI by subject URI and user DID.
+pub async fn find_uri_by_subject_and_did(
     executor: impl sqlx::PgExecutor<'_>,
     subject_uri: &str,
     did: &str,
 ) -> Result<Option<String>, sqlx::Error> {
     let row = sqlx::query!(
-        "DELETE FROM likes WHERE subject_uri = $1 AND did = $2 RETURNING uri",
+        "SELECT uri FROM likes WHERE subject_uri = $1 AND did = $2",
         subject_uri,
         did
     )
