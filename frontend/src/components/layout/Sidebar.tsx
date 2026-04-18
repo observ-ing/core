@@ -10,7 +10,7 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-import { Login, Logout, GitHub, Schema } from "@mui/icons-material";
+import { Login, Logout, GitHub } from "@mui/icons-material";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
@@ -102,19 +102,6 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
       <Box sx={{ p: 1 }}>
         <Divider sx={{ mb: 1 }} />
         <List dense>
-          <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              to="/lexicons"
-              onClick={onMobileClose}
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <Schema fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Lexicons" />
-            </ListItemButton>
-          </ListItem>
           <ListItem disablePadding>
             <ListItemButton
               component="a"

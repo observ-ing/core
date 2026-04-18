@@ -20,15 +20,7 @@ import {
   Divider,
   alpha,
 } from "@mui/material";
-import {
-  Person,
-  Login,
-  Logout,
-  GitHub,
-  Schema,
-  Settings,
-  Menu as MenuIcon,
-} from "@mui/icons-material";
+import { Person, Login, Logout, GitHub, Settings, Menu as MenuIcon } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
@@ -106,18 +98,18 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                 "&:hover": { opacity: 0.8 },
               }}
             >
-              <img src={logoSvg} alt="" width={32} height={32} />
+              <img src={logoSvg} alt="" width={26} height={26} />
               <Typography
-                variant="h6"
                 component="span"
                 sx={{
-                  fontWeight: 800,
+                  fontWeight: 700,
+                  fontSize: "15px",
                   color: "primary.main",
                   display: { xs: "none", sm: "block" },
-                  letterSpacing: "-0.02em",
+                  letterSpacing: "-0.01em",
                 }}
               >
-                Observ.ing
+                observ.ing
               </Typography>
             </Box>
 
@@ -151,24 +143,17 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
 
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1.5 } }}>
             {!isMobile && (
-              <>
-                <Tooltip title="Lexicons">
-                  <IconButton component={Link} to="/lexicons" color="inherit">
-                    <Schema />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title="Source Code">
-                  <IconButton
-                    component="a"
-                    href="https://github.com/observ-ing/core"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    color="inherit"
-                  >
-                    <GitHub />
-                  </IconButton>
-                </Tooltip>
-              </>
+              <Tooltip title="Source Code">
+                <IconButton
+                  component="a"
+                  href="https://github.com/observ-ing/core"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  color="inherit"
+                >
+                  <GitHub />
+                </IconButton>
+              </Tooltip>
             )}
 
             {notificationItem && (

@@ -11,9 +11,7 @@ import {
   ButtonBase,
   Menu,
   MenuItem,
-  List,
   ListItem,
-  ListItemIcon,
   ListItemAvatar,
   ListItemText,
   Tooltip,
@@ -22,8 +20,6 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
-import MyLocationIcon from "@mui/icons-material/MyLocation";
 import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -208,24 +204,38 @@ export function ObservationDetail() {
         {/* Header */}
         <Box
           sx={{
-            p: 1.5,
+            px: 2,
+            py: 1.25,
             borderBottom: 1,
             borderColor: "divider",
             display: "flex",
             alignItems: "center",
+            gap: 1,
           }}
         >
-          <IconButton onClick={handleBack} sx={{ mr: 1 }}>
-            <ArrowBackIcon />
+          <IconButton onClick={handleBack} size="small">
+            <ArrowBackIcon fontSize="small" />
           </IconButton>
-          <Typography
-            variant="subtitle1"
+          <Box
             sx={{
-              fontWeight: 500,
+              fontFamily: "var(--ov-mono)",
+              fontSize: "11.5px",
+              letterSpacing: "0.06em",
+              textTransform: "uppercase",
+              color: "text.disabled",
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
             }}
           >
-            Observation
-          </Typography>
+            <Box component="span">Observation</Box>
+            <Box component="span" sx={{ opacity: 0.45 }}>
+              /
+            </Box>
+            <Box component="span" sx={{ color: "text.secondary" }}>
+              {rkey}
+            </Box>
+          </Box>
           <Box sx={{ ml: "auto" }}>
             <IconButton
               size="small"
@@ -260,112 +270,307 @@ export function ObservationDetail() {
           </Box>
         </Box>
 
-        {/* Species Header */}
-        <Box sx={{ px: 3, pt: 2, pb: 1 }}>
-          {species ? (
-            <TaxonLink name={species} kingdom={taxonomy?.kingdom} />
-          ) : (
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 600, fontStyle: "italic", color: "text.secondary" }}
-            >
-              Unidentified
-            </Typography>
-          )}
-          {taxonomy?.vernacularName && (
-            <Typography
-              variant="body1"
-              sx={{
-                color: "text.secondary",
-              }}
-            >
-              {taxonomy.vernacularName}
-            </Typography>
-          )}
-        </Box>
-
-        {/* Like button */}
-        <Stack
-          direction="row"
+        {/* Specimen Header */}
+        <Box
           sx={{
-            alignItems: "center",
-            px: 3,
-            pb: 1,
+            display: "grid",
+            gridTemplateColumns: { xs: "1fr", md: "1fr 300px" },
+            gap: { xs: 3, md: 6 },
+            px: 3.5,
+            pt: 4.5,
+            pb: 3.5,
+            borderBottom: 1,
+            borderColor: "divider",
           }}
         >
-          <Tooltip title={!user ? "Log in to like" : ""}>
-            <span>
-              <IconButton
-                size="small"
-                onClick={() => observation && handleLikeToggle(observation.uri, observation.cid)}
-                disabled={!user}
-                aria-label={liked ? "Unlike" : "Like"}
-                sx={{
-                  color: liked ? "error.main" : "text.disabled",
-                  ml: -0.5,
-                }}
-              >
-                {liked ? (
-                  <FavoriteIcon fontSize="small" />
-                ) : (
-                  <FavoriteBorderIcon fontSize="small" />
-                )}
-              </IconButton>
-            </span>
-          </Tooltip>
-          {likeCount > 0 && (
-            <Typography
-              variant="body2"
+          <Box>
+            <Box
               sx={{
-                color: "text.secondary",
-                ml: -0.25,
+                fontFamily: "var(--ov-mono)",
+                fontSize: "10.5px",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "text.disabled",
+                mb: 1.5,
+                display: "flex",
+                gap: 1,
+                alignItems: "center",
               }}
             >
-              {likeCount}
-            </Typography>
-          )}
-        </Stack>
+              <Box component="span">Taxon</Box>
+              {taxonomy?.kingdom && (
+                <Box
+                  component="span"
+                  sx={{
+                    px: 0.75,
+                    py: 0.25,
+                    bgcolor: "primary.light",
+                    color: "primary.dark",
+                    borderRadius: 0.5,
+                    fontSize: "9.5px",
+                  }}
+                >
+                  {taxonomy.kingdom}
+                </Box>
+              )}
+            </Box>
+            <Box
+              sx={{
+                fontFamily: "var(--ov-serif)",
+                fontStyle: "italic",
+                fontWeight: 500,
+                fontSize: { xs: "40px", sm: "56px" },
+                lineHeight: 0.98,
+                color: "primary.main",
+                letterSpacing: "-0.02em",
+              }}
+            >
+              {species ? (
+                <TaxonLink name={species} kingdom={taxonomy?.kingdom} />
+              ) : (
+                <Box component="span" sx={{ color: "text.secondary" }}>
+                  Unidentified
+                </Box>
+              )}
+            </Box>
+            {taxonomy?.vernacularName && (
+              <Typography sx={{ fontSize: "17px", color: "text.secondary", mt: 1 }}>
+                {taxonomy.vernacularName}
+              </Typography>
+            )}
+            {/* Taxonomic ladder */}
+            {taxonomy && (
+              <Box sx={{ mt: 2.75, borderTop: 1, borderColor: "divider" }}>
+                {(
+                  [
+                    ["Kingdom", taxonomy.kingdom],
+                    ["Phylum", taxonomy.phylum],
+                    ["Class", taxonomy.class],
+                    ["Order", taxonomy.order],
+                    ["Family", taxonomy.family],
+                    ["Genus", taxonomy.genus],
+                  ] satisfies [string, string | undefined][]
+                )
+                  .filter(([, v]) => !!v)
+                  .map(([k, v], i, arr) => (
+                    <Box
+                      key={k}
+                      sx={{
+                        display: "grid",
+                        gridTemplateColumns: "90px 1fr",
+                        gap: 2,
+                        alignItems: "baseline",
+                        py: 1,
+                        borderBottom: i === arr.length - 1 ? 1 : 0,
+                        borderBottomStyle: "solid",
+                        borderColor: "divider",
+                        fontFamily: "var(--ov-mono)",
+                        fontSize: "12px",
+                        position: "relative",
+                        "&::after":
+                          i !== arr.length - 1
+                            ? {
+                                content: '""',
+                                position: "absolute",
+                                left: 0,
+                                right: 0,
+                                bottom: 0,
+                                borderBottom: "1px dashed",
+                                borderColor: "divider",
+                              }
+                            : {},
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          color: "text.disabled",
+                          textTransform: "uppercase",
+                          fontSize: "10px",
+                          letterSpacing: "0.08em",
+                        }}
+                      >
+                        {k}
+                      </Box>
+                      <Box
+                        sx={{
+                          color: "text.primary",
+                          fontFamily: k === "Kingdom" ? "var(--ov-mono)" : "var(--ov-serif)",
+                          fontStyle: k === "Kingdom" ? "normal" : "italic",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {v}
+                      </Box>
+                    </Box>
+                  ))}
+              </Box>
+            )}
+            <Box sx={{ mt: 2.5, display: "flex", alignItems: "center", gap: 1 }}>
+              <Tooltip title={!user ? "Log in to like" : ""}>
+                <span>
+                  <IconButton
+                    size="small"
+                    onClick={() =>
+                      observation && handleLikeToggle(observation.uri, observation.cid)
+                    }
+                    disabled={!user}
+                    aria-label={liked ? "Unlike" : "Like"}
+                    sx={{
+                      color: liked ? "var(--ov-heart)" : "text.disabled",
+                      gap: 0.75,
+                      fontSize: "12px",
+                      borderRadius: 1,
+                    }}
+                  >
+                    {liked ? (
+                      <FavoriteIcon fontSize="small" />
+                    ) : (
+                      <FavoriteBorderIcon fontSize="small" />
+                    )}
+                    {likeCount > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          fontFamily: "var(--ov-mono)",
+                          fontVariantNumeric: "tabular-nums",
+                          fontSize: "12px",
+                          ml: 0.5,
+                        }}
+                      >
+                        {likeCount}
+                      </Box>
+                    )}
+                  </IconButton>
+                </span>
+              </Tooltip>
+            </Box>
+          </Box>
+          {/* Record card */}
+          <Box
+            sx={{
+              border: 1,
+              borderColor: "divider",
+              borderRadius: 0.5,
+              fontFamily: "var(--ov-mono)",
+              fontSize: "11px",
+              bgcolor: "background.paper",
+              alignSelf: "start",
+              "& .rc-row": {
+                display: "grid",
+                gridTemplateColumns: "86px 1fr",
+                px: 1.75,
+                py: 1.1,
+                borderBottom: 1,
+                borderColor: "divider",
+                alignItems: "baseline",
+              },
+              "& .rc-row:last-of-type": { borderBottom: 0 },
+              "& .rc-k": {
+                color: "text.disabled",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                fontSize: "10px",
+              },
+              "& .rc-v": {
+                color: "text.primary",
+                fontVariantNumeric: "tabular-nums",
+                wordBreak: "break-all",
+              },
+            }}
+          >
+            <Box className="rc-row">
+              <Box className="rc-k">Record</Box>
+              <Box className="rc-v">{rkey}</Box>
+            </Box>
+            <Box className="rc-row">
+              <Box className="rc-k">DID</Box>
+              <Box className="rc-v" sx={{ fontSize: "10px" }}>
+                {did}
+              </Box>
+            </Box>
+            <Box className="rc-row">
+              <Box className="rc-k">CID</Box>
+              <Box className="rc-v" sx={{ fontSize: "10px" }}>
+                {observation.cid}
+              </Box>
+            </Box>
+            <Box className="rc-row">
+              <Box className="rc-k">Created</Box>
+              <Box className="rc-v">
+                {new Date(observation.createdAt).toISOString().slice(0, 10)}
+              </Box>
+            </Box>
+          </Box>
+        </Box>
 
         {/* Images */}
         {observation.images.length > 0 && (
-          <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
-            <ButtonBase
-              onClick={() => setLightboxOpen(true)}
-              aria-label="Enlarge photo"
+          <Box sx={{ px: 3.5, pt: 3.5 }}>
+            <Box
               sx={{
-                display: "block",
-                width: "100%",
-                borderRadius: { xs: 0, sm: 2 },
+                border: 1,
+                borderColor: "divider",
+                borderRadius: 0.5,
                 overflow: "hidden",
-                cursor: "zoom-in",
+                bgcolor: "var(--ov-bg-sunken)",
               }}
             >
-              <Box
-                component="img"
-                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
-                alt={species}
+              <ButtonBase
+                onClick={() => setLightboxOpen(true)}
+                aria-label="Enlarge photo"
                 sx={{
-                  width: "100%",
-                  maxHeight: 400,
-                  objectFit: "contain",
                   display: "block",
-                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                  width: "100%",
+                  cursor: "zoom-in",
                 }}
-              />
-            </ButtonBase>
+              >
+                <Box
+                  component="img"
+                  src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                  alt={species}
+                  sx={{
+                    width: "100%",
+                    maxHeight: 520,
+                    objectFit: "contain",
+                    display: "block",
+                  }}
+                />
+              </ButtonBase>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  px: 1.75,
+                  py: 1.25,
+                  borderTop: 1,
+                  borderColor: "divider",
+                  fontFamily: "var(--ov-mono)",
+                  fontSize: "11px",
+                  color: "text.disabled",
+                  fontVariantNumeric: "tabular-nums",
+                }}
+              >
+                <Box component="span">
+                  Plate {activeImageIndex + 1} / {observation.images.length}
+                </Box>
+                <Box component="span">{formatDate(observation.eventDate)}</Box>
+              </Box>
+            </Box>
             {observation.images.length > 1 && (
-              <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
+              <Stack direction="row" spacing={1} sx={{ mt: 1.5, flexWrap: "wrap" }}>
                 {observation.images.map((img, idx) => (
                   <ButtonBase
                     key={img}
                     onClick={() => setActiveImageIndex(idx)}
                     sx={{
-                      width: 60,
-                      height: 60,
-                      border: 2,
+                      width: 62,
+                      height: 62,
+                      border: 1,
                       borderColor: idx === activeImageIndex ? "primary.main" : "divider",
-                      borderRadius: 1,
+                      boxShadow: idx === activeImageIndex ? "0 0 0 1px var(--ov-accent)" : "none",
+                      borderRadius: 0.5,
                       overflow: "hidden",
+                      position: "relative",
                     }}
                   >
                     <Box
@@ -374,6 +579,21 @@ export function ObservationDetail() {
                       alt={`Photo ${idx + 1}`}
                       sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        left: 3,
+                        top: 2,
+                        fontFamily: "var(--ov-mono)",
+                        fontSize: "9px",
+                        color: "#fff",
+                        bgcolor: "rgba(0,0,0,0.6)",
+                        px: 0.4,
+                        borderRadius: 0.25,
+                      }}
+                    >
+                      {String(idx + 1).padStart(2, "0")}
+                    </Box>
                   </ButtonBase>
                 ))}
               </Stack>
@@ -382,8 +602,20 @@ export function ObservationDetail() {
         )}
 
         {/* Content */}
-        <Box sx={{ p: 3 }}>
+        <Box sx={{ px: 3.5, py: 3.5 }}>
           {/* Observer */}
+          <Box
+            sx={{
+              fontFamily: "var(--ov-mono)",
+              fontSize: "10.5px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "text.disabled",
+              mb: 1.25,
+            }}
+          >
+            Observer
+          </Box>
           <ListItem
             component={Link}
             to={`/profile/${encodeURIComponent(observation.observer.did)}`}
@@ -391,7 +623,7 @@ export function ObservationDetail() {
               textDecoration: "none",
               color: "inherit",
               "&:hover": { bgcolor: "action.hover" },
-              mx: -2,
+              mx: -1.5,
               borderRadius: 1,
             }}
           >
@@ -406,69 +638,78 @@ export function ObservationDetail() {
               secondary={handle || undefined}
               slotProps={{
                 primary: { sx: { fontWeight: 600 } },
-                secondary: { sx: { color: "text.disabled" } },
+                secondary: {
+                  sx: { color: "text.disabled", fontFamily: "var(--ov-mono)", fontSize: "12px" },
+                },
               }}
             />
           </ListItem>
 
-          {/* Observation Details */}
-          <List disablePadding sx={{ mt: 1 }}>
-            <ListItem disableGutters alignItems="flex-start">
-              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                <CalendarTodayIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-              </ListItemIcon>
-              <ListItemText
-                primary="Observed"
-                secondary={formatDate(observation.eventDate)}
-                slotProps={{
-                  primary: { variant: "caption", color: "text.secondary" },
-                  secondary: { variant: "body1", color: "text.primary" },
-                }}
-              />
-            </ListItem>
-
-            <ListItem disableGutters alignItems="flex-start">
-              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-              </ListItemIcon>
-              <ListItemText
-                primary="Coordinates"
-                secondary={
-                  <>
-                    {observation.location.latitude.toFixed(5)},{" "}
-                    {observation.location.longitude.toFixed(5)}
-                    {observation.location.uncertaintyMeters && (
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        sx={{
-                          color: "text.disabled",
-                        }}
-                      >
-                        {" "}
-                        (±{observation.location.uncertaintyMeters}m)
-                      </Typography>
-                    )}
-                  </>
-                }
-                slotProps={{
-                  primary: { variant: "caption", color: "text.secondary" },
-                  secondary: {
-                    variant: "body1",
-                    color: "text.primary",
-                    component: "div",
-                  },
-                }}
-              />
-            </ListItem>
-            <Box sx={{ ml: 4.5, mb: 1 }}>
-              <LocationMap
-                latitude={observation.location.latitude}
-                longitude={observation.location.longitude}
-                uncertaintyMeters={observation.location.uncertaintyMeters}
-              />
-            </Box>
-          </List>
+          {/* Observation metadata */}
+          <Box
+            component="table"
+            sx={{
+              width: "100%",
+              borderCollapse: "collapse",
+              mt: 2.5,
+              "& td": {
+                py: 1.4,
+                borderBottom: "1px dashed",
+                borderColor: "divider",
+                verticalAlign: "top",
+                fontSize: "13px",
+              },
+              "& td:first-of-type": {
+                width: 130,
+                color: "text.disabled",
+                fontFamily: "var(--ov-mono)",
+                textTransform: "uppercase",
+                fontSize: "10.5px",
+                letterSpacing: "0.08em",
+                pr: 1.75,
+                pt: 1.6,
+              },
+              "& td:last-of-type": {
+                color: "text.primary",
+                fontFamily: "var(--ov-mono)",
+                fontVariantNumeric: "tabular-nums",
+                fontSize: "12.5px",
+              },
+              "& tr:last-of-type td": { borderBottom: 0 },
+            }}
+          >
+            <tbody>
+              <tr>
+                <td>Observed</td>
+                <td>{formatDate(observation.eventDate)}</td>
+              </tr>
+              <tr>
+                <td>Latitude</td>
+                <td>{observation.location.latitude.toFixed(5)}°</td>
+              </tr>
+              <tr>
+                <td>Longitude</td>
+                <td>{observation.location.longitude.toFixed(5)}°</td>
+              </tr>
+              {observation.location.uncertaintyMeters !== undefined && (
+                <tr>
+                  <td>Uncertainty</td>
+                  <td>±{observation.location.uncertaintyMeters} m</td>
+                </tr>
+              )}
+              <tr>
+                <td>Photos</td>
+                <td>{observation.images.length}</td>
+              </tr>
+            </tbody>
+          </Box>
+          <Box sx={{ mt: 2 }}>
+            <LocationMap
+              latitude={observation.location.latitude}
+              longitude={observation.location.longitude}
+              uncertaintyMeters={observation.location.uncertaintyMeters}
+            />
+          </Box>
 
           <Box sx={{ mt: 3 }}>
             {/* Identification History */}

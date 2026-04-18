@@ -131,6 +131,42 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
             </>
           ) : (
             <>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "baseline",
+                  justifyContent: "space-between",
+                  px: 3,
+                  pt: 3,
+                  pb: 1.75,
+                  borderBottom: 1,
+                  borderColor: "divider",
+                }}
+              >
+                <Typography
+                  component="h1"
+                  sx={{
+                    fontFamily: "var(--ov-display)",
+                    fontWeight: 500,
+                    fontSize: "28px",
+                    letterSpacing: "-0.02em",
+                    m: 0,
+                  }}
+                >
+                  Observations
+                </Typography>
+                <Box
+                  sx={{
+                    fontFamily: "var(--ov-mono)",
+                    fontSize: "10.5px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.08em",
+                    color: "text.disabled",
+                  }}
+                >
+                  {observations.length > 0 ? `n = ${observations.length}` : ""}
+                </Box>
+              </Box>
               <Box>
                 {observations.map((obs) => (
                   <FeedItem

@@ -136,54 +136,74 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   );
 
   const titleEl = (
+    <Typography
+      component={Link}
+      to={`/profile/${encodeURIComponent(owner.did)}`}
+      onClick={(e) => e.stopPropagation()}
+      sx={{
+        fontWeight: 600,
+        fontSize: "14px",
+        color: "text.primary",
+        textDecoration: "none",
+        "&:hover": { textDecoration: "underline" },
+      }}
+    >
+      {displayName}
+    </Typography>
+  );
+
+  const subheaderEl = (
     <Stack
       direction="row"
       spacing={1}
       sx={{
-        alignItems: "baseline",
-        flexWrap: "wrap",
+        alignItems: "center",
+        mt: 0.25,
+        fontFamily: "var(--ov-mono)",
+        fontSize: "12px",
+        color: "text.disabled",
       }}
     >
-      <Typography
-        component={Link}
-        to={`/profile/${encodeURIComponent(owner.did)}`}
-        onClick={(e) => e.stopPropagation()}
-        sx={{
-          fontWeight: 600,
-          color: "text.primary",
-          textDecoration: "none",
-          "&:hover": { textDecoration: "underline" },
-        }}
-      >
-        {displayName}
-      </Typography>
-      {hasCoObservers && (
-        <Tooltip title={`With ${coObserverNames}`}>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "primary.main",
-              cursor: "pointer",
-              "&:hover": { textDecoration: "underline" },
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            +{coObservers.length} other{coObservers.length > 1 ? "s" : ""}
-          </Typography>
-        </Tooltip>
-      )}
+      {handle && <Box component="span">{handle}</Box>}
       {handle && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.disabled",
-          }}
-        >
-          {handle}
-        </Typography>
+        <Box component="span" sx={{ opacity: 0.5 }}>
+          ·
+        </Box>
+      )}
+      <Box component="span">{timeAgo}</Box>
+      {hasCoObservers && (
+        <>
+          <Box component="span" sx={{ opacity: 0.5 }}>
+            ·
+          </Box>
+          <Tooltip title={`With ${coObserverNames}`}>
+            <Box
+              component="span"
+              sx={{ color: "primary.main", cursor: "pointer" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              +{coObservers.length}
+            </Box>
+          </Tooltip>
+        </>
       )}
     </Stack>
   );
+
+  const taxoStrip = taxonomy
+    ? [taxonomy.kingdom, taxonomy.phylum, taxonomy.class, taxonomy.order, taxonomy.family].filter(
+        Boolean,
+      )
+    : [];
+
+  const eventDate = observation.eventDate ? new Date(observation.eventDate) : null;
+  const dateStr = eventDate
+    ? eventDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "2-digit" })
+    : "—";
+  const coordStr = observation.location
+    ? `${observation.location.latitude.toFixed(3)}°, ${observation.location.longitude.toFixed(3)}°`
+    : "—";
+  const idCount = observation.identificationCount ?? 0;
 
   return (
     <Card sx={FEED_CARD_SX}>
@@ -191,8 +211,8 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         <CardHeader
           avatar={avatarEl}
           title={titleEl}
-          subheader={timeAgo}
-          subheaderTypographyProps={{ variant: "body2", color: "text.disabled" }}
+          subheader={subheaderEl}
+          disableTypography
           action={
             <>
               <IconButton
@@ -232,15 +252,46 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         />
 
         {imageUrl && (
-          <ImageWithSkeleton
-            src={imageUrl}
-            alt={species || "Observation photo"}
-            sx={{ height: FEED_IMAGE_MAX_HEIGHT }}
-          />
+          <Box sx={{ position: "relative" }}>
+            <ImageWithSkeleton
+              src={imageUrl}
+              alt={species || "Observation photo"}
+              sx={{ height: FEED_IMAGE_MAX_HEIGHT }}
+            />
+            {observation.images.length > 1 && (
+              <Box
+                sx={{
+                  position: "absolute",
+                  right: 10,
+                  bottom: 10,
+                  px: 1,
+                  py: 0.5,
+                  borderRadius: 0.5,
+                  bgcolor: "rgba(0,0,0,0.55)",
+                  color: "#fff",
+                  fontFamily: "var(--ov-mono)",
+                  fontSize: "10.5px",
+                  backdropFilter: "blur(4px)",
+                }}
+              >
+                1 / {observation.images.length}
+              </Box>
+            )}
+          </Box>
         )}
 
-        <CardContent>
-          <Box sx={{ fontSize: "1.1rem" }}>
+        <CardContent sx={{ py: 2 }}>
+          <Box
+            sx={{
+              fontFamily: "var(--ov-serif)",
+              fontStyle: "italic",
+              fontWeight: 500,
+              fontSize: "21px",
+              color: "primary.main",
+              letterSpacing: "-0.01em",
+              lineHeight: 1.2,
+            }}
+          >
             {species ? (
               <TaxonLink
                 name={species}
@@ -249,14 +300,108 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (
-              <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
+              <Box component="span" sx={{ color: "text.secondary" }}>
                 Unidentified
-              </Typography>
+              </Box>
             )}
+          </Box>
+          {taxonomy?.vernacularName && (
+            <Typography sx={{ color: "text.secondary", fontSize: "14px", mt: 0.4 }}>
+              {taxonomy.vernacularName}
+            </Typography>
+          )}
+          {taxoStrip.length > 0 && (
+            <Box
+              sx={{
+                display: "flex",
+                flexWrap: "wrap",
+                mt: 1.25,
+                fontFamily: "var(--ov-mono)",
+                fontSize: "10px",
+                color: "text.disabled",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {taxoStrip.map((t, i) => (
+                <Box component="span" key={i} sx={{ display: "inline-flex" }}>
+                  {i > 0 && (
+                    <Box component="span" sx={{ opacity: 0.4, px: 0.75 }}>
+                      ·
+                    </Box>
+                  )}
+                  <Box component="span" sx={{ color: "text.secondary" }}>
+                    {t}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          )}
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              borderTop: 1,
+              borderColor: "divider",
+              mt: 1.75,
+              fontFamily: "var(--ov-mono)",
+              fontSize: "11px",
+              color: "text.disabled",
+              "& > div": { py: 1.25 },
+              "& > div + div": { borderLeft: 1, borderColor: "divider", pl: 1.75 },
+              "& .k": {
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+                fontSize: "9.5px",
+                display: "block",
+                mb: 0.4,
+              },
+              "& .v": {
+                color: "text.primary",
+                fontSize: "12px",
+                fontWeight: 500,
+                fontVariantNumeric: "tabular-nums",
+              },
+            }}
+          >
+            <Box>
+              <Box component="span" className="k">
+                Observed
+              </Box>
+              <Box component="span" className="v">
+                {dateStr}
+              </Box>
+            </Box>
+            <Box>
+              <Box component="span" className="k">
+                Location
+              </Box>
+              <Box component="span" className="v">
+                {coordStr}
+              </Box>
+            </Box>
+            <Box>
+              <Box component="span" className="k">
+                IDs
+              </Box>
+              <Box component="span" className="v">
+                {idCount}
+              </Box>
+            </Box>
           </Box>
         </CardContent>
       </CardActionArea>
-      <CardActions disableSpacing sx={{ pt: 0 }}>
+      <CardActions
+        disableSpacing
+        sx={{
+          pt: 1,
+          pb: 1,
+          px: 1.5,
+          borderTop: 1,
+          borderColor: "divider",
+          gap: 0.5,
+        }}
+      >
         <Tooltip title={!currentUser ? "Log in to like" : ""}>
           <span>
             <IconButton
@@ -265,23 +410,29 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
               disabled={!currentUser}
               aria-label={liked ? "Unlike" : "Like"}
               sx={{
-                color: liked ? "error.main" : "text.disabled",
+                color: liked ? "var(--ov-heart)" : "text.disabled",
+                gap: 0.75,
+                fontSize: "12px",
+                borderRadius: 1,
               }}
             >
               {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
+              {likeCount > 0 && (
+                <Box
+                  component="span"
+                  sx={{
+                    fontFamily: "var(--ov-mono)",
+                    fontVariantNumeric: "tabular-nums",
+                    fontSize: "12px",
+                    ml: 0.5,
+                  }}
+                >
+                  {likeCount}
+                </Box>
+              )}
             </IconButton>
           </span>
         </Tooltip>
-        {likeCount > 0 && (
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            {likeCount}
-          </Typography>
-        )}
       </CardActions>
     </Card>
   );
