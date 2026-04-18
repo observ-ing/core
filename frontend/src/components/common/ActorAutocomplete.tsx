@@ -1,16 +1,9 @@
 import { useState, useCallback } from "react";
-import {
-  Autocomplete,
-  Avatar,
-  Box,
-  CircularProgress,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Autocomplete, Avatar, Box, Stack, Typography } from "@mui/material";
 import { searchActors } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
 import { useAutocomplete } from "../../hooks/useAutocomplete";
+import { renderAutocompleteInput } from "./autocompleteInput";
 
 interface ActorAutocompleteProps {
   onSelect: (actor: ActorSearchResult) => void;
@@ -56,29 +49,7 @@ export function ActorAutocomplete({
       }}
       filterOptions={(x) => x}
       size="small"
-      renderInput={(params) => {
-        const { slotProps: paramsSlotProps, ...rest } = params;
-        return (
-          <TextField
-            {...rest}
-            fullWidth
-            label={label}
-            placeholder={placeholder}
-            slotProps={{
-              ...paramsSlotProps,
-              input: {
-                ...paramsSlotProps.input,
-                endAdornment: (
-                  <>
-                    {loading && <CircularProgress color="inherit" size={20} />}
-                    {paramsSlotProps.input?.endAdornment}
-                  </>
-                ),
-              },
-            }}
-          />
-        );
-      }}
+      renderInput={(params) => renderAutocompleteInput({ params, loading, label, placeholder })}
       renderOption={(props, option) => {
         const { key, ...otherProps } = props;
         return (

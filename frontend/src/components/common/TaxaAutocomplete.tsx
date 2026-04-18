@@ -1,10 +1,11 @@
 import { useCallback, type ReactNode } from "react";
-import { Autocomplete, Box, CircularProgress, Stack, TextField, Typography } from "@mui/material";
+import { Autocomplete, Box, Stack, Typography } from "@mui/material";
 import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { useAutocomplete } from "../../hooks/useAutocomplete";
 import { MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
+import { renderAutocompleteInput } from "./autocompleteInput";
 
 interface TaxaAutocompleteProps {
   value: string;
@@ -64,30 +65,9 @@ export function TaxaAutocomplete({
         }}
         filterOptions={(x) => x}
         {...(size ? { size } : {})}
-        renderInput={(params) => {
-          const { slotProps: paramsSlotProps, ...rest } = params;
-          return (
-            <TextField
-              {...rest}
-              fullWidth
-              label={label}
-              placeholder={placeholder}
-              margin={margin}
-              slotProps={{
-                ...paramsSlotProps,
-                input: {
-                  ...paramsSlotProps.input,
-                  endAdornment: (
-                    <>
-                      {loading && <CircularProgress color="inherit" size={20} />}
-                      {paramsSlotProps.input?.endAdornment}
-                    </>
-                  ),
-                },
-              }}
-            />
-          );
-        }}
+        renderInput={(params) =>
+          renderAutocompleteInput({ params, loading, label, placeholder, margin })
+        }
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           return (
