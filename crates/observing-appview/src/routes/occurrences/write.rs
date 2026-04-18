@@ -225,10 +225,8 @@ pub async fn delete_occurrence_catch_all(
             }
         })?;
 
-    if let Err(e) = observing_db::occurrences::delete(&state.pool, uri).await {
-        warn!(error = %e, "Failed to delete occurrence from local DB");
-    }
-
+    // The firehose delete commit will trigger the ingester to remove the row
+    // (and cascade to identifications/comments/likes/interactions via FK).
     Ok(Json(SuccessResponse { success: true }))
 }
 

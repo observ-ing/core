@@ -159,6 +159,26 @@ export async function fetchObservation(uri: string): Promise<OccurrenceDetailRes
   }
 }
 
+// Poll fetchObservation until the predicate is satisfied. Used to wait for the
+// ingester to catch up after a PDS write before the UI refetches or navigates
+// — without this, callers would see stale data (pre-update row, ghost of a
+// deleted record, missing new identification).
+export async function pollObservation(
+  uri: string,
+  predicate: (result: OccurrenceDetailResponse | null) => boolean,
+  { maxAttempts = 30, intervalMs = 1000 }: { maxAttempts?: number; intervalMs?: number } = {},
+): Promise<boolean> {
+  // Sequential polling by design
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // eslint-disable-next-line no-await-in-loop
+    const result = await fetchObservation(uri);
+    if (predicate(result)) return true;
+    // eslint-disable-next-line no-await-in-loop
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+  }
+  return false;
+}
+
 export async function fetchObservationsGeoJSON(bounds: {
   minLat: number;
   minLng: number;

@@ -24,7 +24,12 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import { fetchObservation, getImageUrl, deleteIdentification } from "../../services/api";
+import {
+  fetchObservation,
+  getImageUrl,
+  deleteIdentification,
+  pollObservation,
+} from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
@@ -480,6 +485,15 @@ export function ObservationDetail() {
                 onDeleteIdentification={async (uri) => {
                   try {
                     await deleteIdentification(uri);
+                    // Wait for the ingester to remove the identification;
+                    // refetching immediately would show the stale row and
+                    // make the delete look like it failed.
+                    if (atUri) {
+                      await pollObservation(
+                        atUri,
+                        (r) => !r?.identifications?.some((id) => id.uri === uri),
+                      );
+                    }
                     dispatch(addToast({ message: "Identification deleted", type: "success" }));
                     await handleIdentificationSuccess();
                   } catch (error) {

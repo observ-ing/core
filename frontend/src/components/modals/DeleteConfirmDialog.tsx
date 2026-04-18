@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
-import { deleteObservation } from "../../services/api";
+import { deleteObservation, pollObservation } from "../../services/api";
 import { getErrorMessage } from "../../lib/utils";
 
 export function DeleteConfirmDialog() {
@@ -36,6 +36,10 @@ export function DeleteConfirmDialog() {
     setIsDeleting(true);
     try {
       await deleteObservation(observation.uri);
+
+      // Wait for the ingester to remove the row; the navigate/reload below
+      // would otherwise briefly show the deleted observation in the feed.
+      await pollObservation(observation.uri, (r) => !r?.occurrence);
 
       dispatch(
         addToast({

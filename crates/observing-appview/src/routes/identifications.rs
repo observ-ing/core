@@ -5,7 +5,7 @@ use observing_lexicons::bio_lexicons::temp::identification::{
     Identification, IdentificationRecord, IdentificationTaxonRank,
 };
 use serde::Deserialize;
-use tracing::{info, warn};
+use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
@@ -157,10 +157,7 @@ pub async fn delete_identification(
             }
         })?;
 
-    // Delete from local DB (refreshes community IDs)
-    if let Err(e) = observing_db::identifications::delete(&state.pool, &uri).await {
-        warn!(error = %e, "Failed to delete identification from local DB");
-    }
-
+    // The firehose delete commit will trigger the ingester to remove the row
+    // and refresh community IDs for the occurrence.
     Ok(Json(SuccessResponse { success: true }))
 }
