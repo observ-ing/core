@@ -32,7 +32,7 @@ processes:
         condition: process_healthy
 
   ingester:
-    command: cargo run
+    command: cargo run --bin observing-ingester
     working_dir: crates/observing-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
