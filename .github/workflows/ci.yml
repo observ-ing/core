@@ -215,11 +215,14 @@ jobs:
         run: npm run build
       - name: Build appview
         run: cargo build -p observing-appview
+      - name: Build ingester
+        run: cargo build -p observing-ingester --bin observing-ingester
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
           PORT=3000 ./target/debug/observing-appview &
+          PORT=8090 ./target/debug/observing-ingester &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
