@@ -53,13 +53,6 @@ pub struct ImageUpload {
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
-pub struct AddObserverRequest {
-    did: String,
-}
-
-#[derive(Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "bindings/")]
 pub struct UpdateOccurrenceRequest {
     uri: String,
     latitude: f64,
@@ -146,46 +139,13 @@ pub async fn create_occurrence(
     }))
 }
 
-/// POST catch-all for /api/occurrences/{*uri} -- dispatches observers POST
-pub async fn post_occurrence_catch_all(
+/// DELETE /api/occurrences/{*uri} — delete an occurrence record via PDS deleteRecord.
+pub async fn delete_occurrence(
     State(state): State<AppState>,
     user: AuthUser,
-    Path(full_path): Path<String>,
-    Json(body): Json<AddObserverRequest>,
+    Path(uri): Path<String>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    if let Some(uri) = full_path.strip_suffix("/observers") {
-        if let Err(e) = observing_db::observers::add(&state.pool, uri, &user.did, "owner").await {
-            warn!(error = %e, "Failed to add owner observer");
-        }
-        if let Err(e) =
-            observing_db::observers::add(&state.pool, uri, &body.did, "co-observer").await
-        {
-            warn!(error = %e, "Failed to add co-observer");
-        }
-        return Ok(Json(SuccessResponse { success: true }));
-    }
-
-    Err(AppError::NotFound("Not found".into()))
-}
-
-/// DELETE catch-all for /api/occurrences/{*uri} -- dispatches occurrence delete or observer remove
-pub async fn delete_occurrence_catch_all(
-    State(state): State<AppState>,
-    user: AuthUser,
-    Path(full_path): Path<String>,
-) -> Result<Json<SuccessResponse>, AppError> {
-    // Try observer removal: path is `{uri}/observers/{did}`
-    if let Some((uri, observer_did)) = full_path.rsplit_once("/observers/") {
-        if let Err(e) = observing_db::observers::remove(&state.pool, uri, observer_did).await {
-            warn!(error = %e, "Failed to remove observer");
-        }
-        return Ok(Json(SuccessResponse { success: true }));
-    }
-
-    // Otherwise, delete the occurrence itself
-    let uri = &full_path;
-
-    let at_uri = AtUri::parse(uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
 
     if at_uri.did != user.did {
         return Err(AppError::Forbidden(
