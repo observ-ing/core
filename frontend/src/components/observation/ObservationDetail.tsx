@@ -480,6 +480,20 @@ export function ObservationDetail() {
                 onDeleteIdentification={async (uri) => {
                   try {
                     await deleteIdentification(uri);
+                    // Wait for the ingester to remove the identification;
+                    // refetching immediately would show the stale row and
+                    // make the delete look like it failed.
+                    if (atUri) {
+                      // Sequential polling by design
+                      for (let attempt = 0; attempt < 30; attempt++) {
+                        // eslint-disable-next-line no-await-in-loop
+                        const result = await fetchObservation(atUri);
+                        const stillPresent = result?.identifications?.some((id) => id.uri === uri);
+                        if (!stillPresent) break;
+                        // eslint-disable-next-line no-await-in-loop
+                        await new Promise((resolve) => setTimeout(resolve, 1000));
+                      }
+                    }
                     dispatch(addToast({ message: "Identification deleted", type: "success" }));
                     await handleIdentificationSuccess();
                   } catch (error) {

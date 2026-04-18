@@ -3,10 +3,9 @@ use axum::Json;
 use chrono::Utc;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
-use observing_db::types::CreateLikeParams;
 use observing_lexicons::ing_observ::temp::like::{Like, LikeRecord};
 use serde::Deserialize;
-use tracing::{info, warn};
+use tracing::info;
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
@@ -42,23 +41,10 @@ pub async fn create_like(
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let output = auth::create_at_record(&agent, did_parsed, LikeRecord::NSID, record_value).await?;
 
-    let uri = output.uri.clone();
+    let uri = output.uri.to_string();
     let cid = output.cid.as_ref().to_string();
 
-    info!(uri = %uri, "Created like");
-
-    // Immediate local DB insert
-    let params = CreateLikeParams {
-        uri: uri.clone(),
-        cid: cid.clone(),
-        did: user.did,
-        subject_uri: body.occurrence_uri,
-        subject_cid: body.occurrence_cid,
-        created_at: now.naive_utc(),
-    };
-    if let Err(e) = observing_db::likes::create(&state.pool, &params).await {
-        warn!(error = %e, "Failed to insert like into local DB");
-    }
+    info!(uri = %uri, "Created like (PDS); awaiting ingester for DB row");
 
     Ok(Json(RecordCreatedResponse {
         success: true,
