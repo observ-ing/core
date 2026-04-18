@@ -221,8 +221,8 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
-          PORT=3000 ./target/debug/observing-appview &
-          PORT=8090 ./target/debug/observing-ingester &
+          PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
+          PORT=8090 ./target/debug/observing-ingester > /tmp/ingester.log 2>&1 &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
@@ -237,6 +237,14 @@ jobs:
           BLUESKY_TEST_EMAIL: ${{ secrets.BLUESKY_TEST_EMAIL }}
           BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
           BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
+      - name: Dump service logs on failure
+        if: failure()
+        run: |
+          echo "===== appview log ====="
+          tail -200 /tmp/appview.log || true
+          echo
+          echo "===== ingester log ====="
+          tail -200 /tmp/ingester.log || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
