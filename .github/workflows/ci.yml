@@ -207,9 +207,14 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
+      - uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: postgres
       - name: Run database migrations and seed
         run: |
-          for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
+          sqlx migrate run --source crates/observing-db/migrations
           psql $DATABASE_URL -f tests/seed.sql
       - name: Build frontend
         run: npm run build
