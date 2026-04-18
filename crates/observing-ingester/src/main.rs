@@ -5,6 +5,7 @@
 
 mod database;
 mod error;
+mod media_resolver;
 mod server;
 mod types;
 

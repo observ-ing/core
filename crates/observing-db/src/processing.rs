@@ -47,12 +47,26 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
         .ok()
 }
 
+/// A strong reference to a `bio.lexicons.temp.media` record, as it appears
+/// in an occurrence's `associatedMedia` array. Callers (the ingester) resolve
+/// these by fetching the referenced record from the author's PDS to build
+/// `BlobEntry` values for `associated_media`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AssociatedMediaRef {
+    pub uri: String,
+    pub cid: String,
+}
+
 /// Result of parsing an occurrence record, containing both the database
 /// params and the typed `recorded_by` field for co-observer processing.
 pub struct ParsedOccurrence {
     pub params: UpsertOccurrenceParams,
     /// The `recordedBy` DIDs from the lexicon record (if present).
     pub recorded_by: Option<Vec<String>>,
+    /// Strong refs to `bio.lexicons.temp.media` records. The ingester resolves
+    /// these asynchronously to populate `params.associated_media`; the appview
+    /// write path ignores this field because it already has the blobs in-memory.
+    pub associated_media_refs: Vec<AssociatedMediaRef>,
 }
 
 /// Convert an occurrence record JSON to database params.
@@ -132,6 +146,20 @@ pub fn occurrence_from_json(
                 .collect()
         });
 
+    let associated_media_refs: Vec<AssociatedMediaRef> = record_json
+        .get("associatedMedia")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| {
+                    let uri = v.get("uri").and_then(|u| u.as_str())?.to_string();
+                    let cid = v.get("cid").and_then(|c| c.as_str())?.to_string();
+                    Some(AssociatedMediaRef { uri, cid })
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
     Ok(ParsedOccurrence {
         params: UpsertOccurrenceParams {
             uri,
@@ -173,6 +201,7 @@ pub fn occurrence_from_json(
             created_at,
         },
         recorded_by,
+        associated_media_refs,
     })
 }
 
@@ -796,21 +825,13 @@ mod tests {
     /// `associatedMedia` strong refs to separate `bio.lexicons.temp.media`
     /// records — there is no inline `blobs` field on the occurrence itself.
     ///
-    /// Today this conversion only reads the legacy inline `blobs` field and
-    /// silently drops `associatedMedia`, so any record produced by the
-    /// current write path ends up with `associated_media = None`. This works
-    /// only because the appview also writes the DB row directly with the
-    /// in-memory blob entries — if anything other than that direct write
-    /// becomes the populating path (ingester-only writes, backfill, etc.),
-    /// new observations land with no images.
-    ///
-    /// Marked `#[ignore]` because the bug is not yet fixed; running with
-    /// `cargo test -- --ignored` reproduces the failure. Remove the attribute
-    /// once the ingester learns to resolve `associatedMedia` → media records
-    /// → blob entries.
+    /// Resolving those strong refs requires HTTP calls to the author's PDS,
+    /// which the synchronous `observing-db` layer intentionally does not do;
+    /// the ingester fetches and converts them in a follow-up step. This test
+    /// covers the first half of that pipeline: the parser must surface the
+    /// strong refs so the ingester has something to resolve.
     #[test]
-    #[ignore = "ingester does not yet resolve associatedMedia strong refs; see test docs"]
-    fn test_occurrence_from_json_resolves_associated_media() {
+    fn test_occurrence_from_json_extracts_associated_media_refs() {
         let record = serde_json::json!({
             "$type": "bio.lexicons.temp.occurrence",
             "decimalLatitude": "37.7749",
@@ -842,11 +863,26 @@ mod tests {
         )
         .expect("record should parse");
 
+        assert_eq!(
+            parsed.associated_media_refs,
+            vec![
+                AssociatedMediaRef {
+                    uri: "at://did:plc:author/bio.lexicons.temp.media/abc123".into(),
+                    cid: "bafyreiabc123".into(),
+                },
+                AssociatedMediaRef {
+                    uri: "at://did:plc:author/bio.lexicons.temp.media/def456".into(),
+                    cid: "bafyreidef456".into(),
+                },
+            ],
+            "occurrence_from_json must surface associatedMedia strong refs so the \
+             ingester can resolve them; without this, ingester-only writes lose \
+             every photo on new observations"
+        );
         assert!(
-            parsed.params.associated_media.is_some(),
-            "occurrence_from_json must populate associated_media when the \
-             record carries associatedMedia strong refs; without this, \
-             ingester-only writes lose every photo on new observations"
+            parsed.params.associated_media.is_none(),
+            "synchronous parser should not populate associated_media from strong \
+             refs — that is the ingester's async job"
         );
     }
 }

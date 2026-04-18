@@ -2896,6 +2896,8 @@ dependencies = [
 name = "observing-ingester"
 version = "0.1.0"
 dependencies = [
+ "at-uri-parser",
+ "atproto-blob-resolver",
  "atproto-identity",
  "axum",
  "chrono",
@@ -2914,6 +2916,7 @@ dependencies = [
  "tracing-stackdriver",
  "tracing-subscriber",
  "url",
+ "urlencoding",
 ]
 
 [[package]]

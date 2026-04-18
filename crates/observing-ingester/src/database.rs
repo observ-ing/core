@@ -4,6 +4,7 @@
 //! and uses `observing-db` for SQL execution.
 
 use crate::error::Result;
+use crate::media_resolver::MediaResolver;
 use jetstream_client::CommitInfo;
 use observing_db::processing;
 use sqlx::postgres::{PgPool, PgPoolOptions};
@@ -72,6 +73,7 @@ macro_rules! process_or_warn {
 /// Database connection and operations
 pub struct Database {
     pool: PgPool,
+    media_resolver: MediaResolver,
 }
 
 impl Database {
@@ -85,7 +87,10 @@ impl Database {
             .connect(database_url)
             .await?;
         info!("Database connection established");
-        Ok(Self { pool })
+        Ok(Self {
+            pool,
+            media_resolver: MediaResolver::new(),
+        })
     }
 
     /// Run database migrations using the shared migration
@@ -100,7 +105,7 @@ impl Database {
 
         let record_json = require_record!(commit, "occurrence");
 
-        let parsed = process_or_warn!(
+        let mut parsed = process_or_warn!(
             commit,
             occurrence_from_json,
             "occurrence",
@@ -109,6 +114,23 @@ impl Database {
             commit.cid.clone(),
             commit.did.clone(),
         );
+
+        // Resolve associatedMedia strong refs → media records → blob entries.
+        // The appview write path populates associated_media directly from
+        // in-memory blobs, but firehose-only ingestion has only strong refs
+        // and must fetch the referenced media records from the author's PDS.
+        if !parsed.associated_media_refs.is_empty() {
+            let entries = self
+                .media_resolver
+                .resolve(&parsed.associated_media_refs)
+                .await;
+            if !entries.is_empty() {
+                match serde_json::to_value(&entries) {
+                    Ok(v) => parsed.params.associated_media = Some(v),
+                    Err(e) => warn!(error = %e, "Failed to serialize resolved associated_media"),
+                }
+            }
+        }
 
         observing_db::occurrences::upsert(&self.pool, &parsed.params).await?;
 
