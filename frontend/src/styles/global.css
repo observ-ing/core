@@ -39,3 +39,21 @@ button,
     opacity 0.15s ease,
     transform 0.15s ease;
 }
+
+/* Herbarium utility classes */
+.ov-mono {
+  font-family: var(--ov-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ov-sci {
+  font-family: var(--ov-serif);
+  font-style: italic;
+}
+.ov-label {
+  font-family: var(--ov-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ov-fg-3);
+  font-weight: 600;
+}

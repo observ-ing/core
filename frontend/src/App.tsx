@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box } from "@mui/material";
 import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
@@ -79,23 +79,34 @@ function AppContent() {
       {!showLanding && (
         <>
           <TopBar onMobileMenuClick={handleDrawerOpen} unreadCount={unreadCount} />
-          <Alert
-            severity="warning"
+          <Box
             sx={{
-              borderRadius: 0,
-              py: 0.5,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 1.25,
+              px: 2,
+              py: 1.1,
               flexShrink: 0,
+              bgcolor: "var(--ov-warning-bg)",
+              color: "var(--ov-warning)",
               borderBottom: 1,
-              borderColor: "warning.main",
-              "& .MuiAlert-message": {
-                width: "100%",
-                textAlign: "center",
-              },
+              borderColor: "divider",
+              fontSize: "12.5px",
+              fontFamily: "var(--ov-mono)",
+              letterSpacing: "0.04em",
             }}
           >
-            <strong>Pre-release:</strong> This is an early alpha. The database may be wiped at any
-            time without notice.
-          </Alert>
+            <Box component="span" sx={{ fontWeight: 700, textTransform: "uppercase" }}>
+              Pre-release
+            </Box>
+            <Box component="span" sx={{ opacity: 0.5 }}>
+              ·
+            </Box>
+            <Box component="span">
+              Early alpha. The database may be wiped at any time without notice.
+            </Box>
+          </Box>
           <Sidebar
             mobileOpen={mobileOpen}
             onMobileClose={handleDrawerClose}

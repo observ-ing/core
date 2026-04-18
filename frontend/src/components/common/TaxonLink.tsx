@@ -76,12 +76,24 @@ export function TaxonLink({
           label={name}
           size="small"
           variant="outlined"
-          sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}
+          sx={{
+            fontStyle: shouldItalicize ? "italic" : "normal",
+            fontFamily: shouldItalicize ? "var(--ov-serif)" : undefined,
+          }}
         />
       );
     }
     return (
-      <Typography sx={{ fontStyle: shouldItalicize ? "italic" : "normal" }}>{name}</Typography>
+      <Typography
+        component="span"
+        sx={{
+          fontStyle: shouldItalicize ? "italic" : "normal",
+          fontFamily: shouldItalicize ? "var(--ov-serif)" : undefined,
+          fontWeight: shouldItalicize ? 500 : undefined,
+        }}
+      >
+        {name}
+      </Typography>
     );
   }
 
@@ -96,6 +108,7 @@ export function TaxonLink({
         onClick={handleClick}
         sx={{
           fontStyle: shouldItalicize ? "italic" : "normal",
+          fontFamily: shouldItalicize ? "var(--ov-serif)" : undefined,
           cursor: "pointer",
           "&:hover": {
             bgcolor: "rgba(255, 255, 255, 0.08)",
@@ -112,6 +125,8 @@ export function TaxonLink({
       onClick={handleClick}
       sx={{
         fontStyle: shouldItalicize ? "italic" : "normal",
+        fontFamily: shouldItalicize ? "var(--ov-serif)" : undefined,
+        fontWeight: shouldItalicize ? 500 : undefined,
         color: "primary.main",
         textDecoration: "none",
         "&:hover": {
