@@ -41,6 +41,24 @@ async function fetchApi<T>(url: string, errorMessage: string, init?: RequestInit
   return response.json();
 }
 
+/**
+ * DELETE a resource and return the JSON body. Surfaces 401s as a
+ * session-expired error so callers can prompt for re-login.
+ */
+async function deleteResource<T>(url: string, errorMessage: string): Promise<T> {
+  const response = await fetch(url, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error("Session expired, please log in again");
+    }
+    throw new Error(await extractErrorMessage(response, errorMessage));
+  }
+  return response.json();
+}
+
 export async function checkAuth(): Promise<User | null> {
   try {
     const response = await fetch(`${API_BASE}/oauth/me`, {
@@ -249,35 +267,17 @@ export async function updateObservation(data: {
 }
 
 export async function deleteObservation(uri: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error("Session expired, please log in again");
-    }
-    throw new Error(await extractErrorMessage(response, "Failed to delete observation"));
-  }
-
-  return response.json();
+  return deleteResource(
+    `${API_BASE}/api/occurrences/${encodeURIComponent(uri)}`,
+    "Failed to delete observation",
+  );
 }
 
 export async function deleteIdentification(uri: string): Promise<{ success: boolean }> {
-  const response = await fetch(`${API_BASE}/api/identifications/${encodeURIComponent(uri)}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      throw new Error("Session expired, please log in again");
-    }
-    throw new Error(await extractErrorMessage(response, "Failed to delete identification"));
-  }
-
-  return response.json();
+  return deleteResource(
+    `${API_BASE}/api/identifications/${encodeURIComponent(uri)}`,
+    "Failed to delete identification",
+  );
 }
 
 export function getImageUrl(path: string): string {
