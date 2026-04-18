@@ -470,6 +470,10 @@ export function UploadModal() {
                   component="img"
                   src={url}
                   alt={`Existing ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  width={80}
+                  height={80}
                   sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
                 <IconButton
@@ -508,6 +512,10 @@ export function UploadModal() {
                   component="img"
                   src={img.preview}
                   alt={`Preview ${index + 1}`}
+                  loading="lazy"
+                  decoding="async"
+                  width={80}
+                  height={80}
                   sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                 />
                 <IconButton

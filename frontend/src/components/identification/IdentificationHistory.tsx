@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
@@ -50,31 +50,39 @@ export function IdentificationHistory({
   const handleMenuClose = (uri: string) => {
     setMenuAnchorEl((prev) => ({ ...prev, [uri]: null }));
   };
-  // Sort oldest first
-  const sortedIds = [...identifications].sort(
-    (a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime(),
-  );
+  const { sortedIds, supersededUris, observerFirstIdUri } = useMemo(() => {
+    // Sort oldest first
+    const sorted = [...identifications].sort(
+      (a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime(),
+    );
 
-  // Build set of superseded identification URIs (user has a newer ID)
-  const supersededUris = new Set<string>();
-  const latestByUser = new Map<string, Identification>();
-  for (const id of sortedIds) {
-    const existing = latestByUser.get(id.did);
-    if (
-      !existing ||
-      new Date(id.date_identified).getTime() > new Date(existing.date_identified).getTime()
-    ) {
-      if (existing) supersededUris.add(existing.uri);
-      latestByUser.set(id.did, id);
-    } else {
-      supersededUris.add(id.uri);
+    // Build set of superseded identification URIs (user has a newer ID)
+    const superseded = new Set<string>();
+    const latestByUser = new Map<string, Identification>();
+    for (const id of sorted) {
+      const existing = latestByUser.get(id.did);
+      if (
+        !existing ||
+        new Date(id.date_identified).getTime() > new Date(existing.date_identified).getTime()
+      ) {
+        if (existing) superseded.add(existing.uri);
+        latestByUser.set(id.did, id);
+      } else {
+        superseded.add(id.uri);
+      }
     }
-  }
 
-  // Find the observer's earliest (first) identification for the "Observer's ID" badge
-  const observerFirstIdUri = observerDid
-    ? sortedIds.find((id) => id.did === observerDid)?.uri
-    : undefined;
+    // Find the observer's earliest (first) identification for the "Observer's ID" badge
+    const firstObserverIdUri = observerDid
+      ? sorted.find((id) => id.did === observerDid)?.uri
+      : undefined;
+
+    return {
+      sortedIds: sorted,
+      supersededUris: superseded,
+      observerFirstIdUri: firstObserverIdUri,
+    };
+  }, [identifications, observerDid]);
 
   if (sortedIds.length === 0) {
     return (
