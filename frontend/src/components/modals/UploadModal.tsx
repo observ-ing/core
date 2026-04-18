@@ -20,7 +20,7 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
-import { submitObservation, updateObservation, fetchObservation } from "../../services/api";
+import { submitObservation, updateObservation, pollObservation } from "../../services/api";
 import type { ActorSearchResult } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
@@ -277,27 +277,10 @@ export function UploadModal() {
     fileInputRef.current?.click();
   };
 
-  // Poll for observation to appear in database after AT Protocol submission.
-  // When targetCid is provided, wait until the stored occurrence CID matches —
-  // required for updates where the URI is stable but the row is stale until
-  // the ingester processes the firehose commit.
-  const waitForObservation = async (
-    uri: string,
-    targetCid?: string,
-    maxAttempts = 30,
-  ): Promise<boolean> => {
-    // Sequential polling by design
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      // eslint-disable-next-line no-await-in-loop
-      const result = await fetchObservation(uri);
-      if (result?.occurrence && (targetCid === undefined || result.occurrence.cid === targetCid)) {
-        return true;
-      }
-      // eslint-disable-next-line no-await-in-loop
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    }
-    return false;
-  };
+  // On update the URI is stable, so matching on CID is required to
+  // distinguish the ingester's new row from the pre-update one.
+  const waitForObservation = (uri: string, targetCid: string) =>
+    pollObservation(uri, (r) => r?.occurrence?.cid === targetCid);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();

@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
-import { deleteObservation, fetchObservation } from "../../services/api";
+import { deleteObservation, pollObservation } from "../../services/api";
 import { getErrorMessage } from "../../lib/utils";
 
 export function DeleteConfirmDialog() {
@@ -39,14 +39,7 @@ export function DeleteConfirmDialog() {
 
       // Wait for the ingester to remove the row; the navigate/reload below
       // would otherwise briefly show the deleted observation in the feed.
-      // Sequential polling by design
-      for (let attempt = 0; attempt < 30; attempt++) {
-        // eslint-disable-next-line no-await-in-loop
-        const result = await fetchObservation(observation.uri);
-        if (!result?.occurrence) break;
-        // eslint-disable-next-line no-await-in-loop
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-      }
+      await pollObservation(observation.uri, (r) => !r?.occurrence);
 
       dispatch(
         addToast({
