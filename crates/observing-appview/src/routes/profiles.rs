@@ -44,20 +44,17 @@ pub async fn get_profile_feed(
     let result = observing_db::feeds::get_profile_feed(&state.pool, &did, &options).await?;
 
     let viewer = session_did(&cookies);
-    let occurrences = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &result.occurrences,
-        viewer.as_deref(),
-    )
-    .await;
-
-    let identifications =
-        enrichment::enrich_identifications(&state.resolver, &result.identifications).await;
-
-    // Resolve profile for the DID
-    let profile = state.resolver.get_profile(&did).await;
+    let (occurrences, identifications, profile) = tokio::join!(
+        enrichment::enrich_occurrences(
+            &state.pool,
+            &state.resolver,
+            &state.taxonomy,
+            &result.occurrences,
+            viewer.as_deref(),
+        ),
+        enrichment::enrich_identifications(&state.resolver, &result.identifications),
+        state.resolver.get_profile(&did),
+    );
 
     let next_cursor = occurrences
         .last()
