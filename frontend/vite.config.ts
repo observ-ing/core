@@ -18,6 +18,25 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "../dist/public"),
     emptyOutDir: true,
+    target: "es2022",
+    rollupOptions: {
+      output: {
+        manualChunks: (id) => {
+          if (!id.includes("node_modules")) return;
+          if (id.includes("maplibre-gl")) return "maplibre";
+          if (id.includes("/@mui/") || id.includes("/@emotion/")) return "mui";
+          if (
+            id.includes("/react/") ||
+            id.includes("/react-dom/") ||
+            id.includes("/react-router") ||
+            id.includes("/scheduler/")
+          )
+            return "react";
+          if (id.includes("/@reduxjs/") || id.includes("/react-redux/")) return "redux";
+          if (id.includes("/exifreader/")) return "exif";
+        },
+      },
+    },
   },
   server: {
     fs: {
