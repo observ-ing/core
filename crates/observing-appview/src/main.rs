@@ -208,7 +208,7 @@ async fn main() {
         .route("/admin/collections", get(routes::admin::list_collections))
         .route(
             "/admin/collections/{nsid}",
-            get(routes::admin::get_collection).delete(routes::admin::delete_collection),
+            get(routes::admin::get_collection),
         )
         .route(
             "/admin/collections/{nsid}/records",

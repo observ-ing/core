@@ -1,4 +1,4 @@
-//! Lexicon-scoped admin endpoints: count/list/delete records by NSID.
+//! Lexicon-scoped admin endpoints: count/list records by NSID.
 //!
 //! Authenticated via the standard session cookie (`AuthUser`), then the
 //! caller's DID must appear in the `ADMIN_DIDS` allowlist env var. When the
@@ -209,65 +209,5 @@ pub async fn list_table_rows(
         rows,
         limit,
         offset,
-    }))
-}
-
-#[derive(Deserialize)]
-pub struct DeleteCollectionQuery {
-    /// Must match the NSID in the path. Prevents accidental deletion.
-    pub confirm: String,
-    #[serde(default)]
-    pub dry_run: bool,
-}
-
-#[derive(Serialize)]
-pub struct DeleteCollectionResponse {
-    pub nsid: String,
-    pub dry_run: bool,
-    pub rows_affected: u64,
-    /// Tables whose rows were deleted by cascade (best-effort — not a count).
-    pub cascades_to: &'static [&'static str],
-}
-
-/// `DELETE /admin/collections/{nsid}` — purge all rows for an NSID.
-///
-/// Requires `?confirm={nsid}` (must match the path). Pass `?dry_run=true` to
-/// return the count that *would* be deleted without executing the DELETE.
-pub async fn delete_collection(
-    _auth: AdminAuth,
-    State(state): State<AppState>,
-    Path(nsid): Path<String>,
-    Query(params): Query<DeleteCollectionQuery>,
-) -> Result<Json<DeleteCollectionResponse>, AppError> {
-    let meta = db_admin::lookup(&nsid)
-        .ok_or_else(|| AppError::NotFound(format!("Unknown NSID: {nsid}")))?;
-    if params.confirm != nsid {
-        return Err(AppError::BadRequest(
-            "confirm parameter must match the NSID in the path".into(),
-        ));
-    }
-
-    if params.dry_run {
-        let count = db_admin::count(&state.pool, &nsid).await?;
-        tracing::warn!(nsid = %nsid, count, "admin delete dry-run");
-        return Ok(Json(DeleteCollectionResponse {
-            nsid,
-            dry_run: true,
-            rows_affected: count as u64,
-            cascades_to: meta.cascades_to,
-        }));
-    }
-
-    let rows_affected = db_admin::delete_by_nsid(&state.pool, &nsid).await?;
-    tracing::warn!(
-        nsid = %nsid,
-        rows_affected,
-        "admin delete executed"
-    );
-    Ok(Json(DeleteCollectionResponse {
-        nsid,
-        dry_run: false,
-        rows_affected,
-        cascades_to: meta.cascades_to,
     }))
 }

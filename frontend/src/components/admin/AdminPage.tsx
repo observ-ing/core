@@ -2,15 +2,8 @@ import { useEffect, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import {
   Alert,
-  Button,
-  Checkbox,
   CircularProgress,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  FormControlLabel,
   Link,
   Paper,
   Table,
@@ -18,16 +11,13 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   Typography,
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import {
   AdminError,
   type CollectionSummary,
-  type DeleteResponse,
   type TableSummary,
-  deleteCollection,
   listCollections,
   listTables,
 } from "../../services/admin";
@@ -41,9 +31,8 @@ export function AdminPage() {
   const [collections, setCollections] = useState<CollectionSummary[]>([]);
   const [tables, setTables] = useState<TableSummary[]>([]);
   const [total, setTotal] = useState(0);
-  const [target, setTarget] = useState<CollectionSummary | null>(null);
 
-  const refresh = () => {
+  useEffect(() => {
     setLoading(true);
     setError(null);
     Promise.all([listCollections(), listTables()])
@@ -61,10 +50,6 @@ export function AdminPage() {
         }
       })
       .finally(() => setLoading(false));
-  };
-
-  useEffect(() => {
-    refresh();
   }, []);
 
   if (loading) {
@@ -103,7 +88,6 @@ export function AdminPage() {
               <TableCell>Table</TableCell>
               <TableCell align="right">Count</TableCell>
               <TableCell>Cascades to</TableCell>
-              <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -122,16 +106,6 @@ export function AdminPage() {
                 <TableCell align="right">{c.count.toLocaleString()}</TableCell>
                 <TableCell sx={{ fontSize: "0.8rem", color: "text.secondary" }}>
                   {c.cascades_to.join(", ") || "—"}
-                </TableCell>
-                <TableCell align="right">
-                  <Button
-                    size="small"
-                    color="error"
-                    disabled={c.count === 0}
-                    onClick={() => setTarget(c)}
-                  >
-                    Purge
-                  </Button>
                 </TableCell>
               </TableRow>
             ))}
@@ -176,104 +150,6 @@ export function AdminPage() {
           </TableBody>
         </Table>
       </Paper>
-
-      {target && (
-        <PurgeDialog
-          collection={target}
-          onClose={() => setTarget(null)}
-          onPurged={() => {
-            setTarget(null);
-            refresh();
-          }}
-        />
-      )}
     </Container>
-  );
-}
-
-function PurgeDialog({
-  collection,
-  onClose,
-  onPurged,
-}: {
-  collection: CollectionSummary;
-  onClose: () => void;
-  onPurged: () => void;
-}) {
-  const [typed, setTyped] = useState("");
-  const [dryRun, setDryRun] = useState(true);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<DeleteResponse | null>(null);
-
-  const confirmed = typed === collection.nsid;
-
-  const submit = async () => {
-    setPending(true);
-    setError(null);
-    try {
-      const res = await deleteCollection(collection.nsid, { dryRun });
-      setResult(res);
-      if (!res.dry_run) {
-        // Trigger refresh shortly so the user can read the result.
-        setTimeout(onPurged, 1200);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
-    } finally {
-      setPending(false);
-    }
-  };
-
-  return (
-    <Dialog open onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle>Purge {collection.nsid}</DialogTitle>
-      <DialogContent>
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          This will delete <strong>{collection.count.toLocaleString()}</strong> rows from{" "}
-          <code>{collection.table}</code>.
-          {collection.cascades_to.length > 0 && (
-            <> Cascades to: {collection.cascades_to.join(", ")}.</>
-          )}
-        </Alert>
-        <Typography variant="body2" sx={{ mb: 1 }}>
-          Type the NSID to confirm:
-        </Typography>
-        <TextField
-          fullWidth
-          size="small"
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          placeholder={collection.nsid}
-          disabled={pending}
-          autoFocus
-        />
-        <FormControlLabel
-          sx={{ mt: 1 }}
-          control={<Checkbox checked={dryRun} onChange={(e) => setDryRun(e.target.checked)} />}
-          label="Dry run (count only, don't delete)"
-        />
-        {error && (
-          <Alert severity="error" sx={{ mt: 2 }}>
-            {error}
-          </Alert>
-        )}
-        {result && (
-          <Alert severity={result.dry_run ? "info" : "success"} sx={{ mt: 2 }}>
-            {result.dry_run
-              ? `Dry run: would delete ${result.rows_affected.toLocaleString()} rows.`
-              : `Deleted ${result.rows_affected.toLocaleString()} rows.`}
-          </Alert>
-        )}
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={pending}>
-          Close
-        </Button>
-        <Button color="error" variant="contained" onClick={submit} disabled={!confirmed || pending}>
-          {dryRun ? "Dry run" : "Purge"}
-        </Button>
-      </DialogActions>
-    </Dialog>
   );
 }

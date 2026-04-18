@@ -338,17 +338,3 @@ pub async fn list_table_rows(
         .await?;
     Ok(rows.into_iter().map(|(v,)| v).collect())
 }
-
-/// Delete all rows belonging to an NSID. Returns the number of rows affected.
-/// Callers are responsible for guarding this with a confirmation token.
-pub async fn delete_by_nsid(pool: &PgPool, nsid: &str) -> Result<u64, sqlx::Error> {
-    let Some(meta) = lookup(nsid) else {
-        return Ok(0);
-    };
-    let sql = format!("DELETE FROM {} WHERE uri LIKE $1", meta.table);
-    let result = sqlx::query(&sql)
-        .bind(format!("at://%/{}/%", nsid))
-        .execute(pool)
-        .await?;
-    Ok(result.rows_affected())
-}
