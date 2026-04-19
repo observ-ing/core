@@ -27,7 +27,7 @@ pub async fn create(
     }
     sqlx::query!(
         r#"
-        INSERT INTO notifications (recipient_did, actor_did, kind, subject_uri, reference_uri)
+        INSERT INTO ingester.notifications (recipient_did, actor_did, kind, subject_uri, reference_uri)
         VALUES ($1, $2, $3, $4, $5)
         "#,
         recipient_did,
@@ -41,7 +41,11 @@ pub async fn create(
     Ok(())
 }
 
-/// List notifications for a recipient, paginated by cursor (id), newest first
+/// List notifications for a recipient, paginated by cursor (id), newest first.
+///
+/// Read-state lives in `appview.notification_reads` — the appview writes there
+/// when a user marks a notification as read. We LEFT JOIN at query time so
+/// callers see a single `read: bool` per row.
 pub async fn list(
     executor: impl sqlx::PgExecutor<'_>,
     recipient_did: &str,
@@ -52,11 +56,13 @@ pub async fn list(
         sqlx::query_as!(
             NotificationRow,
             r#"
-            SELECT id, recipient_did, actor_did, kind, subject_uri, reference_uri,
-                   read, created_at as "created_at: DateTime<Utc>"
-            FROM notifications
-            WHERE recipient_did = $1 AND id < $2
-            ORDER BY id DESC
+            SELECT n.id, n.recipient_did, n.actor_did, n.kind, n.subject_uri, n.reference_uri,
+                   (r.notification_id IS NOT NULL) AS "read!: bool",
+                   n.created_at as "created_at: DateTime<Utc>"
+            FROM ingester.notifications n
+            LEFT JOIN appview.notification_reads r ON r.notification_id = n.id
+            WHERE n.recipient_did = $1 AND n.id < $2
+            ORDER BY n.id DESC
             LIMIT $3
             "#,
             recipient_did,
@@ -69,11 +75,13 @@ pub async fn list(
         sqlx::query_as!(
             NotificationRow,
             r#"
-            SELECT id, recipient_did, actor_did, kind, subject_uri, reference_uri,
-                   read, created_at as "created_at: DateTime<Utc>"
-            FROM notifications
-            WHERE recipient_did = $1
-            ORDER BY id DESC
+            SELECT n.id, n.recipient_did, n.actor_did, n.kind, n.subject_uri, n.reference_uri,
+                   (r.notification_id IS NOT NULL) AS "read!: bool",
+                   n.created_at as "created_at: DateTime<Utc>"
+            FROM ingester.notifications n
+            LEFT JOIN appview.notification_reads r ON r.notification_id = n.id
+            WHERE n.recipient_did = $1
+            ORDER BY n.id DESC
             LIMIT $2
             "#,
             recipient_did,
@@ -84,13 +92,20 @@ pub async fn list(
     }
 }
 
-/// Count unread notifications for a recipient
+/// Count notifications the recipient hasn't read yet.
 pub async fn unread_count(
     executor: impl sqlx::PgExecutor<'_>,
     recipient_did: &str,
 ) -> Result<i64, sqlx::Error> {
     let row = sqlx::query!(
-        "SELECT COUNT(*) as count FROM notifications WHERE recipient_did = $1 AND NOT read",
+        r#"
+        SELECT COUNT(*) as count
+        FROM ingester.notifications n
+        WHERE n.recipient_did = $1
+          AND NOT EXISTS (
+              SELECT 1 FROM appview.notification_reads r WHERE r.notification_id = n.id
+          )
+        "#,
         recipient_did,
     )
     .fetch_one(executor)
@@ -98,14 +113,19 @@ pub async fn unread_count(
     Ok(row.count.unwrap_or(0))
 }
 
-/// Mark a single notification as read (only if it belongs to recipient)
+/// Mark a single notification as read (only if it belongs to recipient).
 pub async fn mark_read(
     executor: impl sqlx::PgExecutor<'_>,
     recipient_did: &str,
     id: i64,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "UPDATE notifications SET read = TRUE WHERE id = $1 AND recipient_did = $2",
+        r#"
+        INSERT INTO appview.notification_reads (notification_id)
+        SELECT n.id FROM ingester.notifications n
+        WHERE n.id = $1 AND n.recipient_did = $2
+        ON CONFLICT DO NOTHING
+        "#,
         id,
         recipient_did,
     )
@@ -114,13 +134,18 @@ pub async fn mark_read(
     Ok(())
 }
 
-/// Mark all notifications as read for a recipient
+/// Mark all notifications as read for a recipient.
 pub async fn mark_all_read(
     executor: impl sqlx::PgExecutor<'_>,
     recipient_did: &str,
 ) -> Result<(), sqlx::Error> {
     sqlx::query!(
-        "UPDATE notifications SET read = TRUE WHERE recipient_did = $1 AND NOT read",
+        r#"
+        INSERT INTO appview.notification_reads (notification_id)
+        SELECT n.id FROM ingester.notifications n
+        WHERE n.recipient_did = $1
+        ON CONFLICT DO NOTHING
+        "#,
         recipient_did,
     )
     .execute(executor)

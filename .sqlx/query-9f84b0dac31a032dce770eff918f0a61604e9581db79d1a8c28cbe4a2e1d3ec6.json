@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO appview.notification_reads (notification_id)\n        SELECT n.id FROM ingester.notifications n\n        WHERE n.id = $1 AND n.recipient_did = $2\n        ON CONFLICT DO NOTHING\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9f84b0dac31a032dce770eff918f0a61604e9581db79d1a8c28cbe4a2e1d3ec6"
+}

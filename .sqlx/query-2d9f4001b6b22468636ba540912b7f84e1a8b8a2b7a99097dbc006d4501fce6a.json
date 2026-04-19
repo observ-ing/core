@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT id, recipient_did, actor_did, kind, subject_uri, reference_uri,\n                   read, created_at as \"created_at: DateTime<Utc>\"\n            FROM notifications\n            WHERE recipient_did = $1\n            ORDER BY id DESC\n            LIMIT $2\n            ",
+  "query": "\n            SELECT n.id, n.recipient_did, n.actor_did, n.kind, n.subject_uri, n.reference_uri,\n                   (r.notification_id IS NOT NULL) AS \"read!: bool\",\n                   n.created_at as \"created_at: DateTime<Utc>\"\n            FROM ingester.notifications n\n            LEFT JOIN appview.notification_reads r ON r.notification_id = n.id\n            WHERE n.recipient_did = $1 AND n.id < $2\n            ORDER BY n.id DESC\n            LIMIT $3\n            ",
   "describe": {
     "columns": [
       {
@@ -35,7 +35,7 @@
       },
       {
         "ordinal": 6,
-        "name": "read",
+        "name": "read!: bool",
         "type_info": "Bool"
       },
       {
@@ -47,6 +47,7 @@
     "parameters": {
       "Left": [
         "Text",
+        "Int8",
         "Int8"
       ]
     },
@@ -57,9 +58,9 @@
       false,
       false,
       true,
-      false,
+      null,
       false
     ]
   },
-  "hash": "9059eb0504085c822cd850aed8c16dbd9e2e0fccf727c6252fa11c839ac4d791"
+  "hash": "2d9f4001b6b22468636ba540912b7f84e1a8b8a2b7a99097dbc006d4501fce6a"
 }
