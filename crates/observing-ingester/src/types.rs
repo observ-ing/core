@@ -28,6 +28,11 @@ pub struct RecentEvent {
 pub struct IngesterConfig {
     pub relay_url: String,
     pub database_url: String,
+    /// Optional admin DB URL for running migrations. When set, the ingester
+    /// connects here with DDL privileges at startup, runs migrations, and
+    /// closes the pool — `database_url` can then be a least-privilege role
+    /// (e.g. `ingester_writer`) that only has CRUD on its own schema.
+    pub database_admin_url: Option<String>,
     pub cursor: Option<i64>,
     pub port: u16,
     /// Full NSIDs of collections to subscribe to
@@ -39,6 +44,7 @@ impl Default for IngesterConfig {
         Self {
             relay_url: "wss://jetstream2.us-east.bsky.network/subscribe".to_string(),
             database_url: String::new(),
+            database_admin_url: None,
             cursor: None,
             port: 8080,
             collections: ALL_COLLECTIONS
