@@ -3,29 +3,39 @@
 ## System Overview
 
 ```mermaid
-flowchart TB
-    subgraph Client
-        Frontend["Frontend<br/>(MapLibre GL)"]
+flowchart LR
+    User([Browser])
+    PDS[Bluesky PDS]
+    JS[Jetstream firehose]
+    AV[observing-appview<br/>DB_USER=appview_reader]
+    IG[observing-ingester<br/>DB_USER=postgres]
+    SID[species-id]
+
+    subgraph DB["Postgres + PostGIS"]
+      direction TB
+      T1["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes"]
+      T2[notifications]
+      T3["occurrence_private_data,<br/>oauth_sessions, oauth_state"]
+      T4["sensitive_species,<br/>ingester_state"]
     end
 
-    subgraph Services
-        AppView["AppView<br/>(REST API, OAuth, Media Cache,<br/>Taxonomy, Static Files)"]
-    end
+    User -- HTTP --> AV
+    AV -- "putRecord / deleteRecord" --> PDS
+    PDS -- commits --> JS
+    JS -- "WSS subscribe" --> IG
+    AV -- species-id --> SID
 
-    subgraph Data
-        PostgreSQL["PostgreSQL<br/>+ PostGIS"]
-    end
+    IG == "READ+WRITE" ==> T1
+    IG == "INSERT" ==> T2
+    IG -- "read (cursor)" --> T4
 
-    subgraph Ingestion
-        PDS["User's PDS<br/>(bsky.social)"]
-        Ingester["Ingester<br/>(Firehose)"]
-    end
-
-    Frontend --> AppView
-    AppView --> PostgreSQL
-    PDS --> Ingester
-    Ingester --> PostgreSQL
+    AV -- "READ-ONLY (SELECT)" --> T1
+    AV -- "SELECT + UPDATE read flag" --> T2
+    AV == "READ+WRITE" ==> T3
+    AV -- "READ-ONLY" --> T4
 ```
+
+Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes those tables directly. Only OAuth state, private location, and the `notifications.read` flag are written by the appview itself — enforced at the DB layer by the `appview_reader` grants.
 
 ## Project Structure
 
