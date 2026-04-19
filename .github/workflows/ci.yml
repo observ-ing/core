@@ -347,8 +347,8 @@ jobs:
             --cpu=1 \
             --memory=2Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=postgres,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
-            --set-secrets=DB_PASSWORD=observing-db-password:latest \
+            --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_writer,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest,DATABASE_ADMIN_URL=observing-db-admin-url:latest \
             --min-instances=1 \
             --max-instances=1 \
             --timeout=3600
