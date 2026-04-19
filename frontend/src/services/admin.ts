@@ -39,13 +39,6 @@ export interface ListRecordsResponse {
   offset: number;
 }
 
-export interface DeleteResponse {
-  nsid: string;
-  dry_run: boolean;
-  rows_affected: number;
-  cascades_to: string[];
-}
-
 export class AdminError extends Error {
   constructor(
     public status: number,
@@ -124,14 +117,4 @@ export function listTableRows(
   if (opts.offset != null) params.set("offset", String(opts.offset));
   const qs = params.toString();
   return adminFetch(`/admin/tables/${encodeURIComponent(name)}/rows${qs ? `?${qs}` : ""}`);
-}
-
-export function deleteCollection(nsid: string, opts: { dryRun: boolean }): Promise<DeleteResponse> {
-  const params = new URLSearchParams({
-    confirm: nsid,
-    dry_run: String(opts.dryRun),
-  });
-  return adminFetch(`/admin/collections/${encodeURIComponent(nsid)}?${params.toString()}`, {
-    method: "DELETE",
-  });
 }
