@@ -7,7 +7,7 @@ flowchart TB
     User([Browser])
     PDS[Bluesky PDS]
     JS[Jetstream firehose]
-    AV[observing-appview<br/>DB_USER=appview_reader]
+    AV[observing-appview<br/>DB_USER=appview_runtime]
     IG[observing-ingester<br/>DB_USER=ingester_writer<br/>DATABASE_ADMIN_URL=postgres]
     SID[species-id]
 

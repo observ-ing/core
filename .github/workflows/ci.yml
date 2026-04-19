@@ -335,19 +335,9 @@ jobs:
         run: |
           echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
-      - name: Deploy appview
-        id: deploy-appview
-        run: |
-          URL=$(gcloud run deploy observing-appview \
-            --image=$REGISTRY/observing-appview:latest \
-            --region=$REGION \
-            --allow-unauthenticated \
-            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=appview_reader,PUBLIC_URL=$PUBLIC_URL,SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b,ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5 \
-            --set-secrets=DB_PASSWORD=observing-db-appview-password:latest \
-            --format='value(status.url)')
-          echo "url=$URL" >> $GITHUB_OUTPUT
-
+      # Deploy ingester first so any pending migrations (which run during
+      # its startup) are applied before the appview revision comes up and
+      # tries to connect with its runtime role.
       - name: Deploy ingester
         run: |
           gcloud run deploy observing-ingester \
@@ -362,3 +352,16 @@ jobs:
             --min-instances=1 \
             --max-instances=1 \
             --timeout=3600
+
+      - name: Deploy appview
+        id: deploy-appview
+        run: |
+          URL=$(gcloud run deploy observing-appview \
+            --image=$REGISTRY/observing-appview:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=appview_runtime,PUBLIC_URL=$PUBLIC_URL,SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }},HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b,ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5 \
+            --set-secrets=DB_PASSWORD=observing-db-appview-password:latest \
+            --format='value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
