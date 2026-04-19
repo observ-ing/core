@@ -11,12 +11,12 @@ flowchart LR
     IG[observing-ingester<br/>DB_USER=postgres]
     SID[species-id]
 
-    subgraph DB[(Postgres + PostGIS)]
+    subgraph DB["Postgres + PostGIS"]
       direction TB
-      T1[occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes]
+      T1["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes"]
       T2[notifications]
-      T3[occurrence_private_data,<br/>oauth_sessions, oauth_state]
-      T4[sensitive_species,<br/>ingester_state]
+      T3["occurrence_private_data,<br/>oauth_sessions, oauth_state"]
+      T4["sensitive_species,<br/>ingester_state"]
     end
 
     User -- HTTP --> AV
