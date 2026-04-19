@@ -8,7 +8,7 @@ flowchart TB
     PDS[Bluesky PDS]
     JS[Jetstream firehose]
     AV[observing-appview<br/>DB_USER=appview_reader]
-    IG[observing-ingester<br/>DB_USER=postgres]
+    IG[observing-ingester<br/>DB_USER=ingester_writer<br/>DATABASE_ADMIN_URL=postgres]
     SID[species-id]
 
     subgraph DB["Postgres + PostGIS"]
@@ -39,7 +39,7 @@ flowchart TB
     AV -- "READ-ONLY" --> PUB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. The ingester runs as the `postgres` role — it owns migrations, so it has full access to every schema at the grant level, but in practice only writes its own schema (plus `public.sensitive_species` during seeding, and read access to `appview.oauth_sessions` during backfill).
+Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. The ingester connects twice at startup: once with `DATABASE_ADMIN_URL` (the `postgres` superuser) to run migrations, then drops that pool and opens its runtime pool as `ingester_writer` — a least-privilege role with CRUD only on the `ingester` schema, `SELECT` on `appview.oauth_sessions` (for the backfill `--all` binary), and `SELECT` on `public.sensitive_species`. No service runs as a superuser at steady state.
 
 ## Project Structure
 
