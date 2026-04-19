@@ -17,7 +17,7 @@ flowchart TB
         ING_TBL["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes, notifications,<br/>ingester_state, community_ids"]
       end
       subgraph APPV["schema: appview"]
-        APPV_TBL["occurrence_private_data,<br/>oauth_sessions, oauth_state"]
+        APPV_TBL["occurrence_private_data,<br/>notification_reads,<br/>oauth_sessions, oauth_state"]
       end
       subgraph PUB["schema: public"]
         PUB_TBL["sensitive_species,<br/>spatial_ref_sys"]
@@ -34,12 +34,12 @@ flowchart TB
     IG -- "READ-ONLY<br/>(backfill reads oauth_sessions)" --> APPV
     IG -- "READ-ONLY" --> PUB
 
-    AV -- "READ-ONLY<br/>(+ UPDATE notifications.read)" --> ING
+    AV -- "READ-ONLY" --> ING
     AV == "READ+WRITE" ==> APPV
     AV -- "READ-ONLY" --> PUB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema directly (except to flip `notifications.read`). OAuth state and private location live in the `appview` schema, where the appview has full CRUD. The ingester runs as the `postgres` role — it owns migrations, so it has full access to every schema at the grant level, but in practice only writes its own schema (plus `public.sensitive_species` during seeding, and read access to `appview.oauth_sessions` during backfill).
+Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. The ingester runs as the `postgres` role — it owns migrations, so it has full access to every schema at the grant level, but in practice only writes its own schema (plus `public.sensitive_species` during seeding, and read access to `appview.oauth_sessions` during backfill).
 
 ## Project Structure
 

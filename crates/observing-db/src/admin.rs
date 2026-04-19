@@ -269,10 +269,17 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
             ("kind", "kind"),
             ("subject_uri", "subject_uri"),
             ("reference_uri", "reference_uri"),
-            ("read", "read"),
             ("created_at", "created_at"),
         ],
         order_by: "created_at DESC",
+    },
+    KnownTable {
+        name: "notification_reads",
+        columns: &[
+            ("notification_id", "notification_id"),
+            ("read_at", "read_at"),
+        ],
+        order_by: "read_at DESC",
     },
     KnownTable {
         name: "community_ids",

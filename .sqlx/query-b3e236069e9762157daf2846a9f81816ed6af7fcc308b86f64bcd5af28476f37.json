@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT COUNT(*) as count\n        FROM ingester.notifications n\n        WHERE n.recipient_did = $1\n          AND NOT EXISTS (\n              SELECT 1 FROM appview.notification_reads r WHERE r.notification_id = n.id\n          )\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "b3e236069e9762157daf2846a9f81816ed6af7fcc308b86f64bcd5af28476f37"
+}
