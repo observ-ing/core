@@ -25,6 +25,13 @@ ALTER TABLE IF EXISTS public.notifications SET SCHEMA ingester;
 ALTER TABLE IF EXISTS public.ingester_state SET SCHEMA ingester;
 ALTER MATERIALIZED VIEW IF EXISTS public.community_ids SET SCHEMA ingester;
 
+-- sqlx's migrations ledger must live in a schema that's on the post-migration
+-- search_path AND matches `current_schema()` for new connections. Otherwise
+-- sqlx's `CREATE TABLE IF NOT EXISTS _sqlx_migrations` on ingester startup
+-- lands in an empty `ingester._sqlx_migrations`, thinks no migrations have
+-- run, and tries to re-apply them all from scratch.
+ALTER TABLE IF EXISTS public._sqlx_migrations SET SCHEMA ingester;
+
 -- Appview-owned: OAuth + private location.
 ALTER TABLE IF EXISTS public.occurrence_private_data SET SCHEMA appview;
 ALTER TABLE IF EXISTS public.oauth_sessions SET SCHEMA appview;
