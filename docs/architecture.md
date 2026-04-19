@@ -3,7 +3,7 @@
 ## System Overview
 
 ```mermaid
-flowchart LR
+flowchart TB
     User([Browser])
     PDS[Bluesky PDS]
     JS[Jetstream firehose]
@@ -12,7 +12,7 @@ flowchart LR
     SID[species-id]
 
     subgraph DB["Postgres + PostGIS"]
-      direction TB
+      direction LR
       subgraph ING["schema: ingester"]
         ING_TBL["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes, notifications,<br/>ingester_state, community_ids"]
       end
