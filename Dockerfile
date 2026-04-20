@@ -9,7 +9,7 @@
 # when SERVICE=observing-appview.
 #
 # Supported SERVICE values:
-#   observing-appview, observing-ingester, observing-species-id
+#   observing-appview, observing-ingester, observing-species-id, observing-migrate
 
 ARG SERVICE=observing-appview
 
@@ -112,6 +112,16 @@ ENV RUST_LOG=observing_ingester=info
 ENV PORT=8080
 EXPOSE 8080
 CMD ["/app/observing-ingester"]
+
+# ---------------------------------------------------------------------------
+# Stage: runtime for migrate (one-shot Cloud Run Job)
+# ---------------------------------------------------------------------------
+FROM runtime-base AS runtime-observing-migrate
+
+COPY --from=builder /app/target/release/observing-migrate /app/observing-migrate
+
+ENV RUST_LOG=observing_migrate=info,sqlx::migrate=info
+CMD ["/app/observing-migrate"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for species-id

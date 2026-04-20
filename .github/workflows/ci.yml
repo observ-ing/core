@@ -266,7 +266,7 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service: [appview, ingester, species-id]
+        service: [appview, ingester, species-id, migrate]
     steps:
       - uses: actions/checkout@v4
 
@@ -335,9 +335,23 @@ jobs:
         run: |
           echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
-      # Deploy ingester first so any pending migrations (which run during
-      # its startup) are applied before the appview revision comes up and
-      # tries to connect with its runtime role.
+      # Apply pending DB migrations as a one-shot Cloud Run Job *before* any
+      # runtime service comes up with the new schema. The job connects as
+      # postgres (superuser) via `observing-db-admin-url`; no long-running
+      # service holds that credential.
+      - name: Run migrations
+        run: |
+          gcloud run jobs deploy observing-migrate \
+            --image=$REGISTRY/observing-migrate:latest \
+            --region=$REGION \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-secrets=DATABASE_URL=observing-db-admin-url:latest \
+            --max-retries=0 \
+            --task-timeout=600
+          gcloud run jobs execute observing-migrate \
+            --region=$REGION \
+            --wait
+
       - name: Deploy ingester
         run: |
           gcloud run deploy observing-ingester \
@@ -348,7 +362,7 @@ jobs:
             --memory=2Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_writer,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
-            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest,DATABASE_ADMIN_URL=observing-db-admin-url:latest \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
             --min-instances=1 \
             --max-instances=1 \
             --timeout=3600

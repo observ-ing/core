@@ -93,28 +93,6 @@ impl Database {
         })
     }
 
-    /// Connect with a single-connection pool, intended for short-lived tasks
-    /// like running migrations under an admin role. Dropping this `Database`
-    /// closes the pool.
-    pub async fn connect_single(database_url: &str) -> Result<Self> {
-        info!("Connecting to database (single-connection admin pool)...");
-        let pool = PgPoolOptions::new()
-            .max_connections(1)
-            .acquire_timeout(std::time::Duration::from_secs(10))
-            .connect(database_url)
-            .await?;
-        Ok(Self {
-            pool,
-            media_resolver: MediaResolver::new(),
-        })
-    }
-
-    /// Run database migrations using the shared migration
-    pub async fn migrate(&self) -> Result<()> {
-        observing_db::migrate::migrate(&self.pool).await?;
-        Ok(())
-    }
-
     /// Upsert an occurrence record
     pub async fn upsert_occurrence(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting occurrence: {}", commit.uri);
