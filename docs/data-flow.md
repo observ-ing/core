@@ -2,6 +2,8 @@
 
 This document describes how data flows through the Observ.ing system and which services access which database tables.
 
+> **Companion doc:** see `architecture.md` for the higher-level service topology and role/privilege model. This doc focuses on how records move end-to-end and which service is allowed to write what.
+
 ## Architecture Overview
 
 ```mermaid
@@ -13,15 +15,14 @@ flowchart TB
         Modal --> FormData --> Base64
     end
 
-    subgraph AppView["AppView (Rust/Axum)"]
-        API["POST /api/occurrences<br/>routes/occurrences.rs"]
+    subgraph AppView["AppView (Rust/Axum) — DB_USER=appview_runtime"]
+        API["POST /api/occurrences<br/>routes/occurrences/"]
         Auth["OAuth Authentication"]
-        BlobUpload["Upload Images to PDS<br/>via internal agent RPC"]
-        GBIF["Taxonomy Validation<br/>Taxonomy Service"]
+        BlobUpload["Upload Media to PDS<br/>(createRecord bio.lexicons.temp.media)"]
+        GBIF["Taxonomy validation<br/>(in-process GBIF + Wikidata)"]
         Geocode["Reverse Geocoding<br/>Nominatim API"]
         BuildRecord["Build AT Protocol Record<br/>bio.lexicons.temp.occurrence"]
-        PrivateData["Save Private Coordinates<br/>occurrence_private_data table"]
-        DirectInsert["Direct DB Insert<br/>(immediate visibility)"]
+        PrivateData["Write Exact Coordinates<br/>appview.occurrence_private_data"]
     end
 
     subgraph ATProtocol["AT Protocol"]
@@ -31,20 +32,31 @@ flowchart TB
 
     subgraph Firehose["AT Protocol Network"]
         Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Collection Filter<br/>ing.observ.temp.*"]
+        Filter["Wanted collections:<br/>• bio.lexicons.temp.occurrence<br/>• bio.lexicons.temp.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
     end
 
-    subgraph Ingester["Ingester (Rust)"]
-        WS["WebSocket Connection<br/>firehose.rs"]
-        Parse["Parse JSON Event<br/>Extract fields"]
-        Validate["Validate Required Fields<br/>• lat/lng required<br/>• eventDate required"]
+    subgraph Ingester["Ingester (Rust) — DB_USER=ingester_runtime"]
+        WS["WebSocket Connection<br/>(jetstream-client crate)"]
+        Parse["Parse JSON Event"]
+        Resolve["Resolve associatedMedia strong refs<br/>(fetch media records from PDSes)"]
         Upsert["Upsert to Database<br/>database.rs"]
     end
 
     subgraph Database["PostgreSQL + PostGIS"]
-        Occurrences["occurrences table<br/>• uri (PK)<br/>• did, cid<br/>• scientific_name<br/>• event_date<br/>• location (geography)<br/>• taxonomy fields<br/>• Darwin Core geography"]
-        Observers["occurrence_observers table<br/>• owner<br/>• co-observers"]
-        Cursor["ingester_state table<br/>Resume cursor"]
+        subgraph IngSchema["schema: ingester"]
+            Occurrences["occurrences"]
+            Identifications["identifications"]
+            Comments["comments, likes, interactions"]
+            Observers["occurrence_observers"]
+            Notifications["notifications"]
+            Cursor["ingester_state"]
+            Matview["community_ids (matview)"]
+        end
+        subgraph AppvSchema["schema: appview"]
+            PrivData["occurrence_private_data"]
+            OauthTbls["oauth_sessions, oauth_state"]
+            NotifReads["notification_reads"]
+        end
     end
 
     %% Main flow
@@ -56,14 +68,14 @@ flowchart TB
     Geocode --> BuildRecord
     BuildRecord -->|"agent createRecord"| PDS
     BuildRecord --> PrivateData
-    BuildRecord --> DirectInsert
+    PrivateData --> PrivData
     PDS --> URI
     URI -->|"Record broadcast"| Jetstream
     Jetstream --> Filter
     Filter -->|"JSON event stream"| WS
     WS --> Parse
-    Parse --> Validate
-    Validate --> Upsert
+    Parse --> Resolve
+    Resolve --> Upsert
     Upsert --> Occurrences
     Upsert --> Observers
     WS -->|"Save cursor every 30s"| Cursor
@@ -73,20 +85,23 @@ flowchart TB
     API -.->|"Response to frontend"| Modal
 ```
 
-**Key insight**: Writes go through AT Protocol (user's PDS), then get indexed via the firehose. The appview also does a direct DB insert for immediate visibility (bypasses ingester latency). Reads come directly from PostgreSQL.
+**Key insight:** All writes to lexicon-derived tables flow through the AT Protocol firehose. The appview writes the record on the user's PDS, then the ingester picks it up from Jetstream and writes the row. The appview holds no write grant on the `ingester` schema — this invariant is enforced at the database layer via role grants (see `20260418000000_appview_reader_grants.sql`).
 
-**Shared processing**: Both the appview and ingester use the same `observing_db::processing` module to convert AT Protocol record JSON into database params, ensuring consistent field mapping. SQL upserts use `COALESCE` on enrichment fields (geocoding, taxonomy, media) so the ingester's later write cannot overwrite data the appview enriched.
+**Visibility latency:** The appview does *not* do a direct-insert bypass for immediate visibility. Freshly created occurrences become queryable once the firehose event round-trips through Jetstream → ingester → DB (typically sub-second).
+
+**Shared record processing:** Both the appview (when building a record) and the ingester (when indexing one) use the shared `observing_db::processing` module to convert AT Protocol record JSON into database params, ensuring consistent field mapping.
 
 ### Key Files
 
 | Component | File |
 |-----------|------|
 | Create Modal | `frontend/src/components/modals/UploadModal.tsx` |
-| Occurrence Routes | `crates/observing-appview/src/routes/occurrences.rs` |
+| Occurrence Routes | `crates/observing-appview/src/routes/occurrences/` |
 | OAuth Routes | `crates/observing-appview/src/routes/oauth.rs` |
 | Data Enrichment | `crates/observing-appview/src/enrichment.rs` |
-| Firehose | `crates/observing-ingester/src/firehose.rs` |
+| Firehose Client | `crates/jetstream-client/` |
 | Ingester DB Ops | `crates/observing-ingester/src/database.rs` |
+| Media Resolver | `crates/observing-ingester/src/media_resolver.rs` |
 | Shared DB Layer | `crates/observing-db/src/` |
 | Shared Record Processing | `crates/observing-db/src/processing.rs` |
 
@@ -95,49 +110,56 @@ flowchart TB
 | Stage | Input | Output | Transformation |
 |-------|-------|--------|----------------|
 | Frontend | User form input + files | JSON + Base64 images | Image encoding, form serialization |
-| AppView | JSON request | AT Protocol record | Blob upload, GBIF lookup, geocoding, shared record processing |
+| AppView | JSON request | AT Protocol record | Media record creation on PDS, GBIF lookup, geocoding, shared record processing |
 | PDS | Record JSON | URI + CID | Cryptographic signing, storage |
 | Jetstream | PDS events | Filtered JSON stream | Collection filtering |
-| Ingester | JSON events | SQL statements | Shared record processing, COALESCE-protected upsert |
+| Ingester | JSON events | SQL statements | Media ref resolution, shared record processing, upsert |
 | Database | SQL | Stored rows | PostGIS point encoding, indexing |
 
 ## Services
 
-| Service | Port | Role | DB Access |
-|---------|------|------|-----------|
-| **AppView** | 3000 | REST API, OAuth, AT Protocol client, frontend (static files or Vite proxy) | Read/Write |
-| **Ingester** | 8080 | Firehose consumer, indexes records | Write-heavy |
-| **Media Proxy** | 3001 | Image caching | None |
-| **Taxonomy** | 3003 | GBIF taxonomy lookups | None |
+| Service | Port | Role | DB Role |
+|---------|------|------|---------|
+| **AppView** (`observing-appview`) | 3000 | REST API, OAuth, AT Protocol client, media cache, taxonomy, frontend static files | `appview_runtime` |
+| **Ingester** (`observing-ingester`) | 8080 | Firehose consumer + backfill CLI | `ingester_runtime` |
+| **Species-ID** (`observing-species-id`) | 3005 | BioCLIP photo → species inference | none |
+| **Migrate** (`observing-migrate`) | — (one-shot Cloud Run Job) | Runs `sqlx` migrations before service deploys | `postgres` (admin) |
+
+Media caching and GBIF/Wikidata taxonomy lookups are in-process inside the appview — there are no separate media-proxy or taxonomy services.
 
 ## Database Tables
 
-### Core Data Tables
+Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualified references resolve via a database-wide `search_path = ingester, appview, public`.
+
+### Ingester-owned (schema `ingester`)
 
 | Table | Description | Written By | Read By |
 |-------|-------------|------------|---------|
-| `occurrences` | Biodiversity observations | Ingester, AppView | AppView |
-| `identifications` | Taxonomic determinations | Ingester, AppView | AppView |
-| `comments` | Discussion on observations | Ingester, AppView | AppView |
-| `likes` | Observation likes | Ingester, AppView | AppView |
-| `interactions` | Species interactions | Ingester, AppView | AppView |
-| `occurrence_observers` | Co-observer relationships | Ingester, AppView | AppView |
+| `occurrences` | Biodiversity observations | Ingester | AppView |
+| `identifications` | Taxonomic determinations | Ingester | AppView |
+| `comments` | Discussion on observations | Ingester | AppView |
+| `likes` | Observation likes | Ingester | AppView |
+| `interactions` | Species interactions | Ingester | AppView |
+| `occurrence_observers` | Co-observer relationships | Ingester | AppView |
+| `notifications` | Event notifications (ID / comment / like on your observation) | Ingester | AppView (SELECT + UPDATE on `read`) |
+| `ingester_state` | Firehose cursor position | Ingester | Ingester, AppView (SELECT for diagnostics) |
+| `community_ids` (matview) | Consensus taxonomy per occurrence | Ingester (REFRESH) | AppView |
+
+### AppView-owned (schema `appview`)
+
+| Table | Description | Written By | Read By |
+|-------|-------------|------------|---------|
 | `occurrence_private_data` | Exact coordinates (geoprivacy) | AppView | AppView |
-| `sensitive_species` | Auto-obscuration rules | (manual) | AppView |
+| `notification_reads` | Per-user read-state for notifications | AppView | AppView |
+| `oauth_sessions` | Persistent user sessions | AppView | AppView, Ingester (SELECT for `backfill --all`) |
+| `oauth_state` | Temporary PKCE flow state | AppView | AppView |
 
-### Infrastructure Tables
+### Shared reference (schema `public`)
 
 | Table | Description | Written By | Read By |
 |-------|-------------|------------|---------|
-| `ingester_state` | Firehose cursor position | Ingester | Ingester |
-| `oauth_state` | Temporary PKCE flow state | AppView | AppView |
-| `oauth_sessions` | Persistent user sessions | AppView | AppView |
-
-### Materialized Views
-
-| View | Description | Refreshed By | Read By |
-|------|-------------|--------------|---------|
-| `community_ids` | Consensus taxonomy | AppView (periodic) | AppView |
+| `sensitive_species` | Auto-obscuration rules | (manual / migrations) | AppView, Ingester |
+| `spatial_ref_sys` | PostGIS spatial reference systems | (PostGIS extension) | All |
 
 ## Data Lifecycles
 
@@ -150,16 +172,16 @@ flowchart TB
 2. Frontend POST /api/occurrences → AppView
    │
    ├─▶ Validate OAuth session
-   ├─▶ Validate taxonomy (Taxonomy Service → GBIF)
+   ├─▶ Validate taxonomy (in-process GBIF + Wikidata)
    ├─▶ Reverse geocode coordinates (Nominatim)
-   ├─▶ Upload images to user's PDS (via internal agent RPC)
+   ├─▶ Upload each image as a bio.lexicons.temp.media record on the user's PDS
    │
    ▼
-3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "bio.lexicons.temp.occurrence", ... })
+3. AppView creates the bio.lexicons.temp.occurrence record on the user's PDS
+   │  createRecord({ collection: "bio.lexicons.temp.occurrence",
+   │                 record: { ..., associatedMedia: [ strongRefs ] } })
    │
-   ├─▶ Writes exact coords to `occurrence_private_data`
-   ├─▶ Direct insert to `occurrences` (immediate visibility)
+   ├─▶ Writes exact coords to `appview.occurrence_private_data`
    │
    ▼
 4. PDS emits event to Jetstream firehose
@@ -167,8 +189,9 @@ flowchart TB
    ▼
 5. Ingester receives create event
    │
-   ├─▶ UPSERT to `occurrences` table (COALESCE preserves enriched fields)
-   ├─▶ SYNC `occurrence_observers` table
+   ├─▶ Resolves associatedMedia strong refs → media records from author's PDS
+   ├─▶ UPSERT to `ingester.occurrences`
+   ├─▶ SYNC `ingester.occurrence_observers`
    │
    ▼
 6. Data now queryable via API
@@ -183,7 +206,7 @@ flowchart TB
 2. Frontend POST /api/identifications → AppView
    │
    ├─▶ Validate OAuth session
-   ├─▶ Validate taxonomy (Taxonomy Service → GBIF)
+   ├─▶ Validate taxonomy
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
@@ -195,10 +218,24 @@ flowchart TB
    ▼
 5. Ingester receives create event
    │
-   ├─▶ UPSERT to `identifications` table
+   ├─▶ UPSERT to `ingester.identifications`
+   ├─▶ INSERT into `ingester.notifications` (unless self-ID)
    │
    ▼
-6. Community ID recalculated on next query
+6. Community ID recalculated on next matview refresh
+```
+
+### Marking a Notification as Read
+
+Notification creation is ingester-owned; read-state is appview-owned.
+
+```
+1. User views notifications → AppView SELECTs from
+   ingester.notifications LEFT JOIN appview.notification_reads
+   (produces the `read` flag).
+
+2. User clicks "mark read" → AppView INSERTs into
+   appview.notification_reads. No write to ingester schema.
 ```
 
 ### Firehose Ingestion
@@ -206,7 +243,7 @@ flowchart TB
 ```
 Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │
-   │  Filtered for:
+   │  wanted_collections:
    │  - bio.lexicons.temp.occurrence
    │  - bio.lexicons.temp.identification
    │  - ing.observ.temp.comment
@@ -223,35 +260,36 @@ Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    ├─▶ op = "delete" → DELETE row (cascades)
    │
    ▼
-Every 30 seconds: Save cursor to `ingester_state`
+Every 30 seconds: Save cursor to ingester.ingester_state
 ```
 
 ## Write Patterns by Service
 
-### AppView Writes
+### AppView writes
 
-| Operation | Table | Trigger |
-|-----------|-------|---------|
-| INSERT/UPDATE | `oauth_state` | OAuth login flow |
-| INSERT/UPDATE/DELETE | `oauth_sessions` | Login/logout |
-| INSERT/UPDATE | `occurrence_private_data` | Create/update observation |
-| INSERT/DELETE | `occurrence_observers` | Add/remove co-observer |
-| INSERT | `occurrences` | Direct insert for immediate visibility |
-| INSERT | `identifications` | Direct insert after AT Protocol write |
-| INSERT/DELETE | `likes` | Like/unlike |
+| Operation | Schema.Table | Trigger |
+|-----------|--------------|---------|
+| INSERT/UPDATE | `appview.oauth_state` | OAuth login flow |
+| INSERT/UPDATE/DELETE | `appview.oauth_sessions` | Login / logout |
+| INSERT/UPDATE | `appview.occurrence_private_data` | Create / update observation |
+| INSERT | `appview.notification_reads` | User marks notification read |
 
-### Ingester Writes
+The appview holds **no write grant** on the `ingester` schema — enforced at the DB layer.
 
-| Operation | Table | Trigger |
-|-----------|-------|---------|
-| UPSERT | `occurrences` | Firehose occurrence event |
-| UPSERT | `identifications` | Firehose identification event |
-| UPSERT | `comments` | Firehose comment event |
-| UPSERT | `interactions` | Firehose interaction event |
-| UPSERT | `likes` | Firehose like event |
-| SYNC | `occurrence_observers` | Firehose occurrence with recordedBy |
-| UPDATE | `ingester_state` | Every 30 seconds |
-| DELETE | `occurrences` | Firehose delete event (cascades) |
+### Ingester writes
+
+| Operation | Schema.Table | Trigger |
+|-----------|--------------|---------|
+| UPSERT | `ingester.occurrences` | Firehose occurrence event |
+| UPSERT | `ingester.identifications` | Firehose identification event |
+| UPSERT | `ingester.comments` | Firehose comment event |
+| UPSERT | `ingester.interactions` | Firehose interaction event |
+| UPSERT | `ingester.likes` | Firehose like event |
+| SYNC | `ingester.occurrence_observers` | Firehose occurrence with `recordedBy` |
+| INSERT | `ingester.notifications` | On ID / comment / like where the actor ≠ occurrence owner |
+| UPDATE | `ingester.ingester_state` | Every 30 seconds (cursor) |
+| DELETE | `ingester.*` | Firehose delete event (cascades) |
+| REFRESH | `ingester.community_ids` | Periodic matview refresh |
 
 ## Read Patterns
 
@@ -299,40 +337,41 @@ Exact coordinates are stored separately from public data:
 
 | Table | Contains | Visibility |
 |-------|----------|------------|
-| `occurrences.location` | Potentially obscured point | Public |
-| `occurrence_private_data.location` | Exact coordinates | Owner + co-observers only |
+| `ingester.occurrences.location` | Potentially obscured point | Public |
+| `appview.occurrence_private_data.location` | Exact coordinates | Owner + co-observers only |
 
 Obscuration rules:
 - `geoprivacy = 'open'` → Exact location in both tables
 - `geoprivacy = 'obscured'` → Random offset in public, exact in private
 - `geoprivacy = 'private'` → No public location
-- Sensitive species → Auto-obscured based on `sensitive_species` table
+- Sensitive species → Auto-obscured based on `public.sensitive_species`
 
 ## Cascade Deletes
 
 When an occurrence is deleted:
+
 ```
-DELETE occurrences WHERE uri = '...'
-  └─▶ CASCADE DELETE identifications WHERE subject_uri = '...'
-  └─▶ CASCADE DELETE comments WHERE subject_uri = '...'
-  └─▶ CASCADE DELETE likes WHERE subject_uri = '...'
-  └─▶ CASCADE DELETE interactions WHERE subject_a/b_occurrence_uri = '...'
-  └─▶ CASCADE DELETE occurrence_observers WHERE occurrence_uri = '...'
-  └─▶ CASCADE DELETE occurrence_private_data WHERE occurrence_uri = '...'
+DELETE ingester.occurrences WHERE uri = '...'
+  └─▶ CASCADE DELETE ingester.identifications WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.comments WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.likes WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.interactions WHERE subject_a/b_occurrence_uri = '...'
+  └─▶ CASCADE DELETE ingester.occurrence_observers WHERE occurrence_uri = '...'
+  └─▶ CASCADE DELETE appview.occurrence_private_data WHERE occurrence_uri = '...'
 ```
 
 ## Connection Details
 
-All services use the same PostgreSQL instance:
+All services use the same PostgreSQL instance, but connect as different Postgres roles:
 
 ```
 Database: observing
 Extensions: PostGIS
-Connection pool: max 10, idle timeout 30s
+Connection pool: max 10
 
-Environment variables:
+Environment variables (both services):
 - DATABASE_URL (full connection string)
 - or DB_HOST, DB_NAME, DB_USER, DB_PASSWORD (Cloud SQL style)
 ```
 
-Migrations run in both AppView and Ingester on startup (idempotent `CREATE TABLE IF NOT EXISTS`).
+**Migrations are not run by long-running services.** They're applied by a dedicated `observing-migrate` Cloud Run Job that runs pre-deploy in CI (see `.github/workflows/ci.yml`). The migrate Job is the only thing that ever connects as `postgres`.

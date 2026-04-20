@@ -27,10 +27,33 @@ docker exec -it observing-postgres createdb -U postgres observing
 
 ## Configuration
 
+Most developer commands read `DATABASE_URL` from the environment:
+
 ```bash
 export DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/observing"
 export PORT=3000
 ```
+
+Secrets for e2e and `process-compose` live in a gitignored `.env` at the project root. Source it once per shell:
+
+```bash
+set -a && source .env && set +a
+```
+
+## Running Migrations
+
+Migrations are versioned files under `crates/observing-db/migrations/` and applied by `sqlx`. Locally you can run them either of these ways:
+
+```bash
+# Run the same binary CI uses for the Cloud Run Job
+cargo run -p observing-migrate
+
+# Or, via sqlx-cli (useful when iterating on migration files — reads
+# filesystem at runtime instead of baking migrations in at compile time)
+cargo sqlx migrate run --source crates/observing-db/migrations
+```
+
+In production, migrations run in a one-shot `observing-migrate` Cloud Run Job *before* services are deployed — long-running services never run DDL. See `docs/deployment.md`.
 
 ## Common Commands
 
@@ -44,17 +67,24 @@ npm run build
 # Typecheck frontend
 npx tsc
 
+# Format frontend (oxfmt, not Prettier)
+npm run fmt
+npm run fmt:check
+
+# Lint frontend (oxlint)
+npm run lint
+
 # Build Rust workspace
 cargo build
+
+# Format Rust
+cargo fmt
 
 # Run Rust tests
 cargo test --workspace
 
 # Generate lexicon types (Rust)
 npm run generate-rust-types
-
-# Generate lexicon types (TypeScript)
-npm run generate-types
 ```
 
 ## Running Services
@@ -101,9 +131,10 @@ npm run dev
 
 ### Frontend Development
 
-If there's nothing in `dist/public`, the app view running on port 3000 will proxy frontend requests to the hot-reloading vite server running in the `frontend` process.
+If there's nothing in `dist/public`, the appview running on port 3000 will proxy frontend requests to the hot-reloading Vite server running in the `frontend` process.
 
 If you want to mimic a more production-like setup, rebuild the static frontend files and restart:
+
 ```bash
 npm run build && process-compose process restart appview
 ```
@@ -114,7 +145,7 @@ The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files
 
 Backend tests with `cargo test --workspace` should run without setup.
 
-Frontend integration tests require the full stack to run, so running them will look like:
+Frontend integration tests require the full stack to run:
 
 ```sh
 # Start full development stack
@@ -124,18 +155,14 @@ process-compose up -D
 npm run test:integration
 ```
 
-Frontend e2e tests with `npm run test:e2e` require a real Bluesky test account with these credentials in environmental variables: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
-
-e2e tests are truly end-to-end, so you need to have a full stack running for them to complete. The whole thing might look like this:
+E2E tests (`npm run test:e2e`) are truly end-to-end — they sign in to a real Bluesky account, so they require a full stack and these credentials in the environment: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
 
 ```sh
 # Start full development stack
 process-compose up -D
 
-# Set up Bluesky credentials
-export BLUESKY_TEST_EMAIL=your-test-bluesky-email@yourmail.com
-export BLUESKY_TEST_PASSWORD=your-test-bluesky-password
-export BLUESKY_TEST_HANDLE=your-test-bluesky-handle.bsky.social
+# Source credentials from .env
+set -a && source .env && set +a
 
 # Run the tests
 npm run test:e2e
