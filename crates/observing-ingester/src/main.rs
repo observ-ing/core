@@ -71,21 +71,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Run migrations using the admin URL when configured, then connect with
-    // the (potentially narrower) runtime URL. If no admin URL is set, both
-    // paths use the same URL — same behavior as before the role split.
-    if let Some(admin_url) = config.database_admin_url.as_deref() {
-        info!("Running migrations with dedicated admin connection");
-        let admin_db = Database::connect_single(admin_url).await?;
-        admin_db.migrate().await?;
-    } else {
-        info!("Running migrations with runtime DB connection");
-    }
-
+    // Migrations run out-of-band in a dedicated Cloud Run Job; see
+    // crates/observing-migrate. The runtime role used here has no DDL
+    // privileges and should never attempt to migrate.
     let db = Database::connect(&config.database_url).await?;
-    if config.database_admin_url.is_none() {
-        db.migrate().await?;
-    }
 
     // Load saved cursor
     let saved_cursor = db.get_cursor().await?;
@@ -282,10 +271,6 @@ fn load_config(cli: &Cli) -> Result<IngesterConfig> {
         }
     };
 
-    // Optional: separate URL used only for running migrations. When present,
-    // DATABASE_URL can point to the least-privilege ingester_writer role.
-    let database_admin_url = std::env::var("DATABASE_ADMIN_URL").ok();
-
     let relay_url = std::env::var("JETSTREAM_URL")
         .unwrap_or_else(|_| "wss://jetstream2.us-east.bsky.network/subscribe".to_string());
 
@@ -309,7 +294,6 @@ fn load_config(cli: &Cli) -> Result<IngesterConfig> {
     Ok(IngesterConfig {
         relay_url,
         database_url,
-        database_admin_url,
         cursor,
         port,
         collections,

@@ -8,7 +8,8 @@ flowchart TB
     PDS[Bluesky PDS]
     JS[Jetstream firehose]
     AV[observing-appview<br/>DB_USER=appview_runtime]
-    IG[observing-ingester<br/>DB_USER=ingester_writer<br/>DATABASE_ADMIN_URL=postgres]
+    IG[observing-ingester<br/>DB_USER=ingester_writer]
+    MIG[observing-migrate<br/>Cloud Run Job<br/>DB_USER=postgres]
     SID[species-id]
 
     subgraph DB["Postgres + PostGIS"]
@@ -37,9 +38,11 @@ flowchart TB
     AV -- "READ-ONLY" --> ING
     AV == "READ+WRITE" ==> APPV
     AV -- "READ-ONLY" --> PUB
+
+    MIG -. "DDL (one-shot, pre-deploy)" .-> DB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. The ingester connects twice at startup: once with `DATABASE_ADMIN_URL` (the `postgres` superuser) to run migrations, then drops that pool and opens its runtime pool as `ingester_writer` — a least-privilege role with CRUD only on the `ingester` schema, `SELECT` on `appview.oauth_sessions` (for the backfill `--all` binary), and `SELECT` on `public.sensitive_species`. No service runs as a superuser at steady state.
+Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — the ingester runs as `ingester_writer` (CRUD on `ingester` schema, `SELECT` on `appview.oauth_sessions` for the backfill `--all` binary, and `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
 
 ## Project Structure
 
@@ -51,6 +54,7 @@ crates/
 ├── observing-identity/    # DID/handle resolution + profile caching (Rust)
 ├── observing-ingester/    # AT Protocol firehose consumer (Rust)
 ├── observing-lexicons/    # Generated AT Protocol record types (Rust)
+├── observing-migrate/     # One-shot DB migration runner (Cloud Run Job)
 └── gbif-api/              # GBIF API client (Rust)
 
 frontend/                  # Web UI (Vite + React + MapLibre GL)

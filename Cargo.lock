@@ -2931,6 +2931,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "observing-migrate"
+version = "0.1.0"
+dependencies = [
+ "observing-db",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-stackdriver",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "observing-species-id"
 version = "0.1.0"
 dependencies = [
