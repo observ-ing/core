@@ -344,7 +344,7 @@ jobs:
           gcloud run jobs deploy observing-migrate \
             --image=$REGISTRY/observing-migrate:latest \
             --region=$REGION \
-            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-secrets=DATABASE_URL=observing-db-admin-url:latest \
             --max-retries=0 \
             --task-timeout=600
