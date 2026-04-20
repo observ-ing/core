@@ -8,7 +8,7 @@ flowchart TB
     PDS[Bluesky PDS]
     JS[Jetstream firehose]
     AV[observing-appview<br/>DB_USER=appview_runtime]
-    IG[observing-ingester<br/>DB_USER=ingester_writer]
+    IG[observing-ingester<br/>DB_USER=ingester_runtime]
     MIG[observing-migrate<br/>Cloud Run Job<br/>DB_USER=postgres]
     SID[species-id]
 
@@ -42,7 +42,7 @@ flowchart TB
     MIG -. "DDL (one-shot, pre-deploy)" .-> DB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — the ingester runs as `ingester_writer` (CRUD on `ingester` schema, `SELECT` on `appview.oauth_sessions` for the backfill `--all` binary, and `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
+Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — the ingester runs as `ingester_runtime` (CRUD on `ingester` schema, `SELECT` on `appview.oauth_sessions` for the backfill `--all` binary, and `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
 
 ## Project Structure
 
