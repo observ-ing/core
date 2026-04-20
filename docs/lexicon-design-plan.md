@@ -1,5 +1,7 @@
 # Observ.ing Lexicon Design Plan
 
+> **Status: historical / superseded.** This document predates the migration to upstream `lexicons.bio` schemas. The namespace proposal (`bio.sky.*`) was not adopted — the actual record types live under `bio.lexicons.temp.*` (upstream, for occurrence/identification/media) and `ing.observ.temp.*` (app-local, for comment/interaction/like). The actual occurrence schema is also much smaller than what's sketched here (~5 declared fields vs. the rich superset proposed below). See `darwin-core.md` and `lexicons/` for current reality. This doc is preserved as a design artifact — read it for the reasoning, not for the current state.
+
 A comprehensive plan for designing resilient AT Protocol lexicons for the Observ.ing biodiversity observation platform, aligned with Darwin Core standards and GBIF data models.
 
 ## Table of Contents

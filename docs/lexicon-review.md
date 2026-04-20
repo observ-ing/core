@@ -1,5 +1,7 @@
 # Lexicon Review: GBIF Alignment & AT Protocol Best Practices
 
+> **Status: historical / superseded.** This review was written when all five record types lived under `ing.observ.temp.*` and the occurrence schema was richer than today's. Since then, occurrence/identification/media have moved to upstream `bio.lexicons.temp.*` (owned by `lexicons.bio`), the adopted schema is minimal (`eventDate`, `decimalLatitude`, `decimalLongitude`, `coordinateUncertaintyInMeters`, `associatedMedia`), and several fields referenced below (`confidence`, `taxonName`, `blobs`, nested `#location`) no longer exist. Keep this doc as background on GBIF/DwC alignment thinking, but don't treat the "current state" claims as accurate. See `darwin-core.md` for current schemas.
+
 Research comparing our lexicons against GBIF data models, Darwin Core standards, and other AT Protocol lexicons across the ecosystem.
 
 ## Sources Examined

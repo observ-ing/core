@@ -1,89 +1,71 @@
 # Darwin Core Lexicons
 
-Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. Fields marked with ✅ are implemented, ⚠️ are partially implemented or mapped differently, and ❌ are not yet implemented.
+Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. This document describes the **current** shape of each lexicon record. A section at the bottom lists Darwin Core terms we may adopt later.
+
+For the full, authoritative schema definitions, see the JSON files under `lexicons/bio/lexicons/temp/`.
 
 ## bio.lexicons.temp.occurrence
 
-An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence).
+An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence). The schema is intentionally minimal today — most Darwin Core location refinements are deferred to future extensions.
 
 ### Example
 
 ```json
 {
   "eventDate": "2024-01-15T10:30:00Z",
-  "location": {
-    "decimalLatitude": "37.7749",
-    "decimalLongitude": "-122.4194",
-    "coordinateUncertaintyInMeters": 10,
-    "geodeticDatum": "WGS84",
-    "continent": "North America",
-    "country": "United States",
-    "countryCode": "US",
-    "stateProvince": "California",
-    "county": "San Francisco",
-    "locality": "Golden Gate Park"
-  },
-  "verbatimLocality": "Golden Gate Park, San Francisco",
-  "notes": "Multiple individuals blooming along the trail",
-  "blobs": [
+  "decimalLatitude": "37.7749",
+  "decimalLongitude": "-122.4194",
+  "coordinateUncertaintyInMeters": 10,
+  "associatedMedia": [
     {
-      "image": { "$type": "blob", "ref": "...", "mimeType": "image/jpeg" },
-      "alt": "Orange California Poppy flower"
+      "uri": "at://did:plc:abc.../bio.lexicons.temp.media/3kabc...",
+      "cid": "bafyrei..."
     }
-  ],
-  "license": "CC-BY-4.0",
-  "createdAt": "2024-01-15T10:35:00Z"
+  ]
 }
 ```
 
-> **Note:** Taxonomy fields are not part of the occurrence record. Species identification is provided via separate `bio.lexicons.temp.identification` records, which allows users to submit observations without knowing the species and enables community identification.
+### Fields
+
+| Field | Darwin Core | Description |
+|-------|-------------|-------------|
+| `eventDate` | dwc:eventDate | Date-time of the occurrence (ISO 8601) |
+| `decimalLatitude` | dwc:decimalLatitude | Latitude in decimal degrees (stored as string; range -90..90) |
+| `decimalLongitude` | dwc:decimalLongitude | Longitude in decimal degrees (stored as string; range -180..180) |
+| `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
+| `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.media` records (max 10) |
+| (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.occurrence/...` — derived, not stored |
+| (DID) | dwc:recordedBy | Derived from AT Protocol identity |
+
+> **Taxonomy is not part of the occurrence record.** Species identifications live in separate `bio.lexicons.temp.identification` records, which lets users submit observations without knowing the species and enables community identification.
+
+## bio.lexicons.temp.media
+
+An image record referenced from occurrences. Media records are created by users but are **not firehose-indexed** by the ingester — the ingester resolves them on demand when processing occurrences that reference them.
+
+### Example
+
+```json
+{
+  "image": { "$type": "blob", "ref": { "$link": "bafkrei..." }, "mimeType": "image/jpeg", "size": 842103 },
+  "alt": "Orange California Poppy flower along a trail",
+  "aspectRatio": { "width": 4032, "height": 3024 },
+  "license": "CC-BY-4.0"
+}
+```
 
 ### Fields
 
-| Observ.ing Field | GBIF / Darwin Core | Status | Description |
-|--------------|-------------------|--------|-------------|
-| `eventDate` | dwc:eventDate | ✅ | Date-time of the occurrence (ISO 8601) |
-| `location.decimalLatitude` | dwc:decimalLatitude | ✅ | Geographic latitude in decimal degrees (stored as string) |
-| `location.decimalLongitude` | dwc:decimalLongitude | ✅ | Geographic longitude in decimal degrees (stored as string) |
-| `location.coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | ✅ | Uncertainty radius in meters |
-| `location.geodeticDatum` | dwc:geodeticDatum | ✅ | Spatial reference system (defaults to WGS84) |
-| `location.continent` | dwc:continent | ✅ | Continent name |
-| `location.country` | dwc:country | ✅ | Country name |
-| `location.countryCode` | dwc:countryCode | ✅ | ISO 3166-1 alpha-2 country code |
-| `location.stateProvince` | dwc:stateProvince | ✅ | State/province name |
-| `location.county` | dwc:county | ✅ | County name |
-| `location.municipality` | dwc:municipality | ✅ | Municipality name |
-| `location.locality` | dwc:locality | ✅ | Specific locality description |
-| `location.waterBody` | dwc:waterBody | ✅ | Name of water body |
-| `location.minimumElevationInMeters` | dwc:minimumElevationInMeters | ✅ | Lower elevation bound |
-| `location.maximumElevationInMeters` | dwc:maximumElevationInMeters | ✅ | Upper elevation bound |
-| `location.minimumDepthInMeters` | dwc:minimumDepthInMeters | ✅ | Lower depth bound |
-| `location.maximumDepthInMeters` | dwc:maximumDepthInMeters | ✅ | Upper depth bound |
-| `verbatimLocality` | dwc:verbatimLocality | ✅ | Original textual description of the place |
-| `notes` | dwc:occurrenceRemarks | ✅ | Notes about the occurrence |
-| `blobs` | dwc:associatedMedia | ✅ | Array of image references |
-| `license` | dcterms:license | ✅ | SPDX identifiers (CC0, CC-BY, etc.) |
-| `createdAt` | — | ✅ | Record creation timestamp (Observ.ing-specific) |
-| (AT Protocol URI) | dwc:occurrenceID | ⚠️ | `at://did:plc:.../bio.lexicons.temp.occurrence/...` |
-| (DID) | dwc:recordedBy | ⚠️ | Derived from AT Protocol identity |
-| — | dwc:basisOfRecord | ❌ | Always assumed `HumanObservation` |
-| — | dwc:occurrenceStatus | ❌ | Always assumed `present` |
-| — | dwc:individualCount | ❌ | Number of individuals observed |
-| — | dwc:sex | ❌ | Sex of the organism |
-| — | dwc:lifeStage | ❌ | Age class or life stage |
-| — | dwc:behavior | ❌ | Observed behavior |
-| — | dwc:reproductiveCondition | ❌ | Reproductive condition (flowering, fruiting, etc.) |
-| — | dwc:establishmentMeans | ❌ | Native, introduced, invasive, etc. |
-| — | dwc:degreeOfEstablishment | ❌ | Degree of establishment in location |
-| — | dwc:pathway | ❌ | Means of introduction |
-| — | dwc:habitat | ❌ | Habitat description |
-| — | dwc:samplingProtocol | ❌ | Method used for sampling |
-| — | dwc:samplingEffort | ❌ | Effort expended during sampling |
-| — | dwc:eventRemarks | ❌ | Notes about the sampling event |
+| Field | Darwin Core / Dublin Core | Description |
+|-------|---------------------------|-------------|
+| `image` | — | Image blob ref (jpeg/png/webp, ≤10 MB). Required. |
+| `alt` | — | Alt text for accessibility (≤1000 chars) |
+| `aspectRatio` | — | `{ width, height }` in pixels, used for layout before load |
+| `license` | dcterms:license | SPDX identifier: `CC0-1.0`, `CC-BY-4.0`, `CC-BY-NC-4.0`, `CC-BY-SA-4.0`, `CC-BY-NC-SA-4.0` |
 
 ## bio.lexicons.temp.identification
 
-A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstream [lexicons.bio](https://github.com/lexicons-bio/lexicons.bio) schema with flat fields (no nested taxon object). App-specific fields (`isAgreement`, `createdAt`) are stored as extra JSON fields in the AT Protocol record.
+A taxonomic determination (dwc:Identification) attached to an occurrence via strong ref.
 
 ### Example
 
@@ -96,6 +78,7 @@ A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstr
   "scientificName": "Eschscholzia californica Cham.",
   "taxonRank": "species",
   "kingdom": "Plantae",
+  "identificationRemarks": "Matches the characteristic orange petals and finely dissected leaves.",
   "isAgreement": false,
   "createdAt": "2024-01-15T11:00:00Z"
 }
@@ -103,21 +86,45 @@ A taxonomic determination (dwc:Identification) for an occurrence. Uses the upstr
 
 ### Fields
 
-| Observ.ing Field | GBIF / Darwin Core | Status | Description |
-|--------------|-------------------|--------|-------------|
-| `occurrence` | — | ✅ | AT Protocol strong reference to the occurrence |
-| `scientificName` | dwc:scientificName | ✅ | The full scientific name, with authorship if known |
-| `taxonRank` | dwc:taxonRank | ✅ | Taxonomic rank (species, genus, family) |
-| `kingdom` | dwc:kingdom | ✅ | Taxonomic kingdom (for homonym disambiguation) |
-| `identificationRemarks` | dwc:identificationRemarks | ✅ | Notes about the identification |
-| `isAgreement` | — | ✅ | Whether ID agrees with community consensus (app-specific) |
-| `createdAt` | dwc:dateIdentified | ✅ | Date the identification was made (app-specific) |
-| (AT Protocol URI) | dwc:identificationID | ⚠️ | AT URI serves as identifier |
-| (DID) | dwc:identifiedBy | ⚠️ | Derived from AT Protocol identity |
-| — | dwc:identificationQualifier | ❌ | Qualifier like "cf." or "aff." |
-| — | dwc:identificationVerificationStatus | ❌ | Verification status |
-| — | dwc:identificationReferences | ❌ | References used for identification |
-| — | dwc:typeStatus | ❌ | Type specimen status |
+| Field | Darwin Core | Description |
+|-------|-------------|-------------|
+| `occurrence` | — | AT Protocol strong ref to the occurrence being identified. Required. |
+| `scientificName` | dwc:scientificName | Full scientific name with authorship if known. Required. (≤256 chars) |
+| `taxonRank` | dwc:taxonRank | One of: `kingdom`, `phylum`, `class`, `order`, `family`, `genus`, `species`, `subspecies`, `variety`, `form`. Defaults to `species`. |
+| `kingdom` | dwc:kingdom | Taxonomic kingdom, used for homonym disambiguation |
+| `identificationRemarks` | dwc:identificationRemarks | Reasoning for this identification (≤3000 chars) |
+| (AT URI) | dwc:identificationID | Derived from AT URI |
+| (DID) | dwc:identifiedBy | Derived from AT Protocol identity |
+
+### App-specific fields (schema drift)
+
+The appview writes two extra JSON fields into identification records that are **not declared in the upstream `lexicons.bio` schema**:
+
+| Field | Purpose |
+|-------|---------|
+| `isAgreement` | Whether this ID agrees with the current community consensus. Surfaces as an "Agree" vs "Suggest" action in the UI. |
+| `createdAt` | Client-set creation timestamp (distinct from the AT Protocol commit time). |
+
+> **Interop caveat.** Third-party consumers of these records via AT Protocol will see `isAgreement` and `createdAt` as extra JSON but won't have them in their generated types. If/when `lexicons.bio` adds equivalent fields upstream we should align on their names.
+
+## Planned Darwin Core extensions
+
+Terms we may adopt later on the occurrence record, grouped by the kind of information they carry. None are currently in the lexicon.
+
+**Location refinements** (currently only lat/lng + uncertainty):
+`dwc:geodeticDatum`, `dwc:continent`, `dwc:country`, `dwc:countryCode`, `dwc:stateProvince`, `dwc:county`, `dwc:municipality`, `dwc:locality`, `dwc:verbatimLocality`, `dwc:waterBody`, `dwc:minimumElevationInMeters`, `dwc:maximumElevationInMeters`, `dwc:minimumDepthInMeters`, `dwc:maximumDepthInMeters`.
+
+**Occurrence context:**
+`dwc:basisOfRecord` (assumed `HumanObservation`), `dwc:occurrenceStatus` (assumed `present`), `dwc:occurrenceRemarks`, `dwc:individualCount`, `dwc:sex`, `dwc:lifeStage`, `dwc:behavior`, `dwc:reproductiveCondition`.
+
+**Establishment / invasiveness:**
+`dwc:establishmentMeans`, `dwc:degreeOfEstablishment`, `dwc:pathway`.
+
+**Sampling event:**
+`dwc:habitat`, `dwc:samplingProtocol`, `dwc:samplingEffort`, `dwc:eventRemarks`.
+
+On identification:
+`dwc:identificationQualifier` (cf./aff.), `dwc:identificationVerificationStatus`, `dwc:identificationReferences`, `dwc:typeStatus`, `dwc:dateIdentified` (currently overlaps with app-specific `createdAt`).
 
 ## References
 

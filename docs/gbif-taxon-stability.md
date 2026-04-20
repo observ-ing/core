@@ -28,6 +28,12 @@ Observ.ing stores both `taxonId` (the GBIF key) and `scientificName` alongside
 the full taxonomic hierarchy (`kingdom`, `phylum`, `class`, `order`, `family`,
 `genus`). This gives two paths to resolve a taxon if one changes.
 
+> Only `scientificName`, `taxonRank`, `kingdom`, and `identificationRemarks` are
+> declared in the upstream `bio.lexicons.temp.identification` schema. `taxonId`
+> and the rest of the hierarchy are app-specific extra JSON fields written by
+> the appview and indexed by the ingester — see `darwin-core.md` for the full
+> list of schema drift.
+
 ## Cross-Kingdom Homonyms
 
 The same scientific name can exist in different kingdoms. These are called

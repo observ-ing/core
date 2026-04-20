@@ -46,19 +46,19 @@ Writes to lexicon data flow **user → appview → PDS → Jetstream → ingeste
 
 ## Project Structure
 
+Top-level service crates (each builds a deployable binary):
+
 ```
 crates/
-├── observing-appview/     # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
-├── observing-db/          # Shared database layer (Rust)
-├── observing-geocoding/   # Nominatim reverse geocoding (Rust)
-├── observing-identity/    # DID/handle resolution + profile caching (Rust)
-├── observing-ingester/    # AT Protocol firehose consumer (Rust)
-├── observing-lexicons/    # Generated AT Protocol record types (Rust)
-├── observing-migrate/     # One-shot DB migration runner (Cloud Run Job)
-└── gbif-api/              # GBIF API client (Rust)
+├── observing-appview/      # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
+├── observing-ingester/     # AT Protocol firehose consumer (Rust)
+├── observing-migrate/      # One-shot DB migration runner (Cloud Run Job)
+└── observing-species-id/   # BioCLIP photo → species identification service (Rust + ONNX)
 
-frontend/                  # Web UI (Vite + React + MapLibre GL)
+frontend/                   # Web UI (Vite + React + MapLibre GL)
 ```
+
+Supporting library crates (not separately deployed) are omitted for brevity — see `Cargo.toml` for the full workspace.
 
 ## Components
 
@@ -68,6 +68,7 @@ Darwin Core compliant schemas for biodiversity data following [TDWG standards](h
 
 - `bio.lexicons.temp.occurrence` - Occurrence records
 - `bio.lexicons.temp.identification` - Taxonomic determinations
+- `bio.lexicons.temp.media` - Image records referenced by occurrences (resolved on demand, not firehose-indexed)
 - `ing.observ.temp.comment` - Discussion comments
 - `ing.observ.temp.interaction` - Species interactions
 - `ing.observ.temp.like` - Likes
