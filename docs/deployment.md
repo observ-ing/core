@@ -28,6 +28,22 @@ CI runs the deploy steps in this order to ensure DDL lands before any service st
 2. `Deploy ingester` → single-writer for lexicon-derived tables.
 3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
 
+## Runtime role boundary (one-shot)
+
+Cloud SQL auto-grants `cloudsqlsuperuser` to every built-in user, and that membership confers `arwdDxt` on every table via role inheritance — which nullifies the per-schema grants in the `appview_reader_grants` migration. To actually enforce the boundary, `cloudsqlsuperuser` must be stripped from `appview_runtime` and `ingester_runtime`. This is a one-shot operation tied to user creation, not deploy state, so it lives here as a runbook step rather than a CI step:
+
+```bash
+for USER in appview_runtime ingester_runtime; do
+  gcloud sql users assign-roles $USER \
+    --instance=observing-db \
+    --database-roles=runtime_base \
+    --revoke-existing-roles \
+    --type=BUILT_IN
+done
+```
+
+`runtime_base` is an empty placeholder role created by the migrate Job, required only because `--database-roles=` needs a non-empty value. Direct per-table grants on each user stay intact through the swap. Re-run this command any time a runtime user is recreated.
+
 ## Environment Variables
 
 Database passwords and secrets come from Google Secret Manager; non-secret config is set inline via `--set-env-vars`.
