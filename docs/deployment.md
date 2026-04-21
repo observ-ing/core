@@ -25,8 +25,11 @@ All services and the migrate Job are Rust binaries built from the shared multi-s
 CI runs the deploy steps in this order to ensure DDL lands before any service starts on the new schema:
 
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
-2. `Deploy ingester` → single-writer for lexicon-derived tables.
-3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+2. `Enforce runtime role boundary` → `gcloud sql users assign-roles --revoke-existing-roles --database-roles=runtime_base` for `appview_runtime` and `ingester_runtime`. Strips the auto-granted `cloudsqlsuperuser` membership so the per-schema grants from `appview_reader_grants` actually bind. Idempotent.
+3. `Deploy ingester` → single-writer for lexicon-derived tables.
+4. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+
+Without step 2, Cloud SQL's default `cloudsqlsuperuser` membership gives every built-in user `arwdDxt` on every table via role inheritance, nullifying the least-privilege grants. `runtime_base` is an empty placeholder created by the migrate Job, required only because `--database-roles=` needs a non-empty value.
 
 ## Environment Variables
 

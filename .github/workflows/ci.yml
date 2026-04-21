@@ -352,6 +352,21 @@ jobs:
             --region=$REGION \
             --wait
 
+      # Strip the auto-granted `cloudsqlsuperuser` membership from the runtime
+      # users. Their direct per-table grants (from `appview_reader_grants` and
+      # schema-split migrations) remain; cross-boundary writes that currently
+      # succeed via `cloudsqlsuperuser` inheritance stop working. Idempotent —
+      # if cloudsqlsuperuser is already gone, this is a no-op.
+      - name: Enforce runtime role boundary
+        run: |
+          for USER in appview_runtime ingester_runtime; do
+            gcloud sql users assign-roles $USER \
+              --instance=observing-db \
+              --database-roles=runtime_base \
+              --revoke-existing-roles \
+              --type=BUILT_IN
+          done
+
       - name: Deploy ingester
         run: |
           gcloud run deploy observing-ingester \
