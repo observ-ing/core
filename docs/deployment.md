@@ -25,11 +25,24 @@ All services and the migrate Job are Rust binaries built from the shared multi-s
 CI runs the deploy steps in this order to ensure DDL lands before any service starts on the new schema:
 
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
-2. `Enforce runtime role boundary` → `gcloud sql users assign-roles --revoke-existing-roles --database-roles=runtime_base` for `appview_runtime` and `ingester_runtime`. Strips the auto-granted `cloudsqlsuperuser` membership so the per-schema grants from `appview_reader_grants` actually bind. Idempotent.
-3. `Deploy ingester` → single-writer for lexicon-derived tables.
-4. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+2. `Deploy ingester` → single-writer for lexicon-derived tables.
+3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
 
-Without step 2, Cloud SQL's default `cloudsqlsuperuser` membership gives every built-in user `arwdDxt` on every table via role inheritance, nullifying the least-privilege grants. `runtime_base` is an empty placeholder created by the migrate Job, required only because `--database-roles=` needs a non-empty value.
+## Runtime role boundary (one-shot)
+
+Cloud SQL auto-grants `cloudsqlsuperuser` to every built-in user, and that membership confers `arwdDxt` on every table via role inheritance — which nullifies the per-schema grants in the `appview_reader_grants` migration. To actually enforce the boundary, `cloudsqlsuperuser` must be stripped from `appview_runtime` and `ingester_runtime`. This is a one-shot operation tied to user creation, not deploy state, so it lives here as a runbook step rather than a CI step:
+
+```bash
+for USER in appview_runtime ingester_runtime; do
+  gcloud sql users assign-roles $USER \
+    --instance=observing-db \
+    --database-roles=runtime_base \
+    --revoke-existing-roles \
+    --type=BUILT_IN
+done
+```
+
+`runtime_base` is an empty placeholder role created by the migrate Job, required only because `--database-roles=` needs a non-empty value. Direct per-table grants on each user stay intact through the swap. Re-run this command any time a runtime user is recreated.
 
 ## Environment Variables
 
