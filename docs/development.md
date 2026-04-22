@@ -14,16 +14,25 @@ npm install
 
 ## Database Setup
 
+Run PostgreSQL with PostGIS locally. All app services connect to it over `localhost:5432` — there is no Cloud SQL Proxy step in local dev; production Cloud SQL is a separate concern handled by CI (see `docs/deployment.md`).
+
+Docker is the path of least resistance:
+
 ```bash
-# Using Docker with PostGIS
+# One-time: create the container
 docker run --name observing-postgres \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -p 5432:5432 \
   -d postgis/postgis
 
-# Create database
+# Create the database
 docker exec -it observing-postgres createdb -U postgres observing
+
+# After reboot / on subsequent sessions
+docker start observing-postgres
 ```
+
+Native installs (Postgres.app, Homebrew `postgresql` + `postgis`, etc.) work too — anything that exposes PostgreSQL with PostGIS on `localhost:5432` is fine.
 
 ## Configuration
 
@@ -91,7 +100,7 @@ npm run generate-rust-types
 
 ### Using process-compose (recommended)
 
-All services can be managed with `process-compose`. Config in `process-compose.yaml`.
+All services can be managed with `process-compose`. Config in `process-compose.yaml`. Make sure your local PostgreSQL is running first (see [Database Setup](#database-setup)) — process-compose only manages the app processes.
 
 ```bash
 # Start all services (detached)
@@ -114,7 +123,7 @@ process-compose process logs <name>
 process-compose down
 ```
 
-Service names: `cloud-sql-proxy`, `appview`, `frontend`, `ingester`, `species-id`
+Service names: `appview`, `frontend`, `ingester`, `species-id`
 
 ### Individual Services
 
