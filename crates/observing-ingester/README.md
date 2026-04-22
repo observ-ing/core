@@ -10,6 +10,8 @@ cargo build --release
 
 ## Running Locally
 
+Point at a local PostgreSQL (with PostGIS) — see `docs/development.md` for setup.
+
 ```bash
 DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/observing" \
 cargo run --release
@@ -24,15 +26,15 @@ cargo run --release
 | `PORT` | No | `8080` | HTTP server port |
 | `RUST_LOG` | No | `observing_ingester=info` | Log level |
 
-*Either `DATABASE_URL` or Cloud SQL environment variables are required:
+*If `DATABASE_URL` is unset, the ingester builds one from the env vars below. This fallback exists for Cloud Run's Cloud SQL Unix-socket integration in production (`DB_HOST=/cloudsql/project:region:instance`); local development should prefer `DATABASE_URL`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `DB_HOST` | Yes* | - | Database host or Cloud SQL socket path (e.g., `/cloudsql/project:region:instance`) |
+| `DB_HOST` | Yes* | - | Database host or Unix-socket path |
 | `DB_NAME` | No | `observing` | Database name |
 | `DB_USER` | No | `postgres` | Database user |
 | `DB_PASSWORD` | No | - | Database password |
-| `DB_PORT` | No | `5432` | Database port (ignored for Cloud SQL sockets) |
+| `DB_PORT` | No | `5432` | Database port (ignored when `DB_HOST` is a Unix socket) |
 
 ## Endpoints
 
