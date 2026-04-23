@@ -38,8 +38,12 @@ base64 = "0.22"
 # Zero-copy binary loading
 bytemuck = { version = "1", features = ["derive"] }
 
+# H3 geospatial indexing (geo-prior reranking)
+h3o = { version = "0.9", default-features = false }
+
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
+tempfile = { workspace = true }
 
 [[bin]]
 name = "observing-species-id"

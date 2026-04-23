@@ -83,13 +83,20 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
     let model = state.clone();
     let limit = body.limit.min(20); // Cap at 20 suggestions
 
-    // Log geo context if provided (reserved for future geo-prior reranking)
-    if body.latitude.is_some() || body.longitude.is_some() {
-        info!(lat = ?body.latitude, lng = ?body.longitude, "Geo context provided");
-    }
+    // Pass lat/lon through for geo-prior reranking. Both must be present for
+    // it to take effect; a single coord alone is unusable and we log + drop.
+    let lat_lon = match (body.latitude, body.longitude) {
+        (Some(lat), Some(lon)) => Some((lat, lon)),
+        (Some(_), None) | (None, Some(_)) => {
+            info!(lat = ?body.latitude, lng = ?body.longitude, "Ignoring half-specified geo context");
+            None
+        }
+        (None, None) => None,
+    };
 
     let result =
-        tokio::task::spawn_blocking(move || model.model.identify(&image_bytes, limit)).await;
+        tokio::task::spawn_blocking(move || model.model.identify(&image_bytes, lat_lon, limit))
+            .await;
 
     match result {
         Ok(Ok(suggestions)) => {

@@ -4,6 +4,7 @@
 
 mod embeddings;
 mod error;
+mod geo_index;
 mod model;
 mod preprocessing;
 mod server;

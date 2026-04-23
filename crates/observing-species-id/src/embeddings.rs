@@ -126,16 +126,19 @@ impl SpeciesEmbeddings {
         self.embed_dim
     }
 
-    /// Find the top-K most similar species to the given image embedding.
-    ///
-    /// `image_embedding` must be L2-normalized, shape [embed_dim].
-    /// Returns suggestions sorted by descending confidence.
-    pub fn top_k(&self, image_embedding: &Array1<f32>, k: usize) -> Vec<SpeciesSuggestion> {
-        // Cosine similarity = dot product (both are L2-normalized)
-        let similarities = self.embeddings.dot(image_embedding);
+    /// Cosine similarity between the image embedding and every species
+    /// embedding. Both sides are expected to be L2-normalized, so the dot
+    /// product is the cosine. Shape: `[num_species]`.
+    pub fn similarities(&self, image_embedding: &Array1<f32>) -> Array1<f32> {
+        self.embeddings.dot(image_embedding)
+    }
 
-        // Find top-K indices
-        let mut indexed: Vec<(usize, f32)> = similarities.iter().copied().enumerate().collect();
+    /// Pick the top-K highest scores and return them as suggestions.
+    ///
+    /// The caller owns the score array and can mutate it (e.g. applying a
+    /// geo-prior boost) before calling this.
+    pub fn top_k_from_scores(&self, scores: &[f32], k: usize) -> Vec<SpeciesSuggestion> {
+        let mut indexed: Vec<(usize, f32)> = scores.iter().copied().enumerate().collect();
         indexed.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         indexed.truncate(k);
 
