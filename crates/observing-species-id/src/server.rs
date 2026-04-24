@@ -82,17 +82,7 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
     // Run inference (blocking CPU work — spawn on blocking thread pool)
     let model = state.clone();
     let limit = body.limit.min(20); // Cap at 20 suggestions
-
-    // Pass lat/lon through for geo-prior reranking. Both must be present for
-    // it to take effect; a single coord alone is unusable and we log + drop.
-    let lat_lon = match (body.latitude, body.longitude) {
-        (Some(lat), Some(lon)) => Some((lat, lon)),
-        (Some(_), None) | (None, Some(_)) => {
-            info!(lat = ?body.latitude, lng = ?body.longitude, "Ignoring half-specified geo context");
-            None
-        }
-        (None, None) => None,
-    };
+    let lat_lon = parse_lat_lon(&body);
 
     let result =
         tokio::task::spawn_blocking(move || model.model.identify(&image_bytes, lat_lon, limit))
@@ -137,6 +127,25 @@ async fn identify(State(state): State<SharedState>, Json(body): Json<IdentifyReq
     }
 }
 
+/// Extract the lat/lon pair from the request, or `None` if either side is
+/// missing. A single coordinate is unusable for a geo-prior — we log the
+/// half-specified case so it's visible in production, but treat it as
+/// "no location" rather than erroring the request.
+fn parse_lat_lon(body: &IdentifyRequest) -> Option<(f64, f64)> {
+    match (body.latitude, body.longitude) {
+        (Some(lat), Some(lon)) => Some((lat, lon)),
+        (Some(_), None) | (None, Some(_)) => {
+            info!(
+                lat = ?body.latitude,
+                lng = ?body.longitude,
+                "Ignoring half-specified geo context"
+            );
+            None
+        }
+        (None, None) => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,5 +160,26 @@ mod tests {
         };
         let json = serde_json::to_string(&err).unwrap();
         assert!(json.contains("test"));
+    }
+
+    fn req(lat: Option<f64>, lon: Option<f64>) -> IdentifyRequest {
+        IdentifyRequest {
+            image: String::new(),
+            latitude: lat,
+            longitude: lon,
+            limit: 5,
+        }
+    }
+
+    #[test]
+    fn parse_lat_lon_both_present() {
+        assert_eq!(parse_lat_lon(&req(Some(1.0), Some(2.0))), Some((1.0, 2.0)));
+    }
+
+    #[test]
+    fn parse_lat_lon_missing_either_returns_none() {
+        assert_eq!(parse_lat_lon(&req(Some(1.0), None)), None);
+        assert_eq!(parse_lat_lon(&req(None, Some(2.0))), None);
+        assert_eq!(parse_lat_lon(&req(None, None)), None);
     }
 }

@@ -8,7 +8,7 @@ use crate::error::{Result, SpeciesIdError};
 use crate::geo_index::GeoIndex;
 use crate::preprocessing;
 use crate::types::SpeciesSuggestion;
-use ndarray::Array1;
+use ndarray::{Array1, Array4};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Value;
 use std::path::Path;
@@ -110,14 +110,20 @@ impl BioclipModel {
         lat_lon: Option<(f64, f64)>,
         limit: usize,
     ) -> Result<Vec<SpeciesSuggestion>> {
-        // Preprocess image to NCHW tensor [1, 3, 224, 224]
         let input_tensor = preprocessing::preprocess_image(image_bytes)?;
+        let embedding = self.run_vision_encoder(input_tensor)?;
+        let mut scores = self.species.similarities(&embedding).to_vec();
+        self.apply_geo_prior(&mut scores, lat_lon);
+        Ok(self.species.top_k_from_scores(&scores, limit))
+    }
 
-        // Create ONNX Value from ndarray
+    /// Run the ONNX vision encoder on a preprocessed image tensor and return
+    /// the resulting L2-normalized image embedding. Acquires the session
+    /// mutex; callers must not hold it across this call.
+    fn run_vision_encoder(&self, input_tensor: Array4<f32>) -> Result<Array1<f32>> {
         let input_value = Value::from_array(input_tensor)
             .map_err(|e| SpeciesIdError::Model(format!("Failed to create input tensor: {}", e)))?;
 
-        // Run ONNX inference (session.run requires &mut self)
         let mut session = self
             .session
             .lock()
@@ -127,13 +133,10 @@ impl BioclipModel {
             .run(ort::inputs!["pixel_values" => input_value])
             .map_err(|e| SpeciesIdError::Model(format!("Inference failed: {}", e)))?;
 
-        // Extract image embedding — returns (&Shape, &[f32])
-        // Copy data out so we can release the session lock
         let (shape, data) = outputs[0]
             .try_extract_tensor::<f32>()
             .map_err(|e| SpeciesIdError::Model(format!("Failed to extract embedding: {}", e)))?;
 
-        // Validate expected shape [1, embed_dim]
         let embed_dim = self.species.embed_dim();
         if shape.len() != 2 || shape[1] != embed_dim as i64 {
             return Err(SpeciesIdError::Model(format!(
@@ -143,40 +146,37 @@ impl BioclipModel {
         }
 
         let embedding_data = data.to_vec();
-
-        // Drop outputs and session lock
         drop(outputs);
         drop(session);
 
-        // L2-normalize the image embedding
         let mut embedding = Array1::<f32>::from_vec(embedding_data);
         let norm = embedding.dot(&embedding).sqrt();
         if norm > 0.0 {
             embedding /= norm;
         }
+        Ok(embedding)
+    }
 
-        // Cosine similarities against every species.
-        let mut scores = self.species.similarities(&embedding).to_vec();
-
-        // Geo-prior rerank: boost species whose range maps cover this lat/lon.
-        // Soft boost only — never penalize out-of-range species, because iNat
-        // range maps undercover species in under-surveyed regions.
-        if let (Some((lat, lon)), Some(geo)) = (lat_lon, &self.geo_index) {
-            let in_range = geo.species_at(lat, lon);
-            for &species_idx in in_range {
-                if let Some(s) = scores.get_mut(species_idx as usize) {
-                    *s += self.geo_boost;
-                }
+    /// Apply the geo-prior boost in place. Soft boost only — we never
+    /// penalize out-of-range species, because iNat range maps undercover
+    /// species in under-surveyed regions. No-op when lat/lon is absent or
+    /// no geo index is loaded.
+    fn apply_geo_prior(&self, scores: &mut [f32], lat_lon: Option<(f64, f64)>) {
+        let (Some((lat, lon)), Some(geo)) = (lat_lon, &self.geo_index) else {
+            return;
+        };
+        let in_range = geo.species_at(lat, lon);
+        for &species_idx in in_range {
+            if let Some(s) = scores.get_mut(species_idx as usize) {
+                *s += self.geo_boost;
             }
-            info!(
-                lat,
-                lon,
-                in_range = in_range.len(),
-                boost = self.geo_boost,
-                "Applied geo prior"
-            );
         }
-
-        Ok(self.species.top_k_from_scores(&scores, limit))
+        info!(
+            lat,
+            lon,
+            in_range = in_range.len(),
+            boost = self.geo_boost,
+            "Applied geo prior"
+        );
     }
 }

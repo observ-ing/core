@@ -34,6 +34,130 @@ const MAGIC: &[u8; 4] = b"OGI1";
 const VERSION: u32 = 1;
 const HEADER_SIZE: usize = 32;
 
+/// Parsed 32-byte header. Owns only the fields the body decode/validation
+/// path cares about — the two reserved u32s are read and discarded.
+struct Header {
+    num_species: u32,
+    h3_resolution: Resolution,
+    num_cells: usize,
+    num_entries: usize,
+}
+
+impl Header {
+    /// Parse and validate magic, version, and resolution. Does *not* check
+    /// the species count or file size — those need additional context from
+    /// the caller; see `validate_species_count` and `expected_file_size`.
+    fn parse(bytes: &[u8]) -> Result<Self> {
+        if bytes.len() < HEADER_SIZE {
+            return Err(SpeciesIdError::Config(format!(
+                "Geo index too short ({} bytes) to contain header",
+                bytes.len()
+            )));
+        }
+        if &bytes[..4] != MAGIC {
+            return Err(SpeciesIdError::Config(format!(
+                "Bad geo index magic: expected {:?}, got {:?}",
+                MAGIC,
+                &bytes[..4]
+            )));
+        }
+
+        let version = read_u32_le(bytes, 4);
+        let num_species = read_u32_le(bytes, 8);
+        let h3_res_u32 = read_u32_le(bytes, 12);
+        let num_cells = read_u32_le(bytes, 16) as usize;
+        let num_entries = read_u32_le(bytes, 20) as usize;
+
+        if version != VERSION {
+            return Err(SpeciesIdError::Config(format!(
+                "Unsupported geo index version: {} (expected {})",
+                version, VERSION
+            )));
+        }
+
+        let h3_resolution = Resolution::try_from(u8::try_from(h3_res_u32).map_err(|_| {
+            SpeciesIdError::Config(format!("H3 resolution {} out of range", h3_res_u32))
+        })?)
+        .map_err(|e| SpeciesIdError::Config(format!("Invalid H3 resolution: {}", e)))?;
+
+        Ok(Self {
+            num_species,
+            h3_resolution,
+            num_cells,
+            num_entries,
+        })
+    }
+
+    /// Fail if the label count disagrees with the embeddings — this means
+    /// the geo index is stale and species indices would point at the wrong
+    /// rows.
+    fn validate_species_count(&self, expected: usize) -> Result<()> {
+        if self.num_species as usize != expected {
+            return Err(SpeciesIdError::Config(format!(
+                "Geo index num_species ({}) does not match label count ({}) — \
+                 index is stale",
+                self.num_species, expected
+            )));
+        }
+        Ok(())
+    }
+
+    /// Total file size this header implies, used to detect truncation.
+    fn expected_file_size(&self) -> usize {
+        HEADER_SIZE + self.num_cells * 8 + (self.num_cells + 1) * 4 + self.num_entries * 4
+    }
+}
+
+/// Decoded CSR body. Uses explicit little-endian reads so the file format
+/// is stable across architectures (all our targets are LE, but this is
+/// cheap insurance).
+struct Body {
+    cells: Vec<u64>,
+    offsets: Vec<u32>,
+    species_ids: Vec<u32>,
+}
+
+impl Body {
+    /// Decode the post-header bytes into three owned arrays.
+    fn decode(body_bytes: &[u8], header: &Header) -> Self {
+        let mut cells = Vec::with_capacity(header.num_cells);
+        let mut off = 0;
+        for _ in 0..header.num_cells {
+            cells.push(read_u64_le(body_bytes, off));
+            off += 8;
+        }
+        let mut offsets = Vec::with_capacity(header.num_cells + 1);
+        for _ in 0..=header.num_cells {
+            offsets.push(read_u32_le(body_bytes, off));
+            off += 4;
+        }
+        let mut species_ids = Vec::with_capacity(header.num_entries);
+        for _ in 0..header.num_entries {
+            species_ids.push(read_u32_le(body_bytes, off));
+            off += 4;
+        }
+        Self {
+            cells,
+            offsets,
+            species_ids,
+        }
+    }
+
+    /// Check CSR invariants that the file-size check alone can't catch —
+    /// bit-flips or adversarial inputs that leave the length correct but
+    /// the offsets table malformed.
+    fn validate(&self, num_entries: usize) -> Result<()> {
+        if self.offsets.first().copied() != Some(0)
+            || self.offsets.last().copied() != Some(num_entries as u32)
+        {
+            return Err(SpeciesIdError::Config(
+                "Geo index offsets are malformed (bad endpoints)".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 /// Sorted cell → species-index lookup table.
 pub struct GeoIndex {
     /// H3 cell indices, sorted ascending for binary search.
@@ -61,46 +185,10 @@ impl GeoIndex {
             ))
         })?;
 
-        if bytes.len() < HEADER_SIZE {
-            return Err(SpeciesIdError::Config(format!(
-                "Geo index too short ({} bytes) to contain header",
-                bytes.len()
-            )));
-        }
-        if &bytes[..4] != MAGIC {
-            return Err(SpeciesIdError::Config(format!(
-                "Bad geo index magic: expected {:?}, got {:?}",
-                MAGIC,
-                &bytes[..4]
-            )));
-        }
+        let header = Header::parse(&bytes)?;
+        header.validate_species_count(expected_num_species)?;
 
-        let version = read_u32_le(&bytes, 4);
-        let num_species = read_u32_le(&bytes, 8);
-        let h3_res_u32 = read_u32_le(&bytes, 12);
-        let num_cells = read_u32_le(&bytes, 16) as usize;
-        let num_entries = read_u32_le(&bytes, 20) as usize;
-
-        if version != VERSION {
-            return Err(SpeciesIdError::Config(format!(
-                "Unsupported geo index version: {} (expected {})",
-                version, VERSION
-            )));
-        }
-        if num_species as usize != expected_num_species {
-            return Err(SpeciesIdError::Config(format!(
-                "Geo index num_species ({}) does not match label count ({}) — \
-                 index is stale",
-                num_species, expected_num_species
-            )));
-        }
-
-        let h3_resolution = Resolution::try_from(u8::try_from(h3_res_u32).map_err(|_| {
-            SpeciesIdError::Config(format!("H3 resolution {} out of range", h3_res_u32))
-        })?)
-        .map_err(|e| SpeciesIdError::Config(format!("Invalid H3 resolution: {}", e)))?;
-
-        let expected_size = HEADER_SIZE + num_cells * 8 + (num_cells + 1) * 4 + num_entries * 4;
+        let expected_size = header.expected_file_size();
         if bytes.len() != expected_size {
             return Err(SpeciesIdError::Config(format!(
                 "Geo index size mismatch: expected {} bytes, got {}",
@@ -109,50 +197,22 @@ impl GeoIndex {
             )));
         }
 
-        // Decode into aligned Vecs. We use explicit little-endian reads so the
-        // file format is stable across architectures (all our targets are LE,
-        // but this is cheap insurance).
-        let mut cells = Vec::with_capacity(num_cells);
-        let mut off = HEADER_SIZE;
-        for _ in 0..num_cells {
-            cells.push(read_u64_le(&bytes, off));
-            off += 8;
-        }
-        let mut offsets = Vec::with_capacity(num_cells + 1);
-        for _ in 0..=num_cells {
-            offsets.push(read_u32_le(&bytes, off));
-            off += 4;
-        }
-        let mut species_ids = Vec::with_capacity(num_entries);
-        for _ in 0..num_entries {
-            species_ids.push(read_u32_le(&bytes, off));
-            off += 4;
-        }
-
-        // Sanity: offsets must be monotonic and terminate at num_entries.
-        // Catches bit-flip or truncated-file scenarios before we mis-index at
-        // inference time.
-        if offsets.first().copied() != Some(0)
-            || offsets.last().copied() != Some(num_entries as u32)
-        {
-            return Err(SpeciesIdError::Config(
-                "Geo index offsets are malformed (bad endpoints)".to_string(),
-            ));
-        }
+        let body = Body::decode(&bytes[HEADER_SIZE..], &header);
+        body.validate(header.num_entries)?;
 
         info!(
-            num_cells,
-            num_entries,
-            h3_resolution = h3_res_u32,
+            num_cells = header.num_cells,
+            num_entries = header.num_entries,
+            h3_resolution = u8::from(header.h3_resolution),
             size_mb = bytes.len() / (1024 * 1024),
             "Geo index loaded"
         );
 
         Ok(Self {
-            cells,
-            offsets,
-            species_ids,
-            h3_resolution,
+            cells: body.cells,
+            offsets: body.offsets,
+            species_ids: body.species_ids,
+            h3_resolution: header.h3_resolution,
         })
     }
 
