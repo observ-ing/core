@@ -139,7 +139,7 @@ RUN apt-get update && apt-get install -y curl && \
 # Download model artifacts (separate layer for better caching)
 RUN mkdir -p /app/models/bioclip && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/models.tar.gz \
-      https://github.com/observ-ing/bioclip-models/releases/download/v2.0.0/bioclip-2.5-models.tar.gz && \
+      https://github.com/observ-ing/bioclip-models/releases/download/v2.1.0/bioclip-2.5-models.tar.gz && \
     tar xzf /tmp/models.tar.gz -C /app/models/bioclip && \
     rm /tmp/models.tar.gz
 
