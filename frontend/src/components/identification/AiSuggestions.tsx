@@ -1,6 +1,7 @@
 import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
 import { nameToSlug } from "../../lib/taxonSlug";
 import { useAiSuggestions } from "../../hooks/useAiSuggestions";
@@ -118,6 +119,20 @@ export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsPr
                     >
                       {s.commonName}
                     </Typography>
+                  )}
+                  {s.inRange === true && (
+                    <Box
+                      component="span"
+                      sx={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        color: "success.main",
+                      }}
+                      title="Found in your area"
+                      aria-label="Found in your area"
+                    >
+                      <PlaceIcon sx={{ fontSize: 14 }} />
+                    </Box>
                   )}
                   <Typography
                     variant="caption"

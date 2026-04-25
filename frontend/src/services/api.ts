@@ -507,6 +507,12 @@ export interface SpeciesSuggestion {
   order?: string;
   family?: string;
   genus?: string;
+  /**
+   * Whether this species' iNat range covers the request lat/lon. Omitted
+   * when the server couldn't form an opinion (no coordinates, no geo
+   * index, or the request location is outside any mapped H3 cell).
+   */
+  inRange?: boolean;
 }
 
 export interface IdentifyResponse {

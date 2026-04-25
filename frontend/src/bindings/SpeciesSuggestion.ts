@@ -10,4 +10,10 @@ export type SpeciesSuggestion = {
   order?: string;
   family?: string;
   genus?: string;
+  /**
+   * Whether this species' iNat range covers the request lat/lon.
+   * Absent when no opinion was formed (no coordinates, no geo index,
+   * or the H3 cell at the request point is unknown to the index).
+   */
+  inRange?: boolean;
 };

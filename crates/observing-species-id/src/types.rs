@@ -49,6 +49,12 @@ pub struct SpeciesSuggestion {
     pub family: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub genus: Option<String>,
+    /// Whether this species' iNat range covers the request lat/lon.
+    /// `None` when geo lookup wasn't performed (no lat/lon, no geo index)
+    /// or when the cell at the request point is unknown to the index — i.e.
+    /// the field is only populated with an opinion when one is well-founded.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub in_range: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
