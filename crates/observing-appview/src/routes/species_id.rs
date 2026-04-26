@@ -70,6 +70,13 @@ pub async fn identify(
 /// Fill in missing common names by looking up each scientific name via the
 /// taxonomy service. Failures are silently ignored — common names are
 /// best-effort.
+///
+/// Uses `get_by_name` rather than `search` because the species-search GBIF
+/// endpoint returns only the vernacular names embedded inline on the search
+/// result, which is sparse for many taxa (e.g. *Chelydra serpentina* comes
+/// back with no common name). `get_by_name` resolves to the canonical usage
+/// key and then fetches the full species record, which merges in GBIF's
+/// dedicated vernacular-names endpoint and produces a richer match.
 async fn enrich_common_names(state: &AppState, response: &mut IdentifyResponse) {
     let futures: Vec<_> = response
         .suggestions
@@ -79,11 +86,10 @@ async fn enrich_common_names(state: &AppState, response: &mut IdentifyResponse) 
         .map(|(i, s)| {
             let taxonomy = state.taxonomy.clone();
             let name = s.scientific_name.clone();
+            let kingdom = s.kingdom.clone();
             async move {
-                let result = taxonomy.search(&name, Some(1)).await;
-                let common_name = result
-                    .and_then(|results| results.into_iter().next())
-                    .and_then(|t| t.common_name);
+                let result = taxonomy.get_by_name(&name, kingdom.as_deref()).await;
+                let common_name = result.ok().flatten().and_then(|t| t.common_name);
                 (i, common_name)
             }
         })
