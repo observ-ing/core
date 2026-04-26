@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT DISTINCT ON (o.uri)\n                    o.uri, o.cid, o.did, o.scientific_name, o.event_date,\n                    ST_Y(o.location::geometry) as \"latitude!\",\n                    ST_X(o.location::geometry) as \"longitude!\",\n                    o.coordinate_uncertainty_meters,\n                    o.associated_media, o.recorded_by,\n                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o.\"order\" as order_, o.family, o.genus,\n                    o.created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source,\n                    COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role\n                FROM occurrences o\n                LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1\n                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < ($3::text)::timestamptz\n                ORDER BY o.uri, o.created_at DESC\n                LIMIT $2\n                ",
+  "query": "\n                SELECT DISTINCT ON (o.uri)\n                    o.uri, o.cid, o.did, o.scientific_name, o.event_date,\n                    ST_Y(o.location::geometry) as \"latitude!\",\n                    ST_X(o.location::geometry) as \"longitude!\",\n                    o.coordinate_uncertainty_meters,\n                    o.associated_media, o.recorded_by,\n                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o.\"order\" as order_, o.family, o.genus,\n                    o.created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source,\n                    COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role\n                FROM occurrences o\n                LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1\n                WHERE o.did = $1 OR oo.observer_did = $1\n                ORDER BY o.uri, o.created_at DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -65,56 +65,51 @@
       },
       {
         "ordinal": 12,
-        "name": "vernacular_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 13,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "distance_meters",
         "type_info": "Float8"
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "source",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 21,
         "name": "observer_role",
         "type_info": "Text"
       }
@@ -122,8 +117,7 @@
     "parameters": {
       "Left": [
         "Text",
-        "Int8",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
@@ -145,12 +139,11 @@
       true,
       true,
       true,
-      true,
       false,
       null,
       null,
       null
     ]
   },
-  "hash": "450c76ba13f2a7ce6b07fb5e2480b53dcec435434bae7502b10cef0c5b4d8952"
+  "hash": "d5b81103b3ce35c718a6fb35fc311d76a43b7695f581c8823f34342f909bab0a"
 }

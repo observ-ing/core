@@ -12,21 +12,20 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, taxon_id, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order", family, genus
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            kingdom, phylum, class, "order", family, genus
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $6,
             taxon_rank = COALESCE($7, identifications.taxon_rank),
             taxon_id = COALESCE($8, identifications.taxon_id),
             is_agreement = $9,
-            vernacular_name = COALESCE($11, identifications.vernacular_name),
-            kingdom = COALESCE($12, identifications.kingdom),
-            phylum = COALESCE($13, identifications.phylum),
-            class = COALESCE($14, identifications.class),
-            "order" = COALESCE($15, identifications."order"),
-            family = COALESCE($16, identifications.family),
-            genus = COALESCE($17, identifications.genus),
+            kingdom = COALESCE($11, identifications.kingdom),
+            phylum = COALESCE($12, identifications.phylum),
+            class = COALESCE($13, identifications.class),
+            "order" = COALESCE($14, identifications."order"),
+            family = COALESCE($15, identifications.family),
+            genus = COALESCE($16, identifications.genus),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -39,7 +38,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.taxon_id as _,
         p.is_agreement,
         chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(p.date_identified, chrono::Utc),
-        p.vernacular_name as _,
         p.kingdom as _,
         p.phylum as _,
         p.class as _,
@@ -78,7 +76,7 @@ pub async fn get_for_occurrence(
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
+            kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = $1
         ORDER BY date_identified DESC
@@ -105,7 +103,7 @@ pub async fn get_for_subjects_batch(
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, is_agreement, date_identified,
-            vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
+            kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = ANY($1)
         ORDER BY subject_uri, date_identified DESC

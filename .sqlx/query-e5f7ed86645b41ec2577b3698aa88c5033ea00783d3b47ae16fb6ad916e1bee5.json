@@ -13,7 +13,7 @@
         "Text",
         "Text",
         "Text",
-        "Timestamp"
+        "Timestamptz"
       ]
     },
     "nullable": []

@@ -203,7 +203,6 @@ pub struct ValidateResponse {
 pub struct TaxonFields {
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
-    pub vernacular_name: Option<String>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,
@@ -234,7 +233,6 @@ impl TaxonFields {
                 if fields.taxon_rank.is_none() {
                     fields.taxon_rank = Some(t.rank.clone());
                 }
-                fields.vernacular_name = t.common_name.clone();
                 fields.kingdom = t.kingdom.clone();
                 fields.phylum = t.phylum.clone();
                 fields.class = t.class.clone();

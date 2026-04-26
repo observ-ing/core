@@ -415,16 +415,6 @@ export function ProfileView() {
                   >
                     {id.scientific_name}
                   </Typography>
-                  {id.vernacular_name && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "text.secondary",
-                      }}
-                    >
-                      {id.vernacular_name}
-                    </Typography>
-                  )}
                 </Box>
                 <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
                   <Typography

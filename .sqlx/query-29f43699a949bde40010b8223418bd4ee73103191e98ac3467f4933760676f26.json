@@ -46,7 +46,7 @@
       {
         "ordinal": 8,
         "name": "created_at: chrono::DateTime<chrono::Utc>",
-        "type_info": "Timestamp"
+        "type_info": "Timestamptz"
       }
     ],
     "parameters": {

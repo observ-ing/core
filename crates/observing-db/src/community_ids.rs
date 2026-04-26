@@ -176,7 +176,6 @@ mod tests {
             date_identified: chrono::Utc.from_utc_datetime(
                 &NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap(),
             ),
-            vernacular_name: None,
             kingdom: kingdom.map(|s| s.to_string()),
             phylum: None,
             class: None,
