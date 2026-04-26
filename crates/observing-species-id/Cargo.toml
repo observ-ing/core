@@ -37,6 +37,7 @@ base64 = "0.22"
 
 # Zero-copy binary loading
 bytemuck = { version = "1", features = ["derive"] }
+memmap2 = "0.9"
 
 # H3 geospatial indexing (geo-prior reranking)
 h3o = { version = "0.9", default-features = false }

@@ -24,9 +24,23 @@
 //! ```
 //!
 //! Lookup is O(log num_cells) via binary search.
+//!
+//! The file is mmap'd rather than read into the heap. The format is
+//! native-endian-compatible on little-endian targets, so `bytemuck::cast_slice`
+//! gives zero-copy `&[u64]` / `&[u32]` views into the mmap'd region. Only the
+//! pages actually touched by binary search (~9 pages for a 200k-cell table)
+//! are paged in by the OS, instead of the whole 1.2 GiB file living in RSS.
+
+#[cfg(not(target_endian = "little"))]
+compile_error!(
+    "species_geo_index uses zero-copy reinterpret of LE u32/u64; recompile target is big-endian"
+);
 
 use crate::error::{Result, SpeciesIdError};
 use h3o::{LatLng, Resolution};
+use memmap2::Mmap;
+use std::fs::File;
+use std::ops::Range;
 use std::path::Path;
 use tracing::info;
 
@@ -108,112 +122,102 @@ impl Header {
     }
 }
 
-/// Decoded CSR body. Uses explicit little-endian reads so the file format
-/// is stable across architectures (all our targets are LE, but this is
-/// cheap insurance).
-struct Body {
-    cells: Vec<u64>,
-    offsets: Vec<u32>,
-    species_ids: Vec<u32>,
-}
-
-impl Body {
-    /// Decode the post-header bytes into three owned arrays.
-    fn decode(body_bytes: &[u8], header: &Header) -> Self {
-        let mut cells = Vec::with_capacity(header.num_cells);
-        let mut off = 0;
-        for _ in 0..header.num_cells {
-            cells.push(read_u64_le(body_bytes, off));
-            off += 8;
-        }
-        let mut offsets = Vec::with_capacity(header.num_cells + 1);
-        for _ in 0..=header.num_cells {
-            offsets.push(read_u32_le(body_bytes, off));
-            off += 4;
-        }
-        let mut species_ids = Vec::with_capacity(header.num_entries);
-        for _ in 0..header.num_entries {
-            species_ids.push(read_u32_le(body_bytes, off));
-            off += 4;
-        }
-        Self {
-            cells,
-            offsets,
-            species_ids,
-        }
-    }
-
-    /// Check CSR invariants that the file-size check alone can't catch —
-    /// bit-flips or adversarial inputs that leave the length correct but
-    /// the offsets table malformed.
-    fn validate(&self, num_entries: usize) -> Result<()> {
-        if self.offsets.first().copied() != Some(0)
-            || self.offsets.last().copied() != Some(num_entries as u32)
-        {
-            return Err(SpeciesIdError::Config(
-                "Geo index offsets are malformed (bad endpoints)".to_string(),
-            ));
-        }
-        Ok(())
-    }
-}
-
-/// Sorted cell → species-index lookup table.
+/// Sorted cell → species-index lookup table, mmap'd from disk.
+///
+/// The three CSR arrays are byte ranges into `mmap`; `cells()`, `offsets()`,
+/// and `species_ids()` reinterpret those ranges as native-typed slices.
+/// Alignment is guaranteed by the file layout (header is 32 bytes;
+/// `cells` is u64-aligned at offset 32; `offsets` and `species_ids` are
+/// u32-aligned by construction) plus mmap returning page-aligned addresses.
 pub struct GeoIndex {
-    /// H3 cell indices, sorted ascending for binary search.
-    cells: Vec<u64>,
-    /// CSR offsets — `offsets[i]..offsets[i+1]` is the species range for `cells[i]`.
-    /// Length is `cells.len() + 1`.
-    offsets: Vec<u32>,
-    /// BioCLIP species indices, grouped by cell and sorted within each group.
-    species_ids: Vec<u32>,
-    /// H3 resolution used to encode the cells — also used for point lookups.
+    mmap: Mmap,
+    cells: Range<usize>,
+    offsets: Range<usize>,
+    species_ids: Range<usize>,
     h3_resolution: Resolution,
 }
 
 impl GeoIndex {
-    /// Load the geo index from a file on disk.
+    /// Load the geo index from a file on disk via mmap.
     ///
     /// `expected_num_species` is the BioCLIP label count; a mismatch means
     /// the index is stale relative to the embeddings and we refuse to load.
     pub fn load(path: &Path, expected_num_species: usize) -> Result<Self> {
-        let bytes = std::fs::read(path).map_err(|e| {
+        let file = File::open(path).map_err(|e| {
             SpeciesIdError::Config(format!(
-                "Failed to read geo index from {}: {}",
+                "Failed to open geo index at {}: {}",
+                path.display(),
+                e
+            ))
+        })?;
+        // SAFETY: the model artifacts directory is read-only at runtime
+        // (baked into the container image); nothing mutates this file
+        // while we're mapped.
+        let mmap = unsafe { Mmap::map(&file) }.map_err(|e| {
+            SpeciesIdError::Config(format!(
+                "Failed to mmap geo index at {}: {}",
                 path.display(),
                 e
             ))
         })?;
 
-        let header = Header::parse(&bytes)?;
+        let header = Header::parse(&mmap)?;
         header.validate_species_count(expected_num_species)?;
 
         let expected_size = header.expected_file_size();
-        if bytes.len() != expected_size {
+        if mmap.len() != expected_size {
             return Err(SpeciesIdError::Config(format!(
                 "Geo index size mismatch: expected {} bytes, got {}",
                 expected_size,
-                bytes.len()
+                mmap.len()
             )));
         }
 
-        let body = Body::decode(&bytes[HEADER_SIZE..], &header);
-        body.validate(header.num_entries)?;
+        let cells_start = HEADER_SIZE;
+        let cells_end = cells_start + header.num_cells * 8;
+        let offsets_start = cells_end;
+        let offsets_end = offsets_start + (header.num_cells + 1) * 4;
+        let species_ids_start = offsets_end;
+        let species_ids_end = species_ids_start + header.num_entries * 4;
+
+        // Mirror the prior `Body::validate` CSR-endpoint check directly
+        // against the mmap'd offsets array. Catches bit-flips / adversarial
+        // inputs that pass the file-size check but leave offsets malformed.
+        let first_off = read_u32_le(&mmap, offsets_start);
+        let last_off = read_u32_le(&mmap, offsets_end - 4);
+        if first_off != 0 || last_off as usize != header.num_entries {
+            return Err(SpeciesIdError::Config(
+                "Geo index offsets are malformed (bad endpoints)".to_string(),
+            ));
+        }
 
         info!(
             num_cells = header.num_cells,
             num_entries = header.num_entries,
             h3_resolution = u8::from(header.h3_resolution),
-            size_mb = bytes.len() / (1024 * 1024),
-            "Geo index loaded"
+            size_mb = mmap.len() / (1024 * 1024),
+            "Geo index mmap'd"
         );
 
         Ok(Self {
-            cells: body.cells,
-            offsets: body.offsets,
-            species_ids: body.species_ids,
+            mmap,
+            cells: cells_start..cells_end,
+            offsets: offsets_start..offsets_end,
+            species_ids: species_ids_start..species_ids_end,
             h3_resolution: header.h3_resolution,
         })
+    }
+
+    fn cells(&self) -> &[u64] {
+        bytemuck::cast_slice(&self.mmap[self.cells.clone()])
+    }
+
+    fn offsets(&self) -> &[u32] {
+        bytemuck::cast_slice(&self.mmap[self.offsets.clone()])
+    }
+
+    fn species_ids(&self) -> &[u32] {
+        bytemuck::cast_slice(&self.mmap[self.species_ids.clone()])
     }
 
     /// Species indices whose range maps cover `(lat, lon)`.
@@ -226,11 +230,12 @@ impl GeoIndex {
         };
         let cell_u64: u64 = latlng.to_cell(self.h3_resolution).into();
 
-        match self.cells.binary_search(&cell_u64) {
+        match self.cells().binary_search(&cell_u64) {
             Ok(i) => {
-                let start = self.offsets[i] as usize;
-                let end = self.offsets[i + 1] as usize;
-                &self.species_ids[start..end]
+                let offsets = self.offsets();
+                let start = offsets[i] as usize;
+                let end = offsets[i + 1] as usize;
+                &self.species_ids()[start..end]
             }
             Err(_) => &[],
         }
@@ -239,10 +244,6 @@ impl GeoIndex {
 
 fn read_u32_le(bytes: &[u8], off: usize) -> u32 {
     u32::from_le_bytes(bytes[off..off + 4].try_into().expect("len 4"))
-}
-
-fn read_u64_le(bytes: &[u8], off: usize) -> u64 {
-    u64::from_le_bytes(bytes[off..off + 8].try_into().expect("len 8"))
 }
 
 #[cfg(test)]
