@@ -311,7 +311,11 @@ async fn resolve_effective_taxonomy(
         .iter()
         .find(|id| id.scientific_name == effective_name && id.kingdom.is_some());
 
-    if let Some(id) = matching_id {
+    // Short-circuit on the identification only when it has a vernacular name —
+    // ingester writes leave vernacular_name null (the lexicon record doesn't
+    // carry one), so without this check the resolver would skip the GBIF
+    // fallback that would have supplied a common name.
+    if let Some(id) = matching_id.filter(|id| id.vernacular_name.is_some()) {
         return Some(EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
             vernacular_name: id.vernacular_name.clone(),
@@ -339,6 +343,20 @@ async fn resolve_effective_taxonomy(
             order: detail.order,
             family: detail.family,
             genus: detail.genus,
+        });
+    }
+
+    // GBIF unavailable — keep whatever taxonomy the matching identification has.
+    if let Some(id) = matching_id {
+        return Some(EffectiveTaxonomy {
+            scientific_name: id.scientific_name.clone(),
+            vernacular_name: id.vernacular_name.clone(),
+            kingdom: id.kingdom.clone(),
+            phylum: id.phylum.clone(),
+            class: id.class.clone(),
+            order: id.order_.clone(),
+            family: id.family.clone(),
+            genus: id.genus.clone(),
         });
     }
 
