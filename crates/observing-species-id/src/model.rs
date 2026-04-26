@@ -113,8 +113,33 @@ impl BioclipModel {
         let input_tensor = preprocessing::preprocess_image(image_bytes)?;
         let embedding = self.run_vision_encoder(input_tensor)?;
         let mut scores = self.species.similarities(&embedding).to_vec();
-        self.apply_geo_prior(&mut scores, lat_lon);
-        Ok(self.species.top_k_from_scores(&scores, limit))
+        let in_range = self.in_range_at(lat_lon);
+        self.apply_geo_prior(&mut scores, lat_lon, in_range);
+        Ok(self.species.top_k_from_scores(&scores, limit, in_range))
+    }
+
+    /// Sorted-ascending slice of species indices whose iNat range covers
+    /// `lat_lon`, or `None` when we can't form an opinion (no coordinates,
+    /// no geo index loaded, or the H3 cell at that point is unknown to
+    /// the index — typically open ocean / Antarctica).
+    ///
+    /// `Some(empty)` means we *can* form an opinion at this location but
+    /// no species in our label set is expected here; that's distinct from
+    /// `None` ("we didn't / couldn't check") and the response surfaces it.
+    fn in_range_at(&self, lat_lon: Option<(f64, f64)>) -> Option<&[u32]> {
+        let (lat, lon) = lat_lon?;
+        let geo = self.geo_index.as_ref()?;
+        let cell_species = geo.species_at(lat, lon);
+        // species_at returns &[] both for "cell unknown" and "cell mapped
+        // to no species". Treat empty as "no opinion" — the only known
+        // populated case in the wild is when the cell is missing entirely,
+        // and we don't want to surface false-negative `in_range = false`
+        // flags on every result for a request near the south pole.
+        if cell_species.is_empty() {
+            None
+        } else {
+            Some(cell_species)
+        }
     }
 
     /// Run the ONNX vision encoder on a preprocessed image tensor and return
@@ -159,24 +184,28 @@ impl BioclipModel {
 
     /// Apply the geo-prior boost in place. Soft boost only — we never
     /// penalize out-of-range species, because iNat range maps undercover
-    /// species in under-surveyed regions. No-op when lat/lon is absent or
-    /// no geo index is loaded.
-    fn apply_geo_prior(&self, scores: &mut [f32], lat_lon: Option<(f64, f64)>) {
-        let (Some((lat, lon)), Some(geo)) = (lat_lon, &self.geo_index) else {
-            return;
-        };
-        let in_range = geo.species_at(lat, lon);
+    /// species in under-surveyed regions. No-op when `in_range` is `None`
+    /// (no lat/lon or no geo opinion at this location).
+    fn apply_geo_prior(
+        &self,
+        scores: &mut [f32],
+        lat_lon: Option<(f64, f64)>,
+        in_range: Option<&[u32]>,
+    ) {
+        let Some(in_range) = in_range else { return };
         for &species_idx in in_range {
             if let Some(s) = scores.get_mut(species_idx as usize) {
                 *s += self.geo_boost;
             }
         }
-        info!(
-            lat,
-            lon,
-            in_range = in_range.len(),
-            boost = self.geo_boost,
-            "Applied geo prior"
-        );
+        if let Some((lat, lon)) = lat_lon {
+            info!(
+                lat,
+                lon,
+                in_range = in_range.len(),
+                boost = self.geo_boost,
+                "Applied geo prior"
+            );
+        }
     }
 }

@@ -137,7 +137,18 @@ impl SpeciesEmbeddings {
     ///
     /// The caller owns the score array and can mutate it (e.g. applying a
     /// geo-prior boost) before calling this.
-    pub fn top_k_from_scores(&self, scores: &[f32], k: usize) -> Vec<SpeciesSuggestion> {
+    ///
+    /// `in_range`, if provided, is a sorted-ascending slice of species
+    /// indices we consider "expected at the request location". Each
+    /// returned suggestion gets `in_range = Some(true|false)`. Pass `None`
+    /// when no geo lookup was performed; suggestions then carry
+    /// `in_range = None` and the field is omitted from the wire response.
+    pub fn top_k_from_scores(
+        &self,
+        scores: &[f32],
+        k: usize,
+        in_range: Option<&[u32]>,
+    ) -> Vec<SpeciesSuggestion> {
         let mut indexed: Vec<(usize, f32)> = scores.iter().copied().enumerate().collect();
         indexed.sort_unstable_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
         indexed.truncate(k);
@@ -146,6 +157,7 @@ impl SpeciesEmbeddings {
             .into_iter()
             .map(|(idx, score)| {
                 let label = &self.labels[idx];
+                let in_range = in_range.map(|set| set.binary_search(&(idx as u32)).is_ok());
                 SpeciesSuggestion {
                     scientific_name: label.scientific_name.clone(),
                     confidence: score,
@@ -156,8 +168,76 @@ impl SpeciesEmbeddings {
                     order: label.order.clone(),
                     family: label.family.clone(),
                     genus: label.genus.clone(),
+                    in_range,
                 }
             })
             .collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_embeddings(rows: usize, embed_dim: usize) -> SpeciesEmbeddings {
+        // Identity-ish: row i has a 1 at column (i % embed_dim), normalized.
+        let mut data = vec![0.0f32; rows * embed_dim];
+        for i in 0..rows {
+            data[i * embed_dim + (i % embed_dim)] = 1.0;
+        }
+        let embeddings = Array2::from_shape_vec((rows, embed_dim), data).unwrap();
+        let labels = (0..rows)
+            .map(|i| SpeciesLabel {
+                scientific_name: format!("Species {}", i),
+                common_name: None,
+                kingdom: None,
+                phylum: None,
+                class: None,
+                order: None,
+                family: None,
+                genus: None,
+            })
+            .collect();
+        SpeciesEmbeddings {
+            embeddings,
+            labels,
+            embed_dim,
+        }
+    }
+
+    #[test]
+    fn top_k_decorates_in_range_when_set_provided() {
+        let species = make_embeddings(5, 4);
+        let scores = vec![0.1, 0.5, 0.3, 0.4, 0.2];
+        let in_range = vec![1u32, 3];
+
+        let out = species.top_k_from_scores(&scores, 3, Some(&in_range));
+
+        // Top-3 by score is species 1 (0.5), 3 (0.4), 2 (0.3).
+        assert_eq!(out[0].scientific_name, "Species 1");
+        assert_eq!(out[0].in_range, Some(true));
+        assert_eq!(out[1].scientific_name, "Species 3");
+        assert_eq!(out[1].in_range, Some(true));
+        assert_eq!(out[2].scientific_name, "Species 2");
+        assert_eq!(out[2].in_range, Some(false));
+    }
+
+    #[test]
+    fn top_k_omits_in_range_when_no_geo_lookup() {
+        let species = make_embeddings(3, 4);
+        let scores = vec![0.1, 0.5, 0.3];
+
+        let out = species.top_k_from_scores(&scores, 3, None);
+
+        // None across the board → field is serialized as absent.
+        for sugg in &out {
+            assert_eq!(sugg.in_range, None);
+        }
+        let json = serde_json::to_string(&out[0]).unwrap();
+        assert!(
+            !json.contains("inRange"),
+            "in_range should not appear in JSON when None: {}",
+            json
+        );
     }
 }
