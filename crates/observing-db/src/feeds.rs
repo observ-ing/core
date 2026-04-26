@@ -118,7 +118,7 @@ pub async fn get_profile_feed(
                     ST_X(o.location::geometry) as "longitude!",
                     o.coordinate_uncertainty_meters,
                     o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
+                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
                     o.created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source,
@@ -145,7 +145,7 @@ pub async fn get_profile_feed(
                     ST_X(o.location::geometry) as "longitude!",
                     o.coordinate_uncertainty_meters,
                     o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.vernacular_name, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
+                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
                     o.created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source,
@@ -179,7 +179,7 @@ pub async fn get_profile_feed(
                     uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
+                    kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1 AND date_identified < ($3::text)::timestamptz
                 ORDER BY date_identified DESC
@@ -199,7 +199,7 @@ pub async fn get_profile_feed(
                     uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
                     identification_verification_status, type_status, is_agreement, date_identified,
-                    vernacular_name, kingdom, phylum, class, "order" as order_, family, genus
+                    kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1
                 ORDER BY date_identified DESC

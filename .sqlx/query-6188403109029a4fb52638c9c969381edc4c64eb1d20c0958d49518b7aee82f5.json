@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source,\n                NULL::text as observer_role\n            FROM occurrences\n            WHERE did != ALL($2)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source,\n            NULL::text as observer_role\n        FROM occurrences\n        WHERE uri = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -65,64 +65,58 @@
       },
       {
         "ordinal": 12,
-        "name": "vernacular_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 13,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "distance_meters",
         "type_info": "Float8"
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "source",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 21,
         "name": "observer_role",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "TextArray"
+        "Text"
       ]
     },
     "nullable": [
@@ -144,12 +138,11 @@
       true,
       true,
       true,
-      true,
       false,
       null,
       null,
       null
     ]
   },
-  "hash": "7b7f21dd9d7c0ca7f46ac4c77cb50ac4cd7422588f3dff413d55c993a8fb3afa"
+  "hash": "6188403109029a4fb52638c9c969381edc4c64eb1d20c0958d49518b7aee82f5"
 }

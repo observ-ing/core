@@ -191,7 +191,6 @@ pub fn occurrence_from_json(
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,
-            vernacular_name: None,
             kingdom: None,
             phylum: None,
             class: None,
@@ -275,7 +274,6 @@ pub fn identification_from_json(
         taxon_id,
         is_agreement,
         date_identified,
-        vernacular_name: None,
         kingdom,
         phylum: None,
         class: None,
@@ -298,7 +296,8 @@ pub fn comment_from_json(
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
     let created_at = parse_naive_datetime(&record.created_at.to_string())
-        .unwrap_or_else(|| fallback_time.naive_utc());
+        .map(|nd| chrono::TimeZone::from_utc_datetime(&Utc, &nd))
+        .unwrap_or(fallback_time);
 
     Ok(UpsertCommentParams {
         uri,

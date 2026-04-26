@@ -49,7 +49,6 @@ authTest.describe("Auto-Identification on Upload", () => {
             subject_uri: AUTO_ID_URI,
             subject_cid: "bafytest",
             scientific_name: "Quercus alba",
-            vernacular_name: "White Oak",
             kingdom: "Plantae",
             date_identified: new Date().toISOString(),
             identifier: {

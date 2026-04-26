@@ -306,29 +306,8 @@ async fn resolve_effective_taxonomy(
 ) -> Option<EffectiveTaxonomy> {
     let effective_name = community_id?;
 
-    // Try to find a matching identification with taxonomy info
-    let matching_id = identifications
-        .iter()
-        .find(|id| id.scientific_name == effective_name && id.kingdom.is_some());
-
-    // Short-circuit on the identification only when it has a vernacular name —
-    // ingester writes leave vernacular_name null (the lexicon record doesn't
-    // carry one), so without this check the resolver would skip the GBIF
-    // fallback that would have supplied a common name.
-    if let Some(id) = matching_id.filter(|id| id.vernacular_name.is_some()) {
-        return Some(EffectiveTaxonomy {
-            scientific_name: id.scientific_name.clone(),
-            vernacular_name: id.vernacular_name.clone(),
-            kingdom: id.kingdom.clone(),
-            phylum: id.phylum.clone(),
-            class: id.class.clone(),
-            order: id.order_.clone(),
-            family: id.family.clone(),
-            genus: id.genus.clone(),
-        });
-    }
-
-    // Fall back to GBIF lookup
+    // GBIF is the source of truth for vernacular names, so always try it first.
+    // The Moka cache fronting the client keeps repeat lookups cheap.
     if let Some(detail) = taxonomy
         .get_by_name(effective_name, occurrence_kingdom)
         .await
@@ -346,11 +325,14 @@ async fn resolve_effective_taxonomy(
         });
     }
 
-    // GBIF unavailable — keep whatever taxonomy the matching identification has.
-    if let Some(id) = matching_id {
+    // GBIF unavailable — fall back to whatever taxonomy a matching identification has.
+    if let Some(id) = identifications
+        .iter()
+        .find(|id| id.scientific_name == effective_name && id.kingdom.is_some())
+    {
         return Some(EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
-            vernacular_name: id.vernacular_name.clone(),
+            vernacular_name: None,
             kingdom: id.kingdom.clone(),
             phylum: id.phylum.clone(),
             class: id.class.clone(),
@@ -478,7 +460,6 @@ mod tests {
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,
-            vernacular_name: None,
             kingdom: None,
             phylum: None,
             class: None,

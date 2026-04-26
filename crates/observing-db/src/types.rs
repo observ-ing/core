@@ -74,7 +74,6 @@ pub struct OccurrenceRow {
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
-    pub vernacular_name: Option<String>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,
@@ -129,8 +128,6 @@ pub struct IdentificationRow {
     pub is_agreement: Option<bool>,
     pub date_identified: DateTime<Utc>,
     // Darwin Core taxonomy
-    #[ts(optional)]
-    pub vernacular_name: Option<String>,
     #[ts(optional)]
     pub kingdom: Option<String>,
     #[ts(optional)]
@@ -251,7 +248,6 @@ pub struct UpsertOccurrenceParams {
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
-    pub vernacular_name: Option<String>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,
@@ -285,7 +281,6 @@ pub struct UpsertIdentificationParams {
     pub taxon_id: Option<String>,
     pub is_agreement: bool,
     pub date_identified: NaiveDateTime,
-    pub vernacular_name: Option<String>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,
@@ -305,7 +300,7 @@ pub struct UpsertCommentParams {
     pub body: String,
     pub reply_to_uri: Option<String>,
     pub reply_to_cid: Option<String>,
-    pub created_at: NaiveDateTime,
+    pub created_at: DateTime<Utc>,
 }
 
 /// Parameters for upserting an interaction

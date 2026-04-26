@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id,\n                    identification_verification_status, type_status, is_agreement, date_identified,\n                    vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus\n                FROM identifications\n                WHERE did = $1 AND date_identified < ($3::text)::timestamptz\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
+  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id,\n                    identification_verification_status, type_status, is_agreement, date_identified,\n                    kingdom, phylum, class, \"order\" as order_, family, genus\n                FROM identifications\n                WHERE did = $1\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -70,36 +70,31 @@
       },
       {
         "ordinal": 13,
-        "name": "vernacular_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 14,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "genus",
         "type_info": "Text"
       }
@@ -107,8 +102,7 @@
     "parameters": {
       "Left": [
         "Text",
-        "Int8",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
@@ -130,9 +124,8 @@
       true,
       true,
       true,
-      true,
       true
     ]
   },
-  "hash": "46d00fd20e36a1d0e9df1185445d5ccb9eaf3470fc00984e3717caf5855e98f2"
+  "hash": "b1b42932ced8fc6e97731c32ad2cefad90896f636972c1f27dd48691f6964a3a"
 }

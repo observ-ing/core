@@ -19,7 +19,6 @@ export type Identification = {
   type_status?: string;
   is_agreement?: boolean;
   date_identified: string;
-  vernacular_name?: string;
   kingdom?: string;
   phylum?: string;
   class?: string;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, vernacular_name, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source,\n                NULL::text as observer_role\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source,\n            NULL::text as observer_role\n        FROM occurrences\n        WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography\n        AND did != ALL($6)\n        LIMIT $5\n        ",
   "describe": {
     "columns": [
       {
@@ -65,64 +65,62 @@
       },
       {
         "ordinal": 12,
-        "name": "vernacular_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 13,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
       },
       {
-        "ordinal": 19,
+        "ordinal": 18,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 20,
+        "ordinal": 19,
         "name": "distance_meters",
         "type_info": "Float8"
       },
       {
-        "ordinal": 21,
+        "ordinal": 20,
         "name": "source",
         "type_info": "Text"
       },
       {
-        "ordinal": 22,
+        "ordinal": 21,
         "name": "observer_role",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
         "Int8",
-        "Text",
         "TextArray"
       ]
     },
@@ -145,12 +143,11 @@
       true,
       true,
       true,
-      true,
       false,
       null,
       null,
       null
     ]
   },
-  "hash": "b528190df010ca2059a6c2d99bb8d6068773a8702894eda483a3f689e624bf52"
+  "hash": "26d1db6688ce8705ead4de820c595dbd29c5fab8cfd0a040d90effc6cfc579ed"
 }
