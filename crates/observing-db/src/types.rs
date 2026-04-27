@@ -280,7 +280,7 @@ pub struct UpsertIdentificationParams {
     pub taxon_rank: Option<String>,
     pub taxon_id: Option<String>,
     pub is_agreement: bool,
-    pub date_identified: NaiveDateTime,
+    pub date_identified: DateTime<Utc>,
     pub kingdom: Option<String>,
     pub phylum: Option<String>,
     pub class: Option<String>,

@@ -261,7 +261,8 @@ pub fn identification_from_json(
         .get("createdAt")
         .and_then(|v| v.as_str())
         .and_then(parse_naive_datetime)
-        .unwrap_or_else(|| fallback_time.naive_utc());
+        .map(|nd| chrono::TimeZone::from_utc_datetime(&Utc, &nd))
+        .unwrap_or(fallback_time);
 
     Ok(UpsertIdentificationParams {
         uri,
@@ -562,8 +563,11 @@ mod tests {
             "at://did:plc:author/bio.lexicons.temp.occurrence/abc"
         );
         assert_eq!(params.subject_cid, "bafyreioccurrence");
-        // createdAt is parsed via parse_naive_datetime, so it lands as UTC naive.
-        assert_eq!(params.date_identified.date().to_string(), "2024-06-15");
+        // createdAt is parsed via parse_naive_datetime, then lifted to DateTime<Utc>.
+        assert_eq!(
+            params.date_identified.date_naive().to_string(),
+            "2024-06-15"
+        );
     }
 
     /// `identification_from_json` falls back to the supplied time when the
@@ -597,7 +601,7 @@ mod tests {
         )
         .expect("record should parse without createdAt");
 
-        assert_eq!(params.date_identified, fallback.naive_utc());
+        assert_eq!(params.date_identified, fallback);
     }
 
     /// Baseline happy-path coverage for `comment_from_json`.
