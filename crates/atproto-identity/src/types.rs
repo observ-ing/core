@@ -9,12 +9,7 @@ pub struct Profile {
     pub did: String,
     pub handle: String,
     pub display_name: Option<String>,
-    pub description: Option<String>,
     pub avatar: Option<String>,
-    pub banner: Option<String>,
-    pub followers_count: Option<u64>,
-    pub follows_count: Option<u64>,
-    pub posts_count: Option<u64>,
 }
 
 /// Result of resolving a handle or DID
@@ -52,12 +47,7 @@ pub(crate) struct ProfileResponse {
     pub(crate) did: String,
     pub(crate) handle: String,
     pub(crate) display_name: Option<String>,
-    pub(crate) description: Option<String>,
     pub(crate) avatar: Option<String>,
-    pub(crate) banner: Option<String>,
-    pub(crate) followers_count: Option<u64>,
-    pub(crate) follows_count: Option<u64>,
-    pub(crate) posts_count: Option<u64>,
 }
 
 impl From<ProfileResponse> for Profile {
@@ -66,12 +56,7 @@ impl From<ProfileResponse> for Profile {
             did: resp.did,
             handle: resp.handle,
             display_name: resp.display_name,
-            description: resp.description,
             avatar: resp.avatar,
-            banner: resp.banner,
-            followers_count: resp.followers_count,
-            follows_count: resp.follows_count,
-            posts_count: resp.posts_count,
         }
     }
 }

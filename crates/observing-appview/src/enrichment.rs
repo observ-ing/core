@@ -587,12 +587,7 @@ mod tests {
                 did: "did:plc:alice".to_string(),
                 handle: "alice.bsky.social".to_string(),
                 display_name: Some("Alice".to_string()),
-                description: None,
                 avatar: Some("https://cdn.example.com/avatar.jpg".to_string()),
-                banner: None,
-                followers_count: None,
-                follows_count: None,
-                posts_count: None,
             }),
         );
         let summary = profile_summary("did:plc:alice", &profiles);
