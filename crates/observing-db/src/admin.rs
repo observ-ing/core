@@ -285,7 +285,6 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         name: "community_ids",
         columns: &[
             ("occurrence_uri", "occurrence_uri"),
-            ("subject_index", "subject_index"),
             ("scientific_name", "scientific_name"),
             ("kingdom", "kingdom"),
             ("id_count", "id_count"),
