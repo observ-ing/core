@@ -50,8 +50,8 @@ impl Default for IngesterConfig {
 }
 
 /// The collection types we care about
-pub const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.occurrence";
-pub const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.identification";
+pub const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.v0-1.occurrence";
+pub const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.v0-1.identification";
 pub const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 pub const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
 pub const LIKE_COLLECTION: &str = "ing.observ.temp.like";
@@ -159,7 +159,7 @@ mod tests {
         let event = RecentEvent {
             event_type: "occurrence".to_string(),
             action: "create".to_string(),
-            uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1".to_string(),
+            uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/1".to_string(),
             time: chrono::Utc::now(),
         };
 
@@ -171,10 +171,10 @@ mod tests {
 
     #[test]
     fn test_collection_constants() {
-        assert_eq!(OCCURRENCE_COLLECTION, "bio.lexicons.temp.occurrence");
+        assert_eq!(OCCURRENCE_COLLECTION, "bio.lexicons.temp.v0-1.occurrence");
         assert_eq!(
             IDENTIFICATION_COLLECTION,
-            "bio.lexicons.temp.identification"
+            "bio.lexicons.temp.v0-1.identification"
         );
         assert_eq!(COMMENT_COLLECTION, "ing.observ.temp.comment");
         assert_eq!(INTERACTION_COLLECTION, "ing.observ.temp.interaction");

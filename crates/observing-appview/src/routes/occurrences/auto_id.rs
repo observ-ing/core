@@ -1,5 +1,5 @@
 use jacquard_common::types::collection::Collection;
-use observing_lexicons::bio_lexicons::temp::identification::{
+use observing_lexicons::bio_lexicons::temp::v0_1::identification::{
     Identification, IdentificationRecord, IdentificationTaxonRank,
 };
 use serde_json::Value;

@@ -24,7 +24,7 @@ type MockDetailOverrides = Partial<Occurrence> & {
  */
 export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occurrence {
   return {
-    uri: `at://${MOCK_TEST_USER.did}/bio.lexicons.temp.occurrence/${MOCK_OBS_RKEY}`,
+    uri: `at://${MOCK_TEST_USER.did}/bio.lexicons.temp.v0-1.occurrence/${MOCK_OBS_RKEY}`,
     cid: "bafytest",
     observer: {
       did: MOCK_TEST_USER.did,
@@ -127,7 +127,7 @@ export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occu
  */
 export async function navigateToMockedDetail(page: Page, overrides: MockDetailOverrides = {}) {
   await mockObservationDetailRoute(page, {
-    uri: `at://${MOCK_OBS_DID}/bio.lexicons.temp.occurrence/${MOCK_OBS_RKEY}`,
+    uri: `at://${MOCK_OBS_DID}/bio.lexicons.temp.v0-1.occurrence/${MOCK_OBS_RKEY}`,
     ...overrides,
   });
   await mockInteractionsRoute(page);

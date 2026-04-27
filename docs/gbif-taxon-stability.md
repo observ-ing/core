@@ -29,7 +29,7 @@ the full taxonomic hierarchy (`kingdom`, `phylum`, `class`, `order`, `family`,
 `genus`). This gives two paths to resolve a taxon if one changes.
 
 > Only `scientificName`, `taxonRank`, `kingdom`, and `identificationRemarks` are
-> declared in the upstream `bio.lexicons.temp.identification` schema. `taxonId`
+> declared in the upstream `bio.lexicons.temp.v0-1.identification` schema. `taxonId`
 > and the rest of the hierarchy are app-specific extra JSON fields written by
 > the appview and indexed by the ingester — see `darwin-core.md` for the full
 > list of schema drift.

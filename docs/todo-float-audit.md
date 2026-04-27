@@ -8,7 +8,7 @@ AT Protocol's data model does not support IEEE 754 floating point numbers — on
 
 ## Decision
 
-`decimalLatitude` and `decimalLongitude` in `bio.lexicons.temp.occurrence` are declared as `"type": "string"` and stored in PostgreSQL as numeric values (converted via `parse::<f64>()` in the shared processing module).
+`decimalLatitude` and `decimalLongitude` in `bio.lexicons.temp.v0-1.occurrence` are declared as `"type": "string"` and stored in PostgreSQL as numeric values (converted via `parse::<f64>()` in the shared processing module).
 
 The alternative — scaled integers (e.g., microdegrees) — was rejected because:
 

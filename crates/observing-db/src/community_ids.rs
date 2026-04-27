@@ -161,10 +161,10 @@ mod tests {
         date: &str,
     ) -> IdentificationRow {
         IdentificationRow {
-            uri: format!("at://{did}/bio.lexicons.temp.identification/1"),
+            uri: format!("at://{did}/bio.lexicons.temp.v0-1.identification/1"),
             cid: "cid".to_string(),
             did: did.to_string(),
-            subject_uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1".to_string(),
+            subject_uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/1".to_string(),
             subject_cid: "cid".to_string(),
             scientific_name: name.to_string(),
             taxon_rank: Some("species".to_string()),

@@ -46,7 +46,7 @@ authTest.describe("E2E CRUD flow", () => {
       const match = url.match(/\/observation\/([^/]+)\/([^/]+)/);
       expect(match).toBeTruthy();
       const [, did, rkey] = match!;
-      occurrenceUri = `at://${did}/bio.lexicons.temp.occurrence/${rkey}`;
+      occurrenceUri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
     });
 
     // Step 3: add identification

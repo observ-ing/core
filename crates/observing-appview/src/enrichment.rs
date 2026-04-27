@@ -448,7 +448,7 @@ mod tests {
 
     fn make_row(media: Option<serde_json::Value>) -> OccurrenceRow {
         OccurrenceRow {
-            uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1".into(),
+            uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/1".into(),
             cid: "cid".into(),
             did: "did:plc:test".into(),
             scientific_name: None,

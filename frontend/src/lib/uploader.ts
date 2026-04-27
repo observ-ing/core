@@ -5,13 +5,13 @@
  * 1. Capture/select photo
  * 2. Extract EXIF data (date/location)
  * 3. Upload blob to PDS
- * 4. Write bio.lexicons.temp.occurrence record to the user's repo
+ * 4. Write bio.lexicons.temp.v0-1.occurrence record to the user's repo
  */
 
 import type { AtpAgent, BlobRef } from "@atproto/api";
 
-const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
-const MEDIA_COLLECTION = "bio.lexicons.temp.media";
+const OCCURRENCE_COLLECTION = "bio.lexicons.temp.v0-1.occurrence";
+const MEDIA_COLLECTION = "bio.lexicons.temp.v0-1.media";
 
 /**
  * The subset of AtpAgent required by OccurrenceUploader.
@@ -76,7 +76,7 @@ export class OccurrenceUploader {
     const blobRefs = await this.uploadImages(data.images);
     const mediaRefs = await this.createMediaRecords(blobRefs);
 
-    // Create the occurrence record (flat coordinates per bio.lexicons.temp.occurrence)
+    // Create the occurrence record (flat coordinates per bio.lexicons.temp.v0-1.occurrence)
     const record: Record<string, unknown> = {
       $type: OCCURRENCE_COLLECTION,
       decimalLatitude: String(data.location.decimalLatitude),
@@ -129,7 +129,7 @@ export class OccurrenceUploader {
   }
 
   /**
-   * Create bio.lexicons.temp.media records and return strong refs
+   * Create bio.lexicons.temp.v0-1.media records and return strong refs
    */
   private async createMediaRecords(blobRefs: BlobRef[]): Promise<{ uri: string; cid: string }[]> {
     if (!this.agent.session) {

@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "bio.lexicons.temp.media",
+  "id": "bio.lexicons.temp.v0-1.media",
   "defs": {
     "main": {
       "type": "record",

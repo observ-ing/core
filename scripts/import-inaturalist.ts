@@ -10,14 +10,14 @@
  * This script:
  *   1. Fetches the last 100 geo-tagged observations from iNaturalist
  *   2. Downloads each photo and uploads it as a blob to your PDS
- *   3. Creates bio.lexicons.temp.occurrence records on your PDS
+ *   3. Creates bio.lexicons.temp.v0-1.occurrence records on your PDS
  */
 
 import { AtpAgent } from "@atproto/api";
 
 const INAT_API = "https://api.inaturalist.org/v1";
-const OCCURRENCE_COLLECTION = "bio.lexicons.temp.occurrence";
-const IDENTIFICATION_COLLECTION = "bio.lexicons.temp.identification";
+const OCCURRENCE_COLLECTION = "bio.lexicons.temp.v0-1.occurrence";
+const IDENTIFICATION_COLLECTION = "bio.lexicons.temp.v0-1.identification";
 
 const LICENSE_MAP: Record<string, string> = {
   cc0: "CC0-1.0",
@@ -174,7 +174,7 @@ async function main() {
     // Map license
     const license = obs.license_code ? LICENSE_MAP[obs.license_code] : undefined;
 
-    // Build the occurrence record (flat coordinates per bio.lexicons.temp.occurrence)
+    // Build the occurrence record (flat coordinates per bio.lexicons.temp.v0-1.occurrence)
     const occurrenceRecord: Record<string, any> = {
       $type: OCCURRENCE_COLLECTION,
       decimalLatitude: String(lat),

@@ -62,7 +62,7 @@ describe("OccurrenceUploader", () => {
     createRecord = vi.fn(async () => ({
       success: true,
       data: {
-        uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
+        uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/1",
         cid: "test-cid",
         commit: { cid: "commit-cid", rev: "rev-1" },
         validationStatus: "valid",
@@ -325,7 +325,7 @@ describe("OccurrenceUploader", () => {
         const result = await uploader.upload(data);
 
         expect(result).toEqual({
-          uri: "at://did:plc:test/bio.lexicons.temp.occurrence/1",
+          uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/1",
           cid: "test-cid",
         });
       });

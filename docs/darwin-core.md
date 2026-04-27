@@ -2,9 +2,9 @@
 
 Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. This document describes the **current** shape of each lexicon record. A section at the bottom lists Darwin Core terms we may adopt later.
 
-For the full, authoritative schema definitions, see the JSON files under `lexicons/bio/lexicons/temp/`.
+For the full, authoritative schema definitions, see the JSON files under `lexicons/bio/lexicons/temp/v0-1/`.
 
-## bio.lexicons.temp.occurrence
+## bio.lexicons.temp.v0-1.occurrence
 
 An occurrence is "an existence of an Organism at a particular place at a particular time" (dwc:Occurrence). The schema is intentionally minimal today — most Darwin Core location refinements are deferred to future extensions.
 
@@ -18,7 +18,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
   "coordinateUncertaintyInMeters": 10,
   "associatedMedia": [
     {
-      "uri": "at://did:plc:abc.../bio.lexicons.temp.media/3kabc...",
+      "uri": "at://did:plc:abc.../bio.lexicons.temp.v0-1.media/3kabc...",
       "cid": "bafyrei..."
     }
   ]
@@ -33,13 +33,13 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `decimalLatitude` | dwc:decimalLatitude | Latitude in decimal degrees (stored as string; range -90..90) |
 | `decimalLongitude` | dwc:decimalLongitude | Longitude in decimal degrees (stored as string; range -180..180) |
 | `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
-| `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.media` records (max 10) |
-| (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.occurrence/...` — derived, not stored |
+| `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.v0-1.media` records (max 10) |
+| (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.v0-1.occurrence/...` — derived, not stored |
 | (DID) | dwc:recordedBy | Derived from AT Protocol identity |
 
-> **Taxonomy is not part of the occurrence record.** Species identifications live in separate `bio.lexicons.temp.identification` records, which lets users submit observations without knowing the species and enables community identification.
+> **Taxonomy is not part of the occurrence record.** Species identifications live in separate `bio.lexicons.temp.v0-1.identification` records, which lets users submit observations without knowing the species and enables community identification.
 
-## bio.lexicons.temp.media
+## bio.lexicons.temp.v0-1.media
 
 An image record referenced from occurrences. Media records are created by users but are **not firehose-indexed** by the ingester — the ingester resolves them on demand when processing occurrences that reference them.
 
@@ -63,7 +63,7 @@ An image record referenced from occurrences. Media records are created by users 
 | `aspectRatio` | — | `{ width, height }` in pixels, used for layout before load |
 | `license` | dcterms:license | SPDX identifier: `CC0-1.0`, `CC-BY-4.0`, `CC-BY-NC-4.0`, `CC-BY-SA-4.0`, `CC-BY-NC-SA-4.0` |
 
-## bio.lexicons.temp.identification
+## bio.lexicons.temp.v0-1.identification
 
 A taxonomic determination (dwc:Identification) attached to an occurrence via strong ref.
 
@@ -72,7 +72,7 @@ A taxonomic determination (dwc:Identification) attached to an occurrence via str
 ```json
 {
   "occurrence": {
-    "uri": "at://did:plc:abc.../bio.lexicons.temp.occurrence/123",
+    "uri": "at://did:plc:abc.../bio.lexicons.temp.v0-1.occurrence/123",
     "cid": "bafyrei..."
   },
   "scientificName": "Eschscholzia californica Cham.",

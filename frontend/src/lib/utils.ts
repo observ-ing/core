@@ -74,7 +74,7 @@ export function parseAtUri(
 
 /**
  * Build an observation URL from an AT URI
- * Converts: at://did:plc:xxx/bio.lexicons.temp.occurrence/rkey
+ * Converts: at://did:plc:xxx/bio.lexicons.temp.v0-1.occurrence/rkey
  * To: /observation/did:plc:xxx/rkey
  */
 export function getObservationUrl(atUri: string): string {
@@ -87,7 +87,7 @@ export function getObservationUrl(atUri: string): string {
  * Reconstruct an AT URI from did and rkey (for occurrences)
  */
 export function buildOccurrenceAtUri(did: string, rkey: string): string {
-  return `at://${did}/bio.lexicons.temp.occurrence/${rkey}`;
+  return `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
 }
 
 /** Get a display name for an actor, with consistent fallback chain */

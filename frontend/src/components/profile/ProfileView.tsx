@@ -258,7 +258,7 @@ export function ProfileView() {
           {/* AT Protocol Link */}
           <Button
             component="a"
-            href={`https://pdsls.dev/at://${did}/bio.lexicons.temp.occurrence`}
+            href={`https://pdsls.dev/at://${did}/bio.lexicons.temp.v0-1.occurrence`}
             target="_blank"
             rel="noopener noreferrer"
             variant="outlined"
