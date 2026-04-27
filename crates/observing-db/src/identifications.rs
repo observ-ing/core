@@ -31,7 +31,7 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.taxon_rank as _,
         p.taxon_id as _,
         p.is_agreement,
-        chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(p.date_identified, chrono::Utc),
+        p.date_identified,
         p.kingdom as _,
     )
     .execute(pool)
