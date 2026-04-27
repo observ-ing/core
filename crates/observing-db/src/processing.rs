@@ -74,6 +74,12 @@ pub struct ParsedOccurrence {
 /// The `record_json` should be the full AT Protocol record value (a `serde_json::Value`).
 /// Fields like `blobs` are extracted from the raw JSON to populate `associated_media`.
 ///
+/// `fallback_time` is used for `created_at` when the record's `createdAt` is
+/// missing or unparseable — typically the firehose commit time, which closely
+/// tracks when the record was authored on the PDS. Using event_date as the
+/// fallback would conflate post time with observation time and make backdated
+/// observations sort to the wrong place in feeds.
+///
 /// Returns a [`ParsedOccurrence`] containing the upsert params and the typed
 /// `recorded_by` list so callers can process co-observers without re-parsing JSON.
 pub fn occurrence_from_json(
@@ -81,6 +87,7 @@ pub fn occurrence_from_json(
     uri: String,
     cid: String,
     did: String,
+    fallback_time: DateTime<Utc>,
 ) -> Result<ParsedOccurrence, ProcessingError> {
     let record_str = record_json.to_string();
     let record: Occurrence =
@@ -135,7 +142,7 @@ pub fn occurrence_from_json(
         .get("createdAt")
         .and_then(|v| v.as_str())
         .and_then(parse_datetime)
-        .unwrap_or(event_date);
+        .unwrap_or(fallback_time);
 
     let recorded_by: Option<Vec<String>> = record_json
         .get("recordedBy")
@@ -860,6 +867,7 @@ mod tests {
             "at://did:plc:author/bio.lexicons.temp.occurrence/xyz".to_string(),
             "bafyreioccurrence".to_string(),
             "did:plc:author".to_string(),
+            Utc::now(),
         )
         .expect("record should parse");
 
@@ -883,6 +891,44 @@ mod tests {
             parsed.params.associated_media.is_none(),
             "synchronous parser should not populate associated_media from strong \
              refs — that is the ingester's async job"
+        );
+    }
+
+    /// `occurrence_from_json` falls back to the supplied time for `created_at`
+    /// when the record's `createdAt` is missing. The ingester passes the
+    /// firehose commit time, which is the right signal for feed ordering —
+    /// using `event_date` instead would sort backdated observations (e.g. an
+    /// observation taken last month but posted today) to the wrong place.
+    #[test]
+    fn test_occurrence_from_json_uses_fallback_time_for_created_at() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "coordinateUncertaintyInMeters": 10,
+            "eventDate": "2024-06-15T08:30:45Z"
+            // no createdAt
+        });
+
+        assert_valid_lexicon::<Occurrence>(&record);
+
+        let fallback = DateTime::parse_from_rfc3339("2026-04-26T12:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.occurrence/xyz".into(),
+            "bafyreioccurrence".into(),
+            "did:plc:author".into(),
+            fallback,
+        )
+        .expect("record should parse without createdAt");
+
+        assert_eq!(
+            parsed.params.created_at, fallback,
+            "missing createdAt must fall back to the firehose commit time, \
+             not event_date — otherwise feeds sort by observation date"
         );
     }
 }

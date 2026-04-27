@@ -107,6 +107,7 @@ impl Database {
             commit.uri.clone(),
             commit.cid.clone(),
             commit.did.clone(),
+            commit.time,
         );
 
         // Resolve associatedMedia strong refs → media records → blob entries.

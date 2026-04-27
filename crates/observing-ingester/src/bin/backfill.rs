@@ -253,6 +253,7 @@ fn parse_record(
                 record.uri.clone(),
                 record.cid.clone(),
                 did.to_string(),
+                now,
             )?;
         }
         IDENTIFICATION_COLLECTION => {
@@ -322,6 +323,7 @@ async fn process_and_store(
                 record.uri.clone(),
                 record.cid.clone(),
                 did.to_string(),
+                now,
             )?;
             observing_db::occurrences::upsert(pool, &parsed.params).await?;
             let co_observers = processing::extract_co_observers(parsed.recorded_by.as_deref(), did);

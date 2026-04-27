@@ -99,7 +99,6 @@ pub async fn create_occurrence(
         body.longitude,
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
-        None,
         media_refs,
         body.recorded_by.as_deref(),
     )?;
@@ -259,10 +258,6 @@ pub async fn update_occurrence(
         .and_then(|v| v.as_array())
         .cloned()
         .unwrap_or_default();
-    let existing_created_at = existing_value
-        .get("createdAt")
-        .and_then(|v| v.as_str())
-        .map(str::to_owned);
 
     // Load the local DB row: its blob_entries are index-aligned with the PDS
     // associatedMedia strong refs (both are written together by create_occurrence),
@@ -307,7 +302,6 @@ pub async fn update_occurrence(
         body.longitude,
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
-        existing_created_at.as_deref(),
         media_refs,
         body.recorded_by.as_deref(),
     )?;
@@ -465,16 +459,11 @@ async fn upload_media_records(
 /// `recorded_by` is serialized as the extension field `recordedBy` — it is
 /// not part of the `bio.lexicons.temp.occurrence` schema, but the ingester
 /// reads it back out of the raw record JSON to populate `occurrence_observers`.
-///
-/// `createdAt` is also injected as an extension field — the ingester uses it
-/// for feed ordering. On edit, pass the existing record's `createdAt` so the
-/// post doesn't get bumped to the top of feeds.
 fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
     coordinate_uncertainty_in_meters: Option<i32>,
     event_date: Option<&str>,
-    created_at: Option<&str>,
     media_refs: Vec<StrongRef>,
     recorded_by: Option<&[String]>,
 ) -> Result<serde_json::Value, AppError> {
@@ -503,12 +492,10 @@ fn build_occurrence_record_json(
         .build();
 
     let mut value = auth::serialize_at_record(&record)?;
-    if let Some(obj) = value.as_object_mut() {
-        let created_at_str = created_at.map(str::to_owned).unwrap_or(now_rfc3339);
-        obj.insert("createdAt".to_string(), json!(created_at_str));
-        if let Some(dids) = recorded_by {
-            let filtered: Vec<&String> = dids.iter().filter(|d| !d.is_empty()).collect();
-            if !filtered.is_empty() {
+    if let Some(dids) = recorded_by {
+        let filtered: Vec<&String> = dids.iter().filter(|d| !d.is_empty()).collect();
+        if !filtered.is_empty() {
+            if let Some(obj) = value.as_object_mut() {
                 obj.insert("recordedBy".to_string(), json!(filtered));
             }
         }
