@@ -1,0 +1,10 @@
+[package]
+name = "observing-species-id-protocol"
+version = "0.1.0"
+edition = "2021"
+description = "Wire types shared between the observing-species-id service and its appview client"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+serde = { workspace = true }
+ts-rs = { workspace = true }
