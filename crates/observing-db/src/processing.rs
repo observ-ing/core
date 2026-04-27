@@ -192,11 +192,6 @@ pub fn occurrence_from_json(
             taxon_id: None,
             taxon_rank: None,
             kingdom: None,
-            phylum: None,
-            class: None,
-            order: None,
-            family: None,
-            genus: None,
             created_at,
         },
         recorded_by,
@@ -275,11 +270,6 @@ pub fn identification_from_json(
         is_agreement,
         date_identified,
         kingdom,
-        phylum: None,
-        class: None,
-        order: None,
-        family: None,
-        genus: None,
     })
 }
 
