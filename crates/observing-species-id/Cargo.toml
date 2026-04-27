@@ -6,6 +6,9 @@ description = "BioCLIP-based species identification service for Observ.ing"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+# Wire types shared with the appview client
+observing-species-id-protocol = { path = "../observing-species-id-protocol" }
+
 # ONNX inference
 ort = { version = "2.0.0-rc.12", features = ["load-dynamic", "ndarray"] }
 ndarray = "0.17"
