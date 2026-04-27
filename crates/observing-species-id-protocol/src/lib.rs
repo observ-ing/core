@@ -6,6 +6,27 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+/// Request body for the species-id `/identify` endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IdentifyRequest {
+    /// Base64-encoded image data
+    pub image: String,
+    /// Latitude for geo-prior reranking
+    #[serde(default)]
+    pub latitude: Option<f64>,
+    /// Longitude for geo-prior reranking
+    #[serde(default)]
+    pub longitude: Option<f64>,
+    /// Number of suggestions to return (default: 5)
+    #[serde(default = "default_limit")]
+    pub limit: usize,
+}
+
+fn default_limit() -> usize {
+    5
+}
+
 /// A single ranked species suggestion returned by the identification service.
 ///
 /// `kingdom` is used by the frontend for the taxon link target and is passed

@@ -1,22 +1,12 @@
 use reqwest::Client;
-use serde::Serialize;
 use std::time::Duration;
 
-pub use observing_species_id_protocol::IdentifyResponse;
+pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse};
 
 /// HTTP client for the species identification service
 pub struct SpeciesIdClient {
     client: Client,
     base_url: String,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct IdentifyRequestBody {
-    image: String,
-    latitude: Option<f64>,
-    longitude: Option<f64>,
-    limit: usize,
 }
 
 impl SpeciesIdClient {
@@ -47,7 +37,7 @@ impl SpeciesIdClient {
     ) -> Result<IdentifyResponse, reqwest::Error> {
         let url = format!("{}/identify", self.base_url);
 
-        let body = IdentifyRequestBody {
+        let body = IdentifyRequest {
             image: image_base64.to_string(),
             latitude,
             longitude,
