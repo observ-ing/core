@@ -7,13 +7,7 @@ pub enum IngesterError {
     Jetstream(jetstream_client::JetstreamError),
     Database(Box<sqlx::Error>),
     CborDecode(String),
-    #[allow(dead_code)]
-    InvalidFrame(String),
-    #[allow(dead_code)]
-    ConnectionClosed,
     Config(String),
-    #[allow(dead_code)]
-    Parse(String),
 }
 
 impl fmt::Display for IngesterError {
@@ -22,10 +16,7 @@ impl fmt::Display for IngesterError {
             IngesterError::Jetstream(err) => write!(f, "Jetstream error: {}", err),
             IngesterError::Database(err) => write!(f, "Database error: {}", err),
             IngesterError::CborDecode(msg) => write!(f, "CBOR decode error: {}", msg),
-            IngesterError::InvalidFrame(msg) => write!(f, "Invalid frame: {}", msg),
-            IngesterError::ConnectionClosed => write!(f, "Connection closed"),
             IngesterError::Config(msg) => write!(f, "Configuration error: {}", msg),
-            IngesterError::Parse(msg) => write!(f, "Parse error: {}", msg),
         }
     }
 }
@@ -83,18 +74,6 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_frame_error_display() {
-        let err = IngesterError::InvalidFrame("missing header".to_string());
-        assert_eq!(format!("{}", err), "Invalid frame: missing header");
-    }
-
-    #[test]
-    fn test_connection_closed_error_display() {
-        let err = IngesterError::ConnectionClosed;
-        assert_eq!(format!("{}", err), "Connection closed");
-    }
-
-    #[test]
     fn test_config_error_display() {
         let err = IngesterError::Config("missing DATABASE_URL".to_string());
         assert_eq!(
@@ -104,15 +83,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_error_display() {
-        let err = IngesterError::Parse("invalid integer".to_string());
-        assert_eq!(format!("{}", err), "Parse error: invalid integer");
-    }
-
-    #[test]
     fn test_error_is_debug() {
-        let err = IngesterError::ConnectionClosed;
+        let err = IngesterError::CborDecode("x".to_string());
         let debug_str = format!("{:?}", err);
-        assert!(debug_str.contains("ConnectionClosed"));
+        assert!(debug_str.contains("CborDecode"));
     }
 }
