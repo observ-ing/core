@@ -249,11 +249,6 @@ pub struct UpsertOccurrenceParams {
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
     pub kingdom: Option<String>,
-    pub phylum: Option<String>,
-    pub class: Option<String>,
-    pub order: Option<String>,
-    pub family: Option<String>,
-    pub genus: Option<String>,
     pub created_at: DateTime<Utc>,
 }
 
@@ -282,11 +277,6 @@ pub struct UpsertIdentificationParams {
     pub is_agreement: bool,
     pub date_identified: NaiveDateTime,
     pub kingdom: Option<String>,
-    pub phylum: Option<String>,
-    pub class: Option<String>,
-    pub order: Option<String>,
-    pub family: Option<String>,
-    pub genus: Option<String>,
 }
 
 /// Parameters for upserting a comment

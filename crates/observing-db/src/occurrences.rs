@@ -35,13 +35,13 @@ pub async fn upsert(
             uri, cid, did, scientific_name, event_date, location,
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
-            taxon_id, taxon_rank, kingdom, phylum, class, "order", family, genus,
+            taxon_id, taxon_rank, kingdom,
             created_at
         ) VALUES (
             $1, $2, $3, $4, $5,
             ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
             $8, $9, $10,
-            $11, $12, $13, $14, $15, $16, $17, $18, $19
+            $11, $12, $13, $14
         )
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
@@ -54,11 +54,6 @@ pub async fn upsert(
             taxon_id = COALESCE($11, occurrences.taxon_id),
             taxon_rank = COALESCE($12, occurrences.taxon_rank),
             kingdom = COALESCE($13, occurrences.kingdom),
-            phylum = COALESCE($14, occurrences.phylum),
-            class = COALESCE($15, occurrences.class),
-            "order" = COALESCE($16, occurrences."order"),
-            family = COALESCE($17, occurrences.family),
-            genus = COALESCE($18, occurrences.genus),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -74,11 +69,6 @@ pub async fn upsert(
         p.taxon_id as _,
         p.taxon_rank as _,
         p.kingdom as _,
-        p.phylum as _,
-        p.class as _,
-        p.order as _,
-        p.family as _,
-        p.genus as _,
         p.created_at,
     )
     .execute(executor)

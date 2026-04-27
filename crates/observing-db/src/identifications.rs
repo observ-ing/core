@@ -11,9 +11,8 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, scientific_name,
-            taxon_rank, taxon_id, is_agreement, date_identified,
-            kingdom, phylum, class, "order", family, genus
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+            taxon_rank, taxon_id, is_agreement, date_identified, kingdom
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $6,
@@ -21,11 +20,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
             taxon_id = COALESCE($8, identifications.taxon_id),
             is_agreement = $9,
             kingdom = COALESCE($11, identifications.kingdom),
-            phylum = COALESCE($12, identifications.phylum),
-            class = COALESCE($13, identifications.class),
-            "order" = COALESCE($14, identifications."order"),
-            family = COALESCE($15, identifications.family),
-            genus = COALESCE($16, identifications.genus),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -39,11 +33,6 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         p.is_agreement,
         chrono::DateTime::<chrono::Utc>::from_naive_utc_and_offset(p.date_identified, chrono::Utc),
         p.kingdom as _,
-        p.phylum as _,
-        p.class as _,
-        p.order as _,
-        p.family as _,
-        p.genus as _,
     )
     .execute(pool)
     .await?;
