@@ -1,31 +1,13 @@
 use reqwest::Client;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::time::Duration;
-use ts_rs::TS;
+
+pub use observing_species_id_protocol::IdentifyResponse;
 
 /// HTTP client for the species identification service
 pub struct SpeciesIdClient {
     client: Client,
     base_url: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, export_to = "bindings/")]
-pub struct SpeciesSuggestion {
-    pub scientific_name: String,
-    pub confidence: f32,
-    #[ts(optional)]
-    pub common_name: Option<String>,
-    /// Used by the frontend for the taxon link target and passed to GBIF
-    /// match_name as a disambiguator when filling in missing common names.
-    #[ts(optional)]
-    pub kingdom: Option<String>,
-    /// Whether this species' iNat range covers the request lat/lon.
-    /// Absent when no opinion was formed (no coordinates, no geo index,
-    /// or the H3 cell at the request point is unknown to the index).
-    #[ts(optional)]
-    pub in_range: Option<bool>,
 }
 
 #[derive(Debug, Serialize)]
@@ -35,14 +17,6 @@ struct IdentifyRequestBody {
     latitude: Option<f64>,
     longitude: Option<f64>,
     limit: usize,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdentifyResponse {
-    pub suggestions: Vec<SpeciesSuggestion>,
-    pub model_version: String,
-    pub inference_time_ms: u64,
 }
 
 impl SpeciesIdClient {

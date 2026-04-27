@@ -18,6 +18,8 @@ wikidata-client = { path = "../wikidata-client" }
 # Media cache (formerly observing-media-proxy)
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 file-blob-cache = { path = "../file-blob-cache" }
+# Wire types for the species-id HTTP client
+observing-species-id-protocol = { path = "../observing-species-id-protocol" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.12.0-beta.2"

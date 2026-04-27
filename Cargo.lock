@@ -2897,6 +2897,7 @@ dependencies = [
  "nominatim-client",
  "observing-db",
  "observing-lexicons",
+ "observing-species-id-protocol",
  "reqwest 0.13.2",
  "serde",
  "serde_json",
@@ -2987,6 +2988,7 @@ dependencies = [
  "image",
  "memmap2",
  "ndarray",
+ "observing-species-id-protocol",
  "ort",
  "serde",
  "serde_json",
@@ -2997,6 +2999,14 @@ dependencies = [
  "tracing",
  "tracing-stackdriver",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "observing-species-id-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "ts-rs",
 ]
 
 [[package]]

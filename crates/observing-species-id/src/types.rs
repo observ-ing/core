@@ -1,6 +1,12 @@
-//! Data types for species identification service
+//! Data types for species identification service.
+//!
+//! The wire types shared with the appview client live in the
+//! `observing-species-id-protocol` crate — re-exported here so existing
+//! `crate::types::{SpeciesSuggestion, IdentifyResponse}` imports keep working.
 
 use serde::{Deserialize, Serialize};
+
+pub use observing_species_id_protocol::{IdentifyResponse, SpeciesSuggestion};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,34 +26,6 @@ pub struct IdentifyRequest {
 
 fn default_limit() -> usize {
     5
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct IdentifyResponse {
-    pub suggestions: Vec<SpeciesSuggestion>,
-    pub model_version: String,
-    pub inference_time_ms: u64,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SpeciesSuggestion {
-    pub scientific_name: String,
-    pub confidence: f32,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub common_name: Option<String>,
-    /// Used by the frontend to build the taxon link target
-    /// (`/taxon/{kingdom}/{slug}`); also passed to GBIF's match_name as a
-    /// disambiguator when the appview enriches missing common names.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub kingdom: Option<String>,
-    /// Whether this species' iNat range covers the request lat/lon.
-    /// `None` when geo lookup wasn't performed (no lat/lon, no geo index)
-    /// or when the cell at the request point is unknown to the index — i.e.
-    /// the field is only populated with an opinion when one is well-founded.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub in_range: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize)]
