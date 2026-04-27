@@ -18,7 +18,11 @@ use serde::Deserialize;
 use std::path::Path;
 use tracing::info;
 
-/// Species label metadata loaded from JSON
+/// Species label metadata loaded from JSON.
+///
+/// The on-disk labels file may include richer fields (phylum/class/order/
+/// family/genus etc.) — serde silently ignores them. We only deserialize
+/// the fields that the response actually carries.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpeciesLabel {
@@ -27,16 +31,6 @@ pub struct SpeciesLabel {
     pub common_name: Option<String>,
     #[serde(default)]
     pub kingdom: Option<String>,
-    #[serde(default)]
-    pub phylum: Option<String>,
-    #[serde(default)]
-    pub class: Option<String>,
-    #[serde(default)]
-    pub order: Option<String>,
-    #[serde(default)]
-    pub family: Option<String>,
-    #[serde(default)]
-    pub genus: Option<String>,
 }
 
 /// Pre-computed species embeddings and their metadata
@@ -163,11 +157,6 @@ impl SpeciesEmbeddings {
                     confidence: score,
                     common_name: label.common_name.clone(),
                     kingdom: label.kingdom.clone(),
-                    phylum: label.phylum.clone(),
-                    class: label.class.clone(),
-                    order: label.order.clone(),
-                    family: label.family.clone(),
-                    genus: label.genus.clone(),
                     in_range,
                 }
             })
@@ -191,11 +180,6 @@ mod tests {
                 scientific_name: format!("Species {}", i),
                 common_name: None,
                 kingdom: None,
-                phylum: None,
-                class: None,
-                order: None,
-                family: None,
-                genus: None,
             })
             .collect();
         SpeciesEmbeddings {

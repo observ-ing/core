@@ -37,18 +37,11 @@ pub struct SpeciesSuggestion {
     pub confidence: f32,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub common_name: Option<String>,
+    /// Used by the frontend to build the taxon link target
+    /// (`/taxon/{kingdom}/{slug}`); also passed to GBIF's match_name as a
+    /// disambiguator when the appview enriches missing common names.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phylum: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub class: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub order: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub family: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub genus: Option<String>,
     /// Whether this species' iNat range covers the request lat/lon.
     /// `None` when geo lookup wasn't performed (no lat/lon, no geo index)
     /// or when the cell at the request point is unknown to the index — i.e.
