@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did,\n            subject_a_occurrence_uri, subject_a_occurrence_cid,\n            subject_a_taxon_name, subject_a_kingdom,\n            subject_b_occurrence_uri, subject_b_occurrence_cid,\n            subject_b_taxon_name, subject_b_kingdom,\n            interaction_type, direction, comment, created_at, indexed_at\n        FROM interactions\n        WHERE subject_a_occurrence_uri = $1 OR subject_b_occurrence_uri = $1\n        ORDER BY created_at DESC\n        ",
+  "query": "\n        SELECT\n            uri, cid, did,\n            subject_a_occurrence_uri,\n            subject_a_taxon_name, subject_a_kingdom,\n            subject_b_occurrence_uri,\n            subject_b_taxon_name, subject_b_kingdom,\n            interaction_type, direction, comment, created_at, indexed_at\n        FROM interactions\n        WHERE interaction_type = $1\n        ORDER BY created_at DESC\n        LIMIT $2\n        ",
   "describe": {
     "columns": [
       {
@@ -25,76 +25,65 @@
       },
       {
         "ordinal": 4,
-        "name": "subject_a_occurrence_cid",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 5,
         "name": "subject_a_taxon_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "subject_a_kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "subject_b_occurrence_uri",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
-        "name": "subject_b_occurrence_cid",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 9,
+        "ordinal": 7,
         "name": "subject_b_taxon_name",
         "type_info": "Text"
       },
       {
-        "ordinal": 10,
+        "ordinal": 8,
         "name": "subject_b_kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 11,
+        "ordinal": 9,
         "name": "interaction_type",
         "type_info": "Text"
       },
       {
-        "ordinal": 12,
+        "ordinal": 10,
         "name": "direction",
         "type_info": "Text"
       },
       {
-        "ordinal": 13,
+        "ordinal": 11,
         "name": "comment",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 15,
+        "ordinal": 13,
         "name": "indexed_at",
         "type_info": "Timestamptz"
       }
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
       false,
       false,
       false,
-      true,
-      true,
       true,
       true,
       true,
@@ -108,5 +97,5 @@
       true
     ]
   },
-  "hash": "d416ed30574f0efaadef690fc0d1f3026c2f6f1a94543b8807823709678fac21"
+  "hash": "a18f97382781bc63b8fa7a5ebd137c40a377215045e4fbaddc0e6c6b72de0267"
 }

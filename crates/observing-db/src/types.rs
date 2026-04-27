@@ -181,16 +181,12 @@ pub struct InteractionRow {
     #[ts(optional)]
     pub subject_a_occurrence_uri: Option<String>,
     #[ts(optional)]
-    pub subject_a_occurrence_cid: Option<String>,
-    #[ts(optional)]
     pub subject_a_taxon_name: Option<String>,
     #[ts(optional)]
     pub subject_a_kingdom: Option<String>,
     // Subject B
     #[ts(optional)]
     pub subject_b_occurrence_uri: Option<String>,
-    #[ts(optional)]
-    pub subject_b_occurrence_cid: Option<String>,
     #[ts(optional)]
     pub subject_b_taxon_name: Option<String>,
     #[ts(optional)]
