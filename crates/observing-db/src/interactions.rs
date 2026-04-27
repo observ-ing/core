@@ -70,9 +70,9 @@ pub async fn get_for_occurrence(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid,
+            subject_a_occurrence_uri,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid,
+            subject_b_occurrence_uri,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
@@ -96,9 +96,9 @@ pub async fn get_by_type(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid,
+            subject_a_occurrence_uri,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid,
+            subject_b_occurrence_uri,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions
@@ -123,9 +123,9 @@ pub async fn get(
         r#"
         SELECT
             uri, cid, did,
-            subject_a_occurrence_uri, subject_a_occurrence_cid,
+            subject_a_occurrence_uri,
             subject_a_taxon_name, subject_a_kingdom,
-            subject_b_occurrence_uri, subject_b_occurrence_cid,
+            subject_b_occurrence_uri,
             subject_b_taxon_name, subject_b_kingdom,
             interaction_type, direction, comment, created_at, indexed_at
         FROM interactions

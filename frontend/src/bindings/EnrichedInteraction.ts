@@ -11,11 +11,9 @@ export type EnrichedInteraction = {
   cid: string;
   did: string;
   subject_a_occurrence_uri?: string;
-  subject_a_occurrence_cid?: string;
   subject_a_taxon_name?: string;
   subject_a_kingdom?: string;
   subject_b_occurrence_uri?: string;
-  subject_b_occurrence_cid?: string;
   subject_b_taxon_name?: string;
   subject_b_kingdom?: string;
   interaction_type: string;

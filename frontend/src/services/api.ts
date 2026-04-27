@@ -396,11 +396,9 @@ export interface InteractionResponse {
   cid: string;
   did: string;
   subject_a_occurrence_uri: string | null;
-  subject_a_occurrence_cid: string | null;
   subject_a_taxon_name: string | null;
   subject_a_kingdom: string | null;
   subject_b_occurrence_uri: string | null;
-  subject_b_occurrence_cid: string | null;
   subject_b_taxon_name: string | null;
   subject_b_kingdom: string | null;
   interaction_type: string;
