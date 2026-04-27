@@ -17,18 +17,10 @@ pub struct SpeciesSuggestion {
     pub confidence: f32,
     #[ts(optional)]
     pub common_name: Option<String>,
+    /// Used by the frontend for the taxon link target and passed to GBIF
+    /// match_name as a disambiguator when filling in missing common names.
     #[ts(optional)]
     pub kingdom: Option<String>,
-    #[ts(optional)]
-    pub phylum: Option<String>,
-    #[ts(optional)]
-    pub class: Option<String>,
-    #[ts(optional)]
-    pub order: Option<String>,
-    #[ts(optional)]
-    pub family: Option<String>,
-    #[ts(optional)]
-    pub genus: Option<String>,
     /// Whether this species' iNat range covers the request lat/lon.
     /// Absent when no opinion was formed (no coordinates, no geo index,
     /// or the H3 cell at the request point is unknown to the index).

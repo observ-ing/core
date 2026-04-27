@@ -4,12 +4,11 @@ export type SpeciesSuggestion = {
   scientificName: string;
   confidence: number;
   commonName?: string;
+  /**
+   * Used by the frontend for the taxon link target and passed to GBIF
+   * match_name as a disambiguator when filling in missing common names.
+   */
   kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
   /**
    * Whether this species' iNat range covers the request lat/lon.
    * Absent when no opinion was formed (no coordinates, no geo index,
