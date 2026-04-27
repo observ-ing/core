@@ -29,8 +29,6 @@ pub struct ResolveResult {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DidDocument {
-    #[allow(dead_code)]
-    pub(crate) id: String,
     pub(crate) also_known_as: Option<Vec<String>>,
     pub(crate) service: Option<Vec<DidService>>,
 }
@@ -39,8 +37,6 @@ pub(crate) struct DidDocument {
 #[serde(rename_all = "camelCase")]
 pub(crate) struct DidService {
     pub(crate) id: String,
-    #[allow(dead_code)]
-    pub(crate) r#type: String,
     pub(crate) service_endpoint: String,
 }
 
