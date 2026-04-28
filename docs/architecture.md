@@ -66,9 +66,9 @@ Supporting library crates (not separately deployed) are omitted for brevity — 
 
 Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
 
-- `bio.lexicons.temp.occurrence` - Occurrence records
-- `bio.lexicons.temp.identification` - Taxonomic determinations
-- `bio.lexicons.temp.media` - Image records referenced by occurrences (resolved on demand, not firehose-indexed)
+- `bio.lexicons.temp.v0-1.occurrence` - Occurrence records
+- `bio.lexicons.temp.v0-1.identification` - Taxonomic determinations
+- `bio.lexicons.temp.v0-1.media` - Image records referenced by occurrences (resolved on demand, not firehose-indexed)
 - `ing.observ.temp.comment` - Discussion comments
 - `ing.observ.temp.interaction` - Species interactions
 - `ing.observ.temp.like` - Likes

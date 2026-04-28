@@ -1,5 +1,5 @@
 //! Resolve `associatedMedia` strong refs to blob entries by fetching the
-//! referenced `bio.lexicons.temp.media` records from their author's PDS.
+//! referenced `bio.lexicons.temp.v0-1.media` records from their author's PDS.
 //!
 //! The appview write path already has blob metadata in memory when it writes
 //! the occurrence row, so it bypasses this resolution. The firehose path has
@@ -22,7 +22,7 @@ use serde_json::Value;
 use std::time::Duration;
 use tracing::warn;
 
-/// Fetches `bio.lexicons.temp.media` records from PDSes and converts them to
+/// Fetches `bio.lexicons.temp.v0-1.media` records from PDSes and converts them to
 /// the `BlobEntry` shape stored in `occurrences.associated_media`.
 pub struct MediaResolver {
     client: Client,
@@ -94,7 +94,7 @@ impl Default for MediaResolver {
     }
 }
 
-/// Pull the blob ref, mime type, and alt text out of a `bio.lexicons.temp.media`
+/// Pull the blob ref, mime type, and alt text out of a `bio.lexicons.temp.v0-1.media`
 /// record JSON to build a `BlobEntry`. Returns `None` if the record is missing
 /// the required blob fields.
 fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn extracts_blob_entry_from_canonical_media_record() {
         let record = json!({
-            "$type": "bio.lexicons.temp.media",
+            "$type": "bio.lexicons.temp.v0-1.media",
             "image": {
                 "$type": "blob",
                 "ref": { "$link": "bafyreiabc123" },

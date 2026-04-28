@@ -9,7 +9,7 @@ use crate::types::{
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
-use observing_lexicons::bio_lexicons::temp::occurrence::Occurrence;
+use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
 use observing_lexicons::ing_observ::temp::{comment::Comment, interaction::Interaction};
 use serde_json::Value;
 
@@ -47,7 +47,7 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
         .ok()
 }
 
-/// A strong reference to a `bio.lexicons.temp.media` record, as it appears
+/// A strong reference to a `bio.lexicons.temp.v0-1.media` record, as it appears
 /// in an occurrence's `associatedMedia` array. Callers (the ingester) resolve
 /// these by fetching the referenced record from the author's PDS to build
 /// `BlobEntry` values for `associated_media`.
@@ -63,7 +63,7 @@ pub struct ParsedOccurrence {
     pub params: UpsertOccurrenceParams,
     /// The `recordedBy` DIDs from the lexicon record (if present).
     pub recorded_by: Option<Vec<String>>,
-    /// Strong refs to `bio.lexicons.temp.media` records. The ingester resolves
+    /// Strong refs to `bio.lexicons.temp.v0-1.media` records. The ingester resolves
     /// these asynchronously to populate `params.associated_media`; the appview
     /// write path ignores this field because it already has the blobs in-memory.
     pub associated_media_refs: Vec<AssociatedMediaRef>,
@@ -93,7 +93,7 @@ pub fn occurrence_from_json(
     let record: Occurrence =
         serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
 
-    // Try flat coordinates first (bio.lexicons.temp.occurrence), then fall back
+    // Try flat coordinates first (bio.lexicons.temp.v0-1.occurrence), then fall back
     // to nested location object (legacy ing.observ.temp.occurrence records on PDS).
     let location = record_json.get("location");
     let lat = record
@@ -137,7 +137,7 @@ pub fn occurrence_from_json(
         })
         .ok_or_else(|| ProcessingError::InvalidField("missing valid eventDate".into()))?;
 
-    // Extension fields: read from raw JSON (not part of bio.lexicons.temp.occurrence schema)
+    // Extension fields: read from raw JSON (not part of bio.lexicons.temp.v0-1.occurrence schema)
     let created_at = record_json
         .get("createdAt")
         .and_then(|v| v.as_str())
@@ -208,7 +208,7 @@ pub fn occurrence_from_json(
 
 /// Convert an identification record JSON to database params.
 ///
-/// Expects the flat `bio.lexicons.temp.identification` format.
+/// Expects the flat `bio.lexicons.temp.v0-1.identification` format.
 ///
 /// `fallback_time` is used when `createdAt` cannot be parsed from the record
 /// (typically the firehose event time).
@@ -422,7 +422,7 @@ mod tests {
     use super::*;
     use chrono::{Datelike, Timelike};
     use jacquard_lexicon::schema::LexiconSchema;
-    use observing_lexicons::bio_lexicons::temp::identification::Identification;
+    use observing_lexicons::bio_lexicons::temp::v0_1::identification::Identification;
     use observing_lexicons::ing_observ::temp::like::Like;
 
     /// Asserts the JSON fixture is a structurally valid record under its
@@ -522,14 +522,14 @@ mod tests {
     #[test]
     fn test_identification_from_json_happy_path() {
         let record = serde_json::json!({
-            "$type": "bio.lexicons.temp.identification",
+            "$type": "bio.lexicons.temp.v0-1.identification",
             "scientificName": "Quercus alba",
             "taxonRank": "species",
             "kingdom": "Plantae",
             "taxonId": "gbif:2879737",
             "isAgreement": true,
             "occurrence": {
-                "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/abc",
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
             },
             "createdAt": "2024-06-15T08:30:45Z"
@@ -543,7 +543,7 @@ mod tests {
 
         let params = identification_from_json(
             &record,
-            "at://did:plc:identifier/bio.lexicons.temp.identification/xyz".to_string(),
+            "at://did:plc:identifier/bio.lexicons.temp.v0-1.identification/xyz".to_string(),
             "bafyreiident".to_string(),
             "did:plc:identifier".to_string(),
             fallback,
@@ -557,7 +557,7 @@ mod tests {
         assert!(params.is_agreement);
         assert_eq!(
             params.subject_uri,
-            "at://did:plc:author/bio.lexicons.temp.occurrence/abc"
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc"
         );
         assert_eq!(params.subject_cid, "bafyreioccurrence");
         // createdAt is parsed via parse_naive_datetime, then lifted to DateTime<Utc>.
@@ -574,10 +574,10 @@ mod tests {
     #[test]
     fn test_identification_from_json_uses_fallback_time() {
         let record = serde_json::json!({
-            "$type": "bio.lexicons.temp.identification",
+            "$type": "bio.lexicons.temp.v0-1.identification",
             "scientificName": "Quercus alba",
             "occurrence": {
-                "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/abc",
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
             }
             // no createdAt
@@ -607,7 +607,7 @@ mod tests {
         let record = serde_json::json!({
             "$type": "ing.observ.temp.comment",
             "subject": {
-                "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/abc",
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
             },
             "body": "Nice find — looks like a juvenile.",
@@ -632,7 +632,7 @@ mod tests {
         assert_eq!(params.body, "Nice find — looks like a juvenile.");
         assert_eq!(
             params.subject_uri,
-            "at://did:plc:author/bio.lexicons.temp.occurrence/abc"
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc"
         );
         assert_eq!(params.subject_cid, "bafyreioccurrence");
         assert!(params.reply_to_uri.is_none());
@@ -647,7 +647,7 @@ mod tests {
         let record = serde_json::json!({
             "$type": "ing.observ.temp.comment",
             "subject": {
-                "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/abc",
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
             },
             "replyTo": {
@@ -689,13 +689,13 @@ mod tests {
             "$type": "ing.observ.temp.interaction",
             "subjectA": {
                 "occurrence": {
-                    "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/predator",
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/predator",
                     "cid": "bafyreipred"
                 }
             },
             "subjectB": {
                 "occurrence": {
-                    "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/prey",
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/prey",
                     "cid": "bafyreiprey"
                 }
             },
@@ -725,11 +725,11 @@ mod tests {
         assert_eq!(params.comment.as_deref(), Some("Caught mid-strike."));
         assert_eq!(
             params.subject_a_occurrence_uri.as_deref(),
-            Some("at://did:plc:author/bio.lexicons.temp.occurrence/predator")
+            Some("at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/predator")
         );
         assert_eq!(
             params.subject_b_occurrence_uri.as_deref(),
-            Some("at://did:plc:author/bio.lexicons.temp.occurrence/prey")
+            Some("at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/prey")
         );
         // No taxon references on either side
         assert!(params.subject_a_taxon_name.is_none());
@@ -744,7 +744,7 @@ mod tests {
             "$type": "ing.observ.temp.interaction",
             "subjectA": {
                 "occurrence": {
-                    "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/bee",
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/bee",
                     "cid": "bafyreibee"
                 }
             },
@@ -788,7 +788,7 @@ mod tests {
         let record = serde_json::json!({
             "$type": "ing.observ.temp.like",
             "subject": {
-                "uri": "at://did:plc:author/bio.lexicons.temp.occurrence/abc",
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
             },
             "createdAt": "2024-06-15T08:30:45Z"
@@ -811,7 +811,7 @@ mod tests {
 
         assert_eq!(
             params.subject_uri,
-            "at://did:plc:author/bio.lexicons.temp.occurrence/abc"
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc"
         );
         assert_eq!(params.subject_cid, "bafyreioccurrence");
         assert_eq!(params.did, "did:plc:liker");
@@ -821,8 +821,8 @@ mod tests {
     /// `occurrence_from_json` is the single conversion both the appview and
     /// the ingester use to turn a PDS occurrence record into a DB row. The
     /// appview's create path writes occurrences in the
-    /// `bio.lexicons.temp.occurrence` shape, where images are referenced via
-    /// `associatedMedia` strong refs to separate `bio.lexicons.temp.media`
+    /// `bio.lexicons.temp.v0-1.occurrence` shape, where images are referenced via
+    /// `associatedMedia` strong refs to separate `bio.lexicons.temp.v0-1.media`
     /// records — there is no inline `blobs` field on the occurrence itself.
     ///
     /// Resolving those strong refs requires HTTP calls to the author's PDS,
@@ -833,31 +833,31 @@ mod tests {
     #[test]
     fn test_occurrence_from_json_extracts_associated_media_refs() {
         let record = serde_json::json!({
-            "$type": "bio.lexicons.temp.occurrence",
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
             "decimalLatitude": "37.7749",
             "decimalLongitude": "-122.4194",
             "coordinateUncertaintyInMeters": 10,
             "eventDate": "2024-06-15T08:30:45.123Z",
             "associatedMedia": [
                 {
-                    "uri": "at://did:plc:author/bio.lexicons.temp.media/abc123",
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123",
                     "cid": "bafyreiabc123"
                 },
                 {
-                    "uri": "at://did:plc:author/bio.lexicons.temp.media/def456",
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.media/def456",
                     "cid": "bafyreidef456"
                 }
             ]
         });
 
-        // Pin down that the fixture really is a valid bio.lexicons.temp.occurrence
+        // Pin down that the fixture really is a valid bio.lexicons.temp.v0-1.occurrence
         // — the regression is "we lose photos on a structurally valid record",
         // not "we mishandle malformed input".
         assert_valid_lexicon::<Occurrence>(&record);
 
         let parsed = occurrence_from_json(
             &record,
-            "at://did:plc:author/bio.lexicons.temp.occurrence/xyz".to_string(),
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".to_string(),
             "bafyreioccurrence".to_string(),
             "did:plc:author".to_string(),
             Utc::now(),
@@ -868,11 +868,11 @@ mod tests {
             parsed.associated_media_refs,
             vec![
                 AssociatedMediaRef {
-                    uri: "at://did:plc:author/bio.lexicons.temp.media/abc123".into(),
+                    uri: "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123".into(),
                     cid: "bafyreiabc123".into(),
                 },
                 AssociatedMediaRef {
-                    uri: "at://did:plc:author/bio.lexicons.temp.media/def456".into(),
+                    uri: "at://did:plc:author/bio.lexicons.temp.v0-1.media/def456".into(),
                     cid: "bafyreidef456".into(),
                 },
             ],
@@ -895,7 +895,7 @@ mod tests {
     #[test]
     fn test_occurrence_from_json_uses_fallback_time_for_created_at() {
         let record = serde_json::json!({
-            "$type": "bio.lexicons.temp.occurrence",
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
             "decimalLatitude": "37.7749",
             "decimalLongitude": "-122.4194",
             "coordinateUncertaintyInMeters": 10,
@@ -911,7 +911,7 @@ mod tests {
 
         let parsed = occurrence_from_json(
             &record,
-            "at://did:plc:author/bio.lexicons.temp.occurrence/xyz".into(),
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".into(),
             "bafyreioccurrence".into(),
             "did:plc:author".into(),
             fallback,

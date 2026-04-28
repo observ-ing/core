@@ -18,21 +18,21 @@ flowchart TB
     subgraph AppView["AppView (Rust/Axum) — DB_USER=appview_runtime"]
         API["POST /api/occurrences<br/>routes/occurrences/"]
         Auth["OAuth Authentication"]
-        BlobUpload["Upload Media to PDS<br/>(createRecord bio.lexicons.temp.media)"]
+        BlobUpload["Upload Media to PDS<br/>(createRecord bio.lexicons.temp.v0-1.media)"]
         GBIF["Taxonomy validation<br/>(in-process GBIF + Wikidata)"]
         Geocode["Reverse Geocoding<br/>Nominatim API"]
-        BuildRecord["Build AT Protocol Record<br/>bio.lexicons.temp.occurrence"]
+        BuildRecord["Build AT Protocol Record<br/>bio.lexicons.temp.v0-1.occurrence"]
         PrivateData["Write Exact Coordinates<br/>appview.occurrence_private_data"]
     end
 
     subgraph ATProtocol["AT Protocol"]
         PDS["User's Personal Data Server<br/>createRecord()"]
-        URI["Returns URI + CID<br/>at://did:plc:xxx/bio.lexicons.temp.occurrence/rkey"]
+        URI["Returns URI + CID<br/>at://did:plc:xxx/bio.lexicons.temp.v0-1.occurrence/rkey"]
     end
 
     subgraph Firehose["AT Protocol Network"]
         Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Wanted collections:<br/>• bio.lexicons.temp.occurrence<br/>• bio.lexicons.temp.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
+        Filter["Wanted collections:<br/>• bio.lexicons.temp.v0-1.occurrence<br/>• bio.lexicons.temp.v0-1.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
     end
 
     subgraph Ingester["Ingester (Rust) — DB_USER=ingester_runtime"]
@@ -174,11 +174,11 @@ Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualif
    ├─▶ Validate OAuth session
    ├─▶ Validate taxonomy (in-process GBIF + Wikidata)
    ├─▶ Reverse geocode coordinates (Nominatim)
-   ├─▶ Upload each image as a bio.lexicons.temp.media record on the user's PDS
+   ├─▶ Upload each image as a bio.lexicons.temp.v0-1.media record on the user's PDS
    │
    ▼
-3. AppView creates the bio.lexicons.temp.occurrence record on the user's PDS
-   │  createRecord({ collection: "bio.lexicons.temp.occurrence",
+3. AppView creates the bio.lexicons.temp.v0-1.occurrence record on the user's PDS
+   │  createRecord({ collection: "bio.lexicons.temp.v0-1.occurrence",
    │                 record: { ..., associatedMedia: [ strongRefs ] } })
    │
    ├─▶ Writes exact coords to `appview.occurrence_private_data`
@@ -210,7 +210,7 @@ Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualif
    │
    ▼
 3. AppView creates AT Protocol record on user's PDS
-   │  createRecord({ collection: "bio.lexicons.temp.identification", ... })
+   │  createRecord({ collection: "bio.lexicons.temp.v0-1.identification", ... })
    │
    ▼
 4. PDS emits event to Jetstream firehose
@@ -244,8 +244,8 @@ Notification creation is ingester-owned; read-state is appview-owned.
 Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
    │
    │  wanted_collections:
-   │  - bio.lexicons.temp.occurrence
-   │  - bio.lexicons.temp.identification
+   │  - bio.lexicons.temp.v0-1.occurrence
+   │  - bio.lexicons.temp.v0-1.identification
    │  - ing.observ.temp.comment
    │  - ing.observ.temp.interaction
    │  - ing.observ.temp.like

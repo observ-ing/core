@@ -1,6 +1,6 @@
 {
   "lexicon": 1,
-  "id": "bio.lexicons.temp.identification",
+  "id": "bio.lexicons.temp.v0-1.identification",
   "defs": {
     "main": {
       "type": "record",

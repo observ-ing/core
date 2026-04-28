@@ -5,8 +5,8 @@ use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef};
-use observing_lexicons::bio_lexicons::temp::media::MediaRecord;
-use observing_lexicons::bio_lexicons::temp::occurrence::{Occurrence, OccurrenceRecord};
+use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
+use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{Occurrence, OccurrenceRecord};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use serde::Deserialize;
 use serde_json::json;
@@ -375,7 +375,7 @@ pub async fn update_occurrence(
     }))
 }
 
-/// Upload each image as a blob, create a `bio.lexicons.temp.media` record per
+/// Upload each image as a blob, create a `bio.lexicons.temp.v0-1.media` record per
 /// blob, and return parallel `(blob_entries, media_refs)` vecs. The DB stores
 /// blob entries for efficient image serving; the PDS occurrence record stores
 /// strong refs to the media records under `associatedMedia`. Media-record
@@ -452,12 +452,12 @@ async fn upload_media_records(
     Ok((blob_entries, media_refs))
 }
 
-/// Build the `bio.lexicons.temp.occurrence` record body (schema fields only)
+/// Build the `bio.lexicons.temp.v0-1.occurrence` record body (schema fields only)
 /// and serialize it to JSON for the PDS write API. `media_refs` are attached
 /// via the typed builder's `associatedMedia` field. Defaults `eventDate` to now.
 ///
 /// `recorded_by` is serialized as the extension field `recordedBy` — it is
-/// not part of the `bio.lexicons.temp.occurrence` schema, but the ingester
+/// not part of the `bio.lexicons.temp.v0-1.occurrence` schema, but the ingester
 /// reads it back out of the raw record JSON to populate `occurrence_observers`.
 fn build_occurrence_record_json(
     latitude: f64,

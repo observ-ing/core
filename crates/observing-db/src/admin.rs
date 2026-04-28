@@ -2,8 +2,9 @@
 //!
 //! Each table stores records for one or more lexicon NSIDs. Rows are filtered
 //! by URI prefix (`at://<did>/<nsid>/<rkey>`) because some tables (notably
-//! `occurrences`) hold records from both the current `bio.lexicons.*` namespace
-//! and the legacy `ing.observ.*` namespace during the lexicons.bio migration.
+//! `occurrences`) hold records from the current `bio.lexicons.temp.v0-1.*`
+//! namespace as well as legacy `bio.lexicons.temp.*` and `ing.observ.*` records
+//! that pre-date the lexicons.bio v0.1 release.
 //!
 //! Uses runtime `sqlx::query` rather than the compile-time macros because the
 //! table is selected dynamically via NSID dispatch. NSIDs and table names are
@@ -24,6 +25,22 @@ pub struct KnownCollection {
 }
 
 pub const KNOWN_COLLECTIONS: &[KnownCollection] = &[
+    KnownCollection {
+        nsid: "bio.lexicons.temp.v0-1.occurrence",
+        table: "occurrences",
+        cascades_to: &[
+            "identifications",
+            "comments",
+            "likes",
+            "interactions",
+            "occurrence_observers",
+        ],
+    },
+    KnownCollection {
+        nsid: "bio.lexicons.temp.v0-1.identification",
+        table: "identifications",
+        cascades_to: &[],
+    },
     KnownCollection {
         nsid: "bio.lexicons.temp.occurrence",
         table: "occurrences",

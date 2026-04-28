@@ -34,16 +34,16 @@ mod tests {
 
     #[test]
     fn test_parse_valid_uri() {
-        let uri = AtUri::parse("at://did:plc:abc123/bio.lexicons.temp.occurrence/rkey1")
+        let uri = AtUri::parse("at://did:plc:abc123/bio.lexicons.temp.v0-1.occurrence/rkey1")
             .expect("valid AT URI should parse successfully");
         assert_eq!(uri.did, "did:plc:abc123");
-        assert_eq!(uri.collection, "bio.lexicons.temp.occurrence");
+        assert_eq!(uri.collection, "bio.lexicons.temp.v0-1.occurrence");
         assert_eq!(uri.rkey, "rkey1");
     }
 
     #[test]
     fn test_parse_missing_rkey() {
-        assert!(AtUri::parse("at://did:plc:abc123/bio.lexicons.temp.occurrence").is_none());
+        assert!(AtUri::parse("at://did:plc:abc123/bio.lexicons.temp.v0-1.occurrence").is_none());
     }
 
     #[test]
@@ -53,7 +53,7 @@ mod tests {
 
     #[test]
     fn test_parse_no_at_prefix() {
-        assert!(AtUri::parse("did:plc:abc123/bio.lexicons.temp.occurrence/rkey1").is_none());
+        assert!(AtUri::parse("did:plc:abc123/bio.lexicons.temp.v0-1.occurrence/rkey1").is_none());
     }
 
     #[test]

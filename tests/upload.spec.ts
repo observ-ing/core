@@ -110,7 +110,7 @@ authTest.describe("Upload Modal - Logged In", () => {
           status: 200,
           contentType: "application/json",
           body: JSON.stringify({
-            uri: "at://did:plc:test123/bio.lexicons.temp.occurrence/abc123",
+            uri: "at://did:plc:test123/bio.lexicons.temp.v0-1.occurrence/abc123",
             cid: "bafytest",
           }),
         });
@@ -160,7 +160,7 @@ authTest.describe("Upload Modal - Logged In", () => {
             status: 200,
             contentType: "application/json",
             body: JSON.stringify({
-              uri: "at://did:plc:test123/bio.lexicons.temp.occurrence/large123",
+              uri: "at://did:plc:test123/bio.lexicons.temp.v0-1.occurrence/large123",
               cid: "bafylarge",
             }),
           });
