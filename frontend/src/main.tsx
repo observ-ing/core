@@ -19,10 +19,7 @@ async function maybeRegisterServiceWorker() {
   const optInParam = new URLSearchParams(window.location.search).has("pwa");
   const existing = await navigator.serviceWorker.getRegistration();
   if (!optInParam && !existing) return;
-  try {
-    await navigator.serviceWorker.register("/sw.js", { scope: "/" });
-  } catch (err) {
-    console.warn("Service worker registration failed:", err);
-  }
+  const { registerSW } = await import("virtual:pwa-register");
+  registerSW({ immediate: true });
 }
 void maybeRegisterServiceWorker();
