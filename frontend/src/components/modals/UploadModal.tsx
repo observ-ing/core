@@ -575,7 +575,12 @@ export function UploadModal() {
                 imageUrl={aiImageUrl}
                 latitude={lat ? parseFloat(lat) : undefined}
                 longitude={lng ? parseFloat(lng) : undefined}
-                onSelect={(s) => setSpecies(s.scientificName)}
+                onSelect={(s) => {
+                  setSpecies(s.scientificName);
+                  if (s.kingdom) {
+                    setKingdom(s.kingdom);
+                  }
+                }}
                 disabled={isSubmitting}
               />
             ) : undefined
