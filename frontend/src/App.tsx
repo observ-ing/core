@@ -20,6 +20,7 @@ import { DeleteConfirmDialog } from "./components/modals/DeleteConfirmDialog";
 import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
 import { NotFound } from "./components/common/NotFound";
+import { OfflineBanner } from "./components/common/OfflineBanner";
 import { LexiconView } from "./components/lexicon/LexiconView";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
@@ -76,6 +77,7 @@ function AppContent() {
 
   return (
     <Box sx={{ display: "flex", flex: 1, flexDirection: "column", minHeight: 0 }}>
+      <OfflineBanner />
       {!showLanding && (
         <>
           <TopBar onMobileMenuClick={handleDrawerOpen} unreadCount={unreadCount} />
