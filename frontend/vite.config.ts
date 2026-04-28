@@ -20,6 +20,44 @@ export default defineConfig({
         // Bumped from default 2 MiB so the current bundle precaches.
         // Code-splitting is the proper fix; tracked separately.
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
+        // Only cache routes whose responses are independent of the viewer.
+        // /api/taxa/{...}/occurrences and other enrichment-touched routes
+        // embed `viewer_has_liked` and must NOT be cached without per-user
+        // keying.
+        runtimeCaching: [
+          {
+            urlPattern: ({ url, sameOrigin, request }) =>
+              sameOrigin &&
+              request.method === "GET" &&
+              url.pathname.startsWith("/api/taxa/") &&
+              !url.pathname.endsWith("/occurrences"),
+            handler: "StaleWhileRevalidate",
+            options: {
+              cacheName: "taxa",
+              expiration: {
+                maxEntries: 200,
+                maxAgeSeconds: 7 * 24 * 60 * 60,
+              },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
+            urlPattern: ({ url, sameOrigin, request }) =>
+              sameOrigin &&
+              request.method === "GET" &&
+              /^\/media\/(blob|thumb)\/[^/]+\/[^/]+$/.test(url.pathname),
+            handler: "CacheFirst",
+            options: {
+              cacheName: "media",
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+                purgeOnQuotaError: true,
+              },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+        ],
       },
     }),
   ],
