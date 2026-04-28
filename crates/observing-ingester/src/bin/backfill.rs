@@ -29,12 +29,8 @@ use tracing::{error, info, warn};
 
 const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.v0-1.occurrence";
 const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.v0-1.identification";
-/// Legacy NSIDs — PDS repos may still have records under previous collection names.
-/// Listed newest-first so the v0.1 backfill picks up the most recent legacy generation
-/// before falling back to older ones.
-const LEGACY_OCCURRENCE_COLLECTIONS: &[&str] =
-    &["bio.lexicons.temp.occurrence", "ing.observ.temp.occurrence"];
-const LEGACY_IDENTIFICATION_COLLECTIONS: &[&str] = &["bio.lexicons.temp.identification"];
+/// Legacy NSID — PDS repos may still have records under the old collection name.
+const LEGACY_OCCURRENCE_COLLECTION: &str = "ing.observ.temp.occurrence";
 const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
 const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
 const LIKE_COLLECTION: &str = "ing.observ.temp.like";
@@ -182,7 +178,6 @@ fn has_known_subject(record: &Record) -> bool {
 /// Check if a URI references an occurrence record (current or legacy NSID).
 fn is_occurrence_uri(uri: &str) -> bool {
     uri.contains("/bio.lexicons.temp.v0-1.occurrence/")
-        || uri.contains("/bio.lexicons.temp.occurrence/")
         || uri.contains("/ing.observ.temp.occurrence/")
 }
 
@@ -412,16 +407,14 @@ async fn backfill_occurrences(
     };
 
     // Fetch from both the current and legacy collection NSIDs — PDS repos may
-    // still have records under the old names.
+    // still have records under the old name.
     let mut records = list_records(client, &pds, did, OCCURRENCE_COLLECTION)
         .await
         .unwrap_or_default();
-    for legacy_nsid in LEGACY_OCCURRENCE_COLLECTIONS {
-        let legacy = list_records(client, &pds, did, legacy_nsid)
-            .await
-            .unwrap_or_default();
-        records.extend(legacy);
-    }
+    let legacy = list_records(client, &pds, did, LEGACY_OCCURRENCE_COLLECTION)
+        .await
+        .unwrap_or_default();
+    records.extend(legacy);
 
     if records.is_empty() {
         return (0, 0, uris);
@@ -551,17 +544,10 @@ async fn main() {
 
             // Also fetch from legacy NSIDs (PDS repos may not be migrated yet)
             if collection == OCCURRENCE_COLLECTION {
-                for legacy_nsid in LEGACY_OCCURRENCE_COLLECTIONS {
-                    if let Ok(legacy) = list_records(&client, &pds, did, legacy_nsid).await {
-                        records.extend(legacy);
-                    }
-                }
-            }
-            if collection == IDENTIFICATION_COLLECTION {
-                for legacy_nsid in LEGACY_IDENTIFICATION_COLLECTIONS {
-                    if let Ok(legacy) = list_records(&client, &pds, did, legacy_nsid).await {
-                        records.extend(legacy);
-                    }
+                if let Ok(legacy) =
+                    list_records(&client, &pds, did, LEGACY_OCCURRENCE_COLLECTION).await
+                {
+                    records.extend(legacy);
                 }
             }
             if !records.is_empty() {
