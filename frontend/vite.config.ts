@@ -11,7 +11,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      injectRegister: false,
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
