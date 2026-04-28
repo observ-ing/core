@@ -16,6 +16,11 @@ export default defineConfig({
     navigationTimeout: 30_000,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
+    // Block the PWA service worker. Playwright's page.route() does not
+    // intercept fetches made from a service worker, so an active SW would
+    // route around our mock fixtures (e.g. /api/taxa/*) and hit the real
+    // backend. App behavior under the SW should be tested separately.
+    serviceWorkers: "block",
   },
   projects: [
     // Real e2e: signs in to Bluesky and runs a CRUD flow against the live PDS.
