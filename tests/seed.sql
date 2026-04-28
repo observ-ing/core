@@ -26,10 +26,3 @@ VALUES
    ST_SetSRID(ST_MakePoint(-121.8863, 36.6002), 4326),
    NOW() - INTERVAL '3 hours',
    '[]'::jsonb);
-
--- Add observer entries so the feed enrichment can find them
-INSERT INTO occurrence_observers (occurrence_uri, observer_did, role)
-VALUES
-  ('at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/bio.lexicons.temp.occurrence/seed001', 'did:plc:jh6n3ntljfhhtr4jbvrm3k5b', 'owner'),
-  ('at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/bio.lexicons.temp.occurrence/seed002', 'did:plc:jh6n3ntljfhhtr4jbvrm3k5b', 'owner'),
-  ('at://did:plc:jh6n3ntljfhhtr4jbvrm3k5b/bio.lexicons.temp.occurrence/seed003', 'did:plc:jh6n3ntljfhhtr4jbvrm3k5b', 'owner');

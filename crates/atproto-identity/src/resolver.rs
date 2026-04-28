@@ -9,7 +9,6 @@ use tracing::{debug, error, warn};
 use crate::did::{Did, DidMethod};
 use crate::types::{
     DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
-    SearchActorsTypeaheadResponse,
 };
 
 const DEFAULT_SERVICE_URL: &str = "https://public.api.bsky.app";
@@ -280,60 +279,6 @@ impl IdentityResolver {
         }
 
         results
-    }
-
-    /// Search for actors by handle prefix using the Bluesky typeahead API
-    pub async fn search_actors(&self, query: &str, limit: u8) -> Vec<Arc<Profile>> {
-        let limit = limit.min(10);
-        let url = reqwest::Url::parse_with_params(
-            &format!(
-                "{}/xrpc/app.bsky.actor.searchActorsTypeahead",
-                self.service_url
-            ),
-            &[("q", query), ("limit", &limit.to_string())],
-        );
-
-        let url = match url {
-            Ok(u) => u,
-            Err(e) => {
-                error!("Failed to build search URL: {e}");
-                return Vec::new();
-            }
-        };
-
-        match self.client.get(url).send().await {
-            Ok(response) if response.status().is_success() => {
-                match response.json::<SearchActorsTypeaheadResponse>().await {
-                    Ok(data) => {
-                        let mut results = Vec::with_capacity(data.actors.len());
-                        for p in data.actors {
-                            let did = p.did.clone();
-                            let handle = p.handle.clone();
-                            let profile = Arc::new(Profile::from(p));
-
-                            // Cache discovered profiles
-                            self.profile_cache.insert(did, profile.clone()).await;
-                            self.profile_cache.insert(handle, profile.clone()).await;
-
-                            results.push(profile);
-                        }
-                        results
-                    }
-                    Err(e) => {
-                        error!("Failed to parse search actors response: {e}");
-                        Vec::new()
-                    }
-                }
-            }
-            Ok(response) => {
-                debug!("Search actors failed: status {}", response.status());
-                Vec::new()
-            }
-            Err(e) => {
-                error!("Search actors request failed: {e}");
-                Vec::new()
-            }
-        }
     }
 }
 

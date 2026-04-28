@@ -82,13 +82,10 @@ pub async fn get_profile_feed(
     let counts_row: (i64, i64, i64) = sqlx::query_as(
         r#"
         SELECT
-            (SELECT COUNT(DISTINCT o.uri) FROM occurrences o
-             LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri
-             WHERE o.did = $1 OR oo.observer_did = $1),
+            (SELECT COUNT(*) FROM occurrences WHERE did = $1),
             (SELECT COUNT(*) FROM identifications WHERE did = $1),
-            (SELECT COUNT(DISTINCT (o.scientific_name, o.kingdom)) FROM occurrences o
-             LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri
-             WHERE (o.did = $1 OR oo.observer_did = $1) AND o.scientific_name IS NOT NULL)
+            (SELECT COUNT(DISTINCT (scientific_name, kingdom)) FROM occurrences
+             WHERE did = $1 AND scientific_name IS NOT NULL)
         "#,
     )
     .bind(did)
@@ -112,21 +109,19 @@ pub async fn get_profile_feed(
             sqlx::query_as!(
                 OccurrenceRow,
                 r#"
-                SELECT DISTINCT ON (o.uri)
-                    o.uri, o.cid, o.did, o.scientific_name, o.event_date,
-                    ST_Y(o.location::geometry) as "latitude!",
-                    ST_X(o.location::geometry) as "longitude!",
-                    o.coordinate_uncertainty_meters,
-                    o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
-                    o.created_at,
+                SELECT
+                    uri, cid, did, scientific_name, event_date,
+                    ST_Y(location::geometry) as "latitude!",
+                    ST_X(location::geometry) as "longitude!",
+                    coordinate_uncertainty_meters,
+                    associated_media, recorded_by,
+                    taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                    created_at,
                     NULL::float8 as distance_meters,
-                    NULL::text as source,
-                    COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role
-                FROM occurrences o
-                LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1
-                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < ($3::text)::timestamptz
-                ORDER BY o.uri, o.created_at DESC
+                    NULL::text as source
+                FROM occurrences
+                WHERE did = $1 AND created_at < ($3::text)::timestamptz
+                ORDER BY created_at DESC
                 LIMIT $2
                 "#,
                 did,
@@ -139,21 +134,19 @@ pub async fn get_profile_feed(
             sqlx::query_as!(
                 OccurrenceRow,
                 r#"
-                SELECT DISTINCT ON (o.uri)
-                    o.uri, o.cid, o.did, o.scientific_name, o.event_date,
-                    ST_Y(o.location::geometry) as "latitude!",
-                    ST_X(o.location::geometry) as "longitude!",
-                    o.coordinate_uncertainty_meters,
-                    o.associated_media, o.recorded_by,
-                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o."order" as order_, o.family, o.genus,
-                    o.created_at,
+                SELECT
+                    uri, cid, did, scientific_name, event_date,
+                    ST_Y(location::geometry) as "latitude!",
+                    ST_X(location::geometry) as "longitude!",
+                    coordinate_uncertainty_meters,
+                    associated_media, recorded_by,
+                    taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                    created_at,
                     NULL::float8 as distance_meters,
-                    NULL::text as source,
-                    COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role
-                FROM occurrences o
-                LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1
-                WHERE o.did = $1 OR oo.observer_did = $1
-                ORDER BY o.uri, o.created_at DESC
+                    NULL::text as source
+                FROM occurrences
+                WHERE did = $1
+                ORDER BY created_at DESC
                 LIMIT $2
                 "#,
                 did,
@@ -162,9 +155,6 @@ pub async fn get_profile_feed(
             .fetch_all(pool)
             .await?
         };
-
-        // Re-sort by created_at since DISTINCT ON requires ordering by uri first
-        occurrences.sort_by(|a, b| b.created_at.cmp(&a.created_at));
     }
 
     if matches!(

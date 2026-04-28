@@ -27,13 +27,7 @@ pub const KNOWN_COLLECTIONS: &[KnownCollection] = &[
     KnownCollection {
         nsid: "bio.lexicons.temp.v0-1.occurrence",
         table: "occurrences",
-        cascades_to: &[
-            "identifications",
-            "comments",
-            "likes",
-            "interactions",
-            "occurrence_observers",
-        ],
+        cascades_to: &["identifications", "comments", "likes", "interactions"],
     },
     KnownCollection {
         nsid: "bio.lexicons.temp.v0-1.identification",
@@ -43,13 +37,7 @@ pub const KNOWN_COLLECTIONS: &[KnownCollection] = &[
     KnownCollection {
         nsid: "ing.observ.temp.occurrence",
         table: "occurrences",
-        cascades_to: &[
-            "identifications",
-            "comments",
-            "likes",
-            "interactions",
-            "occurrence_observers",
-        ],
+        cascades_to: &["identifications", "comments", "likes", "interactions"],
     },
     KnownCollection {
         nsid: "ing.observ.temp.comment",
@@ -226,16 +214,6 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
             ("updated_at", "updated_at"),
         ],
         order_by: "updated_at DESC NULLS LAST",
-    },
-    KnownTable {
-        name: "occurrence_observers",
-        columns: &[
-            ("occurrence_uri", "occurrence_uri"),
-            ("observer_did", "observer_did"),
-            ("role", "role"),
-            ("added_at", "added_at"),
-        ],
-        order_by: "added_at DESC NULLS LAST",
     },
     KnownTable {
         name: "occurrence_private_data",

@@ -13,7 +13,6 @@
 // ============================================================================
 
 export type { Profile } from "../bindings/Profile";
-export type { Observer } from "../bindings/Observer";
 export type { Location } from "../bindings/Location";
 export type { EffectiveTaxonomy } from "../bindings/EffectiveTaxonomy";
 export type { Identification } from "../bindings/Identification";
@@ -31,7 +30,6 @@ export type { InteractionSubjectRequest } from "../bindings/InteractionSubjectRe
 export type { CreateInteractionRequest } from "../bindings/CreateInteractionRequest";
 import type { Occurrence } from "../bindings/Occurrence";
 export type { Occurrence };
-export type { ObserverRole } from "../bindings/ObserverRole";
 export type { InteractionDirection } from "../bindings/InteractionDirection";
 
 // ============================================================================

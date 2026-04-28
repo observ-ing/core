@@ -65,8 +65,3 @@ impl From<ProfileResponse> for Profile {
 pub(crate) struct ProfilesResponse {
     pub(crate) profiles: Vec<ProfileResponse>,
 }
-
-#[derive(Debug, Deserialize)]
-pub(crate) struct SearchActorsTypeaheadResponse {
-    pub(crate) actors: Vec<ProfileResponse>,
-}

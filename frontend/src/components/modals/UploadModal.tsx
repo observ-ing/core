@@ -1,11 +1,9 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
 import {
-  Avatar,
   Box,
   Typography,
   TextField,
   Button,
-  Chip,
   Stack,
   IconButton,
   Alert,
@@ -21,11 +19,9 @@ import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
 import { submitObservation, updateObservation, pollObservation } from "../../services/api";
-import type { ActorSearchResult } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
-import { ActorAutocomplete } from "../common/ActorAutocomplete";
 import { AiSuggestions } from "../identification/AiSuggestions";
 import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
@@ -70,7 +66,6 @@ export function UploadModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [coObservers, setCoObservers] = useState<ActorSearchResult[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
@@ -96,19 +91,6 @@ export function UploadModal() {
             setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
           }
         }
-        const existingCoObservers: ActorSearchResult[] =
-          editingObservation.observers
-            ?.filter((o) => o.role === "co-observer")
-            .map((o) => {
-              const result: ActorSearchResult = {
-                did: o.did,
-                handle: o.handle || o.did,
-              };
-              if (o.displayName) result.displayName = o.displayName;
-              if (o.avatar) result.avatar = o.avatar;
-              return result;
-            }) || [];
-        setCoObservers(existingCoObservers);
         setExistingImages(editingObservation.images || []);
       } else {
         if (currentLocation) {
@@ -132,20 +114,9 @@ export function UploadModal() {
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
-    setCoObservers([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setUncertaintyMeters(50);
     setAiImageUrl(null);
-  };
-
-  const handleAddCoObserver = (actor: ActorSearchResult) => {
-    if (!coObservers.some((co) => co.did === actor.did)) {
-      setCoObservers((prev) => [...prev, actor]);
-    }
-  };
-
-  const handleRemoveCoObserver = (did: string) => {
-    setCoObservers((prev) => prev.filter((co) => co.did !== did));
   };
 
   const addFiles = (files: File[]) => {
@@ -328,7 +299,6 @@ export function UploadModal() {
           coordinateUncertaintyInMeters: uncertaintyMeters,
           license,
           eventDate: new Date(observationDate).toISOString(),
-          ...(coObservers.length > 0 ? { recordedBy: coObservers.map((co) => co.did) } : {}),
           ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
         });
@@ -355,7 +325,6 @@ export function UploadModal() {
           license,
           eventDate,
           ...(imageData.length > 0 ? { images: imageData } : {}),
-          ...(coObservers.length > 0 ? { recordedBy: coObservers.map((co) => co.did) } : {}),
         });
 
         // Wait for the observation to be processed by the ingester
@@ -626,47 +595,6 @@ export function UploadModal() {
             ))}
           </Select>
         </FormControl>
-
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            mt: 2,
-            mb: 1,
-          }}
-        >
-          Co-observers (optional)
-        </Typography>
-
-        <ActorAutocomplete
-          onSelect={handleAddCoObserver}
-          excludeDids={[...(user?.did ? [user.did] : []), ...coObservers.map((co) => co.did)]}
-        />
-
-        {coObservers.length > 0 && (
-          <Stack direction="row" spacing={0.5} sx={{ mt: 1, flexWrap: "wrap", gap: 0.5 }}>
-            {coObservers.map((co) => (
-              <Chip
-                key={co.did}
-                avatar={<Avatar src={co.avatar ?? ""} sx={{ width: 24, height: 24 }} />}
-                label={co.displayName || `@${co.handle}`}
-                size="small"
-                onDelete={() => handleRemoveCoObserver(co.did)}
-              />
-            ))}
-          </Stack>
-        )}
-
-        <Typography
-          variant="caption"
-          sx={{
-            color: "text.disabled",
-            display: "block",
-            mt: 0.5,
-          }}
-        >
-          Add other observers who participated in this sighting
-        </Typography>
 
         <TextField
           fullWidth

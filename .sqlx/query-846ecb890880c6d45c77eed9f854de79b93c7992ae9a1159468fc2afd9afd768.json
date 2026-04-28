@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT DISTINCT ON (o.uri)\n                    o.uri, o.cid, o.did, o.scientific_name, o.event_date,\n                    ST_Y(o.location::geometry) as \"latitude!\",\n                    ST_X(o.location::geometry) as \"longitude!\",\n                    o.coordinate_uncertainty_meters,\n                    o.associated_media, o.recorded_by,\n                    o.taxon_id, o.taxon_rank, o.kingdom, o.phylum, o.class, o.\"order\" as order_, o.family, o.genus,\n                    o.created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source,\n                    COALESCE(oo.role, CASE WHEN o.did = $1 THEN 'owner' ELSE 'co-observer' END) as observer_role\n                FROM occurrences o\n                LEFT JOIN occurrence_observers oo ON o.uri = oo.occurrence_uri AND oo.observer_did = $1\n                WHERE (o.did = $1 OR oo.observer_did = $1) AND o.created_at < ($3::text)::timestamptz\n                ORDER BY o.uri, o.created_at DESC\n                LIMIT $2\n                ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography\n        AND did != ALL($6)\n        LIMIT $5\n        ",
   "describe": {
     "columns": [
       {
@@ -107,18 +107,16 @@
         "ordinal": 20,
         "name": "source",
         "type_info": "Text"
-      },
-      {
-        "ordinal": 21,
-        "name": "observer_role",
-        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
         "Int8",
-        "Text"
+        "TextArray"
       ]
     },
     "nullable": [
@@ -142,9 +140,8 @@
       true,
       false,
       null,
-      null,
       null
     ]
   },
-  "hash": "1c6cafd0029f695ea27ab0a3b6daa8aa9cc94b1a05176724aee64155f30d8be5"
+  "hash": "846ecb890880c6d45c77eed9f854de79b93c7992ae9a1159468fc2afd9afd768"
 }

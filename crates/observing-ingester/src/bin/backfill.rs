@@ -327,8 +327,6 @@ async fn process_and_store(
                 now,
             )?;
             observing_db::occurrences::upsert(pool, &parsed.params).await?;
-            let co_observers = processing::extract_co_observers(parsed.recorded_by.as_deref(), did);
-            observing_db::observers::sync(pool, &record.uri, did, &co_observers).await?;
         }
         IDENTIFICATION_COLLECTION => {
             let params = processing::identification_from_json(

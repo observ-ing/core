@@ -35,8 +35,6 @@ pub struct CreateOccurrenceRequest {
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
     #[ts(optional)]
-    recorded_by: Option<Vec<String>>,
-    #[ts(optional)]
     scientific_name: Option<String>,
 }
 
@@ -69,8 +67,6 @@ pub struct UpdateOccurrenceRequest {
     #[ts(optional)]
     retained_blob_cids: Option<Vec<String>>,
     #[ts(optional)]
-    recorded_by: Option<Vec<String>>,
-    #[ts(optional)]
     scientific_name: Option<String>,
 }
 
@@ -100,13 +96,12 @@ pub async fn create_occurrence(
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
         media_refs,
-        body.recorded_by.as_deref(),
     )?;
 
     // Create AT Protocol record. The firehose event that follows will trigger
     // observing-ingester to parse the same record into DB rows — we no longer
-    // do that here, so there is a single writer for the occurrences,
-    // occurrence_observers, and associated media state.
+    // do that here, so there is a single writer for the occurrences and
+    // associated media state.
     let resp =
         auth::create_at_record(&agent, did_parsed, OccurrenceRecord::NSID, record_value).await?;
 
@@ -303,12 +298,11 @@ pub async fn update_occurrence(
         body.coordinate_uncertainty_in_meters,
         body.event_date.as_deref(),
         media_refs,
-        body.recorded_by.as_deref(),
     )?;
 
     // putRecord on the PDS. The firehose commit that follows triggers the
-    // ingester to refresh the occurrence row and observer links — the appview
-    // no longer writes directly to those tables, mirroring the create flow.
+    // ingester to refresh the occurrence row — the appview no longer writes
+    // directly to that table, mirroring the create flow.
     let resp = agent
         .api
         .com
@@ -455,17 +449,12 @@ async fn upload_media_records(
 /// Build the `bio.lexicons.temp.v0-1.occurrence` record body (schema fields only)
 /// and serialize it to JSON for the PDS write API. `media_refs` are attached
 /// via the typed builder's `associatedMedia` field. Defaults `eventDate` to now.
-///
-/// `recorded_by` is serialized as the extension field `recordedBy` — it is
-/// not part of the `bio.lexicons.temp.v0-1.occurrence` schema, but the ingester
-/// reads it back out of the raw record JSON to populate `occurrence_observers`.
 fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
     coordinate_uncertainty_in_meters: Option<i32>,
     event_date: Option<&str>,
     media_refs: Vec<StrongRef>,
-    recorded_by: Option<&[String]>,
 ) -> Result<serde_json::Value, AppError> {
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
@@ -491,16 +480,7 @@ fn build_occurrence_record_json(
         .maybe_associated_media(associated_media)
         .build();
 
-    let mut value = auth::serialize_at_record(&record)?;
-    if let Some(dids) = recorded_by {
-        let filtered: Vec<&String> = dids.iter().filter(|d| !d.is_empty()).collect();
-        if !filtered.is_empty() {
-            if let Some(obj) = value.as_object_mut() {
-                obj.insert("recordedBy".to_string(), json!(filtered));
-            }
-        }
-    }
-    Ok(value)
+    auth::serialize_at_record(&record)
 }
 
 /// Create an identification record on the PDS for the given occurrence. The

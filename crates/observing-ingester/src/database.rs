@@ -129,11 +129,6 @@ impl Database {
 
         observing_db::occurrences::upsert(&self.pool, &parsed.params).await?;
 
-        // Sync occurrence_observers using typed recorded_by data
-        let co_observers =
-            processing::extract_co_observers(parsed.recorded_by.as_deref(), &commit.did);
-        observing_db::observers::sync(&self.pool, &commit.uri, &commit.did, &co_observers).await?;
-
         Ok(())
     }
 

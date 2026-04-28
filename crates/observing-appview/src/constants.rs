@@ -43,11 +43,8 @@ pub const MAX_SCIENTIFIC_NAME_LENGTH: usize = 256;
 /// Maximum allowed length of an interaction type string (in characters).
 pub const MAX_INTERACTION_TYPE_LENGTH: usize = 64;
 
-/// Minimum length for search queries (taxonomy and actor search).
+/// Minimum length for search queries (taxonomy search).
 pub const MIN_SEARCH_QUERY_LENGTH: usize = 2;
-
-/// Number of results returned by the actor search endpoint.
-pub const ACTOR_SEARCH_LIMIT: u8 = 8;
 
 // --- Interaction defaults ---
 

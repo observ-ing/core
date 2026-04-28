@@ -43,15 +43,6 @@ impl BlobRef {
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "bindings/")]
-pub enum ObserverRole {
-    #[serde(rename = "owner")]
-    Owner,
-    #[serde(rename = "co-observer")]
-    CoObserver,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
-#[ts(export, export_to = "bindings/")]
 pub enum InteractionDirection {
     AtoB,
     BtoA,
@@ -89,9 +80,6 @@ pub struct OccurrenceRow {
     /// Only present in home feed queries
     #[sqlx(default)]
     pub source: Option<String>,
-    /// Only present in profile feed queries
-    #[sqlx(default)]
-    pub observer_role: Option<String>,
 }
 
 impl OccurrenceRow {
@@ -200,14 +188,6 @@ pub struct InteractionRow {
     pub created_at: DateTime<Utc>,
     #[ts(optional)]
     pub indexed_at: Option<DateTime<Utc>>,
-}
-
-/// Observer row for multi-user observations
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
-pub struct ObserverRow {
-    pub did: String,
-    pub role: String,
-    pub added_at: Option<DateTime<Utc>>,
 }
 
 /// Community ID row from the materialized view

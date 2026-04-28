@@ -2,9 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use atproto_identity::{IdentityResolver, Profile};
-use observing_db::types::{
-    CommentRow, IdentificationRow, InteractionRow, ObserverRole, ObserverRow, OccurrenceRow,
-};
+use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, OccurrenceRow};
 use serde::Serialize;
 use sqlx::PgPool;
 use ts_rs::TS;
@@ -19,7 +17,6 @@ pub struct OccurrenceResponse {
     pub uri: String,
     pub cid: String,
     pub observer: ProfileSummary,
-    pub observers: Vec<ObserverInfo>,
     #[ts(optional)]
     pub community_id: Option<String>,
     #[ts(optional)]
@@ -43,24 +40,6 @@ pub struct OccurrenceResponse {
 #[ts(export, rename = "Profile", export_to = "bindings/")]
 pub struct ProfileSummary {
     pub did: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub handle: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub display_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[ts(optional)]
-    pub avatar: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, TS)]
-#[serde(rename_all = "camelCase")]
-#[ts(export, rename = "Observer", export_to = "bindings/")]
-pub struct ObserverInfo {
-    pub did: String,
-    #[ts(as = "ObserverRole")]
-    pub role: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub handle: Option<String>,
@@ -181,7 +160,7 @@ pub async fn enrich_occurrences(
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
 
     // Stage 1: Batch-fetch all DB data concurrently
-    let (like_counts, viewer_likes, observers_by_uri, community_ids, identifications_by_uri) = tokio::join!(
+    let (like_counts, viewer_likes, community_ids, identifications_by_uri) = tokio::join!(
         async {
             observing_db::likes::get_counts_for_occurrences(pool, &uris)
                 .await
@@ -197,11 +176,6 @@ pub async fn enrich_occurrences(
             }
         },
         async {
-            observing_db::observers::get_for_occurrences(pool, &uris)
-                .await
-                .unwrap_or_default()
-        },
-        async {
             observing_db::identifications::get_community_ids_for_occurrences(pool, &uris)
                 .await
                 .unwrap_or_default()
@@ -213,10 +187,8 @@ pub async fn enrich_occurrences(
         },
     );
 
-    // Stage 2: Batch profile resolution (needs observer DIDs from stage 1)
-    let mut all_dids: HashSet<String> = rows.iter().map(|r| r.did.clone()).collect();
-    all_dids.extend(observers_by_uri.values().flatten().map(|o| o.did.clone()));
-    let dids_vec: Vec<String> = all_dids.into_iter().collect();
+    // Stage 2: Batch profile resolution
+    let dids_vec: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
     let profiles = resolver.get_profiles(&dids_vec).await;
 
     // Stage 3: Resolve taxonomy for all occurrences (HTTP fallbacks run in parallel)
@@ -255,28 +227,12 @@ pub async fn enrich_occurrences(
         let community_id = community_ids.get(&row.uri).cloned();
         let effective_taxonomy = taxonomies[i].clone();
 
-        let observer_rows = observers_by_uri.get(&row.uri).cloned().unwrap_or_default();
-        let observer_infos: Vec<ObserverInfo> = observer_rows
-            .iter()
-            .map(|o| {
-                let p = profile_summary(&o.did, &profiles);
-                ObserverInfo {
-                    did: o.did.clone(),
-                    role: o.role.clone(),
-                    handle: p.handle,
-                    display_name: p.display_name,
-                    avatar: p.avatar,
-                }
-            })
-            .collect();
-
         let images = extract_images(row);
 
         results.push(OccurrenceResponse {
             uri: row.uri.clone(),
             cid: row.cid.clone(),
             observer: profile_summary(&row.did, &profiles),
-            observers: observer_infos,
             community_id,
             effective_taxonomy,
             identification_count,
@@ -420,26 +376,6 @@ pub async fn enrich_interactions(
     .await
 }
 
-/// Enrich observers with profile info
-pub async fn enrich_observers(
-    resolver: &IdentityResolver,
-    rows: &[ObserverRow],
-) -> Vec<ObserverInfo> {
-    enrich_rows(
-        resolver,
-        rows,
-        |r| &r.did,
-        |row, profile| ObserverInfo {
-            did: row.did.clone(),
-            role: row.role.clone(),
-            handle: profile.handle,
-            display_name: profile.display_name,
-            avatar: profile.avatar,
-        },
-    )
-    .await
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -469,7 +405,6 @@ mod tests {
             created_at: Utc::now(),
             distance_meters: None,
             source: None,
-            observer_role: None,
         }
     }
 

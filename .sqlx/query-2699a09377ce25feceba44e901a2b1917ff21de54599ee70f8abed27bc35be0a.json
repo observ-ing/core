@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source,\n            NULL::text as observer_role\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        AND did != ALL($6)\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
+  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -107,20 +107,12 @@
         "ordinal": 20,
         "name": "source",
         "type_info": "Text"
-      },
-      {
-        "ordinal": 21,
-        "name": "observer_role",
-        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Float8",
-        "Float8",
-        "Float8",
         "Int8",
-        "Int8",
+        "Text",
         "TextArray"
       ]
     },
@@ -145,9 +137,8 @@
       true,
       false,
       null,
-      null,
       null
     ]
   },
-  "hash": "ec27886933837e728dd5f4faf1a5f389d1241294653f503a5b051c9eaca25af2"
+  "hash": "2699a09377ce25feceba44e901a2b1917ff21de54599ee70f8abed27bc35be0a"
 }

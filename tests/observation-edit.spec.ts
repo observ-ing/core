@@ -46,14 +46,6 @@ authTest.describe("Observation Edit - Logged In", () => {
         handle: "other.bsky.social",
         displayName: "Other User",
       },
-      observers: [
-        {
-          did: "did:plc:otheruser",
-          handle: "other.bsky.social",
-          displayName: "Other User",
-          role: "owner",
-        },
-      ],
     });
     const body = JSON.stringify({
       occurrences: [otherUserObs],

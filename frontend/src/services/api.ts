@@ -195,27 +195,6 @@ export async function fetchObservationsGeoJSON(bounds: {
   return fetchApi(`${API_BASE}/api/occurrences/geojson?${params}`, "Failed to load observations");
 }
 
-// ============================================================================
-// Actor Search
-// ============================================================================
-
-export interface ActorSearchResult {
-  did: string;
-  handle: string;
-  displayName?: string;
-  avatar?: string;
-}
-
-export async function searchActors(query: string): Promise<ActorSearchResult[]> {
-  if (query.length < 2) return [];
-
-  const response = await fetch(`${API_BASE}/api/actors/search?q=${encodeURIComponent(query)}`);
-  if (!response.ok) return [];
-
-  const data = await response.json();
-  return data.actors || [];
-}
-
 export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   if (query.length < 2) return [];
 
@@ -244,8 +223,6 @@ export async function submitObservation(data: {
   order?: string;
   family?: string;
   genus?: string;
-  // Co-observers
-  recordedBy?: string[];
 }): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/occurrences`, "Failed to submit", {
     method: "POST",
@@ -275,8 +252,6 @@ export async function updateObservation(data: {
   order?: string;
   family?: string;
   genus?: string;
-  // Co-observers
-  recordedBy?: string[];
 }): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/occurrences`, "Failed to update", {
     method: "PUT",

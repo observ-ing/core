@@ -14,7 +14,6 @@ function observationOverrides(extra: Partial<Occurrence> = {}): Partial<Occurren
       handle: "naturalist.bsky.social",
       displayName: "Nature Lover",
     },
-    observers: [],
     ...extra,
   };
 }
