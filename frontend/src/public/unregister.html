@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unregister Service Worker — Observ.ing</title>
+    <style>
+      body {
+        font-family:
+          system-ui,
+          -apple-system,
+          sans-serif;
+        padding: 2rem;
+        max-width: 36rem;
+        margin: auto;
+        line-height: 1.5;
+      }
+      h1 {
+        font-size: 1.25rem;
+      }
+      code {
+        background: #f4f4f4;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Unregistering service worker…</h1>
+    <p id="status">Working…</p>
+    <p>
+      This page is a kill switch. It unregisters any Observ.ing service worker installed in this
+      browser and clears its caches. Use it if a buggy service worker is causing stale or broken
+      behavior.
+    </p>
+    <script>
+      (async () => {
+        const status = document.getElementById("status");
+        try {
+          let unregistered = 0;
+          if ("serviceWorker" in navigator) {
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map((r) => r.unregister()));
+            unregistered = regs.length;
+          }
+          let cleared = 0;
+          if ("caches" in window) {
+            const keys = await caches.keys();
+            await Promise.all(keys.map((k) => caches.delete(k)));
+            cleared = keys.length;
+          }
+          status.textContent = `Done. Unregistered ${unregistered} service worker(s) and cleared ${cleared} cache(s). You can close this page.`;
+        } catch (err) {
+          status.textContent = "Error: " + (err && err.message ? err.message : String(err));
+        }
+      })();
+    </script>
+  </body>
+</html>
