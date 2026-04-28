@@ -5,7 +5,7 @@ import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
 /** Type into the species input and wait for the autocomplete options to appear. */
 async function searchSpecies(page: import("@playwright/test").Page, query: string) {
-  const speciesInput = page.getByLabel(/Species/i);
+  const speciesInput = page.getByLabel(/Taxon/i);
   await speciesInput.click();
   await Promise.all([
     page.waitForResponse(
@@ -90,7 +90,7 @@ authTest.describe("Species Input", () => {
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "quercus");
       await page.locator(".MuiAutocomplete-option").first().click();
-      const speciesInput = page.getByLabel(/Species/i);
+      const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.fill("My Custom Species");
       const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
       await authExpect(kingdomCombo).not.toHaveAttribute("aria-disabled", "true");

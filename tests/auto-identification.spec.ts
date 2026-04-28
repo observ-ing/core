@@ -64,7 +64,7 @@ authTest.describe("Auto-Identification on Upload", () => {
       await page.goto("/");
       await openUploadModal(page);
 
-      const speciesInput = page.getByLabel(/Species/i);
+      const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
       await Promise.all([
         page.waitForResponse((r) => r.url().includes("/api/taxa/search")),

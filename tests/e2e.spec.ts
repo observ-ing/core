@@ -24,7 +24,7 @@ authTest.describe("E2E CRUD flow", () => {
       await mockTaxaSearchRoute(page);
       await openUploadModal(page);
 
-      const speciesInput = page.getByLabel(/Species/i);
+      const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
       await Promise.all([
         page.waitForResponse((r) => r.url().includes("/api/taxa/search")),

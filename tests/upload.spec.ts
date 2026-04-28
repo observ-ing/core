@@ -37,7 +37,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
     await page.getByRole("button", { name: "Cancel" }).click();
-    await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
+    await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
   });
 
   // TC-UPLOAD-003: Authenticated mode banner
@@ -56,7 +56,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     });
     if (await poppyChip.isVisible()) {
       await poppyChip.click();
-      const speciesInput = page.getByLabel(/Species/i);
+      const speciesInput = page.getByLabel(/Taxon/i);
       await authExpect(speciesInput).not.toHaveValue("");
     }
   });
@@ -67,7 +67,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     async ({ authenticatedPage: page }) => {
       await page.goto("/");
       await openUploadModal(page);
-      const speciesInput = page.getByLabel(/Species/i);
+      const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
       await Promise.all([
         page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
@@ -121,7 +121,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
 
-    const speciesInput = page.getByLabel(/Species/i);
+    const speciesInput = page.getByLabel(/Taxon/i);
     await speciesInput.fill("Quercus alba");
     const option = page.locator(".MuiAutocomplete-option").first();
     if (await option.isVisible({ timeout: 3000 }).catch(() => false)) {

@@ -294,7 +294,7 @@ export function UploadModal() {
     if (trimmedSpecies && !matchedTaxon && !kingdom) {
       dispatch(
         addToast({
-          message: "Please select a kingdom for the species name you entered",
+          message: "Please select a kingdom for the taxon name you entered",
           type: "error",
         }),
       );
@@ -567,7 +567,7 @@ export function UploadModal() {
               setKingdom(match.kingdom);
             }
           }}
-          label="Species (optional)"
+          label="Taxon (optional)"
           placeholder="e.g. Eschscholzia californica - leave blank if unknown"
           bottomContent={
             aiImageUrl && !species ? (
