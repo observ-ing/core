@@ -102,6 +102,55 @@ DATABASE_URL=<secret: observing-db-admin-url>
 
 Developer note: there is **no** `DATABASE_URL` with `DB_USER=postgres` on any long-running service. If you see a local config that sets it, it's stale.
 
+## Wiping the database (pre-launch)
+
+While the project is pre-launch, occasionally we want a clean slate: drop all
+data and re-run migrations from scratch. The trick is that the app tables
+live across three schemas (`public`, `ingester`, `appview`), the sqlx
+migrations ledger lives in `ingester._sqlx_migrations`, and runtime role
+memberships persist at the Cloud SQL instance level (so you can't undo
+"renames already happened" by dropping the database).
+
+```bash
+# 1. Pause the writer.
+gcloud run services update observing-ingester --region=us-central1 --min-instances=0
+
+# 2. Connect via the Cloud SQL proxy as superuser.
+gcloud auth application-default login   # if ADC is stale
+cloud-sql-proxy observ-ing:us-central1:observing-db --port=5433 &
+ADMIN_URL=$(gcloud secrets versions access latest --secret=observing-db-admin-url)
+PGPASSWORD=$(python3 -c "import urllib.parse,sys; print(urllib.parse.urlparse(sys.argv[1]).password)" "$ADMIN_URL") \
+  psql -h 127.0.0.1 -p 5433 -U postgres -d observing <<'SQL'
+BEGIN;
+DROP SCHEMA IF EXISTS appview CASCADE;
+DROP SCHEMA IF EXISTS ingester CASCADE;
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+GRANT ALL ON SCHEMA public TO postgres;
+GRANT USAGE ON SCHEMA public TO public;
+COMMIT;
+SQL
+
+# 3. Re-run migrations.
+gcloud run jobs execute observing-migrate --region=us-central1 --wait
+
+# 4. Bounce both services so they pick up fresh connections.
+gcloud run services update observing-ingester --region=us-central1 --min-instances=1 --update-env-vars=BOUNCE=$(date +%s)
+gcloud run services update observing-appview  --region=us-central1 --update-env-vars=BOUNCE=$(date +%s)
+
+# 5. Stop the proxy.
+pkill -f "cloud-sql-proxy observ-ing"
+```
+
+Why drop *all* the schemas, not just `public`: the app tables and the sqlx
+migrations ledger live in `ingester`/`appview`. Dropping only `public` leaves
+the ledger intact, which makes the next migrate Job a no-op.
+
+The grant migrations (20260418, 20260419, 20260421) target the pre-rename
+role names; on a from-scratch migrate they no-op. Migration 20260428000001
+re-issues the canonical grants against `appview_runtime` / `ingester_runtime`
+so this runbook produces a working DB without manual grant SQL.
+
 ## Local development
 
 For running the stack locally, see `docs/development.md`.
