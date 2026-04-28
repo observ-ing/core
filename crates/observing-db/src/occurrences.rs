@@ -18,8 +18,7 @@ macro_rules! occurrence_columns {
     taxon_id, taxon_rank, kingdom, phylum, class, "order", family, genus,
     created_at,
     NULL::float8 as distance_meters,
-    NULL::text as source,
-    NULL::text as observer_role
+    NULL::text as source
 "#
     };
 }
@@ -101,8 +100,7 @@ pub async fn get(
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             NULL::float8 as distance_meters,
-            NULL::text as source,
-            NULL::text as observer_role
+            NULL::text as source
         FROM occurrences
         WHERE uri = $1
         "#,
@@ -134,8 +132,7 @@ pub async fn get_nearby(
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
-            NULL::text as source,
-            NULL::text as observer_role
+            NULL::text as source
         FROM occurrences
         WHERE ST_DWithin(
             location,
@@ -179,8 +176,7 @@ pub async fn get_by_bounding_box(
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             created_at,
             NULL::float8 as distance_meters,
-            NULL::text as source,
-            NULL::text as observer_role
+            NULL::text as source
         FROM occurrences
         WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
         AND did != ALL($6)
@@ -217,8 +213,7 @@ pub async fn get_feed(
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
                 created_at,
                 NULL::float8 as distance_meters,
-                NULL::text as source,
-                NULL::text as observer_role
+                NULL::text as source
             FROM occurrences
             WHERE created_at < ($2::text)::timestamptz
             AND did != ALL($3)
@@ -244,8 +239,7 @@ pub async fn get_feed(
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
                 created_at,
                 NULL::float8 as distance_meters,
-                NULL::text as source,
-                NULL::text as observer_role
+                NULL::text as source
             FROM occurrences
             WHERE did != ALL($2)
             ORDER BY created_at DESC

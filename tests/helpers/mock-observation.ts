@@ -31,14 +31,6 @@ export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occur
       handle: MOCK_TEST_USER.handle,
       displayName: MOCK_TEST_USER.displayName,
     },
-    observers: [
-      {
-        did: MOCK_TEST_USER.did,
-        handle: MOCK_TEST_USER.handle,
-        displayName: MOCK_TEST_USER.displayName,
-        role: "owner",
-      },
-    ],
     communityId: "Quercus alba",
     effectiveTaxonomy: {
       scientificName: "Quercus alba",

@@ -1,4 +1,3 @@
-pub mod actors;
 pub mod admin;
 pub mod comments;
 pub mod feeds;

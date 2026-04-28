@@ -57,12 +57,9 @@ pub struct AssociatedMediaRef {
     pub cid: String,
 }
 
-/// Result of parsing an occurrence record, containing both the database
-/// params and the typed `recorded_by` field for co-observer processing.
+/// Result of parsing an occurrence record.
 pub struct ParsedOccurrence {
     pub params: UpsertOccurrenceParams,
-    /// The `recordedBy` DIDs from the lexicon record (if present).
-    pub recorded_by: Option<Vec<String>>,
     /// Strong refs to `bio.lexicons.temp.v0-1.media` records. The ingester resolves
     /// these asynchronously to populate `params.associated_media`; the appview
     /// write path ignores this field because it already has the blobs in-memory.
@@ -80,8 +77,6 @@ pub struct ParsedOccurrence {
 /// fallback would conflate post time with observation time and make backdated
 /// observations sort to the wrong place in feeds.
 ///
-/// Returns a [`ParsedOccurrence`] containing the upsert params and the typed
-/// `recorded_by` list so callers can process co-observers without re-parsing JSON.
 pub fn occurrence_from_json(
     record_json: &Value,
     uri: String,
@@ -144,15 +139,6 @@ pub fn occurrence_from_json(
         .and_then(parse_datetime)
         .unwrap_or(fallback_time);
 
-    let recorded_by: Option<Vec<String>> = record_json
-        .get("recordedBy")
-        .and_then(|v| v.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str().map(Into::into))
-                .collect()
-        });
-
     let associated_media_refs: Vec<AssociatedMediaRef> = record_json
         .get("associatedMedia")
         .and_then(|v| v.as_array())
@@ -201,7 +187,6 @@ pub fn occurrence_from_json(
             kingdom: None,
             created_at,
         },
-        recorded_by,
         associated_media_refs,
     })
 }
@@ -400,23 +385,6 @@ pub fn like_from_json(
     })
 }
 
-/// Extract co-observer DIDs from a typed `recorded_by` list,
-/// filtering out the primary author.
-pub fn extract_co_observers<T: AsRef<str>>(
-    recorded_by: Option<&[T]>,
-    author_did: &str,
-) -> Vec<String> {
-    recorded_by
-        .map(|arr| {
-            arr.iter()
-                .map(AsRef::as_ref)
-                .filter(|did| *did != author_did)
-                .map(|s| s.to_string())
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -490,30 +458,6 @@ mod tests {
     fn test_parse_naive_datetime_invalid() {
         assert!(parse_naive_datetime("").is_none());
         assert!(parse_naive_datetime("garbage").is_none());
-    }
-
-    #[test]
-    fn test_extract_co_observers() {
-        let recorded_by = vec![
-            "did:plc:author".to_string(),
-            "did:plc:coobs1".to_string(),
-            "did:plc:coobs2".to_string(),
-        ];
-        let result = extract_co_observers(Some(recorded_by.as_slice()), "did:plc:author");
-        assert_eq!(result, vec!["did:plc:coobs1", "did:plc:coobs2"]);
-    }
-
-    #[test]
-    fn test_extract_co_observers_none() {
-        let result: Vec<String> = extract_co_observers(None::<&[String]>, "did:plc:author");
-        assert!(result.is_empty());
-    }
-
-    #[test]
-    fn test_extract_co_observers_empty() {
-        let recorded_by: Vec<String> = vec![];
-        let result = extract_co_observers(Some(recorded_by.as_slice()), "did:plc:author");
-        assert!(result.is_empty());
     }
 
     /// Baseline happy-path coverage for `identification_from_json`. Locks in

@@ -16,6 +16,5 @@ export type UpdateOccurrenceRequest = {
    * Media whose CID is not in this list is dropped from the record.
    */
   retainedBlobCids?: Array<string>;
-  recordedBy?: Array<string>;
   scientificName?: string;
 };

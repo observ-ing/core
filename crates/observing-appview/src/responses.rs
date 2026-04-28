@@ -2,7 +2,7 @@ use serde::Serialize;
 use ts_rs::TS;
 
 use crate::enrichment::{
-    EnrichedComment, EnrichedIdentification, EnrichedInteraction, ObserverInfo, OccurrenceResponse,
+    EnrichedComment, EnrichedIdentification, EnrichedInteraction, OccurrenceResponse,
     ProfileSummary,
 };
 use crate::taxonomy_client::TaxonResult;
@@ -150,12 +150,6 @@ pub struct OccurrenceDetailResponse {
     pub comments: Vec<EnrichedComment>,
 }
 
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ObserversResponse {
-    pub observers: Vec<ObserverInfo>,
-}
-
 // --- Notification responses ---
 
 #[derive(Serialize)]
@@ -179,25 +173,6 @@ pub struct IdentificationListResponse {
 #[serde(rename_all = "camelCase")]
 pub struct InteractionListResponse {
     pub interactions: Vec<EnrichedInteraction>,
-}
-
-// --- Actor responses ---
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActorResponse {
-    pub did: String,
-    pub handle: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub display_name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub avatar: Option<String>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ActorSearchResponse {
-    pub actors: Vec<ActorResponse>,
 }
 
 // --- Taxonomy responses ---

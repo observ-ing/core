@@ -3,7 +3,6 @@ import { Link, useNavigate } from "react-router-dom";
 import {
   Box,
   Avatar,
-  AvatarGroup,
   Typography,
   IconButton,
   Menu,
@@ -46,12 +45,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const currentUser = useAppSelector((state) => state.auth.user);
   const isOwnPost = currentUser?.did === observation.observer.did;
 
-  // Get owner and co-observers
-  const observers = observation.observers || [];
-  const owner = observers.find((o) => o.role === "owner") || observation.observer;
-  const coObservers = observers.filter((o) => o.role === "co-observer");
-  const hasCoObservers = coObservers.length > 0;
-
+  const owner = observation.observer;
   const displayName = getDisplayName(owner);
   const handle = owner.handle ? `@${owner.handle}` : "";
   const timeAgo = <RelativeTime date={new Date(observation.createdAt)} />;
@@ -63,9 +57,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
 
   const observationUrl = getObservationUrl(observation.uri);
   const pdslsUrl = getPdslsUrl(observation.uri);
-
-  // Build tooltip for co-observers
-  const coObserverNames = coObservers.map((o) => getDisplayName(o)).join(", ");
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -101,30 +92,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
     navigate(observationUrl);
   };
 
-  const avatarEl = hasCoObservers ? (
-    <Tooltip title={`With ${coObserverNames}`} placement="top">
-      <AvatarGroup
-        max={3}
-        sx={{
-          "& .MuiAvatar-root": {
-            width: 36,
-            height: 36,
-            border: "2px solid",
-            borderColor: "background.paper",
-          },
-        }}
-      >
-        <Avatar {...(owner.avatar ? { src: owner.avatar } : {})} alt={displayName} />
-        {coObservers.slice(0, 2).map((co) => (
-          <Avatar
-            key={co.did}
-            {...(co.avatar ? { src: co.avatar } : {})}
-            alt={co.displayName || co.handle || co.did}
-          />
-        ))}
-      </AvatarGroup>
-    </Tooltip>
-  ) : (
+  const avatarEl = (
     <Avatar
       component={Link}
       to={`/profile/${encodeURIComponent(owner.did)}`}
@@ -157,21 +125,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
       >
         {displayName}
       </Typography>
-      {hasCoObservers && (
-        <Tooltip title={`With ${coObserverNames}`}>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "primary.main",
-              cursor: "pointer",
-              "&:hover": { textDecoration: "underline" },
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            +{coObservers.length} other{coObservers.length > 1 ? "s" : ""}
-          </Typography>
-        </Tooltip>
-      )}
       {handle && (
         <Typography
           variant="body2"

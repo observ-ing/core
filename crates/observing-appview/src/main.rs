@@ -127,8 +127,7 @@ async fn main() {
         )
         .route(
             "/api/occurrences/{*uri}",
-            get(routes::occurrences::get_occurrence_or_observers)
-                .delete(routes::occurrences::delete_occurrence),
+            get(routes::occurrences::get_occurrence).delete(routes::occurrences::delete_occurrence),
         )
         // Occurrences write (no wildcard)
         .route(
@@ -181,7 +180,6 @@ async fn main() {
             post(routes::notifications::mark_read),
         )
         // Actors
-        .route("/api/actors/search", get(routes::actors::search))
         // Species identification
         .route("/api/species-id", post(routes::species_id::identify))
         // Taxonomy

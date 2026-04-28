@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source,\n                NULL::text as observer_role\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE uri = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -107,18 +107,11 @@
         "ordinal": 20,
         "name": "source",
         "type_info": "Text"
-      },
-      {
-        "ordinal": 21,
-        "name": "observer_role",
-        "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "Text",
-        "TextArray"
+        "Text"
       ]
     },
     "nullable": [
@@ -142,9 +135,8 @@
       true,
       false,
       null,
-      null,
       null
     ]
   },
-  "hash": "114458e567cbb3ffe4b474d69acb4857c4b7acc946a144c51d8c2a269eaa55cd"
+  "hash": "027221eae91c91c3830f5d532ce56d1e9990fc31dcb1673bb17e962859609d0f"
 }

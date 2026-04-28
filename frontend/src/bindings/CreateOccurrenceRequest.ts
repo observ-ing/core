@@ -7,6 +7,5 @@ export type CreateOccurrenceRequest = {
   coordinateUncertaintyInMeters?: number;
   eventDate?: string;
   images?: Array<ImageUpload>;
-  recordedBy?: Array<string>;
   scientificName?: string;
 };

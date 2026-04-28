@@ -1,5 +1,4 @@
 use axum::extract::{Path, Query, State};
-use axum::response::IntoResponse;
 use axum::Json;
 use serde::Deserialize;
 
@@ -9,8 +8,7 @@ use crate::enrichment;
 use crate::error::AppError;
 use crate::responses::{
     BboxBounds, BboxMeta, BboxResponse, GeoJsonFeature, GeoJsonPoint, GeoJsonProperties,
-    GeoJsonResponse, NearbyMeta, NearbyResponse, ObserversResponse, OccurrenceDetailResponse,
-    OccurrenceListResponse,
+    GeoJsonResponse, NearbyMeta, NearbyResponse, OccurrenceDetailResponse, OccurrenceListResponse,
 };
 use crate::state::AppState;
 
@@ -233,32 +231,16 @@ pub async fn get_geojson(
     }))
 }
 
-/// Handles both GET /api/occurrences/{uri} and GET /api/occurrences/{uri}/observers
-/// since axum catch-all wildcards don't allow sub-routes.
-pub async fn get_occurrence_or_observers(
+pub async fn get_occurrence(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
-    Path(full_path): Path<String>,
-) -> Result<axum::response::Response, AppError> {
-    if let Some(uri) = full_path.strip_suffix("/observers") {
-        return Ok(get_observers_inner(&state, uri).await?.into_response());
-    }
-
-    Ok(get_occurrence_inner(&state, &cookies, &full_path)
-        .await?
-        .into_response())
-}
-
-async fn get_occurrence_inner(
-    state: &AppState,
-    cookies: &axum_extra::extract::CookieJar,
-    uri: &str,
+    Path(uri): Path<String>,
 ) -> Result<Json<OccurrenceDetailResponse>, AppError> {
-    let row = observing_db::occurrences::get(&state.pool, uri)
+    let row = observing_db::occurrences::get(&state.pool, &uri)
         .await?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
 
-    let viewer = session_did(cookies);
+    let viewer = session_did(&cookies);
     let enriched = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -274,28 +256,16 @@ async fn get_occurrence_inner(
         .ok_or_else(|| AppError::Internal("Failed to enrich occurrence".into()))?;
 
     let identification_rows =
-        observing_db::identifications::get_for_occurrence(&state.pool, uri).await?;
+        observing_db::identifications::get_for_occurrence(&state.pool, &uri).await?;
     let identifications =
         enrichment::enrich_identifications(&state.resolver, &identification_rows).await;
 
-    let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, uri).await?;
+    let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, &uri).await?;
     let comments = enrichment::enrich_comments(&state.resolver, &comment_rows).await;
 
     Ok(Json(OccurrenceDetailResponse {
         occurrence,
         identifications,
         comments,
-    }))
-}
-
-async fn get_observers_inner(
-    state: &AppState,
-    uri: &str,
-) -> Result<Json<ObserversResponse>, AppError> {
-    let observers = observing_db::observers::get_for_occurrence(&state.pool, uri).await?;
-    let enriched = enrichment::enrich_observers(&state.resolver, &observers).await;
-
-    Ok(Json(ObserversResponse {
-        observers: enriched,
     }))
 }
