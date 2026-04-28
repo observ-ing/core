@@ -34,9 +34,9 @@ authTest.describe("Accessibility - Authenticated", () => {
   authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
     await page.goto("/");
     await openUploadModal(page);
-    await authExpect(page.getByLabel(/Species/i)).toBeVisible();
+    await authExpect(page.getByLabel(/Taxon/i)).toBeVisible();
     await page.keyboard.press("Escape");
-    await authExpect(page.getByLabel(/Species/i)).not.toBeVisible();
+    await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
   });
 
   // TC-A11Y-003: Autocomplete keyboard navigation
@@ -45,7 +45,7 @@ authTest.describe("Accessibility - Authenticated", () => {
     await page.goto("/");
     await openUploadModal(page);
 
-    const speciesInput = page.getByLabel(/Species/i);
+    const speciesInput = page.getByLabel(/Taxon/i);
     await speciesInput.click();
     await Promise.all([
       page.waitForResponse((r) => r.url().includes("/api/taxa/search")),

@@ -104,7 +104,7 @@ authTest.describe("Observation Edit - Logged In", () => {
     await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
     // Species input should have value
-    const speciesInput = page.getByLabel(/Species/i);
+    const speciesInput = page.getByLabel(/Taxon/i);
     await authExpect(speciesInput).toHaveValue("Quercus alba");
   });
 
