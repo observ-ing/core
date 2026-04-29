@@ -690,7 +690,7 @@ dependencies = [
  "multihash",
  "serde",
  "serde_bytes",
- "unsigned-varint",
+ "unsigned-varint 0.8.0",
 ]
 
 [[package]]
@@ -989,6 +989,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "curve25519-dalek"
+version = "4.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97fb8b7c4503de7d6ae7b42ab72a5a59857b4c937ec27a3d4539dba95b5ab2be"
+dependencies = [
+ "cfg-if",
+ "cpufeatures 0.2.17",
+ "curve25519-dalek-derive",
+ "digest 0.10.7",
+ "fiat-crypto",
+ "rustc_version",
+ "subtle",
+ "zeroize",
+]
+
+[[package]]
+name = "curve25519-dalek-derive"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f46882e17999c6cc590af592290432be3bce0428cb0d5f8b6715e4dc7b383eb3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "darling"
 version = "0.23.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1093,6 +1120,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "derive_more"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4a9b99b9cbbe49445b21764dc0625032a89b145a2642e67603e1c936f5458d05"
+dependencies = [
+ "derive_more-impl",
+]
+
+[[package]]
+name = "derive_more-impl"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7330aeadfbe296029522e6c40f315320aba36fc43a5b3632f3795348f3bd22"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "unicode-xid",
+]
+
+[[package]]
+name = "diatomic-waker"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab03c107fafeb3ee9f5925686dbb7a73bc76e3932abb0d2b365cb64b169cf04c"
+
+[[package]]
 name = "digest"
 version = "0.10.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1150,6 +1204,31 @@ dependencies = [
  "rfc6979",
  "signature",
  "spki",
+]
+
+[[package]]
+name = "ed25519"
+version = "2.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "115531babc129696a58c64a4fef0a8bf9e9698629fb97e9e40767d235cfbcd53"
+dependencies = [
+ "pkcs8",
+ "signature",
+]
+
+[[package]]
+name = "ed25519-dalek"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "70e796c081cee67dc755e1a36a0a172b897fab85fc3f6bc48307991f64e4eca9"
+dependencies = [
+ "curve25519-dalek",
+ "ed25519",
+ "rand_core 0.6.4",
+ "serde",
+ "sha2 0.10.9",
+ "subtle",
+ "zeroize",
 ]
 
 [[package]]
@@ -1276,6 +1355,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fiat-crypto"
+version = "0.2.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "28dea519a9695b9977216879a3ebfddf92f1c08c05d984f8996aecd6ecdc811d"
+
+[[package]]
 name = "file-blob-cache"
 version = "0.1.0"
 dependencies = [
@@ -1397,6 +1482,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "futures-buffered"
+version = "0.2.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4421cb78ee172b6b06080093479d3c50f058e7c81b7d577bbb8d118d551d4cd5"
+dependencies = [
+ "cordyceps",
+ "diatomic-waker",
+ "futures-core",
+ "pin-project-lite",
+ "spin 0.10.0",
+]
+
+[[package]]
 name = "futures-channel"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1439,6 +1537,19 @@ name = "futures-io"
 version = "0.3.32"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cecba35d7ad927e23624b22ad55235f2239cfa44fd10428eecbeba6d6a717718"
+
+[[package]]
+name = "futures-lite"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f78e10609fe0e0b3f4157ffab1876319b5b0db102a2c60dc4626306dc46b44ad"
+dependencies = [
+ "fastrand",
+ "futures-core",
+ "futures-io",
+ "parking",
+ "pin-project-lite",
+]
 
 [[package]]
 name = "futures-macro"
@@ -2174,6 +2285,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "iroh-car"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cb7f8cd4cb9aa083fba8b52e921764252d0b4dcb1cd6d120b809dbfe1106e81a"
+dependencies = [
+ "anyhow",
+ "cid",
+ "futures",
+ "serde",
+ "serde_ipld_dagcbor",
+ "thiserror 1.0.69",
+ "tokio",
+ "unsigned-varint 0.7.2",
+]
+
+[[package]]
 name = "is_terminal_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2184,6 +2311,19 @@ name = "itoa"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+
+[[package]]
+name = "jacquard-api"
+version = "0.12.0-beta.2"
+source = "git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058#57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058"
+dependencies = [
+ "jacquard-common 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "jacquard-derive 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "jacquard-lexicon 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "miette",
+ "serde",
+ "thiserror 2.0.18",
+]
 
 [[package]]
 name = "jacquard-common"
@@ -2236,13 +2376,78 @@ dependencies = [
 ]
 
 [[package]]
+name = "jacquard-common"
+version = "0.12.0-beta.2"
+source = "git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058#57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058"
+dependencies = [
+ "base64",
+ "bon",
+ "bytes",
+ "chrono",
+ "ciborium",
+ "ciborium-io",
+ "cid",
+ "ed25519-dalek",
+ "fluent-uri",
+ "futures",
+ "getrandom 0.2.17",
+ "getrandom 0.3.4",
+ "hashbrown 0.15.5",
+ "http",
+ "ipld-core",
+ "k256",
+ "maitake-sync",
+ "miette",
+ "multibase",
+ "multihash",
+ "n0-future",
+ "ouroboros",
+ "oxilangtag",
+ "p256",
+ "phf",
+ "postcard",
+ "rand 0.9.4",
+ "regex",
+ "regex-automata",
+ "regex-lite",
+ "reqwest 0.12.28",
+ "rustversion",
+ "serde",
+ "serde_bytes",
+ "serde_html_form 0.3.2",
+ "serde_ipld_dagcbor",
+ "serde_json",
+ "signature",
+ "smol_str",
+ "spin 0.10.0",
+ "thiserror 2.0.18",
+ "tokio",
+ "tokio-tungstenite-wasm",
+ "tokio-util",
+ "trait-variant",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "jacquard-derive"
 version = "0.12.0-beta.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93f83b8049e4e7916e0f6764c3deaf5e55a7ffbab26c379415e9b1d4d645d957"
 dependencies = [
  "heck 0.5.0",
- "jacquard-lexicon",
+ "jacquard-lexicon 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "jacquard-derive"
+version = "0.12.0-beta.2"
+source = "git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058#57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058"
+dependencies = [
+ "heck 0.5.0",
+ "jacquard-lexicon 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
  "proc-macro2",
  "quote",
  "syn",
@@ -2258,7 +2463,7 @@ dependencies = [
  "dashmap",
  "heck 0.5.0",
  "inventory",
- "jacquard-common",
+ "jacquard-common 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "miette",
  "multihash",
  "prettyplease",
@@ -2277,6 +2482,60 @@ dependencies = [
 ]
 
 [[package]]
+name = "jacquard-lexicon"
+version = "0.12.0-beta.2"
+source = "git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058#57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058"
+dependencies = [
+ "cid",
+ "dashmap",
+ "heck 0.5.0",
+ "inventory",
+ "jacquard-common 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "miette",
+ "multihash",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_ipld_dagcbor",
+ "serde_json",
+ "serde_path_to_error",
+ "serde_repr",
+ "serde_with",
+ "sha2 0.10.9",
+ "syn",
+ "thiserror 2.0.18",
+ "unicode-segmentation",
+]
+
+[[package]]
+name = "jacquard-repo"
+version = "0.12.0-beta.2"
+source = "git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058#57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058"
+dependencies = [
+ "bytes",
+ "cid",
+ "ed25519-dalek",
+ "iroh-car",
+ "jacquard-api",
+ "jacquard-common 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "jacquard-derive 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "k256",
+ "miette",
+ "multihash",
+ "n0-future",
+ "p256",
+ "serde",
+ "serde_bytes",
+ "serde_ipld_dagcbor",
+ "sha2 0.10.9",
+ "smol_str",
+ "thiserror 2.0.18",
+ "tokio",
+ "trait-variant",
+]
+
+[[package]]
 name = "jetstream-client"
 version = "0.1.0"
 dependencies = [
@@ -2285,7 +2544,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "tokio-tungstenite",
+ "tokio-tungstenite 0.29.0",
  "tracing",
 ]
 
@@ -2428,7 +2687,9 @@ dependencies = [
  "cfg-if",
  "ecdsa",
  "elliptic-curve",
+ "once_cell",
  "sha2 0.10.9",
+ "signature",
 ]
 
 [[package]]
@@ -2743,7 +3004,7 @@ checksum = "6b430e7953c29dd6a09afc29ff0bb69c6e306329ee6794700aee27b76a1aea8d"
 dependencies = [
  "core2",
  "serde",
- "unsigned-varint",
+ "unsigned-varint 0.8.0",
 ]
 
 [[package]]
@@ -2751,6 +3012,27 @@ name = "mycelium-bitfield"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24e0cc5e2c585acbd15c5ce911dff71e1f4d5313f43345873311c4f5efd741cc"
+
+[[package]]
+name = "n0-future"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb0e5d99e681ab3c938842b96fcb41bf8a7bb4bfdb11ccbd653a7e83e06c794"
+dependencies = [
+ "cfg_aliases",
+ "derive_more",
+ "futures-buffered",
+ "futures-lite",
+ "futures-util",
+ "js-sys",
+ "pin-project",
+ "send_wrapper",
+ "tokio",
+ "tokio-util",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-time",
+]
 
 [[package]]
 name = "native-tls"
@@ -2892,7 +3174,7 @@ dependencies = [
  "futures",
  "gbif-api",
  "hickory-resolver",
- "jacquard-common",
+ "jacquard-common 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "moka",
  "nominatim-client",
  "observing-db",
@@ -2916,7 +3198,7 @@ name = "observing-db"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "jacquard-lexicon",
+ "jacquard-lexicon 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "observing-lexicons",
  "serde",
  "serde_json",
@@ -2935,11 +3217,14 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "jacquard-common 0.12.0-beta.2 (git+https://tangled.org/nonbinary.computer/jacquard.git?rev=57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058)",
+ "jacquard-repo",
  "jetstream-client",
  "observing-db",
  "observing-lexicons",
  "reqwest 0.13.2",
  "serde",
+ "serde_ipld_dagcbor",
  "serde_json",
  "sqlx",
  "tokio",
@@ -2956,9 +3241,9 @@ dependencies = [
 name = "observing-lexicons"
 version = "0.1.0"
 dependencies = [
- "jacquard-common",
- "jacquard-derive",
- "jacquard-lexicon",
+ "jacquard-common 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jacquard-derive 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "jacquard-lexicon 0.12.0-beta.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rustversion",
  "serde",
 ]
@@ -3663,6 +3948,7 @@ dependencies = [
  "bytes",
  "encoding_rs",
  "futures-core",
+ "futures-util",
  "h2",
  "http",
  "http-body",
@@ -3687,12 +3973,14 @@ dependencies = [
  "tokio",
  "tokio-native-tls",
  "tokio-rustls",
+ "tokio-util",
  "tower",
  "tower-http",
  "tower-service",
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "wasm-streams 0.4.2",
  "web-sys",
  "webpki-roots",
 ]
@@ -3736,7 +4024,7 @@ dependencies = [
  "url",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams",
+ "wasm-streams 0.5.0",
  "web-sys",
 ]
 
@@ -3978,6 +4266,12 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+
+[[package]]
+name = "send_wrapper"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
 
 [[package]]
 name = "serde"
@@ -4771,6 +5065,22 @@ dependencies = [
 
 [[package]]
 name = "tokio-tungstenite"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "edc5f74e248dc973e0dbb7b74c7e0d6fcc301c694ff50049504004ef4d0cdcd9"
+dependencies = [
+ "futures-util",
+ "log",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-pki-types",
+ "tokio",
+ "tokio-rustls",
+ "tungstenite 0.24.0",
+]
+
+[[package]]
+name = "tokio-tungstenite"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
@@ -4780,7 +5090,26 @@ dependencies = [
  "native-tls",
  "tokio",
  "tokio-native-tls",
- "tungstenite",
+ "tungstenite 0.29.0",
+]
+
+[[package]]
+name = "tokio-tungstenite-wasm"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e21a5c399399c3db9f08d8297ac12b500e86bca82e930253fdc62eaf9c0de6ae"
+dependencies = [
+ "futures-channel",
+ "futures-util",
+ "http",
+ "httparse",
+ "js-sys",
+ "rustls",
+ "thiserror 1.0.69",
+ "tokio",
+ "tokio-tungstenite 0.24.0",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -4792,6 +5121,7 @@ dependencies = [
  "bytes",
  "futures-core",
  "futures-sink",
+ "futures-util",
  "pin-project-lite",
  "tokio",
 ]
@@ -4986,6 +5316,26 @@ dependencies = [
 
 [[package]]
 name = "tungstenite"
+version = "0.24.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18e5b8366ee7a95b16d32197d0b2604b43a0be89dc5fac9f8e96ccafbaedda8a"
+dependencies = [
+ "byteorder",
+ "bytes",
+ "data-encoding",
+ "http",
+ "httparse",
+ "log",
+ "rand 0.8.5",
+ "rustls",
+ "rustls-pki-types",
+ "sha1",
+ "thiserror 1.0.69",
+ "utf-8",
+]
+
+[[package]]
+name = "tungstenite"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
@@ -5060,6 +5410,12 @@ checksum = "ebc1c04c71510c7f702b52b7c350734c9ff1295c464a03335b00bb84fc54f853"
 
 [[package]]
 name = "unsigned-varint"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6889a77d49f1f013504cec6bf97a2c730394adedaeb1deb5ea08949a50541105"
+
+[[package]]
+name = "unsigned-varint"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "eb066959b24b5196ae73cb057f45598450d2c5f71460e98c49b738086eff9c06"
@@ -5117,6 +5473,12 @@ name = "urlencoding"
 version = "2.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "daf8dba3b7eb870caf1ddeed7bc9d2a049f3cfdfae7cb521b087cc33ae4c49da"
+
+[[package]]
+name = "utf-8"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09cc8ee72d2a9becf2f2febe0205bbed8fc6615b7cb429ad062dc7b7ddd036a9"
 
 [[package]]
 name = "utf8-zero"
@@ -5289,6 +5651,19 @@ dependencies = [
  "indexmap",
  "wasm-encoder",
  "wasmparser",
+]
+
+[[package]]
+name = "wasm-streams"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "15053d8d85c7eccdbefef60f06769760a563c7f0a9d6902a13d35c7800b0ad65"
+dependencies = [
+ "futures-util",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

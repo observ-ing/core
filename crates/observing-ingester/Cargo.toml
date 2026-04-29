@@ -48,6 +48,12 @@ clap = { version = "4", features = ["derive"] }
 # HTTP client (for backfill)
 reqwest = { workspace = true }
 
+# AT Protocol repo primitives (CAR parsing for backfill).
+# Pinned to a commit because list_collection_data is post-0.12.0-beta.2.
+jacquard-repo = { git = "https://tangled.org/nonbinary.computer/jacquard.git", rev = "57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058" }
+jacquard-common = { git = "https://tangled.org/nonbinary.computer/jacquard.git", rev = "57f5b7abb4a30dd5c620eec9bc2ef2e3a19a2058" }
+serde_ipld_dagcbor = "0.6"
+
 # URL parsing
 url = { workspace = true }
 urlencoding = { workspace = true }
