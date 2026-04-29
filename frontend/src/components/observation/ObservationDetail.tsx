@@ -268,7 +268,7 @@ export function ObservationDetail() {
         {/* Species Header */}
         <Box sx={{ px: 3, pt: 2, pb: 1 }}>
           {species ? (
-            <TaxonLink name={species} kingdom={taxonomy?.kingdom} />
+            <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank={taxonomy?.rank} />
           ) : (
             <Typography
               variant="h5"

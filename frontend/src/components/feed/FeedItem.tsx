@@ -198,7 +198,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
               <TaxonLink
                 name={species}
                 kingdom={taxonomy?.kingdom}
-                rank={undefined}
+                rank={taxonomy?.rank}
                 onClick={(e) => e.stopPropagation()}
               />
             ) : (

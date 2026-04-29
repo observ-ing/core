@@ -59,7 +59,10 @@ export const ExploreGridCard = memo(function ExploreGridCard({
           <Typography
             variant="body2"
             sx={{
-              fontStyle: species && shouldItalicizeTaxonName(species) ? "italic" : "normal",
+              fontStyle:
+                species && shouldItalicizeTaxonName(species, observation.effectiveTaxonomy?.rank)
+                  ? "italic"
+                  : "normal",
               color: "primary.main",
               fontWeight: 500,
               overflow: "hidden",
