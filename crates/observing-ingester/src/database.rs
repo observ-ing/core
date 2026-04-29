@@ -77,8 +77,9 @@ pub struct Database {
 }
 
 impl Database {
-    /// Connect to the database
-    pub async fn connect(database_url: &str) -> Result<Self> {
+    /// Connect to the database. `slingshot_url` is the optional Slingshot
+    /// endpoint for media record fetches; `None` keeps the direct-PDS path.
+    pub async fn connect(database_url: &str, slingshot_url: Option<String>) -> Result<Self> {
         info!("Connecting to database...");
         let pool = PgPoolOptions::new()
             .max_connections(10)
@@ -89,7 +90,7 @@ impl Database {
         info!("Database connection established");
         Ok(Self {
             pool,
-            media_resolver: MediaResolver::new(),
+            media_resolver: MediaResolver::new(slingshot_url),
         })
     }
 

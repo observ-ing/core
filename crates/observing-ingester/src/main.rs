@@ -58,6 +58,10 @@ async fn main() -> Result<()> {
     info!("Relay: {}", config.relay_url);
     info!("Port: {}", config.port);
     info!("Collections: {:?}", config.collections);
+    match &config.slingshot_url {
+        Some(url) => info!("Slingshot: {} (media fetches will try this first)", url),
+        None => info!("Slingshot: disabled (media fetches go directly to PDSes)"),
+    }
 
     // Create shared state for HTTP server
     let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
@@ -74,7 +78,7 @@ async fn main() -> Result<()> {
     // Migrations run out-of-band in a dedicated Cloud Run Job; see
     // crates/observing-migrate. The runtime role used here has no DDL
     // privileges and should never attempt to migrate.
-    let db = Database::connect(&config.database_url).await?;
+    let db = Database::connect(&config.database_url, config.slingshot_url.clone()).await?;
 
     // Load saved cursor
     let saved_cursor = db.get_cursor().await?;
@@ -105,8 +109,10 @@ async fn main() -> Result<()> {
         }
     });
 
-    // Spawn cursor saver (every 30 seconds)
-    let cursor_db = Database::connect(&config.database_url).await?;
+    // Spawn cursor saver (every 30 seconds). The cursor path doesn't fetch
+    // media, so the slingshot URL is irrelevant here — pass None to keep this
+    // resolver inert.
+    let cursor_db = Database::connect(&config.database_url, None).await?;
     let cursor_state = state.clone();
     tokio::spawn(async move {
         let mut ticker = interval(Duration::from_secs(30));
@@ -283,6 +289,14 @@ fn load_config(cli: &Cli) -> Result<IngesterConfig> {
         .and_then(|s| s.parse::<u16>().ok())
         .unwrap_or(8080);
 
+    // Slingshot is opt-in. When set (e.g. https://slingshot.microcosm.blue),
+    // the media resolver tries it first to avoid plc.directory + cold-PDS
+    // round trips. Empty string is treated as unset.
+    let slingshot_url = std::env::var("SLINGSHOT_URL")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty());
+
     let collections = match &cli.collections {
         Some(names) => resolve_collection_names(names).map_err(IngesterError::Config)?,
         None => ALL_COLLECTIONS
@@ -297,5 +311,6 @@ fn load_config(cli: &Cli) -> Result<IngesterConfig> {
         cursor,
         port,
         collections,
+        slingshot_url,
     })
 }

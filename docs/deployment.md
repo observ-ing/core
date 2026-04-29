@@ -77,6 +77,13 @@ CACHE_TTL_SECS=...            # Optional, seconds
 PORT=8080
 JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe
 
+# Optional: when set, the media resolver tries this Slingshot endpoint
+# (https://slingshot.microcosm.blue) before falling back to a direct PDS
+# fetch. Slingshot is a firehose-warmed edge cache, so a hit avoids both
+# the plc.directory DID lookup and the cold PDS round trip. Unset to
+# disable.
+SLINGSHOT_URL=https://slingshot.microcosm.blue
+
 DB_HOST=/cloudsql/<project>:<region>:observing-db
 DB_NAME=observing
 DB_USER=ingester_runtime
