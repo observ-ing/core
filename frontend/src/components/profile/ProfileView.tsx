@@ -335,6 +335,7 @@ export function ProfileView() {
                     sx={{
                       fontStyle: shouldItalicizeTaxonName(
                         occ.communityId || occ.effectiveTaxonomy?.scientificName || "",
+                        occ.effectiveTaxonomy?.rank,
                       )
                         ? "italic"
                         : "normal",

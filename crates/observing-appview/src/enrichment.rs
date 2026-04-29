@@ -70,6 +70,10 @@ pub struct EffectiveTaxonomy {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub vernacular_name: Option<String>,
+    /// Lowercase Darwin Core rank of `scientific_name` (e.g. "genus", "species").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub rank: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub kingdom: Option<String>,
@@ -272,6 +276,7 @@ async fn resolve_effective_taxonomy(
         return Some(EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
             vernacular_name: detail.common_name,
+            rank: Some(detail.rank.to_lowercase()),
             kingdom: detail.kingdom,
             phylum: detail.phylum,
             class: detail.class,
@@ -289,6 +294,7 @@ async fn resolve_effective_taxonomy(
         return Some(EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
             vernacular_name: None,
+            rank: id.taxon_rank.as_deref().map(str::to_lowercase),
             kingdom: id.kingdom.clone(),
             phylum: id.phylum.clone(),
             class: id.class.clone(),
@@ -302,6 +308,7 @@ async fn resolve_effective_taxonomy(
     Some(EffectiveTaxonomy {
         scientific_name: effective_name.to_string(),
         vernacular_name: None,
+        rank: None,
         kingdom: None,
         phylum: None,
         class: None,

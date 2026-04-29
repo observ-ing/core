@@ -3,6 +3,10 @@
 export type EffectiveTaxonomy = {
   scientificName: string;
   vernacularName?: string;
+  /**
+   * Lowercase Darwin Core rank of `scientific_name` (e.g. "genus", "species").
+   */
+  rank?: string;
   kingdom?: string;
   phylum?: string;
   class?: string;
