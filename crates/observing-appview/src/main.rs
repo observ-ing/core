@@ -246,6 +246,7 @@ async fn main() {
             info!(path = %path.display(), "Serving pre-built frontend");
             let fallback = ServeDir::new(&path).fallback(ServeFile::new(path.join("index.html")));
             app.fallback_service(fallback)
+                .layer(axum_middleware::from_fn(middleware::static_cache_control))
         }
         None => {
             let vite_url = "http://localhost:5173";
