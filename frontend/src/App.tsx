@@ -21,6 +21,7 @@ import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
 import { NotFound } from "./components/common/NotFound";
 import { OfflineBanner } from "./components/common/OfflineBanner";
+import { UpdatePrompt } from "./components/common/UpdatePrompt";
 import { LexiconView } from "./components/lexicon/LexiconView";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
@@ -136,6 +137,7 @@ function AppContent() {
       <UploadModal />
       <DeleteConfirmDialog />
       <ToastContainer />
+      <UpdatePrompt />
     </Box>
   );
 }
