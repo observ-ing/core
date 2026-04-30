@@ -1,8 +1,9 @@
 //! Backfill records from AT Protocol repos into the local database.
 //!
-//! For each DID provided, resolves their PDS endpoint, lists all records
-//! under each collection, and processes them through the same pipeline
-//! the firehose ingester uses.
+//! For each DID provided, resolves their PDS endpoint, fetches the full
+//! repo as a CAR file via com.atproto.sync.getRepo, and processes records
+//! under each enabled collection through the same pipeline the firehose
+//! ingester uses.
 //!
 //! Automatically resolves dependencies: if identifications, comments, or
 //! likes reference occurrences from other users, those occurrences are
@@ -15,14 +16,18 @@
 //!   cargo run --bin backfill -- --dry-run did:plc:abc
 
 use std::collections::{HashMap, HashSet};
+use std::sync::Arc;
 use std::time::Duration;
 
 use atproto_identity::{Did, DidMethod};
 use chrono::Utc;
 use clap::Parser;
+use jacquard_common::types::string::Nsid;
+use jacquard_repo::car::parse_car_bytes;
+use jacquard_repo::storage::MemoryBlockStore;
+use jacquard_repo::Repository;
 use observing_db::processing;
 use reqwest::Client;
-use serde::Deserialize;
 use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
@@ -62,15 +67,7 @@ struct Cli {
     dry_run: bool,
 }
 
-/// Response from com.atproto.repo.listRecords
-#[derive(Deserialize)]
-struct ListRecordsResponse {
-    records: Vec<Record>,
-    cursor: Option<String>,
-}
-
-/// A single record from listRecords
-#[derive(Deserialize)]
+/// A single record reconstructed from a repo CAR.
 struct Record {
     uri: String,
     cid: String,
@@ -81,6 +78,39 @@ struct Record {
 struct FetchedRecords {
     /// (short_name, collection_nsid, records)
     collections: Vec<(&'static str, &'static str, Vec<Record>)>,
+}
+
+/// A populated, in-memory view of a DID's repo for iterating records by collection.
+struct LoadedRepo {
+    repo: Repository<String, MemoryBlockStore>,
+}
+
+impl LoadedRepo {
+    /// Iterate all records under the given collection NSID.
+    async fn iter_collection(
+        &self,
+        collection: &str,
+        did: &str,
+    ) -> Result<Vec<Record>, Box<dyn std::error::Error>> {
+        let nsid = Nsid::<String>::new(collection.to_string())
+            .map_err(|e| format!("invalid NSID {collection}: {e}"))?;
+        let entries = self
+            .repo
+            .list_collection_data(&nsid)
+            .await
+            .map_err(|e| format!("list_collection_data {collection}: {e}"))?;
+        let mut out = Vec::with_capacity(entries.len());
+        for (rkey, cid, bytes) in entries {
+            let value: serde_json::Value = serde_ipld_dagcbor::from_slice(&bytes)
+                .map_err(|e| format!("decode {collection}/{rkey}: {e}"))?;
+            out.push(Record {
+                uri: format!("at://{did}/{collection}/{rkey}"),
+                cid: cid.to_string(),
+                value,
+            });
+        }
+        Ok(out)
+    }
 }
 
 /// Extract the DID from an AT URI (at://did:plc:xxx/collection/rkey).
@@ -116,43 +146,29 @@ async fn resolve_pds(client: &Client, did: &str) -> Option<String> {
         .map(|s| s.to_string())
 }
 
-/// List all records for a DID + collection from their PDS, paginating through results.
-async fn list_records(
+/// Fetch a DID's full repo as a CAR file via com.atproto.sync.getRepo and
+/// load it into memory for iteration.
+async fn fetch_repo(
     client: &Client,
     pds: &str,
     did: &str,
-    collection: &str,
-) -> Result<Vec<Record>, Box<dyn std::error::Error>> {
-    let mut all_records = Vec::new();
-    let mut cursor: Option<String> = None;
-
-    loop {
-        let mut url = format!(
-            "{}/xrpc/com.atproto.repo.listRecords?repo={}&collection={}&limit=100",
-            pds, did, collection,
-        );
-        if let Some(ref c) = cursor {
-            url.push_str(&format!("&cursor={c}"));
-        }
-
-        let resp: ListRecordsResponse = client
-            .get(&url)
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
-
-        let count = resp.records.len();
-        all_records.extend(resp.records);
-
-        match resp.cursor {
-            Some(c) if count > 0 => cursor = Some(c),
-            _ => break,
-        }
-    }
-
-    Ok(all_records)
+) -> Result<LoadedRepo, Box<dyn std::error::Error>> {
+    let url = format!("{pds}/xrpc/com.atproto.sync.getRepo?did={did}");
+    let bytes = client
+        .get(&url)
+        .send()
+        .await?
+        .error_for_status()?
+        .bytes()
+        .await?;
+    let parsed = parse_car_bytes(&bytes)
+        .await
+        .map_err(|e| format!("parse CAR for {did}: {e}"))?;
+    let storage = Arc::new(MemoryBlockStore::new_from_blocks(parsed.blocks));
+    let repo = Repository::<String, _>::from_commit(storage, &parsed.root)
+        .await
+        .map_err(|e| format!("load repo for {did}: {e}"))?;
+    Ok(LoadedRepo { repo })
 }
 
 /// Extract the occurrence URI from a record's `subject.uri` or `occurrence.uri` field.
@@ -404,12 +420,22 @@ async fn backfill_occurrences(
         }
     };
 
-    // Fetch from both the current and legacy collection NSIDs — PDS repos may
+    let loaded = match fetch_repo(client, &pds, did).await {
+        Ok(r) => r,
+        Err(e) => {
+            error!("[{did}] Failed to fetch repo: {e}");
+            return (0, 0, uris);
+        }
+    };
+
+    // Iterate both the current and legacy collection NSIDs — PDS repos may
     // still have records under the old name.
-    let mut records = list_records(client, &pds, did, OCCURRENCE_COLLECTION)
+    let mut records = loaded
+        .iter_collection(OCCURRENCE_COLLECTION, did)
         .await
         .unwrap_or_default();
-    let legacy = list_records(client, &pds, did, LEGACY_OCCURRENCE_COLLECTION)
+    let legacy = loaded
+        .iter_collection(LEGACY_OCCURRENCE_COLLECTION, did)
         .await
         .unwrap_or_default();
     records.extend(legacy);
@@ -530,20 +556,29 @@ async fn main() {
         };
         info!("[{did}] PDS: {pds}");
 
+        let loaded = match fetch_repo(&client, &pds, did).await {
+            Ok(r) => r,
+            Err(e) => {
+                error!("[{did}] Failed to fetch repo: {e} — skipping");
+                continue;
+            }
+        };
+
         let mut collections_vec = Vec::new();
         for &(short_name, collection) in &collections {
-            let mut records = match list_records(&client, &pds, did, collection).await {
+            let mut records = match loaded.iter_collection(collection, did).await {
                 Ok(r) => r,
                 Err(e) => {
-                    warn!("[{did}] Failed to list {short_name}: {e}");
+                    warn!("[{did}] Failed to read {short_name}: {e}");
                     continue;
                 }
             };
 
-            // Also fetch from legacy NSIDs (PDS repos may not be migrated yet)
+            // Also iterate legacy NSIDs (PDS repos may not be migrated yet)
             if collection == OCCURRENCE_COLLECTION {
-                if let Ok(legacy) =
-                    list_records(&client, &pds, did, LEGACY_OCCURRENCE_COLLECTION).await
+                if let Ok(legacy) = loaded
+                    .iter_collection(LEGACY_OCCURRENCE_COLLECTION, did)
+                    .await
                 {
                     records.extend(legacy);
                 }
