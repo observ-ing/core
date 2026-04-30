@@ -4,6 +4,7 @@ import {
   Typography,
   TextField,
   Button,
+  Chip,
   Stack,
   IconButton,
   Alert,
@@ -15,6 +16,8 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
+import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
+import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
@@ -26,6 +29,7 @@ import { AiSuggestions } from "../identification/AiSuggestions";
 import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
+import { TAXON_RANKS } from "../../lib/taxonRanks";
 
 interface ImagePreview {
   file: File;
@@ -60,6 +64,7 @@ export function UploadModal() {
   const [species, setSpecies] = useState("");
   const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
   const [kingdom, setKingdom] = useState("");
+  const [rank, setRank] = useState("");
   const [license, setLicense] = useState("CC-BY-4.0");
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
@@ -81,6 +86,7 @@ export function UploadModal() {
         setSpecies(editingObservation.effectiveTaxonomy?.scientificName || "");
         setKingdom(editingObservation.effectiveTaxonomy?.kingdom || "");
         setMatchedTaxon(null);
+        setRank("");
         if (editingObservation.eventDate) {
           setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
         }
@@ -110,6 +116,7 @@ export function UploadModal() {
     setSpecies("");
     setMatchedTaxon(null);
     setKingdom("");
+    setRank("");
     setLicense("CC-BY-4.0");
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
@@ -294,6 +301,7 @@ export function UploadModal() {
           uri: editingObservation.uri,
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
+          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
@@ -319,6 +327,7 @@ export function UploadModal() {
         const result = await submitObservation({
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
+          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
@@ -528,6 +537,7 @@ export function UploadModal() {
             if (name === "") {
               setMatchedTaxon(null);
               setKingdom("");
+              setRank("");
             }
           }}
           onMatchChange={(match) => {
@@ -535,11 +545,36 @@ export function UploadModal() {
             if (match?.kingdom) {
               setKingdom(match.kingdom);
             }
+            if (match) {
+              setRank("");
+            }
           }}
           label="Taxon (optional)"
           placeholder="e.g. Eschscholzia californica - leave blank if unknown"
           bottomContent={
-            aiImageUrl && !species ? (
+            species.trim() ? (
+              matchedTaxon ? (
+                <Chip
+                  icon={<CheckCircleOutlinedIcon />}
+                  label={
+                    matchedTaxon.rank ? `Existing taxon · ${matchedTaxon.rank}` : "Existing taxon"
+                  }
+                  color="success"
+                  size="small"
+                  variant="outlined"
+                  sx={{ mt: 0.5 }}
+                />
+              ) : (
+                <Chip
+                  icon={<AddCircleOutlinedIcon />}
+                  label="New taxon"
+                  color="info"
+                  size="small"
+                  variant="outlined"
+                  sx={{ mt: 0.5 }}
+                />
+              )
+            ) : aiImageUrl ? (
               <AiSuggestions
                 imageUrl={aiImageUrl}
                 latitude={lat ? parseFloat(lat) : undefined}
@@ -579,6 +614,27 @@ export function UploadModal() {
             ))}
           </Select>
         </FormControl>
+
+        {!!species.trim() && !matchedTaxon && (
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="rank-label">Rank (optional)</InputLabel>
+            <Select
+              labelId="rank-label"
+              value={rank}
+              label="Rank (optional)"
+              onChange={(e) => setRank(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>None</em>
+              </MenuItem>
+              {TAXON_RANKS.map((r) => (
+                <MenuItem key={r} value={r}>
+                  {r}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
 
         <FormControl fullWidth margin="normal">
           <InputLabel id="license-label">License</InputLabel>

@@ -11,10 +11,13 @@ use crate::state::AppState;
 /// Build an identification record value for a given scientific name.
 ///
 /// Validates taxonomy and constructs the AT Protocol identification record.
+/// `user_taxon_rank` is used only when taxonomy validation cannot resolve a
+/// rank — taxonomy is authoritative for known taxa.
 /// Returns the record JSON value ready to be posted via the agent.
 pub async fn build_identification_record(
     state: &AppState,
     scientific_name: &str,
+    user_taxon_rank: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
 ) -> Result<Value, AppError> {
@@ -26,6 +29,10 @@ pub async fn build_identification_record(
             taxon_rank = Some(t.rank.clone());
             kingdom = t.kingdom.clone();
         }
+    }
+
+    if taxon_rank.is_none() {
+        taxon_rank = user_taxon_rank.map(str::to_owned);
     }
 
     let occurrence = auth::build_strong_ref(occurrence_uri, occurrence_cid)?;

@@ -8,4 +8,5 @@ export type CreateOccurrenceRequest = {
   eventDate?: string;
   images?: Array<ImageUpload>;
   scientificName?: string;
+  taxonRank?: string;
 };
