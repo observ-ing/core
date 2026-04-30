@@ -36,6 +36,8 @@ pub struct CreateOccurrenceRequest {
     images: Option<Vec<ImageUpload>>,
     #[ts(optional)]
     scientific_name: Option<String>,
+    #[ts(optional)]
+    taxon_rank: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -68,6 +70,8 @@ pub struct UpdateOccurrenceRequest {
     retained_blob_cids: Option<Vec<String>>,
     #[ts(optional)]
     scientific_name: Option<String>,
+    #[ts(optional)]
+    taxon_rank: Option<String>,
 }
 
 pub async fn create_occurrence(
@@ -122,8 +126,16 @@ pub async fn create_occurrence(
     // Auto-create first identification if a scientific name was provided
     if let Some(ref scientific_name) = body.scientific_name {
         if !scientific_name.is_empty() {
-            create_auto_identification(&state, &agent, &user.did, scientific_name, &uri, &cid)
-                .await?;
+            create_auto_identification(
+                &state,
+                &agent,
+                &user.did,
+                scientific_name,
+                body.taxon_rank.as_deref(),
+                &uri,
+                &cid,
+            )
+            .await?;
         }
     }
 
@@ -357,7 +369,16 @@ pub async fn update_occurrence(
                 .iter()
                 .any(|id| id.did == user.did && id.scientific_name == trimmed);
             if !already_identified {
-                create_auto_identification(&state, &agent, &user.did, trimmed, &uri, &cid).await?;
+                create_auto_identification(
+                    &state,
+                    &agent,
+                    &user.did,
+                    trimmed,
+                    body.taxon_rank.as_deref(),
+                    &uri,
+                    &cid,
+                )
+                .await?;
             }
         }
     }
@@ -494,12 +515,14 @@ async fn create_auto_identification(
     agent: &AgentType,
     user_did: &str,
     scientific_name: &str,
+    user_taxon_rank: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
 ) -> Result<(), AppError> {
     let id_value = auto_id::build_identification_record(
         state,
         scientific_name,
+        user_taxon_rank,
         occurrence_uri,
         occurrence_cid,
     )

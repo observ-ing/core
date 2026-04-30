@@ -17,4 +17,5 @@ export type UpdateOccurrenceRequest = {
    */
   retainedBlobCids?: Array<string>;
   scientificName?: string;
+  taxonRank?: string;
 };
