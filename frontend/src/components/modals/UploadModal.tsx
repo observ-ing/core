@@ -581,7 +581,11 @@ export function UploadModal() {
                 longitude={lng ? parseFloat(lng) : undefined}
                 onSelect={(s) => {
                   setSpecies(s.scientificName);
-                  if (s.kingdom) {
+                  if (s.taxonMatch) {
+                    setMatchedTaxon(s.taxonMatch);
+                    setKingdom(s.taxonMatch.kingdom ?? "");
+                    setRank("");
+                  } else if (s.kingdom) {
                     setKingdom(s.kingdom);
                   }
                 }}
