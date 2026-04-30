@@ -151,6 +151,42 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
+  # Migrations replay: verify the latest migration runs cleanly under prod's
+  # role topology (non-superuser admin in cloudsqlsuperuser, runtime roles
+  # without cloudsqlsuperuser membership, community_ids owned by
+  # ingester_runtime). Catches migrations that quietly assume superuser
+  # bypass — see scripts/test-migrations-prodlike.sh.
+  migrations-prodlike:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          # Use a separate bootstrap superuser so the script can NOSUPERUSER
+          # the `postgres` role it creates later (PG14+ refuses to
+          # NOSUPERUSER the cluster's bootstrap user). The `observing`
+          # database is created by the script, not by the image init.
+          POSTGRES_USER: ci_bootstrap
+          POSTGRES_PASSWORD: ci_bootstrap
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci_bootstrap"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/cache-cargo-install-action@v3
+        with:
+          tool: sqlx-cli
+          no-default-features: true
+          features: postgres
+      - name: Replay latest migration in prod-like role topology
+        run: ./scripts/test-migrations-prodlike.sh
+
   # Backfill: fetch real PDS records, parse, and write to a test database
   backfill:
     runs-on: ubuntu-latest
@@ -260,7 +296,7 @@ jobs:
   # Build Docker images in parallel with caching
   build-images:
     runs-on: ubuntu-latest
-    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, e2e]
+    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, e2e, migrations-prodlike]
     if: github.event_name == 'push'
     env:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
