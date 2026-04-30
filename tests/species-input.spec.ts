@@ -75,25 +75,22 @@ authTest.describe("Species Input", () => {
   );
 
   authTest(
-    "selecting an autocomplete suggestion auto-fills and disables the kingdom select",
+    "selecting an autocomplete suggestion hides the kingdom select",
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "quercus");
       await page.locator(".MuiAutocomplete-option").first().click();
-      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
-      await authExpect(kingdomCombo).toHaveText("Plants");
-      await authExpect(kingdomCombo).toHaveAttribute("aria-disabled", "true");
+      await authExpect(page.getByRole("combobox", { name: "Kingdom" })).toHaveCount(0);
     },
   );
 
   authTest(
-    "free-text species enables the kingdom select and clears any prior match",
+    "free-text species reveals the kingdom select after a prior match is cleared",
     async ({ authenticatedPage: page }) => {
       await searchSpecies(page, "quercus");
       await page.locator(".MuiAutocomplete-option").first().click();
       const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.fill("My Custom Species");
-      const kingdomCombo = page.getByRole("combobox", { name: "Kingdom" });
-      await authExpect(kingdomCombo).not.toHaveAttribute("aria-disabled", "true");
+      await authExpect(page.getByRole("combobox", { name: "Kingdom" })).toBeVisible();
     },
   );
 });

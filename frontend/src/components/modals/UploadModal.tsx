@@ -591,29 +591,26 @@ export function UploadModal() {
           }
         />
 
-        <FormControl
-          fullWidth
-          margin="normal"
-          required={!!species.trim() && !matchedTaxon}
-          disabled={!!matchedTaxon}
-        >
-          <InputLabel id="kingdom-label">Kingdom</InputLabel>
-          <Select
-            labelId="kingdom-label"
-            value={kingdom}
-            label="Kingdom"
-            onChange={(e) => setKingdom(e.target.value)}
-          >
-            <MenuItem value="">
-              <em>None</em>
-            </MenuItem>
-            {KINGDOMS.map((k) => (
-              <MenuItem key={k.value} value={k.value}>
-                {k.label}
+        {!!species.trim() && !matchedTaxon && (
+          <FormControl fullWidth margin="normal" required>
+            <InputLabel id="kingdom-label">Kingdom</InputLabel>
+            <Select
+              labelId="kingdom-label"
+              value={kingdom}
+              label="Kingdom"
+              onChange={(e) => setKingdom(e.target.value)}
+            >
+              <MenuItem value="">
+                <em>None</em>
               </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+              {KINGDOMS.map((k) => (
+                <MenuItem key={k.value} value={k.value}>
+                  {k.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
 
         {!!species.trim() && !matchedTaxon && (
           <FormControl fullWidth margin="normal">
