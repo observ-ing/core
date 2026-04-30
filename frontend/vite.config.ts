@@ -10,7 +10,10 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      // `prompt` so the app can surface "new version available" via
+      // `useRegisterSW` and let the user click to reload, instead of
+      // relying on the user to refresh blindly. See UpdatePrompt.tsx.
+      registerType: "prompt",
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
