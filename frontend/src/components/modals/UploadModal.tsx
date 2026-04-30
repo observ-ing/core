@@ -530,6 +530,14 @@ export function UploadModal() {
           JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
         </Typography>
 
+        <LocationPicker
+          latitude={lat ? parseFloat(lat) : null}
+          longitude={lng ? parseFloat(lng) : null}
+          onChange={handleLocationChange}
+          uncertaintyMeters={uncertaintyMeters}
+          onUncertaintyChange={setUncertaintyMeters}
+        />
+
         <TaxaAutocomplete
           value={species}
           onChange={(name) => {
@@ -663,14 +671,6 @@ export function UploadModal() {
           slotProps={{
             inputLabel: { shrink: true },
           }}
-        />
-
-        <LocationPicker
-          latitude={lat ? parseFloat(lat) : null}
-          longitude={lng ? parseFloat(lng) : null}
-          onChange={handleLocationChange}
-          uncertaintyMeters={uncertaintyMeters}
-          onUncertaintyChange={setUncertaintyMeters}
         />
 
         <Stack
