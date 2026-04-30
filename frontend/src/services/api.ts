@@ -486,6 +486,13 @@ export interface SpeciesSuggestion {
    * index, or the request location is outside any mapped H3 cell).
    */
   inRange?: boolean;
+  /**
+   * Set when the AI suggestion's scientific name resolved to a known GBIF
+   * taxon. The frontend treats this like an autocomplete pick: matchedTaxon
+   * is set, so the kingdom and rank fields disappear and the indicator
+   * shows "Existing taxon".
+   */
+  taxonMatch?: TaxaResult;
 }
 
 export interface IdentifyResponse {
