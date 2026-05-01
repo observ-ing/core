@@ -33,8 +33,11 @@ const SUGGESTIONS: SpeciesSuggestion[] = [
   },
 ];
 
+// 1x1 transparent PNG — the hook fetches this URL to base64 before POSTing
+// to /api/species-id, so a real-but-tiny payload is needed for the story
+// to actually trigger the mocked endpoint.
 const SAMPLE_IMAGE =
-  "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=600";
+  "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 const meta = {
   title: "Identification/AiSuggestions",

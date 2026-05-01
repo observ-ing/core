@@ -56,8 +56,15 @@ export const Loading: Story = {
   args: { tab: "home" },
   parameters: {
     msw: {
+      // FeedView triggers an explore fetch on first render before settling
+      // on the active tab, so both endpoints need to hang to keep the
+      // component visibly in its loading state.
       handlers: [
         http.get("/api/feeds/home", async () => {
+          await delay("infinite");
+          return HttpResponse.json({ occurrences: [], cursor: null });
+        }),
+        http.get("/api/feeds/explore", async () => {
           await delay("infinite");
           return HttpResponse.json({ occurrences: [], cursor: null });
         }),

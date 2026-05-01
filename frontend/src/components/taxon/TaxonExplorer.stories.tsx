@@ -58,11 +58,19 @@ export const NotFound: Story = {
 export const Loading: Story = {
   parameters: {
     msw: {
+      // Story-level handler arrays replace defaults entirely, so the
+      // companion endpoints fetched in parallel need to be redeclared
+      // here too — otherwise they 404 against the bare iframe.
       handlers: [
         http.get("/api/taxa/:kingdom/:name", async () => {
           await delay("infinite");
           return HttpResponse.json(OAK_TAXON_DETAIL);
         }),
+        http.get("/api/taxa/:kingdom/:name/occurrences", async () => {
+          await delay("infinite");
+          return HttpResponse.json({ occurrences: [], cursor: null });
+        }),
+        http.get("/api/taxa/:kingdom/:name/children", () => HttpResponse.json([])),
       ],
     },
   },
