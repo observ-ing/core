@@ -98,6 +98,21 @@ export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsPr
             key={s.scientificName}
             label={
               <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                {s.taxonMatch?.photoUrl && (
+                  <Box
+                    component="img"
+                    src={s.taxonMatch.photoUrl}
+                    alt=""
+                    loading="lazy"
+                    sx={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 0.5,
+                      objectFit: "cover",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
                 <Box
                   component="span"
                   sx={{
