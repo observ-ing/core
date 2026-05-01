@@ -80,6 +80,46 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  # Build Storybook on every PR so a broken story fails the merge gate.
+  # On push to main the static output is uploaded as an artifact for
+  # `storybook-deploy` to publish.
+  storybook-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run build-storybook
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push'
+        with:
+          name: storybook-static
+          path: storybook-static/
+          retention-days: 1
+
+  # Sync the static Storybook bundle to gs://observing-storybook on push to main.
+  # Bucket is public-read; site lives at https://storage.googleapis.com/observing-storybook/index.html
+  storybook-deploy:
+    runs-on: ubuntu-latest
+    needs: [storybook-build]
+    if: github.event_name == 'push'
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: storybook-static
+          path: storybook-static/
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Sync to GCS bucket
+        run: |
+          gcloud storage rsync storybook-static/ gs://observing-storybook/ \
+            --recursive --delete-unmatched-destination-objects
+
   # Rust jobs
   rust-lockfile:
     runs-on: ubuntu-latest
