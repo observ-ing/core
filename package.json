@@ -48,6 +48,8 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
     "dotenv": "^17.4.2",
+    "msw": "^2.14.2",
+    "msw-storybook-addon": "^2.0.7",
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
     "storybook": "^10.3.6",

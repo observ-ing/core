@@ -145,7 +145,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           avatar={avatarEl}
           title={titleEl}
           subheader={timeAgo}
-          subheaderTypographyProps={{ variant: "body2", color: "text.disabled" }}
+          slotProps={{ subheader: { variant: "body2", color: "text.disabled" } }}
           action={
             <>
               <IconButton
