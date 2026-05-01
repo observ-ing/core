@@ -114,7 +114,7 @@ async fn enrich_suggestions(
         let needs_common_name = s.common_name.is_none();
         async move {
             let (validate_result, by_name_common_name) =
-                tokio::join!(taxonomy.validate(&name), async {
+                tokio::join!(taxonomy.validate(&name, kingdom.as_deref()), async {
                     if needs_common_name {
                         taxonomy
                             .get_by_name(&name, kingdom.as_deref())

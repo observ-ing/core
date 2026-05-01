@@ -266,10 +266,19 @@ async fn resolve_effective_taxonomy(
 ) -> Option<EffectiveTaxonomy> {
     let effective_name = community_id?;
 
+    // GBIF can't disambiguate genus-level names without a kingdom hint
+    // (e.g. "Pinus" in plants vs. unrelated genera in other kingdoms), so
+    // fall back to any identification's kingdom when the occurrence row
+    // doesn't carry one. Identifications all share at least the LCA's
+    // ancestry, so any identification's kingdom is safe to use.
+    let kingdom_hint = occurrence_kingdom
+        .map(str::to_string)
+        .or_else(|| identifications.iter().find_map(|id| id.kingdom.clone()));
+
     // GBIF is the source of truth for vernacular names, so always try it first.
     // The Moka cache fronting the client keeps repeat lookups cheap.
     if let Some(detail) = taxonomy
-        .get_by_name(effective_name, occurrence_kingdom)
+        .get_by_name(effective_name, kingdom_hint.as_deref())
         .await
         .unwrap_or(None)
     {

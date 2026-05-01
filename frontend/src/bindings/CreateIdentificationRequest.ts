@@ -5,5 +5,11 @@ export type CreateIdentificationRequest = {
   occurrenceCid: string;
   scientificName: string;
   taxonRank?: string;
+  /**
+   * Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
+   * genus-level names for the GBIF validate call and acts as a fallback
+   * when validation doesn't return a kingdom of its own.
+   */
+  kingdom?: string;
   isAgreement?: boolean;
 };
