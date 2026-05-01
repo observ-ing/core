@@ -20,7 +20,7 @@
 //! ).await.unwrap();
 //!
 //! // Fetch images for GBIF taxon IDs
-//! let images = client.get_images_by_property("P846", &["2480528", "5219243"]).await;
+//! let images = client.get_images_by_property("P846", &["2480528", "5219243"], 100).await;
 //! # }
 //! ```
 
@@ -156,14 +156,15 @@ impl WikidataClient {
 
     /// Fetch images (Wikidata property P18) for items matching external IDs.
     ///
-    /// Returns a map of external ID to Wikimedia Commons thumbnail URL.
+    /// Returns a map of external ID to Wikimedia Commons thumbnail URL, with the
+    /// thumbnail rendered at `thumbnail_width` pixels.
     ///
     /// For example, to get images for GBIF taxon IDs:
     /// ```no_run
     /// # use wikidata_client::WikidataClient;
     /// # async fn example() {
     /// let client = WikidataClient::new();
-    /// let images = client.get_images_by_property("P846", &["2480528", "5219243"]).await;
+    /// let images = client.get_images_by_property("P846", &["2480528", "5219243"], 100).await;
     /// // Returns: {"2480528": "http://commons.wikimedia.org/...?width=100"}
     /// # }
     /// ```
@@ -171,6 +172,7 @@ impl WikidataClient {
         &self,
         property: &str,
         ids: &[&str],
+        thumbnail_width: u32,
     ) -> HashMap<String, String> {
         if ids.is_empty() {
             return HashMap::new();
@@ -201,7 +203,7 @@ impl WikidataClient {
         let mut result = HashMap::new();
         for binding in bindings {
             if let (Some(id), Some(image)) = (binding.get("external_id"), binding.get("image")) {
-                let thumb_url = to_thumbnail_url(&image.value, 100);
+                let thumb_url = to_thumbnail_url(&image.value, thumbnail_width);
                 result.insert(id.value.clone(), thumb_url);
             }
         }

@@ -214,13 +214,16 @@ impl GbifClient {
             None => return Ok(None),
         };
 
-        // Fetch children, descriptions, references, media, and Wikidata URL in parallel
-        let (children, descriptions, references, media, wikidata_url) = tokio::join!(
+        // Fetch children, descriptions, references, media, Wikidata URL, and
+        // Wikidata's primary image (P18) in parallel.
+        let key_slice = [key];
+        let (children, descriptions, references, media, wikidata_url, wikidata_images) = tokio::join!(
             self.get_children(taxon_id, 20),
             self.api.get_descriptions(key, 5),
             self.api.get_references(key, 10),
             self.api.get_media(key, 10),
             self.wikidata.get_entity_url(key),
+            self.wikidata.get_images_for_keys(&key_slice, 600),
         );
 
         let children = children.unwrap_or_default();
@@ -285,8 +288,12 @@ impl GbifClient {
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
-        // Get photo from first media item if available
-        let photo_url = media.first().map(|m| m.url.clone());
+        // Prefer Wikidata's primary image (P18); fall back to the first GBIF
+        // media item when Wikidata has no image for this taxon.
+        let photo_url = wikidata_images
+            .get(&key)
+            .cloned()
+            .or_else(|| media.first().map(|m| m.url.clone()));
 
         let taxon_detail = TaxonDetail {
             id: build_taxon_path(resolved_name, &resolved_rank, data.kingdom.as_deref()),
@@ -451,7 +458,7 @@ impl GbifClient {
         let keys: Vec<u64> = data.iter().filter_map(|item| item.key).collect();
 
         // Fetch photos from Wikidata using GBIF taxon IDs (single batched SPARQL query)
-        let photos = self.wikidata.get_images_for_keys(&keys).await;
+        let photos = self.wikidata.get_images_for_keys(&keys, 100).await;
 
         // Convert to TaxonResults with photos
         let basic_results: Vec<(TaxonResult, Option<u64>)> = data

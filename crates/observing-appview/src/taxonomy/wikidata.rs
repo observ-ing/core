@@ -18,12 +18,19 @@ impl WikidataClient {
     }
 
     /// Fetch images for multiple taxa by their GBIF taxon IDs.
-    /// Returns a map of gbif_key -> thumbnail URL.
-    pub async fn get_images_for_keys(&self, keys: &[u64]) -> HashMap<u64, String> {
+    /// Returns a map of gbif_key -> thumbnail URL rendered at `thumbnail_width` pixels.
+    pub async fn get_images_for_keys(
+        &self,
+        keys: &[u64],
+        thumbnail_width: u32,
+    ) -> HashMap<u64, String> {
         let string_keys: Vec<String> = keys.iter().map(|k| k.to_string()).collect();
         let str_keys: Vec<&str> = string_keys.iter().map(|s| s.as_str()).collect();
 
-        let results = self.client.get_images_by_property("P846", &str_keys).await;
+        let results = self
+            .client
+            .get_images_by_property("P846", &str_keys, thumbnail_width)
+            .await;
 
         results
             .into_iter()
