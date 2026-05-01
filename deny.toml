@@ -5,6 +5,10 @@ ignore = [
 # observing-appview -> jacquard-common -> cid -> ipld-core -> atrium-api -> core2
 # (atrium/cid stack hasn't yet migrated off core2; we don't call into it directly)
     { id = "RUSTSEC-2026-0105", reason = "core2 unmaintained, transitive dep via atrium-api/cid" },
+# Advisory text states the vulnerable code was migrated from hickory-proto to
+# hickory-net in 0.26.0 and the fix lives in hickory-net 0.26.1 (which we have).
+# The advisory is still tagged against hickory-proto with no patched version.
+    { id = "RUSTSEC-2026-0118", reason = "vulnerable code lives in hickory-net (patched to 0.26.1); advisory misattributed to hickory-proto" },
 ]
 
 [licenses]
