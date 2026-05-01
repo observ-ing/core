@@ -93,16 +93,17 @@ pub async fn identify(
     }
 }
 
-/// Hydrate AI suggestions with GBIF match data and any missing common names.
+/// Hydrate AI suggestions with GBIF match data, photo, and common name.
 ///
-/// For each suggestion, validate against GBIF and (in parallel) look up the
-/// canonical species record when the AI didn't return a common name. We use
-/// `get_by_name` for common names — not the validate result's `taxon` —
-/// because validate returns the species-search shape, which has sparse
-/// vernacular names; `get_by_name` resolves to the canonical usage key and
-/// merges in GBIF's dedicated vernacular-names endpoint.
+/// For each suggestion we run `validate` (decides whether the AI's name
+/// resolves to a known taxon) and `get_by_name` in parallel. The validate
+/// result's `taxon` field comes from the GBIF species-search shape, which
+/// has sparse photoUrl/vernacular fields — so when validate matches, we
+/// pull `photoUrl` and `commonName` off the `get_by_name` `TaxonDetail`
+/// (which resolves to the canonical usage key, sources the photo from
+/// Wikidata Commons P18, and merges in GBIF's vernacular-names endpoint).
 ///
-/// Failures are silently ignored — both fields are best-effort.
+/// Failures are silently ignored — all three fields are best-effort.
 async fn enrich_suggestions(
     state: &AppState,
     response: IdentifyResponse,
@@ -111,24 +112,32 @@ async fn enrich_suggestions(
         let taxonomy = state.taxonomy.clone();
         let name = s.scientific_name.clone();
         let kingdom = s.kingdom.clone();
-        let needs_common_name = s.common_name.is_none();
         async move {
-            let (validate_result, by_name_common_name) =
+            let (validate_result, by_name_detail) =
                 tokio::join!(taxonomy.validate(&name, kingdom.as_deref()), async {
-                    if needs_common_name {
-                        taxonomy
-                            .get_by_name(&name, kingdom.as_deref())
-                            .await
-                            .ok()
-                            .flatten()
-                            .and_then(|t| t.common_name)
-                    } else {
-                        None
-                    }
+                    taxonomy
+                        .get_by_name(&name, kingdom.as_deref())
+                        .await
+                        .ok()
+                        .flatten()
                 },);
 
-            let taxon_match = validate_result.filter(|v| v.valid).and_then(|v| v.taxon);
-            (taxon_match, by_name_common_name)
+            let taxon_match = validate_result
+                .filter(|v| v.valid)
+                .and_then(|v| v.taxon)
+                .map(|mut t| {
+                    if let Some(ref detail) = by_name_detail {
+                        if t.photo_url.is_none() {
+                            t.photo_url = detail.photo_url.clone();
+                        }
+                        if t.common_name.is_none() {
+                            t.common_name = detail.common_name.clone();
+                        }
+                    }
+                    t
+                });
+            let extra_common_name = by_name_detail.and_then(|t| t.common_name);
+            (taxon_match, extra_common_name)
         }
     });
 
