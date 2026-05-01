@@ -38,6 +38,11 @@ pub struct CreateOccurrenceRequest {
     scientific_name: Option<String>,
     #[ts(optional)]
     taxon_rank: Option<String>,
+    /// Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
+    /// genus-level names for the auto-identification's GBIF validate call
+    /// and acts as a fallback when validation doesn't return a kingdom.
+    #[ts(optional)]
+    kingdom: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -72,6 +77,9 @@ pub struct UpdateOccurrenceRequest {
     scientific_name: Option<String>,
     #[ts(optional)]
     taxon_rank: Option<String>,
+    /// See `CreateOccurrenceRequest::kingdom`.
+    #[ts(optional)]
+    kingdom: Option<String>,
 }
 
 pub async fn create_occurrence(
@@ -132,6 +140,7 @@ pub async fn create_occurrence(
                 &user.did,
                 scientific_name,
                 body.taxon_rank.as_deref(),
+                body.kingdom.as_deref(),
                 &uri,
                 &cid,
             )
@@ -375,6 +384,7 @@ pub async fn update_occurrence(
                     &user.did,
                     trimmed,
                     body.taxon_rank.as_deref(),
+                    body.kingdom.as_deref(),
                     &uri,
                     &cid,
                 )
@@ -516,6 +526,7 @@ async fn create_auto_identification(
     user_did: &str,
     scientific_name: &str,
     user_taxon_rank: Option<&str>,
+    user_kingdom: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
 ) -> Result<(), AppError> {
@@ -523,6 +534,7 @@ async fn create_auto_identification(
         state,
         scientific_name,
         user_taxon_rank,
+        user_kingdom,
         occurrence_uri,
         occurrence_cid,
     )

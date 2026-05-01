@@ -47,6 +47,11 @@ pub struct CreateIdentificationRequest {
     scientific_name: String,
     #[ts(optional)]
     taxon_rank: Option<String>,
+    /// Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
+    /// genus-level names for the GBIF validate call and acts as a fallback
+    /// when validation doesn't return a kingdom of its own.
+    #[ts(optional)]
+    kingdom: Option<String>,
     #[ts(optional)]
     is_agreement: Option<bool>,
 }
@@ -68,6 +73,7 @@ pub async fn create_identification(
         &state.taxonomy,
         &body.scientific_name,
         body.taxon_rank.clone(),
+        body.kingdom.as_deref(),
     )
     .await;
 

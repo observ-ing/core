@@ -9,4 +9,10 @@ export type CreateOccurrenceRequest = {
   images?: Array<ImageUpload>;
   scientificName?: string;
   taxonRank?: string;
+  /**
+   * Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
+   * genus-level names for the auto-identification's GBIF validate call
+   * and acts as a fallback when validation doesn't return a kingdom.
+   */
+  kingdom?: string;
 };

@@ -217,17 +217,23 @@ impl TaxonFields {
     ///
     /// `rank_override` is an optional caller-supplied rank (e.g. from user
     /// input). When present it takes priority over the rank returned by GBIF.
+    ///
+    /// `kingdom_hint` is forwarded to GBIF for disambiguation (essential for
+    /// genus-level names that overlap across kingdoms, where a hint-less
+    /// validate often returns no taxon at all). It also acts as a fallback
+    /// when the validation succeeds but doesn't carry a kingdom of its own.
     pub async fn from_validation(
         taxonomy: &TaxonomyClient,
         scientific_name: &str,
         rank_override: Option<String>,
+        kingdom_hint: Option<&str>,
     ) -> Self {
         let mut fields = TaxonFields {
             taxon_rank: rank_override,
             ..Default::default()
         };
 
-        if let Some(validation) = taxonomy.validate(scientific_name).await {
+        if let Some(validation) = taxonomy.validate(scientific_name, kingdom_hint).await {
             if let Some(ref t) = validation.taxon {
                 fields.taxon_id = Some(t.id.clone());
                 if fields.taxon_rank.is_none() {
@@ -240,6 +246,11 @@ impl TaxonFields {
                 fields.family = t.family.clone();
                 fields.genus = t.genus.clone();
             }
+        }
+
+        // Don't lose the caller's kingdom if validation didn't supply one.
+        if fields.kingdom.is_none() {
+            fields.kingdom = kingdom_hint.map(str::to_string);
         }
 
         fields
@@ -267,10 +278,15 @@ impl TaxonomyClient {
         Some(self.inner.search(query, limit.unwrap_or(10)).await)
     }
 
-    /// Validate a taxon name. Returns `None` if the lookup itself failed —
+    /// Validate a taxon name with an optional kingdom hint for GBIF
+    /// disambiguation. Returns `None` if the lookup itself failed —
     /// preserved for parity with the prior HTTP client.
-    pub async fn validate(&self, name: &str) -> Option<ValidateResponse> {
-        Some(self.inner.validate(name).await)
+    pub async fn validate(
+        &self,
+        name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Option<ValidateResponse> {
+        Some(self.inner.validate(name, kingdom_hint).await)
     }
 
     /// Get taxon detail by GBIF ID (`gbif:NNN` or bare numeric).

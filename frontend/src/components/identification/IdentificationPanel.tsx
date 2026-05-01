@@ -4,6 +4,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { submitIdentification } from "../../services/api";
+import type { TaxaResult } from "../../services/types";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { AiSuggestionChips } from "./AiSuggestions";
 import { useAiSuggestions } from "../../hooks/useAiSuggestions";
@@ -38,6 +39,7 @@ export function IdentificationPanel({
   const dispatch = useAppDispatch();
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
+  const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
 
   const currentId = observation.communityId || observation.scientificName || "Unknown";
 
@@ -63,9 +65,11 @@ export function IdentificationPanel({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         scientificName: taxonName.trim(),
+        ...(matchedTaxon?.kingdom ? { kingdom: matchedTaxon.kingdom } : {}),
+        ...(matchedTaxon?.rank ? { taxonRank: matchedTaxon.rank } : {}),
         isAgreement: false,
       }),
-    [observation.uri, observation.cid, taxonName],
+    [observation.uri, observation.cid, taxonName, matchedTaxon],
   );
 
   const { isSubmitting: isSuggesting, handleSubmit: doSuggest } = useFormSubmit(suggestFn, {
@@ -73,6 +77,7 @@ export function IdentificationPanel({
     onSuccess: () => {
       setShowSuggestForm(false);
       setTaxonName("");
+      setMatchedTaxon(null);
       onSuccess?.();
     },
   });
@@ -167,13 +172,22 @@ export function IdentificationPanel({
             <Box sx={{ flex: 1 }}>
               <TaxaAutocomplete
                 value={taxonName}
-                onChange={setTaxonName}
+                onChange={(name) => {
+                  setTaxonName(name);
+                  if (name === "") {
+                    setMatchedTaxon(null);
+                  }
+                }}
+                onMatchChange={setMatchedTaxon}
                 size="small"
                 margin="none"
                 bottomContent={
                   <AiSuggestionChips
                     suggestions={ai.suggestions}
-                    onSelect={(s) => setTaxonName(s.scientificName)}
+                    onSelect={(s) => {
+                      setTaxonName(s.scientificName);
+                      setMatchedTaxon(s.taxonMatch ?? null);
+                    }}
                   />
                 }
               />
@@ -212,6 +226,7 @@ export function IdentificationPanel({
               onClick={() => {
                 setShowSuggestForm(false);
                 setTaxonName("");
+                setMatchedTaxon(null);
               }}
             >
               Cancel
