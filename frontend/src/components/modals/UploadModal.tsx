@@ -1,5 +1,6 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
 import {
+  Avatar,
   Box,
   Typography,
   TextField,
@@ -563,10 +564,12 @@ export function UploadModal() {
             species.trim() ? (
               matchedTaxon ? (
                 <Chip
-                  icon={<CheckCircleOutlinedIcon />}
-                  label={
-                    matchedTaxon.rank ? `Existing taxon · ${matchedTaxon.rank}` : "Existing taxon"
-                  }
+                  {...(matchedTaxon.photoUrl
+                    ? { avatar: <Avatar src={matchedTaxon.photoUrl} alt="" /> }
+                    : { icon: <CheckCircleOutlinedIcon /> })}
+                  label={["Existing taxon", matchedTaxon.commonName, matchedTaxon.rank]
+                    .filter((p): p is string => Boolean(p))
+                    .join(" · ")}
                   color="success"
                   size="small"
                   variant="outlined"
