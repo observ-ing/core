@@ -9,11 +9,23 @@ export function UpdatePrompt() {
     updateServiceWorker,
   } = useRegisterSW({
     onRegisteredSW(_swUrl, registration) {
-      if (registration) {
-        setInterval(() => {
+      if (!registration) return;
+      // Check immediately so a freshly opened PWA picks up a deploy without
+      // waiting for the hourly tick (mobile suspends backgrounded tabs, so
+      // a setInterval timer rarely actually fires).
+      registration.update();
+      // Re-check whenever the user returns to the app — the most reliable
+      // moment on mobile, where setInterval timers don't survive a switch
+      // to another app and back.
+      document.addEventListener("visibilitychange", () => {
+        if (document.visibilityState === "visible") {
           registration.update();
-        }, HOUR_MS);
-      }
+        }
+      });
+      // Hourly backup for long-lived foregrounded sessions.
+      setInterval(() => {
+        registration.update();
+      }, HOUR_MS);
     },
   });
 
