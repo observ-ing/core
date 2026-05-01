@@ -7,11 +7,13 @@
   "type": "module",
   "scripts": {
     "build": "vite build -c frontend/vite.config.ts",
+    "build-storybook": "storybook build",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "dev": "vite -c frontend/vite.config.ts",
     "fmt": "oxfmt frontend/src tests scripts",
     "fmt:check": "oxfmt --check frontend/src tests scripts",
     "lint": "oxlint frontend/src",
+    "storybook": "storybook dev -p 6006",
     "test": "playwright test --config=tests/playwright.config.ts",
     "test:e2e": "playwright test --config=tests/playwright.config.ts --project=e2e",
     "test:integration": "playwright test --config=tests/playwright.config.ts --project=integration"
@@ -37,6 +39,9 @@
   "devDependencies": {
     "@atproto/api": "^0.19.9",
     "@playwright/test": "^1.59.1",
+    "@storybook/addon-a11y": "^10.3.6",
+    "@storybook/addon-themes": "^10.3.6",
+    "@storybook/react-vite": "^10.3.6",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
@@ -45,6 +50,7 @@
     "dotenv": "^17.4.2",
     "oxfmt": "^0.45.0",
     "oxlint": "^1.60.0",
+    "storybook": "^10.3.6",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
