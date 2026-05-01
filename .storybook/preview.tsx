@@ -3,8 +3,14 @@ import { withThemeFromJSXProvider } from "@storybook/addon-themes";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { MemoryRouter } from "react-router-dom";
 import { Provider } from "react-redux";
+import { initialize, mswLoader } from "msw-storybook-addon";
 import { darkTheme, lightTheme } from "../frontend/src/theme";
 import { makeMockStore } from "./mockStore";
+import { defaultHandlers } from "./handlers";
+
+initialize({
+  onUnhandledRequest: "bypass",
+});
 
 const preview: Preview = {
   parameters: {
@@ -17,7 +23,11 @@ const preview: Preview = {
     a11y: {
       test: "todo",
     },
+    msw: {
+      handlers: defaultHandlers,
+    },
   },
+  loaders: [mswLoader],
   decorators: [
     withThemeFromJSXProvider({
       themes: {
@@ -30,9 +40,10 @@ const preview: Preview = {
     }),
     (Story, context) => {
       const store = makeMockStore(context.parameters.storeOptions);
+      const initialEntries = context.parameters.routerInitialEntries ?? ["/"];
       return (
         <Provider store={store}>
-          <MemoryRouter>
+          <MemoryRouter initialEntries={initialEntries}>
             <Story />
           </MemoryRouter>
         </Provider>
