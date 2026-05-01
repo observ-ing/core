@@ -18,4 +18,8 @@ export type UpdateOccurrenceRequest = {
   retainedBlobCids?: Array<string>;
   scientificName?: string;
   taxonRank?: string;
+  /**
+   * See `CreateOccurrenceRequest::kingdom`.
+   */
+  kingdom?: string;
 };

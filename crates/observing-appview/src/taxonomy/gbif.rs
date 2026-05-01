@@ -136,9 +136,13 @@ impl GbifClient {
         !canonical.eq_ignore_ascii_case(scientific_name)
     }
 
-    /// Validate a scientific name
-    pub async fn validate(&self, name: &str) -> ValidateResponse {
-        let gbif_match = match self.api.match_name(name, None).await {
+    /// Validate a scientific name. `kingdom_hint` is forwarded to GBIF's
+    /// `match_name` to disambiguate names shared across kingdoms (e.g.
+    /// genus-level names like "Pinus") — without a hint a non-EXACT result
+    /// can leave us with `taxon: None` and no kingdom for the caller to
+    /// store.
+    pub async fn validate(&self, name: &str, kingdom_hint: Option<&str>) -> ValidateResponse {
+        let gbif_match = match self.api.match_name(name, kingdom_hint).await {
             Ok(Some(m)) => m,
             _ => {
                 return ValidateResponse {

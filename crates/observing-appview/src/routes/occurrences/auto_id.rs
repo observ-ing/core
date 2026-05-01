@@ -12,19 +12,23 @@ use crate::state::AppState;
 ///
 /// Validates taxonomy and constructs the AT Protocol identification record.
 /// `user_taxon_rank` is used only when taxonomy validation cannot resolve a
-/// rank — taxonomy is authoritative for known taxa.
+/// rank — taxonomy is authoritative for known taxa. `user_kingdom` is
+/// forwarded to GBIF as a disambiguator and used as a fallback when
+/// validation doesn't return a kingdom (e.g. genus-level names without a
+/// hint).
 /// Returns the record JSON value ready to be posted via the agent.
 pub async fn build_identification_record(
     state: &AppState,
     scientific_name: &str,
     user_taxon_rank: Option<&str>,
+    user_kingdom: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
 ) -> Result<Value, AppError> {
     let mut taxon_rank = None;
     let mut kingdom = None;
 
-    if let Some(validation) = state.taxonomy.validate(scientific_name).await {
+    if let Some(validation) = state.taxonomy.validate(scientific_name, user_kingdom).await {
         if let Some(ref t) = validation.taxon {
             taxon_rank = Some(t.rank.clone());
             kingdom = t.kingdom.clone();
@@ -33,6 +37,9 @@ pub async fn build_identification_record(
 
     if taxon_rank.is_none() {
         taxon_rank = user_taxon_rank.map(str::to_owned);
+    }
+    if kingdom.is_none() {
+        kingdom = user_kingdom.map(str::to_owned);
     }
 
     let occurrence = auth::build_strong_ref(occurrence_uri, occurrence_cid)?;

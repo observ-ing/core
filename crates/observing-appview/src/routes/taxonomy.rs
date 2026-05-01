@@ -43,6 +43,7 @@ pub async fn search(
 #[derive(Deserialize)]
 pub struct ValidateParams {
     name: Option<String>,
+    kingdom: Option<String>,
 }
 
 pub async fn validate(
@@ -53,7 +54,11 @@ pub async fn validate(
         .name
         .ok_or_else(|| AppError::BadRequest("name is required".into()))?;
 
-    match state.taxonomy.validate(&name).await {
+    match state
+        .taxonomy
+        .validate(&name, params.kingdom.as_deref())
+        .await
+    {
         Some(result) => Ok(Json(result)),
         None => Ok(Json(ValidateResponse {
             valid: false,
