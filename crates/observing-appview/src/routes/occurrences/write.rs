@@ -520,6 +520,7 @@ fn build_occurrence_record_json(
 /// Jetstream delivers commits in repo order, so the preceding occurrence
 /// upsert (needed to satisfy the FK on `identifications.subject_uri`) is
 /// guaranteed to run first.
+#[allow(clippy::too_many_arguments)]
 async fn create_auto_identification(
     state: &AppState,
     agent: &AgentType,
