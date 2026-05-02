@@ -32,9 +32,7 @@ for (const file of files) {
 }
 
 if (missing.length > 0) {
-  console.error(
-    `Missing Storybook stories for ${missing.length} component(s):\n`,
-  );
+  console.error(`Missing Storybook stories for ${missing.length} component(s):\n`);
   for (const f of missing) console.error(`  - ${f}`);
   console.error(
     `\nEvery component in frontend/src/components must have a sibling *.stories.tsx file.`,
