@@ -100,25 +100,63 @@ jobs:
           path: storybook-static/
           retention-days: 1
 
-  # Sync the static Storybook bundle to gs://observing-storybook on push to main.
-  # Bucket is public-read; site lives at https://storage.googleapis.com/observing-storybook/index.html
+  # Bundle the static Storybook output into a small static-web-server image
+  # and deploy it to Cloud Run on push to main. Cheaper than an HTTPS load
+  # balancer in front of GCS — cold starts are fine for a dev tool, and
+  # the free tier covers our traffic.
   storybook-deploy:
     runs-on: ubuntu-latest
     needs: [storybook-build]
     if: github.event_name == 'push'
+    env:
+      REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/storybook
+      REGION: us-central1
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: storybook-static
           path: storybook-static/
+
+      - uses: docker/setup-buildx-action@v3
+
       - uses: google-github-actions/auth@v2
+        id: gcp-auth
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY }}
+          token_format: access_token
+
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Sync to GCS bucket
+
+      - uses: docker/login-action@v3
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.storybook
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/storybook:${{ github.sha }},${{ env.REGISTRY }}/storybook:latest
+          cache-from: type=gha,scope=storybook
+          cache-to: type=gha,mode=max,scope=storybook
+
+      - name: Deploy to Cloud Run
         run: |
-          gcloud storage rsync storybook-static/ gs://observing-storybook/ \
-            --recursive --delete-unmatched-destination-objects
+          gcloud run deploy storybook \
+            --image=$REGISTRY/storybook:${{ github.sha }} \
+            --region=$REGION \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=128Mi \
+            --cpu=1 \
+            --max-instances=3 \
+            --min-instances=0
 
   # Rust jobs
   rust-lockfile:
