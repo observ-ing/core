@@ -80,6 +80,17 @@ jobs:
       - run: npm ci
       - run: npm run build
 
+  # Enforce that every component in frontend/src/components has a sibling
+  # *.stories.tsx file. Catches new components that ship without a story.
+  storybook-coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm run check:stories
+
   # Build Storybook on every PR so a broken story fails the merge gate.
   # On push to main the static output is uploaded as an artifact for
   # `storybook-deploy` to publish.

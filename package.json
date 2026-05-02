@@ -8,6 +8,7 @@
   "scripts": {
     "build": "vite build -c frontend/vite.config.ts",
     "build-storybook": "storybook build",
+    "check:stories": "node scripts/check-stories.mjs",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "dev": "vite -c frontend/vite.config.ts",
     "fmt": "oxfmt frontend/src tests scripts",
