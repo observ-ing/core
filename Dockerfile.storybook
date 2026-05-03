@@ -4,7 +4,7 @@
 # `npm run build-storybook` in CI). The image just bundles those files
 # behind static-web-server, a small Rust HTTP server that handles
 # compression, cache headers, and SPA routing.
-FROM joseluisq/static-web-server:2-alpine
+FROM ghcr.io/static-web-server/static-web-server:2-alpine
 
 # Cloud Run sends traffic on $PORT (default 8080). static-web-server
 # picks up SERVER_PORT, so we hard-code 8080 to match the default.
