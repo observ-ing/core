@@ -200,7 +200,12 @@ export function UploadModal() {
             ? gpsLng.description
             : parseFloat(String(gpsLng.description));
 
-        if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+        // Reject (0, 0). Android's photo picker (and some other privacy-
+        // scrubbed providers) returns the EXIF GPS *structure* with values
+        // zeroed instead of removing the tags. A real observation at the
+        // null island is so unlikely that treating zero as "missing" is safe.
+        const isZeroIsland = latitude === 0 && longitude === 0;
+        if (Number.isFinite(latitude) && Number.isFinite(longitude) && !isZeroIsland) {
           // Apply hemisphere signs
           const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
           const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
