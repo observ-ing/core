@@ -434,6 +434,17 @@ export function UploadModal() {
           Photos (optional)
         </Typography>
 
+        {/* Persistent target so tests (and pickPhotos's web fallback) can
+            address a stable file input. On native, pickPhotos bypasses this
+            element entirely and goes through the OriginalPhotoPicker plugin. */}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          style={{ display: "none" }}
+          data-photo-picker="modal"
+        />
+
         {(existingImages.length > 0 || images.length > 0) && (
           <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
             {existingImages.map((url, index) => (
