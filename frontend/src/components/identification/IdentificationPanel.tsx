@@ -6,8 +6,8 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { submitIdentification } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
-import { AiSuggestionChips } from "./AiSuggestions";
-import { useAiSuggestions } from "../../hooks/useAiSuggestions";
+import { VisualIdChips } from "./VisualId";
+import { useVisualId } from "../../hooks/useVisualId";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
@@ -20,7 +20,7 @@ interface IdentificationPanelProps {
     scientificName?: string | undefined;
     communityId?: string | undefined;
   };
-  /** Full URL of the observation's primary image, for AI species suggestion */
+  /** Full URL of the observation's primary image, for visual ID matching */
   imageUrl?: string | undefined;
   /** Observation latitude, passed to species-id for geo-prior context */
   latitude?: number | undefined;
@@ -84,7 +84,7 @@ export function IdentificationPanel({
 
   const isSubmitting = isAgreeing || isSuggesting;
 
-  const ai = useAiSuggestions({
+  const visualId = useVisualId({
     imageUrl: imageUrl ?? "",
     latitude,
     longitude,
@@ -182,8 +182,8 @@ export function IdentificationPanel({
                 size="small"
                 margin="none"
                 bottomContent={
-                  <AiSuggestionChips
-                    suggestions={ai.suggestions}
+                  <VisualIdChips
+                    suggestions={visualId.suggestions}
                     onSelect={(s) => {
                       setTaxonName(s.scientificName);
                       setMatchedTaxon(s.taxonMatch ?? null);
@@ -192,14 +192,14 @@ export function IdentificationPanel({
                 }
               />
             </Box>
-            {imageUrl && !ai.hasLoaded && (
+            {imageUrl && !visualId.hasLoaded && (
               <Button
                 variant="outlined"
                 size="small"
-                onClick={ai.handleFetch}
-                disabled={isSubmitting || ai.isLoading}
+                onClick={visualId.handleFetch}
+                disabled={isSubmitting || visualId.isLoading}
                 startIcon={
-                  ai.isLoading ? (
+                  visualId.isLoading ? (
                     <CircularProgress size={16} color="inherit" />
                   ) : (
                     <AutoFixHighIcon fontSize="small" />
@@ -207,7 +207,7 @@ export function IdentificationPanel({
                 }
                 sx={{ whiteSpace: "nowrap", height: 40 }}
               >
-                AI Suggest
+                Visual ID
               </Button>
             )}
           </Stack>

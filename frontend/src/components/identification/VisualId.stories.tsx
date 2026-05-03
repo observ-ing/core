@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { Box } from "@mui/material";
-import { AiSuggestions } from "./AiSuggestions";
+import { VisualId } from "./VisualId";
 import type { SpeciesSuggestion } from "../../services/api";
 
 const SUGGESTIONS: SpeciesSuggestion[] = [
@@ -40,8 +40,8 @@ const SAMPLE_IMAGE =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=";
 
 const meta = {
-  title: "Identification/AiSuggestions",
-  component: AiSuggestions,
+  title: "Identification/VisualId",
+  component: VisualId,
   parameters: {
     layout: "padded",
   },
@@ -57,7 +57,7 @@ const meta = {
       </Box>
     ),
   ],
-} satisfies Meta<typeof AiSuggestions>;
+} satisfies Meta<typeof VisualId>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
