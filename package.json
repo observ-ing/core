@@ -8,6 +8,7 @@
   "scripts": {
     "build": "vite build -c frontend/vite.config.ts",
     "build-storybook": "storybook build",
+    "cap:android:setup": "./scripts/setup-capacitor-android.sh",
     "check:stories": "node scripts/check-stories.mjs",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "dev": "vite -c frontend/vite.config.ts",

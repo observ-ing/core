@@ -1,5 +1,5 @@
-import { Capacitor } from "@capacitor/core";
-import { Camera, MediaTypeSelection } from "@capacitor/camera";
+import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Camera } from "@capacitor/camera";
 
 export type PhotoSource = "camera" | "gallery";
 
@@ -9,6 +9,20 @@ interface PickPhotosOptions {
   maxCount?: number;
 }
 
+interface OriginalPhotoPickerPlugin {
+  pickPhoto(): Promise<{
+    cancelled: boolean;
+    base64?: string;
+    mimeType?: string;
+    filename?: string;
+  }>;
+}
+
+// In-app native plugin (see android/app/src/main/java/ing/observ/app/
+// OriginalPhotoPickerPlugin.java). Exists because @capacitor/camera does not
+// preserve EXIF GPS on Android — see issues #1074, #2118, #2147 upstream.
+const OriginalPhotoPicker = registerPlugin<OriginalPhotoPickerPlugin>("OriginalPhotoPicker");
+
 export async function pickPhotos(options: PickPhotosOptions): Promise<File[]> {
   if (Capacitor.isNativePlatform()) {
     return pickNative(options);
@@ -16,29 +30,36 @@ export async function pickPhotos(options: PickPhotosOptions): Promise<File[]> {
   return pickWeb(options);
 }
 
-async function pickNative({ source, multiple, maxCount }: PickPhotosOptions): Promise<File[]> {
-  // correctOrientation must stay false: the plugin's "correct" pass re-encodes
-  // the JPEG and drops EXIF, defeating the entire point of going native here.
-  // Quality 100 means no recompression of the source bytes.
-  if (source === "camera") {
-    const result = await Camera.takePhoto({
-      quality: 100,
-      correctOrientation: false,
-      saveToGallery: false,
-    });
-    if (!result.webPath) return [];
-    return [await fetchAsFile(result.webPath, result.metadata?.format)];
+async function pickNative({ source }: PickPhotosOptions): Promise<File[]> {
+  if (source === "gallery") {
+    // Use our custom plugin instead of Camera.chooseFromGallery so that
+    // MediaStore.setRequireOriginal runs and EXIF GPS survives.
+    const result = await OriginalPhotoPicker.pickPhoto();
+    if (result.cancelled || !result.base64) return [];
+    const blob = base64ToBlob(result.base64, result.mimeType ?? "image/jpeg");
+    const filename = result.filename ?? `photo-${Date.now()}.jpg`;
+    return [new File([blob], filename, { type: blob.type })];
   }
 
-  const { results } = await Camera.chooseFromGallery({
-    mediaType: MediaTypeSelection.Photo,
-    allowMultipleSelection: multiple ?? false,
-    limit: maxCount ?? 0,
+  // Camera path stays on @capacitor/camera. EXIF preservation here is at the
+  // mercy of the user's camera app — there's no setRequireOriginal equivalent
+  // for ACTION_IMAGE_CAPTURE.
+  const result = await Camera.takePhoto({
+    quality: 100,
     correctOrientation: false,
+    saveToGallery: false,
   });
-  return Promise.all(
-    results.flatMap((r) => (r.webPath ? [fetchAsFile(r.webPath, r.metadata?.format)] : [])),
-  );
+  if (!result.webPath) return [];
+  return [await fetchAsFile(result.webPath, result.metadata?.format)];
+}
+
+function base64ToBlob(base64: string, mimeType: string): Blob {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return new Blob([bytes], { type: mimeType });
 }
 
 async function fetchAsFile(webPath: string, format?: string): Promise<File> {

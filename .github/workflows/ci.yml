@@ -103,6 +103,7 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npx cap add android
+      - run: npm run cap:android:setup
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
@@ -485,6 +486,7 @@ jobs:
       - name: Build appview
         run: cargo build -p observing-appview
       - run: npx cap add android
+      - run: npm run cap:android:setup
       - run: npx cap sync android
       - name: Build debug APK
         working-directory: android
