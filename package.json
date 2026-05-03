@@ -24,7 +24,6 @@
     "@capacitor/android": "^8.3.1",
     "@capacitor/camera": "^8.2.0",
     "@capacitor/core": "^8.3.1",
-    "@capacitor/geolocation": "^8.2.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.0.0",

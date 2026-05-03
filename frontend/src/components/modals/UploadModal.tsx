@@ -32,7 +32,6 @@ import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
-import { Geolocation } from "@capacitor/geolocation";
 
 interface ImagePreview {
   file: File;
@@ -192,7 +191,6 @@ export function UploadModal() {
   };
 
   const extractExifData = async (file: File) => {
-    let gotLocationFromExif = false;
     try {
       const arrayBuffer = await file.arrayBuffer();
       const tags = ExifReader.load(arrayBuffer);
@@ -225,7 +223,6 @@ export function UploadModal() {
 
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
-          gotLocationFromExif = true;
           dispatch(
             addToast({ message: "Location extracted from photo EXIF data", type: "success" }),
           );
@@ -245,26 +242,6 @@ export function UploadModal() {
       }
     } catch (error) {
       console.error("EXIF extraction error:", error);
-    }
-
-    if (!gotLocationFromExif) {
-      // Android's photo picker zeros GPS EXIF, and many camera intents drop it
-      // entirely. Falling back to device location at upload time is a much
-      // weaker signal (it's "where you are now," not where the photo was taken)
-      // but it's better than nothing for the common "I just took this" case.
-      try {
-        const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
-        setLat(position.coords.latitude.toFixed(6));
-        setLng(position.coords.longitude.toFixed(6));
-        dispatch(
-          addToast({
-            message: "No GPS in photo — using current location",
-            type: "success",
-          }),
-        );
-      } catch (error) {
-        console.warn("Geolocation fallback failed:", error);
-      }
     }
   };
 
