@@ -1,0 +1,19 @@
+# Storybook static-host image, deployed to Cloud Run.
+#
+# Build context expects ./storybook-static/ to already exist (created by
+# `npm run build-storybook` in CI). The image just bundles those files
+# behind static-web-server, a small Rust HTTP server that handles
+# compression, cache headers, and SPA routing.
+FROM ghcr.io/static-web-server/static-web-server:2-alpine
+
+# Cloud Run sends traffic on $PORT (default 8080). static-web-server
+# picks up SERVER_PORT, so we hard-code 8080 to match the default.
+ENV SERVER_PORT=8080 \
+    SERVER_ROOT=/public \
+    SERVER_LOG_LEVEL=info \
+    SERVER_COMPRESSION=true \
+    SERVER_CACHE_CONTROL_HEADERS=true
+
+COPY storybook-static/ /public/
+
+EXPOSE 8080
