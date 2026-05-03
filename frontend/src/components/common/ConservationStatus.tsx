@@ -1,4 +1,4 @@
-import { Chip } from "@mui/material";
+import { Box, Chip, Tooltip, Typography } from "@mui/material";
 import type {
   IUCNCategory,
   ConservationStatus as ConservationStatusType,
@@ -26,6 +26,13 @@ const CATEGORY_INFO: Record<string, { label: string; color: string }> = {
 
 const DARK_TEXT_CATEGORIES: ReadonlySet<string> = new Set(["VU", "NT", "LC", "DD", "NE"]);
 
+const SOURCE_INFO: Record<string, { name: string; fullName: string }> = {
+  IUCN: {
+    name: "IUCN Red List",
+    fullName: "International Union for Conservation of Nature",
+  },
+};
+
 /**
  * Displays IUCN Red List conservation status as a colored badge
  */
@@ -38,22 +45,41 @@ export function ConservationStatus({
   if (!info) return null;
 
   const needsDarkText = DARK_TEXT_CATEGORIES.has(status.category);
+  const source = SOURCE_INFO[status.source];
+
+  const tooltipContent = (
+    <Box sx={{ py: 0.25 }}>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {info.label}
+      </Typography>
+      <Typography variant="caption" sx={{ display: "block", opacity: 0.85 }}>
+        {source ? `Classified by ${source.name}` : `Classified by ${status.source}`}
+      </Typography>
+      {source && (
+        <Typography variant="caption" sx={{ display: "block", opacity: 0.7, fontStyle: "italic" }}>
+          {source.fullName}
+        </Typography>
+      )}
+    </Box>
+  );
 
   return (
-    <Chip
-      label={showLabel ? info.label : status.category}
-      size={size === "sm" ? "small" : "medium"}
-      sx={{
-        backgroundColor: info.color,
-        color: needsDarkText ? "#1a1a1a" : "#ffffff",
-        borderColor: status.category === "NE" ? "#d1d1c6" : info.color,
-        fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: "0.025em",
-        fontSize: size === "sm" ? "0.625rem" : "0.75rem",
-      }}
-      title={`${info.label} (IUCN Red List)`}
-    />
+    <Tooltip title={tooltipContent} arrow enterTouchDelay={0} leaveTouchDelay={4000}>
+      <Chip
+        label={showLabel ? info.label : status.category}
+        size={size === "sm" ? "small" : "medium"}
+        sx={{
+          backgroundColor: info.color,
+          color: needsDarkText ? "#1a1a1a" : "#ffffff",
+          borderColor: status.category === "NE" ? "#d1d1c6" : info.color,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: "0.025em",
+          fontSize: size === "sm" ? "0.625rem" : "0.75rem",
+          cursor: "help",
+        }}
+      />
+    </Tooltip>
   );
 }
 
