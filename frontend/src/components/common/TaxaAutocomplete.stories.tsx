@@ -5,6 +5,12 @@ import { Box } from "@mui/material";
 import { TaxaAutocomplete } from "./TaxaAutocomplete";
 import type { TaxaResult } from "../../services/types";
 
+/**
+ * Container stories: exercise the live `useAutocomplete` wiring against MSW.
+ * For prop-driven visual variants (results, loading, empty) see
+ * `TaxaAutocompleteView.stories`.
+ */
+
 const SAMPLE_RESULTS: TaxaResult[] = [
   {
     id: "Plantae/Quercus robur",
@@ -16,27 +22,6 @@ const SAMPLE_RESULTS: TaxaResult[] = [
     genus: "Quercus",
     source: "gbif",
     conservationStatus: { category: "LC", source: "IUCN" },
-  },
-  {
-    id: "Plantae/Quercus alba",
-    scientificName: "Quercus alba",
-    commonName: "White Oak",
-    rank: "species",
-    kingdom: "Plantae",
-    family: "Fagaceae",
-    genus: "Quercus",
-    source: "gbif",
-    conservationStatus: { category: "LC", source: "IUCN" },
-  },
-  {
-    id: "Plantae/Quercus rubra",
-    scientificName: "Quercus rubra",
-    commonName: "Northern Red Oak",
-    rank: "species",
-    kingdom: "Plantae",
-    family: "Fagaceae",
-    genus: "Quercus",
-    source: "gbif",
   },
 ];
 
@@ -63,33 +48,14 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const WithResults: Story = {
+export const Default: Story = {
   args: {
-    value: "Quercus",
+    value: "",
     onChange: () => undefined,
   },
   parameters: {
     msw: {
       handlers: [http.get("/api/taxa/search", () => HttpResponse.json(SAMPLE_RESULTS))],
     },
-  },
-};
-
-export const NoResults: Story = {
-  args: {
-    value: "asdjkfhasdf",
-    onChange: () => undefined,
-  },
-  parameters: {
-    msw: {
-      handlers: [http.get("/api/taxa/search", () => HttpResponse.json([]))],
-    },
-  },
-};
-
-export const Empty: Story = {
-  args: {
-    value: "",
-    onChange: () => undefined,
   },
 };
