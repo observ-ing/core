@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
   Avatar,
   Box,
@@ -184,6 +184,11 @@ export function UploadModal() {
       maxCount: remaining,
     });
     if (files.length > 0) addFiles(files);
+  };
+
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files ?? []));
+    e.target.value = "";
   };
 
   const extractExifData = async (file: File) => {
@@ -434,15 +439,16 @@ export function UploadModal() {
           Photos (optional)
         </Typography>
 
-        {/* Persistent target so tests (and pickPhotos's web fallback) can
-            address a stable file input. On native, pickPhotos bypasses this
-            element entirely and goes through the OriginalPhotoPicker plugin. */}
+        {/* Persistent input wired to addFiles so e2e tests can call
+            setInputFiles directly. The "Add Photos" button uses pickPhotos
+            instead, which creates its own transient input (web) or routes
+            to the OriginalPhotoPicker plugin (native). */}
         <input
           type="file"
           accept="image/jpeg,image/png,image/webp"
           multiple
+          onChange={handleImageSelect}
           style={{ display: "none" }}
-          data-photo-picker="modal"
         />
 
         {(existingImages.length > 0 || images.length > 0) && (

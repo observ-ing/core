@@ -71,44 +71,26 @@ async function fetchAsFile(webPath: string, format?: string): Promise<File> {
 }
 
 function pickWeb({ source, multiple }: PickPhotosOptions): Promise<File[]> {
-  // Reuse a host-rendered <input data-photo-picker> if one exists (e.g. inside
-  // the upload modal — tests target it via `setInputFiles`). Otherwise create
-  // a transient one and remove it after.
-  const existing = document.querySelector<HTMLInputElement>(
-    'input[type="file"][data-photo-picker]',
-  );
-  const input = existing ?? document.createElement("input");
-  if (!existing) {
-    input.type = "file";
-    input.style.display = "none";
-    document.body.appendChild(input);
-  }
-  input.accept = "image/jpeg,image/png,image/webp";
-  if (source === "camera") {
-    input.setAttribute("capture", "environment");
-  } else {
-    input.removeAttribute("capture");
-  }
-  input.multiple = !!multiple;
-
   return new Promise((resolve) => {
-    const cleanup = () => {
-      input.removeEventListener("change", onChange);
-      input.removeEventListener("cancel", onCancel);
-      input.value = "";
-      if (!existing) input.remove();
-    };
-    const onChange = () => {
-      const files = Array.from(input.files ?? []);
-      cleanup();
-      resolve(files);
-    };
-    const onCancel = () => {
-      cleanup();
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/jpeg,image/png,image/webp";
+    if (source === "camera") {
+      input.setAttribute("capture", "environment");
+    }
+    if (multiple) {
+      input.multiple = true;
+    }
+    input.style.display = "none";
+    input.addEventListener("change", () => {
+      resolve(Array.from(input.files ?? []));
+      input.remove();
+    });
+    input.addEventListener("cancel", () => {
       resolve([]);
-    };
-    input.addEventListener("change", onChange);
-    input.addEventListener("cancel", onCancel);
+      input.remove();
+    });
+    document.body.appendChild(input);
     input.click();
   });
 }
