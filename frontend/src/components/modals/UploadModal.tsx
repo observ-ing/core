@@ -600,6 +600,12 @@ export function UploadModal() {
                     setKingdom(s.kingdom);
                   }
                 }}
+                onSelectAncestor={(ancestor) => {
+                  setSpecies(ancestor.name);
+                  setMatchedTaxon(null);
+                  if (ancestor.kingdom) setKingdom(ancestor.kingdom);
+                  setRank(ancestor.rank);
+                }}
                 disabled={isSubmitting}
               />
             ) : undefined

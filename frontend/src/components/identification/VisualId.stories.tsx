@@ -49,6 +49,7 @@ const meta = {
   args: {
     imageUrl: SAMPLE_IMAGE,
     onSelect: () => undefined,
+    onSelectAncestor: () => undefined,
   },
   decorators: [
     (Story) => (
