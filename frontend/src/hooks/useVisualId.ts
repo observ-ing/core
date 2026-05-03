@@ -3,24 +3,24 @@ import { identifySpecies, type SpeciesSuggestion } from "../services/api";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
 
-interface UseAiSuggestionsOptions {
+interface UseVisualIdOptions {
   imageUrl: string;
   latitude?: number | undefined;
   longitude?: number | undefined;
   disabled?: boolean | undefined;
-  /** Automatically fetch suggestions on mount */
+  /** Automatically fetch matches on mount */
   autoFetch?: boolean | undefined;
   /** Suppress error toasts (e.g. for best-effort background identification) */
   quiet?: boolean | undefined;
 }
 
-export function useAiSuggestions({
+export function useVisualId({
   imageUrl,
   latitude,
   longitude,
   autoFetch,
   quiet,
-}: UseAiSuggestionsOptions) {
+}: UseVisualIdOptions) {
   const dispatch = useAppDispatch();
   const [suggestions, setSuggestions] = useState<SpeciesSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);

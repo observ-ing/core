@@ -4,21 +4,21 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
 import { nameToSlug } from "../../lib/taxonSlug";
-import { useAiSuggestions } from "../../hooks/useAiSuggestions";
+import { useVisualId } from "../../hooks/useVisualId";
 
-interface AiSuggestionsProps {
+interface VisualIdProps {
   imageUrl: string;
   latitude?: number | undefined;
   longitude?: number | undefined;
   onSelect: (suggestion: SpeciesSuggestion) => void;
   disabled?: boolean;
-  /** Automatically fetch suggestions on mount */
+  /** Automatically fetch matches on mount */
   autoFetch?: boolean;
   /** Suppress error toasts (e.g. for best-effort background identification) */
   quiet?: boolean;
 }
 
-export function AiSuggestions({
+export function VisualId({
   imageUrl,
   latitude,
   longitude,
@@ -26,8 +26,8 @@ export function AiSuggestions({
   disabled,
   autoFetch,
   quiet,
-}: AiSuggestionsProps) {
-  const { suggestions, isLoading, hasLoaded, handleFetch } = useAiSuggestions({
+}: VisualIdProps) {
+  const { suggestions, isLoading, hasLoaded, handleFetch } = useVisualId({
     imageUrl,
     latitude,
     longitude,
@@ -50,7 +50,7 @@ export function AiSuggestions({
           fullWidth
           sx={{ mb: 1 }}
         >
-          AI Suggest
+          Visual ID
         </Button>
       )}
       {isLoading && autoFetch && (
@@ -66,17 +66,17 @@ export function AiSuggestions({
           </Typography>
         </Box>
       )}
-      <AiSuggestionChips suggestions={suggestions} onSelect={onSelect} />
+      <VisualIdChips suggestions={suggestions} onSelect={onSelect} />
     </Box>
   );
 }
 
-interface AiSuggestionChipsProps {
+interface VisualIdChipsProps {
   suggestions: SpeciesSuggestion[];
   onSelect: (suggestion: SpeciesSuggestion) => void;
 }
 
-export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsProps) {
+export function VisualIdChips({ suggestions, onSelect }: VisualIdChipsProps) {
   if (suggestions.length === 0) return null;
 
   return (
@@ -89,7 +89,7 @@ export function AiSuggestionChips({ suggestions, onSelect }: AiSuggestionChipsPr
             color: "text.secondary",
           }}
         >
-          AI suggestions
+          Visual matches
         </Typography>
       </Box>
       <Stack spacing={0.5}>

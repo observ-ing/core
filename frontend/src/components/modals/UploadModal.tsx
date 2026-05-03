@@ -26,7 +26,7 @@ import { submitObservation, updateObservation, pollObservation } from "../../ser
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
-import { AiSuggestions } from "../identification/AiSuggestions";
+import { VisualId } from "../identification/VisualId";
 import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
@@ -74,7 +74,7 @@ export function UploadModal() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
-  const [aiImageUrl, setAiImageUrl] = useState<string | null>(null);
+  const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
@@ -124,7 +124,7 @@ export function UploadModal() {
     setExistingImages([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setUncertaintyMeters(50);
-    setAiImageUrl(null);
+    setVisualIdImageUrl(null);
   };
 
   const addFiles = (files: File[]) => {
@@ -165,7 +165,7 @@ export function UploadModal() {
       if (images.length === 0) {
         extractExifData(file);
         if (!species && !isEditMode) {
-          setAiImageUrl(preview);
+          setVisualIdImageUrl(preview);
         }
       }
     }
@@ -585,9 +585,9 @@ export function UploadModal() {
                   sx={{ mt: 0.5 }}
                 />
               )
-            ) : aiImageUrl ? (
-              <AiSuggestions
-                imageUrl={aiImageUrl}
+            ) : visualIdImageUrl ? (
+              <VisualId
+                imageUrl={visualIdImageUrl}
                 latitude={lat ? parseFloat(lat) : undefined}
                 longitude={lng ? parseFloat(lng) : undefined}
                 onSelect={(s) => {

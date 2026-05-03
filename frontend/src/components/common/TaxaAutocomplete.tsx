@@ -20,7 +20,7 @@ interface TaxaAutocompleteProps {
   placeholder?: string;
   size?: "small" | "medium";
   margin?: "normal" | "dense" | "none";
-  /** Content rendered below the input field (e.g. AI suggestions) */
+  /** Content rendered below the input field (e.g. visual ID matches) */
   bottomContent?: ReactNode;
 }
 
