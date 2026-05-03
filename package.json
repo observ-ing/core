@@ -20,6 +20,9 @@
     "test:integration": "playwright test --config=tests/playwright.config.ts --project=integration"
   },
   "dependencies": {
+    "@capacitor/android": "^8.3.1",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/core": "^8.3.1",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@mui/icons-material": "^9.0.0",
@@ -39,6 +42,7 @@
   },
   "devDependencies": {
     "@atproto/api": "^0.19.9",
+    "@capacitor/cli": "^8.3.1",
     "@playwright/test": "^1.59.1",
     "@storybook/addon-a11y": "^10.3.6",
     "@storybook/addon-themes": "^10.3.6",
