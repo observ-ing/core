@@ -6,7 +6,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import { submitIdentification } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
-import { VisualIdChips } from "./VisualId";
+import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { useAppDispatch } from "../../store";
@@ -182,11 +182,21 @@ export function IdentificationPanel({
                 size="small"
                 margin="none"
                 bottomContent={
-                  <VisualIdChips
+                  <VisualIdCards
                     suggestions={visualId.suggestions}
-                    onSelect={(s) => {
+                    onSelectSpecies={(s) => {
                       setTaxonName(s.scientificName);
                       setMatchedTaxon(s.taxonMatch ?? null);
+                    }}
+                    onSelectAncestor={(ancestor) => {
+                      setTaxonName(ancestor.name);
+                      setMatchedTaxon({
+                        id: `${ancestor.kingdom ?? ""}/${ancestor.name}`,
+                        scientificName: ancestor.name,
+                        rank: ancestor.rank,
+                        ...(ancestor.kingdom ? { kingdom: ancestor.kingdom } : {}),
+                        source: "visual-id-rollup",
+                      });
                     }}
                   />
                 }

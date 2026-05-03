@@ -1,16 +1,15 @@
-import { Box, Button, Chip, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
-import { nameToSlug } from "../../lib/taxonSlug";
 import { useVisualId } from "../../hooks/useVisualId";
+import { VisualIdCards, type AncestorSelection } from "./VisualIdCards";
 
 interface VisualIdProps {
   imageUrl: string;
   latitude?: number | undefined;
   longitude?: number | undefined;
   onSelect: (suggestion: SpeciesSuggestion) => void;
+  onSelectAncestor: (ancestor: AncestorSelection) => void;
   disabled?: boolean;
   /** Automatically fetch matches on mount */
   autoFetch?: boolean;
@@ -23,6 +22,7 @@ export function VisualId({
   latitude,
   longitude,
   onSelect,
+  onSelectAncestor,
   disabled,
   autoFetch,
   quiet,
@@ -66,129 +66,11 @@ export function VisualId({
           </Typography>
         </Box>
       )}
-      <VisualIdChips suggestions={suggestions} onSelect={onSelect} />
-    </Box>
-  );
-}
-
-interface VisualIdChipsProps {
-  suggestions: SpeciesSuggestion[];
-  onSelect: (suggestion: SpeciesSuggestion) => void;
-}
-
-export function VisualIdChips({ suggestions, onSelect }: VisualIdChipsProps) {
-  if (suggestions.length === 0) return null;
-
-  return (
-    <Box sx={{ mb: 1 }}>
-      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.5 }}>
-        <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-        <Typography
-          variant="caption"
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          Visual matches
-        </Typography>
-      </Box>
-      <Stack spacing={0.5}>
-        {suggestions.map((s) => (
-          <Chip
-            key={s.scientificName}
-            label={
-              <Box component="span" sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                {s.taxonMatch?.photoUrl && (
-                  <Box
-                    component="img"
-                    src={s.taxonMatch.photoUrl}
-                    alt=""
-                    loading="lazy"
-                    sx={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 0.5,
-                      objectFit: "cover",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-                <Box
-                  component="span"
-                  sx={{
-                    display: "flex",
-                    alignItems: "baseline",
-                    gap: 0.5,
-                    flex: 1,
-                    minWidth: 0,
-                  }}
-                >
-                  <span style={{ fontStyle: "italic" }}>{s.scientificName}</span>
-                  {s.commonName && (
-                    <Typography
-                      variant="caption"
-                      component="span"
-                      sx={{
-                        color: "text.secondary",
-                      }}
-                    >
-                      {s.commonName}
-                    </Typography>
-                  )}
-                  {s.inRange === true && (
-                    <Box
-                      component="span"
-                      sx={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        color: "success.main",
-                      }}
-                      title="Found in your area"
-                      aria-label="Found in your area"
-                    >
-                      <PlaceIcon sx={{ fontSize: 14 }} />
-                    </Box>
-                  )}
-                  <Typography
-                    variant="caption"
-                    component="span"
-                    sx={{
-                      color: "text.secondary",
-                      ml: "auto",
-                    }}
-                  >
-                    {Math.round(s.confidence * 100)}%
-                  </Typography>
-                </Box>
-                {s.kingdom && (
-                  <IconButton
-                    size="small"
-                    component="a"
-                    href={`/taxon/${s.kingdom}/${nameToSlug(s.scientificName)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    sx={{ p: 0, ml: 0.5 }}
-                    title="Open taxon in new tab"
-                  >
-                    <OpenInNewIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                )}
-              </Box>
-            }
-            size="small"
-            onClick={() => onSelect(s)}
-            variant="outlined"
-            color="primary"
-            sx={{
-              cursor: "pointer",
-              maxWidth: "100%",
-              height: "auto",
-              "& .MuiChip-label": { width: "100%", px: 1.5, py: 0.5 },
-            }}
-          />
-        ))}
-      </Stack>
+      <VisualIdCards
+        suggestions={suggestions}
+        onSelectSpecies={onSelect}
+        onSelectAncestor={onSelectAncestor}
+      />
     </Box>
   );
 }

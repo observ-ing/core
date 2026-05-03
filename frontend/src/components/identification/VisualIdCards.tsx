@@ -75,7 +75,12 @@ function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | n
       rank,
       name,
       kingdom: first.kingdom,
-      confidence: suggestions.reduce((sum, s) => sum + s.confidence, 0),
+      // Cap at 1.0: model output isn't always probability-normalized, so the
+      // raw sum of candidate confidences can exceed 100%.
+      confidence: Math.min(
+        1,
+        suggestions.reduce((sum, s) => sum + s.confidence, 0),
+      ),
     };
   }
   return null;
