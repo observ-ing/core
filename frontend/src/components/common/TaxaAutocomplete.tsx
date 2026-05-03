@@ -1,11 +1,9 @@
 import { useCallback, type ReactNode } from "react";
-import { Autocomplete, Box, Stack, Typography } from "@mui/material";
 import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
-import { ConservationStatus } from "./ConservationStatus";
 import { useAutocomplete } from "../../hooks/useAutocomplete";
 import { MAX_AUTOCOMPLETE_RESULTS } from "../../lib/utils";
-import { renderAutocompleteInput } from "./autocompleteInput";
+import { TaxaAutocompleteView } from "./TaxaAutocompleteView";
 
 interface TaxaAutocompleteProps {
   value: string;
@@ -24,16 +22,7 @@ interface TaxaAutocompleteProps {
   bottomContent?: ReactNode;
 }
 
-export function TaxaAutocomplete({
-  value,
-  onChange,
-  onMatchChange,
-  label = "Species Name",
-  placeholder = "Search by common or scientific name...",
-  size,
-  margin = "normal",
-  bottomContent,
-}: TaxaAutocompleteProps) {
+export function TaxaAutocomplete(props: TaxaAutocompleteProps) {
   const searchFn = useCallback((query: string) => searchTaxa(query), []);
   const { options, loading, handleSearch, clearOptions } = useAutocomplete<TaxaResult>({
     searchFn,
@@ -41,122 +30,12 @@ export function TaxaAutocomplete({
   });
 
   return (
-    <Box>
-      <Autocomplete
-        freeSolo
-        options={options}
-        loading={loading}
-        getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
-        inputValue={value}
-        onInputChange={(_, v, reason) => {
-          onChange(v);
-          if (reason === "input") onMatchChange?.(null);
-          handleSearch(v);
-        }}
-        onChange={(_, v) => {
-          if (v && typeof v !== "string") {
-            onChange(v.scientificName);
-            onMatchChange?.(v);
-            clearOptions();
-          } else if (typeof v === "string") {
-            onChange(v);
-            onMatchChange?.(null);
-          }
-        }}
-        filterOptions={(x) => x}
-        {...(size ? { size } : {})}
-        renderInput={(params) =>
-          renderAutocompleteInput({ params, loading, label, placeholder, margin })
-        }
-        renderOption={(props, option) => {
-          const { key, ...otherProps } = props;
-          return (
-            <Box
-              component="li"
-              key={key}
-              {...otherProps}
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                p: 1.5,
-              }}
-            >
-              {option.photoUrl && (
-                <Box
-                  component="img"
-                  src={option.photoUrl}
-                  alt=""
-                  loading="lazy"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 1,
-                    objectFit: "cover",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  sx={{
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontWeight: 600,
-                    }}
-                  >
-                    {option.scientificName}
-                  </Typography>
-                  {option.isSynonym && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        bgcolor: "action.selected",
-                        px: 0.75,
-                        py: 0.25,
-                        borderRadius: 0.5,
-                        fontSize: "0.65rem",
-                      }}
-                    >
-                      synonym
-                    </Typography>
-                  )}
-                  {option.conservationStatus && (
-                    <ConservationStatus status={option.conservationStatus} size="sm" />
-                  )}
-                </Stack>
-                {option.isSynonym && option.acceptedName && (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
-                    → {option.acceptedName}
-                  </Typography>
-                )}
-                {option.commonName && !option.isSynonym && (
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
-                    {option.commonName}
-                  </Typography>
-                )}
-              </Box>
-            </Box>
-          );
-        }}
-      />
-      {bottomContent}
-    </Box>
+    <TaxaAutocompleteView
+      {...props}
+      options={options}
+      loading={loading}
+      onSearch={handleSearch}
+      onClear={clearOptions}
+    />
   );
 }
