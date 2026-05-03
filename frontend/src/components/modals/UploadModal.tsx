@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import {
   Avatar,
   Box,
@@ -31,6 +31,8 @@ import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
+import { pickPhotos } from "../../lib/photoPicker";
+import { Geolocation } from "@capacitor/geolocation";
 
 interface ImagePreview {
   file: File;
@@ -75,7 +77,6 @@ export function UploadModal() {
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -171,26 +172,32 @@ export function UploadModal() {
     }
   };
 
-  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    addFiles(Array.from(e.target.files || []));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handlePickImages = async () => {
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      dispatch(addToast({ message: `Maximum ${MAX_IMAGES} images allowed.`, type: "error" }));
+      return;
     }
+    const files = await pickPhotos({
+      source: "gallery",
+      multiple: true,
+      maxCount: remaining,
+    });
+    if (files.length > 0) addFiles(files);
   };
 
   const extractExifData = async (file: File) => {
+    let gotLocationFromExif = false;
     try {
       const arrayBuffer = await file.arrayBuffer();
       const tags = ExifReader.load(arrayBuffer);
 
-      // Extract GPS coordinates
       const gpsLat = tags.GPSLatitude;
       const gpsLng = tags.GPSLongitude;
       const latRef = tags.GPSLatitudeRef;
       const lngRef = tags.GPSLongitudeRef;
 
       if (gpsLat && gpsLng) {
-        // description may be a number or string depending on browser/ExifReader version
         let latitude =
           typeof gpsLat.description === "number"
             ? gpsLat.description
@@ -206,7 +213,6 @@ export function UploadModal() {
         // null island is so unlikely that treating zero as "missing" is safe.
         const isZeroIsland = latitude === 0 && longitude === 0;
         if (Number.isFinite(latitude) && Number.isFinite(longitude) && !isZeroIsland) {
-          // Apply hemisphere signs
           const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
           const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
           if (latRefValue === "S") latitude = -Math.abs(latitude);
@@ -214,16 +220,13 @@ export function UploadModal() {
 
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
+          gotLocationFromExif = true;
           dispatch(
-            addToast({
-              message: "Location extracted from photo EXIF data",
-              type: "success",
-            }),
+            addToast({ message: "Location extracted from photo EXIF data", type: "success" }),
           );
         }
       }
 
-      // Extract date taken
       const dateOriginal = tags.DateTimeOriginal || tags.DateTime;
       if (dateOriginal?.description) {
         // EXIF date format: "YYYY:MM:DD HH:MM:SS"
@@ -232,16 +235,31 @@ export function UploadModal() {
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
           setObservationDate(toDatetimeLocal(date));
-          dispatch(
-            addToast({
-              message: "Date extracted from photo EXIF data",
-              type: "success",
-            }),
-          );
+          dispatch(addToast({ message: "Date extracted from photo EXIF data", type: "success" }));
         }
       }
     } catch (error) {
       console.error("EXIF extraction error:", error);
+    }
+
+    if (!gotLocationFromExif) {
+      // Android's photo picker zeros GPS EXIF, and many camera intents drop it
+      // entirely. Falling back to device location at upload time is a much
+      // weaker signal (it's "where you are now," not where the photo was taken)
+      // but it's better than nothing for the common "I just took this" case.
+      try {
+        const position = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+        setLat(position.coords.latitude.toFixed(6));
+        setLng(position.coords.longitude.toFixed(6));
+        dispatch(
+          addToast({
+            message: "No GPS in photo — using current location",
+            type: "success",
+          }),
+        );
+      } catch (error) {
+        console.warn("Geolocation fallback failed:", error);
+      }
     }
   };
 
@@ -258,7 +276,7 @@ export function UploadModal() {
   };
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    void handlePickImages();
   };
 
   // On update the URI is stable, so matching on CID is required to
@@ -415,15 +433,6 @@ export function UploadModal() {
         >
           Photos (optional)
         </Typography>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          multiple
-          onChange={handleImageSelect}
-          style={{ display: "none" }}
-        />
 
         {(existingImages.length > 0 || images.length > 0) && (
           <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>

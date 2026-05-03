@@ -16,6 +16,11 @@ const config: CapacitorConfig = {
           url: serverUrl,
           cleartext: true,
           androidScheme: 'http',
+          // Keep OAuth flow inside the WebView. Without this, the WebView
+          // punts off-origin navigations (the PDS authorize page) to Chrome,
+          // which sets the session cookie in the wrong jar and the app stays
+          // logged out. '*' is fine for dev; production should narrow this.
+          allowNavigation: ['*'],
         },
       }
     : {}),
