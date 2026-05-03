@@ -1,7 +1,9 @@
-import { Box, ButtonBase, Stack, Typography } from "@mui/material";
+import { Box, ButtonBase, IconButton, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
+import { nameToSlug } from "../../lib/taxonSlug";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -59,6 +61,33 @@ function determineMode(sortedByConfidence: SpeciesSuggestion[]): Mode {
   return top.confidence >= DOMINANT_FLOOR && top.confidence >= DOMINANT_GAP * runnerUp.confidence
     ? "dominant"
     : "ambiguous";
+}
+
+function buildTaxonUrl(
+  name: string,
+  kingdom: string | undefined,
+  rank?: AncestorRank,
+): string | null {
+  if (rank === "kingdom") return `/taxon/${nameToSlug(name)}`;
+  if (kingdom) return `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
+  return null;
+}
+
+function TaxonLinkButton({ url }: { url: string }) {
+  return (
+    <IconButton
+      size="small"
+      component="a"
+      href={url}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+      sx={{ p: 0.5, ml: 0.5, flexShrink: 0 }}
+      title="Open taxon in new tab"
+    >
+      <OpenInNewIcon sx={{ fontSize: 14 }} />
+    </IconButton>
+  );
 }
 
 function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | null {
@@ -226,6 +255,7 @@ function AncestorName({ ancestor }: { ancestor: AncestorMatch }) {
 }
 
 function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelect: () => void }) {
+  const url = buildTaxonUrl(ancestor.name, ancestor.kingdom, ancestor.rank);
   return (
     <ButtonBase
       onClick={onSelect}
@@ -253,6 +283,7 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
           {RANK_LABEL[ancestor.rank]} · {Math.round(ancestor.confidence * 100)}% match
         </Typography>
       </Box>
+      {url && <TaxonLinkButton url={url} />}
     </ButtonBase>
   );
 }
@@ -299,6 +330,7 @@ function SpeciesCard({
   onSelect: () => void;
 }) {
   const thumbnailSize = primary ? 48 : 40;
+  const url = buildTaxonUrl(suggestion.scientificName, suggestion.kingdom);
   return (
     <ButtonBase
       onClick={onSelect}
@@ -367,6 +399,7 @@ function SpeciesCard({
       <Typography variant="caption" sx={{ color: "text.secondary", flexShrink: 0 }}>
         {Math.round(suggestion.confidence * 100)}%
       </Typography>
+      {url && <TaxonLinkButton url={url} />}
     </ButtonBase>
   );
 }
