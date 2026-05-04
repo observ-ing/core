@@ -62,9 +62,6 @@ export function ObservationDetailSkeleton() {
 
         {/* Map */}
         <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, ml: 4.5, mb: 1 }} />
-
-        {/* Identification section */}
-        <Skeleton variant="rectangular" height={100} sx={{ borderRadius: 2, mt: 3 }} />
       </Box>
     </Box>
   );

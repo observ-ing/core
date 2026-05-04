@@ -24,33 +24,19 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import {
-  fetchObservation,
-  getImageUrl,
-  deleteIdentification,
-  pollObservation,
-} from "../../services/api";
+import { fetchObservation, getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useLikeToggle } from "../../hooks/useLikeToggle";
-import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
-import { checkAuth } from "../../store/authSlice";
-import type { Occurrence, Identification, Comment } from "../../services/types";
-import { IdentificationPanel } from "../identification/IdentificationPanel";
-import { IdentificationHistory } from "../identification/IdentificationHistory";
+import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
+import type { Occurrence, Comment } from "../../services/types";
 import { CommentSection } from "../comment/CommentSection";
 import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
-import {
-  formatDate,
-  getDisplayName,
-  getPdslsUrl,
-  buildOccurrenceAtUri,
-  getErrorMessage,
-} from "../../lib/utils";
+import { formatDate, getDisplayName, getPdslsUrl, buildOccurrenceAtUri } from "../../lib/utils";
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -59,7 +45,6 @@ export function ObservationDetail() {
   const user = useAppSelector((state) => state.auth.user);
 
   const [observation, setObservation] = useState<Occurrence | null>(null);
-  const [identifications, setIdentifications] = useState<Identification[]>([]);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +78,6 @@ export function ObservationDetail() {
         setObservation(result.occurrence);
         setLiked(result.occurrence.viewerHasLiked ?? false);
         setLikeCount(result.occurrence.likeCount ?? 0);
-        setIdentifications(result.identifications || []);
         setComments(result.comments || []);
       } else {
         setError("Observation not found");
@@ -112,12 +96,11 @@ export function ObservationDetail() {
     }
   };
 
-  const handleIdentificationSuccess = async () => {
+  const refreshObservation = async () => {
     if (atUri) {
       const result = await fetchObservation(atUri);
       if (result?.occurrence) {
         setObservation(result.occurrence);
-        setIdentifications(result.identifications || []);
         setComments(result.comments || []);
       }
     }
@@ -476,71 +459,6 @@ export function ObservationDetail() {
           </List>
 
           <Box sx={{ mt: 3 }}>
-            {/* Identification History */}
-            <Box sx={{ mt: 2 }}>
-              <IdentificationHistory
-                identifications={identifications}
-                kingdom={taxonomy?.kingdom}
-                currentUserDid={user?.did}
-                onDeleteIdentification={async (uri) => {
-                  try {
-                    await deleteIdentification(uri);
-                    // Wait for the ingester to remove the identification;
-                    // refetching immediately would show the stale row and
-                    // make the delete look like it failed.
-                    if (atUri) {
-                      await pollObservation(
-                        atUri,
-                        (r) => !r?.identifications?.some((id) => id.uri === uri),
-                      );
-                    }
-                    dispatch(addToast({ message: "Identification deleted", type: "success" }));
-                    await handleIdentificationSuccess();
-                  } catch (error) {
-                    const message = getErrorMessage(error, "Failed to delete identification");
-                    dispatch(addToast({ message, type: "error" }));
-                    if (message.includes("Session expired")) {
-                      dispatch(checkAuth());
-                    }
-                    throw error;
-                  }
-                }}
-                observerDid={observation.observer.did}
-                footer={
-                  user ? (
-                    <IdentificationPanel
-                      observation={{
-                        uri: observation.uri,
-                        cid: observation.cid,
-                        scientificName: taxonomy?.scientificName,
-                        communityId: observation.communityId,
-                      }}
-                      imageUrl={
-                        observation.images[0] != null
-                          ? getImageUrl(observation.images[0])
-                          : undefined
-                      }
-                      latitude={observation.location?.latitude}
-                      longitude={observation.location?.longitude}
-                      onSuccess={handleIdentificationSuccess}
-                    />
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "text.secondary",
-                        mt: 2,
-                        textAlign: "center",
-                      }}
-                    >
-                      Log in to add an identification
-                    </Typography>
-                  )
-                }
-              />
-            </Box>
-
-            {/* Interactions Panel */}
             <InteractionPanel
               observation={{
                 uri: observation.uri,
@@ -548,7 +466,7 @@ export function ObservationDetail() {
                 scientificName: taxonomy?.scientificName,
                 communityId: observation.communityId,
               }}
-              onSuccess={handleIdentificationSuccess}
+              onSuccess={refreshObservation}
             />
           </Box>
 

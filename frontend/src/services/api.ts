@@ -268,31 +268,8 @@ export async function deleteObservation(uri: string): Promise<{ success: boolean
   );
 }
 
-export async function deleteIdentification(uri: string): Promise<{ success: boolean }> {
-  return deleteResource(
-    `${API_BASE}/api/identifications/${encodeURIComponent(uri)}`,
-    "Failed to delete identification",
-  );
-}
-
 export function getImageUrl(path: string): string {
   return `${API_BASE}${path}`;
-}
-
-export async function submitIdentification(data: {
-  occurrenceUri: string;
-  occurrenceCid: string;
-  scientificName: string;
-  taxonRank?: string;
-  kingdom?: string;
-  isAgreement?: boolean;
-}): Promise<{ uri: string; cid: string }> {
-  return fetchApi(`${API_BASE}/api/identifications`, "Failed to submit identification", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(data),
-  });
 }
 
 export async function submitComment(data: {
