@@ -18,6 +18,6 @@
     "jsx": "react-jsx",
     "skipLibCheck": true
   },
-  "include": ["scripts/**/*", "frontend/src/**/*"],
+  "include": ["scripts/**/*", "frontend/src/**/*", "capacitor.config.ts"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
 }

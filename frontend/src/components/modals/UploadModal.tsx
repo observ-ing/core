@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent, useRef } from "react";
+import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
   Avatar,
   Box,
@@ -35,6 +35,7 @@ import { LocationPicker } from "../map/LocationPicker";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
+import { pickPhotos } from "../../lib/photoPicker";
 
 interface ImagePreview {
   file: File;
@@ -81,7 +82,6 @@ export function UploadModal() {
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const MAX_IMAGES = 10;
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -194,11 +194,23 @@ export function UploadModal() {
     }
   };
 
-  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    addFiles(Array.from(e.target.files || []));
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+  const handlePickImages = async () => {
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      dispatch(addToast({ message: `Maximum ${MAX_IMAGES} images allowed.`, type: "error" }));
+      return;
     }
+    const files = await pickPhotos({
+      source: "gallery",
+      multiple: true,
+      maxCount: remaining,
+    });
+    if (files.length > 0) addFiles(files);
+  };
+
+  const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    addFiles(Array.from(e.target.files ?? []));
+    e.target.value = "";
   };
 
   const extractExifData = async (file: File) => {
@@ -206,14 +218,12 @@ export function UploadModal() {
       const arrayBuffer = await file.arrayBuffer();
       const tags = ExifReader.load(arrayBuffer);
 
-      // Extract GPS coordinates
       const gpsLat = tags.GPSLatitude;
       const gpsLng = tags.GPSLongitude;
       const latRef = tags.GPSLatitudeRef;
       const lngRef = tags.GPSLongitudeRef;
 
       if (gpsLat && gpsLng) {
-        // description may be a number or string depending on browser/ExifReader version
         let latitude =
           typeof gpsLat.description === "number"
             ? gpsLat.description
@@ -229,7 +239,6 @@ export function UploadModal() {
         // null island is so unlikely that treating zero as "missing" is safe.
         const isZeroIsland = latitude === 0 && longitude === 0;
         if (Number.isFinite(latitude) && Number.isFinite(longitude) && !isZeroIsland) {
-          // Apply hemisphere signs
           const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
           const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
           if (latRefValue === "S") latitude = -Math.abs(latitude);
@@ -238,15 +247,11 @@ export function UploadModal() {
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
           dispatch(
-            addToast({
-              message: "Location extracted from photo EXIF data",
-              type: "success",
-            }),
+            addToast({ message: "Location extracted from photo EXIF data", type: "success" }),
           );
         }
       }
 
-      // Extract date taken
       const dateOriginal = tags.DateTimeOriginal || tags.DateTime;
       if (dateOriginal?.description) {
         // EXIF date format: "YYYY:MM:DD HH:MM:SS"
@@ -255,12 +260,7 @@ export function UploadModal() {
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
           setObservationDate(toDatetimeLocal(date));
-          dispatch(
-            addToast({
-              message: "Date extracted from photo EXIF data",
-              type: "success",
-            }),
-          );
+          dispatch(addToast({ message: "Date extracted from photo EXIF data", type: "success" }));
         }
       }
     } catch (error) {
@@ -283,7 +283,7 @@ export function UploadModal() {
   };
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    void handlePickImages();
   };
 
   // On update the URI is stable, so matching on CID is required to
@@ -444,7 +444,6 @@ export function UploadModal() {
           </Typography>
 
           <input
-            ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
             multiple
