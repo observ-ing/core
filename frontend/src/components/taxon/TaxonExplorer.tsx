@@ -89,6 +89,20 @@ export function TaxonExplorer() {
     return thumb.replace(/\?width=\d+/, "?width=600");
   }, [taxon, heroThumbnails]);
 
+  // Wikidata thumbnails for every taxon currently in the tree
+  const treeNames = useMemo(() => {
+    const names: string[] = [];
+    function walk(items: TaxonTreeItem[]) {
+      for (const item of items) {
+        names.push(String(item.label));
+        if (item.children) walk(item.children);
+      }
+    }
+    walk(treeItems);
+    return names;
+  }, [treeItems]);
+  const treeThumbnails = useWikidataThumbnails(treeNames, 48);
+
   /** Merge a taxon detail's ancestors + children into the tree node map */
   const mergeIntoTree = useCallback(
     (detail: TaxonDetail) => {
@@ -384,6 +398,7 @@ export function TaxonExplorer() {
     expandedItems,
     selectedItems: selectedItem,
     loadingNodeId,
+    thumbnails: treeThumbnails,
     disabled: loading,
     onExpandedItemsChange: setExpandedItems,
     onSelectedItemsChange: handleTreeSelect,
