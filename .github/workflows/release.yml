@@ -40,7 +40,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - run: npm ci
+      # Bake the production API origin into the bundle. Without this, fetches
+      # in services/api.ts use relative URLs that resolve against the WebView's
+      # local origin — there's no backend there, so every API call hangs.
       - run: npm run build
+        env:
+          VITE_API_URL: https://observ.ing
       - run: npx cap add android
       - run: npx cap sync android
 
