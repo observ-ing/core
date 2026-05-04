@@ -85,6 +85,7 @@ export function TaxonTreePanel({
         Classification
       </Typography>
       <SimpleTreeView
+        expansionTrigger="iconContainer"
         expandedItems={expandedItems}
         selectedItems={selectedItems}
         onExpandedItemsChange={(_e, ids) => onExpandedItemsChange(ids)}
