@@ -1,0 +1,78 @@
+name: Release
+
+# Triggered by pushing a tag like `v0.2.0`. Builds an Android debug APK,
+# attaches it to a draft GitHub Release, and auto-fills release notes from
+# PR titles since the last tag. The release stays a draft so the
+# versionName / changelog / APK can be reviewed before publishing.
+#
+# This is a debug-key-signed build — fine for sideloading and TestFlight-
+# style sharing, not for Play Store. For Play Store we'd add a parallel
+# signed-release path (separate keystore + secrets).
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  android-debug-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # rev-list --count needs full history to derive a stable
+          # versionCode that monotonically increases across tags.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+
+      - run: npm ci
+      - run: npm run build
+      - run: npx cap add android
+      - run: npx cap sync android
+
+      - name: Inject version from tag
+        run: |
+          VERSION_NAME="${GITHUB_REF_NAME#v}"
+          VERSION_CODE=$(git rev-list --count HEAD)
+          sed -i "s/versionName \".*\"/versionName \"${VERSION_NAME}\"/" android/app/build.gradle
+          sed -i "s/versionCode [0-9]*/versionCode ${VERSION_CODE}/" android/app/build.gradle
+          echo "Set versionName=${VERSION_NAME} versionCode=${VERSION_CODE}"
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Rename APK to include version
+        run: |
+          mv android/app/build/outputs/apk/debug/app-debug.apk \
+             observing-${{ github.ref_name }}-android-debug.apk
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: observing-${{ github.ref_name }}-android-debug.apk
+          draft: true
+          generate_release_notes: true
+          body: |
+            **Debug build** — sideload only. Signed with the Android debug key,
+            not a release key, so Play Store install / update is not possible
+            from this APK.
+
+            ## Install on Android
+
+            1. On your phone: Settings → Apps → Special access → "Install
+               unknown apps", grant your browser/file manager permission.
+            2. Download the `.apk` below and open it.
