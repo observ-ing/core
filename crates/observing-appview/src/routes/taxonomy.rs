@@ -9,7 +9,9 @@ use crate::enrichment;
 use crate::error::AppError;
 use crate::responses::{OccurrenceListResponse, TaxonSearchResponse};
 use crate::state::AppState;
-use crate::taxonomy_client::{TaxonDetailWithCount, ValidateResponse};
+use crate::taxonomy_client::{
+    TaxonDetail, TaxonDetailWithCount, TaxonomyClientError, ValidateResponse,
+};
 
 #[derive(Deserialize)]
 pub struct SearchParams {
@@ -173,13 +175,27 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     }))
 }
 
+/// Resolve `/api/taxa/{id}`-style input to a TaxonDetail. Accepts either a
+/// GBIF id (`gbif:NNN` / bare numeric) or a scientific name (e.g. a kingdom
+/// name like `Animalia`).
+async fn resolve_taxon_by_id_or_name(
+    state: &AppState,
+    id: &str,
+) -> Result<Option<TaxonDetail>, TaxonomyClientError> {
+    if let Some(detail) = state.taxonomy.get_by_id(id).await? {
+        return Ok(Some(detail));
+    }
+    if id.starts_with("gbif:") || id.parse::<u64>().is_ok() {
+        return Ok(None);
+    }
+    state.taxonomy.get_by_name(id, None).await
+}
+
 pub async fn get_taxon_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<Json<TaxonDetailWithCount>, AppError> {
-    let detail = state
-        .taxonomy
-        .get_by_id(&id)
+    let detail = resolve_taxon_by_id_or_name(&state, &id)
         .await?
         .ok_or_else(|| AppError::NotFound("Taxon not found".into()))?;
 
@@ -210,7 +226,9 @@ pub async fn get_taxon_occurrences_by_id(
         .min(constants::MAX_FEED_LIMIT);
 
     // Look up taxon to get name + rank
-    let detail = state.taxonomy.get_by_id(&id).await.unwrap_or(None);
+    let detail = resolve_taxon_by_id_or_name(&state, &id)
+        .await
+        .unwrap_or(None);
 
     let (name, rank, kingdom) = match detail {
         Some(ref d) => (d.scientific_name.clone(), d.rank.clone(), d.kingdom.clone()),
