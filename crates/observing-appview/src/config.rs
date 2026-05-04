@@ -57,6 +57,11 @@ impl Config {
                 vec![
                     "http://localhost:3000".to_string(),
                     "http://localhost:5173".to_string(),
+                    // Capacitor WebView origins on Android (default and
+                    // legacy) — needed when the bundled APK calls the
+                    // appview cross-origin.
+                    "https://localhost".to_string(),
+                    "capacitor://localhost".to_string(),
                 ]
             });
 

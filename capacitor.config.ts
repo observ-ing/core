@@ -10,20 +10,16 @@ const config: CapacitorConfig = {
   appId: 'ing.observ.app',
   appName: 'Observ.ing',
   webDir: 'dist/public',
-  ...(serverUrl
-    ? {
-        server: {
-          url: serverUrl,
-          cleartext: true,
-          androidScheme: 'http',
-          // Keep OAuth flow inside the WebView. Without this, the WebView
-          // punts off-origin navigations (the PDS authorize page) to Chrome,
-          // which sets the session cookie in the wrong jar and the app stays
-          // logged out. '*' is fine for dev; production should narrow this.
-          allowNavigation: ['*'],
-        },
-      }
-    : {}),
+  server: {
+    // Keep OAuth flow inside the WebView regardless of build mode. Without
+    // this, off-origin navigations (the PDS authorize page) get punted to
+    // Chrome, which sets the session cookie in the wrong jar. AT Protocol
+    // PDSes can live on user-controlled domains (e.g. self-hosted), so we
+    // can't enumerate hosts ahead of time — using '*' here. Narrowing is
+    // tracked as a hardening follow-up once the auth surface is settled.
+    allowNavigation: ['*'],
+    ...(serverUrl ? { url: serverUrl, cleartext: true, androidScheme: 'http' } : {}),
+  },
 };
 
 export default config;
