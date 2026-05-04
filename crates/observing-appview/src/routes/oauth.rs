@@ -81,19 +81,25 @@ pub async fn callback(
                     let did_str = did.to_string();
                     info!(did = %did_str, "OAuth callback successful");
 
-                    // Set session_did cookie and redirect to /
-                    let secure = if state.public_url.is_some() {
-                        "; Secure; SameSite=Lax"
+                    // SameSite=None lets the cookie be sent on cross-site
+                    // requests, which is required when the Capacitor mobile
+                    // app (origin https://localhost) calls the appview at
+                    // observ.ing. Browsers require Secure for SameSite=None,
+                    // so we only set both in production (HTTPS). In local
+                    // dev we omit both — the browser then treats the cookie
+                    // as default Lax, which is fine for same-origin use.
+                    let attrs = if state.public_url.is_some() {
+                        "; Secure; SameSite=None"
                     } else {
                         ""
                     };
                     let cookie = format!(
                         "session_did={}; HttpOnly; Path=/; Max-Age={}{}",
-                        did_str, SESSION_MAX_AGE_SECS, secure,
+                        did_str, SESSION_MAX_AGE_SECS, attrs,
                     );
                     (
                         [(axum::http::header::SET_COOKIE, cookie)],
-                        Redirect::to("/"),
+                        Redirect::to("/?just-authed=1"),
                     )
                         .into_response()
                 }
