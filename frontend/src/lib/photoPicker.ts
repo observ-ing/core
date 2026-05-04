@@ -1,5 +1,6 @@
-import { Capacitor, registerPlugin } from "@capacitor/core";
+import { Capacitor } from "@capacitor/core";
 import { Camera } from "@capacitor/camera";
+import { OriginalPhotoPicker } from "capacitor-original-photo-picker";
 
 export type PhotoSource = "camera" | "gallery";
 
@@ -8,20 +9,6 @@ interface PickPhotosOptions {
   multiple?: boolean;
   maxCount?: number;
 }
-
-interface OriginalPhotoPickerPlugin {
-  pickPhoto(): Promise<{
-    cancelled: boolean;
-    base64?: string;
-    mimeType?: string;
-    filename?: string;
-  }>;
-}
-
-// In-app native plugin (see android/app/src/main/java/ing/observ/app/
-// OriginalPhotoPickerPlugin.java). Exists because @capacitor/camera does not
-// preserve EXIF GPS on Android — see issues #1074, #2118, #2147 upstream.
-const OriginalPhotoPicker = registerPlugin<OriginalPhotoPickerPlugin>("OriginalPhotoPicker");
 
 export async function pickPhotos(options: PickPhotosOptions): Promise<File[]> {
   if (Capacitor.isNativePlatform()) {
