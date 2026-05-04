@@ -82,119 +82,134 @@ export function TaxonDetailPanel({
           </IconButton>
         )}
       </Box>
-      {/* Hero Image */}
-      {heroUrl && (
-        <Box
-          sx={{
-            width: "100%",
-            maxHeight: 280,
-            overflow: "hidden",
-            backgroundColor: "action.hover",
-          }}
-        >
-          <Box
-            component="img"
-            src={heroUrl}
-            alt={taxon.scientificName}
-            sx={{
-              width: "100%",
-              maxHeight: 280,
-              objectFit: "cover",
-              display: "block",
-            }}
-          />
-        </Box>
-      )}
       {/* Main Content */}
       <Box sx={{ p: 3 }}>
-        {/* Scientific Name */}
-        <Typography
-          variant="h5"
-          sx={{
-            fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
-              ? "italic"
-              : "normal",
-            color: "primary.main",
-            fontWeight: 600,
-          }}
-        >
-          {taxon.scientificName}
-        </Typography>
-
-        {/* Common Name */}
-        {taxon.commonName && (
-          <Typography
-            variant="h6"
-            component="p"
-            sx={{
-              color: "text.secondary",
-              mt: 0.5,
-            }}
-          >
-            {taxon.commonName}
-          </Typography>
-        )}
-
-        {/* Stats + External Links */}
+        {/* Image card + title block */}
         <Stack
-          direction="row"
-          spacing={1}
-          sx={{
-            alignItems: "center",
-            mt: 2,
-            flexWrap: "wrap",
-          }}
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          sx={{ alignItems: { xs: "stretch", sm: "flex-start" } }}
         >
-          {taxon.conservationStatus && (
-            <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
-              <span>
-                <ConservationStatus status={taxon.conservationStatus} showLabel />
-              </span>
-            </Tooltip>
+          {heroUrl && (
+            <Box
+              sx={{
+                width: 240,
+                height: 240,
+                maxWidth: "100%",
+                flexShrink: 0,
+                borderRadius: 1,
+                overflow: "hidden",
+                backgroundColor: "action.hover",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                mx: { xs: "auto", sm: 0 },
+              }}
+            >
+              <Box
+                component="img"
+                src={heroUrl}
+                alt={taxon.scientificName}
+                sx={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "contain",
+                  display: "block",
+                }}
+              />
+            </Box>
           )}
-          {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
-            Observ.ing
-            {taxon.numDescendants !== undefined && taxon.numDescendants > 0 && (
-              <> &middot; {taxon.numDescendants.toLocaleString()} descendant taxa</>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            {/* Scientific Name */}
+            <Typography
+              variant="h5"
+              sx={{
+                fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
+                  ? "italic"
+                  : "normal",
+                color: "primary.main",
+                fontWeight: 600,
+              }}
+            >
+              {taxon.scientificName}
+            </Typography>
+
+            {/* Common Name */}
+            {taxon.commonName && (
+              <Typography
+                variant="h6"
+                component="p"
+                sx={{
+                  color: "text.secondary",
+                  mt: 0.5,
+                }}
+              >
+                {taxon.commonName}
+              </Typography>
             )}
-          </Typography>
-          {(gbifUrl || wikidataUrl) && (
-            <>
-              {gbifUrl && (
-                <Chip
-                  component="a"
-                  href={gbifUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  label="GBIF"
-                  size="small"
-                  variant="outlined"
-                  clickable
-                  icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                />
+
+            {/* Stats + External Links */}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                mt: 2,
+                flexWrap: "wrap",
+              }}
+            >
+              {taxon.conservationStatus && (
+                <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
+                  <span>
+                    <ConservationStatus status={taxon.conservationStatus} showLabel />
+                  </span>
+                </Tooltip>
               )}
-              {wikidataUrl && (
-                <Chip
-                  component="a"
-                  href={wikidataUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  label="Wikidata"
-                  size="small"
-                  variant="outlined"
-                  clickable
-                  icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                />
+              {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
+              <Typography
+                variant="body2"
+                sx={{
+                  color: "text.secondary",
+                }}
+              >
+                {taxon.observationCount} observation{taxon.observationCount !== 1 ? "s" : ""} on
+                Observ.ing
+                {taxon.numDescendants !== undefined && taxon.numDescendants > 0 && (
+                  <> &middot; {taxon.numDescendants.toLocaleString()} descendant taxa</>
+                )}
+              </Typography>
+              {(gbifUrl || wikidataUrl) && (
+                <>
+                  {gbifUrl && (
+                    <Chip
+                      component="a"
+                      href={gbifUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      label="GBIF"
+                      size="small"
+                      variant="outlined"
+                      clickable
+                      icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                    />
+                  )}
+                  {wikidataUrl && (
+                    <Chip
+                      component="a"
+                      href={wikidataUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      label="Wikidata"
+                      size="small"
+                      variant="outlined"
+                      clickable
+                      icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+                    />
+                  )}
+                </>
               )}
-            </>
-          )}
+            </Stack>
+          </Box>
         </Stack>
 
         {/* Media Gallery — lazy-loaded */}
