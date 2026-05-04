@@ -101,7 +101,11 @@ jobs:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
+      # Match the release workflow so this artifact reflects the same bundle
+      # users would get from a tagged release.
       - run: npm run build
+        env:
+          VITE_API_URL: https://observ.ing
       - run: npx cap add android
       - run: npx cap sync android
       - name: Build debug APK
