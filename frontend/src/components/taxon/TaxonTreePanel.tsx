@@ -3,6 +3,7 @@ import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { RankIcon } from "../common/RankIcon";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -34,16 +35,21 @@ function renderTreeItems(items: TaxonTreeItem[], selectedId: string, loadingNode
           >
             {item.label}
           </Typography>
-          <Typography
-            variant="caption"
+          <Box
             component="span"
             sx={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 0.5,
               color: "text.disabled",
               flexShrink: 0,
             }}
           >
-            {item.rank}
-          </Typography>
+            <RankIcon rank={item.rank} size={12} title={item.rank} />
+            <Typography variant="caption" component="span" sx={{ color: "inherit" }}>
+              {item.rank}
+            </Typography>
+          </Box>
           {loadingNodeId === item.id && <CircularProgress size={14} />}
         </Box>
       }

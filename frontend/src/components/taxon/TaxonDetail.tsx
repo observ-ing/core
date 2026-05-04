@@ -27,6 +27,7 @@ import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/
 import { slugToName } from "../../lib/taxonSlug";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink, shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { RankIcon } from "../common/RankIcon";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
@@ -210,14 +211,17 @@ export function TaxonDetail() {
           <IconButton onClick={handleBack} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 500,
-            }}
-          >
-            {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
-          </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
+            <RankIcon rank={taxon.rank} size={18} title={taxon.rank} />
+            <Typography
+              variant="subtitle1"
+              sx={{
+                fontWeight: 500,
+              }}
+            >
+              {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
+            </Typography>
+          </Box>
         </Box>
 
         {/* Hero Image */}
@@ -270,6 +274,9 @@ export function TaxonDetail() {
                       /
                     </Typography>
                   )}
+                  <Box component="span" sx={{ color: "text.secondary", display: "inline-flex" }}>
+                    <RankIcon rank={ancestor.rank} size={12} title={ancestor.rank} />
+                  </Box>
                   <TaxonLink name={ancestor.name} kingdom={taxon.kingdom} rank={ancestor.rank} />
                 </Box>
               ))}
@@ -404,14 +411,19 @@ export function TaxonDetail() {
                           rank={ancestor.rank}
                           variant="text"
                         />
-                        <Typography
-                          variant="caption"
+                        <Box
                           sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5,
                             color: "text.disabled",
                           }}
                         >
-                          {ancestor.rank}
-                        </Typography>
+                          <RankIcon rank={ancestor.rank} size={12} title={ancestor.rank} />
+                          <Typography variant="caption" sx={{ color: "inherit" }}>
+                            {ancestor.rank}
+                          </Typography>
+                        </Box>
                       </Box>
                     </ListItem>
                   ))}
@@ -441,14 +453,19 @@ export function TaxonDetail() {
                       >
                         {taxon.scientificName}
                       </Typography>
-                      <Typography
-                        variant="caption"
+                      <Box
                         sx={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 0.5,
                           color: "text.disabled",
                         }}
                       >
-                        {taxon.rank}
-                      </Typography>
+                        <RankIcon rank={taxon.rank} size={12} title={taxon.rank} />
+                        <Typography variant="caption" sx={{ color: "inherit" }}>
+                          {taxon.rank}
+                        </Typography>
+                      </Box>
                     </Box>
                   </ListItem>
                   {/* Children */}
@@ -473,14 +490,19 @@ export function TaxonDetail() {
                           rank={child.rank}
                           variant="text"
                         />
-                        <Typography
-                          variant="caption"
+                        <Box
                           sx={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 0.5,
                             color: "text.disabled",
                           }}
                         >
-                          {child.rank}
-                        </Typography>
+                          <RankIcon rank={child.rank} size={12} title={child.rank} />
+                          <Typography variant="caption" sx={{ color: "inherit" }}>
+                            {child.rank}
+                          </Typography>
+                        </Box>
                       </Box>
                     </ListItem>
                   ))}

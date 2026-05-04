@@ -22,6 +22,7 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { RankIcon } from "../common/RankIcon";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
 
@@ -67,15 +68,17 @@ export function TaxonDetailPanel({
         <IconButton onClick={onBack} sx={{ mr: 1 }}>
           <ArrowBackIcon />
         </IconButton>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 500,
-            flex: 1,
-          }}
-        >
-          {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
-        </Typography>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, flex: 1 }}>
+          <RankIcon rank={taxon.rank} size={18} title={taxon.rank} />
+          <Typography
+            variant="subtitle1"
+            sx={{
+              fontWeight: 500,
+            }}
+          >
+            {taxon.rank.charAt(0).toUpperCase() + taxon.rank.slice(1)}
+          </Typography>
+        </Box>
         {onToggleTree && (
           <IconButton onClick={onToggleTree} sx={{ display: { xs: "inline-flex", md: "none" } }}>
             <AccountTreeIcon />
