@@ -75,6 +75,7 @@ const meta = {
   },
   tags: ["autodocs"],
   args: {
+    thumbnails: new Map<string, string>(),
     onExpandedItemsChange: () => undefined,
     onSelectedItemsChange: () => undefined,
     onItemExpansionToggle: () => undefined,
