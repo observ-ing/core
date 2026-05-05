@@ -2878,6 +2878,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "tokio",
  "tracing",
  "ts-rs",
 ]
