@@ -11,6 +11,7 @@ import type {
   ProfileFeedResponse,
   NotificationsResponse,
   OccurrenceDetailResponse,
+  ValidateResponse,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -203,6 +204,22 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
 
   const data = await response.json();
   return data.results || [];
+}
+
+/**
+ * Validate a scientific name against the taxonomy backend. Returns the
+ * authoritative TaxaResult when the name resolves to an existing taxon
+ * (so callers can mark it as "Existing taxon" rather than "New taxon").
+ */
+export async function validateTaxon(
+  name: string,
+  kingdom?: string,
+): Promise<ValidateResponse | null> {
+  const params = new URLSearchParams({ name });
+  if (kingdom) params.set("kingdom", kingdom);
+  const response = await fetch(`${API_BASE}/api/taxa/validate?${params}`);
+  if (!response.ok) return null;
+  return response.json();
 }
 
 export async function submitObservation(data: {
