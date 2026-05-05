@@ -32,3 +32,4 @@ observing-lexicons = { path = "../observing-lexicons", optional = true }
 # Test-only: lexicon constraint validation in processing tests
 [dev-dependencies]
 jacquard-lexicon = "0.12.0-beta.2"
+tokio = { workspace = true, features = ["rt", "macros"] }
