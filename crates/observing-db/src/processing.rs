@@ -257,6 +257,9 @@ pub fn identification_from_json(
         taxon_id,
         date_identified,
         kingdom,
+        // Resolved by the taxonomy resolver before upsert; the JSON record
+        // carries no consensus taxon information.
+        accepted_taxon_key: None,
     })
 }
 

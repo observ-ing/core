@@ -1,7 +1,3 @@
-// Wired into the request path in a follow-up branch; for now everything
-// here is constructed only by the unit tests below.
-#![allow(dead_code)]
-
 //! [`TaxonomyUpstream`] implementation backed by the live GBIF v2 API.
 //!
 //! Maps a single `match_name` (or species lookup) response into the

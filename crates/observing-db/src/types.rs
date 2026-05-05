@@ -249,6 +249,10 @@ pub struct UpsertIdentificationParams {
     pub taxon_id: Option<String>,
     pub date_identified: DateTime<Utc>,
     pub kingdom: Option<String>,
+    /// Resolved GBIF taxon key for the consensus taxon. Populated by the
+    /// taxonomy resolver before the upsert; downstream queries
+    /// (community_ids matview, taxon-page filters) join on this.
+    pub accepted_taxon_key: Option<i64>,
 }
 
 /// Parameters for upserting a comment

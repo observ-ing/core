@@ -2896,6 +2896,7 @@ dependencies = [
  "jetstream-client",
  "observing-db",
  "observing-lexicons",
+ "observing-taxonomy-gbif",
  "reqwest 0.13.3",
  "serde",
  "serde_json",
@@ -2964,6 +2965,16 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "ts-rs",
+]
+
+[[package]]
+name = "observing-taxonomy-gbif"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "gbif-api",
+ "observing-db",
+ "tokio",
 ]
 
 [[package]]
