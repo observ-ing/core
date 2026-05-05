@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
   Avatar,
   Box,
+  ButtonBase,
   Typography,
   TextField,
   Button,
@@ -32,6 +33,7 @@ import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { LocationPicker } from "../map/LocationPicker";
+import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
@@ -82,6 +84,7 @@ export function UploadModal() {
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
+  const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
   const MAX_IMAGES = 10;
   const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -466,12 +469,23 @@ export function UploadModal() {
                     borderColor: "divider",
                   }}
                 >
-                  <Box
-                    component="img"
-                    src={url}
-                    alt={`Existing ${index + 1}`}
-                    sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <ButtonBase
+                    onClick={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
+                    aria-label="Enlarge photo"
+                    sx={{
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      cursor: "zoom-in",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={url}
+                      alt={`Existing ${index + 1}`}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  </ButtonBase>
                   <IconButton
                     size="small"
                     onClick={() => handleRemoveExistingImage(index)}
@@ -504,12 +518,23 @@ export function UploadModal() {
                     borderColor: "divider",
                   }}
                 >
-                  <Box
-                    component="img"
-                    src={img.preview}
-                    alt={`Preview ${index + 1}`}
-                    sx={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
+                  <ButtonBase
+                    onClick={() => setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })}
+                    aria-label="Enlarge photo"
+                    sx={{
+                      display: "block",
+                      width: "100%",
+                      height: "100%",
+                      cursor: "zoom-in",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={img.preview}
+                      alt={`Preview ${index + 1}`}
+                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    />
+                  </ButtonBase>
                   <IconButton
                     size="small"
                     onClick={() => handleRemoveImage(index)}
@@ -781,6 +806,12 @@ export function UploadModal() {
           </Button>
         </DialogActions>
       </Dialog>
+      <PhotoLightbox
+        open={lightbox !== null}
+        onClose={() => setLightbox(null)}
+        src={lightbox?.src ?? ""}
+        alt={lightbox?.alt}
+      />
     </>
   );
 }
