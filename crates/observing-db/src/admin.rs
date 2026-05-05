@@ -266,7 +266,6 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
             ("scientific_name", "scientific_name"),
             ("kingdom", "kingdom"),
             ("id_count", "id_count"),
-            ("agreement_count", "agreement_count"),
         ],
         order_by: "occurrence_uri",
     },

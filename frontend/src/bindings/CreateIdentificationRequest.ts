@@ -11,5 +11,4 @@ export type CreateIdentificationRequest = {
    * when validation doesn't return a kingdom of its own.
    */
   kingdom?: string;
-  isAgreement?: boolean;
 };

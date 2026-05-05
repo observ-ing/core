@@ -49,7 +49,6 @@ export function IdentificationPanel({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         scientificName: currentId,
-        isAgreement: true,
       }),
     [observation.uri, observation.cid, currentId],
   );
@@ -67,7 +66,6 @@ export function IdentificationPanel({
         scientificName: taxonName.trim(),
         ...(matchedTaxon?.kingdom ? { kingdom: matchedTaxon.kingdom } : {}),
         ...(matchedTaxon?.rank ? { taxonRank: matchedTaxon.rank } : {}),
-        isAgreement: false,
       }),
     [observation.uri, observation.cid, taxonName, matchedTaxon],
   );

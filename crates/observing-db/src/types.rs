@@ -112,8 +112,6 @@ pub struct IdentificationRow {
     pub identification_verification_status: Option<String>,
     #[ts(optional)]
     pub type_status: Option<String>,
-    #[ts(optional)]
-    pub is_agreement: Option<bool>,
     pub date_identified: DateTime<Utc>,
     // Darwin Core taxonomy
     #[ts(optional)]
@@ -197,7 +195,6 @@ pub struct CommunityIdRow {
     pub scientific_name: String,
     pub kingdom: Option<String>,
     pub id_count: i64,
-    pub agreement_count: i64,
 }
 
 /// Private location data row
@@ -250,7 +247,6 @@ pub struct UpsertIdentificationParams {
     pub scientific_name: String,
     pub taxon_rank: Option<String>,
     pub taxon_id: Option<String>,
-    pub is_agreement: bool,
     pub date_identified: DateTime<Utc>,
     pub kingdom: Option<String>,
 }

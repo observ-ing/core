@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id,\n                    identification_verification_status, type_status, is_agreement, date_identified,\n                    kingdom, phylum, class, \"order\" as order_, family, genus\n                FROM identifications\n                WHERE did = $1 AND date_identified < ($3::text)::timestamptz\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
+  "query": "\n                SELECT\n                    uri, cid, did, subject_uri, subject_cid, scientific_name,\n                    taxon_rank, identification_qualifier, taxon_id,\n                    identification_verification_status, type_status, date_identified,\n                    kingdom, phylum, class, \"order\" as order_, family, genus\n                FROM identifications\n                WHERE did = $1\n                ORDER BY date_identified DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -60,41 +60,36 @@
       },
       {
         "ordinal": 11,
-        "name": "is_agreement",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 12,
         "name": "date_identified",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
       }
@@ -102,8 +97,7 @@
     "parameters": {
       "Left": [
         "Text",
-        "Int8",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
@@ -118,7 +112,6 @@
       true,
       true,
       true,
-      true,
       false,
       true,
       true,
@@ -128,5 +121,5 @@
       true
     ]
   },
-  "hash": "97cc4cc3c083ec8cd3735169704ab8f2732427397c6d3a34ed5142ec869dc3e9"
+  "hash": "a18cb9f9dcd940df631c4744d64b6e4b6663d0acf63333e2bf1c98a9c6fbdbac"
 }
