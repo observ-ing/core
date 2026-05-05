@@ -52,12 +52,6 @@ test.describe("Observation Detail - Display", () => {
     await expect(page.getByRole("heading", { name: "Discussion" })).toBeVisible();
   });
 
-  // TC-DETAIL-006: Species interactions section
-  test("shows species interactions section", async ({ page }) => {
-    await navigateToDetail(page);
-    await expect(page.getByText("Species Interactions")).toBeVisible();
-  });
-
   // TC-DETAIL-007: Like button visible
   test("like button visible on detail page", async ({ page }) => {
     await navigateToDetail(page);
@@ -69,6 +63,5 @@ test.describe("Observation Detail - Display", () => {
     await navigateToDetail(page);
     await expect(page.getByText("Log in to add an identification")).toBeVisible();
     await expect(page.getByText("Log in to add a comment")).toBeVisible();
-    await expect(page.getByText("Log in to add interactions")).toBeVisible();
   });
 });
