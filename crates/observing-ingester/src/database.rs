@@ -7,6 +7,8 @@ use crate::error::Result;
 use crate::media_resolver::MediaResolver;
 use jetstream_client::CommitInfo;
 use observing_db::processing;
+use observing_db::taxonomy_resolver::Resolver;
+use observing_taxonomy_gbif::GbifUpstream;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
 
@@ -74,6 +76,9 @@ macro_rules! process_or_warn {
 pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
+    /// GBIF-backed upstream for the taxonomy resolver. Owned here so the
+    /// reqwest connection pool is reused across identification ingests.
+    taxonomy_upstream: GbifUpstream,
 }
 
 impl Database {
@@ -90,6 +95,7 @@ impl Database {
         Ok(Self {
             pool,
             media_resolver: MediaResolver::new(),
+            taxonomy_upstream: GbifUpstream::default(),
         })
     }
 
@@ -145,7 +151,7 @@ impl Database {
 
         let record_json = require_record!(commit, "identification");
 
-        let params = process_or_warn!(
+        let mut params = process_or_warn!(
             commit,
             identification_from_json,
             "identification",
@@ -155,6 +161,34 @@ impl Database {
             commit.did.clone(),
             commit.time,
         );
+
+        // Resolve the consensus taxon key by name + kingdom hint, populating
+        // the local `taxa` cache as a side effect. A failed resolve is
+        // logged and ignored — the identification still ingests with
+        // accepted_taxon_key=NULL, and a later backfill (or a re-resolve
+        // when next observed) can fill it in.
+        let resolver = Resolver::new(&self.pool, &self.taxonomy_upstream);
+        match resolver
+            .resolve_by_name(&params.scientific_name, params.kingdom.as_deref())
+            .await
+        {
+            Ok(Some(row)) => {
+                params.accepted_taxon_key = row.accepted_taxon_key.or(Some(row.taxon_key));
+            }
+            Ok(None) => {
+                debug!(
+                    name = %params.scientific_name,
+                    "Taxonomy upstream returned no match; leaving accepted_taxon_key NULL"
+                );
+            }
+            Err(e) => {
+                warn!(
+                    name = %params.scientific_name,
+                    error = %e,
+                    "Taxonomy resolve failed; leaving accepted_taxon_key NULL",
+                );
+            }
+        }
 
         observing_db::identifications::upsert(&self.pool, &params).await?;
         notify_occurrence_owner(

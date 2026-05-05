@@ -2896,6 +2896,7 @@ dependencies = [
  "jetstream-client",
  "observing-db",
  "observing-lexicons",
+ "observing-taxonomy-gbif",
  "reqwest 0.13.3",
  "serde",
  "serde_json",
