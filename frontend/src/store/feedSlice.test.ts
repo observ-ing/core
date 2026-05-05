@@ -6,7 +6,6 @@ import feedReducer, {
   switchTab,
   resetFeed,
   setFilters,
-  setUserLocation,
 } from "./feedSlice";
 import authReducer from "./authSlice";
 import type {
@@ -56,7 +55,6 @@ interface FeedOverrides {
   hasMore?: boolean;
   filters?: FeedFilters;
   isAuthenticated?: boolean;
-  userLocation?: { lat: number; lng: number } | null;
 }
 
 interface AuthOverrides {
@@ -72,7 +70,6 @@ interface FeedStateShape {
   hasMore: boolean;
   filters: FeedFilters;
   isAuthenticated: boolean;
-  userLocation: { lat: number; lng: number } | null;
 }
 
 describe("feedSlice", () => {
@@ -84,7 +81,6 @@ describe("feedSlice", () => {
     hasMore: true,
     filters: {},
     isAuthenticated: false,
-    userLocation: null,
   };
 
   const createTestStore = (preloadedState?: { feed?: FeedOverrides; auth?: AuthOverrides }) =>
@@ -111,7 +107,6 @@ describe("feedSlice", () => {
       expect(state.currentTab).toBe("explore");
       expect(state.hasMore).toBe(true);
       expect(state.filters).toEqual({});
-      expect(state.userLocation).toBeNull();
     });
   });
 
@@ -173,28 +168,6 @@ describe("feedSlice", () => {
       expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);
-    });
-  });
-
-  describe("setUserLocation", () => {
-    it("sets user location", () => {
-      const store = createTestStore();
-      store.dispatch(setUserLocation({ lat: 40.7128, lng: -74.006 }));
-
-      expect(store.getState().feed.userLocation).toEqual({
-        lat: 40.7128,
-        lng: -74.006,
-      });
-    });
-
-    it("clears user location with null", () => {
-      const store = createTestStore({
-        feed: { userLocation: { lat: 40, lng: -74 } },
-      });
-
-      store.dispatch(setUserLocation(null));
-
-      expect(store.getState().feed.userLocation).toBeNull();
     });
   });
 
