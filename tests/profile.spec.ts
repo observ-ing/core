@@ -1,15 +1,10 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
-import {
-  mockOwnObservationFeed,
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-} from "./helpers/mock-observation";
+import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
 
 /** Navigate from explore grid to an observation detail page, then to the observer's profile. */
 async function navigateToProfile(page: Page) {
   await mockOwnObservationFeed(page);
   await mockObservationDetailRoute(page);
-  await mockInteractionsRoute(page);
   await page.route("**/api/profiles/*", (route: Route) =>
     route.fulfill({
       status: 200,

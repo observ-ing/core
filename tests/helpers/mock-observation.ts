@@ -6,7 +6,6 @@ import type {
   Comment,
   FeedResponse,
 } from "../../frontend/src/services/types";
-import type { EnrichedInteraction } from "../../frontend/src/bindings/EnrichedInteraction";
 
 export const MOCK_OBS_DID = MOCK_TEST_USER.did;
 export const MOCK_OBS_RKEY = "test123";
@@ -81,19 +80,6 @@ export async function mockObservationDetailRoute(page: Page, overrides: MockDeta
 }
 
 /**
- * Sets up page.route() mock for the interactions API endpoint.
- */
-export async function mockInteractionsRoute(page: Page, interactions: EnrichedInteraction[] = []) {
-  await page.route("**/api/interactions/occurrence/*", (route: Route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ interactions }),
-    });
-  });
-}
-
-/**
  * Sets up route mocks for all feed endpoints with a single owned observation.
  */
 export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occurrence> = {}) {
@@ -113,16 +99,15 @@ export async function mockOwnObservationFeed(page: Page, overrides: Partial<Occu
 }
 
 /**
- * Mocks observation detail + interactions routes, then navigates directly
- * to the mock observation URL. Used by integration tests instead of
- * navigating through the explore feed.
+ * Mocks the observation detail route, then navigates directly to the mock
+ * observation URL. Used by integration tests instead of navigating through
+ * the explore feed.
  */
 export async function navigateToMockedDetail(page: Page, overrides: MockDetailOverrides = {}) {
   await mockObservationDetailRoute(page, {
     uri: `at://${MOCK_OBS_DID}/bio.lexicons.temp.v0-1.occurrence/${MOCK_OBS_RKEY}`,
     ...overrides,
   });
-  await mockInteractionsRoute(page);
   await page.goto(MOCK_OBS_URL);
   await page.getByText("Observed").waitFor({ timeout: 15_000 });
 }

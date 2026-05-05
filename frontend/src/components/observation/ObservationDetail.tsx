@@ -39,7 +39,6 @@ import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
-import { InteractionPanel } from "../interaction/InteractionPanel";
 import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
@@ -539,17 +538,6 @@ export function ObservationDetail() {
                 }
               />
             </Box>
-
-            {/* Interactions Panel */}
-            <InteractionPanel
-              observation={{
-                uri: observation.uri,
-                cid: observation.cid,
-                scientificName: taxonomy?.scientificName,
-                communityId: observation.communityId,
-              }}
-              onSuccess={handleIdentificationSuccess}
-            />
           </Box>
 
           {/* Discussion / Comments */}

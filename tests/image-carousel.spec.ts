@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { mockObservationDetailRoute, mockInteractionsRoute } from "./helpers/mock-observation";
+import { mockObservationDetailRoute } from "./helpers/mock-observation";
 import type { Occurrence } from "../frontend/src/services/types";
 
 const TEST_DID = "did:plc:testuser123";
@@ -39,7 +39,6 @@ test.describe("Image Carousel", () => {
         images: [`/media/blob/${TEST_DID}/bafyimg1`],
       }),
     );
-    await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
     const mainImage = page.locator("img[alt='Quercus alba']");
@@ -69,7 +68,6 @@ test.describe("Image Carousel", () => {
         ],
       }),
     );
-    await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
     // Thumbnails are rendered as img elements with alt "Photo N"
@@ -99,7 +97,6 @@ test.describe("Image Carousel", () => {
         images: [`/media/blob/${TEST_DID}/bafyimg1`, `/media/blob/${TEST_DID}/bafyimg2`],
       }),
     );
-    await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
     await expect(page.locator("img[alt='Photo 1']")).toBeVisible({
@@ -137,7 +134,6 @@ test.describe("Image Carousel", () => {
         images: [`/media/blob/${TEST_DID}/bafyimg1`],
       }),
     );
-    await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
     const mainImage = page.locator("img[alt='Quercus alba']");
@@ -172,7 +168,6 @@ test.describe("Image Carousel", () => {
         },
       }),
     );
-    await mockInteractionsRoute(page);
 
     await page.goto(DETAIL_URL);
     await expect(page.locator("img[alt='Falco peregrinus']")).toBeVisible({ timeout: 10000 });
