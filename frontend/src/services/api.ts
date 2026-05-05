@@ -282,7 +282,6 @@ export async function submitIdentification(data: {
   scientificName: string;
   taxonRank?: string;
   kingdom?: string;
-  isAgreement?: boolean;
 }): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/identifications`, "Failed to submit identification", {
     method: "POST",

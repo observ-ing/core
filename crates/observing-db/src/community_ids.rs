@@ -7,7 +7,6 @@ pub struct CommunityIdResult {
     pub kingdom: Option<String>,
     pub taxon_rank: Option<String>,
     pub identification_count: usize,
-    pub agreement_count: usize,
     pub confidence: f64,
     pub is_research_grade: bool,
 }
@@ -44,7 +43,6 @@ pub fn calculate(identifications: &[IdentificationRow]) -> Option<CommunityIdRes
         kingdom: winner.kingdom.clone(),
         taxon_rank: winner.taxon_rank.clone(),
         identification_count: deduplicated.len(),
-        agreement_count: winner.count,
         confidence,
         is_research_grade,
     })
@@ -153,13 +151,7 @@ mod tests {
     use super::*;
     use chrono::{NaiveDateTime, TimeZone};
 
-    fn make_id(
-        did: &str,
-        name: &str,
-        kingdom: Option<&str>,
-        is_agreement: bool,
-        date: &str,
-    ) -> IdentificationRow {
+    fn make_id(did: &str, name: &str, kingdom: Option<&str>, date: &str) -> IdentificationRow {
         IdentificationRow {
             uri: format!("at://{did}/bio.lexicons.temp.v0-1.identification/1"),
             cid: "cid".to_string(),
@@ -172,7 +164,6 @@ mod tests {
             taxon_id: None,
             identification_verification_status: None,
             type_status: None,
-            is_agreement: Some(is_agreement),
             date_identified: chrono::Utc.from_utc_datetime(
                 &NaiveDateTime::parse_from_str(date, "%Y-%m-%d %H:%M:%S").unwrap(),
             ),
@@ -196,7 +187,6 @@ mod tests {
             "user1",
             "Quercus alba",
             Some("Plantae"),
-            false,
             "2024-01-01 12:00:00",
         )];
         let result = calculate(&ids).unwrap();
@@ -212,21 +202,18 @@ mod tests {
                 "user1",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user2",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-02 12:00:00",
             ),
             make_id(
                 "user3",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-03 12:00:00",
             ),
         ];
@@ -244,21 +231,18 @@ mod tests {
                 "user1",
                 "Quercus rubra",
                 Some("Plantae"),
-                false,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user1",
                 "Quercus alba",
                 Some("Plantae"),
-                false,
                 "2024-01-02 12:00:00",
             ),
             make_id(
                 "user2",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-03 12:00:00",
             ),
         ];
@@ -274,21 +258,18 @@ mod tests {
                 "user1",
                 "Quercus alba",
                 Some("Plantae"),
-                false,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user2",
                 "Quercus rubra",
                 Some("Plantae"),
-                false,
                 "2024-01-02 12:00:00",
             ),
             make_id(
                 "user3",
                 "Acer saccharum",
                 Some("Plantae"),
-                false,
                 "2024-01-03 12:00:00",
             ),
         ];
@@ -307,7 +288,6 @@ mod tests {
             kingdom: None,
             taxon_rank: None,
             identification_count: 3,
-            agreement_count: 3,
             confidence: 1.0,
             is_research_grade: true,
         });
@@ -318,7 +298,6 @@ mod tests {
             kingdom: None,
             taxon_rank: None,
             identification_count: 1,
-            agreement_count: 1,
             confidence: 1.0,
             is_research_grade: false,
         });
@@ -352,21 +331,18 @@ mod tests {
                 "user1",
                 "Morus alba",
                 Some("Plantae"),
-                false,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user2",
                 "Morus alba",
                 Some("Animalia"),
-                false,
                 "2024-01-02 12:00:00",
             ),
         ];
         let result = calculate(&ids).unwrap();
         // Each taxon has 1 vote, so no consensus, but should still return a result
         assert_eq!(result.identification_count, 2);
-        assert_eq!(result.agreement_count, 1);
         assert!(!result.is_research_grade);
     }
 
@@ -378,14 +354,12 @@ mod tests {
                 "user1",
                 "Quercus alba",
                 Some("Plantae"),
-                false,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user2",
                 "Quercus rubra",
                 Some("Plantae"),
-                false,
                 "2024-01-02 12:00:00",
             ),
         ];
@@ -403,21 +377,18 @@ mod tests {
                 "user1",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-01 12:00:00",
             ),
             make_id(
                 "user2",
                 "Quercus alba",
                 Some("Plantae"),
-                true,
                 "2024-01-02 12:00:00",
             ),
             make_id(
                 "user3",
                 "Quercus rubra",
                 Some("Plantae"),
-                false,
                 "2024-01-03 12:00:00",
             ),
         ];

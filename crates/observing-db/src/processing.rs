@@ -234,11 +234,6 @@ pub fn identification_from_json(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
-    let is_agreement = record_json
-        .get("isAgreement")
-        .and_then(|v| v.as_bool())
-        .unwrap_or(false);
-
     let taxon_id = record_json
         .get("taxonId")
         .and_then(|v| v.as_str())
@@ -260,7 +255,6 @@ pub fn identification_from_json(
         scientific_name,
         taxon_rank,
         taxon_id,
-        is_agreement,
         date_identified,
         kingdom,
     })
@@ -471,7 +465,6 @@ mod tests {
             "taxonRank": "species",
             "kingdom": "Plantae",
             "taxonId": "gbif:2879737",
-            "isAgreement": true,
             "occurrence": {
                 "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
@@ -498,7 +491,6 @@ mod tests {
         assert_eq!(params.taxon_rank.as_deref(), Some("species"));
         assert_eq!(params.kingdom.as_deref(), Some("Plantae"));
         assert_eq!(params.taxon_id.as_deref(), Some("gbif:2879737"));
-        assert!(params.is_agreement);
         assert_eq!(
             params.subject_uri,
             "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc"

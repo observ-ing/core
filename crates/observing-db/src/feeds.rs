@@ -157,7 +157,7 @@ pub async fn get_profile_feed(
                 SELECT
                     uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
-                    identification_verification_status, type_status, is_agreement, date_identified,
+                    identification_verification_status, type_status, date_identified,
                     kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1 AND date_identified < ($3::text)::timestamptz
@@ -177,7 +177,7 @@ pub async fn get_profile_feed(
                 SELECT
                     uri, cid, did, subject_uri, subject_cid, scientific_name,
                     taxon_rank, identification_qualifier, taxon_id,
-                    identification_verification_status, type_status, is_agreement, date_identified,
+                    identification_verification_status, type_status, date_identified,
                     kingdom, phylum, class, "order" as order_, family, genus
                 FROM identifications
                 WHERE did = $1
