@@ -105,9 +105,6 @@ export async function fetchExploreFeed(
   const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
   if (filters?.taxon) params.set("taxon", filters.taxon);
-  if (filters?.lat !== undefined) params.set("lat", filters.lat.toString());
-  if (filters?.lng !== undefined) params.set("lng", filters.lng.toString());
-  if (filters?.radius) params.set("radius", filters.radius.toString());
   if (filters?.kingdom) params.set("kingdom", filters.kingdom);
   if (filters?.startDate) params.set("startDate", filters.startDate);
   if (filters?.endDate) params.set("endDate", filters.endDate);

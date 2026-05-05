@@ -307,9 +307,6 @@ pub struct ExploreFeedOptions {
     pub cursor: Option<String>,
     pub taxon: Option<String>,
     pub kingdom: Option<String>,
-    pub lat: Option<f64>,
-    pub lng: Option<f64>,
-    pub radius: Option<f64>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
 }

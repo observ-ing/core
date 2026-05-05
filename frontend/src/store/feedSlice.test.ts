@@ -166,10 +166,10 @@ describe("feedSlice", () => {
         },
       });
 
-      store.dispatch(setFilters({ taxon: "Quercus", lat: 40, lng: -74 }));
+      store.dispatch(setFilters({ taxon: "Quercus", kingdom: "Plantae" }));
 
       const state = store.getState().feed;
-      expect(state.filters).toEqual({ taxon: "Quercus", lat: 40, lng: -74 });
+      expect(state.filters).toEqual({ taxon: "Quercus", kingdom: "Plantae" });
       expect(state.observations).toEqual([]);
       expect(state.cursor).toBeUndefined();
       expect(state.hasMore).toBe(true);

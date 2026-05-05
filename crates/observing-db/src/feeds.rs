@@ -43,17 +43,6 @@ pub async fn get_explore_feed(
         qb.push_bind(end_date);
     }
 
-    if let (Some(lat), Some(lng)) = (options.lat, options.lng) {
-        let radius = options.radius.unwrap_or(10000.0);
-        qb.push(" AND ST_DWithin(location, ST_SetSRID(ST_MakePoint(");
-        qb.push_bind(lng);
-        qb.push(", ");
-        qb.push_bind(lat);
-        qb.push("), 4326)::geography, ");
-        qb.push_bind(radius);
-        qb.push(")");
-    }
-
     if let Some(cursor) = options.cursor.as_deref() {
         qb.push(" AND created_at < ");
         qb.push_bind(cursor);
