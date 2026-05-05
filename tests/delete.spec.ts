@@ -1,17 +1,12 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
-import {
-  mockOwnObservationFeed,
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-} from "./helpers/mock-observation";
+import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
 
 test.describe("Delete Observation - Logged Out", () => {
   // TC-DELETE-002: Delete option hidden for others' observations
   test("more menu does not show Delete for non-owned observation", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await mockObservationDetailRoute(page);
-    await mockInteractionsRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible({ timeout: 10000 });

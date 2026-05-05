@@ -4,7 +4,6 @@ import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import {
   mockOwnObservationFeed,
   mockObservationDetailRoute,
-  mockInteractionsRoute,
   MOCK_OBS_DID,
   MOCK_OBS_RKEY,
 } from "./helpers/mock-observation";
@@ -59,7 +58,6 @@ authTest.describe("Auto-Identification on Upload", () => {
           },
         ],
       });
-      await mockInteractionsRoute(page);
 
       await page.goto("/");
       await openUploadModal(page);

@@ -4,7 +4,6 @@ import {
   buildMockObservation,
   mockOwnObservationFeed,
   mockObservationDetailRoute,
-  mockInteractionsRoute,
 } from "./helpers/mock-observation";
 
 test.describe("Observation Edit - Logged Out", () => {
@@ -12,7 +11,6 @@ test.describe("Observation Edit - Logged Out", () => {
   test("more menu does not show Edit for non-owned observation", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await mockObservationDetailRoute(page);
-    await mockInteractionsRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible({ timeout: 10000 });

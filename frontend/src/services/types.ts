@@ -17,7 +17,6 @@ export type { Location } from "../bindings/Location";
 export type { EffectiveTaxonomy } from "../bindings/EffectiveTaxonomy";
 export type { Identification } from "../bindings/Identification";
 export type { Comment } from "../bindings/Comment";
-export type { EnrichedInteraction } from "../bindings/EnrichedInteraction";
 export type { ConservationStatus } from "../bindings/ConservationStatus";
 export type { ValidateResponse } from "../bindings/ValidateResponse";
 export type { CreateOccurrenceRequest } from "../bindings/CreateOccurrenceRequest";
@@ -26,11 +25,8 @@ export type { CreateIdentificationRequest } from "../bindings/CreateIdentificati
 export type { CreateCommentRequest } from "../bindings/CreateCommentRequest";
 export type { CreateLikeRequest } from "../bindings/CreateLikeRequest";
 export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
-export type { InteractionSubjectRequest } from "../bindings/InteractionSubjectRequest";
-export type { CreateInteractionRequest } from "../bindings/CreateInteractionRequest";
 import type { Occurrence } from "../bindings/Occurrence";
 export type { Occurrence };
-export type { InteractionDirection } from "../bindings/InteractionDirection";
 
 // ============================================================================
 // Extended generated types

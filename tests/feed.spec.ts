@@ -1,9 +1,5 @@
 import { test, expect } from "@playwright/test";
-import {
-  mockOwnObservationFeed,
-  mockObservationDetailRoute,
-  mockInteractionsRoute,
-} from "./helpers/mock-observation";
+import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
 
 test.describe("Feed View", () => {
   test.beforeEach(async ({ page }) => {
@@ -56,7 +52,6 @@ test.describe("Feed View", () => {
   // TC-FEED-007: Observer name links to profile (via detail page)
   test("clicking observer name navigates to their profile", async ({ page }) => {
     await mockObservationDetailRoute(page);
-    await mockInteractionsRoute(page);
     await page.route("**/api/profiles/*", (route) =>
       route.fulfill({
         status: 200,
@@ -92,7 +87,6 @@ test.describe("Feed View", () => {
   // TC-FEED-008: Observer avatar display (via detail page)
   test("observation detail shows observer avatar", async ({ page }) => {
     await mockObservationDetailRoute(page);
-    await mockInteractionsRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
     await expect(firstCard).toBeVisible();
