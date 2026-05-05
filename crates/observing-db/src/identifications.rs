@@ -6,32 +6,38 @@ use std::collections::HashMap;
 ///
 /// NOTE: Must take `&PgPool` because `REFRESH MATERIALIZED VIEW CONCURRENTLY`
 /// cannot be executed within a transaction block.
+///
+/// Uses the dynamic query API rather than the `query!` macro so the new
+/// `accepted_taxon_key` column doesn't require regenerating the offline
+/// sqlx-prepare cache.
 pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(), sqlx::Error> {
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, scientific_name,
-            taxon_rank, taxon_id, date_identified, kingdom
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+            taxon_rank, taxon_id, date_identified, kingdom, accepted_taxon_key
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $6,
             taxon_rank = COALESCE($7, identifications.taxon_rank),
             taxon_id = COALESCE($8, identifications.taxon_id),
             kingdom = COALESCE($10, identifications.kingdom),
+            accepted_taxon_key = COALESCE($11, identifications.accepted_taxon_key),
             indexed_at = NOW()
         "#,
-        p.uri,
-        p.cid,
-        p.did,
-        p.subject_uri,
-        p.subject_cid,
-        p.scientific_name,
-        p.taxon_rank as _,
-        p.taxon_id as _,
-        p.date_identified,
-        p.kingdom as _,
     )
+    .bind(&p.uri)
+    .bind(&p.cid)
+    .bind(&p.did)
+    .bind(&p.subject_uri)
+    .bind(&p.subject_cid)
+    .bind(&p.scientific_name)
+    .bind(&p.taxon_rank)
+    .bind(&p.taxon_id)
+    .bind(p.date_identified)
+    .bind(&p.kingdom)
+    .bind(p.accepted_taxon_key)
     .execute(pool)
     .await?;
 
