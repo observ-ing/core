@@ -1,0 +1,14 @@
+[package]
+name = "observing-taxonomy-gbif"
+version = "0.1.0"
+edition = "2021"
+description = "GBIF-backed TaxonomyUpstream impl for observing-db's resolver"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+gbif-api = { path = "../gbif-api" }
+observing-db = { path = "../observing-db" }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

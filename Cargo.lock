@@ -2967,6 +2967,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "observing-taxonomy-gbif"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "gbif-api",
+ "observing-db",
+ "tokio",
+]
+
+[[package]]
 name = "once_cell"
 version = "1.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
