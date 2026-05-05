@@ -16,9 +16,6 @@ pub struct ExploreParams {
     cursor: Option<String>,
     taxon: Option<String>,
     kingdom: Option<String>,
-    lat: Option<f64>,
-    lng: Option<f64>,
-    radius: Option<f64>,
     #[serde(rename = "startDate")]
     start_date: Option<String>,
     #[serde(rename = "endDate")]
@@ -40,9 +37,6 @@ pub async fn get_explore(
         cursor: params.cursor,
         taxon: params.taxon.clone(),
         kingdom: params.kingdom.clone(),
-        lat: params.lat,
-        lng: params.lng,
-        radius: params.radius,
         start_date: params.start_date.clone(),
         end_date: params.end_date.clone(),
     };
@@ -73,9 +67,6 @@ pub async fn get_explore(
             filters: ExploreFilters {
                 taxon: params.taxon,
                 kingdom: params.kingdom,
-                lat: params.lat,
-                lng: params.lng,
-                radius: params.radius,
                 start_date: params.start_date,
                 end_date: params.end_date,
             },

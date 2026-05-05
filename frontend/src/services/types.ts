@@ -55,9 +55,6 @@ export type TaxaResult = GeneratedTaxaResult & {
 
 export interface FeedFilters {
   taxon?: string;
-  lat?: number;
-  lng?: number;
-  radius?: number;
   kingdom?: string;
   startDate?: string;
   endDate?: string;

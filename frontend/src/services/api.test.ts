@@ -173,13 +173,13 @@ describe("api", () => {
 
       await api.fetchExploreFeed("cursor123", {
         taxon: "Quercus",
-        lat: 40.7128,
-        lng: -74.006,
-        radius: 50,
+        kingdom: "Plantae",
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&lat=40.7128&lng=-74.006&radius=50",
+        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&kingdom=Plantae&startDate=2024-01-01&endDate=2024-12-31",
       );
     });
 
