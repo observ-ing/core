@@ -28,9 +28,16 @@ pub async fn get_explore_feed(
         qb.push_bind(format!("{taxon}%"));
     }
 
+    // Kingdom is sourced from identifications (the occurrence record itself
+    // doesn't carry taxonomy in the bio.lexicons.temp.v0-1.occurrence lexicon),
+    // so filter via an EXISTS over identifications for this occurrence.
     if let Some(kingdom) = options.kingdom.as_deref() {
-        qb.push(" AND kingdom = ");
+        qb.push(
+            " AND EXISTS (SELECT 1 FROM identifications i \
+             WHERE i.subject_uri = occurrences.uri AND i.kingdom = ",
+        );
         qb.push_bind(kingdom);
+        qb.push(")");
     }
 
     if let Some(start_date) = options.start_date.as_deref() {
