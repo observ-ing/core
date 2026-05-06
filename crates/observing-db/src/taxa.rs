@@ -90,6 +90,12 @@ pub async fn get_by_name(
 /// Insert or refresh a batch of taxa rows. Conflicting `taxon_key` rows are
 /// updated in place so concurrent resolves of the same name are safe and a
 /// re-fetch overwrites stale ancestry data.
+///
+/// Dedupes the input by `taxon_key` (last entry wins) before issuing the
+/// INSERT. Postgres rejects `ON CONFLICT DO UPDATE` when the same target
+/// row appears twice in the values list, and GBIF's match payload often
+/// includes the target taxon as both the `usage` and the tail of the
+/// `classification` chain.
 pub async fn upsert_many(
     executor: impl sqlx::PgExecutor<'_>,
     rows: &[TaxonRow],
@@ -97,6 +103,13 @@ pub async fn upsert_many(
     if rows.is_empty() {
         return Ok(());
     }
+
+    let mut by_key: std::collections::HashMap<i64, &TaxonRow> =
+        std::collections::HashMap::with_capacity(rows.len());
+    for row in rows {
+        by_key.insert(row.taxon_key, row);
+    }
+    let deduped: Vec<&TaxonRow> = by_key.into_values().collect();
 
     let mut qb = QueryBuilder::<Postgres>::new(
         r#"INSERT INTO taxa (
@@ -108,7 +121,7 @@ pub async fn upsert_many(
             vernacular_name, extinct, fetched_at, source
         ) "#,
     );
-    qb.push_values(rows, |mut b, row| {
+    qb.push_values(&deduped, |mut b, row| {
         b.push_bind(row.taxon_key)
             .push_bind(&row.scientific_name)
             .push_bind(&row.authorship)
