@@ -28,9 +28,13 @@ pub async fn get_explore_feed(
         qb.push_bind(format!("{taxon}%"));
     }
 
+    // Filter by the consensus taxon's kingdom (via community_ids → taxa)
+    // rather than the submitter's `occurrences.kingdom`. Submitters often
+    // skip ancestry columns, so the old direct filter dropped legitimate
+    // observations whose community ID resolves under the requested kingdom.
     if let Some(kingdom) = options.kingdom.as_deref() {
-        qb.push(" AND kingdom = ");
-        qb.push_bind(kingdom);
+        qb.push(" AND ");
+        push_consensus_rank_filter(&mut qb, "kingdom", kingdom);
     }
 
     if let Some(start_date) = options.start_date.as_deref() {
@@ -249,7 +253,7 @@ pub async fn get_occurrences_by_taxon(
         " FROM occurrences WHERE "
     ));
 
-    push_taxon_filter(&mut qb, &rank_lower, taxon_name);
+    push_consensus_rank_filter(&mut qb, &rank_lower, taxon_name);
 
     if !hidden_dids.is_empty() {
         qb.push(" AND did != ALL(");
@@ -259,8 +263,8 @@ pub async fn get_occurrences_by_taxon(
 
     if let Some(kingdom) = options.kingdom.as_deref() {
         if rank_lower != "kingdom" {
-            qb.push(" AND kingdom = ");
-            qb.push_bind(kingdom);
+            qb.push(" AND ");
+            push_consensus_rank_filter(&mut qb, "kingdom", kingdom);
         }
     }
 
@@ -289,12 +293,12 @@ pub async fn count_occurrences_by_taxon(
 
     let mut qb = QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM occurrences WHERE ");
 
-    push_taxon_filter(&mut qb, &rank_lower, taxon_name);
+    push_consensus_rank_filter(&mut qb, &rank_lower, taxon_name);
 
     if let Some(kingdom) = kingdom {
         if rank_lower != "kingdom" {
-            qb.push(" AND kingdom = ");
-            qb.push_bind(kingdom);
+            qb.push(" AND ");
+            push_consensus_rank_filter(&mut qb, "kingdom", kingdom);
         }
     }
 
@@ -302,47 +306,32 @@ pub async fn count_occurrences_by_taxon(
     Ok(count)
 }
 
-/// Push the appropriate taxon filter condition onto a query builder
-fn push_taxon_filter<'a>(
+/// Restrict the outer occurrences query to rows whose consensus
+/// identification places them at `taxon_name` for the given rank.
+///
+/// Uses `community_ids` (one row per occurrence, the winning vote) joined
+/// to `taxa` so the rank columns reflect the canonical Linnaean ancestry,
+/// not whatever the submitter typed into their occurrence record.
+/// Submitters routinely leave higher-rank columns blank, so filtering on
+/// `occurrences.kingdom` directly drops legitimate observations.
+fn push_consensus_rank_filter<'a>(
     qb: &mut QueryBuilder<'a, Postgres>,
     rank_lower: &str,
     taxon_name: &'a str,
 ) {
-    match rank_lower {
-        "species" | "subspecies" | "variety" => {
-            qb.push("scientific_name = ");
-            qb.push_bind(taxon_name);
-        }
-        "genus" => {
-            qb.push("(genus = ");
-            qb.push_bind(taxon_name);
-            qb.push(" OR scientific_name ILIKE ");
-            qb.push_bind(format!("{taxon_name} %"));
-            qb.push(")");
-        }
-        "family" => {
-            qb.push("family = ");
-            qb.push_bind(taxon_name);
-        }
-        "order" => {
-            qb.push(r#""order" = "#);
-            qb.push_bind(taxon_name);
-        }
-        "class" => {
-            qb.push("class = ");
-            qb.push_bind(taxon_name);
-        }
-        "phylum" => {
-            qb.push("phylum = ");
-            qb.push_bind(taxon_name);
-        }
-        "kingdom" => {
-            qb.push("kingdom = ");
-            qb.push_bind(taxon_name);
-        }
-        _ => {
-            qb.push("scientific_name = ");
-            qb.push_bind(taxon_name);
-        }
-    }
+    let column = match rank_lower {
+        "species" | "subspecies" | "variety" => "t.species",
+        "genus" => "t.genus",
+        "family" => "t.family",
+        "order" => "t.\"order\"",
+        "class" => "t.class",
+        "phylum" => "t.phylum",
+        "kingdom" => "t.kingdom",
+        _ => "t.scientific_name",
+    };
+    qb.push("uri IN (SELECT ci.occurrence_uri FROM community_ids ci JOIN taxa t ON t.taxon_key = ci.accepted_taxon_key WHERE ");
+    qb.push(column);
+    qb.push(" = ");
+    qb.push_bind(taxon_name);
+    qb.push(")");
 }
