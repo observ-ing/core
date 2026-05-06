@@ -408,8 +408,7 @@ describe("api", () => {
 
       await api.validateTaxon("Pinus");
 
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
-      expect(calledUrl).not.toContain("kingdom");
+      expect(mockFetch).toHaveBeenCalledWith(expect.not.stringContaining("kingdom"));
     });
 
     it("omits kingdom param when explicitly empty", async () => {
@@ -420,8 +419,7 @@ describe("api", () => {
 
       await api.validateTaxon("Pinus", "");
 
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
-      expect(calledUrl).not.toContain("kingdom");
+      expect(mockFetch).toHaveBeenCalledWith(expect.not.stringContaining("kingdom"));
     });
 
     it("encodes special characters in the name", async () => {
@@ -432,8 +430,7 @@ describe("api", () => {
 
       await api.validateTaxon("Genus species & subsp.");
 
-      const calledUrl = mockFetch.mock.calls[0][0] as string;
-      expect(calledUrl).toBe("/api/taxa/validate?name=Genus+species+%26+subsp.");
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/validate?name=Genus+species+%26+subsp.");
     });
 
     it("returns null on a non-ok response", async () => {
