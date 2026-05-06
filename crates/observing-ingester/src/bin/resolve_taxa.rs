@@ -1,18 +1,28 @@
-//! One-shot resolver-cache backfill.
+//! Background resolver-cache worker.
 //!
 //! Walks every distinct `(scientific_name, kingdom)` pair from
 //! `identifications` whose `accepted_taxon_key` is still NULL, runs each
 //! through the taxonomy resolver (populating the local `taxa` cache as a
 //! side effect), and stamps every identification matching that pair with
-//! the resolved key. Refreshes the `community_ids` materialized view once
-//! at the end so downstream filters pick up the new keys.
+//! the resolved key. Refreshes the `community_ids` materialized view at
+//! the end of each pass so downstream filters pick up the new keys.
 //!
-//! Run before the `community_ids`-rebuild migration that uses
-//! `accepted_taxon_key`. Without this, every legacy identification would
-//! drop out of the join.
+//! Two modes:
+//!
+//! - **One-shot** (default): exits after a single pass. Use this from
+//!   Cloud Run Jobs / Cloud Scheduler for periodic runs, or for an
+//!   on-demand backfill.
+//! - **Loop** (with `--interval-secs N`): runs a pass, sleeps `N`
+//!   seconds, repeats. Use this from a long-lived sidecar / for local
+//!   development.
+//!
+//! Identification ingest writes `accepted_taxon_key = NULL`; this worker
+//! is the only path that fills it in. Higher-rank filters (taxon-page,
+//! explore by kingdom) lag new ingests by up to one pass interval.
 //!
 //! Usage:
 //!   cargo run --bin resolve_taxa
+//!   cargo run --bin resolve_taxa -- --interval-secs 300
 //!   cargo run --bin resolve_taxa -- --rate-limit-ms 200 --limit 1000
 
 use std::time::Duration;
@@ -21,11 +31,11 @@ use clap::Parser;
 use observing_db::taxonomy_resolver::Resolver;
 use observing_taxonomy_gbif::GbifUpstream;
 use sqlx::postgres::PgPoolOptions;
-use sqlx::Row;
+use sqlx::{PgPool, Row};
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-#[derive(Parser)]
+#[derive(Parser, Clone)]
 #[command(about = "Resolve and cache taxonomy for already-ingested identifications")]
 struct Cli {
     /// Optional pause between GBIF lookups (defaults to 100ms to be polite).
@@ -33,13 +43,18 @@ struct Cli {
     rate_limit_ms: u64,
 
     /// Cap on the number of distinct (name, kingdom) pairs processed in
-    /// this run. Useful for incremental progress against a large backlog.
+    /// one pass. Useful for incremental progress against a large backlog.
     #[arg(long)]
     limit: Option<i64>,
 
     /// Print what would be resolved without calling GBIF or writing.
     #[arg(long)]
     dry_run: bool,
+
+    /// Run continuously: after each pass, sleep this many seconds and
+    /// start another. Without this flag, exit after one pass.
+    #[arg(long)]
+    interval_secs: Option<u64>,
 }
 
 #[tokio::main]
@@ -74,6 +89,42 @@ async fn main() -> std::process::ExitCode {
         }
     };
 
+    let upstream = GbifUpstream::default();
+    let resolver = Resolver::new(&pool, &upstream);
+
+    loop {
+        match run_pass(&pool, &resolver, &cli).await {
+            Ok(PassOutcome::DryRunDone) => return std::process::ExitCode::SUCCESS,
+            Ok(PassOutcome::Done) => {}
+            Err(code) => return code,
+        }
+
+        let Some(interval) = cli.interval_secs else {
+            return std::process::ExitCode::SUCCESS;
+        };
+        info!(
+            seconds = interval,
+            "Pass complete; sleeping until next pass"
+        );
+        tokio::time::sleep(Duration::from_secs(interval)).await;
+    }
+}
+
+enum PassOutcome {
+    Done,
+    DryRunDone,
+}
+
+/// Run one resolution pass: enumerate unresolved pairs, resolve each,
+/// stamp matching identifications, refresh the matview.
+async fn run_pass<U>(
+    pool: &PgPool,
+    resolver: &Resolver<'_, PgPool, U>,
+    cli: &Cli,
+) -> Result<PassOutcome, std::process::ExitCode>
+where
+    U: observing_db::taxonomy_resolver::TaxonomyUpstream,
+{
     // Distinct (name, kingdom) pairs that still need a key. Pulled in one
     // shot — if the backlog ever grows beyond what fits in memory, switch
     // to keyset pagination over the same set.
@@ -87,7 +138,7 @@ async fn main() -> std::process::ExitCode {
     if let Some(limit) = cli.limit {
         q.push_str(&format!(" LIMIT {limit}"));
     }
-    let pairs = match sqlx::query(&q).fetch_all(&pool).await {
+    let pairs: Vec<(String, Option<String>)> = match sqlx::query(&q).fetch_all(pool).await {
         Ok(rows) => rows
             .into_iter()
             .map(|r| {
@@ -95,10 +146,10 @@ async fn main() -> std::process::ExitCode {
                 let kingdom: Option<String> = r.try_get("kingdom").ok();
                 (name, kingdom)
             })
-            .collect::<Vec<_>>(),
+            .collect(),
         Err(e) => {
             error!(error = %e, "Failed to enumerate identifications needing resolution");
-            return std::process::ExitCode::from(1);
+            return Err(std::process::ExitCode::from(1));
         }
     };
 
@@ -106,15 +157,17 @@ async fn main() -> std::process::ExitCode {
         pairs = pairs.len(),
         "Discovered (name, kingdom) pairs to resolve"
     );
+
+    if pairs.is_empty() {
+        return Ok(PassOutcome::Done);
+    }
+
     if cli.dry_run {
         for (name, kingdom) in &pairs {
             info!(name = %name, kingdom = ?kingdom, "Would resolve");
         }
-        return std::process::ExitCode::SUCCESS;
+        return Ok(PassOutcome::DryRunDone);
     }
-
-    let upstream = GbifUpstream::default();
-    let resolver = Resolver::new(&pool, &upstream);
 
     let mut resolved = 0u64;
     let mut not_found = 0u64;
@@ -129,17 +182,13 @@ async fn main() -> std::process::ExitCode {
             }
             Ok(None) => {
                 not_found += 1;
-                if cli.rate_limit_ms > 0 {
-                    tokio::time::sleep(Duration::from_millis(cli.rate_limit_ms)).await;
-                }
+                rate_limit(cli).await;
                 continue;
             }
             Err(e) => {
                 errors += 1;
                 warn!(name = %name, kingdom = ?kingdom, error = %e, "Resolve failed");
-                if cli.rate_limit_ms > 0 {
-                    tokio::time::sleep(Duration::from_millis(cli.rate_limit_ms)).await;
-                }
+                rate_limit(cli).await;
                 continue;
             }
         };
@@ -156,7 +205,7 @@ async fn main() -> std::process::ExitCode {
             .bind(key)
             .bind(name)
             .bind(kingdom.as_deref())
-            .execute(&pool)
+            .execute(pool)
             .await
         {
             Ok(res) => updated_rows += res.rows_affected(),
@@ -176,9 +225,7 @@ async fn main() -> std::process::ExitCode {
                 "Progress",
             );
         }
-        if cli.rate_limit_ms > 0 {
-            tokio::time::sleep(Duration::from_millis(cli.rate_limit_ms)).await;
-        }
+        rate_limit(cli).await;
     }
 
     info!(
@@ -186,11 +233,16 @@ async fn main() -> std::process::ExitCode {
         not_found, errors, updated_rows, "Resolution pass complete; refreshing community_ids"
     );
 
-    if let Err(e) = observing_db::identifications::refresh_community_ids(&pool).await {
+    if let Err(e) = observing_db::identifications::refresh_community_ids(pool).await {
         error!(error = %e, "Failed to refresh community_ids matview");
-        return std::process::ExitCode::from(1);
+        return Err(std::process::ExitCode::from(1));
     }
 
-    info!("Done");
-    std::process::ExitCode::SUCCESS
+    Ok(PassOutcome::Done)
+}
+
+async fn rate_limit(cli: &Cli) {
+    if cli.rate_limit_ms > 0 {
+        tokio::time::sleep(Duration::from_millis(cli.rate_limit_ms)).await;
+    }
 }
