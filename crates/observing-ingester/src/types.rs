@@ -32,6 +32,9 @@ pub struct IngesterConfig {
     pub port: u16,
     /// Full NSIDs of collections to subscribe to
     pub collections: Vec<String>,
+    /// When set, the media resolver tries this Slingshot endpoint before
+    /// falling back to a direct PDS fetch.
+    pub slingshot_url: Option<String>,
 }
 
 impl Default for IngesterConfig {
@@ -45,6 +48,7 @@ impl Default for IngesterConfig {
                 .iter()
                 .map(|(_, nsid)| nsid.to_string())
                 .collect(),
+            slingshot_url: None,
         }
     }
 }

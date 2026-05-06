@@ -31,6 +31,7 @@ processes:
     working_dir: crates/observing-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
+      - SLINGSHOT_URL=${SLINGSHOT_URL:-https://slingshot.microcosm.blue}
 
   species-id:
     command: cargo run -p observing-species-id
