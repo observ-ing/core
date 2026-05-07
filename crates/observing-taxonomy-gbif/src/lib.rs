@@ -9,29 +9,36 @@
 //!
 //! The adapter does not (yet) follow synonym → accepted redirects; a synonym
 //! match is persisted with `status = "SYNONYM"` and `accepted_taxon_key =
-//! None`. Callers that need the accepted taxon should issue a follow-up
-//! lookup once the V2 API surface is extended to expose `acceptedUsage`.
+//! None`. The generated client now exposes `accepted_usage` on the v2 match
+//! response, so wiring this up is a follow-up.
 
 use chrono::Utc;
-use gbif_api::{GbifClient as GbifApiClient, V2MatchResult, V2NameUsage};
+use gbif_api::checklistbank::{
+    types::{NameUsageMatch, RankedName, Usage},
+    Client as GbifClient,
+};
 use observing_db::taxa::TaxonRow;
 use observing_db::taxonomy_resolver::{ResolveError, TaxonomyUpstream, UpstreamMatch};
 use std::collections::HashMap;
 
-/// Production [`TaxonomyUpstream`] over the raw GBIF v2 client.
+const GBIF_BASE_URL: &str = "https://api.gbif.org";
+
+/// Production [`TaxonomyUpstream`] over the generated GBIF v2 client.
 pub struct GbifUpstream {
-    api: GbifApiClient,
+    api: GbifClient,
 }
 
 impl GbifUpstream {
-    pub fn new(api: GbifApiClient) -> Self {
-        Self { api }
+    pub fn new() -> Self {
+        Self {
+            api: GbifClient::new(GBIF_BASE_URL),
+        }
     }
 }
 
 impl Default for GbifUpstream {
     fn default() -> Self {
-        Self::new(GbifApiClient::new())
+        Self::new()
     }
 }
 
@@ -41,12 +48,47 @@ impl TaxonomyUpstream for GbifUpstream {
         scientific_name: &str,
         kingdom_hint: Option<&str>,
     ) -> Result<Option<UpstreamMatch>, ResolveError> {
-        let v2 = self
+        // Order matches the generated 26-arg signature; everything except
+        // kingdom + scientific_name is None.
+        let result = self
             .api
-            .match_name(scientific_name, kingdom_hint)
-            .await
-            .map_err(|e| ResolveError::Upstream(e.to_string()))?;
-        Ok(v2.and_then(build_upstream_match))
+            .match_names(
+                None,                  //  1 class
+                None,                  //  2 exclude
+                None,                  //  3 family
+                None,                  //  4 generic_name
+                None,                  //  5 genus
+                None,                  //  6 infraspecific_epithet
+                kingdom_hint,          //  7 kingdom
+                None,                  //  8 order
+                None,                  //  9 phylum
+                Some(scientific_name), // 10 scientific_name
+                None,                  // 11 scientific_name_authorship
+                None,                  // 12 scientific_name_id
+                None,                  // 13 species
+                None,                  // 14 specific_epithet
+                None,                  // 15 strict
+                None,                  // 16 subfamily
+                None,                  // 17 subgenus
+                None,                  // 18 subtribe
+                None,                  // 19 superfamily
+                None,                  // 20 taxon_concept_id
+                None,                  // 21 taxon_id
+                None,                  // 22 taxon_rank
+                None,                  // 23 tribe
+                None,                  // 24 usage_key
+                None,                  // 25 verbatim_taxon_rank
+                None,                  // 26 verbose
+            )
+            .await;
+
+        let m: NameUsageMatch = match result {
+            Ok(rv) => rv.into_inner(),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
+            Err(e) => return Err(ResolveError::Upstream(e.to_string())),
+        };
+
+        Ok(build_upstream_match(m))
     }
 
     async fn get_by_key(&self, taxon_key: i64) -> Result<Option<UpstreamMatch>, ResolveError> {
@@ -62,21 +104,29 @@ impl TaxonomyUpstream for GbifUpstream {
     }
 }
 
+/// Serialize an enum (Usage rank, RankedName rank, …) to its on-the-wire
+/// string. Returns `None` for non-string serializations.
+fn rank_to_string<R: serde::Serialize>(rank: &R) -> Option<String> {
+    serde_json::to_value(rank)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+}
+
 /// Build an [`UpstreamMatch`] from a GBIF v2 match result. Returns `None`
 /// when the match has no usable target (no `usage`, or no integer key).
-fn build_upstream_match(v2: V2MatchResult) -> Option<UpstreamMatch> {
-    let usage = v2.usage.as_ref()?;
-    let target_key = usage.key.map(|k| k as i64)?;
-    let classification = v2.classification.as_deref().unwrap_or(&[]);
+fn build_upstream_match(m: NameUsageMatch) -> Option<UpstreamMatch> {
+    let usage = m.usage.as_ref()?;
+    let target_key = usage.key.as_deref()?.parse::<i64>().ok()?;
+    let synonym = m.synonym.unwrap_or(false);
 
     // accumulated[rank] = (name, key) for every rank seen so far in the
     // classification chain. Used to fill in each row's denormalized
     // ancestor columns.
     let mut accumulated: HashMap<String, (String, Option<i64>)> = HashMap::new();
-    let mut rows: Vec<TaxonRow> = Vec::with_capacity(classification.len() + 1);
+    let mut rows: Vec<TaxonRow> = Vec::with_capacity(m.classification.len() + 1);
     let mut parent_key: Option<i64> = None;
 
-    for ancestor in classification {
+    for ancestor in &m.classification {
         let Some(row) = ancestor_row(ancestor, &mut accumulated, parent_key) else {
             continue;
         };
@@ -88,7 +138,7 @@ fn build_upstream_match(v2: V2MatchResult) -> Option<UpstreamMatch> {
         usage,
         &accumulated,
         parent_key,
-        v2.synonym,
+        synonym,
         target_key,
     ));
 
@@ -97,18 +147,19 @@ fn build_upstream_match(v2: V2MatchResult) -> Option<UpstreamMatch> {
 
 /// Build a [`TaxonRow`] for one classification ancestor, also recording its
 /// (rank, name, key) into `accumulated` so subsequent rows can pick it up.
-/// Returns `None` if the ancestor lacks a usable name or key.
+/// Returns `None` if the ancestor lacks a usable name, key, or rank.
 fn ancestor_row(
-    ancestor: &V2NameUsage,
+    ancestor: &RankedName,
     accumulated: &mut HashMap<String, (String, Option<i64>)>,
     parent_key: Option<i64>,
 ) -> Option<TaxonRow> {
-    let rank = ancestor.rank.as_deref()?.to_lowercase();
-    let key = ancestor.key.map(|k| k as i64)?;
-    let name = ancestor
-        .canonical_name
-        .clone()
-        .or_else(|| ancestor.name.clone())?;
+    let rank = ancestor
+        .rank
+        .as_ref()
+        .and_then(rank_to_string)?
+        .to_lowercase();
+    let key = ancestor.key.as_deref()?.parse::<i64>().ok()?;
+    let name = ancestor.name.clone()?;
 
     accumulated.insert(rank.clone(), (name.clone(), Some(key)));
 
@@ -125,7 +176,7 @@ fn ancestor_row(
 
 /// Build the [`TaxonRow`] for the target taxon (the `usage` of the match).
 fn target_row(
-    usage: &V2NameUsage,
+    usage: &Usage,
     accumulated: &HashMap<String, (String, Option<i64>)>,
     parent_key: Option<i64>,
     synonym: bool,
@@ -138,13 +189,14 @@ fn target_row(
         .unwrap_or_default();
     let rank = usage
         .rank
-        .as_deref()
+        .as_ref()
+        .and_then(rank_to_string)
         .map(|r| r.to_lowercase())
         .unwrap_or_else(|| "unknown".to_string());
 
     let (status, accepted_taxon_key) = if synonym {
-        // V2 doesn't expose acceptedUsage in our current client surface;
-        // leave the accepted pointer NULL and rely on a future follow-up.
+        // V2 does expose acceptedUsage now, but plumbing it through is a
+        // follow-up; leave the accepted pointer NULL for the time being.
         ("SYNONYM", None)
     } else {
         ("ACCEPTED", Some(target_key))
@@ -216,46 +268,36 @@ fn row_with_classification(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gbif_api::V2NameUsage;
+    use serde_json::json;
 
-    fn usage(key: u64, name: &str, rank: &str) -> V2NameUsage {
-        V2NameUsage {
-            key: Some(key),
-            name: Some(name.to_string()),
-            canonical_name: Some(name.to_string()),
-            rank: Some(rank.to_string()),
-            kingdom: None,
-            phylum: None,
-            class: None,
-            order: None,
-            family: None,
-            genus: None,
-            species: None,
-        }
+    /// Build a `NameUsageMatch` from a JSON literal. Several v2 fields
+    /// (classification, additional_status) are non-Option `Vec` without
+    /// `serde(default)` quirks here, but going through JSON keeps the
+    /// fixtures readable when we only set a handful of fields.
+    fn match_from_json(value: serde_json::Value) -> NameUsageMatch {
+        serde_json::from_value(value).expect("test fixture is a valid NameUsageMatch")
     }
 
     #[test]
     fn species_match_produces_rows_for_each_ancestor_plus_target() {
-        let v2 = V2MatchResult {
-            synonym: false,
-            usage: Some(usage(1, "Quercus alba", "species")),
-            classification: Some(vec![
-                usage(10, "Plantae", "kingdom"),
-                usage(20, "Tracheophyta", "phylum"),
-                usage(30, "Magnoliopsida", "class"),
-                usage(40, "Fagales", "order"),
-                usage(50, "Fagaceae", "family"),
-                usage(60, "Quercus", "genus"),
-            ]),
-            additional_status: None,
-            diagnostics: None,
-        };
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "classification": [
+                { "key": "10", "name": "Plantae",       "rank": "KINGDOM" },
+                { "key": "20", "name": "Tracheophyta",  "rank": "PHYLUM" },
+                { "key": "30", "name": "Magnoliopsida", "rank": "CLASS" },
+                { "key": "40", "name": "Fagales",       "rank": "ORDER" },
+                { "key": "50", "name": "Fagaceae",      "rank": "FAMILY" },
+                { "key": "60", "name": "Quercus",       "rank": "GENUS" },
+            ]
+        }));
 
-        let m = build_upstream_match(v2).expect("usage with key produces a match");
-        assert_eq!(m.target_key, 1);
-        assert_eq!(m.rows.len(), 7); // 6 ancestors + target
+        let upstream = build_upstream_match(m).expect("usage with key produces a match");
+        assert_eq!(upstream.target_key, 1);
+        assert_eq!(upstream.rows.len(), 7); // 6 ancestors + target
 
-        let target = m.rows.iter().find(|r| r.taxon_key == 1).unwrap();
+        let target = upstream.rows.iter().find(|r| r.taxon_key == 1).unwrap();
         assert_eq!(target.scientific_name, "Quercus alba");
         assert_eq!(target.rank, "species");
         assert_eq!(target.status, "ACCEPTED");
@@ -268,25 +310,23 @@ mod tests {
 
     #[test]
     fn ancestor_rows_carry_only_higher_ranks() {
-        let v2 = V2MatchResult {
-            synonym: false,
-            usage: Some(usage(1, "Quercus alba", "species")),
-            classification: Some(vec![
-                usage(10, "Plantae", "kingdom"),
-                usage(50, "Fagaceae", "family"),
-            ]),
-            additional_status: None,
-            diagnostics: None,
-        };
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "classification": [
+                { "key": "10", "name": "Plantae",  "rank": "KINGDOM" },
+                { "key": "50", "name": "Fagaceae", "rank": "FAMILY" },
+            ]
+        }));
 
-        let m = build_upstream_match(v2).unwrap();
-        let plantae = m.rows.iter().find(|r| r.taxon_key == 10).unwrap();
+        let upstream = build_upstream_match(m).unwrap();
+        let plantae = upstream.rows.iter().find(|r| r.taxon_key == 10).unwrap();
         assert_eq!(plantae.rank, "kingdom");
         assert_eq!(plantae.kingdom.as_deref(), Some("Plantae"));
         assert!(plantae.family.is_none()); // no family below kingdom
         assert!(plantae.parent_key.is_none()); // root of the chain
 
-        let fagaceae = m.rows.iter().find(|r| r.taxon_key == 50).unwrap();
+        let fagaceae = upstream.rows.iter().find(|r| r.taxon_key == 50).unwrap();
         assert_eq!(fagaceae.rank, "family");
         assert_eq!(fagaceae.kingdom.as_deref(), Some("Plantae"));
         assert_eq!(fagaceae.family.as_deref(), Some("Fagaceae"));
@@ -296,50 +336,44 @@ mod tests {
 
     #[test]
     fn synonym_target_marked_synonym_with_no_accepted_pointer() {
-        let v2 = V2MatchResult {
-            synonym: true,
-            usage: Some(usage(2, "Quercus pedunculata", "species")),
-            classification: Some(vec![usage(10, "Plantae", "kingdom")]),
-            additional_status: None,
-            diagnostics: None,
-        };
+        let m = match_from_json(json!({
+            "synonym": true,
+            "usage": { "key": "2", "name": "Quercus pedunculata", "canonicalName": "Quercus pedunculata", "rank": "SPECIES" },
+            "classification": [
+                { "key": "10", "name": "Plantae", "rank": "KINGDOM" },
+            ]
+        }));
 
-        let m = build_upstream_match(v2).unwrap();
-        let target = m.rows.iter().find(|r| r.taxon_key == 2).unwrap();
+        let upstream = build_upstream_match(m).unwrap();
+        let target = upstream.rows.iter().find(|r| r.taxon_key == 2).unwrap();
         assert_eq!(target.status, "SYNONYM");
         assert!(target.accepted_taxon_key.is_none());
     }
 
     #[test]
     fn missing_target_key_yields_no_match() {
-        let mut u = usage(0, "Foo", "species");
-        u.key = None;
-        let v2 = V2MatchResult {
-            synonym: false,
-            usage: Some(u),
-            classification: None,
-            additional_status: None,
-            diagnostics: None,
-        };
-        assert!(build_upstream_match(v2).is_none());
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "name": "Foo", "canonicalName": "Foo", "rank": "SPECIES" }
+        }));
+        assert!(build_upstream_match(m).is_none());
     }
 
     #[test]
     fn ancestors_without_keys_are_skipped() {
-        let mut nameless = usage(0, "Mystery", "phylum");
-        nameless.key = None;
-        let v2 = V2MatchResult {
-            synonym: false,
-            usage: Some(usage(1, "Quercus alba", "species")),
-            classification: Some(vec![usage(10, "Plantae", "kingdom"), nameless]),
-            additional_status: None,
-            diagnostics: None,
-        };
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "classification": [
+                { "key": "10", "name": "Plantae", "rank": "KINGDOM" },
+                {              "name": "Mystery", "rank": "PHYLUM"  },
+            ]
+        }));
 
-        let m = build_upstream_match(v2).unwrap();
+        let upstream = build_upstream_match(m).unwrap();
         // Plantae + target only; the keyless phylum is skipped.
-        assert_eq!(m.rows.len(), 2);
-        let target = m.rows.iter().find(|r| r.taxon_key == 1).unwrap();
+        assert_eq!(upstream.rows.len(), 2);
+        let target = upstream.rows.iter().find(|r| r.taxon_key == 1).unwrap();
         assert!(target.phylum.is_none());
     }
 }

@@ -22,8 +22,8 @@ impl fmt::Display for TaxonomyClientError {
     }
 }
 
-impl From<gbif_api::GbifError> for TaxonomyClientError {
-    fn from(e: gbif_api::GbifError) -> Self {
+impl From<crate::taxonomy::GbifError> for TaxonomyClientError {
+    fn from(e: crate::taxonomy::GbifError) -> Self {
         Self(e.to_string())
     }
 }

@@ -6,9 +6,12 @@ description = "GBIF-backed TaxonomyUpstream impl for observing-db's resolver"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-gbif-api = { path = "../gbif-api" }
+gbif-api = { git = "https://github.com/observ-ing/rust-gbif.git", rev = "f5e1008ed83f917260d0a81e10f4760348852f6b" }
 observing-db = { path = "../observing-db" }
 chrono = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["rt", "macros"] }
