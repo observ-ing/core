@@ -13,7 +13,7 @@ nominatim-client = { path = "../nominatim-client" }
 observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
 # Taxonomy resolver (formerly observing-taxonomy)
-gbif-api = { path = "../gbif-api" }
+gbif-api = { git = "https://github.com/observ-ing/rust-gbif.git", rev = "0969a037b099fcf47557258b3b1e49163054ef57" }
 wikidata-client = { path = "../wikidata-client" }
 # Media cache (formerly observing-media-proxy)
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
@@ -73,6 +73,9 @@ futures = { workspace = true }
 
 # In-memory cache for taxonomy lookups
 moka = { workspace = true }
+
+# UUIDs for GBIF dataset keys (re-used from the gbif-api public surface)
+uuid = "1"
 
 [[bin]]
 name = "observing-appview"

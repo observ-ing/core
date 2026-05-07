@@ -9,4 +9,4 @@
 pub mod gbif;
 pub mod wikidata;
 
-pub use gbif::{CacheStats, GbifClient};
+pub use gbif::{CacheStats, GbifClient, GbifError};

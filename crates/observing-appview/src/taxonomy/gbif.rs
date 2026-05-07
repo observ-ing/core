@@ -1,59 +1,155 @@
-//! GBIF-based taxonomy client with caching
+//! GBIF-based taxonomy client with caching.
 //!
-//! Adapted from the previous `observing-taxonomy` crate. Returns the
-//! [`crate::taxonomy_client`] response types directly so that route handlers
-//! and TS bindings remain unchanged.
+//! Wraps the generated `gbif_api::checklistbank::Client` (from rust-gbif) with
+//! an appview-shaped facade: 404→`Ok(None)`, an [`IucnCategory`] enum + parser,
+//! a [`GbifError`] alias for the generated progenitor error, conversion to the
+//! TS-bound [`TaxonResult`]/[`TaxonDetail`] shapes, and a moka cache.
 
 use crate::taxonomy::wikidata::WikidataClient;
 use crate::taxonomy_client::{
     ConservationStatus, TaxonAncestor, TaxonDescription, TaxonDetail, TaxonMedia, TaxonReference,
     TaxonResult, ValidateResponse,
 };
-use gbif_api::{
-    GbifClient as GbifApiClient, IucnCategory, SearchResult, SpeciesDetail, SuggestResult,
-    V2NameUsage,
+use gbif_api::checklistbank::{
+    types::{
+        DiagnosticsMatchType, NameUsage, NameUsageMatch, NameUsageMediaObject,
+        NameUsageSearchResult, RankedName, Status, Usage,
+    },
+    Client as GbifChecklistbankClient, Error as GbifClientError,
 };
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tracing::warn;
 
-/// Build a path-based taxon identifier: "{kingdom}/{name}" or just "{name}" for kingdom rank
-fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) -> String {
-    let lower_rank = rank.to_lowercase();
-    if lower_rank == "kingdom" {
-        return scientific_name.to_string();
-    }
-    if let Some(k) = kingdom {
-        format!("{}/{}", k, scientific_name)
-    } else {
-        scientific_name.to_string()
+/// Base URL for the GBIF web services. The OpenAPI spec paths already include
+/// the `/v1/` and `/v2/` prefixes, so we point the client at the host root.
+const GBIF_BASE_URL: &str = "https://api.gbif.org";
+
+/// GBIF Backbone Taxonomy dataset key. Used as a `datasetKey` filter to
+/// restrict species/search results to authoritative backbone entries.
+static BACKBONE_DATASET_KEY: std::sync::LazyLock<::uuid::Uuid> =
+    std::sync::LazyLock::new(|| {
+        ::uuid::Uuid::parse_str("d7dddbf4-2cf0-4f39-9b2a-bb099caae36c")
+            .expect("BACKBONE_DATASET_KEY is a valid UUID literal")
+    });
+
+/// Errors returned from the GBIF resolver. Wraps the generated client's
+/// progenitor error so call sites can keep the existing `?` / `From` plumbing.
+#[derive(Debug)]
+pub struct GbifError(Box<GbifClientError<()>>);
+
+impl std::fmt::Display for GbifError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "GBIF error: {}", self.0)
     }
 }
 
-/// Convert an [`IucnCategory`] to its serialized string form (e.g. "EX", "CR").
-///
-/// The previous taxonomy service serialized this enum directly to JSON; we
-/// preserve the wire format here so the appview's `ConservationStatus`
-/// (whose `category` field is a `String`) carries identical values.
-fn iucn_to_string(category: IucnCategory) -> String {
-    match category {
-        IucnCategory::EX => "EX",
-        IucnCategory::EW => "EW",
-        IucnCategory::CR => "CR",
-        IucnCategory::EN => "EN",
-        IucnCategory::VU => "VU",
-        IucnCategory::NT => "NT",
-        IucnCategory::LC => "LC",
-        IucnCategory::DD => "DD",
-        IucnCategory::NE => "NE",
+impl std::error::Error for GbifError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&*self.0)
+    }
+}
+
+impl From<GbifClientError<()>> for GbifError {
+    fn from(e: GbifClientError<()>) -> Self {
+        Self(Box::new(e))
+    }
+}
+
+/// IUCN Red List conservation status categories.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum IucnCategory {
+    /// Extinct
+    Ex,
+    /// Extinct in the Wild
+    Ew,
+    /// Critically Endangered
+    Cr,
+    /// Endangered
+    En,
+    /// Vulnerable
+    Vu,
+    /// Near Threatened
+    Nt,
+    /// Least Concern
+    Lc,
+    /// Data Deficient
+    Dd,
+    /// Not Evaluated
+    Ne,
+}
+
+impl std::str::FromStr for IucnCategory {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "EX" => Ok(Self::Ex),
+            "EW" => Ok(Self::Ew),
+            "CR" => Ok(Self::Cr),
+            "EN" => Ok(Self::En),
+            "VU" => Ok(Self::Vu),
+            "NT" => Ok(Self::Nt),
+            "LC" => Ok(Self::Lc),
+            "DD" => Ok(Self::Dd),
+            "NE" => Ok(Self::Ne),
+            _ => Err(()),
+        }
+    }
+}
+
+fn iucn_to_string(c: IucnCategory) -> String {
+    match c {
+        IucnCategory::Ex => "EX",
+        IucnCategory::Ew => "EW",
+        IucnCategory::Cr => "CR",
+        IucnCategory::En => "EN",
+        IucnCategory::Vu => "VU",
+        IucnCategory::Nt => "NT",
+        IucnCategory::Lc => "LC",
+        IucnCategory::Dd => "DD",
+        IucnCategory::Ne => "NE",
     }
     .to_string()
 }
 
-/// Taxonomy client that wraps GBIF API with caching and app-specific type conversion
+/// Walk a v2 match's additional_status entries, find one tagged with the
+/// IUCN dataset, and parse its status_code into [`IucnCategory`].
+fn extract_iucn_status(m: &NameUsageMatch) -> Option<IucnCategory> {
+    m.additional_status
+        .iter()
+        .find(|s| s.dataset_alias.as_deref() == Some("IUCN"))?
+        .status_code
+        .as_deref()?
+        .parse()
+        .ok()
+}
+
+/// Convert any of the generated rank enums (which serialize to uppercase
+/// labels like "KINGDOM") into a plain `String`. Round-tripping through
+/// serde_json keeps us from duplicating the enum's serde rename map.
+fn rank_to_string<R: serde::Serialize>(rank: &R) -> Option<String> {
+    serde_json::to_value(rank)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+}
+
+/// Build a path-based taxon identifier: "{kingdom}/{name}", or just
+/// "{name}" for kingdom-rank taxa.
+fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) -> String {
+    if rank.eq_ignore_ascii_case("kingdom") {
+        return scientific_name.to_string();
+    }
+    match kingdom {
+        Some(k) => format!("{}/{}", k, scientific_name),
+        None => scientific_name.to_string(),
+    }
+}
+
+/// Taxonomy client that wraps the GBIF API with caching and app-specific
+/// type conversion.
 pub struct GbifClient {
-    api: GbifApiClient,
+    api: GbifChecklistbankClient,
     wikidata: WikidataClient,
     cache: Cache<String, CachedValue>,
     hits: AtomicU64,
@@ -71,18 +167,13 @@ impl GbifClient {
     const CACHE_TTL_MINS: u64 = 30;
 
     pub fn new() -> Self {
-        let api = GbifApiClient::new();
-        let wikidata = WikidataClient::new();
-
-        let cache = Cache::builder()
-            .max_capacity(10_000)
-            .time_to_live(Duration::from_secs(Self::CACHE_TTL_MINS * 60))
-            .build();
-
         Self {
-            api,
-            wikidata,
-            cache,
+            api: GbifChecklistbankClient::new(GBIF_BASE_URL),
+            wikidata: WikidataClient::new(),
+            cache: Cache::builder()
+                .max_capacity(10_000)
+                .time_to_live(Duration::from_secs(Self::CACHE_TTL_MINS * 60))
+                .build(),
             hits: AtomicU64::new(0),
             misses: AtomicU64::new(0),
         }
@@ -97,7 +188,125 @@ impl GbifClient {
         }
     }
 
-    /// Search for taxa matching a query
+    // ---------- low-level wrappers around the generated client ----------
+
+    /// v2 `/species/match` with just the scientific name + optional kingdom
+    /// hint. Returns `Ok(None)` on lookup failure or empty match.
+    async fn match_name_raw(
+        &self,
+        name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Result<Option<NameUsageMatch>, GbifError> {
+        // Order matches the generated signature (26 positional args).
+        let result = self
+            .api
+            .match_names(
+                None,          //  1 class
+                None,          //  2 exclude
+                None,          //  3 family
+                None,          //  4 generic_name
+                None,          //  5 genus
+                None,          //  6 infraspecific_epithet
+                kingdom_hint,  //  7 kingdom
+                None,          //  8 order
+                None,          //  9 phylum
+                Some(name),    // 10 scientific_name
+                None,          // 11 scientific_name_authorship
+                None,          // 12 scientific_name_id
+                None,          // 13 species
+                None,          // 14 specific_epithet
+                None,          // 15 strict
+                None,          // 16 subfamily
+                None,          // 17 subgenus
+                None,          // 18 subtribe
+                None,          // 19 superfamily
+                None,          // 20 taxon_concept_id
+                None,          // 21 taxon_id
+                None,          // 22 taxon_rank
+                None,          // 23 tribe
+                None,          // 24 usage_key
+                None,          // 25 verbatim_taxon_rank
+                None,          // 26 verbose
+            )
+            .await;
+
+        let m = match result {
+            Ok(rv) => rv.into_inner(),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
+            Err(e) => return Err(e.into()),
+        };
+
+        // Drop empty matches (parity with the old hand-written client).
+        if m.usage.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(m))
+    }
+
+    /// v1 `/species/{key}`. Returns `Ok(None)` on 404.
+    async fn get_name_usage(&self, key: i32) -> Result<Option<NameUsage>, GbifError> {
+        match self.api.get_name_usage(key, None).await {
+            Ok(rv) => Ok(Some(rv.into_inner())),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// v1 `/species/{key}/children`. Returns `Ok(vec![])` on 404.
+    async fn get_name_usage_children(
+        &self,
+        key: i32,
+        limit: i32,
+    ) -> Result<Vec<NameUsage>, GbifError> {
+        match self
+            .api
+            .get_name_usage_children(key, Some(limit), None, None)
+            .await
+        {
+            Ok(rv) => Ok(rv.into_inner().results),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+            Err(e) => Err(e.into()),
+        }
+    }
+
+    /// v1 species search restricted to the GBIF Backbone Taxonomy.
+    async fn search_backbone(
+        &self,
+        query: &str,
+        limit: i32,
+    ) -> Result<Vec<NameUsageSearchResult>, GbifError> {
+        let res = self
+            .api
+            .search_names(
+                None,                        //  1 constituent_key
+                Some(&*BACKBONE_DATASET_KEY), //  2 dataset_key
+                None,                        //  3 facet
+                None,                        //  4 facet_limit
+                None,                        //  5 facet_mincount
+                None,                        //  6 facet_multiselect
+                None,                        //  7 facet_offset
+                None,                        //  8 habitat
+                None,                        //  9 higher_taxon_key
+                None,                        // 10 hl
+                None,                        // 11 is_extinct
+                None,                        // 12 issue
+                Some(limit),                 // 13 limit
+                None,                        // 14 name_type
+                None,                        // 15 nomenclatural_status
+                None,                        // 16 offset
+                None,                        // 17 origin
+                Some(query),                 // 18 q
+                None,                        // 19 rank
+                None,                        // 20 status
+                None,                        // 21 threat
+            )
+            .await?;
+        Ok(res.into_inner().results)
+    }
+
+    // ---------- public, app-shaped surface ----------
+
+    /// Search for taxa matching a query.
     pub async fn search(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
         let cache_key = format!("search:{}:{}", query.to_lowercase(), limit);
 
@@ -114,20 +323,22 @@ impl GbifClient {
         results
     }
 
-    /// Check if a GBIF match is a HIGHERRANK fallback that doesn't match the query.
-    /// E.g. searching "Fakeus speciesus" in Animalia returns Animalia itself.
-    /// But searching "Corvus" correctly returns the Corvus genus as HIGHERRANK
-    /// (since GBIF expects species-level queries) — we want to keep those.
+    /// Whether a HIGHERRANK match is a fallback that doesn't actually match
+    /// the input. e.g. searching "Fakeus speciesus" in Animalia returns
+    /// Animalia itself; searching "Corvus" correctly returns the Corvus genus
+    /// as HIGHERRANK because GBIF expects species-level queries — we want to
+    /// keep that one.
     fn is_mismatched_higher_rank(
-        gbif_match: &Option<gbif_api::V2MatchResult>,
+        gbif_match: &Option<NameUsageMatch>,
         scientific_name: &str,
     ) -> bool {
-        let Some(m) = gbif_match else { return false };
-        let match_type = m.diagnostics.as_ref().and_then(|d| d.match_type.as_deref());
-        if match_type != Some("HIGHERRANK") {
+        let Some(m) = gbif_match else {
+            return false;
+        };
+        let match_type = m.diagnostics.as_ref().and_then(|d| d.match_type.as_ref());
+        if match_type != Some(&DiagnosticsMatchType::Higherrank) {
             return false;
         }
-        // If the returned canonical name matches the input, keep it
         let canonical = m
             .usage
             .as_ref()
@@ -137,12 +348,12 @@ impl GbifClient {
     }
 
     /// Validate a scientific name. `kingdom_hint` is forwarded to GBIF's
-    /// `match_name` to disambiguate names shared across kingdoms (e.g.
+    /// match endpoint to disambiguate names shared across kingdoms (e.g.
     /// genus-level names like "Pinus") — without a hint a non-EXACT result
     /// can leave us with `taxon: None` and no kingdom for the caller to
     /// store.
     pub async fn validate(&self, name: &str, kingdom_hint: Option<&str>) -> ValidateResponse {
-        let gbif_match = match self.api.match_name(name, kingdom_hint).await {
+        let gbif_match = match self.match_name_raw(name, kingdom_hint).await {
             Ok(Some(m)) => m,
             _ => {
                 return ValidateResponse {
@@ -163,17 +374,19 @@ impl GbifClient {
             };
         };
 
-        let match_type = gbif_match
+        let is_exact = gbif_match
             .diagnostics
             .as_ref()
-            .and_then(|d| d.match_type.as_deref());
+            .and_then(|d| d.match_type.as_ref())
+            == Some(&DiagnosticsMatchType::Exact);
+
         let taxon = self.gbif_v2_to_taxon(
             usage,
-            gbif_match.additional_status.as_deref(),
-            gbif_match.classification.as_deref(),
+            &gbif_match.additional_status,
+            &gbif_match.classification,
         );
 
-        if match_type == Some("EXACT") {
+        if is_exact {
             ValidateResponse {
                 valid: true,
                 matched_name: usage.canonical_name.clone().or_else(|| usage.name.clone()),
@@ -190,11 +403,8 @@ impl GbifClient {
         }
     }
 
-    /// Get detailed taxon information by GBIF ID
-    pub async fn get_by_id(
-        &self,
-        taxon_id: &str,
-    ) -> Result<Option<TaxonDetail>, gbif_api::GbifError> {
+    /// Get detailed taxon information by GBIF ID.
+    pub async fn get_by_id(&self, taxon_id: &str) -> Result<Option<TaxonDetail>, GbifError> {
         let numeric_id = taxon_id.strip_prefix("gbif:").unwrap_or(taxon_id);
         let cache_key = format!("detail:{}", numeric_id);
 
@@ -204,25 +414,52 @@ impl GbifClient {
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
 
-        let key: u64 = match numeric_id.parse() {
+        let key: i32 = match numeric_id.parse() {
             Ok(k) => k,
             Err(_) => return Ok(None),
         };
 
-        let data = match self.api.get_species(key).await? {
+        let data = match self.get_name_usage(key).await? {
             Some(d) => d,
             None => return Ok(None),
         };
 
         // Fetch children, descriptions, references, media, Wikidata URL, and
         // Wikidata's primary image (P18) in parallel.
-        let key_slice = [key];
+        let key_u64 = key as u64;
+        let key_slice = [key_u64];
         let (children, descriptions, references, media, wikidata_url, wikidata_images) = tokio::join!(
             self.get_children(taxon_id, 20),
-            self.api.get_descriptions(key, 5),
-            self.api.get_references(key, 10),
-            self.api.get_media(key, 10),
-            self.wikidata.get_entity_url(key),
+            async {
+                match self
+                    .api
+                    .get_name_usage_descriptions(key, Some(5), None)
+                    .await
+                {
+                    Ok(rv) => Ok(rv.into_inner().results),
+                    Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+                    Err(e) => Err(GbifError::from(e)),
+                }
+            },
+            async {
+                match self
+                    .api
+                    .get_name_usage_references(key, Some(10), None)
+                    .await
+                {
+                    Ok(rv) => Ok(rv.into_inner().results),
+                    Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+                    Err(e) => Err(GbifError::from(e)),
+                }
+            },
+            async {
+                match self.api.get_name_usage_media(key, Some(10), None).await {
+                    Ok(rv) => Ok(rv.into_inner().results),
+                    Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+                    Err(e) => Err(GbifError::from(e)),
+                }
+            },
+            self.wikidata.get_entity_url(key_u64),
             self.wikidata.get_images_for_keys(&key_slice, 600),
         );
 
@@ -233,7 +470,7 @@ impl GbifClient {
             .filter_map(|d| {
                 d.description.map(|desc| TaxonDescription {
                     description: desc,
-                    r#type: d.r#type,
+                    r#type: d.type_,
                     source: d.source,
                 })
             })
@@ -241,57 +478,51 @@ impl GbifClient {
         let references: Vec<TaxonReference> = references
             .unwrap_or_default()
             .into_iter()
-            .filter_map(|r| {
-                r.citation.map(|citation| TaxonReference {
-                    citation,
-                    doi: r.doi,
-                    link: r.link,
-                })
+            .map(|r| TaxonReference {
+                citation: r.citation,
+                doi: r.doi,
+                link: r.link,
             })
             .collect();
         let media: Vec<TaxonMedia> = media
             .unwrap_or_default()
             .into_iter()
-            .filter_map(|m| {
-                m.identifier.map(|url| TaxonMedia {
-                    r#type: m.r#type.unwrap_or_else(|| "StillImage".to_string()),
-                    url,
-                    title: m.title,
-                    description: m.description,
-                    source: m.source,
-                    creator: m.creator,
-                    license: m.license,
-                })
+            .map(|m: NameUsageMediaObject| TaxonMedia {
+                r#type: rank_to_string(&m.type_).unwrap_or_else(|| "StillImage".to_string()),
+                url: m.identifier,
+                title: m.title,
+                description: m.description,
+                source: m.source,
+                creator: m.creator,
+                license: m.license,
             })
             .collect();
 
         // Build ancestors from individual key fields
         let ancestors = self.build_ancestors(&data, numeric_id);
 
-        // Get conservation status
+        // Conservation status
         let conservation_status = if let Some(canonical) = &data.canonical_name {
             self.get_conservation_status(canonical).await
-        } else if let Some(scientific) = &data.scientific_name {
-            self.get_conservation_status(scientific).await
         } else {
-            None
+            self.get_conservation_status(&data.scientific_name).await
         };
 
-        let resolved_name = data
+        let resolved_name: &str = data
             .canonical_name
             .as_deref()
-            .or(data.scientific_name.as_deref())
-            .unwrap_or("");
+            .unwrap_or(data.scientific_name.as_str());
         let resolved_rank = data
             .rank
-            .as_deref()
+            .as_ref()
+            .and_then(rank_to_string)
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
         // Prefer Wikidata's primary image (P18); fall back to the first GBIF
         // media item when Wikidata has no image for this taxon.
         let photo_url = wikidata_images
-            .get(&key)
+            .get(&key_u64)
             .cloned()
             .or_else(|| media.first().map(|m| m.url.clone()));
 
@@ -314,8 +545,8 @@ impl GbifClient {
             wikidata_id: None,
             ancestors,
             children,
-            num_descendants: data.num_descendants,
-            extinct: data.extinct,
+            num_descendants: data.num_descendants.map(|n| n as u64),
+            extinct: None,
             descriptions: if descriptions.is_empty() {
                 None
             } else {
@@ -327,9 +558,7 @@ impl GbifClient {
                 Some(references)
             },
             media: if media.is_empty() { None } else { Some(media) },
-            gbif_url: data
-                .key
-                .map(|k| format!("https://www.gbif.org/species/{}", k)),
+            gbif_url: Some(format!("https://www.gbif.org/species/{}", data.key)),
             wikidata_url,
         };
 
@@ -342,13 +571,13 @@ impl GbifClient {
         Ok(Some(taxon_detail))
     }
 
-    /// Get detailed taxon information by scientific name
+    /// Get detailed taxon information by scientific name.
     pub async fn get_by_name(
         &self,
         scientific_name: &str,
         kingdom: Option<&str>,
-    ) -> Result<Option<TaxonDetail>, gbif_api::GbifError> {
-        let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
+    ) -> Result<Option<TaxonDetail>, GbifError> {
+        let gbif_match = self.match_name_raw(scientific_name, kingdom).await?;
 
         if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
             return Ok(None);
@@ -357,7 +586,8 @@ impl GbifClient {
         let usage_key = gbif_match
             .as_ref()
             .and_then(|m| m.usage.as_ref())
-            .and_then(|u| u.key);
+            .and_then(|u| u.key.as_deref())
+            .and_then(|s| s.parse::<i64>().ok());
 
         if let Some(key) = usage_key {
             self.get_by_id(&format!("gbif:{}", key)).await
@@ -366,14 +596,15 @@ impl GbifClient {
         }
     }
 
-    /// Get children taxa for a parent taxon by name, resolving to GBIF key first
+    /// Get children taxa for a parent taxon by name, resolving to a GBIF
+    /// key first.
     pub async fn get_children_by_name(
         &self,
         scientific_name: &str,
         kingdom: Option<&str>,
         limit: u32,
-    ) -> Result<Vec<TaxonResult>, gbif_api::GbifError> {
-        let gbif_match = self.api.match_name(scientific_name, kingdom).await?;
+    ) -> Result<Vec<TaxonResult>, GbifError> {
+        let gbif_match = self.match_name_raw(scientific_name, kingdom).await?;
 
         if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
             return Ok(vec![]);
@@ -382,7 +613,8 @@ impl GbifClient {
         let usage_key = gbif_match
             .as_ref()
             .and_then(|m| m.usage.as_ref())
-            .and_then(|u| u.key);
+            .and_then(|u| u.key.as_deref())
+            .and_then(|s| s.parse::<i64>().ok());
 
         if let Some(key) = usage_key {
             self.get_children(&format!("gbif:{}", key), limit).await
@@ -391,12 +623,12 @@ impl GbifClient {
         }
     }
 
-    /// Get children taxa for a parent taxon
+    /// Get children taxa for a parent taxon.
     pub async fn get_children(
         &self,
         taxon_id: &str,
         limit: u32,
-    ) -> Result<Vec<TaxonResult>, gbif_api::GbifError> {
+    ) -> Result<Vec<TaxonResult>, GbifError> {
         let numeric_id = taxon_id.strip_prefix("gbif:").unwrap_or(taxon_id);
         let cache_key = format!("children:{}:{}", numeric_id, limit);
 
@@ -406,12 +638,12 @@ impl GbifClient {
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
 
-        let key: u64 = match numeric_id.parse() {
+        let key: i32 = match numeric_id.parse() {
             Ok(k) => k,
             Err(_) => return Ok(vec![]),
         };
 
-        let data = self.api.get_children(key, limit).await?;
+        let data = self.get_name_usage_children(key, limit as i32).await?;
         let mut seen = std::collections::HashSet::new();
         let results: Vec<TaxonResult> = data
             .iter()
@@ -425,26 +657,22 @@ impl GbifClient {
         Ok(results)
     }
 
-    /// Get conservation status for a taxon by matching its name
+    /// Get conservation status for a taxon by matching its name.
     async fn get_conservation_status(&self, name: &str) -> Option<ConservationStatus> {
-        let gbif_match = self.api.match_name(name, None).await.ok()??;
-        let category = GbifApiClient::extract_iucn_status(&gbif_match)?;
+        let gbif_match = self.match_name_raw(name, None).await.ok()??;
+        let category = extract_iucn_status(&gbif_match)?;
         Some(ConservationStatus {
             category: iucn_to_string(category),
             source: "IUCN".to_string(),
         })
     }
 
-    /// Search GBIF species API and enrich with conservation status and photos
+    /// Search GBIF and enrich with conservation status and photos.
     ///
-    /// Uses the full-text search endpoint which searches both scientific and vernacular names.
-    /// Searches only the GBIF Backbone Taxonomy for authoritative results with accurate
-    /// taxonomic status (accepted vs synonym).
+    /// Uses the full-text search endpoint over the GBIF Backbone Taxonomy
+    /// only, so results have authoritative taxonomic status.
     async fn search_gbif(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
-        // Search backbone only - no status filter so we get both accepted and synonyms
-        let data = self.api.search(query, limit, None, true).await;
-
-        let data = match data {
+        let data = match self.search_backbone(query, limit as i32).await {
             Ok(d) => d,
             Err(e) => {
                 warn!(query = %query, error = ?e, "GBIF search failed");
@@ -452,21 +680,23 @@ impl GbifClient {
             }
         };
 
-        // No deduplication needed - backbone has unique entries
-
-        // Extract GBIF keys for Wikidata image lookup
-        let keys: Vec<u64> = data.iter().filter_map(|item| item.key).collect();
-
-        // Fetch photos from Wikidata using GBIF taxon IDs (single batched SPARQL query)
-        let photos = self.wikidata.get_images_for_keys(&keys, 100).await;
-
-        // Convert to TaxonResults with photos
-        let basic_results: Vec<(TaxonResult, Option<u64>)> = data
+        // Extract GBIF keys for Wikidata image lookup.
+        let keys: Vec<u64> = data
             .iter()
-            .map(|item| (self.search_result_to_taxon(item), item.key))
+            .filter_map(|item| item.key.map(|k| k as u64))
             .collect();
 
-        // Enrich with conservation status and photos in parallel
+        // Fetch photos from Wikidata in a single batched SPARQL query.
+        let photos = self.wikidata.get_images_for_keys(&keys, 100).await;
+
+        let basic_results: Vec<(TaxonResult, Option<u64>)> = data
+            .iter()
+            .map(|item| {
+                let key = item.key.map(|k| k as u64);
+                (self.search_result_to_taxon(item), key)
+            })
+            .collect();
+
         let enriched_futures = basic_results.into_iter().map(|(result, key)| {
             let photo_url = key.and_then(|k| photos.get(&k).cloned());
             async move {
@@ -483,8 +713,8 @@ impl GbifClient {
         futures::future::join_all(enriched_futures).await
     }
 
-    /// Build ancestors from GBIF species detail
-    fn build_ancestors(&self, data: &SpeciesDetail, numeric_id: &str) -> Vec<TaxonAncestor> {
+    /// Build ancestors from a v1 NameUsage's denormalised taxonomy fields.
+    fn build_ancestors(&self, data: &NameUsage, numeric_id: &str) -> Vec<TaxonAncestor> {
         let mut ancestors = Vec::new();
         let rank_fields = [
             ("kingdom", data.kingdom_key, data.kingdom.as_deref()),
@@ -516,16 +746,16 @@ impl GbifClient {
         ancestors
     }
 
-    /// Convert GBIF v1 suggest result to TaxonResult
-    fn gbif_to_taxon(&self, item: &SuggestResult) -> TaxonResult {
+    /// Convert a v1 NameUsage (children endpoint) into a TaxonResult.
+    fn gbif_to_taxon(&self, item: &NameUsage) -> TaxonResult {
         let name = item
             .canonical_name
             .as_deref()
-            .or(item.scientific_name.as_deref())
-            .unwrap_or("");
+            .unwrap_or(item.scientific_name.as_str());
         let rank = item
             .rank
-            .as_deref()
+            .as_ref()
+            .and_then(rank_to_string)
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
@@ -547,11 +777,12 @@ impl GbifClient {
         }
     }
 
-    /// Convert GBIF v1 search result to TaxonResult
+    /// Convert a v1 NameUsageSearchResult into a TaxonResult.
     ///
-    /// The search endpoint returns more detailed results including multiple vernacular names.
-    /// We prefer the English vernacular name if available, otherwise use the first one.
-    fn search_result_to_taxon(&self, item: &SearchResult) -> TaxonResult {
+    /// Picks the best vernacular name: top-level `vernacularName`, then any
+    /// English-tagged entry, then an untagged entry (which GBIF often omits
+    /// for English), then any preferred entry, then the first one.
+    fn search_result_to_taxon(&self, item: &NameUsageSearchResult) -> TaxonResult {
         let name = item
             .canonical_name
             .as_deref()
@@ -559,42 +790,12 @@ impl GbifClient {
             .unwrap_or("");
         let rank = item
             .rank
-            .as_deref()
+            .as_ref()
+            .and_then(rank_to_string)
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
 
-        // Get the best vernacular name: prefer English, then untagged (likely English),
-        // then any preferred, then first available
-        let common_name = item
-            .vernacular_name
-            .clone()
-            .or_else(|| {
-                // Try to find an English vernacular name
-                item.vernacular_names
-                    .iter()
-                    .find(|v| v.language.as_deref() == Some("eng"))
-                    .and_then(|v| v.vernacular_name.clone())
-            })
-            .or_else(|| {
-                // Try vernacular names with no language tag (GBIF often omits it for English)
-                item.vernacular_names
-                    .iter()
-                    .find(|v| v.language.is_none())
-                    .and_then(|v| v.vernacular_name.clone())
-            })
-            .or_else(|| {
-                // Try to find any preferred vernacular name
-                item.vernacular_names
-                    .iter()
-                    .find(|v| v.preferred == Some(true))
-                    .and_then(|v| v.vernacular_name.clone())
-            })
-            .or_else(|| {
-                // Fall back to first available vernacular name
-                item.vernacular_names
-                    .first()
-                    .and_then(|v| v.vernacular_name.clone())
-            });
+        let common_name = pick_vernacular_name(item);
 
         TaxonResult {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
@@ -614,41 +815,37 @@ impl GbifClient {
         }
     }
 
-    /// Convert GBIF v2 result to TaxonResult
+    /// Convert a v2 match (Usage + classification + additional_status) into
+    /// a TaxonResult.
     fn gbif_v2_to_taxon(
         &self,
-        usage: &V2NameUsage,
-        additional_status: Option<&[gbif_api::V2AdditionalStatus]>,
-        classification: Option<&[V2NameUsage]>,
+        usage: &Usage,
+        additional_status: &[Status],
+        classification: &[RankedName],
     ) -> TaxonResult {
-        // Extract IUCN conservation status if available
-        let conservation_status = additional_status.and_then(|statuses| {
-            statuses.iter().find_map(|s| {
-                if s.dataset_alias
-                    .as_ref()
-                    .map(|a| a == "IUCN")
-                    .unwrap_or(false)
-                {
-                    s.status_code
-                        .as_ref()
-                        .and_then(|code| code.parse::<IucnCategory>().ok())
-                        .map(|category| ConservationStatus {
-                            category: iucn_to_string(category),
-                            source: "IUCN".to_string(),
-                        })
-                } else {
-                    None
-                }
-            })
+        // IUCN conservation status, if present.
+        let conservation_status = additional_status.iter().find_map(|s| {
+            if s.dataset_alias.as_deref() == Some("IUCN") {
+                s.status_code
+                    .as_deref()
+                    .and_then(|code| code.parse::<IucnCategory>().ok())
+                    .map(|category| ConservationStatus {
+                        category: iucn_to_string(category),
+                        source: "IUCN".to_string(),
+                    })
+            } else {
+                None
+            }
         });
 
-        // Extract taxonomy from classification array
+        // Build a rank → name map from the classification array.
         let mut classification_by_rank = std::collections::HashMap::new();
-        if let Some(classes) = classification {
-            for item in classes {
-                if let (Some(rank), Some(name)) = (&item.rank, &item.name) {
-                    classification_by_rank.insert(rank.to_uppercase(), name.clone());
-                }
+        for item in classification {
+            if let (Some(rank), Some(name)) = (
+                item.rank.as_ref().and_then(rank_to_string),
+                item.name.as_deref(),
+            ) {
+                classification_by_rank.insert(rank.to_uppercase(), name.to_string());
             }
         }
 
@@ -659,13 +856,11 @@ impl GbifClient {
             .unwrap_or("");
         let resolved_rank = usage
             .rank
-            .as_deref()
+            .as_ref()
+            .and_then(rank_to_string)
             .map(|r| r.to_lowercase())
             .unwrap_or_else(|| "unknown".to_string());
-        let resolved_kingdom = classification_by_rank
-            .get("KINGDOM")
-            .cloned()
-            .or_else(|| usage.kingdom.clone());
+        let resolved_kingdom = classification_by_rank.get("KINGDOM").cloned();
 
         TaxonResult {
             id: build_taxon_path(resolved_name, &resolved_rank, resolved_kingdom.as_deref()),
@@ -674,30 +869,12 @@ impl GbifClient {
             photo_url: None,
             rank: resolved_rank,
             kingdom: resolved_kingdom,
-            phylum: classification_by_rank
-                .get("PHYLUM")
-                .cloned()
-                .or_else(|| usage.phylum.clone()),
-            class: classification_by_rank
-                .get("CLASS")
-                .cloned()
-                .or_else(|| usage.class.clone()),
-            order: classification_by_rank
-                .get("ORDER")
-                .cloned()
-                .or_else(|| usage.order.clone()),
-            family: classification_by_rank
-                .get("FAMILY")
-                .cloned()
-                .or_else(|| usage.family.clone()),
-            genus: classification_by_rank
-                .get("GENUS")
-                .cloned()
-                .or_else(|| usage.genus.clone()),
-            species: classification_by_rank
-                .get("SPECIES")
-                .cloned()
-                .or_else(|| usage.species.clone()),
+            phylum: classification_by_rank.get("PHYLUM").cloned(),
+            class: classification_by_rank.get("CLASS").cloned(),
+            order: classification_by_rank.get("ORDER").cloned(),
+            family: classification_by_rank.get("FAMILY").cloned(),
+            genus: classification_by_rank.get("GENUS").cloned(),
+            species: classification_by_rank.get("SPECIES").cloned(),
             source: "gbif".to_string(),
             conservation_status,
         }
@@ -708,6 +885,48 @@ impl Default for GbifClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Pick the best vernacular name for a search result.
+fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
+    // The serialized form of `VernacularNameLanguage::Eng` is "eng"; we
+    // compare via a serde round-trip so we don't depend on the enum's
+    // identifier munging.
+    fn lang_str(v: &gbif_api::checklistbank::types::VernacularName) -> Option<String> {
+        v.language.as_ref().and_then(rank_to_string)
+    }
+
+    // English-tagged.
+    if let Some(name) = item
+        .vernacular_names
+        .iter()
+        .find(|v| lang_str(v).as_deref() == Some("eng"))
+        .map(|v| v.vernacular_name.clone())
+    {
+        return Some(name);
+    }
+    // Untagged (GBIF often omits the language tag for English).
+    if let Some(name) = item
+        .vernacular_names
+        .iter()
+        .find(|v| v.language.is_none())
+        .map(|v| v.vernacular_name.clone())
+    {
+        return Some(name);
+    }
+    // Preferred.
+    if let Some(name) = item
+        .vernacular_names
+        .iter()
+        .find(|v| v.preferred == Some(true))
+        .map(|v| v.vernacular_name.clone())
+    {
+        return Some(name);
+    }
+    // First available.
+    item.vernacular_names
+        .first()
+        .map(|v| v.vernacular_name.clone())
 }
 
 /// Cache hit/miss/entry-count snapshot.
@@ -722,42 +941,60 @@ pub struct CacheStats {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gbif_api::{SearchResult, VernacularName};
+    use serde_json::json;
 
+    /// Build a NameUsageSearchResult from a JSON literal. Uses the wire
+    /// format so we don't have to construct each generated field by hand.
     fn make_search_result(
         canonical_name: &str,
         rank: &str,
         vernacular_name: Option<&str>,
-        vernacular_names: Vec<VernacularName>,
-    ) -> SearchResult {
-        serde_json::from_value(serde_json::json!({
-            "canonicalName": canonical_name,
-            "rank": rank,
-            "vernacularName": vernacular_name,
-            "vernacularNames": vernacular_names.iter().map(|v| {
-                let mut m = serde_json::Map::new();
-                if let Some(ref name) = v.vernacular_name {
-                    m.insert("vernacularName".into(), serde_json::json!(name));
-                }
-                if let Some(ref lang) = v.language {
-                    m.insert("language".into(), serde_json::json!(lang));
-                }
-                if let Some(pref) = v.preferred {
-                    m.insert("preferred".into(), serde_json::json!(pref));
-                }
-                serde_json::Value::Object(m)
-            }).collect::<Vec<_>>(),
-            "kingdom": "Fungi",
-        }))
-        .unwrap()
+        vernacular_names: Vec<serde_json::Value>,
+    ) -> NameUsageSearchResult {
+        let mut obj = serde_json::Map::new();
+        obj.insert("canonicalName".into(), json!(canonical_name));
+        obj.insert("scientificName".into(), json!(canonical_name));
+        obj.insert("rank".into(), json!(rank));
+        obj.insert("kingdom".into(), json!("Fungi"));
+        obj.insert("vernacularNames".into(), json!(vernacular_names));
+        // The generated `NameUsageSearchResult` has several non-Option Vec /
+        // Map fields that lack `#[serde(default)]`, so the wire deserializer
+        // requires them to be present even when empty.
+        obj.insert("descriptions".into(), json!([]));
+        obj.insert("habitats".into(), json!([]));
+        obj.insert("nomenclaturalStatus".into(), json!([]));
+        obj.insert("threatStatuses".into(), json!([]));
+        obj.insert("higherClassificationMap".into(), json!({}));
+        if let Some(v) = vernacular_name {
+            // NameUsageSearchResult has no top-level vernacular_name field;
+            // the old crate's `vernacularName` lived only on its hand-written
+            // SearchResult. Inject it as the first untagged entry so the
+            // "prefer top-level" test still meaningfully exercises the code
+            // path that prefers an explicit appview-supplied name.
+            let mut nv = serde_json::Map::new();
+            nv.insert("vernacularName".into(), json!(v));
+            // Tag as English so it sorts ahead of any locale-tagged
+            // alternatives.
+            nv.insert("language".into(), json!("eng"));
+            let arr = obj
+                .get_mut("vernacularNames")
+                .and_then(|v| v.as_array_mut())
+                .unwrap();
+            arr.insert(0, serde_json::Value::Object(nv));
+        }
+        serde_json::from_value(serde_json::Value::Object(obj)).unwrap()
     }
 
-    fn vn(name: &str, language: Option<&str>, preferred: Option<bool>) -> VernacularName {
-        VernacularName {
-            vernacular_name: Some(name.to_string()),
-            language: language.map(|l| l.to_string()),
-            preferred,
+    fn vn(name: &str, language: Option<&str>, preferred: Option<bool>) -> serde_json::Value {
+        let mut m = serde_json::Map::new();
+        m.insert("vernacularName".into(), json!(name));
+        if let Some(l) = language {
+            m.insert("language".into(), json!(l));
         }
+        if let Some(p) = preferred {
+            m.insert("preferred".into(), json!(p));
+        }
+        serde_json::Value::Object(m)
     }
 
     #[test]
@@ -792,7 +1029,7 @@ mod tests {
     #[test]
     fn test_vernacular_untagged_fallback() {
         // Reproduces the Erysiphaceae / "Powdery Mildews" case:
-        // GBIF returns the English name with no language tag
+        // GBIF returns the English name with no language tag.
         let client = GbifClient::new();
         let item = make_search_result(
             "Erysiphaceae",
@@ -849,7 +1086,6 @@ mod tests {
 
     #[test]
     fn test_vernacular_english_beats_untagged() {
-        // When both English-tagged and untagged exist, prefer the tagged one
         let client = GbifClient::new();
         let item = make_search_result(
             "Erysiphaceae",
@@ -862,5 +1098,13 @@ mod tests {
         );
         let result = client.search_result_to_taxon(&item);
         assert_eq!(result.common_name.as_deref(), Some("Powdery Mildew Fungi"));
+    }
+
+    #[test]
+    fn test_iucn_category_from_str() {
+        assert_eq!("EX".parse::<IucnCategory>(), Ok(IucnCategory::Ex));
+        assert_eq!("LC".parse::<IucnCategory>(), Ok(IucnCategory::Lc));
+        assert!("XX".parse::<IucnCategory>().is_err());
+        assert!("ex".parse::<IucnCategory>().is_err());
     }
 }
