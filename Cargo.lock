@@ -1473,7 +1473,7 @@ dependencies = [
 [[package]]
 name = "gbif-api"
 version = "0.1.0"
-source = "git+https://github.com/observ-ing/rust-gbif.git?rev=4db87d72ee190ee5851358db66169b2b6908fc80#4db87d72ee190ee5851358db66169b2b6908fc80"
+source = "git+https://github.com/observ-ing/rust-gbif.git?rev=f5e1008ed83f917260d0a81e10f4760348852f6b#f5e1008ed83f917260d0a81e10f4760348852f6b"
 dependencies = [
  "base64",
  "bytes",
