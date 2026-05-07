@@ -173,13 +173,13 @@ describe("api", () => {
 
       await api.fetchExploreFeed("cursor123", {
         taxon: "Quercus",
-        lat: 40.7128,
-        lng: -74.006,
-        radius: 50,
+        kingdom: "Plantae",
+        startDate: "2024-01-01",
+        endDate: "2024-12-31",
       });
 
       expect(mockFetch).toHaveBeenCalledWith(
-        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&lat=40.7128&lng=-74.006&radius=50",
+        "/api/feeds/explore?limit=20&cursor=cursor123&taxon=Quercus&kingdom=Plantae&startDate=2024-01-01&endDate=2024-12-31",
       );
     });
 
@@ -368,6 +368,92 @@ describe("api", () => {
       const result = await api.searchTaxa("Quercus");
 
       expect(result).toEqual([]);
+    });
+  });
+
+  describe("validateTaxon", () => {
+    it("returns the validate response when the name resolves", async () => {
+      const mockResponse = {
+        valid: true,
+        matchedName: "Quercus alba",
+        taxon: { id: 1, name: "Quercus alba" },
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await api.validateTaxon("Quercus alba");
+
+      expect(result).toEqual(mockResponse);
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/validate?name=Quercus+alba");
+    });
+
+    it("includes kingdom hint when provided", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ valid: true }),
+      });
+
+      await api.validateTaxon("Pinus", "Plantae");
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/validate?name=Pinus&kingdom=Plantae");
+    });
+
+    it("omits kingdom param when not provided", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ valid: true }),
+      });
+
+      await api.validateTaxon("Pinus");
+
+      expect(mockFetch).toHaveBeenCalledWith(expect.not.stringContaining("kingdom"));
+    });
+
+    it("omits kingdom param when explicitly empty", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ valid: true }),
+      });
+
+      await api.validateTaxon("Pinus", "");
+
+      expect(mockFetch).toHaveBeenCalledWith(expect.not.stringContaining("kingdom"));
+    });
+
+    it("encodes special characters in the name", async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ valid: false }),
+      });
+
+      await api.validateTaxon("Genus species & subsp.");
+
+      expect(mockFetch).toHaveBeenCalledWith("/api/taxa/validate?name=Genus+species+%26+subsp.");
+    });
+
+    it("returns null on a non-ok response", async () => {
+      mockFetch.mockResolvedValue({ ok: false, status: 500 });
+
+      const result = await api.validateTaxon("Quercus alba");
+
+      expect(result).toBeNull();
+    });
+
+    it("returns the response body even when valid is false", async () => {
+      const mockResponse = {
+        valid: false,
+        suggestions: [{ id: 2, name: "Quercus rubra" }],
+      };
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve(mockResponse),
+      });
+
+      const result = await api.validateTaxon("Quercus albu");
+
+      expect(result).toEqual(mockResponse);
     });
   });
 
@@ -565,7 +651,6 @@ describe("api", () => {
         occurrenceCid: "cidocc",
         scientificName: "Quercus alba",
         taxonRank: "species",
-        isAgreement: true,
       });
 
       expect(result).toEqual({ uri: "at://id", cid: "cid" });

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id,\n            identification_verification_status, type_status, is_agreement, date_identified,\n            kingdom, phylum, class, \"order\" as order_, family, genus\n        FROM identifications\n        WHERE subject_uri = ANY($1)\n        ORDER BY subject_uri, date_identified DESC\n        ",
+  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id,\n            identification_verification_status, type_status, date_identified,\n            kingdom, phylum, class, \"order\" as order_, family, genus\n        FROM identifications\n        WHERE subject_uri = $1\n        ORDER BY date_identified DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -60,48 +60,43 @@
       },
       {
         "ordinal": 11,
-        "name": "is_agreement",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 12,
         "name": "date_identified",
         "type_info": "Timestamptz"
       },
       {
-        "ordinal": 13,
+        "ordinal": 12,
         "name": "kingdom",
         "type_info": "Text"
       },
       {
-        "ordinal": 14,
+        "ordinal": 13,
         "name": "phylum",
         "type_info": "Text"
       },
       {
-        "ordinal": 15,
+        "ordinal": 14,
         "name": "class",
         "type_info": "Text"
       },
       {
-        "ordinal": 16,
+        "ordinal": 15,
         "name": "order_",
         "type_info": "Text"
       },
       {
-        "ordinal": 17,
+        "ordinal": 16,
         "name": "family",
         "type_info": "Text"
       },
       {
-        "ordinal": 18,
+        "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
       }
     ],
     "parameters": {
       "Left": [
-        "TextArray"
+        "Text"
       ]
     },
     "nullable": [
@@ -116,7 +111,6 @@
       true,
       true,
       true,
-      true,
       false,
       true,
       true,
@@ -126,5 +120,5 @@
       true
     ]
   },
-  "hash": "05abf81a35aef430305c43d8161167b77f7eec38e71833d0236304797f138b4f"
+  "hash": "90b182889123c2ab7ac7bc29641c377682603262140f5ad8e49c956a1af4ea87"
 }

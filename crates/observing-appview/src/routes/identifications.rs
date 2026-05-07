@@ -52,8 +52,6 @@ pub struct CreateIdentificationRequest {
     /// when validation doesn't return a kingdom of its own.
     #[ts(optional)]
     kingdom: Option<String>,
-    #[ts(optional)]
-    is_agreement: Option<bool>,
 }
 
 pub async fn create_identification(
@@ -98,10 +96,6 @@ pub async fn create_identification(
         obj.insert(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
-        );
-        obj.insert(
-            "isAgreement".to_string(),
-            serde_json::json!(body.is_agreement.unwrap_or(false)),
         );
     }
 

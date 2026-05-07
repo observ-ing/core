@@ -32,7 +32,6 @@ export const WithActiveFilters: Story = {
             endDate: "2026-04-30",
           },
           isAuthenticated: false,
-          userLocation: null,
         },
       },
     },

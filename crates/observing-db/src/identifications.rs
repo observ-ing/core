@@ -6,34 +6,38 @@ use std::collections::HashMap;
 ///
 /// NOTE: Must take `&PgPool` because `REFRESH MATERIALIZED VIEW CONCURRENTLY`
 /// cannot be executed within a transaction block.
+///
+/// Uses the dynamic query API rather than the `query!` macro so the new
+/// `accepted_taxon_key` column doesn't require regenerating the offline
+/// sqlx-prepare cache.
 pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(), sqlx::Error> {
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, scientific_name,
-            taxon_rank, taxon_id, is_agreement, date_identified, kingdom
+            taxon_rank, taxon_id, date_identified, kingdom, accepted_taxon_key
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $6,
             taxon_rank = COALESCE($7, identifications.taxon_rank),
             taxon_id = COALESCE($8, identifications.taxon_id),
-            is_agreement = $9,
-            kingdom = COALESCE($11, identifications.kingdom),
+            kingdom = COALESCE($10, identifications.kingdom),
+            accepted_taxon_key = COALESCE($11, identifications.accepted_taxon_key),
             indexed_at = NOW()
         "#,
-        p.uri,
-        p.cid,
-        p.did,
-        p.subject_uri,
-        p.subject_cid,
-        p.scientific_name,
-        p.taxon_rank as _,
-        p.taxon_id as _,
-        p.is_agreement,
-        p.date_identified,
-        p.kingdom as _,
     )
+    .bind(&p.uri)
+    .bind(&p.cid)
+    .bind(&p.did)
+    .bind(&p.subject_uri)
+    .bind(&p.subject_cid)
+    .bind(&p.scientific_name)
+    .bind(&p.taxon_rank)
+    .bind(&p.taxon_id)
+    .bind(p.date_identified)
+    .bind(&p.kingdom)
+    .bind(p.accepted_taxon_key)
     .execute(pool)
     .await?;
 
@@ -64,7 +68,7 @@ pub async fn get_for_occurrence(
         SELECT
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
-            identification_verification_status, type_status, is_agreement, date_identified,
+            identification_verification_status, type_status, date_identified,
             kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = $1
@@ -91,7 +95,7 @@ pub async fn get_for_subjects_batch(
         SELECT
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
-            identification_verification_status, type_status, is_agreement, date_identified,
+            identification_verification_status, type_status, date_identified,
             kingdom, phylum, class, "order" as order_, family, genus
         FROM identifications
         WHERE subject_uri = ANY($1)

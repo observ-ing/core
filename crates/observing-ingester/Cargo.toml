@@ -26,6 +26,9 @@ sqlx = { workspace = true }
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-lexicons = { path = "../observing-lexicons" }
 
+# Taxonomy resolver upstream (GBIF live API → local `taxa` cache)
+observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
+
 # HTTP server
 axum = { workspace = true }
 tower-http = { workspace = true }

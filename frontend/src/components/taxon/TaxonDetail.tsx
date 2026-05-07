@@ -17,7 +17,6 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
@@ -327,11 +326,7 @@ export function TaxonDetail() {
                 }}
               >
                 {taxon.conservationStatus && (
-                  <Tooltip title={`${taxon.conservationStatus.category} — IUCN Red List`} arrow>
-                    <span>
-                      <ConservationStatus status={taxon.conservationStatus} showLabel />
-                    </span>
-                  </Tooltip>
+                  <ConservationStatus status={taxon.conservationStatus} showLabel />
                 )}
                 {taxon.extinct && <Chip label="Extinct" size="small" color="error" />}
                 <Typography

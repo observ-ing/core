@@ -23,6 +23,7 @@ import { NotFound } from "./components/common/NotFound";
 import { OfflineBanner } from "./components/common/OfflineBanner";
 import { UpdatePrompt } from "./components/common/UpdatePrompt";
 import { LexiconView } from "./components/lexicon/LexiconView";
+import { DocsPage } from "./components/docs/DocsPage";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { AdminPage } from "./components/admin/AdminPage";
@@ -125,6 +126,7 @@ function AppContent() {
           <Route path="/taxon/:kingdom/:name" element={<TaxonExplorer />} />
           <Route path="/taxon/:id" element={<TaxonExplorer />} />
           <Route path="/lexicons" element={<LexiconView />} />
+          <Route path="/docs" element={<DocsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/admin/collections/:nsid" element={<CollectionDetailPage />} />

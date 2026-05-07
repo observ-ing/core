@@ -425,9 +425,7 @@ export function ProfileView() {
                       color: "text.disabled",
                     }}
                   >
-                    <RelativeTime date={new Date(id.date_identified)}>
-                      {id.is_agreement && " · Agrees"}
-                    </RelativeTime>
+                    <RelativeTime date={new Date(id.date_identified)} />
                   </Typography>
                 </CardContent>
               </CardActionArea>

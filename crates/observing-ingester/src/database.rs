@@ -139,7 +139,12 @@ impl Database {
         Ok(())
     }
 
-    /// Upsert an identification record
+    /// Upsert an identification record.
+    ///
+    /// Identifications are written with `accepted_taxon_key = NULL`. The
+    /// `resolve_taxa` background job picks up unresolved rows on its next
+    /// pass and stamps them — keeping ingest decoupled from GBIF
+    /// availability and ingest latency independent of the upstream's.
     pub async fn upsert_identification(&self, commit: &CommitInfo) -> Result<()> {
         debug!("Upserting identification: {}", commit.uri);
 

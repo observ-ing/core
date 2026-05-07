@@ -12,6 +12,8 @@ pub mod occurrences;
 pub mod private_data;
 #[cfg(feature = "processing")]
 pub mod processing;
+pub mod taxa;
+pub mod taxonomy_resolver;
 pub mod types;
 
 pub use sqlx::postgres::PgPool;

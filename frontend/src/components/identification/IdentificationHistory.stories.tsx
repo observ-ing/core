@@ -17,7 +17,6 @@ const BOB_ID: Identification = {
   kingdom: "Plantae",
   family: "Fagaceae",
   genus: "Quercus",
-  is_agreement: true,
 };
 
 const SUPERSEDED_ALICE_ID: Identification = {

@@ -144,11 +144,7 @@ export function IdentificationHistory({
               sx={{
                 pl: 2,
                 borderLeft: 3,
-                borderColor: isSuperseded
-                  ? "text.disabled"
-                  : id.is_agreement
-                    ? "success.main"
-                    : "primary.main",
+                borderColor: isSuperseded ? "text.disabled" : "primary.main",
                 transition: "background-color 0.2s ease",
                 borderRadius: "0 4px 4px 0",
                 py: 1,
@@ -206,9 +202,6 @@ export function IdentificationHistory({
                       <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                     )}
                     {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
-                    {!isSuperseded && id.is_agreement && (
-                      <Chip label="Agrees" size="small" color="success" variant="outlined" />
-                    )}
                   </Stack>
                   <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
                     <TaxonLink

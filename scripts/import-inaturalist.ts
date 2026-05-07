@@ -214,7 +214,6 @@ async function main() {
           scientificName: taxonObj["scientificName"],
           ...(taxonObj["taxonRank"] && { taxonRank: taxonObj["taxonRank"] }),
           ...(taxonObj["kingdom"] && { kingdom: taxonObj["kingdom"] }),
-          isAgreement: false,
           createdAt: new Date(obs.created_at).toISOString(),
         };
 

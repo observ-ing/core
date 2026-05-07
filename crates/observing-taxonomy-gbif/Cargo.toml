@@ -1,0 +1,17 @@
+[package]
+name = "observing-taxonomy-gbif"
+version = "0.1.0"
+edition = "2021"
+description = "GBIF-backed TaxonomyUpstream impl for observing-db's resolver"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+gbif-api = { git = "https://github.com/observ-ing/rust-gbif.git", rev = "0969a037b099fcf47557258b3b1e49163054ef57" }
+observing-db = { path = "../observing-db" }
+chrono = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["rt", "macros"] }

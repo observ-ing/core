@@ -11,6 +11,7 @@ import type {
   ProfileFeedResponse,
   NotificationsResponse,
   OccurrenceDetailResponse,
+  ValidateResponse,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -105,9 +106,6 @@ export async function fetchExploreFeed(
   const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
   if (cursor) params.set("cursor", cursor);
   if (filters?.taxon) params.set("taxon", filters.taxon);
-  if (filters?.lat !== undefined) params.set("lat", filters.lat.toString());
-  if (filters?.lng !== undefined) params.set("lng", filters.lng.toString());
-  if (filters?.radius) params.set("radius", filters.radius.toString());
   if (filters?.kingdom) params.set("kingdom", filters.kingdom);
   if (filters?.startDate) params.set("startDate", filters.startDate);
   if (filters?.endDate) params.set("endDate", filters.endDate);
@@ -205,6 +203,22 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   return data.results || [];
 }
 
+/**
+ * Validate a scientific name against the taxonomy backend. Returns the
+ * authoritative TaxaResult when the name resolves to an existing taxon
+ * (so callers can mark it as "Existing taxon" rather than "New taxon").
+ */
+export async function validateTaxon(
+  name: string,
+  kingdom?: string,
+): Promise<ValidateResponse | null> {
+  const params = new URLSearchParams({ name });
+  if (kingdom) params.set("kingdom", kingdom);
+  const response = await fetch(`${API_BASE}/api/taxa/validate?${params}`);
+  if (!response.ok) return null;
+  return response.json();
+}
+
 export async function submitObservation(data: {
   scientificName?: string;
   latitude: number;
@@ -285,7 +299,6 @@ export async function submitIdentification(data: {
   scientificName: string;
   taxonRank?: string;
   kingdom?: string;
-  isAgreement?: boolean;
 }): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/identifications`, "Failed to submit identification", {
     method: "POST",

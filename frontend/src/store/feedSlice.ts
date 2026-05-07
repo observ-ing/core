@@ -27,7 +27,6 @@ interface FeedState {
   hasMore: boolean;
   filters: FeedFilters;
   isAuthenticated: boolean;
-  userLocation: { lat: number; lng: number } | null;
 }
 
 const initialState: FeedState = {
@@ -38,7 +37,6 @@ const initialState: FeedState = {
   hasMore: true,
   filters: {},
   isAuthenticated: false,
-  userLocation: null,
 };
 
 function fetchFeedData(state: { feed: FeedState; auth: { user: User | null } }, cursor?: string) {
@@ -83,9 +81,6 @@ const feedSlice = createSlice({
       state.filters = action.payload;
       resetFeedState(state);
     },
-    setUserLocation: (state, action: PayloadAction<{ lat: number; lng: number } | null>) => {
-      state.userLocation = action.payload;
-    },
   },
   extraReducers: (builder) => {
     builder
@@ -118,5 +113,5 @@ const feedSlice = createSlice({
   },
 });
 
-export const { switchTab, resetFeed, setFilters, setUserLocation } = feedSlice.actions;
+export const { switchTab, resetFeed, setFilters } = feedSlice.actions;
 export default feedSlice.reducer;

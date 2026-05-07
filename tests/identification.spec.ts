@@ -20,8 +20,8 @@ async function navigateToDetail(page: Page) {
 }
 
 authTest.describe("Identification - Logged In", () => {
-  // TC-ID-001: Agree button sends agreement
-  authTest("Agree button sends POST with isAgreement true", async ({ authenticatedPage: page }) => {
+  // TC-ID-001: Agree button posts an identification
+  authTest("Agree button sends POST identification", async ({ authenticatedPage: page }) => {
     await page.route("**/api/identifications", (route) => {
       if (route.request().method() === "POST") {
         return route.fulfill({
@@ -42,7 +42,8 @@ authTest.describe("Identification - Logged In", () => {
     await agreeBtn.click();
     const req = await postRequest;
     const body = JSON.parse(req.postData() || "{}");
-    authExpect(body.isAgreement).toBe(true);
+    authExpect(typeof body.scientificName).toBe("string");
+    authExpect(body.scientificName.length).toBeGreaterThan(0);
   });
 
   // TC-ID-002: Suggest Different ID opens form
@@ -93,7 +94,6 @@ authTest.describe("Identification - Logged In", () => {
       const req = await postRequest;
       const body = JSON.parse(req.postData() || "{}");
       authExpect(body.scientificName).toBe("Quercus rubra");
-      authExpect(body.isAgreement).toBe(false);
     },
   );
 

@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO identifications (\n            uri, cid, did, subject_uri, subject_cid, scientific_name,\n            taxon_rank, taxon_id, date_identified, kingdom\n        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = $2,\n            scientific_name = $6,\n            taxon_rank = COALESCE($7, identifications.taxon_rank),\n            taxon_id = COALESCE($8, identifications.taxon_id),\n            kingdom = COALESCE($10, identifications.kingdom),\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f52ae82893759e4d1d12f3786737a9ffe90c8b512436d46b30436d61aba00ae6"
+}

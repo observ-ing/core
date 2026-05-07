@@ -27,12 +27,9 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { setFilters, loadInitialFeed } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
-import { LocationPicker } from "../map/LocationPicker";
 import { KINGDOMS as KINGDOM_OPTIONS } from "../../lib/kingdoms";
 
 const KINGDOMS = [{ value: "", label: "All Kingdoms" }, ...KINGDOM_OPTIONS];
-
-const DEFAULT_RADIUS = 10000; // 10km
 
 export function ExploreFilterPanel() {
   const dispatch = useAppDispatch();
@@ -45,11 +42,6 @@ export function ExploreFilterPanel() {
   const { suggestions: taxonSuggestions, search: searchTaxon } = useDebouncedTaxaSearch();
   const [selectedTaxon, setSelectedTaxon] = useState<string | null>(filters.taxon || null);
 
-  const [useLocation, setUseLocation] = useState(filters.lat !== undefined);
-  const [lat, setLat] = useState(filters.lat ?? 37.7749);
-  const [lng, setLng] = useState(filters.lng ?? -122.4194);
-  const [radius, setRadius] = useState(filters.radius ?? DEFAULT_RADIUS);
-
   const [kingdom, setKingdom] = useState(filters.kingdom || "");
 
   const [startDate, setStartDate] = useState<Date | null>(
@@ -60,20 +52,13 @@ export function ExploreFilterPanel() {
   );
 
   // Count active filters for badge
-  const activeFilterCount = [selectedTaxon, useLocation, kingdom, startDate, endDate].filter(
-    Boolean,
-  ).length;
+  const activeFilterCount = [selectedTaxon, kingdom, startDate, endDate].filter(Boolean).length;
 
   // Apply filters
   const handleApplyFilters = () => {
     const newFilters: FeedFilters = {};
 
     if (selectedTaxon) newFilters.taxon = selectedTaxon;
-    if (useLocation) {
-      newFilters.lat = lat;
-      newFilters.lng = lng;
-      newFilters.radius = radius;
-    }
     if (kingdom) newFilters.kingdom = kingdom;
     if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0] ?? "";
     if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
@@ -86,20 +71,12 @@ export function ExploreFilterPanel() {
   const handleClearFilters = () => {
     setSelectedTaxon(null);
     setTaxonQuery("");
-    setUseLocation(false);
     setKingdom("");
     setStartDate(null);
     setEndDate(null);
 
     dispatch(setFilters({}));
     dispatch(loadInitialFeed());
-  };
-
-  // Location change handler
-  const handleLocationChange = (newLat: number, newLng: number) => {
-    setLat(newLat);
-    setLng(newLng);
-    setUseLocation(true);
   };
 
   return (
@@ -243,67 +220,6 @@ export function ExploreFilterPanel() {
               />
             </Stack>
           </LocalizationProvider>
-
-          {/* Location Filter */}
-          <Box sx={{ mb: 2 }}>
-            <Stack
-              direction="row"
-              spacing={1}
-              sx={{
-                alignItems: "center",
-                mb: 1,
-              }}
-            >
-              <Typography
-                variant="body2"
-                sx={{
-                  color: "text.secondary",
-                }}
-              >
-                Location
-              </Typography>
-              {useLocation && (
-                <Chip
-                  size="small"
-                  label="Active"
-                  color="primary"
-                  onDelete={() => setUseLocation(false)}
-                  sx={{ height: 20 }}
-                />
-              )}
-            </Stack>
-
-            {useLocation ? (
-              <LocationPicker
-                latitude={lat}
-                longitude={lng}
-                onChange={handleLocationChange}
-                uncertaintyMeters={radius}
-                onUncertaintyChange={setRadius}
-              />
-            ) : (
-              <Button
-                variant="outlined"
-                size="small"
-                onClick={() => {
-                  // Try to get current location
-                  navigator.geolocation?.getCurrentPosition(
-                    (pos) => {
-                      setLat(pos.coords.latitude);
-                      setLng(pos.coords.longitude);
-                      setUseLocation(true);
-                    },
-                    () => {
-                      // Default to San Francisco on error
-                      setUseLocation(true);
-                    },
-                  );
-                }}
-              >
-                Add Location Filter
-              </Button>
-            )}
-          </Box>
 
           {/* Action Buttons */}
           <Stack
