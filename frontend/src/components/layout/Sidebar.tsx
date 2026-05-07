@@ -10,7 +10,7 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-import { Login, Logout, GitHub, Schema } from "@mui/icons-material";
+import { Login, Logout, MenuBook } from "@mui/icons-material";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
@@ -105,28 +105,14 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
           <ListItem disablePadding>
             <ListItemButton
               component={Link}
-              to="/lexicons"
+              to="/docs"
               onClick={onMobileClose}
               sx={{ borderRadius: 2 }}
             >
               <ListItemIcon sx={{ minWidth: 40 }}>
-                <Schema fontSize="small" />
+                <MenuBook fontSize="small" />
               </ListItemIcon>
-              <ListItemText primary="Lexicons" />
-            </ListItemButton>
-          </ListItem>
-          <ListItem disablePadding>
-            <ListItemButton
-              component="a"
-              href="https://github.com/observ-ing/core"
-              target="_blank"
-              rel="noopener noreferrer"
-              sx={{ borderRadius: 2 }}
-            >
-              <ListItemIcon sx={{ minWidth: 40 }}>
-                <GitHub fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Source Code" />
+              <ListItemText primary="Docs" />
             </ListItemButton>
           </ListItem>
         </List>
