@@ -17,6 +17,7 @@ use gbif_api::checklistbank::{
     },
     Client as GbifChecklistbankClient, Error as GbifClientError,
 };
+use gbif_api::Uuid;
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -28,8 +29,8 @@ const GBIF_BASE_URL: &str = "https://api.gbif.org";
 
 /// GBIF Backbone Taxonomy dataset key. Used as a `datasetKey` filter to
 /// restrict species/search results to authoritative backbone entries.
-static BACKBONE_DATASET_KEY: std::sync::LazyLock<::uuid::Uuid> = std::sync::LazyLock::new(|| {
-    ::uuid::Uuid::parse_str("d7dddbf4-2cf0-4f39-9b2a-bb099caae36c")
+static BACKBONE_DATASET_KEY: std::sync::LazyLock<Uuid> = std::sync::LazyLock::new(|| {
+    Uuid::parse_str("d7dddbf4-2cf0-4f39-9b2a-bb099caae36c")
         .expect("BACKBONE_DATASET_KEY is a valid UUID literal")
 });
 
