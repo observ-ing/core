@@ -28,11 +28,10 @@ const GBIF_BASE_URL: &str = "https://api.gbif.org";
 
 /// GBIF Backbone Taxonomy dataset key. Used as a `datasetKey` filter to
 /// restrict species/search results to authoritative backbone entries.
-static BACKBONE_DATASET_KEY: std::sync::LazyLock<::uuid::Uuid> =
-    std::sync::LazyLock::new(|| {
-        ::uuid::Uuid::parse_str("d7dddbf4-2cf0-4f39-9b2a-bb099caae36c")
-            .expect("BACKBONE_DATASET_KEY is a valid UUID literal")
-    });
+static BACKBONE_DATASET_KEY: std::sync::LazyLock<::uuid::Uuid> = std::sync::LazyLock::new(|| {
+    ::uuid::Uuid::parse_str("d7dddbf4-2cf0-4f39-9b2a-bb099caae36c")
+        .expect("BACKBONE_DATASET_KEY is a valid UUID literal")
+});
 
 /// Errors returned from the GBIF resolver. Wraps the generated client's
 /// progenitor error so call sites can keep the existing `?` / `From` plumbing.
@@ -201,32 +200,32 @@ impl GbifClient {
         let result = self
             .api
             .match_names(
-                None,          //  1 class
-                None,          //  2 exclude
-                None,          //  3 family
-                None,          //  4 generic_name
-                None,          //  5 genus
-                None,          //  6 infraspecific_epithet
-                kingdom_hint,  //  7 kingdom
-                None,          //  8 order
-                None,          //  9 phylum
-                Some(name),    // 10 scientific_name
-                None,          // 11 scientific_name_authorship
-                None,          // 12 scientific_name_id
-                None,          // 13 species
-                None,          // 14 specific_epithet
-                None,          // 15 strict
-                None,          // 16 subfamily
-                None,          // 17 subgenus
-                None,          // 18 subtribe
-                None,          // 19 superfamily
-                None,          // 20 taxon_concept_id
-                None,          // 21 taxon_id
-                None,          // 22 taxon_rank
-                None,          // 23 tribe
-                None,          // 24 usage_key
-                None,          // 25 verbatim_taxon_rank
-                None,          // 26 verbose
+                None,         //  1 class
+                None,         //  2 exclude
+                None,         //  3 family
+                None,         //  4 generic_name
+                None,         //  5 genus
+                None,         //  6 infraspecific_epithet
+                kingdom_hint, //  7 kingdom
+                None,         //  8 order
+                None,         //  9 phylum
+                Some(name),   // 10 scientific_name
+                None,         // 11 scientific_name_authorship
+                None,         // 12 scientific_name_id
+                None,         // 13 species
+                None,         // 14 specific_epithet
+                None,         // 15 strict
+                None,         // 16 subfamily
+                None,         // 17 subgenus
+                None,         // 18 subtribe
+                None,         // 19 superfamily
+                None,         // 20 taxon_concept_id
+                None,         // 21 taxon_id
+                None,         // 22 taxon_rank
+                None,         // 23 tribe
+                None,         // 24 usage_key
+                None,         // 25 verbatim_taxon_rank
+                None,         // 26 verbose
             )
             .await;
 
@@ -278,27 +277,27 @@ impl GbifClient {
         let res = self
             .api
             .search_names(
-                None,                        //  1 constituent_key
+                None,                         //  1 constituent_key
                 Some(&*BACKBONE_DATASET_KEY), //  2 dataset_key
-                None,                        //  3 facet
-                None,                        //  4 facet_limit
-                None,                        //  5 facet_mincount
-                None,                        //  6 facet_multiselect
-                None,                        //  7 facet_offset
-                None,                        //  8 habitat
-                None,                        //  9 higher_taxon_key
-                None,                        // 10 hl
-                None,                        // 11 is_extinct
-                None,                        // 12 issue
-                Some(limit),                 // 13 limit
-                None,                        // 14 name_type
-                None,                        // 15 nomenclatural_status
-                None,                        // 16 offset
-                None,                        // 17 origin
-                Some(query),                 // 18 q
-                None,                        // 19 rank
-                None,                        // 20 status
-                None,                        // 21 threat
+                None,                         //  3 facet
+                None,                         //  4 facet_limit
+                None,                         //  5 facet_mincount
+                None,                         //  6 facet_multiselect
+                None,                         //  7 facet_offset
+                None,                         //  8 habitat
+                None,                         //  9 higher_taxon_key
+                None,                         // 10 hl
+                None,                         // 11 is_extinct
+                None,                         // 12 issue
+                Some(limit),                  // 13 limit
+                None,                         // 14 name_type
+                None,                         // 15 nomenclatural_status
+                None,                         // 16 offset
+                None,                         // 17 origin
+                Some(query),                  // 18 q
+                None,                         // 19 rank
+                None,                         // 20 status
+                None,                         // 21 threat
             )
             .await?;
         Ok(res.into_inner().results)
