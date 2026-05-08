@@ -1,5 +1,5 @@
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import {
   mockOwnObservationFeed,
@@ -72,6 +72,7 @@ authTest.describe("Auto-Identification on Upload", () => {
       await authExpect(option).toBeVisible();
       await option.click();
 
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.7749");

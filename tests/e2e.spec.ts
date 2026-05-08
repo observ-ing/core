@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { test as authTest, getTestUser } from "./fixtures/auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 /**
@@ -34,6 +34,7 @@ authTest.describe("E2E CRUD flow", () => {
       await expect(option).toBeVisible();
       await option.click();
 
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.7749");
@@ -73,6 +74,7 @@ authTest.describe("E2E CRUD flow", () => {
       // removed from the occurrence schema, and lat/lng are always present
       // on existing records — so this exercises the PUT round-trip without
       // depending on optional fields.
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.8000");
