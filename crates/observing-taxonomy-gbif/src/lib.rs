@@ -13,7 +13,7 @@
 //! response, so wiring this up is a follow-up.
 
 use chrono::Utc;
-use gbif_api::checklistbank::{
+use gbif::checklistbank::{
     types::{NameUsageMatch, RankedName, Usage},
     Client as GbifClient,
 };

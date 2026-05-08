@@ -1,6 +1,6 @@
 //! GBIF-based taxonomy client with caching.
 //!
-//! Wraps the generated `gbif_api::checklistbank::Client` (from rust-gbif) with
+//! Wraps the generated `gbif::checklistbank::Client` (from rust-gbif) with
 //! an appview-shaped facade: 404→`Ok(None)`, an [`IucnCategory`] enum + parser,
 //! a [`GbifError`] alias for the generated progenitor error, conversion to the
 //! TS-bound [`TaxonResult`]/[`TaxonDetail`] shapes, and a moka cache.
@@ -10,14 +10,14 @@ use crate::taxonomy_client::{
     ConservationStatus, TaxonAncestor, TaxonDescription, TaxonDetail, TaxonMedia, TaxonReference,
     TaxonResult, ValidateResponse,
 };
-use gbif_api::checklistbank::{
+use gbif::checklistbank::{
     types::{
         DiagnosticsMatchType, NameUsage, NameUsageMatch, NameUsageMediaObject,
         NameUsageSearchResult, RankedName, Status, Usage,
     },
     Client as GbifChecklistbankClient, Error as GbifClientError,
 };
-use gbif_api::Uuid;
+use gbif::Uuid;
 use moka::future::Cache;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -892,7 +892,7 @@ fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
     // The serialized form of `VernacularNameLanguage::Eng` is "eng"; we
     // compare via a serde round-trip so we don't depend on the enum's
     // identifier munging.
-    fn lang_str(v: &gbif_api::checklistbank::types::VernacularName) -> Option<String> {
+    fn lang_str(v: &gbif::checklistbank::types::VernacularName) -> Option<String> {
         v.language.as_ref().and_then(rank_to_string)
     }
 
