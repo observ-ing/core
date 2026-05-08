@@ -13,7 +13,7 @@ nominatim-client = { path = "../nominatim-client" }
 observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
 # Taxonomy resolver (formerly observing-taxonomy)
-gbif-api = { git = "https://github.com/observ-ing/rust-gbif.git", rev = "f5e1008ed83f917260d0a81e10f4760348852f6b" }
+gbif = "0.1"
 wikidata-client = { path = "../wikidata-client" }
 # Media cache (formerly observing-media-proxy)
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }

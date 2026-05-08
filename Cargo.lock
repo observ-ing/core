@@ -1471,9 +1471,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "gbif-api"
+name = "gbif"
 version = "0.1.0"
-source = "git+https://github.com/observ-ing/rust-gbif.git?rev=f5e1008ed83f917260d0a81e10f4760348852f6b#f5e1008ed83f917260d0a81e10f4760348852f6b"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01cdd058b7ba599b2fa16d97ab5877d6e52f81fe04b832851dc94a111ffce6cc"
 dependencies = [
  "base64",
  "bytes",
@@ -2863,7 +2864,7 @@ dependencies = [
  "chrono",
  "file-blob-cache",
  "futures",
- "gbif-api",
+ "gbif",
  "hickory-resolver",
  "jacquard-common",
  "moka",
@@ -2988,7 +2989,7 @@ name = "observing-taxonomy-gbif"
 version = "0.1.0"
 dependencies = [
  "chrono",
- "gbif-api",
+ "gbif",
  "observing-db",
  "reqwest 0.13.3",
  "serde",
