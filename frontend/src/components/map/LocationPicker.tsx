@@ -7,9 +7,13 @@ import {
   Stack,
   InputAdornment,
   Slider,
+  Button,
+  Collapse,
   useTheme,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { darkMapFilter, mapContainerSx } from "./mapStyle";
@@ -64,6 +68,7 @@ export function LocationPicker({
   const [isSearching, setIsSearching] = useState(false);
   const [latInput, setLatInput] = useState(latitude?.toFixed(6) ?? "");
   const [lngInput, setLngInput] = useState(longitude?.toFixed(6) ?? "");
+  const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
 
   const updateMarker = useCallback(
@@ -302,24 +307,34 @@ export function LocationPicker({
         ref={mapContainer}
         sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
       />
-      <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-        <TextField
-          size="small"
-          label="Latitude"
-          value={latInput}
-          onChange={(e) => handleLatChange(e.target.value)}
-          slotProps={{ htmlInput: { inputMode: "decimal" } }}
-          sx={{ flex: 1 }}
-        />
-        <TextField
-          size="small"
-          label="Longitude"
-          value={lngInput}
-          onChange={(e) => handleLngChange(e.target.value)}
-          slotProps={{ htmlInput: { inputMode: "decimal" } }}
-          sx={{ flex: 1 }}
-        />
-      </Stack>
+      <Button
+        size="small"
+        onClick={() => setShowCoordinates((v) => !v)}
+        endIcon={showCoordinates ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        sx={{ mt: 1, textTransform: "none", color: "text.secondary" }}
+      >
+        {showCoordinates ? "Hide coordinates" : "Enter coordinates manually"}
+      </Button>
+      <Collapse in={showCoordinates}>
+        <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+          <TextField
+            size="small"
+            label="Latitude"
+            value={latInput}
+            onChange={(e) => handleLatChange(e.target.value)}
+            slotProps={{ htmlInput: { inputMode: "decimal" } }}
+            sx={{ flex: 1 }}
+          />
+          <TextField
+            size="small"
+            label="Longitude"
+            value={lngInput}
+            onChange={(e) => handleLngChange(e.target.value)}
+            slotProps={{ htmlInput: { inputMode: "decimal" } }}
+            sx={{ flex: 1 }}
+          />
+        </Stack>
+      </Collapse>
       <Typography
         variant="caption"
         sx={{
@@ -328,7 +343,7 @@ export function LocationPicker({
           mt: 0.5,
         }}
       >
-        Search, click map, or enter coordinates
+        Search or click the map to set a location
       </Typography>
       {onUncertaintyChange && (
         <Box sx={{ mt: 2 }}>
