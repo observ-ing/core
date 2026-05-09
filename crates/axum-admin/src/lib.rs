@@ -4,11 +4,16 @@
 //!
 //! ```ignore
 //! let admin = axum_admin::Admin::new(pool)
-//!     .table("posts", |t| t.searchable(["title", "body"]))
-//!     .table("users", |t| t.display_name("Users"));
+//!     .table("public", "posts", |t| t.searchable(["title", "body"]))
+//!     .table("public", "users", |t| t.display_name("Users"));
 //!
-//! let app = axum::Router::new().nest("/admin", admin.into_router());
+//! let app = axum::Router::new().nest("/admin", admin.into_router("/admin"));
 //! ```
+//!
+//! Tables are addressed by `(schema, name)` — Postgres allows the same name
+//! in different schemas, and `information_schema` introspection needs the
+//! schema to find columns. URLs are namespaced as `/{schema}/{table}` and
+//! `/{schema}/{table}/{pk}`, in the style of Django admin's `/{app}/{model}/`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -28,7 +33,9 @@ use sqlx::postgres::PgPool;
 
 pub struct Admin {
     pool: PgPool,
-    tables: BTreeMap<String, TableConfig>,
+    /// Keyed by `(schema, name)` so two schemas can have same-named tables.
+    /// `BTreeMap` ordering naturally groups by schema in the index page.
+    tables: BTreeMap<(String, String), TableConfig>,
     prefix: String,
 }
 
@@ -74,14 +81,21 @@ impl Admin {
         }
     }
 
-    /// Register a table. The closure receives a default `TableConfig` and
-    /// returns the configured one.
-    pub fn table<F>(mut self, name: impl Into<String>, configure: F) -> Self
+    /// Register a table by `(schema, name)`. The closure receives a default
+    /// `TableConfig` and returns the configured one.
+    pub fn table<F>(
+        mut self,
+        schema: impl Into<String>,
+        name: impl Into<String>,
+        configure: F,
+    ) -> Self
     where
         F: FnOnce(TableConfig) -> TableConfig,
     {
-        self.tables
-            .insert(name.into(), configure(TableConfig::default()));
+        self.tables.insert(
+            (schema.into(), name.into()),
+            configure(TableConfig::default()),
+        );
         self
     }
 
@@ -94,8 +108,8 @@ impl Admin {
         let state = Arc::new(AdminState { admin: self });
         Router::new()
             .route("/", get(index))
-            .route("/{table}", get(list))
-            .route("/{table}/{pk}", get(detail))
+            .route("/{schema}/{table}", get(list))
+            .route("/{schema}/{table}/{pk}", get(detail))
             .with_state(state)
     }
 }
@@ -125,15 +139,16 @@ struct TableSchema {
     primary_key: Option<String>,
 }
 
-async fn introspect(pool: &PgPool, table: &str) -> Result<TableSchema, sqlx::Error> {
+async fn introspect(pool: &PgPool, schema: &str, table: &str) -> Result<TableSchema, sqlx::Error> {
     let columns = sqlx::query_as::<_, (String, String, String)>(
         r#"
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
-        WHERE table_schema = 'public' AND table_name = $1
+        WHERE table_schema = $1 AND table_name = $2
         ORDER BY ordinal_position
         "#,
     )
+    .bind(schema)
     .bind(table)
     .fetch_all(pool)
     .await?
@@ -145,7 +160,10 @@ async fn introspect(pool: &PgPool, table: &str) -> Result<TableSchema, sqlx::Err
     })
     .collect::<Vec<_>>();
 
-    // Primary key: single-column only for the sketch.
+    // Primary key: single-column only for the sketch. Build a fully-qualified
+    // `"schema"."table"` string for `regclass` so it doesn't depend on the
+    // session search_path.
+    let qualified = format!("{}.{}", quote_ident(schema), quote_ident(table));
     let primary_key: Option<(String,)> = sqlx::query_as(
         r#"
         SELECT a.attname::text
@@ -155,7 +173,7 @@ async fn introspect(pool: &PgPool, table: &str) -> Result<TableSchema, sqlx::Err
         LIMIT  1
         "#,
     )
-    .bind(table)
+    .bind(&qualified)
     .fetch_optional(pool)
     .await?;
 
@@ -177,38 +195,54 @@ struct ListQuery {
 
 async fn index(State(state): State<Arc<AdminState>>) -> Html<String> {
     let admin = &state.admin;
-    let mut body = String::from("<h1>Admin</h1><ul>");
-    for (name, cfg) in &admin.tables {
+    let mut body = String::from("<h1>Admin</h1>");
+
+    // BTreeMap iteration is sorted by `(schema, name)`, so we can group by
+    // schema with a single pass.
+    let mut current_schema: Option<&str> = None;
+    for ((schema, name), cfg) in &admin.tables {
+        if current_schema != Some(schema.as_str()) {
+            if current_schema.is_some() {
+                body.push_str("</ul>");
+            }
+            body.push_str(&format!("<h2>{}</h2><ul>", html_escape(schema)));
+            current_schema = Some(schema.as_str());
+        }
         let label = cfg.display_name.as_deref().unwrap_or(name);
         body.push_str(&format!(
-            r#"<li><a href="{prefix}/{name}">{label}</a></li>"#,
+            r#"<li><a href="{prefix}/{schema}/{name}">{label}</a></li>"#,
             prefix = html_escape(&admin.prefix),
+            schema = html_escape(schema),
             name = html_escape(name),
             label = html_escape(label),
         ));
     }
-    body.push_str("</ul>");
+    if current_schema.is_some() {
+        body.push_str("</ul>");
+    }
     Html(layout("Admin", &body))
 }
 
 async fn list(
     State(state): State<Arc<AdminState>>,
-    Path(table): Path<String>,
+    Path((schema_name, table)): Path<(String, String)>,
     Query(q): Query<ListQuery>,
 ) -> Result<Html<String>, AdminError> {
     let admin = &state.admin;
+    let key = (schema_name.clone(), table.clone());
     let cfg = admin
         .tables
-        .get(&table)
-        .ok_or(AdminError::UnknownTable(table.clone()))?;
-    let schema = introspect(&admin.pool, &table).await?;
+        .get(&key)
+        .ok_or_else(|| AdminError::UnknownTable(format!("{schema_name}.{table}")))?;
+    let schema = introspect(&admin.pool, &schema_name, &table).await?;
 
     let page = q.page.unwrap_or(0).max(0);
     let page_size = cfg.page_size.unwrap_or(50).clamp(1, 500);
     let offset = page * page_size;
 
-    // Whitelist the table name by checking it exists in our config (already
-    // done above) and quote it with format!. Same for the pk in ORDER BY.
+    // Whitelist the table identity by checking it exists in our config (already
+    // done above) and quote schema + table with format!. Same for the pk in
+    // ORDER BY.
     let pk = schema.primary_key.as_deref().unwrap_or("ctid");
 
     // Build search WHERE clause if applicable.
@@ -233,7 +267,8 @@ async fn list(
     };
 
     let sql = format!(
-        "SELECT row_to_json(t) FROM {tbl} t {where_sql} ORDER BY {pk} LIMIT {limit} OFFSET {offset}",
+        "SELECT row_to_json(t) FROM {sch}.{tbl} t {where_sql} ORDER BY {pk} LIMIT {limit} OFFSET {offset}",
+        sch = quote_ident(&schema_name),
         tbl = quote_ident(&table),
         where_sql = where_sql,
         pk = quote_ident(pk),
@@ -249,6 +284,7 @@ async fn list(
 
     Ok(Html(render_list(
         &admin.prefix,
+        &schema_name,
         &table,
         cfg,
         &schema,
@@ -260,21 +296,23 @@ async fn list(
 
 async fn detail(
     State(state): State<Arc<AdminState>>,
-    Path((table, pk_value)): Path<(String, String)>,
+    Path((schema_name, table, pk_value)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AdminError> {
     let admin = &state.admin;
+    let key = (schema_name.clone(), table.clone());
     let _cfg = admin
         .tables
-        .get(&table)
-        .ok_or(AdminError::UnknownTable(table.clone()))?;
-    let schema = introspect(&admin.pool, &table).await?;
+        .get(&key)
+        .ok_or_else(|| AdminError::UnknownTable(format!("{schema_name}.{table}")))?;
+    let schema = introspect(&admin.pool, &schema_name, &table).await?;
     let pk = schema
         .primary_key
         .as_deref()
         .ok_or(AdminError::NoPrimaryKey)?;
 
     let sql = format!(
-        "SELECT row_to_json(t) FROM {tbl} t WHERE {pk}::text = $1",
+        "SELECT row_to_json(t) FROM {sch}.{tbl} t WHERE {pk}::text = $1",
+        sch = quote_ident(&schema_name),
         tbl = quote_ident(&table),
         pk = quote_ident(pk),
     );
@@ -284,7 +322,13 @@ async fn detail(
         .await?;
 
     match row {
-        Some(row) => Ok(Html(render_detail(&admin.prefix, &table, &schema, &row))),
+        Some(row) => Ok(Html(render_detail(
+            &admin.prefix,
+            &schema_name,
+            &table,
+            &schema,
+            &row,
+        ))),
         None => Err(AdminError::NotFound),
     }
 }
@@ -293,8 +337,10 @@ async fn detail(
 // Rendering
 // ---------------------------------------------------------------------------
 
+#[allow(clippy::too_many_arguments)] // sketch: a request-context struct is more ceremony than value here.
 fn render_list(
     prefix: &str,
+    schema_name: &str,
     table: &str,
     cfg: &TableConfig,
     schema: &TableSchema,
@@ -306,8 +352,9 @@ fn render_list(
     let pk = schema.primary_key.as_deref();
 
     let mut body = format!(
-        r#"<p><a href="{prefix}">← admin</a></p><h1>{label}</h1>"#,
+        r#"<p><a href="{prefix}">← admin</a></p><h1>{schema}.{label}</h1>"#,
         prefix = html_escape(prefix),
+        schema = html_escape(schema_name),
         label = html_escape(label),
     );
 
@@ -339,8 +386,9 @@ fn render_list(
                     })
                     .unwrap_or_default();
                 body.push_str(&format!(
-                    r#"<td><a href="{prefix}/{tbl}/{pk}">{cell}</a></td>"#,
+                    r#"<td><a href="{prefix}/{schema}/{tbl}/{pk}">{cell}</a></td>"#,
                     prefix = html_escape(prefix),
+                    schema = html_escape(schema_name),
                     tbl = html_escape(table),
                     pk = url_encode(&raw),
                     cell = cell,
@@ -362,10 +410,17 @@ fn render_list(
     layout(label, &body)
 }
 
-fn render_detail(prefix: &str, table: &str, schema: &TableSchema, row: &JsonValue) -> String {
+fn render_detail(
+    prefix: &str,
+    schema_name: &str,
+    table: &str,
+    schema: &TableSchema,
+    row: &JsonValue,
+) -> String {
     let mut body = format!(
-        r#"<p><a href="{prefix}/{tbl}">← {tbl}</a></p><h1>{tbl} detail</h1><table border=1 cellpadding=4>"#,
+        r#"<p><a href="{prefix}/{schema}/{tbl}">← {schema}.{tbl}</a></p><h1>{schema}.{tbl} detail</h1><table border=1 cellpadding=4>"#,
         prefix = html_escape(prefix),
+        schema = html_escape(schema_name),
         tbl = html_escape(table),
     );
     for col in &schema.columns {
@@ -377,7 +432,7 @@ fn render_detail(prefix: &str, table: &str, schema: &TableSchema, row: &JsonValu
         ));
     }
     body.push_str("</table>");
-    layout(&format!("{table} detail"), &body)
+    layout(&format!("{schema_name}.{table} detail"), &body)
 }
 
 fn layout(title: &str, body: &str) -> String {
