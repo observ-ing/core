@@ -16,10 +16,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     let admin = axum_admin::Admin::new(pool)
-        .table("posts", |t| {
+        .table("public", "posts", |t| {
             t.display_name("Posts").searchable(["title", "body"])
         })
-        .table("users", |t| {
+        .table("public", "users", |t| {
             t.display_name("Users").searchable(["name", "email"])
         });
 
