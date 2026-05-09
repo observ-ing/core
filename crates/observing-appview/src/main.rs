@@ -217,6 +217,9 @@ async fn main() {
             "/admin/tables/{name}/rows",
             get(routes::admin::list_table_rows),
         )
+        // HTML admin browser (axum-admin), gated by the same AdminAuth as the
+        // JSON endpoints above.
+        .nest_service("/admin/browse", routes::admin_browse::router(state.clone()))
         // Media (blob/thumb cache, formerly observing-media-proxy)
         .route("/media/health", get(routes::media::health))
         .route("/media/blob/{did}/{cid}", get(routes::media::get_blob))

@@ -2871,6 +2871,7 @@ dependencies = [
  "atrium-identity",
  "atrium-oauth",
  "axum",
+ "axum-admin",
  "axum-extra",
  "base64",
  "chrono",
