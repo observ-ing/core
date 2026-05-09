@@ -1,0 +1,46 @@
+[package]
+name = "tap-ingester"
+version = "0.1.0"
+edition = "2021"
+description = "AT Protocol ingester sourced from a Tap (indigo cmd/tap) instance"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Tap client wrapper — handles WebSocket + ack handshake + reconnection.
+tapped = { workspace = true }
+
+# Reuse the existing record dispatcher, media resolver, types, and HTTP server.
+observing-ingester = { path = "../observing-ingester" }
+
+# Database write path — same processing module observing-ingester uses.
+observing-db = { path = "../observing-db", features = ["processing"] }
+
+# Database::upsert_* methods on the shared crate take &CommitInfo. tap-ingester
+# constructs a CommitInfo from each tapped::RecordEvent. That coupling will go
+# away when PR-C decommissions observing-ingester.
+jetstream-client = { path = "../jetstream-client" }
+
+# Async runtime
+tokio = { workspace = true }
+
+# Database
+sqlx = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# CLI
+clap = { version = "4", features = ["derive", "env"] }
+
+[[bin]]
+name = "tap-ingester"
+path = "src/main.rs"
