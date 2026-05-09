@@ -26,6 +26,8 @@
 //!                         work dir; on Cloud Run it's instance-ephemeral.
 //!   PORT                  HTTP server port (default 8080).
 
+mod subject_resolver;
+
 use std::sync::Arc;
 
 use chrono::Utc;
@@ -39,6 +41,7 @@ use observing_ingester::{
     },
     Database,
 };
+use subject_resolver::SubjectResolver;
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -115,6 +118,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    let subject_resolver = SubjectResolver::new(tap.clone());
+
     info!("connecting to tap channel");
     let mut channel = tap.channel().await?;
     state.write().await.connected = true;
@@ -128,13 +133,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 // doesn't process them either. Ack and move on.
             }
             Event::Record(record) => {
-                if let Err(e) = process_record(&db, record, &state).await {
-                    error!(uri = %format_uri(record), "process_record failed: {}", e);
-                    state.write().await.stats.errors += 1;
-                    // Skip ack so Tap redelivers after retry-timeout. tapped's
-                    // AckGuard is private, so leaking the ReceivedEvent is the
-                    // only way to suppress the auto-ack-on-drop.
-                    should_ack = false;
+                if process_record(&db, record, &state).await.is_err() {
+                    // process_record already logged + bumped stats.errors.
+                    // If the resolver actually added a new DID to Tap, skip
+                    // the ack so the redelivered event finds the FK target
+                    // in the DB after Tap finishes backfilling. Otherwise
+                    // (subject already tracked, or no subject) ack and move
+                    // on — matches observing-ingester's "log and continue"
+                    // behavior on FK violations from deleted-record refs.
+                    let added_new_did = match record_json(record) {
+                        Some(json) => subject_resolver
+                            .ensure_subject_tracked(&json)
+                            .await
+                            .is_some(),
+                        None => false,
+                    };
+                    if added_new_did {
+                        should_ack = false;
+                    }
                 }
             }
             // tapped::Event is #[non_exhaustive]; ignore future variants.
@@ -143,6 +159,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         if should_ack {
             drop(received);
         } else {
+            // Skip auto-ack so Tap redelivers after retry-timeout.
+            // tapped's AckGuard is private, so leaking the ReceivedEvent
+            // is the only way to suppress the auto-ack-on-drop.
             std::mem::forget(received);
         }
     }
@@ -236,27 +255,34 @@ async fn process_record(
         }
     };
 
-    let mut s = state.write().await;
-    if let Err(e) = result {
-        error!(%uri, error = %e, "{} {} failed", event_type, action);
-        s.stats.errors += 1;
-    } else {
-        match event_type {
-            "occurrence" => s.stats.occurrences += 1,
-            "identification" => s.stats.identifications += 1,
-            "comment" => s.stats.comments += 1,
-            "interaction" => s.stats.interactions += 1,
-            "like" => s.stats.likes += 1,
-            _ => {}
+    match result {
+        Ok(()) => {
+            let mut s = state.write().await;
+            match event_type {
+                "occurrence" => s.stats.occurrences += 1,
+                "identification" => s.stats.identifications += 1,
+                "comment" => s.stats.comments += 1,
+                "interaction" => s.stats.interactions += 1,
+                "like" => s.stats.likes += 1,
+                _ => {}
+            }
+            s.add_recent_event(RecentEvent {
+                event_type: event_type.to_string(),
+                action: action.to_string(),
+                uri,
+                time: Utc::now(),
+            });
+            Ok(())
         }
-        s.add_recent_event(RecentEvent {
-            event_type: event_type.to_string(),
-            action: action.to_string(),
-            uri,
-            time: Utc::now(),
-        });
+        Err(e) => {
+            // Caller decides whether to retry / call subject_resolver / etc.
+            // Return the error so it can do that. Stats counter is bumped
+            // here — callers don't see the event_type after this returns.
+            state.write().await.stats.errors += 1;
+            error!(%uri, error = %e, "{} {} failed", event_type, action);
+            Err(e.into())
+        }
     }
-    Ok(())
 }
 
 /// Tap delivers events without a per-event timestamp; observing-db's
@@ -283,6 +309,12 @@ fn build_commit(record: &RecordEvent, uri: &str) -> Result<CommitInfo, Box<dyn s
 
 fn format_uri(record: &RecordEvent) -> String {
     format!("at://{}/{}/{}", record.did, record.collection, record.rkey)
+}
+
+fn record_json(record: &RecordEvent) -> Option<serde_json::Value> {
+    record
+        .record_as_str()
+        .and_then(|s| serde_json::from_str(s).ok())
 }
 
 fn action_to_str(action: RecordAction) -> &'static str {
