@@ -58,6 +58,10 @@ urlencoding = { workspace = true }
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
 
+[lib]
+name = "observing_ingester"
+path = "src/lib.rs"
+
 [[bin]]
 name = "observing-ingester"
 path = "src/main.rs"
