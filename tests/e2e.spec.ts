@@ -1,7 +1,22 @@
-import { expect } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 import { test as authTest } from "./fixtures/auth";
 import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+
+async function waitForOccurrenceIndexed(page: Page, uri: string, timeoutMs = 30_000) {
+  const encoded = encodeURIComponent(uri);
+  const deadline = Date.now() + timeoutMs;
+  let lastStatus: number | null = null;
+  while (Date.now() < deadline) {
+    const resp = await page.request.get(`/api/occurrences/${encoded}`);
+    lastStatus = resp.status();
+    if (lastStatus === 200) return;
+    await page.waitForTimeout(500);
+  }
+  throw new Error(
+    `occurrence ${uri} was not indexed within ${timeoutMs}ms (last status ${lastStatus})`,
+  );
+}
 
 /**
  * End-to-end CRUD test against a live Bluesky PDS.
@@ -52,10 +67,22 @@ authTest.describe("E2E CRUD flow", () => {
       occurrenceUri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
     });
 
-    // Step 3: add identification
+    // Step 3: add identification.
+    //
+    // The `Agree` button only renders once the occurrence row exists in
+    // appview's Postgres — i.e. after the firehose → ingester → DB write
+    // round-trip completes. Waiting on a button that depends on that
+    // pipeline conflates "ingester wrote" with "DOM rerendered," and the
+    // single 10s `toBeVisible` was racy under CI load (issue #467).
+    //
+    // Split the wait: poll the appview API until the occurrence is
+    // indexed (generous budget — that's where the real wait lives), then
+    // assert button visibility with a tight DOM-only timeout. Next time
+    // this flakes, the failure mode tells us which half is slow.
     await authTest.step("add identification", async () => {
+      await waitForOccurrenceIndexed(page, occurrenceUri!);
       const agreeBtn = page.getByRole("button", { name: "Agree" });
-      await expect(agreeBtn).toBeVisible({ timeout: 10000 });
+      await expect(agreeBtn).toBeVisible({ timeout: 5_000 });
       const idDone = page.waitForResponse(
         (resp) => resp.request().method() === "POST" && resp.url().includes("/api/identifications"),
         { timeout: 15_000 },
