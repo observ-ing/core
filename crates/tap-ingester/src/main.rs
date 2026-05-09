@@ -38,6 +38,7 @@ mod database;
 mod error;
 mod media_resolver;
 mod server;
+mod subject_resolver;
 mod types;
 
 use std::sync::Arc;
@@ -48,6 +49,7 @@ use dashboard::DashboardState;
 use database::Database;
 use serde_json::Value;
 use server::{ServerState, SharedState};
+use subject_resolver::SubjectResolver;
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -144,29 +146,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // (we run this once), so .ok() the result.
     tap_cell.set(tap.clone()).ok();
 
+    // Resolver for cross-repo subject DIDs: when an identification/comment/
+    // like references an occurrence on a DID Tap isn't tracking, the
+    // resolver POSTs `/repos/add` and we suppress the ack so Tap redelivers
+    // the record after backfill. De-dupes per-process so we don't
+    // hammer `/repos/add` for the same DID.
+    let subject_resolver = SubjectResolver::new(tap.clone());
+
     info!("connecting to tap channel");
     let mut channel = tap.channel().await?;
     state.write().await.connected = true;
     info!("tap channel connected");
 
     while let Ok(received) = channel.recv().await {
+        let mut should_ack = true;
         if let Event::Record(record) = &received.event {
-            if let Err(e) = process_record(&db, record, &state).await {
-                // Drop FK-failing or otherwise-bad records on the floor —
-                // ack and move on. Skipping the ack and waiting for Tap
-                // to redeliver only works if there's a path for the
-                // record to eventually succeed; with no cross-repo
-                // resolver in this crate yet, identifications referencing
-                // occurrences on untracked DIDs would loop forever and
-                // saturate the queue ahead of records that *would*
-                // succeed. Cross-repo recovery is tracked separately.
-                error!(uri = %format_uri(record), "process_record failed: {}", e);
-                state.write().await.stats.errors += 1;
+            if process_record(&db, record, &state).await.is_err() {
+                // process_record already logged + bumped stats.errors.
+                // Reactively ask the resolver for the subject DID; if it
+                // *added* a new DID to Tap, suppress this event's ack so
+                // Tap redelivers after the foreign repo backfills.
+                // Otherwise (subject already tracked, no subject, or
+                // resolver couldn't add), ack and move on — looping on
+                // unresolvable records would saturate the queue.
+                let added_new_did = match record_json(record) {
+                    Some(json) => subject_resolver
+                        .ensure_subject_tracked(&json)
+                        .await
+                        .is_some(),
+                    None => false,
+                };
+                if added_new_did {
+                    should_ack = false;
+                }
             }
         }
         // Identity events and any future #[non_exhaustive] tapped::Event
-        // variants are dropped (ack via Drop) without further handling.
-        drop(received);
+        // variants ack via Drop without further handling.
+        if should_ack {
+            drop(received);
+        } else {
+            // Skip auto-ack so Tap redelivers after retry-timeout. tapped's
+            // AckGuard is private, so leaking the ReceivedEvent is the only
+            // way to suppress the auto-ack-on-drop.
+            std::mem::forget(received);
+        }
     }
 
     state.write().await.connected = false;
