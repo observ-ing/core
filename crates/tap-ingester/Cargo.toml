@@ -23,6 +23,10 @@ jetstream-client = { path = "../jetstream-client" }
 # Async runtime
 tokio = { workspace = true }
 
+# HTTP server (proxy route to embedded Tap admin) + HTTP client (proxy upstream)
+axum = { workspace = true }
+reqwest = { workspace = true }
+
 # Database
 sqlx = { workspace = true }
 
