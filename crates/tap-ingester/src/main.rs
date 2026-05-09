@@ -39,8 +39,7 @@ struct Cli {}
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _cli = Cli::parse();
 
-    let env_filter =
-        EnvFilter::from_default_env().add_directive("tap_ingester=info".parse()?);
+    let env_filter = EnvFilter::from_default_env().add_directive("tap_ingester=info".parse()?);
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_stackdriver::layer())
