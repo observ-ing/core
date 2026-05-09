@@ -72,7 +72,7 @@ macro_rules! process_or_warn {
 
 /// Database connection and operations
 pub struct Database {
-    pool: PgPool,
+    pub(crate) pool: PgPool,
     media_resolver: MediaResolver,
 }
 

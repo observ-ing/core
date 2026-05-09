@@ -44,3 +44,28 @@ processes:
         port: 3005
         path: /health
       initial_delay_seconds: 10
+
+  # Spike: AT Proto Tap sync utility — see docs/architecture.md notes.
+  # Signal collection is `bio.lexicons.temp.v0-1.occurrence`; users who only make
+  # identifications (no occurrences) won't be auto-discovered by Tap and would
+  # need to be added via POST /repos/add.
+  tap:
+    disabled: true
+    command: |
+      docker run --rm --init --name observing-tap \
+        -p 2480:2480 \
+        -v "$PWD/cache/tap:/data" \
+        -e TAP_DATABASE_URL=sqlite:///data/tap.db \
+        -e TAP_SIGNAL_COLLECTION=bio.lexicons.temp.v0-1.occurrence \
+        -e TAP_COLLECTION_FILTERS=bio.lexicons.temp.v0-1.occurrence,bio.lexicons.temp.v0-1.identification,ing.observ.temp.comment,ing.observ.temp.interaction,ing.observ.temp.like \
+        -e TAP_NO_REPLAY=true \
+        -e TAP_DISABLE_ACKS=true \
+        -e TAP_LOG_LEVEL=info \
+        ghcr.io/bluesky-social/indigo/tap:latest
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 2480
+        path: /health
+      initial_delay_seconds: 5
+      period_seconds: 5

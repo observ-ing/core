@@ -7,6 +7,7 @@ mod database;
 mod error;
 mod media_resolver;
 mod server;
+mod spike_log;
 mod types;
 
 use crate::database::Database;
@@ -149,6 +150,9 @@ async fn main() -> Result<()> {
                 let collection = commit.collection.as_str();
                 if !enabled_collections.contains(collection) {
                     continue;
+                }
+                if spike_log::enabled() {
+                    spike_log::log_jetstream_commit(&db.pool, &commit).await;
                 }
                 let action = commit.operation.clone();
                 let uri = commit.uri.clone();
