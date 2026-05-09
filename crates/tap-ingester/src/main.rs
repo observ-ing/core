@@ -1,17 +1,30 @@
 //! AT Protocol ingester sourced from a Tap (indigo cmd/tap) instance.
 //!
-//! Connects to an externally-running Tap over WebSocket, ack-mode, and writes
-//! events into the same `ingester` schema observing-ingester uses. Idempotent
-//! upserts on `(uri, cid)` mean both ingesters can run side-by-side during
-//! the verification window without colliding.
+//! Two modes:
+//! - **Spawn-inline (default):** uses `tapped::TapProcess::spawn_default` to
+//!   launch the bundled `tap` binary as a child process, then talks to it
+//!   over WebSocket on localhost. The image's Dockerfile puts `tap` on
+//!   PATH; production deploy targets this mode.
+//! - **Connect-existing:** if `TAP_URL` is set, skip spawning and connect
+//!   to an existing Tap instance. Useful for local dev where Tap is
+//!   already running in Docker.
 //!
-//! Required env vars:
-//!   DATABASE_URL          Postgres connection string
-//!   TAP_URL               Base URL of the Tap HTTP API (e.g. http://localhost:2480)
+//! Writes events into the same `ingester` schema observing-ingester uses.
+//! Idempotent upserts on `(uri, cid)` mean both ingesters can run
+//! side-by-side during the verification window without colliding.
+//!
+//! Required env vars (one of):
+//!   DATABASE_URL          Postgres connection string, OR
+//!   DB_HOST + DB_NAME + DB_USER + DB_PASSWORD   (Cloud SQL socket style)
 //!
 //! Optional env vars:
-//!   TAP_ADMIN_PASSWORD    Tap basic auth password (if Tap was started with one)
-//!   PORT                  HTTP server port (default 8080)
+//!   TAP_URL               If set, skip spawning Tap and connect to this URL.
+//!   TAP_ADMIN_PASSWORD    Basic auth password (passed to spawned Tap or used
+//!                         when connecting to an existing one).
+//!   TAP_DATABASE_URL      Backing DB for the embedded Tap. Default
+//!                         `sqlite:///data/tap.db`. /data is the Dockerfile
+//!                         work dir; on Cloud Run it's instance-ephemeral.
+//!   PORT                  HTTP server port (default 8080).
 
 use std::sync::Arc;
 
@@ -26,7 +39,7 @@ use observing_ingester::{
     },
     Database,
 };
-use tapped::{Event, RecordAction, RecordEvent, TapClient};
+use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -47,8 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("Starting Observ.ing tap-ingester...");
 
-    let database_url = std::env::var("DATABASE_URL")?;
-    let tap_url = std::env::var("TAP_URL").unwrap_or_else(|_| "http://localhost:2480".to_string());
+    let database_url = resolve_database_url()?;
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|s| s.parse().ok())
@@ -66,12 +78,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let db = Database::connect(&database_url).await?;
 
-    let tap = match std::env::var("TAP_ADMIN_PASSWORD") {
-        Ok(pw) => TapClient::with_auth(&tap_url, pw)?,
-        Err(_) => TapClient::new(&tap_url)?,
+    // Bring up Tap. If TAP_URL is set we treat it as already running;
+    // otherwise spawn the bundled binary as a child process. The
+    // _process handle keeps the spawned Tap alive for the lifetime of
+    // this binary (kill_on_drop).
+    let admin_password = std::env::var("TAP_ADMIN_PASSWORD").ok();
+    let (_process, tap) = match std::env::var("TAP_URL") {
+        Ok(url) => {
+            info!(tap_url = %url, "TAP_URL set, connecting to existing Tap");
+            let client = match admin_password {
+                Some(pw) => TapClient::with_auth(&url, pw)?,
+                None => TapClient::new(&url)?,
+            };
+            (None, client)
+        }
+        Err(_) => {
+            info!("spawning embedded tap process");
+            let mut builder = TapConfig::builder()
+                .database_url(
+                    std::env::var("TAP_DATABASE_URL")
+                        .unwrap_or_else(|_| "sqlite:///data/tap.db".to_string()),
+                )
+                .signal_collection(OCCURRENCE_COLLECTION)
+                .collection_filter(OCCURRENCE_COLLECTION)
+                .collection_filter(IDENTIFICATION_COLLECTION)
+                .collection_filter(COMMENT_COLLECTION)
+                .collection_filter(INTERACTION_COLLECTION)
+                .collection_filter(LIKE_COLLECTION)
+                .log_level(LogLevel::Info);
+            if let Some(pw) = admin_password.as_deref() {
+                builder = builder.admin_password(pw.to_string());
+            }
+            let process = TapProcess::spawn_default(builder.build()).await?;
+            let client = process.client()?;
+            (Some(process), client)
+        }
     };
 
-    info!(tap_url = %tap_url, "connecting to tap channel");
+    info!("connecting to tap channel");
     let mut channel = tap.channel().await?;
     state.write().await.connected = true;
     info!("tap channel connected");
@@ -105,7 +149,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     state.write().await.connected = false;
     warn!("tap channel closed");
+    // _process drops here, sending SIGTERM to the embedded Tap.
     Ok(())
+}
+
+/// Build a Postgres connection string from either DATABASE_URL directly
+/// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle observing-ingester
+/// uses for Cloud SQL socket connections.
+fn resolve_database_url() -> Result<String, Box<dyn std::error::Error>> {
+    if let Ok(url) = std::env::var("DATABASE_URL") {
+        return Ok(url);
+    }
+    let host = std::env::var("DB_HOST")
+        .map_err(|_| "DATABASE_URL or DB_HOST environment variable is required".to_string())?;
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
+    let user = std::env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
+    let password = std::env::var("DB_PASSWORD").unwrap_or_default();
+
+    if host.starts_with("/cloudsql/") {
+        Ok(format!(
+            "postgresql://{}:{}@localhost/{}?host={}",
+            user, password, name, host
+        ))
+    } else {
+        let port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
+        Ok(format!(
+            "postgresql://{}:{}@{}:{}/{}",
+            user, password, host, port, name
+        ))
+    }
 }
 
 async fn process_record(

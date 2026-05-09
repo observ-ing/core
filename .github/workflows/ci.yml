@@ -392,7 +392,12 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service: [appview, ingester, species-id, migrate]
+        service:
+          - observing-appview
+          - observing-ingester
+          - observing-species-id
+          - observing-migrate
+          - tap-ingester
     steps:
       - uses: actions/checkout@v4
 
@@ -415,15 +420,15 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: SERVICE=observing-${{ matrix.service }}
+          build-args: SERVICE=${{ matrix.service }}
           push: true
-          tags: ${{ env.REGISTRY }}/observing-${{ matrix.service }}:latest
+          tags: ${{ env.REGISTRY }}/${{ matrix.service }}:latest
           cache-from: |
             type=gha,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.service }}:buildcache
           cache-to: |
             type=gha,mode=max,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/observing-${{ matrix.service }}:buildcache,mode=max
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.service }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
@@ -488,6 +493,25 @@ jobs:
             --memory=2Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
+            --min-instances=1 \
+            --max-instances=1 \
+            --timeout=3600
+
+      # Side-by-side with observing-ingester during the verification window.
+      # Bundles its own `tap` binary spawned as a child process; SQLite state
+      # at /data/tap.db is instance-ephemeral (Tap re-discovers + re-backfills
+      # on instance restart, which is fine for current scale).
+      - name: Deploy tap-ingester
+        run: |
+          gcloud run deploy tap-ingester \
+            --image=$REGISTRY/tap-ingester:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --cpu=1 \
+            --memory=2Gi \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
             --min-instances=1 \
             --max-instances=1 \

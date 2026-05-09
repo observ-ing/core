@@ -8,8 +8,12 @@
 # automatically but its output is only copied into the final image
 # when SERVICE=observing-appview.
 #
+# For tap-ingester, the `tap` binary from bluesky-social/indigo is built
+# in a Go stage and bundled into the runtime image; tapped::TapProcess
+# spawns it as a child process at runtime.
+#
 # Supported SERVICE values:
-#   observing-appview, observing-ingester, observing-species-id, observing-migrate
+#   observing-appview, observing-ingester, observing-species-id, observing-migrate, tap-ingester
 
 ARG SERVICE=observing-appview
 
@@ -76,6 +80,31 @@ ARG SERVICE
 RUN cargo build --release -p ${SERVICE}
 
 # ---------------------------------------------------------------------------
+# Stage: tap-build – build the upstream `tap` Go binary (only used by
+# the tap-ingester runtime, but Docker BuildKit prunes unused stages so
+# this is free for other services).
+# ---------------------------------------------------------------------------
+FROM golang:1.26-bookworm AS tap-build
+
+# Pinned to indigo main as of 2026-04-28. Bump deliberately when upstream
+# tap or its event format changes.
+ARG INDIGO_REV=ce62b8fce9e01434213a69cb251852b2c9436cb9
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        git \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /src
+RUN git init . \
+    && git remote add origin https://github.com/bluesky-social/indigo.git \
+    && git fetch --depth 1 origin ${INDIGO_REV} \
+    && git checkout FETCH_HEAD
+
+ENV GODEBUG=netdns=go
+RUN go build -tags timetzdata -o /tap ./cmd/tap
+
+# ---------------------------------------------------------------------------
 # Stage: runtime-base – shared runtime setup
 # ---------------------------------------------------------------------------
 FROM debian:bookworm-slim AS runtime-base
@@ -112,6 +141,24 @@ ENV RUST_LOG=observing_ingester=info
 ENV PORT=8080
 EXPOSE 8080
 CMD ["/app/observing-ingester"]
+
+# ---------------------------------------------------------------------------
+# Stage: runtime for tap-ingester
+# Bundles the upstream `tap` binary so tapped::TapProcess can spawn it
+# as a child process. The /data directory holds the SQLite cursor/state
+# database; on Cloud Run it lives on the ephemeral instance filesystem.
+# Losing it on instance restart is fine — Tap re-discovers and re-backfills.
+# ---------------------------------------------------------------------------
+FROM runtime-base AS runtime-tap-ingester
+
+COPY --from=builder /app/target/release/tap-ingester /app/tap-ingester
+COPY --from=tap-build /tap /usr/local/bin/tap
+
+RUN mkdir -p /data
+ENV RUST_LOG=tap_ingester=info
+ENV PORT=8080
+EXPOSE 8080
+CMD ["/app/tap-ingester"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for migrate (one-shot Cloud Run Job)

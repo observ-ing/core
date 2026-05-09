@@ -10,6 +10,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 |---------|-----------|--------|-----------|---------|-------|
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
 | observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | `ingester_runtime` | min-instances=1 (always running) |
+| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Side-by-side with observing-ingester during the migration verification window. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. SQLite state at `/data/tap.db` is instance-ephemeral. min-instances=1 / max-instances=1. |
 | observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification (2 CPU, 8 GiB, cpu-boost, min-instances=1) |
 
 ### Jobs
@@ -82,6 +83,34 @@ DB_NAME=observing
 DB_USER=ingester_runtime
 DB_PASSWORD=<secret: observing-db-ingester-password>
 ```
+
+### Tap-Ingester (`ingester_runtime`)
+
+```bash
+PORT=8080
+
+DB_HOST=/cloudsql/<project>:<region>:observing-db
+DB_NAME=observing
+DB_USER=ingester_runtime
+DB_PASSWORD=<secret: observing-db-ingester-password>
+
+# Optional: connect to an external Tap rather than spawning the bundled
+# binary. Unset in production; useful for local dev when running Tap in
+# Docker separately.
+# TAP_URL=http://localhost:2480
+# TAP_ADMIN_PASSWORD=<secret>
+
+# Optional: backing DB for the embedded Tap. Defaults to
+# `sqlite:///data/tap.db` (instance-ephemeral).
+# TAP_DATABASE_URL=postgres://...
+```
+
+Writes the same `ingester` schema as observing-ingester. Idempotent
+upserts on `(uri, cid)` so dual writes during the verification window
+are harmless. Cross-repo identifications fail their FK against
+`occurrences.uri` until observing-ingester or `bin/backfill.rs` seeds
+the referenced occurrence — same gap observing-ingester's live path
+has today.
 
 ### Species-ID
 
