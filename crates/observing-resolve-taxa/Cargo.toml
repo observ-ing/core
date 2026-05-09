@@ -1,0 +1,21 @@
+[package]
+name = "observing-resolve-taxa"
+version = "0.1.0"
+edition = "2021"
+description = "Background worker that fills accepted_taxon_key on identifications"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+observing-db = { path = "../observing-db", features = ["processing"] }
+observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
+
+tokio = { workspace = true }
+sqlx = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
+
+[[bin]]
+name = "observing-resolve-taxa"
+path = "src/main.rs"

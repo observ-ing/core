@@ -26,11 +26,16 @@ processes:
       appview:
         condition: process_healthy
 
-  ingester:
-    command: cargo run --bin observing-ingester
-    working_dir: crates/observing-ingester
+  tap-ingester:
+    # Requires the upstream `tap` Go binary on PATH. Build and install
+    # once with:
+    #   GODEBUG=netdns=go go install github.com/bluesky-social/indigo/cmd/tap@<rev>
+    # See docs/development.md.
+    command: cargo run -p tap-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
+      - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap.db}
+      - PORT=8080
 
   species-id:
     command: cargo run -p observing-species-id
