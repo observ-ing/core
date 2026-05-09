@@ -1,0 +1,14 @@
+[package]
+name = "axum-admin"
+version = "0.0.1"
+edition = "2021"
+description = "A Django-admin-style read-only browser for Postgres, served as an axum Router"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+axum = { workspace = true }
+sqlx = { workspace = true, features = ["json"] }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
