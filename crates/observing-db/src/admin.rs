@@ -195,6 +195,11 @@ pub async fn list_records(
 /// Unlike `KnownCollection` (lexicon-scoped records keyed by NSID), these are
 /// internal tables. OAuth/session stores are intentionally excluded.
 pub struct KnownTable {
+    /// Postgres schema (e.g. `ingester`, `appview`, `public`). Tables were
+    /// moved out of `public` by migration `20260419000000_table_schemas.sql`,
+    /// so this is needed both for `information_schema` introspection and to
+    /// disambiguate same-named tables across schemas.
+    pub schema: &'static str,
     pub name: &'static str,
     /// Explicit allowlist of columns. Never `SELECT *`. Each entry is a
     /// `(select_expr, display_name)` pair — the expression is used in the
@@ -207,6 +212,7 @@ pub struct KnownTable {
 
 pub const KNOWN_TABLES: &[KnownTable] = &[
     KnownTable {
+        schema: "ingester",
         name: "ingester_state",
         columns: &[
             ("key", "key"),
@@ -216,6 +222,7 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         order_by: "updated_at DESC NULLS LAST",
     },
     KnownTable {
+        schema: "appview",
         name: "occurrence_private_data",
         columns: &[
             ("uri", "uri"),
@@ -228,6 +235,7 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         order_by: "updated_at DESC NULLS LAST",
     },
     KnownTable {
+        schema: "public",
         name: "sensitive_species",
         columns: &[
             ("scientific_name", "scientific_name"),
@@ -239,6 +247,7 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         order_by: "scientific_name",
     },
     KnownTable {
+        schema: "ingester",
         name: "notifications",
         columns: &[
             ("id", "id"),
@@ -252,6 +261,7 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         order_by: "created_at DESC",
     },
     KnownTable {
+        schema: "appview",
         name: "notification_reads",
         columns: &[
             ("notification_id", "notification_id"),
@@ -260,6 +270,7 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
         order_by: "read_at DESC",
     },
     KnownTable {
+        schema: "ingester",
         name: "community_ids",
         columns: &[
             ("occurrence_uri", "occurrence_uri"),
@@ -276,6 +287,11 @@ impl KnownTable {
     pub fn column_names(&self) -> Vec<&'static str> {
         self.columns.iter().map(|(_, name)| *name).collect()
     }
+
+    /// Fully-qualified `"schema"."name"` for use in SQL.
+    fn qualified(&self) -> String {
+        format!("\"{}\".\"{}\"", self.schema, self.name)
+    }
 }
 
 pub fn lookup_table(name: &str) -> Option<&'static KnownTable> {
@@ -286,7 +302,7 @@ pub async fn table_count(pool: &PgPool, name: &str) -> Result<i64, sqlx::Error> 
     let Some(meta) = lookup_table(name) else {
         return Ok(0);
     };
-    let sql = format!("SELECT COUNT(*) FROM {}", meta.name);
+    let sql = format!("SELECT COUNT(*) FROM {}", meta.qualified());
     sqlx::query_scalar(&sql).fetch_one(pool).await
 }
 
@@ -313,7 +329,9 @@ pub async fn list_table_rows(
         .join(", ");
     let sql = format!(
         "SELECT row_to_json(t) AS row FROM (SELECT {} FROM {} ORDER BY {} LIMIT $1 OFFSET $2) t",
-        cols, meta.name, meta.order_by,
+        cols,
+        meta.qualified(),
+        meta.order_by,
     );
     let rows: Vec<(serde_json::Value,)> = sqlx::query_as(&sql)
         .bind(limit)
