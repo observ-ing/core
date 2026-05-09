@@ -367,6 +367,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-admin"
+version = "0.0.1"
+dependencies = [
+ "axum",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "axum-core"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
