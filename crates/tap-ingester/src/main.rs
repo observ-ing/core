@@ -150,29 +150,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("tap channel connected");
 
     while let Ok(received) = channel.recv().await {
-        let mut should_ack = true;
-        match &received.event {
-            Event::Identity(_) => {
-                // Identity events don't write to ingester schema.
+        if let Event::Record(record) = &received.event {
+            if let Err(e) = process_record(&db, record, &state).await {
+                // Drop FK-failing or otherwise-bad records on the floor —
+                // ack and move on. Skipping the ack and waiting for Tap
+                // to redeliver only works if there's a path for the
+                // record to eventually succeed; with no cross-repo
+                // resolver in this crate yet, identifications referencing
+                // occurrences on untracked DIDs would loop forever and
+                // saturate the queue ahead of records that *would*
+                // succeed. Cross-repo recovery is tracked separately.
+                error!(uri = %format_uri(record), "process_record failed: {}", e);
+                state.write().await.stats.errors += 1;
             }
-            Event::Record(record) => {
-                if let Err(e) = process_record(&db, record, &state).await {
-                    error!(uri = %format_uri(record), "process_record failed: {}", e);
-                    state.write().await.stats.errors += 1;
-                    // Skip ack so Tap redelivers after retry-timeout. tapped's
-                    // AckGuard is private, so leaking the ReceivedEvent is the
-                    // only way to suppress the auto-ack-on-drop.
-                    should_ack = false;
-                }
-            }
-            // tapped::Event is #[non_exhaustive]; ignore future variants.
-            _ => {}
         }
-        if should_ack {
-            drop(received);
-        } else {
-            std::mem::forget(received);
-        }
+        // Identity events and any future #[non_exhaustive] tapped::Event
+        // variants are dropped (ack via Drop) without further handling.
+        drop(received);
     }
 
     state.write().await.connected = false;
