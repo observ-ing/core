@@ -25,20 +25,31 @@
 //!                         `sqlite:///data/tap.db`. /data is the Dockerfile
 //!                         work dir; on Cloud Run it's instance-ephemeral.
 //!   PORT                  HTTP server port (default 8080).
+//!
+//! HTTP routes:
+//!   /                     Stats dashboard (occurrences, identifications, etc.).
+//!   /health, /api/stats   Cloud Run health check + JSON stats feed.
+//!   /tap, /tap/*          Reverse proxy to the embedded Tap admin UI on
+//!                         127.0.0.1:2480. Auth headers pass through; Tap's
+//!                         TAP_ADMIN_PASSWORD is the gate.
+
+mod tap_proxy;
 
 use std::sync::Arc;
 
+use axum::routing::any;
 use chrono::Utc;
 use clap::Parser;
 use jetstream_client::CommitInfo;
 use observing_ingester::{
-    server::{start_server, ServerState, SharedState},
+    server::{create_router, ServerState, SharedState},
     types::{
         RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
         LIKE_COLLECTION, OCCURRENCE_COLLECTION,
     },
     Database,
 };
+use tap_proxy::TapProxy;
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -68,10 +79,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
 
+    // Tap admin reverse-proxy target. When TAP_URL is set we point at it;
+    // otherwise the embedded Tap binds to localhost on its default port.
+    let tap_admin_url =
+        std::env::var("TAP_URL").unwrap_or_else(|_| "http://127.0.0.1:2480".to_string());
+
     // Spawn HTTP server immediately so Cloud Run health checks pass.
     let http_state = state.clone();
+    let tap_proxy_state = TapProxy::new(tap_admin_url);
     tokio::spawn(async move {
-        if let Err(e) = start_server(http_state, port).await {
+        if let Err(e) = serve_http(http_state, tap_proxy_state, port).await {
             error!("HTTP server error: {}", e);
         }
     });
@@ -151,6 +168,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     warn!("tap channel closed");
     // _process drops here, sending SIGTERM to the embedded Tap.
     Ok(())
+}
+
+/// Compose the dashboard router (from observing-ingester) with the /tap/*
+/// reverse proxy and serve the result. The proxy routes use their own
+/// `TapProxy` state, so we build them as a sub-router and nest it.
+async fn serve_http(state: SharedState, proxy: TapProxy, port: u16) -> std::io::Result<()> {
+    let proxy_router = axum::Router::new()
+        .route("/", any(tap_proxy::proxy_root))
+        .route("/{*path}", any(tap_proxy::proxy))
+        .with_state(proxy);
+    let router = create_router(state).nest("/tap", proxy_router);
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    info!("Starting HTTP server on {}", addr);
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, router).await
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
