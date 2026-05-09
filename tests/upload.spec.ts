@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
@@ -129,6 +129,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     }
 
     // Set location via coordinate inputs
+    await revealCoordinateInputs(page);
     const latInput = page.getByLabel("Latitude");
     await latInput.scrollIntoViewIfNeeded();
     await latInput.fill("37.7749");
@@ -223,6 +224,7 @@ authTest.describe("Upload Modal - Logged In", () => {
         .catch(() => {});
 
       // Set location via coordinate inputs
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.7749");

@@ -18,3 +18,14 @@ export async function openUploadModal(page: Page) {
   // Wait for the modal content to actually render instead of a fixed delay
   await page.getByLabel(/Taxon/i).waitFor({ state: "visible", timeout: 10_000 });
 }
+
+/**
+ * Expands the collapsed manual-coordinate inputs in LocationPicker so that
+ * the Latitude/Longitude TextFields become accessible.
+ */
+export async function revealCoordinateInputs(page: Page) {
+  const toggle = page.getByRole("button", { name: "Enter coordinates manually" });
+  await toggle.scrollIntoViewIfNeeded();
+  await toggle.click();
+  await page.getByLabel("Latitude").waitFor({ state: "visible", timeout: 5_000 });
+}

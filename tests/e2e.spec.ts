@@ -1,6 +1,6 @@
 import { expect } from "@playwright/test";
 import { test as authTest } from "./fixtures/auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 /**
@@ -13,11 +13,9 @@ authTest.describe("E2E CRUD flow", () => {
   let occurrenceUri: string | null = null;
 
   authTest("create, identify, and delete an occurrence", async ({ authenticatedPage: page }) => {
-    // Step 1: verify signed in. The avatar/menu button is the only login
-    // indicator that's reliably rendered on `/` regardless of feed state —
-    // `@handle` only appears inside the closed account-menu popover or on
-    // observation cards owned by the user, so it disappears whenever the
-    // home feed has none of the test user's observations.
+    // Step 1: verify signed in by checking the avatar/menu button, which is
+    // always visible on `/` unlike `@handle`, which only appears in the
+    // closed account-menu popover or on the user's observation cards.
     await page.goto("/");
     await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
       timeout: 10000,
@@ -38,6 +36,7 @@ authTest.describe("E2E CRUD flow", () => {
       await expect(option).toBeVisible();
       await option.click();
 
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.7749");
@@ -77,6 +76,7 @@ authTest.describe("E2E CRUD flow", () => {
       // removed from the occurrence schema, and lat/lng are always present
       // on existing records — so this exercises the PUT round-trip without
       // depending on optional fields.
+      await revealCoordinateInputs(page);
       const latInput = page.getByLabel("Latitude");
       await latInput.scrollIntoViewIfNeeded();
       await latInput.fill("37.8000");
