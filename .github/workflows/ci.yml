@@ -338,19 +338,54 @@ jobs:
       - name: Start services
         env:
           # tap-ingester's default is sqlite:///data/tap.db (a Cloud Run
-          # container path); point at a local file in CI instead.
-          TAP_DATABASE_URL: sqlite:/tmp/tap.db
+          # container path); point at a local file in CI instead. Note
+          # the three-slash form is what Tap's pg/sqlite parser expects
+          # for an absolute filesystem path.
+          TAP_DATABASE_URL: sqlite:///tmp/tap.db
+          # Surface Tap's stdout/stderr alongside tap-ingester's so
+          # startup failures are debuggable; tapped defaults this to
+          # /dev/null.
+          TAP_INHERIT_STDIO: '1'
         run: |
           PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
           PORT=8090 ./target/debug/tap-ingester > /tmp/tap-ingester.log 2>&1 &
-      - name: Wait for services
+      - name: Wait for appview
         run: |
           for i in $(seq 1 60); do
             curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
             sleep 2
           done
-          echo "Services failed to start"
+          echo "appview failed to start"
           exit 1
+      - name: Wait for tap-ingester (Tap channel connected)
+        # tap-ingester's /health reports `connected: true` only after
+        # spawn_default + tap.channel().await have succeeded. Generous
+        # budget — Tap's first-run sqlite migration + relay subscribe
+        # can take a while on a cold runner.
+        run: |
+          for i in $(seq 1 120); do
+            if curl -sf http://127.0.0.1:8090/health 2>/dev/null | grep -q '"connected":true'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "tap-ingester never became channel-connected"
+          curl -s http://127.0.0.1:8090/health || true
+          exit 1
+      - name: Pre-warm Tap with the test DID
+        # Tap discovers DIDs from the firehose signal-collection but the
+        # round-trip is too slow for a cold CI run. Add the test DID
+        # directly so Tap immediately backfills + forwards the user's
+        # records. /repos/add talks to the embedded Tap on its localhost
+        # admin port.
+        env:
+          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
+        run: |
+          DID=$(curl -sf "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=$BLUESKY_TEST_HANDLE" | python3 -c "import json,sys; print(json.load(sys.stdin)['did'])")
+          echo "Test DID: $DID"
+          curl -sf -X POST -H 'Content-Type: application/json' \
+            -d "{\"dids\":[\"$DID\"]}" \
+            http://127.0.0.1:2480/repos/add
       - name: Run integration & e2e tests
         run: npm run test
         env:

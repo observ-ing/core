@@ -128,6 +128,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(pw) = admin_password.as_deref() {
                 builder = builder.admin_password(pw.to_string());
             }
+            // tapped defaults Tap's stdio to /dev/null. In CI we want
+            // Tap's startup logs visible so failures are debuggable.
+            if std::env::var("TAP_INHERIT_STDIO").is_ok() {
+                builder = builder.inherit_stdio(true);
+            }
             let process = TapProcess::spawn_default(builder.build()).await?;
             let client = process.client()?;
             (Some(process), client)
