@@ -17,7 +17,7 @@ export default defineConfig({
       manifest: false,
       workbox: {
         navigateFallback: "/index.html",
-        navigateFallbackDenylist: [/^\/api/, /^\/oauth/, /^\/media/],
+        navigateFallbackDenylist: [/^\/api/, /^\/oauth/, /^\/media/, /^\/admin/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         cleanupOutdatedCaches: true,
         // Bumped from default 2 MiB so the current bundle precaches.
