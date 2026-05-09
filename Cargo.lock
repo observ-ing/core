@@ -2886,23 +2886,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "observing-backfill"
-version = "0.1.0"
-dependencies = [
- "atproto-identity",
- "chrono",
- "clap",
- "observing-db",
- "reqwest 0.13.3",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "observing-db"
 version = "0.1.0"
 dependencies = [
