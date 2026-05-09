@@ -259,4 +259,16 @@ impl Database {
         observing_db::likes::delete(&self.pool, uri).await?;
         Ok(())
     }
+
+    /// Append (or bump) a row in `ingester.failed_records` describing a
+    /// record we've decided to drop after `process_record` returned
+    /// `Err`. Idempotent: repeat failures for the same URI bump
+    /// `attempts` and refresh `last_attempt_at`/`last_error`.
+    pub async fn record_failure<'a>(
+        &self,
+        params: observing_db::failed_records::FailedRecord<'a>,
+    ) -> Result<()> {
+        observing_db::failed_records::record(&self.pool, params).await?;
+        Ok(())
+    }
 }

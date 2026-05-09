@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO failed_records (\n            uri, collection, did, cid, action, record_json, last_error\n        ) VALUES (\n            $1, $2, $3, $4, $5, $6, $7\n        )\n        ON CONFLICT (uri) DO UPDATE SET\n            collection      = EXCLUDED.collection,\n            did             = EXCLUDED.did,\n            cid             = EXCLUDED.cid,\n            action          = EXCLUDED.action,\n            record_json     = EXCLUDED.record_json,\n            last_error      = EXCLUDED.last_error,\n            attempts        = failed_records.attempts + 1,\n            last_attempt_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Jsonb",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "4113abc24e07f5cbed82734ac3621696bc726c7055d00e30d016ea75a2828b10"
+}
