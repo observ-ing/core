@@ -1,5 +1,5 @@
 import { expect } from "@playwright/test";
-import { test as authTest, getTestUser } from "./fixtures/auth";
+import { test as authTest } from "./fixtures/auth";
 import { openUploadModal } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
@@ -13,11 +13,15 @@ authTest.describe("E2E CRUD flow", () => {
   let occurrenceUri: string | null = null;
 
   authTest("create, identify, and delete an occurrence", async ({ authenticatedPage: page }) => {
-    const user = getTestUser();
-
-    // Step 1: verify signed in
+    // Step 1: verify signed in. The avatar/menu button is the only login
+    // indicator that's reliably rendered on `/` regardless of feed state —
+    // `@handle` only appears inside the closed account-menu popover or on
+    // observation cards owned by the user, so it disappears whenever the
+    // home feed has none of the test user's observations.
     await page.goto("/");
-    await expect(page.getByText(`@${user.handle}`).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+      timeout: 10000,
+    });
 
     // Step 2: create occurrence
     await authTest.step("create occurrence", async () => {
