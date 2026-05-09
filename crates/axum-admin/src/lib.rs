@@ -333,9 +333,9 @@ fn render_list(
             if is_pk {
                 let raw = row
                     .get(&col.name)
-                    .and_then(|v| match v {
-                        JsonValue::String(s) => Some(s.clone()),
-                        other => Some(other.to_string()),
+                    .map(|v| match v {
+                        JsonValue::String(s) => s.clone(),
+                        other => other.to_string(),
                     })
                     .unwrap_or_default();
                 body.push_str(&format!(
