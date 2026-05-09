@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            ST_Y(exact_location::geometry) as \"exact_latitude!\",\n            ST_X(exact_location::geometry) as \"exact_longitude!\",\n            geoprivacy,\n            effective_geoprivacy\n        FROM occurrence_private_data\n        WHERE uri = $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exact_latitude!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 1,
+        "name": "exact_longitude!",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "geoprivacy",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "effective_geoprivacy",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      false,
+      true
+    ]
+  },
+  "hash": "da60f067006f711414cc59fd19377b5435fefe6527680681bcda1af88b4c5eca"
+}

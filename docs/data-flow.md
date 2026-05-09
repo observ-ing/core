@@ -31,12 +31,12 @@ flowchart TB
     end
 
     subgraph Firehose["AT Protocol Network"]
-        Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Wanted collections:<br/>• bio.lexicons.temp.v0-1.occurrence<br/>• bio.lexicons.temp.v0-1.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
+        Tap["Tap (indigo cmd/tap)<br/>collection-signal mode"]
+        Filter["Filtered collections:<br/>• bio.lexicons.temp.v0-1.occurrence<br/>• bio.lexicons.temp.v0-1.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
     end
 
-    subgraph Ingester["Ingester (Rust) — DB_USER=ingester_runtime"]
-        WS["WebSocket Connection<br/>(jetstream-client crate)"]
+    subgraph Ingester["tap-ingester (Rust) — DB_USER=ingester_runtime"]
+        WS["WebSocket Connection<br/>(tapped crate)"]
         Parse["Parse JSON Event"]
         Resolve["Resolve associatedMedia strong refs<br/>(fetch media records from PDSes)"]
         Upsert["Upsert to Database<br/>database.rs"]
@@ -70,8 +70,8 @@ flowchart TB
     BuildRecord --> PrivateData
     PrivateData --> PrivData
     PDS --> URI
-    URI -->|"Record broadcast"| Jetstream
-    Jetstream --> Filter
+    URI -->|"Record broadcast"| Tap
+    Tap --> Filter
     Filter -->|"JSON event stream"| WS
     WS --> Parse
     Parse --> Resolve
@@ -99,9 +99,10 @@ flowchart TB
 | Occurrence Routes | `crates/observing-appview/src/routes/occurrences/` |
 | OAuth Routes | `crates/observing-appview/src/routes/oauth.rs` |
 | Data Enrichment | `crates/observing-appview/src/enrichment.rs` |
-| Firehose Client | `crates/jetstream-client/` |
-| Ingester DB Ops | `crates/observing-ingester/src/database.rs` |
-| Media Resolver | `crates/observing-ingester/src/media_resolver.rs` |
+| Tap Client | [`tapped`](https://crates.io/crates/tapped) (external) |
+| Ingester DB Ops | `crates/tap-ingester/src/database.rs` |
+| Media Resolver | `crates/tap-ingester/src/media_resolver.rs` |
+| Subject Resolver | `crates/tap-ingester/src/subject_resolver.rs` |
 | Shared DB Layer | `crates/observing-db/src/` |
 | Shared Record Processing | `crates/observing-db/src/processing.rs` |
 
@@ -112,8 +113,8 @@ flowchart TB
 | Frontend | User form input + files | JSON + Base64 images | Image encoding, form serialization |
 | AppView | JSON request | AT Protocol record | Media record creation on PDS, GBIF lookup, geocoding, shared record processing |
 | PDS | Record JSON | URI + CID | Cryptographic signing, storage |
-| Jetstream | PDS events | Filtered JSON stream | Collection filtering |
-| Ingester | JSON events | SQL statements | Media ref resolution, shared record processing, upsert |
+| Tap | PDS events | Filtered JSON stream | Collection-signal repo discovery, MST + signature verification, collection filtering |
+| Ingester | JSON events | SQL statements | Media ref resolution, shared record processing, upsert; cross-repo `/repos/add` for foreign subject DIDs |
 | Database | SQL | Stored rows | PostGIS point encoding, indexing |
 
 ## Services
@@ -121,7 +122,7 @@ flowchart TB
 | Service | Port | Role | DB Role |
 |---------|------|------|---------|
 | **AppView** (`observing-appview`) | 3000 | REST API, OAuth, AT Protocol client, media cache, taxonomy, frontend static files | `appview_runtime` |
-| **Ingester** (`observing-ingester`) | 8080 | Firehose consumer + backfill CLI | `ingester_runtime` |
+| **Tap-Ingester** (`tap-ingester`) | 8080 | Firehose consumer (via embedded `tap` Go binary) | `ingester_runtime` |
 | **Species-ID** (`observing-species-id`) | 3005 | BioCLIP photo → species inference | none |
 | **Migrate** (`observing-migrate`) | — (one-shot Cloud Run Job) | Runs `sqlx` migrations before service deploys | `postgres` (admin) |
 

@@ -1,0 +1,24 @@
+[package]
+name = "observing-backfill"
+version = "0.1.0"
+edition = "2021"
+description = "One-shot AT Protocol record backfill for Observ.ing"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+atproto-identity = { path = "../atproto-identity" }
+observing-db = { path = "../observing-db", features = ["processing"] }
+
+tokio = { workspace = true }
+sqlx = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { version = "4", features = ["derive"] }
+
+[[bin]]
+name = "observing-backfill"
+path = "src/main.rs"

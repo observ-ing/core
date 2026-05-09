@@ -9,10 +9,6 @@
 //!   to an existing Tap instance. Useful for local dev where Tap is
 //!   already running in Docker.
 //!
-//! Writes events into the same `ingester` schema observing-ingester uses.
-//! Idempotent upserts on `(uri, cid)` mean both ingesters can run
-//! side-by-side during the verification window without colliding.
-//!
 //! Required env vars (one of):
 //!   DATABASE_URL          Postgres connection string, OR
 //!   DB_HOST + DB_NAME + DB_USER + DB_PASSWORD   (Cloud SQL socket style)
@@ -26,26 +22,29 @@
 //!                         work dir; on Cloud Run it's instance-ephemeral.
 //!   PORT                  HTTP server port (default 8080).
 
+mod database;
+mod error;
+mod media_resolver;
+mod server;
 mod subject_resolver;
+mod types;
 
 use std::sync::Arc;
 
 use chrono::Utc;
 use clap::Parser;
-use jetstream_client::CommitInfo;
-use observing_ingester::{
-    server::{start_server, ServerState, SharedState},
-    types::{
-        RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
-        LIKE_COLLECTION, OCCURRENCE_COLLECTION,
-    },
-    Database,
-};
+use database::Database;
+use serde_json::Value;
+use server::{start_server, ServerState, SharedState};
 use subject_resolver::SubjectResolver;
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
+use types::{
+    RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
+    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+};
 
 #[derive(Parser)]
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]
@@ -129,8 +128,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let mut should_ack = true;
         match &received.event {
             Event::Identity(_) => {
-                // Identity events don't write to ingester schema — observing-ingester
-                // doesn't process them either. Ack and move on.
+                // Identity events don't write to ingester schema.
             }
             Event::Record(record) => {
                 if process_record(&db, record, &state).await.is_err() {
@@ -139,8 +137,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     // the ack so the redelivered event finds the FK target
                     // in the DB after Tap finishes backfilling. Otherwise
                     // (subject already tracked, or no subject) ack and move
-                    // on — matches observing-ingester's "log and continue"
-                    // behavior on FK violations from deleted-record refs.
+                    // on so we don't retry-loop on records pointing at
+                    // genuinely-deleted occurrences.
                     let added_new_did = match record_json(record) {
                         Some(json) => subject_resolver
                             .ensure_subject_tracked(&json)
@@ -168,13 +166,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     state.write().await.connected = false;
     warn!("tap channel closed");
-    // _process drops here, sending SIGTERM to the embedded Tap.
     Ok(())
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
-/// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle observing-ingester
-/// uses for Cloud SQL socket connections.
+/// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle the existing
+/// services use for Cloud SQL socket connections.
 fn resolve_database_url() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(url) = std::env::var("DATABASE_URL") {
         return Ok(url);
@@ -228,29 +225,39 @@ async fn process_record(
             _ => unreachable!(),
         }
     } else {
-        let commit = build_commit(record, &uri)?;
+        let Some(record_value) = record_json(record) else {
+            warn!(%uri, "record event without parseable JSON; skipping");
+            return Ok(());
+        };
+        let cid = record.cid.as_deref().unwrap_or("");
+        let now = Utc::now();
 
-        // Like records are filtered to occurrence-subjects only — same predicate
-        // as observing-ingester.
-        if collection == LIKE_COLLECTION {
-            let is_occurrence_like = commit
-                .record
-                .as_ref()
-                .and_then(|r| r.get("subject"))
-                .and_then(|s| s.get("uri"))
-                .and_then(|u| u.as_str())
-                .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
-            if !is_occurrence_like {
-                return Ok(());
-            }
+        // Like records are filtered to occurrence-subjects only.
+        if collection == LIKE_COLLECTION && !subject_uri_is_occurrence(&record_value) {
+            return Ok(());
         }
 
         match collection {
-            OCCURRENCE_COLLECTION => db.upsert_occurrence(&commit).await,
-            IDENTIFICATION_COLLECTION => db.upsert_identification(&commit).await,
-            COMMENT_COLLECTION => db.upsert_comment(&commit).await,
-            INTERACTION_COLLECTION => db.upsert_interaction(&commit).await,
-            LIKE_COLLECTION => db.upsert_like(&commit).await,
+            OCCURRENCE_COLLECTION => {
+                db.upsert_occurrence(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            IDENTIFICATION_COLLECTION => {
+                db.upsert_identification(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            COMMENT_COLLECTION => {
+                db.upsert_comment(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            INTERACTION_COLLECTION => {
+                db.upsert_interaction(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            LIKE_COLLECTION => {
+                db.upsert_like(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
             _ => unreachable!(),
         }
     };
@@ -275,9 +282,6 @@ async fn process_record(
             Ok(())
         }
         Err(e) => {
-            // Caller decides whether to retry / call subject_resolver / etc.
-            // Return the error so it can do that. Stats counter is bumped
-            // here — callers don't see the event_type after this returns.
             state.write().await.stats.errors += 1;
             error!(%uri, error = %e, "{} {} failed", event_type, action);
             Err(e.into())
@@ -285,33 +289,19 @@ async fn process_record(
     }
 }
 
-/// Tap delivers events without a per-event timestamp; observing-db's
-/// processing module needs *some* time, and falls back to `record.createdAt`
-/// when present. Receipt time matches the firehose delivery semantics
-/// observing-ingester uses, so we pass that.
-fn build_commit(record: &RecordEvent, uri: &str) -> Result<CommitInfo, Box<dyn std::error::Error>> {
-    let record_json = match record.record_as_str() {
-        Some(s) => Some(serde_json::from_str(s)?),
-        None => None,
-    };
-    Ok(CommitInfo {
-        did: record.did.clone(),
-        collection: record.collection.clone(),
-        rkey: record.rkey.clone(),
-        uri: uri.to_string(),
-        cid: record.cid.clone().unwrap_or_default(),
-        operation: action_to_str(record.action).to_string(),
-        seq: 0,
-        time: Utc::now(),
-        record: record_json,
-    })
+fn subject_uri_is_occurrence(record: &Value) -> bool {
+    record
+        .get("subject")
+        .and_then(|s| s.get("uri"))
+        .and_then(|u| u.as_str())
+        .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION))
 }
 
 fn format_uri(record: &RecordEvent) -> String {
     format!("at://{}/{}/{}", record.did, record.collection, record.rkey)
 }
 
-fn record_json(record: &RecordEvent) -> Option<serde_json::Value> {
+fn record_json(record: &RecordEvent) -> Option<Value> {
     record
         .record_as_str()
         .and_then(|s| serde_json::from_str(s).ok())

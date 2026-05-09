@@ -6,9 +6,9 @@
 flowchart TB
     User([Browser])
     PDS[Bluesky PDS]
-    JS[Jetstream firehose]
+    JS[Tap firehose<br/>indigo cmd/tap, embedded in tap-ingester]
     AV[observing-appview<br/>DB_USER=appview_runtime]
-    IG[observing-ingester<br/>DB_USER=ingester_runtime]
+    IG[tap-ingester<br/>DB_USER=ingester_runtime]
     MIG[observing-migrate<br/>Cloud Run Job<br/>DB_USER=postgres]
     SID[species-id]
 
@@ -42,7 +42,7 @@ flowchart TB
     MIG -. "DDL (one-shot, pre-deploy)" .-> DB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — the ingester runs as `ingester_runtime` (CRUD on `ingester` schema, `SELECT` on `appview.oauth_sessions` for the backfill `--all` binary, and `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
+Writes to lexicon data flow **user → appview → PDS → Tap → tap-ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — `tap-ingester` runs as `ingester_runtime` (CRUD on `ingester` schema, `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
 
 ## Project Structure
 
@@ -50,12 +50,14 @@ Top-level service crates (each builds a deployable binary):
 
 ```
 crates/
-├── observing-appview/      # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
-├── observing-ingester/     # AT Protocol firehose consumer (Rust)
-├── observing-migrate/      # One-shot DB migration runner (Cloud Run Job)
-└── observing-species-id/   # BioCLIP photo → species identification service (Rust + ONNX)
+├── observing-appview/         # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
+├── tap-ingester/              # AT Protocol firehose consumer; spawns and manages an embedded `tap` Go binary (Rust)
+├── observing-migrate/         # One-shot DB migration runner (Cloud Run Job)
+├── observing-species-id/      # BioCLIP photo → species identification service (Rust + ONNX)
+├── observing-backfill/        # One-shot CLI for seeding records from a PDS
+└── observing-resolve-taxa/    # Background worker that fills accepted_taxon_key on identifications
 
-frontend/                   # Web UI (Vite + React + MapLibre GL)
+frontend/                      # Web UI (Vite + React + MapLibre GL)
 ```
 
 Supporting library crates (not separately deployed) are omitted for brevity — see `Cargo.toml` for the full workspace.
@@ -86,14 +88,15 @@ Unified Rust/Axum server handling all backend concerns:
 - **Data Enrichment** - Profile resolution, community IDs, image URLs, effective taxonomy
 - **Record Processing** - Uses shared `observing-db` processing module for consistent record-to-DB conversion
 
-### Ingester (`crates/observing-ingester/`)
+### Tap-Ingester (`crates/tap-ingester/`)
 
-Rust service that monitors the AT Protocol firehose.
+Rust service that monitors the AT Protocol firehose via [Tap](https://github.com/bluesky-social/indigo/tree/main/cmd/tap).
 
-- **Firehose** - WebSocket client subscribing to the AT Protocol relay
-- **Event Processing** - Handles occurrence, identification, comment, interaction, and like records
-- **Record Processing** - Uses shared `observing-db` processing module (same conversion logic as appview)
-- **Built with** - Tokio, SQLx
+- **Firehose** - WebSocket client (`tapped`) connecting to an embedded `tap` Go binary that the service spawns and manages as a child process. Tap subscribes to a relay in collection-signal mode and delivers MST-verified, signature-checked events.
+- **Event Processing** - Handles occurrence, identification, comment, interaction, and like records.
+- **Record Processing** - Uses shared `observing-db` processing module (same conversion logic as appview).
+- **Cross-repo Resolution** - Identifications/comments/likes referencing occurrences on a DID Tap isn't tracking trigger a `/repos/add` to the embedded Tap; the event ack is suppressed so the redelivered record lands after the foreign repo's backfill completes.
+- **Built with** - Tokio, SQLx, tapped.
 
 ### Frontend (`frontend/`)
 

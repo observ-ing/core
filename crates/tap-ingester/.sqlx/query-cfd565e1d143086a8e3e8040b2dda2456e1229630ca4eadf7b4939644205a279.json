@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO oauth_sessions (key, value)\n        VALUES ($1, $2)\n        ON CONFLICT (key) DO UPDATE SET value = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cfd565e1d143086a8e3e8040b2dda2456e1229630ca4eadf7b4939644205a279"
+}

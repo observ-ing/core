@@ -131,8 +131,9 @@ Service names: `appview`, `frontend`, `ingester`, `species-id`
 # AppView (REST API + OAuth + media cache + GBIF taxonomy + static files on port 3000)
 cargo run -p observing-appview
 
-# Ingester (firehose consumer)
-cargo run -p observing-ingester
+# Ingester (firehose consumer; spawns the upstream `tap` binary,
+# which must be on PATH or in the working directory)
+cargo run -p tap-ingester
 
 # Frontend dev server (serves frontend if `npm run build` hasn't been run)
 npm run dev

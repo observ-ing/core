@@ -26,11 +26,15 @@ processes:
       appview:
         condition: process_healthy
 
-  ingester:
-    command: cargo run --bin observing-ingester
-    working_dir: crates/observing-ingester
+  tap-ingester:
+    command: cargo run -p tap-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
+      - PORT=8090
+    # tap-ingester spawns the upstream `tap` binary as a child process; for
+    # local dev you'll need to either build it from indigo source or run
+    # this against a separately-running Tap (set TAP_URL in your shell to
+    # skip spawn-inline mode).
 
   species-id:
     command: cargo run -p observing-species-id

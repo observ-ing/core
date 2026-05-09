@@ -1,0 +1,65 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT n.id, n.recipient_did, n.actor_did, n.kind, n.subject_uri, n.reference_uri,\n                   (r.notification_id IS NOT NULL) AS \"read!: bool\",\n                   n.created_at as \"created_at: DateTime<Utc>\"\n            FROM ingester.notifications n\n            LEFT JOIN appview.notification_reads r ON r.notification_id = n.id\n            WHERE n.recipient_did = $1\n            ORDER BY n.id DESC\n            LIMIT $2\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "recipient_did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "actor_did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "kind",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "subject_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "reference_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "read!: bool",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null,
+      false
+    ]
+  },
+  "hash": "d1b7ed4e4c6111704aed426029cb837833651f0bfc9828577bdaf19f861057c9"
+}

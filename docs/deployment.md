@@ -9,8 +9,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 | Service | Build arg | Public | Cloud SQL | DB role | Notes |
 |---------|-----------|--------|-----------|---------|-------|
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
-| observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | `ingester_runtime` | min-instances=1 (always running) |
-| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Side-by-side with observing-ingester during the migration verification window. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. SQLite state at `/data/tap.db` is instance-ephemeral. min-instances=1 / max-instances=1. |
+| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. SQLite state at `/data/tap.db` is instance-ephemeral. min-instances=1 / max-instances=1. |
 | observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification (2 CPU, 8 GiB, cpu-boost, min-instances=1) |
 
 ### Jobs
@@ -72,18 +71,6 @@ MAX_CACHE_SIZE=...            # Optional, bytes
 CACHE_TTL_SECS=...            # Optional, seconds
 ```
 
-### Ingester (`ingester_runtime`)
-
-```bash
-PORT=8080
-JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe
-
-DB_HOST=/cloudsql/<project>:<region>:observing-db
-DB_NAME=observing
-DB_USER=ingester_runtime
-DB_PASSWORD=<secret: observing-db-ingester-password>
-```
-
 ### Tap-Ingester (`ingester_runtime`)
 
 ```bash
@@ -105,12 +92,10 @@ DB_PASSWORD=<secret: observing-db-ingester-password>
 # TAP_DATABASE_URL=postgres://...
 ```
 
-Writes the same `ingester` schema as observing-ingester. Idempotent
-upserts on `(uri, cid)` so dual writes during the verification window
-are harmless. Cross-repo identifications fail their FK against
-`occurrences.uri` until observing-ingester or `bin/backfill.rs` seeds
-the referenced occurrence — same gap observing-ingester's live path
-has today.
+Writes the `ingester` schema. Cross-repo identifications referencing
+occurrences on DIDs Tap hasn't backfilled yet trigger a `/repos/add`
+call to the embedded Tap and skip the ack so the redelivered event
+lands after backfill completes.
 
 ### Species-ID
 
@@ -142,7 +127,7 @@ memberships persist at the Cloud SQL instance level (so you can't undo
 
 ```bash
 # 1. Pause the writer.
-gcloud run services update observing-ingester --region=us-central1 --min-instances=0
+gcloud run services update tap-ingester --region=us-central1 --min-instances=0
 
 # 2. Connect via the Cloud SQL proxy as superuser.
 gcloud auth application-default login   # if ADC is stale
@@ -164,7 +149,7 @@ SQL
 gcloud run jobs execute observing-migrate --region=us-central1 --wait
 
 # 4. Bounce both services so they pick up fresh connections.
-gcloud run services update observing-ingester --region=us-central1 --min-instances=1 --update-env-vars=BOUNCE=$(date +%s)
+gcloud run services update tap-ingester --region=us-central1 --min-instances=1 --update-env-vars=BOUNCE=$(date +%s)
 gcloud run services update observing-appview  --region=us-central1 --update-env-vars=BOUNCE=$(date +%s)
 
 # 5. Stop the proxy.

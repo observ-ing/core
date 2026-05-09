@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO occurrences (\n            uri, cid, did, scientific_name, event_date, location,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom,\n            created_at\n        ) VALUES (\n            $1, $2, $3, $4, $5,\n            ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,\n            $8, $9, $10,\n            $11, $12, $13, $14\n        )\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = $2,\n            scientific_name = $4,\n            event_date = $5,\n            location = ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,\n            coordinate_uncertainty_meters = $8,\n            associated_media = COALESCE($9, occurrences.associated_media),\n            recorded_by = COALESCE($10, occurrences.recorded_by),\n            taxon_id = COALESCE($11, occurrences.taxon_id),\n            taxon_rank = COALESCE($12, occurrences.taxon_rank),\n            kingdom = COALESCE($13, occurrences.kingdom),\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz",
+        "Float8",
+        "Float8",
+        "Int4",
+        "Jsonb",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "22e3160e2349d76bf609a4957a370858fc3fbff17446464fb01bf5421f2370dc"
+}

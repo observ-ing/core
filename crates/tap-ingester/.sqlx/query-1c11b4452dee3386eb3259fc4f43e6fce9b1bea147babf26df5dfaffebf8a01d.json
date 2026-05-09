@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT subject_uri, COUNT(*)::int as count\n        FROM likes\n        WHERE subject_uri = ANY($1)\n        GROUP BY subject_uri\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "subject_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "count",
+        "type_info": "Int4"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "1c11b4452dee3386eb3259fc4f43e6fce9b1bea147babf26df5dfaffebf8a01d"
+}

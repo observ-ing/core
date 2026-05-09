@@ -9,22 +9,24 @@ license = "MIT OR Apache-2.0"
 # Tap client wrapper — handles WebSocket + ack handshake + reconnection.
 tapped = { workspace = true }
 
-# Reuse the existing record dispatcher, media resolver, types, and HTTP server.
-observing-ingester = { path = "../observing-ingester" }
-
-# Database write path — same processing module observing-ingester uses.
+# Database write path — record dispatch goes through observing-db's
+# `processing` module to share parsing logic with the appview write path.
 observing-db = { path = "../observing-db", features = ["processing"] }
 
-# Database::upsert_* methods on the shared crate take &CommitInfo. tap-ingester
-# constructs a CommitInfo from each tapped::RecordEvent. That coupling will go
-# away when PR-C decommissions observing-ingester.
-jetstream-client = { path = "../jetstream-client" }
+# associatedMedia strong-ref → blob resolution
+atproto-identity = { path = "../atproto-identity" }
+at-uri-parser = { path = "../at-uri-parser" }
+atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 
 # Async runtime
 tokio = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
+
+# HTTP server (for /health + dashboard)
+axum = { workspace = true }
+tower-http = { workspace = true }
 
 # Serialization
 serde = { workspace = true }
@@ -40,6 +42,16 @@ chrono = { workspace = true }
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
+
+# HTTP client (media resolver fetches records from PDSes)
+reqwest = { workspace = true }
+
+# URL utilities
+url = { workspace = true }
+urlencoding = { workspace = true }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
 
 [[bin]]
 name = "tap-ingester"

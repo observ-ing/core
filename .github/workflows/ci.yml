@@ -250,7 +250,7 @@ jobs:
           tool: sqlx-cli
           no-default-features: true
           features: postgres
-      - working-directory: crates/observing-ingester
+      - working-directory: crates/tap-ingester
         run: cargo sqlx prepare --check
 
   rust-lexicons-check:
@@ -303,7 +303,7 @@ jobs:
       - name: Run database migrations
         run: for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
       - name: Backfill from PDS
-        run: cargo run --bin backfill -- did:plc:jh6n3ntljfhhtr4jbvrm3k5b
+        run: cargo run -p observing-backfill -- did:plc:jh6n3ntljfhhtr4jbvrm3k5b
 
   # End-to-end tests
   e2e:
@@ -346,14 +346,19 @@ jobs:
         run: npm run build
       - name: Build appview
         run: cargo build -p observing-appview
-      - name: Build ingester
-        run: cargo build -p observing-ingester --bin observing-ingester
+      - name: Build backfill
+        run: cargo build -p observing-backfill --bin observing-backfill
+      # Seed the test database from PDS so e2e tests have data to read.
+      # Replaces the previous "start the firehose ingester and let it
+      # populate" flow — tap-ingester would require a Tap binary which
+      # we don't bundle into the e2e environment.
+      - name: Seed test data from PDS
+        run: ./target/debug/observing-backfill did:plc:jh6n3ntljfhhtr4jbvrm3k5b > /tmp/seed.log 2>&1
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Start services
         run: |
           PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
-          PORT=8090 ./target/debug/observing-ingester > /tmp/ingester.log 2>&1 &
       - name: Wait for services
         run: |
           for i in $(seq 1 60); do
@@ -374,8 +379,8 @@ jobs:
           echo "===== appview log ====="
           tail -200 /tmp/appview.log || true
           echo
-          echo "===== ingester log ====="
-          tail -200 /tmp/ingester.log || true
+          echo "===== seed log ====="
+          tail -200 /tmp/seed.log || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -394,7 +399,6 @@ jobs:
       matrix:
         service:
           - observing-appview
-          - observing-ingester
           - observing-species-id
           - observing-migrate
           - tap-ingester
@@ -483,25 +487,10 @@ jobs:
             --region=$REGION \
             --wait
 
-      - name: Deploy ingester
-        run: |
-          gcloud run deploy observing-ingester \
-            --image=$REGISTRY/observing-ingester:latest \
-            --region=$REGION \
-            --allow-unauthenticated \
-            --cpu=1 \
-            --memory=2Gi \
-            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
-            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
-            --min-instances=1 \
-            --max-instances=1 \
-            --timeout=3600
-
-      # Side-by-side with observing-ingester during the verification window.
-      # Bundles its own `tap` binary spawned as a child process; SQLite state
-      # at /data/tap.db is instance-ephemeral (Tap re-discovers + re-backfills
-      # on instance restart, which is fine for current scale).
+      # Sole firehose-driven ingester. Bundles the upstream `tap` Go binary
+      # spawned as a child process; SQLite state at /data/tap.db is
+      # instance-ephemeral (Tap re-discovers + re-backfills on instance
+      # restart, which is fine for current scale).
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \

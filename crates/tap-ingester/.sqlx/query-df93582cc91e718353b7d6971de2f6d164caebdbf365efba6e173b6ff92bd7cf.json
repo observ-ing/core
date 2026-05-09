@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO occurrence_private_data (uri, exact_location, geoprivacy, effective_geoprivacy)\n        VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, $4, $4)\n        ON CONFLICT (uri) DO UPDATE SET\n            exact_location = ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,\n            geoprivacy = $4,\n            effective_geoprivacy = $4,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Float8",
+        "Float8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df93582cc91e718353b7d6971de2f6d164caebdbf365efba6e173b6ff92bd7cf"
+}

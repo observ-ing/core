@@ -111,7 +111,7 @@ pub async fn create_occurrence(
     )?;
 
     // Create AT Protocol record. The firehose event that follows will trigger
-    // observing-ingester to parse the same record into DB rows — we no longer
+    // the tap-ingester to parse the same record into DB rows — we no longer
     // do that here, so there is a single writer for the occurrences and
     // associated media state.
     let resp =
