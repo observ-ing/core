@@ -10,7 +10,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 |---------|-----------|--------|-----------|---------|-------|
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
 | observing-ingester | `SERVICE=observing-ingester` | Yes | Yes | `ingester_runtime` | min-instances=1 (always running) |
-| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Side-by-side with observing-ingester during the migration verification window. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. SQLite state at `/data/tap.db` is instance-ephemeral. min-instances=1 / max-instances=1. |
+| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Side-by-side with observing-ingester during the migration verification window. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. |
 | observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification (2 CPU, 8 GiB, cpu-boost, min-instances=1) |
 
 ### Jobs
@@ -100,8 +100,16 @@ DB_PASSWORD=<secret: observing-db-ingester-password>
 # TAP_URL=http://localhost:2480
 # TAP_ADMIN_PASSWORD=<secret>
 
-# Optional: backing DB for the embedded Tap. Defaults to
-# `sqlite:///data/tap.db` (instance-ephemeral).
+# Optional: backing DB for the embedded Tap.
+#
+# When unset (the production default), tap-ingester derives a Postgres
+# URL from the same DB_HOST/DB_NAME/DB_USER/DB_PASSWORD vars used for
+# the app DB and appends `options=-c search_path=tap`, so Tap's tables
+# land in the dedicated `tap` schema. State persists across deploys.
+#
+# When neither TAP_DATABASE_URL nor DB_HOST is set, falls back to
+# `sqlite:///data/tap.db` (instance-ephemeral). Set explicitly to
+# override either default.
 # TAP_DATABASE_URL=postgres://...
 ```
 
@@ -153,6 +161,7 @@ PGPASSWORD=$(python3 -c "import urllib.parse,sys; print(urllib.parse.urlparse(sy
 BEGIN;
 DROP SCHEMA IF EXISTS appview CASCADE;
 DROP SCHEMA IF EXISTS ingester CASCADE;
+DROP SCHEMA IF EXISTS tap CASCADE;
 DROP SCHEMA IF EXISTS public CASCADE;
 CREATE SCHEMA public;
 GRANT ALL ON SCHEMA public TO postgres;
