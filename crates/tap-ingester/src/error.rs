@@ -1,21 +1,19 @@
-//! Error types for the Observ.ing ingester
+//! Error types for tap-ingester.
 
 use std::fmt;
 
 #[derive(Debug)]
 pub enum IngesterError {
-    Jetstream(jetstream_client::JetstreamError),
     Database(Box<sqlx::Error>),
-    CborDecode(String),
+    Decode(String),
     Config(String),
 }
 
 impl fmt::Display for IngesterError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            IngesterError::Jetstream(err) => write!(f, "Jetstream error: {}", err),
             IngesterError::Database(err) => write!(f, "Database error: {}", err),
-            IngesterError::CborDecode(msg) => write!(f, "CBOR decode error: {}", msg),
+            IngesterError::Decode(msg) => write!(f, "Decode error: {}", msg),
             IngesterError::Config(msg) => write!(f, "Configuration error: {}", msg),
         }
     }
@@ -24,16 +22,9 @@ impl fmt::Display for IngesterError {
 impl std::error::Error for IngesterError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
-            IngesterError::Jetstream(err) => Some(err),
             IngesterError::Database(err) => Some(err.as_ref()),
             _ => None,
         }
-    }
-}
-
-impl From<jetstream_client::JetstreamError> for IngesterError {
-    fn from(err: jetstream_client::JetstreamError) -> Self {
-        IngesterError::Jetstream(err)
     }
 }
 
@@ -45,7 +36,7 @@ impl From<sqlx::Error> for IngesterError {
 
 impl From<serde_json::Error> for IngesterError {
     fn from(err: serde_json::Error) -> Self {
-        IngesterError::CborDecode(err.to_string())
+        IngesterError::Decode(err.to_string())
     }
 }
 
@@ -68,9 +59,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_cbor_decode_error_display() {
-        let err = IngesterError::CborDecode("invalid format".to_string());
-        assert_eq!(format!("{}", err), "CBOR decode error: invalid format");
+    fn test_decode_error_display() {
+        let err = IngesterError::Decode("invalid format".to_string());
+        assert_eq!(format!("{}", err), "Decode error: invalid format");
     }
 
     #[test]
@@ -84,8 +75,8 @@ mod tests {
 
     #[test]
     fn test_error_is_debug() {
-        let err = IngesterError::CborDecode("x".to_string());
+        let err = IngesterError::Decode("x".to_string());
         let debug_str = format!("{:?}", err);
-        assert!(debug_str.contains("CborDecode"));
+        assert!(debug_str.contains("Decode"));
     }
 }

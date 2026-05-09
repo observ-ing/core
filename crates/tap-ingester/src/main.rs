@@ -9,10 +9,6 @@
 //!   to an existing Tap instance. Useful for local dev where Tap is
 //!   already running in Docker.
 //!
-//! Writes events into the same `ingester` schema observing-ingester uses.
-//! Idempotent upserts on `(uri, cid)` mean both ingesters can run
-//! side-by-side during the verification window without colliding.
-//!
 //! Required env vars (one of):
 //!   DATABASE_URL          Postgres connection string, OR
 //!   DB_HOST + DB_NAME + DB_USER + DB_PASSWORD   (Cloud SQL socket style)
@@ -38,25 +34,28 @@
 //!   GET /api/tap-stats     Tap-side counts, buffers, cursors (JSON).
 
 mod dashboard;
+mod database;
+mod error;
+mod media_resolver;
+mod server;
+mod types;
 
 use std::sync::Arc;
 
 use chrono::Utc;
 use clap::Parser;
 use dashboard::DashboardState;
-use jetstream_client::CommitInfo;
-use observing_ingester::{
-    server::{ServerState, SharedState},
-    types::{
-        RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
-        LIKE_COLLECTION, OCCURRENCE_COLLECTION,
-    },
-    Database,
-};
+use database::Database;
+use serde_json::Value;
+use server::{ServerState, SharedState};
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
+use types::{
+    RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
+    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
+};
 
 #[derive(Parser)]
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]
@@ -129,6 +128,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(pw) = admin_password.as_deref() {
                 builder = builder.admin_password(pw.to_string());
             }
+            // tapped defaults Tap's stdio to /dev/null. In CI we want
+            // Tap's startup logs visible so failures are debuggable.
+            if std::env::var("TAP_INHERIT_STDIO").is_ok() {
+                builder = builder.inherit_stdio(true);
+            }
             let process = TapProcess::spawn_default(builder.build()).await?;
             let client = process.client()?;
             (Some(process), client)
@@ -146,30 +150,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     info!("tap channel connected");
 
     while let Ok(received) = channel.recv().await {
-        let mut should_ack = true;
-        match &received.event {
-            Event::Identity(_) => {
-                // Identity events don't write to ingester schema — observing-ingester
-                // doesn't process them either. Ack and move on.
+        if let Event::Record(record) = &received.event {
+            if let Err(e) = process_record(&db, record, &state).await {
+                // Drop FK-failing or otherwise-bad records on the floor —
+                // ack and move on. Skipping the ack and waiting for Tap
+                // to redeliver only works if there's a path for the
+                // record to eventually succeed; with no cross-repo
+                // resolver in this crate yet, identifications referencing
+                // occurrences on untracked DIDs would loop forever and
+                // saturate the queue ahead of records that *would*
+                // succeed. Cross-repo recovery is tracked separately.
+                error!(uri = %format_uri(record), "process_record failed: {}", e);
+                state.write().await.stats.errors += 1;
             }
-            Event::Record(record) => {
-                if let Err(e) = process_record(&db, record, &state).await {
-                    error!(uri = %format_uri(record), "process_record failed: {}", e);
-                    state.write().await.stats.errors += 1;
-                    // Skip ack so Tap redelivers after retry-timeout. tapped's
-                    // AckGuard is private, so leaking the ReceivedEvent is the
-                    // only way to suppress the auto-ack-on-drop.
-                    should_ack = false;
-                }
-            }
-            // tapped::Event is #[non_exhaustive]; ignore future variants.
-            _ => {}
         }
-        if should_ack {
-            drop(received);
-        } else {
-            std::mem::forget(received);
-        }
+        // Identity events and any future #[non_exhaustive] tapped::Event
+        // variants are dropped (ack via Drop) without further handling.
+        drop(received);
     }
 
     state.write().await.connected = false;
@@ -208,9 +205,6 @@ fn resolve_tap_database_url() -> String {
     let name = std::env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
     let user = std::env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
     let password = std::env::var("DB_PASSWORD").unwrap_or_default();
-    // `-csearch_path%3Dtap` is libpq's `options` form, URL-encoded:
-    // `-c search_path=tap`. Standard pg drivers (including the one Tap
-    // links) honor it on session start.
     if host.starts_with("/cloudsql/") {
         format!(
             "postgresql://{user}:{password}@localhost/{name}?host={host}&options=-c%20search_path%3Dtap"
@@ -224,8 +218,8 @@ fn resolve_tap_database_url() -> String {
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
-/// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle observing-ingester
-/// uses for Cloud SQL socket connections.
+/// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle the existing
+/// services use for Cloud SQL socket connections.
 fn resolve_database_url() -> Result<String, Box<dyn std::error::Error>> {
     if let Ok(url) = std::env::var("DATABASE_URL") {
         return Ok(url);
@@ -279,29 +273,39 @@ async fn process_record(
             _ => unreachable!(),
         }
     } else {
-        let commit = build_commit(record, &uri)?;
+        let Some(record_value) = record_json(record) else {
+            warn!(%uri, "record event without parseable JSON; skipping");
+            return Ok(());
+        };
+        let cid = record.cid.as_deref().unwrap_or("");
+        let now = Utc::now();
 
-        // Like records are filtered to occurrence-subjects only — same predicate
-        // as observing-ingester.
-        if collection == LIKE_COLLECTION {
-            let is_occurrence_like = commit
-                .record
-                .as_ref()
-                .and_then(|r| r.get("subject"))
-                .and_then(|s| s.get("uri"))
-                .and_then(|u| u.as_str())
-                .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION));
-            if !is_occurrence_like {
-                return Ok(());
-            }
+        // Like records are filtered to occurrence-subjects only.
+        if collection == LIKE_COLLECTION && !subject_uri_is_occurrence(&record_value) {
+            return Ok(());
         }
 
         match collection {
-            OCCURRENCE_COLLECTION => db.upsert_occurrence(&commit).await,
-            IDENTIFICATION_COLLECTION => db.upsert_identification(&commit).await,
-            COMMENT_COLLECTION => db.upsert_comment(&commit).await,
-            INTERACTION_COLLECTION => db.upsert_interaction(&commit).await,
-            LIKE_COLLECTION => db.upsert_like(&commit).await,
+            OCCURRENCE_COLLECTION => {
+                db.upsert_occurrence(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            IDENTIFICATION_COLLECTION => {
+                db.upsert_identification(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            COMMENT_COLLECTION => {
+                db.upsert_comment(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            INTERACTION_COLLECTION => {
+                db.upsert_interaction(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
+            LIKE_COLLECTION => {
+                db.upsert_like(&record.did, &uri, cid, now, &record_value)
+                    .await
+            }
             _ => unreachable!(),
         }
     };
@@ -310,6 +314,7 @@ async fn process_record(
     if let Err(e) = result {
         error!(%uri, error = %e, "{} {} failed", event_type, action);
         s.stats.errors += 1;
+        Err(e.into())
     } else {
         match event_type {
             "occurrence" => s.stats.occurrences += 1,
@@ -325,34 +330,26 @@ async fn process_record(
             uri,
             time: Utc::now(),
         });
+        Ok(())
     }
-    Ok(())
 }
 
-/// Tap delivers events without a per-event timestamp; observing-db's
-/// processing module needs *some* time, and falls back to `record.createdAt`
-/// when present. Receipt time matches the firehose delivery semantics
-/// observing-ingester uses, so we pass that.
-fn build_commit(record: &RecordEvent, uri: &str) -> Result<CommitInfo, Box<dyn std::error::Error>> {
-    let record_json = match record.record_as_str() {
-        Some(s) => Some(serde_json::from_str(s)?),
-        None => None,
-    };
-    Ok(CommitInfo {
-        did: record.did.clone(),
-        collection: record.collection.clone(),
-        rkey: record.rkey.clone(),
-        uri: uri.to_string(),
-        cid: record.cid.clone().unwrap_or_default(),
-        operation: action_to_str(record.action).to_string(),
-        seq: 0,
-        time: Utc::now(),
-        record: record_json,
-    })
+fn subject_uri_is_occurrence(record: &Value) -> bool {
+    record
+        .get("subject")
+        .and_then(|s| s.get("uri"))
+        .and_then(|u| u.as_str())
+        .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION))
 }
 
 fn format_uri(record: &RecordEvent) -> String {
     format!("at://{}/{}/{}", record.did, record.collection, record.rkey)
+}
+
+fn record_json(record: &RecordEvent) -> Option<Value> {
+    record
+        .record_as_str()
+        .and_then(|s| serde_json::from_str(s).ok())
 }
 
 fn action_to_str(action: RecordAction) -> &'static str {

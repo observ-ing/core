@@ -9,16 +9,14 @@ license = "MIT OR Apache-2.0"
 # Tap client wrapper — handles WebSocket + ack handshake + reconnection.
 tapped = { workspace = true }
 
-# Reuse the existing record dispatcher, media resolver, types, and HTTP server.
-observing-ingester = { path = "../observing-ingester" }
-
-# Database write path — same processing module observing-ingester uses.
+# Database write path (shared processing module).
 observing-db = { path = "../observing-db", features = ["processing"] }
+observing-lexicons = { path = "../observing-lexicons" }
 
-# Database::upsert_* methods on the shared crate take &CommitInfo. tap-ingester
-# constructs a CommitInfo from each tapped::RecordEvent. That coupling will go
-# away when PR-C decommissions observing-ingester.
-jetstream-client = { path = "../jetstream-client" }
+# Media resolver: AT URI parsing + DID → PDS resolution + HTTP fetch.
+at-uri-parser = { path = "../at-uri-parser" }
+atproto-blob-resolver = { path = "../atproto-blob-resolver" }
+atproto-identity = { path = "../atproto-identity" }
 
 # Async runtime
 tokio = { workspace = true }
@@ -26,6 +24,9 @@ tokio = { workspace = true }
 # HTTP server (combined ingester + Tap status dashboard).
 axum = { workspace = true }
 tower-http = { workspace = true }
+
+# HTTP client used by the media resolver
+reqwest = { workspace = true }
 
 # Database
 sqlx = { workspace = true }
@@ -44,6 +45,10 @@ chrono = { workspace = true }
 
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
+
+# URL utilities (used by media resolver)
+url = { workspace = true }
+urlencoding = { workspace = true }
 
 [[bin]]
 name = "tap-ingester"

@@ -1,7 +1,7 @@
 # Multi-service Dockerfile
 #
 # Build any service:
-#   docker build --build-arg SERVICE=observing-ingester -t observing-ingester .
+#   docker build --build-arg SERVICE=tap-ingester -t tap-ingester .
 #   docker build --build-arg SERVICE=observing-appview -t observing-appview .
 #
 # For appview (which includes a frontend), the frontend stage runs
@@ -13,7 +13,7 @@
 # spawns it as a child process at runtime.
 #
 # Supported SERVICE values:
-#   observing-appview, observing-ingester, observing-species-id, observing-migrate, tap-ingester
+#   observing-appview, observing-species-id, observing-migrate, tap-ingester
 
 ARG SERVICE=observing-appview
 
@@ -129,18 +129,6 @@ ENV PORT=3000
 ENV PUBLIC_PATH=/app/public
 EXPOSE 3000
 CMD ["/app/observing-appview"]
-
-# ---------------------------------------------------------------------------
-# Stage: runtime for ingester
-# ---------------------------------------------------------------------------
-FROM runtime-base AS runtime-observing-ingester
-
-COPY --from=builder /app/target/release/observing-ingester /app/observing-ingester
-
-ENV RUST_LOG=observing_ingester=info
-ENV PORT=8080
-EXPOSE 8080
-CMD ["/app/observing-ingester"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for tap-ingester

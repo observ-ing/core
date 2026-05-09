@@ -1,12 +1,15 @@
-//! Database layer for the Observ.ing ingester
+//! Database write path.
 //!
-//! Delegates record parsing to the shared `observing-db` processing module
-//! and uses `observing-db` for SQL execution.
+//! Delegates record parsing to the shared `observing-db` processing
+//! module and uses `observing-db` for SQL execution. Methods take
+//! scalar params (did, uri, cid, time, record JSON) rather than a
+//! firehose-coupled `CommitInfo` struct.
 
 use crate::error::Result;
 use crate::media_resolver::MediaResolver;
-use jetstream_client::CommitInfo;
+use chrono::{DateTime, Utc};
 use observing_db::processing;
+use serde_json::Value;
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use tracing::{debug, info, warn};
 
@@ -43,41 +46,25 @@ async fn notify_occurrence_owner(
     }
 }
 
-/// Extract the record JSON from a commit, or return `Ok(())` with a warning if missing.
-macro_rules! require_record {
-    ($commit:expr, $kind:expr) => {
-        match &$commit.record {
-            Some(v) => v,
-            None => {
-                warn!(uri = %$commit.uri, "Skipping {} without record", $kind);
-                return Ok(());
-            }
-        }
-    };
-}
-
-/// Process a record via a `processing::*_from_json` call, returning `Ok(())` with a warning on
-/// parse failure.
+/// Run a `processing::*_from_json` call, returning `Ok(())` with a warning on parse failure.
 macro_rules! process_or_warn {
-    ($commit:expr, $method:ident, $label:literal, $($arg:expr),* $(,)?) => {
+    ($uri:expr, $method:ident, $label:literal, $($arg:expr),* $(,)?) => {
         match processing::$method($($arg),*) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %$commit.uri, error = %e, "Failed to process {} record", $label);
+                warn!(uri = %$uri, error = %e, "Failed to process {} record", $label);
                 return Ok(());
             }
         }
     };
 }
 
-/// Database connection and operations
 pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
 }
 
 impl Database {
-    /// Connect to the database
     pub async fn connect(database_url: &str) -> Result<Self> {
         info!("Connecting to database...");
         let pool = PgPoolOptions::new()
@@ -93,21 +80,25 @@ impl Database {
         })
     }
 
-    /// Upsert an occurrence record
-    pub async fn upsert_occurrence(&self, commit: &CommitInfo) -> Result<()> {
-        debug!("Upserting occurrence: {}", commit.uri);
-
-        let record_json = require_record!(commit, "occurrence");
+    pub async fn upsert_occurrence(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        time: DateTime<Utc>,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting occurrence: {}", uri);
 
         let mut parsed = process_or_warn!(
-            commit,
+            uri,
             occurrence_from_json,
             "occurrence",
-            record_json,
-            commit.uri.clone(),
-            commit.cid.clone(),
-            commit.did.clone(),
-            commit.time,
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+            time,
         );
 
         // Resolve associatedMedia strong refs → media records → blob entries.
@@ -132,177 +123,140 @@ impl Database {
         Ok(())
     }
 
-    /// Delete an occurrence record
     pub async fn delete_occurrence(&self, uri: &str) -> Result<()> {
         debug!("Deleting occurrence: {}", uri);
         observing_db::occurrences::delete(&self.pool, uri).await?;
         Ok(())
     }
 
-    /// Upsert an identification record.
-    ///
     /// Identifications are written with `accepted_taxon_key = NULL`. The
-    /// `resolve_taxa` background job picks up unresolved rows on its next
-    /// pass and stamps them — keeping ingest decoupled from GBIF
-    /// availability and ingest latency independent of the upstream's.
-    pub async fn upsert_identification(&self, commit: &CommitInfo) -> Result<()> {
-        debug!("Upserting identification: {}", commit.uri);
-
-        let record_json = require_record!(commit, "identification");
+    /// `observing-resolve-taxa` background worker picks up unresolved rows
+    /// on its next pass and stamps them — keeping ingest decoupled from
+    /// GBIF availability and ingest latency independent of the upstream's.
+    pub async fn upsert_identification(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        time: DateTime<Utc>,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting identification: {}", uri);
 
         let params = process_or_warn!(
-            commit,
+            uri,
             identification_from_json,
             "identification",
-            record_json,
-            commit.uri.clone(),
-            commit.cid.clone(),
-            commit.did.clone(),
-            commit.time,
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+            time,
         );
 
         observing_db::identifications::upsert(&self.pool, &params).await?;
-        notify_occurrence_owner(
-            &self.pool,
-            &commit.did,
-            "identification",
-            &params.subject_uri,
-            &commit.uri,
-        )
-        .await;
+        notify_occurrence_owner(&self.pool, did, "identification", &params.subject_uri, uri).await;
         Ok(())
     }
 
-    /// Delete an identification record
     pub async fn delete_identification(&self, uri: &str) -> Result<()> {
         debug!("Deleting identification: {}", uri);
         observing_db::identifications::delete(&self.pool, uri).await?;
         Ok(())
     }
 
-    /// Upsert a comment record
-    pub async fn upsert_comment(&self, commit: &CommitInfo) -> Result<()> {
-        debug!("Upserting comment: {}", commit.uri);
-
-        let record_json = require_record!(commit, "comment");
+    pub async fn upsert_comment(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        time: DateTime<Utc>,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting comment: {}", uri);
 
         let params = process_or_warn!(
-            commit,
+            uri,
             comment_from_json,
             "comment",
-            record_json,
-            commit.uri.clone(),
-            commit.cid.clone(),
-            commit.did.clone(),
-            commit.time,
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+            time,
         );
 
         observing_db::comments::upsert(&self.pool, &params).await?;
-        notify_occurrence_owner(
-            &self.pool,
-            &commit.did,
-            "comment",
-            &params.subject_uri,
-            &commit.uri,
-        )
-        .await;
+        notify_occurrence_owner(&self.pool, did, "comment", &params.subject_uri, uri).await;
         Ok(())
     }
 
-    /// Delete a comment record
     pub async fn delete_comment(&self, uri: &str) -> Result<()> {
         debug!("Deleting comment: {}", uri);
         observing_db::comments::delete(&self.pool, uri).await?;
         Ok(())
     }
 
-    /// Upsert an interaction record
-    pub async fn upsert_interaction(&self, commit: &CommitInfo) -> Result<()> {
-        debug!("Upserting interaction: {}", commit.uri);
-
-        let record_json = require_record!(commit, "interaction");
+    pub async fn upsert_interaction(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        time: DateTime<Utc>,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting interaction: {}", uri);
 
         let params = process_or_warn!(
-            commit,
+            uri,
             interaction_from_json,
             "interaction",
-            record_json,
-            commit.uri.clone(),
-            commit.cid.clone(),
-            commit.did.clone(),
-            commit.time,
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+            time,
         );
 
         observing_db::interactions::upsert(&self.pool, &params).await?;
         Ok(())
     }
 
-    /// Delete an interaction record
     pub async fn delete_interaction(&self, uri: &str) -> Result<()> {
         debug!("Deleting interaction: {}", uri);
         observing_db::interactions::delete(&self.pool, uri).await?;
         Ok(())
     }
 
-    /// Upsert a like record
-    pub async fn upsert_like(&self, commit: &CommitInfo) -> Result<()> {
-        debug!("Upserting like: {}", commit.uri);
-
-        let record_json = require_record!(commit, "like");
+    pub async fn upsert_like(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        time: DateTime<Utc>,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting like: {}", uri);
 
         let params = process_or_warn!(
-            commit,
+            uri,
             like_from_json,
             "like",
-            record_json,
-            commit.uri.clone(),
-            commit.cid.clone(),
-            commit.did.clone(),
-            commit.time,
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+            time,
         );
 
         observing_db::likes::create(&self.pool, &params).await?;
-        notify_occurrence_owner(
-            &self.pool,
-            &commit.did,
-            "like",
-            &params.subject_uri,
-            &commit.uri,
-        )
-        .await;
+        notify_occurrence_owner(&self.pool, did, "like", &params.subject_uri, uri).await;
         Ok(())
     }
 
-    /// Delete a like record
     pub async fn delete_like(&self, uri: &str) -> Result<()> {
         debug!("Deleting like: {}", uri);
         observing_db::likes::delete(&self.pool, uri).await?;
-        Ok(())
-    }
-
-    /// Get the saved cursor for resumption
-    pub async fn get_cursor(&self) -> Result<Option<i64>> {
-        let row = sqlx::query!("SELECT value FROM ingester_state WHERE key = 'cursor'")
-            .fetch_optional(&self.pool)
-            .await?;
-        Ok(row.and_then(|r| r.value.parse::<i64>().ok()))
-    }
-
-    /// Save the cursor for resumption
-    pub async fn save_cursor(&self, cursor: i64) -> Result<()> {
-        let cursor_str = cursor.to_string();
-        sqlx::query!(
-            r#"
-            INSERT INTO ingester_state (key, value, updated_at)
-            VALUES ('cursor', $1, NOW())
-            ON CONFLICT (key) DO UPDATE SET
-                value = EXCLUDED.value,
-                updated_at = NOW()
-            "#,
-            cursor_str
-        )
-        .execute(&self.pool)
-        .await?;
         Ok(())
     }
 }

@@ -2289,19 +2289,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jetstream-client"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "futures-util",
- "serde",
- "serde_json",
- "tokio",
- "tokio-tungstenite 0.29.0",
- "tracing",
-]
-
-[[package]]
 name = "jni"
 version = "0.22.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2914,34 +2901,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "observing-ingester"
-version = "0.1.0"
-dependencies = [
- "at-uri-parser",
- "atproto-blob-resolver",
- "atproto-identity",
- "axum",
- "chrono",
- "clap",
- "jetstream-client",
- "observing-db",
- "observing-lexicons",
- "observing-taxonomy-gbif",
- "reqwest 0.13.3",
- "serde",
- "serde_json",
- "sqlx",
- "tokio",
- "tower",
- "tower-http",
- "tracing",
- "tracing-stackdriver",
- "tracing-subscriber",
- "url",
- "urlencoding",
-]
-
-[[package]]
 name = "observing-lexicons"
 version = "0.1.0"
 dependencies = [
@@ -2957,6 +2916,20 @@ name = "observing-migrate"
 version = "0.1.0"
 dependencies = [
  "observing-db",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-stackdriver",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "observing-resolve-taxa"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "observing-db",
+ "observing-taxonomy-gbif",
  "sqlx",
  "tokio",
  "tracing",
@@ -4752,12 +4725,15 @@ checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 name = "tap-ingester"
 version = "0.1.0"
 dependencies = [
+ "at-uri-parser",
+ "atproto-blob-resolver",
+ "atproto-identity",
  "axum",
  "chrono",
  "clap",
- "jetstream-client",
  "observing-db",
- "observing-ingester",
+ "observing-lexicons",
+ "reqwest 0.13.3",
  "serde",
  "serde_json",
  "sqlx",
@@ -4767,6 +4743,8 @@ dependencies = [
  "tracing",
  "tracing-stackdriver",
  "tracing-subscriber",
+ "url",
+ "urlencoding",
 ]
 
 [[package]]
@@ -4783,9 +4761,9 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.18",
  "tokio",
- "tokio-tungstenite 0.28.0",
+ "tokio-tungstenite",
  "tracing",
- "tungstenite 0.28.0",
+ "tungstenite",
  "url",
 ]
 
@@ -4988,21 +4966,7 @@ dependencies = [
  "rustls-pki-types",
  "tokio",
  "tokio-rustls",
- "tungstenite 0.28.0",
-]
-
-[[package]]
-name = "tokio-tungstenite"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f72a05e828585856dacd553fba484c242c46e391fb0e58917c942ee9202915c"
-dependencies = [
- "futures-util",
- "log",
- "native-tls",
- "tokio",
- "tokio-native-tls",
- "tungstenite 0.29.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -5223,23 +5187,6 @@ dependencies = [
  "sha1",
  "thiserror 2.0.18",
  "utf-8",
-]
-
-[[package]]
-name = "tungstenite"
-version = "0.29.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c01152af293afb9c7c2a57e4b559c5620b421f6d133261c60dd2d0cdb38e6b8"
-dependencies = [
- "bytes",
- "data-encoding",
- "http",
- "httparse",
- "log",
- "native-tls",
- "rand 0.9.4",
- "sha1",
- "thiserror 2.0.18",
 ]
 
 [[package]]

@@ -250,8 +250,7 @@ jobs:
           tool: sqlx-cli
           no-default-features: true
           features: postgres
-      - working-directory: crates/observing-ingester
-        run: cargo sqlx prepare --check
+      - run: cargo sqlx prepare --workspace --check
 
   rust-lexicons-check:
     runs-on: ubuntu-latest
@@ -276,34 +275,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
-
-  # Backfill: fetch real PDS records, parse, and write to a test database
-  backfill:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgis/postgis:16-3.4
-        env:
-          POSTGRES_DB: observing
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-      - uses: Swatinem/rust-cache@v2
-      - name: Run database migrations
-        run: for f in crates/observing-db/migrations/*.sql; do psql $DATABASE_URL -f "$f"; done
-      - name: Backfill from PDS
-        run: cargo run --bin backfill -- did:plc:jh6n3ntljfhhtr4jbvrm3k5b
 
   # End-to-end tests
   e2e:
@@ -346,22 +317,75 @@ jobs:
         run: npm run build
       - name: Build appview
         run: cargo build -p observing-appview
-      - name: Build ingester
-        run: cargo build -p observing-ingester --bin observing-ingester
+      - name: Build tap-ingester
+        run: cargo build -p tap-ingester --bin tap-ingester
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      - name: Build and install upstream `tap`
+        # Same indigo commit the production Dockerfile pins.
+        env:
+          INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
+        run: |
+          mkdir -p /tmp/indigo && cd /tmp/indigo
+          git init . >/dev/null
+          git remote add origin https://github.com/bluesky-social/indigo.git
+          git fetch --depth 1 origin "$INDIGO_REV"
+          git checkout FETCH_HEAD
+          GODEBUG=netdns=go go build -tags timetzdata -o /usr/local/bin/tap ./cmd/tap
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Start services
+        env:
+          # tap-ingester's default is sqlite:///data/tap.db (a Cloud Run
+          # container path); point at a local file in CI instead. Note
+          # the three-slash form is what Tap's pg/sqlite parser expects
+          # for an absolute filesystem path.
+          TAP_DATABASE_URL: sqlite:///tmp/tap.db
+          # Surface Tap's stdout/stderr alongside tap-ingester's so
+          # startup failures are debuggable; tapped defaults this to
+          # /dev/null.
+          TAP_INHERIT_STDIO: '1'
         run: |
           PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
-          PORT=8090 ./target/debug/observing-ingester > /tmp/ingester.log 2>&1 &
-      - name: Wait for services
+          PORT=8090 ./target/debug/tap-ingester > /tmp/tap-ingester.log 2>&1 &
+      - name: Wait for appview
         run: |
           for i in $(seq 1 60); do
             curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
             sleep 2
           done
-          echo "Services failed to start"
+          echo "appview failed to start"
           exit 1
+      - name: Wait for tap-ingester (Tap channel connected)
+        # tap-ingester's /health reports `connected: true` only after
+        # spawn_default + tap.channel().await have succeeded. Generous
+        # budget — Tap's first-run sqlite migration + relay subscribe
+        # can take a while on a cold runner.
+        run: |
+          for i in $(seq 1 120); do
+            if curl -sf http://127.0.0.1:8090/health 2>/dev/null | grep -q '"connected":true'; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "tap-ingester never became channel-connected"
+          curl -s http://127.0.0.1:8090/health || true
+          exit 1
+      - name: Pre-warm Tap with the test DID
+        # Tap discovers DIDs from the firehose signal-collection but the
+        # round-trip is too slow for a cold CI run. Add the test DID
+        # directly so Tap immediately backfills + forwards the user's
+        # records. /repos/add talks to the embedded Tap on its localhost
+        # admin port.
+        env:
+          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
+        run: |
+          DID=$(curl -sf "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=$BLUESKY_TEST_HANDLE" | python3 -c "import json,sys; print(json.load(sys.stdin)['did'])")
+          echo "Test DID: $DID"
+          curl -sf -X POST -H 'Content-Type: application/json' \
+            -d "{\"dids\":[\"$DID\"]}" \
+            http://127.0.0.1:2480/repos/add
       - name: Run integration & e2e tests
         run: npm run test
         env:
@@ -374,8 +398,8 @@ jobs:
           echo "===== appview log ====="
           tail -200 /tmp/appview.log || true
           echo
-          echo "===== ingester log ====="
-          tail -200 /tmp/ingester.log || true
+          echo "===== tap-ingester log ====="
+          tail -200 /tmp/tap-ingester.log || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -394,7 +418,6 @@ jobs:
       matrix:
         service:
           - observing-appview
-          - observing-ingester
           - observing-species-id
           - observing-migrate
           - tap-ingester
@@ -483,25 +506,6 @@ jobs:
             --region=$REGION \
             --wait
 
-      - name: Deploy ingester
-        run: |
-          gcloud run deploy observing-ingester \
-            --image=$REGISTRY/observing-ingester:latest \
-            --region=$REGION \
-            --allow-unauthenticated \
-            --cpu=1 \
-            --memory=2Gi \
-            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=observing_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,JETSTREAM_URL=wss://jetstream2.us-east.bsky.network/subscribe \
-            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
-            --min-instances=1 \
-            --max-instances=1 \
-            --timeout=3600
-
-      # Side-by-side with observing-ingester during the verification window.
-      # Bundles its own `tap` binary spawned as a child process; SQLite state
-      # at /data/tap.db is instance-ephemeral (Tap re-discovers + re-backfills
-      # on instance restart, which is fine for current scale).
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \

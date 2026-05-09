@@ -14,15 +14,15 @@
 //!                          cursors, fetched from the embedded Tap on
 //!                          loopback (JSON).
 
+use crate::{
+    server::SharedState,
+    types::{IngesterStats, RecentEvent},
+};
 use axum::{
     extract::State,
     response::{Html, Json},
     routing::get,
     Router,
-};
-use observing_ingester::{
-    server::SharedState,
-    types::{IngesterStats, RecentEvent},
 };
 use serde::Serialize;
 use std::sync::Arc;
