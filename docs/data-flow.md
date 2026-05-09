@@ -166,7 +166,7 @@ Tap (`indigo cmd/tap`) creates and manages its own tables here on first connect;
 |-------|-------------|------------|---------|
 | `occurrence_private_data` | Exact coordinates (geoprivacy) | AppView | AppView |
 | `notification_reads` | Per-user read-state for notifications | AppView | AppView |
-| `oauth_sessions` | Persistent user sessions | AppView | AppView, Ingester (SELECT for `backfill --all`) |
+| `oauth_sessions` | Persistent user sessions | AppView | AppView |
 | `oauth_state` | Temporary PKCE flow state | AppView | AppView |
 
 ### Shared reference (schema `public`)
