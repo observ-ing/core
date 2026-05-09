@@ -26,30 +26,28 @@
 //!                         work dir; on Cloud Run it's instance-ephemeral.
 //!   PORT                  HTTP server port (default 8080).
 //!
-//! HTTP routes:
-//!   /                     Stats dashboard (occurrences, identifications, etc.).
-//!   /health, /api/stats   Cloud Run health check + JSON stats feed.
-//!   /tap, /tap/*          Reverse proxy to the embedded Tap admin UI on
-//!                         127.0.0.1:2480. Auth headers pass through; Tap's
-//!                         TAP_ADMIN_PASSWORD is the gate.
+//! HTTP routes (see `dashboard` module for handlers):
+//!   GET /                  Combined ingester + Tap status page.
+//!   GET /health            Cloud Run liveness probe (JSON).
+//!   GET /api/stats         Ingester counters (JSON).
+//!   GET /api/tap-stats     Tap-side counts, buffers, cursors (JSON).
 
-mod tap_proxy;
+mod dashboard;
 
 use std::sync::Arc;
 
-use axum::routing::any;
 use chrono::Utc;
 use clap::Parser;
+use dashboard::DashboardState;
 use jetstream_client::CommitInfo;
 use observing_ingester::{
-    server::{create_router, ServerState, SharedState},
+    server::{ServerState, SharedState},
     types::{
         RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
         LIKE_COLLECTION, OCCURRENCE_COLLECTION,
     },
     Database,
 };
-use tap_proxy::TapProxy;
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
@@ -79,16 +77,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let state: SharedState = Arc::new(RwLock::new(ServerState::new()));
 
-    // Tap admin reverse-proxy target. When TAP_URL is set we point at it;
-    // otherwise the embedded Tap binds to localhost on its default port.
-    let tap_admin_url =
-        std::env::var("TAP_URL").unwrap_or_else(|_| "http://127.0.0.1:2480".to_string());
+    // Tap-side state for the dashboard. Initially empty; `OnceCell::set`
+    // lands once Tap has been spawned/connected below. The HTTP server
+    // can run before that — `/api/tap-stats` reports "not yet initialized"
+    // until the cell is populated.
+    let tap_cell: Arc<tokio::sync::OnceCell<TapClient>> = Arc::new(tokio::sync::OnceCell::new());
 
-    // Spawn HTTP server immediately so Cloud Run health checks pass.
-    let http_state = state.clone();
-    let tap_proxy_state = TapProxy::new(tap_admin_url);
+    // Spawn HTTP server immediately so Cloud Run TCP startup probe passes.
+    let dash_state = DashboardState {
+        ingester: state.clone(),
+        tap: tap_cell.clone(),
+    };
     tokio::spawn(async move {
-        if let Err(e) = serve_http(http_state, tap_proxy_state, port).await {
+        if let Err(e) = serve_http(dash_state, port).await {
             error!("HTTP server error: {}", e);
         }
     });
@@ -132,6 +133,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
 
+    // Make the TapClient visible to the dashboard's `/api/tap-stats`
+    // endpoint. `set` returns Err if already set; that can't happen here
+    // (we run this once), so .ok() the result.
+    tap_cell.set(tap.clone()).ok();
+
     info!("connecting to tap channel");
     let mut channel = tap.channel().await?;
     state.write().await.connected = true;
@@ -170,15 +176,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-/// Compose the dashboard router (from observing-ingester) with the /tap/*
-/// reverse proxy and serve the result. The proxy routes use their own
-/// `TapProxy` state, so we build them as a sub-router and nest it.
-async fn serve_http(state: SharedState, proxy: TapProxy, port: u16) -> std::io::Result<()> {
-    let proxy_router = axum::Router::new()
-        .route("/", any(tap_proxy::proxy_root))
-        .route("/{*path}", any(tap_proxy::proxy))
-        .with_state(proxy);
-    let router = create_router(state).nest("/tap", proxy_router);
+async fn serve_http(state: DashboardState, port: u16) -> std::io::Result<()> {
+    let router = dashboard::router(state);
     let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
     info!("Starting HTTP server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
