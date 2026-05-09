@@ -23,6 +23,9 @@ flowchart TB
       subgraph PUB["schema: public"]
         PUB_TBL["sensitive_species,<br/>spatial_ref_sys"]
       end
+      subgraph TAP["schema: tap"]
+        TAP_TBL["Tap-managed tables<br/>(tracked DIDs, cursors,<br/>retry queues — auto-created<br/>by the upstream tap binary)"]
+      end
     end
 
     User -- HTTP --> AV

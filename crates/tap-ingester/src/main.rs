@@ -21,9 +21,14 @@
 //!   TAP_URL               If set, skip spawning Tap and connect to this URL.
 //!   TAP_ADMIN_PASSWORD    Basic auth password (passed to spawned Tap or used
 //!                         when connecting to an existing one).
-//!   TAP_DATABASE_URL      Backing DB for the embedded Tap. Default
-//!                         `sqlite:///data/tap.db`. /data is the Dockerfile
-//!                         work dir; on Cloud Run it's instance-ephemeral.
+//!   TAP_DATABASE_URL      Backing DB for the embedded Tap. If unset and
+//!                         DB_HOST is set (production), tap-ingester
+//!                         derives a Postgres URL from the same DB_*
+//!                         vars used for the app database, with
+//!                         `search_path=tap` so Tap's tables land in
+//!                         their own schema. If neither is set,
+//!                         falls back to `sqlite:///data/tap.db`
+//!                         (instance-ephemeral on Cloud Run).
 //!   PORT                  HTTP server port (default 8080).
 //!
 //! HTTP routes (see `dashboard` module for handlers):
@@ -113,10 +118,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(_) => {
             info!("spawning embedded tap process");
             let mut builder = TapConfig::builder()
-                .database_url(
-                    std::env::var("TAP_DATABASE_URL")
-                        .unwrap_or_else(|_| "sqlite:///data/tap.db".to_string()),
-                )
+                .database_url(resolve_tap_database_url())
                 .signal_collection(OCCURRENCE_COLLECTION)
                 .collection_filter(OCCURRENCE_COLLECTION)
                 .collection_filter(IDENTIFICATION_COLLECTION)
@@ -182,6 +184,43 @@ async fn serve_http(state: DashboardState, port: u16) -> std::io::Result<()> {
     info!("Starting HTTP server on {}", addr);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     axum::serve(listener, router).await
+}
+
+/// Backing DB URL for the embedded Tap.
+///
+/// Precedence:
+/// 1. `TAP_DATABASE_URL` if set — explicit override (e.g. local dev
+///    pointing at a separate sqlite file).
+/// 2. `DB_HOST` set → derive a Postgres URL from the same env vars
+///    `resolve_database_url` uses for the app DB, plus
+///    `options=-c search_path=tap` so Tap's tables land in the `tap`
+///    schema instead of `public`. This is the production path.
+/// 3. Fallback `sqlite:///data/tap.db` — instance-ephemeral, only
+///    relevant when nothing about Postgres is configured (early local
+///    dev with just `DATABASE_URL`).
+fn resolve_tap_database_url() -> String {
+    if let Ok(url) = std::env::var("TAP_DATABASE_URL") {
+        return url;
+    }
+    let Ok(host) = std::env::var("DB_HOST") else {
+        return "sqlite:///data/tap.db".to_string();
+    };
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
+    let user = std::env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
+    let password = std::env::var("DB_PASSWORD").unwrap_or_default();
+    // `-csearch_path%3Dtap` is libpq's `options` form, URL-encoded:
+    // `-c search_path=tap`. Standard pg drivers (including the one Tap
+    // links) honor it on session start.
+    if host.starts_with("/cloudsql/") {
+        format!(
+            "postgresql://{user}:{password}@localhost/{name}?host={host}&options=-c%20search_path%3Dtap"
+        )
+    } else {
+        let port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
+        format!(
+            "postgresql://{user}:{password}@{host}:{port}/{name}?options=-c%20search_path%3Dtap"
+        )
+    }
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
