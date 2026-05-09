@@ -19,7 +19,7 @@ use crate::state::AppState;
 pub fn router(state: AppState) -> Router {
     let mut admin = axum_admin::Admin::new(state.pool.clone());
     for meta in KNOWN_TABLES {
-        admin = admin.table(meta.name, |t| t);
+        admin = admin.table(meta.schema, meta.name, |t| t);
     }
     admin
         .into_router("/admin/browse")
