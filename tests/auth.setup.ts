@@ -60,8 +60,12 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   // 8. Wait for redirect back to our app
   await page.waitForURL(/127\.0\.0\.1/, { timeout: 30000 });
 
-  // 9. Verify we're authenticated — the sidebar should show the test user
-  await expect(page.getByText(`@${handle}`).first()).toBeVisible({ timeout: 10000 });
+  // 9. Verify we're authenticated — the avatar/menu button is the only
+  // login indicator reliably rendered post-OAuth. `@handle` only appears
+  // inside the (closed) account-menu popover, so checking it here is racy.
+  await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+    timeout: 10000,
+  });
 
   // 10. Fetch user info from /oauth/me
   const userInfo = await page.evaluate(async () => {
