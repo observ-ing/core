@@ -6,37 +6,44 @@
 flowchart TB
     User([Browser])
     PDS[Bluesky PDS]
-    JS[Jetstream firehose]
+    Relay[AT Protocol relay]
     AV[observing-appview<br/>DB_USER=appview_runtime]
-    IG[observing-ingester<br/>DB_USER=ingester_runtime]
+
+    subgraph TAPING["tap-ingester (Cloud Run, DB_USER=ingester_runtime)"]
+      direction TB
+      TAP[Tap<br/>indigo cmd/tap<br/>spawned as child process]
+      TAPRS[Rust event consumer<br/>writes ingester schema]
+      TAP -- "WS /channel<br/>(loopback)" --> TAPRS
+    end
+
     MIG[observing-migrate<br/>Cloud Run Job<br/>DB_USER=postgres]
     SID[species-id]
 
     subgraph DB["Postgres + PostGIS"]
       direction LR
       subgraph ING["schema: ingester"]
-        ING_TBL["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes, notifications,<br/>ingester_state, community_ids"]
+        ING_TBL["occurrences, occurrence_observers,<br/>identifications, comments,<br/>interactions, likes, notifications,<br/>community_ids"]
       end
       subgraph APPV["schema: appview"]
         APPV_TBL["occurrence_private_data,<br/>notification_reads,<br/>oauth_sessions, oauth_state"]
       end
+      subgraph TAP_SCHEMA["schema: tap"]
+        TAP_TBL["Tap-managed tables<br/>(tracked DIDs, cursors,<br/>retry queues — auto-created<br/>by the upstream tap binary,<br/>search_path=tap)"]
+      end
       subgraph PUB["schema: public"]
         PUB_TBL["sensitive_species,<br/>spatial_ref_sys"]
-      end
-      subgraph TAP["schema: tap"]
-        TAP_TBL["Tap-managed tables<br/>(tracked DIDs, cursors,<br/>retry queues — auto-created<br/>by the upstream tap binary)"]
       end
     end
 
     User -- HTTP --> AV
     AV -- "putRecord / deleteRecord" --> PDS
-    PDS -- commits --> JS
-    JS -- "WSS subscribe" --> IG
+    PDS -- commits --> Relay
+    Relay -- "MST sync" --> TAP
     AV -- species-id --> SID
 
-    IG == "READ+WRITE" ==> ING
-    IG -- "READ-ONLY<br/>(backfill reads oauth_sessions)" --> APPV
-    IG -- "READ-ONLY" --> PUB
+    TAPRS == "READ+WRITE" ==> ING
+    TAP == "READ+WRITE" ==> TAP_SCHEMA
+    TAPRS -- "READ-ONLY" --> PUB
 
     AV -- "READ-ONLY" --> ING
     AV == "READ+WRITE" ==> APPV
@@ -45,7 +52,7 @@ flowchart TB
     MIG -. "DDL (one-shot, pre-deploy)" .-> DB
 ```
 
-Writes to lexicon data flow **user → appview → PDS → Jetstream → ingester → DB**; the appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — the ingester runs as `ingester_runtime` (CRUD on `ingester` schema, `SELECT` on `appview.oauth_sessions` for the backfill `--all` binary, and `SELECT` on `public.sensitive_species`), and the appview runs as `appview_runtime`.
+Writes to lexicon data flow **user → appview → PDS → Tap → tap-ingester → DB**. Tap (`indigo cmd/tap`) is bundled into the tap-ingester container and spawned as a child process; it does an MST/signature-verified sync against the user's PDS, then forwards events to the Rust consumer over a loopback WebSocket. Tap's own state — the tracked-DID list, cursor positions, and retry queues — lives in a dedicated `tap` schema on the same Cloud SQL instance the app uses, with `search_path=tap` so Tap's auto-created tables don't collide with anything else. The appview never writes to the `ingester` schema. OAuth state, private location, and per-user notification read-state live in the `appview` schema, where the appview has full CRUD. When a user marks a notification as read, the appview inserts into `appview.notification_reads` — at query time the notifications list LEFT JOINs against it to produce the `read` flag. Migrations run as a one-shot `observing-migrate` Cloud Run Job executed by CI *before* services are deployed; that job is the only thing that ever connects as the `postgres` superuser. No long-running service holds admin credentials — tap-ingester runs as `ingester_runtime` (CRUD on `ingester` schema, `USAGE`/`CREATE` on the `tap` schema for Tap's own tables, `SELECT` on `public.sensitive_species`) and the appview runs as `appview_runtime`.
 
 ## Project Structure
 
@@ -54,7 +61,7 @@ Top-level service crates (each builds a deployable binary):
 ```
 crates/
 ├── observing-appview/      # Unified REST API + OAuth + media cache + taxonomy + static serving (Rust/Axum)
-├── observing-ingester/     # AT Protocol firehose consumer (Rust)
+├── tap-ingester/           # AT Protocol firehose consumer; bundles + spawns the upstream `tap` Go binary (Rust)
 ├── observing-migrate/      # One-shot DB migration runner (Cloud Run Job)
 └── observing-species-id/   # BioCLIP photo → species identification service (Rust + ONNX)
 
@@ -89,14 +96,16 @@ Unified Rust/Axum server handling all backend concerns:
 - **Data Enrichment** - Profile resolution, community IDs, image URLs, effective taxonomy
 - **Record Processing** - Uses shared `observing-db` processing module for consistent record-to-DB conversion
 
-### Ingester (`crates/observing-ingester/`)
+### Tap-Ingester (`crates/tap-ingester/`)
 
-Rust service that monitors the AT Protocol firehose.
+Rust service driven by [Tap](https://github.com/bluesky-social/indigo/tree/main/cmd/tap), the official AT Protocol verified-sync utility. Tap is bundled into the container image and spawned as a child process; tap-ingester talks to it over loopback WebSocket.
 
-- **Firehose** - WebSocket client subscribing to the AT Protocol relay
+- **Firehose** - Tap subscribes to the AT Protocol relay, performs MST + signature verification per commit, and re-emits clean events to tap-ingester via the `tapped` Rust client
 - **Event Processing** - Handles occurrence, identification, comment, interaction, and like records
+- **Tap state** - Tap manages its own tracked-DID list, cursors, and retry queues in the dedicated `tap` Postgres schema (persistent across deploys)
+- **HTTP surface** - `/` serves a combined ingester + Tap status dashboard; `/api/stats` and `/api/tap-stats` expose JSON; `/health` is the Cloud Run liveness probe
 - **Record Processing** - Uses shared `observing-db` processing module (same conversion logic as appview)
-- **Built with** - Tokio, SQLx
+- **Built with** - Tokio, SQLx, `tapped`
 
 ### Frontend (`frontend/`)
 

@@ -31,15 +31,17 @@ flowchart TB
     end
 
     subgraph Firehose["AT Protocol Network"]
-        Jetstream["Jetstream<br/>wss://jetstream2.us-east.bsky.network"]
-        Filter["Wanted collections:<br/>• bio.lexicons.temp.v0-1.occurrence<br/>• bio.lexicons.temp.v0-1.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
+        Relay["AT Protocol relay"]
+        Filter["Signal collection:<br/>• bio.lexicons.temp.v0-1.occurrence<br/><br/>Plus collection filters:<br/>• bio.lexicons.temp.v0-1.identification<br/>• ing.observ.temp.comment<br/>• ing.observ.temp.interaction<br/>• ing.observ.temp.like"]
     end
 
-    subgraph Ingester["Ingester (Rust) — DB_USER=ingester_runtime"]
-        WS["WebSocket Connection<br/>(jetstream-client crate)"]
-        Parse["Parse JSON Event"]
-        Resolve["Resolve associatedMedia strong refs<br/>(fetch media records from PDSes)"]
+    subgraph TapIng["tap-ingester (Rust) — DB_USER=ingester_runtime"]
+        Tap["Tap (indigo cmd/tap)<br/>spawned child process<br/>MST + signature verification"]
+        WS["Loopback WebSocket<br/>(tapped crate)"]
+        Parse["Decode RecordEvent"]
+        Resolve["Resolve cross-repo subjects<br/>(/repos/add for unknown DIDs)"]
         Upsert["Upsert to Database<br/>database.rs"]
+        Tap --> WS
     end
 
     subgraph Database["PostgreSQL + PostGIS"]
@@ -49,8 +51,10 @@ flowchart TB
             Comments["comments, likes, interactions"]
             Observers["occurrence_observers"]
             Notifications["notifications"]
-            Cursor["ingester_state"]
             Matview["community_ids (matview)"]
+        end
+        subgraph TapSchema["schema: tap"]
+            TapState["Tap-managed tables<br/>(tracked DIDs, cursors,<br/>retry queues)"]
         end
         subgraph AppvSchema["schema: appview"]
             PrivData["occurrence_private_data"]
@@ -70,24 +74,27 @@ flowchart TB
     BuildRecord --> PrivateData
     PrivateData --> PrivData
     PDS --> URI
-    URI -->|"Record broadcast"| Jetstream
-    Jetstream --> Filter
-    Filter -->|"JSON event stream"| WS
+    URI -->|"Record broadcast"| Relay
+    Relay --> Tap
+    Tap --> Filter
+    Filter -->|"verified events"| WS
     WS --> Parse
     Parse --> Resolve
     Resolve --> Upsert
     Upsert --> Occurrences
     Upsert --> Observers
-    WS -->|"Save cursor every 30s"| Cursor
+    Tap -- "session state" --> TapState
 
     %% Response flow
     URI -.->|"Response: { uri, cid }"| API
     API -.->|"Response to frontend"| Modal
 ```
 
-**Key insight:** All writes to lexicon-derived tables flow through the AT Protocol firehose. The appview writes the record on the user's PDS, then the ingester picks it up from Jetstream and writes the row. The appview holds no write grant on the `ingester` schema — this invariant is enforced at the database layer via role grants (see `20260418000000_appview_reader_grants.sql`).
+**Key insight:** Lexicon writes flow **user → appview → PDS → Tap → tap-ingester → DB**. Tap (`indigo cmd/tap`, bundled into the tap-ingester container) does MST + signature verification per commit before forwarding to the Rust consumer. The appview holds no write grant on the `ingester` schema — enforced at the DB layer via role grants (see `20260418000000_appview_reader_grants.sql`).
 
-**Visibility latency:** The appview does *not* do a direct-insert bypass for immediate visibility. Freshly created occurrences become queryable once the firehose event round-trips through Jetstream → ingester → DB (typically sub-second).
+**Tap's own state** (tracked DIDs, cursor positions, retry queues) lives in the dedicated `tap` schema on the same Postgres instance, with `search_path=tap`. State is persistent across deploys, so Tap doesn't re-backfill every active DID on restart.
+
+**Visibility latency:** The appview does *not* do a direct-insert bypass for immediate visibility. Freshly created occurrences become queryable once the firehose event round-trips through Tap → tap-ingester → DB (typically sub-second).
 
 **Shared record processing:** Both the appview (when building a record) and the ingester (when indexing one) use the shared `observing_db::processing` module to convert AT Protocol record JSON into database params, ensuring consistent field mapping.
 
@@ -99,9 +106,10 @@ flowchart TB
 | Occurrence Routes | `crates/observing-appview/src/routes/occurrences/` |
 | OAuth Routes | `crates/observing-appview/src/routes/oauth.rs` |
 | Data Enrichment | `crates/observing-appview/src/enrichment.rs` |
-| Firehose Client | `crates/jetstream-client/` |
-| Ingester DB Ops | `crates/observing-ingester/src/database.rs` |
-| Media Resolver | `crates/observing-ingester/src/media_resolver.rs` |
+| Ingester | `crates/tap-ingester/` |
+| Tap Rust client | `tapped` (crates.io) |
+| Cross-repo resolver | `crates/tap-ingester/src/subject_resolver.rs` |
+| Status dashboard | `crates/tap-ingester/src/dashboard.rs` |
 | Shared DB Layer | `crates/observing-db/src/` |
 | Shared Record Processing | `crates/observing-db/src/processing.rs` |
 
@@ -112,8 +120,8 @@ flowchart TB
 | Frontend | User form input + files | JSON + Base64 images | Image encoding, form serialization |
 | AppView | JSON request | AT Protocol record | Media record creation on PDS, GBIF lookup, geocoding, shared record processing |
 | PDS | Record JSON | URI + CID | Cryptographic signing, storage |
-| Jetstream | PDS events | Filtered JSON stream | Collection filtering |
-| Ingester | JSON events | SQL statements | Media ref resolution, shared record processing, upsert |
+| Tap | Relay commits | Verified `RecordEvent` stream | MST proof check, signature check, collection filtering |
+| tap-ingester | `RecordEvent` | SQL statements | Cross-repo subject resolution (`/repos/add` for unknown DIDs), shared record processing, upsert |
 | Database | SQL | Stored rows | PostGIS point encoding, indexing |
 
 ## Services
@@ -121,7 +129,7 @@ flowchart TB
 | Service | Port | Role | DB Role |
 |---------|------|------|---------|
 | **AppView** (`observing-appview`) | 3000 | REST API, OAuth, AT Protocol client, media cache, taxonomy, frontend static files | `appview_runtime` |
-| **Ingester** (`observing-ingester`) | 8080 | Firehose consumer + backfill CLI | `ingester_runtime` |
+| **Tap-Ingester** (`tap-ingester`) | 8080 | Verified-sync firehose consumer; bundles + spawns the upstream `tap` Go binary | `ingester_runtime` (CRUD on `ingester` schema, `USAGE`/`CREATE` on `tap` schema) |
 | **Species-ID** (`observing-species-id`) | 3005 | BioCLIP photo → species inference | none |
 | **Migrate** (`observing-migrate`) | — (one-shot Cloud Run Job) | Runs `sqlx` migrations before service deploys | `postgres` (admin) |
 
@@ -142,8 +150,15 @@ Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualif
 | `interactions` | Species interactions | Ingester | AppView |
 | `occurrence_observers` | Co-observer relationships | Ingester | AppView |
 | `notifications` | Event notifications (ID / comment / like on your observation) | Ingester | AppView (SELECT + UPDATE on `read`) |
-| `ingester_state` | Firehose cursor position | Ingester | Ingester, AppView (SELECT for diagnostics) |
 | `community_ids` (matview) | Consensus taxonomy per occurrence | Ingester (REFRESH) | AppView |
+
+### Tap-owned (schema `tap`)
+
+Tap (`indigo cmd/tap`) creates and manages its own tables here on first connect; tap-ingester only has `USAGE` + `CREATE` on the schema, not on individual tables. Tables aren't enumerated explicitly because Tap's schema is its internal contract — treat the schema as a black box.
+
+| Table set | Description | Written By | Read By |
+|-----------|-------------|------------|---------|
+| Tap-managed | Tracked DIDs, firehose cursor, retry/resync queues, repo metadata | Tap | Tap |
 
 ### AppView-owned (schema `appview`)
 
@@ -184,17 +199,23 @@ Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualif
    ├─▶ Writes exact coords to `appview.occurrence_private_data`
    │
    ▼
-4. PDS emits event to Jetstream firehose
+4. PDS commit hits the AT Protocol relay
    │
    ▼
-5. Ingester receives create event
+5. Tap (embedded in tap-ingester) verifies the commit
    │
-   ├─▶ Resolves associatedMedia strong refs → media records from author's PDS
+   ├─▶ MST proof check
+   ├─▶ Signature check
+   ├─▶ Filters to configured collections
+   │
+   ▼
+6. tap-ingester receives a verified `RecordEvent`
+   │
    ├─▶ UPSERT to `ingester.occurrences`
    ├─▶ SYNC `ingester.occurrence_observers`
    │
    ▼
-6. Data now queryable via API
+7. Data now queryable via API
 ```
 
 ### Adding an Identification
@@ -213,16 +234,16 @@ Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualif
    │  createRecord({ collection: "bio.lexicons.temp.v0-1.identification", ... })
    │
    ▼
-4. PDS emits event to Jetstream firehose
+4. PDS commit → relay → Tap (verify) → tap-ingester
    │
-   ▼
-5. Ingester receives create event
-   │
+   ├─▶ If subject occurrence belongs to a DID Tap isn't yet tracking,
+   │   tap-ingester POSTs `/repos/add` and skips the ack so the record
+   │   is redelivered after Tap finishes the cross-repo backfill
    ├─▶ UPSERT to `ingester.identifications`
    ├─▶ INSERT into `ingester.notifications` (unless self-ID)
    │
    ▼
-6. Community ID recalculated on next matview refresh
+5. Community ID recalculated on next matview refresh
 ```
 
 ### Marking a Notification as Read
@@ -241,26 +262,38 @@ Notification creation is ingester-owned; read-state is appview-owned.
 ### Firehose Ingestion
 
 ```
-Jetstream WebSocket (wss://jetstream2.us-east.bsky.network/subscribe)
+AT Protocol relay
    │
-   │  wanted_collections:
-   │  - bio.lexicons.temp.v0-1.occurrence
-   │  - bio.lexicons.temp.v0-1.identification
-   │  - ing.observ.temp.comment
-   │  - ing.observ.temp.interaction
-   │  - ing.observ.temp.like
+   ▼
+Tap (indigo cmd/tap, child process inside tap-ingester container)
+   │  signal_collection: bio.lexicons.temp.v0-1.occurrence
+   │  collection_filters:
+   │    - bio.lexicons.temp.v0-1.occurrence
+   │    - bio.lexicons.temp.v0-1.identification
+   │    - ing.observ.temp.comment
+   │    - ing.observ.temp.interaction
+   │    - ing.observ.temp.like
+   │
+   │  per commit:
+   │    - MST inclusion proof check
+   │    - signature check
+   │    - cross-repo backfill on previously-unknown DIDs
+   │
+   ▼
+Loopback WebSocket (tapped::TapClient)
    │
    ▼
 ┌─────────────────────────────────────────────────────┐
-│ Event: { did, time_us, commit: { op, collection,   │
-│          rkey, record, cid } }                      │
+│ RecordEvent { did, collection, rkey, cid, action,  │
+│               record_as_str() }                     │
 └─────────────────────────────────────────────────────┘
    │
-   ├─▶ op = "create" or "update" → UPSERT row
-   ├─▶ op = "delete" → DELETE row (cascades)
+   ├─▶ Create / Update → UPSERT row
+   ├─▶ Delete           → DELETE row (cascades)
    │
    ▼
-Every 30 seconds: Save cursor to ingester.ingester_state
+Cursor + tracked-DID list persist in schema `tap` (Postgres);
+no client-side cursor saving from tap-ingester.
 ```
 
 ## Write Patterns by Service
@@ -276,7 +309,7 @@ Every 30 seconds: Save cursor to ingester.ingester_state
 
 The appview holds **no write grant** on the `ingester` schema — enforced at the DB layer.
 
-### Ingester writes
+### tap-ingester writes
 
 | Operation | Schema.Table | Trigger |
 |-----------|--------------|---------|
@@ -287,9 +320,9 @@ The appview holds **no write grant** on the `ingester` schema — enforced at th
 | UPSERT | `ingester.likes` | Firehose like event |
 | SYNC | `ingester.occurrence_observers` | Firehose occurrence with `recordedBy` |
 | INSERT | `ingester.notifications` | On ID / comment / like where the actor ≠ occurrence owner |
-| UPDATE | `ingester.ingester_state` | Every 30 seconds (cursor) |
 | DELETE | `ingester.*` | Firehose delete event (cascades) |
 | REFRESH | `ingester.community_ids` | Periodic matview refresh |
+| (managed by Tap) | `tap.*` | Tap's internal state (DID tracking, cursor, retry queues) |
 
 ## Read Patterns
 

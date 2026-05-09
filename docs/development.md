@@ -123,7 +123,7 @@ process-compose process logs <name>
 process-compose down
 ```
 
-Service names: `appview`, `frontend`, `ingester`, `species-id`
+Service names: `appview`, `frontend`, `tap-ingester`, `species-id`
 
 ### Individual Services
 
@@ -131,8 +131,9 @@ Service names: `appview`, `frontend`, `ingester`, `species-id`
 # AppView (REST API + OAuth + media cache + GBIF taxonomy + static files on port 3000)
 cargo run -p observing-appview
 
-# Ingester (firehose consumer)
-cargo run -p observing-ingester
+# Tap-ingester (firehose consumer; spawns the upstream `tap` binary,
+# which must be on PATH or in the working directory)
+cargo run -p tap-ingester
 
 # Frontend dev server (serves frontend if `npm run build` hasn't been run)
 npm run dev
