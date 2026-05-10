@@ -202,23 +202,11 @@ async fn main() {
             "/api/taxa/{id}/occurrences",
             get(routes::taxonomy::get_taxon_occurrences_by_id),
         )
-        // Admin (lexicon-scoped record management)
-        .route("/admin/collections", get(routes::admin::list_collections))
-        .route(
-            "/admin/collections/{nsid}",
-            get(routes::admin::get_collection),
-        )
-        .route(
-            "/admin/collections/{nsid}/records",
-            get(routes::admin::list_records),
-        )
-        .route("/admin/tables", get(routes::admin::list_tables))
-        .route(
-            "/admin/tables/{name}/rows",
-            get(routes::admin::list_table_rows),
-        )
-        // HTML admin browser (axum-admin), gated by the same AdminAuth as the
-        // JSON endpoints above.
+        // HTML admin browser (axum-admin), gated by AdminAuth. The legacy
+        // `/admin` React page and `/admin/collections|tables` JSON API
+        // were folded into this in #475's follow-up — `/admin` redirects
+        // here so old bookmarks keep working.
+        .route("/admin", get(routes::admin_browse::redirect_to_browse))
         .nest_service("/admin/browse", routes::admin_browse::router(state.clone()))
         // Media (blob/thumb cache, formerly observing-media-proxy)
         .route("/media/health", get(routes::media::health))
