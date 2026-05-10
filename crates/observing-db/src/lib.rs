@@ -1,6 +1,7 @@
 pub mod admin;
 pub mod comments;
 pub mod community_ids;
+pub mod failed_records;
 pub mod feeds;
 pub mod identifications;
 pub mod interactions;

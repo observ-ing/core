@@ -47,6 +47,7 @@ use chrono::Utc;
 use clap::Parser;
 use dashboard::DashboardState;
 use database::Database;
+use observing_db::failed_records::FailedRecord;
 use serde_json::Value;
 use server::{ServerState, SharedState};
 use subject_resolver::SubjectResolver;
@@ -161,23 +162,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok(received) = channel.recv().await {
         let mut should_ack = true;
         if let Event::Record(record) = &received.event {
-            if process_record(&db, record, &state).await.is_err() {
+            if let Err(err) = process_record(&db, record, &state).await {
                 // process_record already logged + bumped stats.errors.
                 // Reactively ask the resolver for the subject DID; if it
                 // *added* a new DID to Tap, suppress this event's ack so
                 // Tap redelivers after the foreign repo backfills.
                 // Otherwise (subject already tracked, no subject, or
-                // resolver couldn't add), ack and move on — looping on
-                // unresolvable records would saturate the queue.
-                let added_new_did = match record_json(record) {
-                    Some(json) => subject_resolver
-                        .ensure_subject_tracked(&json)
-                        .await
-                        .is_some(),
+                // resolver couldn't add), record the drop in
+                // `ingester.failed_records` so the loss is observable
+                // and a future replay job can re-attempt — then ack and
+                // move on. Looping on unresolvable records would
+                // saturate the queue.
+                let json = record_json(record);
+                let added_new_did = match json.as_ref() {
+                    Some(j) => subject_resolver.ensure_subject_tracked(j).await.is_some(),
                     None => false,
                 };
                 if added_new_did {
                     should_ack = false;
+                } else {
+                    let uri = format_uri(record);
+                    let err_str = err.to_string();
+                    if let Err(ledger_err) = db
+                        .record_failure(FailedRecord {
+                            uri: &uri,
+                            collection: record.collection.as_str(),
+                            did: &record.did,
+                            cid: record.cid.as_deref(),
+                            action: action_to_str(record.action),
+                            record_json: json.as_ref(),
+                            error: &err_str,
+                        })
+                        .await
+                    {
+                        warn!(%uri, error = %ledger_err, "failed_records ledger write failed");
+                    }
                 }
             }
         }
