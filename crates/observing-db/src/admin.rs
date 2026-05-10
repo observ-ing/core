@@ -190,10 +190,13 @@ pub async fn list_records(
     Ok(summaries)
 }
 
-/// Metadata for a non-lexicon table the admin interface can browse read-only.
+/// Metadata for a table the HTML admin browser can show read-only.
 ///
-/// Unlike `KnownCollection` (lexicon-scoped records keyed by NSID), these are
-/// internal tables. OAuth/session stores are intentionally excluded.
+/// Covers both lexicon-record tables (`occurrences`, `identifications`, …)
+/// and internal tables. `KnownCollection` is the parallel NSID-keyed
+/// view used for per-collection stats and delete operations; the two
+/// surfaces are complementary — this one does raw row-level browsing.
+/// OAuth/session stores are intentionally excluded.
 pub struct KnownTable {
     /// Postgres schema (e.g. `ingester`, `appview`, `public`). Tables were
     /// moved out of `public` by migration `20260419000000_table_schemas.sql`,
@@ -280,6 +283,127 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
             ("id_count", "id_count"),
         ],
         order_by: "occurrence_uri",
+    },
+    // Lexicon record tables. Each row is one record from the firehose;
+    // a single table holds rows for both the `bio.lexicons.temp.v0-1.*`
+    // and legacy `ing.observ.temp.*` namespaces. `KnownCollection`
+    // (above) is the per-NSID stats/delete surface; this is the raw
+    // row-level browser for the same tables.
+    KnownTable {
+        schema: "ingester",
+        name: "occurrences",
+        columns: &[
+            ("uri", "uri"),
+            ("did", "did"),
+            ("scientific_name", "scientific_name"),
+            ("event_date", "event_date"),
+            ("ST_AsText(location::geometry)", "location"),
+            ("taxon_id", "taxon_id"),
+            ("kingdom", "kingdom"),
+            ("indexed_at", "indexed_at"),
+        ],
+        order_by: "indexed_at DESC NULLS LAST",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "identifications",
+        columns: &[
+            ("uri", "uri"),
+            ("did", "did"),
+            ("subject_uri", "subject_uri"),
+            ("scientific_name", "scientific_name"),
+            ("taxon_id", "taxon_id"),
+            ("kingdom", "kingdom"),
+            ("date_identified", "date_identified"),
+            ("indexed_at", "indexed_at"),
+        ],
+        order_by: "indexed_at DESC NULLS LAST",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "comments",
+        columns: &[
+            ("uri", "uri"),
+            ("did", "did"),
+            ("subject_uri", "subject_uri"),
+            ("body", "body"),
+            ("created_at", "created_at"),
+            ("indexed_at", "indexed_at"),
+        ],
+        order_by: "indexed_at DESC NULLS LAST",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "interactions",
+        columns: &[
+            ("uri", "uri"),
+            ("did", "did"),
+            ("subject_a_taxon_name", "subject_a_taxon_name"),
+            ("subject_b_taxon_name", "subject_b_taxon_name"),
+            ("interaction_type", "interaction_type"),
+            ("direction", "direction"),
+            ("created_at", "created_at"),
+            ("indexed_at", "indexed_at"),
+        ],
+        order_by: "indexed_at DESC NULLS LAST",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "likes",
+        // `likes.indexed_at` is TIMESTAMP, not TIMESTAMPTZ — the
+        // per-collection stats path special-cases that (see `stats`
+        // above) but the row-level browser pipes everything through
+        // Postgres `row_to_json`, which serializes both types to a
+        // string with no Rust-side decoding needed.
+        columns: &[
+            ("uri", "uri"),
+            ("did", "did"),
+            ("subject_uri", "subject_uri"),
+            ("created_at", "created_at"),
+            ("indexed_at", "indexed_at"),
+        ],
+        order_by: "indexed_at DESC",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "failed_records",
+        // `record_json` is intentionally omitted — the JSONB body is the
+        // raw firehose payload, can be many KB, and isn't useful at a
+        // glance. The list view shows the metadata; the JSON column is
+        // still queryable directly when an operator needs it.
+        columns: &[
+            ("uri", "uri"),
+            ("collection", "collection"),
+            ("did", "did"),
+            ("action", "action"),
+            ("attempts", "attempts"),
+            ("last_error", "last_error"),
+            ("last_attempt_at", "last_attempt_at"),
+            ("first_attempt_at", "first_attempt_at"),
+        ],
+        order_by: "last_attempt_at DESC",
+    },
+    KnownTable {
+        schema: "ingester",
+        name: "taxa",
+        // `order` is a SQL reserved word; quote in the SELECT
+        // expression but use the unquoted display name as the JSON
+        // key / column header.
+        columns: &[
+            ("taxon_key", "taxon_key"),
+            ("scientific_name", "scientific_name"),
+            ("rank", "rank"),
+            ("status", "status"),
+            ("accepted_taxon_key", "accepted_taxon_key"),
+            ("kingdom", "kingdom"),
+            ("phylum", "phylum"),
+            ("class", "class"),
+            ("\"order\"", "order"),
+            ("family", "family"),
+            ("genus", "genus"),
+            ("fetched_at", "fetched_at"),
+        ],
+        order_by: "fetched_at DESC",
     },
 ];
 
