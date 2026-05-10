@@ -366,6 +366,25 @@ pub const KNOWN_TABLES: &[KnownTable] = &[
     },
     KnownTable {
         schema: "ingester",
+        name: "failed_records",
+        // `record_json` is intentionally omitted — the JSONB body is the
+        // raw firehose payload, can be many KB, and isn't useful at a
+        // glance. The list view shows the metadata; the JSON column is
+        // still queryable directly when an operator needs it.
+        columns: &[
+            ("uri", "uri"),
+            ("collection", "collection"),
+            ("did", "did"),
+            ("action", "action"),
+            ("attempts", "attempts"),
+            ("last_error", "last_error"),
+            ("last_attempt_at", "last_attempt_at"),
+            ("first_attempt_at", "first_attempt_at"),
+        ],
+        order_by: "last_attempt_at DESC",
+    },
+    KnownTable {
+        schema: "ingester",
         name: "taxa",
         // `order` is a SQL reserved word; quote in the SELECT
         // expression but use the unquoted display name as the JSON
