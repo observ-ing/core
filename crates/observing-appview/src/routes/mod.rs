@@ -1,4 +1,3 @@
-pub mod admin;
 pub mod admin_browse;
 pub mod comments;
 pub mod feeds;
