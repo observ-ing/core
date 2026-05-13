@@ -49,12 +49,15 @@ function AppContent() {
       setUnreadCount(0);
       return;
     }
-    const poll = () => {
-      fetchUnreadCount()
-        .then((data) => setUnreadCount(data.count))
-        .catch(() => {});
+    const poll = async () => {
+      try {
+        const data = await fetchUnreadCount();
+        setUnreadCount(data.count);
+      } catch {
+        // Silent — count is best-effort.
+      }
     };
-    poll();
+    void poll();
     intervalRef.current = setInterval(poll, 30_000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
