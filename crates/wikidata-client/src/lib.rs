@@ -126,10 +126,10 @@ impl WikidataClient {
             .join(" ");
 
         let query = format!(
-            r#"SELECT ?external_id ?item WHERE {{
+            r"SELECT ?external_id ?item WHERE {{
     VALUES ?external_id {{ {values} }} .
     ?item wdt:{property} ?external_id .
-}}"#,
+}}",
         );
 
         let bindings = match self.sparql_query(&query).await {
@@ -185,11 +185,11 @@ impl WikidataClient {
             .join(" ");
 
         let query = format!(
-            r#"SELECT ?external_id (SAMPLE(?image) AS ?image) WHERE {{
+            r"SELECT ?external_id (SAMPLE(?image) AS ?image) WHERE {{
     VALUES ?external_id {{ {values} }} .
     ?item wdt:{property} ?external_id .
     OPTIONAL {{ ?item wdt:P18 ?image }} .
-}} GROUP BY ?external_id"#,
+}} GROUP BY ?external_id",
         );
 
         let bindings = match self.sparql_query(&query).await {
