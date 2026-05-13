@@ -77,8 +77,9 @@ export function TaxonExplorer() {
 
   usePageTitle(taxon?.scientificName || "Taxon");
 
-  // Wikidata thumbnail for hero image
-  const heroNames = useMemo(() => (taxon ? [taxon.scientificName] : []), [taxon]);
+  // Wikidata thumbnail for hero image. useWikidataThumbnails keys its effect
+  // on names.join("|"), so reference identity of the array doesn't matter.
+  const heroNames = taxon ? [taxon.scientificName] : [];
   const heroThumbnails = useWikidataThumbnails(heroNames, 44);
 
   const heroUrl = useMemo(() => {
