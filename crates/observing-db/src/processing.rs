@@ -11,6 +11,7 @@ use crate::types::{
 use chrono::{DateTime, NaiveDateTime, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
 use observing_lexicons::ing_observ::temp::{comment::Comment, interaction::Interaction};
+use serde::Deserialize;
 use serde_json::Value;
 
 /// Errors that can occur during record processing
@@ -174,7 +175,8 @@ pub fn occurrence_from_json(
             // "associatedMedia" (strong refs that require media record resolution).
             // The appview write path provides blob entries directly via parsed.params.
             associated_media: record_json.get("blobs").and_then(|v| {
-                let blobs: Vec<BlobEntry> = serde_json::from_value(v.clone()).ok()?;
+                // Borrow-deserialize to validate shape without cloning the Value.
+                let blobs = Vec::<BlobEntry>::deserialize(v).ok()?;
                 if blobs.is_empty() {
                     None
                 } else {
@@ -400,9 +402,9 @@ mod tests {
     /// the test fixtures and the lexicon definitions surfaces immediately.
     fn assert_valid_lexicon<T>(record: &serde_json::Value)
     where
-        T: serde::de::DeserializeOwned + LexiconSchema,
+        T: for<'de> serde::Deserialize<'de> + LexiconSchema,
     {
-        let typed: T = serde_json::from_value(record.clone())
+        let typed: T = T::deserialize(record)
             .unwrap_or_else(|e| panic!("fixture failed to deserialize as {}: {e}", T::nsid()));
         typed.validate().unwrap_or_else(|e| {
             panic!("fixture violated {} lexicon constraints: {e:?}", T::nsid())
