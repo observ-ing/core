@@ -17,20 +17,20 @@ use std::sync::Arc;
 
 use serde_json::Value;
 use tapped::TapClient;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct SubjectResolver {
     tap: TapClient,
-    attempted: Arc<Mutex<HashSet<String>>>,
+    attempted: Arc<RwLock<HashSet<String>>>,
 }
 
 impl SubjectResolver {
     pub fn new(tap: TapClient) -> Self {
         Self {
             tap,
-            attempted: Arc::new(Mutex::new(HashSet::new())),
+            attempted: Arc::new(RwLock::new(HashSet::new())),
         }
     }
 
@@ -42,12 +42,16 @@ impl SubjectResolver {
     pub async fn ensure_subject_tracked(&self, record: &Value) -> Option<String> {
         let subject_did = extract_subject_did(record)?;
 
-        {
-            let mut attempted = self.attempted.lock().await;
-            if attempted.contains(&subject_did) {
-                return None;
-            }
-            attempted.insert(subject_did.clone());
+        // Fast path: most events reference an already-tracked DID, so the
+        // read lock lets concurrent dedup checks proceed without contention.
+        if self.attempted.read().await.contains(&subject_did) {
+            return None;
+        }
+
+        // Slow path: take the write lock and re-check via insert() so the
+        // dedup remains atomic against concurrent first-time inserts.
+        if !self.attempted.write().await.insert(subject_did.clone()) {
+            return None;
         }
 
         match self.tap.add_repos(std::slice::from_ref(&subject_did)).await {
@@ -58,7 +62,7 @@ impl SubjectResolver {
             Err(e) => {
                 warn!(did = %subject_did, error = %e, "/repos/add failed");
                 // Allow a later event to retry.
-                self.attempted.lock().await.remove(&subject_did);
+                self.attempted.write().await.remove(&subject_did);
                 None
             }
         }
