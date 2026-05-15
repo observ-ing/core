@@ -152,7 +152,7 @@ fn validate_did_syntax(s: &str) -> Result<(), DidParseError> {
         return Err(DidParseError::InvalidCharacter);
     }
     match s.as_bytes().last() {
-        Some(b':') | Some(b'-') => Err(DidParseError::InvalidTrailingCharacter),
+        Some(b':' | b'-') => Err(DidParseError::InvalidTrailingCharacter),
         _ => Ok(()),
     }
 }
