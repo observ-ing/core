@@ -1,4 +1,4 @@
-import { useCallback, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { searchTaxa } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { useAutocomplete } from "../../hooks/useAutocomplete";
@@ -23,9 +23,8 @@ interface TaxaAutocompleteProps {
 }
 
 export function TaxaAutocomplete(props: TaxaAutocompleteProps) {
-  const searchFn = useCallback((query: string) => searchTaxa(query), []);
   const { options, loading, handleSearch, clearOptions } = useAutocomplete<TaxaResult>({
-    searchFn,
+    searchFn: searchTaxa,
     filterResults: (results) => results.slice(0, MAX_AUTOCOMPLETE_RESULTS),
   });
 

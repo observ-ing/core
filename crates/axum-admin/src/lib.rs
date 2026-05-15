@@ -141,12 +141,12 @@ struct TableSchema {
 
 async fn introspect(pool: &PgPool, schema: &str, table: &str) -> Result<TableSchema, sqlx::Error> {
     let columns = sqlx::query_as::<_, (String, String, String)>(
-        r#"
+        r"
         SELECT column_name, data_type, is_nullable
         FROM information_schema.columns
         WHERE table_schema = $1 AND table_name = $2
         ORDER BY ordinal_position
-        "#,
+        ",
     )
     .bind(schema)
     .bind(table)
@@ -165,13 +165,13 @@ async fn introspect(pool: &PgPool, schema: &str, table: &str) -> Result<TableSch
     // session search_path.
     let qualified = format!("{}.{}", quote_ident(schema), quote_ident(table));
     let primary_key: Option<(String,)> = sqlx::query_as(
-        r#"
+        r"
         SELECT a.attname::text
         FROM   pg_index i
         JOIN   pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
         WHERE  i.indrelid = ($1::text)::regclass AND i.indisprimary
         LIMIT  1
-        "#,
+        ",
     )
     .bind(&qualified)
     .fetch_optional(pool)

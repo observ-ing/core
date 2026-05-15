@@ -20,6 +20,3 @@ tracing = { workspace = true }
 
 # Async
 tokio = { workspace = true }
-
-# Static initialization
-lazy_static = "1"
