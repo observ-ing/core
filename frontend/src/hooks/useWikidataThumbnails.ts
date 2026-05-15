@@ -32,10 +32,10 @@ export function useWikidataThumbnails(names: string[], size: number = 48): Map<s
 
     if (needed.length === 0) return;
 
-    let cancelled = false;
+    const controller = new AbortController();
 
-    fetchBatch(needed, size).then((results) => {
-      if (cancelled) return;
+    fetchBatch(needed, size, controller.signal).then((results) => {
+      if (controller.signal.aborted) return;
 
       // Cache all results (including misses as null)
       for (const name of needed) {
@@ -52,15 +52,17 @@ export function useWikidataThumbnails(names: string[], size: number = 48): Map<s
       });
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [names.join("|"), size]);
 
   return thumbnails;
 }
 
-async function fetchBatch(names: string[], size: number): Promise<Map<string, string>> {
+async function fetchBatch(
+  names: string[],
+  size: number,
+  signal: AbortSignal,
+): Promise<Map<string, string>> {
   const results = new Map<string, string>();
 
   // Build SPARQL VALUES clause with escaped names
@@ -75,6 +77,7 @@ async function fetchBatch(names: string[], size: number): Promise<Map<string, st
     const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
     const resp = await fetch(url, {
       headers: { Accept: "application/sparql-results+json" },
+      signal,
     });
     if (!resp.ok) return results;
 
