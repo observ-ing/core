@@ -19,8 +19,6 @@ export function shouldItalicizeTaxonName(name: string, rank?: string): boolean {
 export interface TaxonLinkProps {
   /** The taxon name to display */
   name: string;
-  /** @deprecated Use kingdom prop instead. GBIF taxon ID (e.g., "gbif:3084746") for direct linking */
-  taxonId?: string | undefined;
   /** Kingdom for building the taxon URL (e.g., "Plantae", "Animalia") */
   kingdom?: string | undefined;
   /** Taxonomic rank (e.g., "species", "genus", "family") */
@@ -39,7 +37,6 @@ export interface TaxonLinkProps {
  */
 export function TaxonLink({
   name,
-  taxonId,
   kingdom,
   rank,
   variant = "text",
