@@ -41,16 +41,13 @@ mod tests {
     #[test]
     fn test_did_resolution_error_display() {
         let err = BlobResolverError::DidResolution("invalid DID format".to_string());
-        assert_eq!(
-            format!("{}", err),
-            "DID resolution error: invalid DID format"
-        );
+        assert_eq!(format!("{err}"), "DID resolution error: invalid DID format");
     }
 
     #[test]
     fn test_error_is_debug() {
         let err = BlobResolverError::DidResolution("test".to_string());
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(debug_str.contains("DidResolution"));
     }
 }

@@ -121,7 +121,7 @@ impl WikidataClient {
 
         let values: String = ids
             .iter()
-            .map(|id| format!("\"{}\"", id))
+            .map(|id| format!("\"{id}\""))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -180,7 +180,7 @@ impl WikidataClient {
 
         let values: String = ids
             .iter()
-            .map(|id| format!("\"{}\"", id))
+            .map(|id| format!("\"{id}\""))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -231,7 +231,7 @@ impl Default for WikidataClient {
 /// ```
 pub fn to_thumbnail_url(file_url: &str, width: u32) -> String {
     if file_url.contains("Special:FilePath/") {
-        format!("{}?width={}", file_url, width)
+        format!("{file_url}?width={width}")
     } else {
         file_url.to_string()
     }

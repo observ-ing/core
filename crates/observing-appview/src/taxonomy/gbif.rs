@@ -141,7 +141,7 @@ fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) ->
         return scientific_name.to_string();
     }
     match kingdom {
-        Some(k) => format!("{}/{}", k, scientific_name),
+        Some(k) => format!("{k}/{scientific_name}"),
         None => scientific_name.to_string(),
     }
 }

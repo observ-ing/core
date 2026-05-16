@@ -65,7 +65,7 @@ impl NominatimClient {
         }
 
         // Round to 6 decimal places for cache key (~0.1m precision)
-        let cache_key = format!("{:.6},{:.6}", latitude, longitude);
+        let cache_key = format!("{latitude:.6},{longitude:.6}");
 
         // Check cache
         if let Some(cached) = self.cache.get(&cache_key).await {
