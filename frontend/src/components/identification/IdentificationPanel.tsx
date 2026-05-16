@@ -92,7 +92,7 @@ export function IdentificationPanel({
     e.preventDefault();
 
     if (!taxonName.trim()) {
-      dispatch(addToast({ message: "Please enter a species name", type: "error" }));
+      dispatch(addToast({ message: "Please enter a taxon name", type: "error" }));
       return;
     }
 
@@ -177,6 +177,7 @@ export function IdentificationPanel({
                   }
                 }}
                 onMatchChange={setMatchedTaxon}
+                label="Taxon Name"
                 size="small"
                 margin="none"
                 bottomContent={
