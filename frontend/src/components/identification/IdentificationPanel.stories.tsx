@@ -28,6 +28,8 @@ export const Default: Story = {
       uri: OAK_OBSERVATION.uri,
       cid: OAK_OBSERVATION.cid,
       scientificName: "Quercus robur",
+      kingdom: "Plantae",
+      rank: "species",
     },
   },
 };
@@ -38,6 +40,8 @@ export const WithImage: Story = {
       uri: OAK_OBSERVATION.uri,
       cid: OAK_OBSERVATION.cid,
       scientificName: "Quercus robur",
+      kingdom: "Plantae",
+      rank: "species",
     },
     imageUrl: OAK_OBSERVATION.images[0] ?? "",
     latitude: 51.5074,
