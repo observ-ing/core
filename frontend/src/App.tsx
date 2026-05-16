@@ -26,6 +26,7 @@ import { LexiconView } from "./components/lexicon/LexiconView";
 import { DocsPage } from "./components/docs/DocsPage";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
+import { TransparencyPage } from "./components/transparency/TransparencyPage";
 import "./styles/global.css";
 
 function AppContent() {
@@ -132,6 +133,7 @@ function AppContent() {
           <Route path="/lexicons" element={<LexiconView />} />
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/transparency" element={<TransparencyPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>

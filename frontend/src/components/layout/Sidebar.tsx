@@ -10,7 +10,7 @@ import {
   Divider,
   Typography,
 } from "@mui/material";
-import { Login, Logout, MenuBook } from "@mui/icons-material";
+import { AccountBalance, Login, Logout, MenuBook } from "@mui/icons-material";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
@@ -113,6 +113,19 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
                 <MenuBook fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Docs" />
+            </ListItemButton>
+          </ListItem>
+          <ListItem disablePadding>
+            <ListItemButton
+              component={Link}
+              to="/transparency"
+              onClick={onMobileClose}
+              sx={{ borderRadius: 2 }}
+            >
+              <ListItemIcon sx={{ minWidth: 40 }}>
+                <AccountBalance fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Transparency" />
             </ListItemButton>
           </ListItem>
         </List>

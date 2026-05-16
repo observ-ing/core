@@ -20,7 +20,15 @@ import {
   Divider,
   alpha,
 } from "@mui/material";
-import { Person, Login, Logout, MenuBook, Settings, Menu as MenuIcon } from "@mui/icons-material";
+import {
+  AccountBalance,
+  Person,
+  Login,
+  Logout,
+  MenuBook,
+  Settings,
+  Menu as MenuIcon,
+} from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
@@ -143,11 +151,18 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
 
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1.5 } }}>
             {!isMobile && (
-              <Tooltip title="Docs">
-                <IconButton component={Link} to="/docs" color="inherit">
-                  <MenuBook />
-                </IconButton>
-              </Tooltip>
+              <>
+                <Tooltip title="Docs">
+                  <IconButton component={Link} to="/docs" color="inherit">
+                    <MenuBook />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title="Transparency">
+                  <IconButton component={Link} to="/transparency" color="inherit">
+                    <AccountBalance />
+                  </IconButton>
+                </Tooltip>
+              </>
             )}
 
             {notificationItem && (
