@@ -53,6 +53,9 @@ export function useWikidataThumbnails(names: string[], size: number = 48): Map<s
     });
 
     return () => controller.abort();
+    // names.join("|") captures the identity of the array's contents; listing
+    // `names` itself would re-fire every render on fresh array literals.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [names.join("|"), size]);
 
   return thumbnails;
