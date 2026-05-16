@@ -1,16 +1,58 @@
-import { Box, Container, Typography, ToggleButtonGroup, ToggleButton, Paper } from "@mui/material";
+import { useState } from "react";
+import {
+  Box,
+  Container,
+  Typography,
+  ToggleButtonGroup,
+  ToggleButton,
+  Paper,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  type SelectChangeEvent,
+} from "@mui/material";
 import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setThemeMode, type ThemeMode } from "../../store/uiSlice";
+import { setThemeMode, type ThemeMode, addToast } from "../../store/uiSlice";
+import { setDefaultLicense } from "../../store/authSlice";
+import { LICENSE_OPTIONS } from "../../lib/licenses";
+import { updateUserPreferences } from "../../services/api";
+
+const NO_DEFAULT = "__none__";
 
 export function SettingsPage() {
   usePageTitle("Settings");
   const dispatch = useAppDispatch();
   const themeMode = useAppSelector((state) => state.ui.themeMode);
+  const user = useAppSelector((state) => state.auth.user);
+  const defaultLicense = useAppSelector((state) => state.auth.defaultLicense);
+  const [saving, setSaving] = useState(false);
 
   const handleThemeChange = (_: React.MouseEvent<HTMLElement>, value: ThemeMode | null) => {
     if (value) dispatch(setThemeMode(value));
+  };
+
+  const handleLicenseChange = async (e: SelectChangeEvent<string>) => {
+    const raw = e.target.value;
+    const next = raw === NO_DEFAULT ? null : raw;
+    const previous = defaultLicense;
+    dispatch(setDefaultLicense(next));
+    setSaving(true);
+    try {
+      await updateUserPreferences({ defaultLicense: next });
+    } catch (err) {
+      dispatch(setDefaultLicense(previous));
+      dispatch(
+        addToast({
+          message: err instanceof Error ? err.message : "Failed to save preference",
+          type: "error",
+        }),
+      );
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -26,7 +68,7 @@ export function SettingsPage() {
           Settings
         </Typography>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 3 }}>
           <Typography
             variant="subtitle1"
             sx={{
@@ -75,6 +117,34 @@ export function SettingsPage() {
             </ToggleButton>
           </ToggleButtonGroup>
         </Paper>
+
+        {user && (
+          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+              Upload defaults
+            </Typography>
+            <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+              Pre-fill the license for new observation photos. You can still change it on each
+              upload.
+            </Typography>
+            <FormControl fullWidth size="small" disabled={saving}>
+              <InputLabel id="default-license-label">Default license</InputLabel>
+              <Select
+                labelId="default-license-label"
+                value={defaultLicense ?? NO_DEFAULT}
+                label="Default license"
+                onChange={handleLicenseChange}
+              >
+                <MenuItem value={NO_DEFAULT}>No default (use CC BY)</MenuItem>
+                {LICENSE_OPTIONS.map((opt) => (
+                  <MenuItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Paper>
+        )}
       </Container>
     </Box>
   );

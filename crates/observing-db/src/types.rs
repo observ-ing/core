@@ -206,6 +206,14 @@ pub struct OccurrencePrivateDataRow {
     pub effective_geoprivacy: Option<String>,
 }
 
+/// Per-user appview preferences row
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+pub struct UserPreferencesRow {
+    pub did: String,
+    pub default_license: Option<String>,
+    pub updated_at: DateTime<Utc>,
+}
+
 /// Parameters for upserting an occurrence
 #[derive(Debug, Clone)]
 pub struct UpsertOccurrenceParams {

@@ -179,6 +179,11 @@ async fn main() {
             "/api/notifications/read",
             post(routes::notifications::mark_read),
         )
+        // User preferences
+        .route(
+            "/api/user/preferences",
+            get(routes::preferences::get_preferences).put(routes::preferences::update_preferences),
+        )
         // Actors
         // Species identification
         .route("/api/species-id", post(routes::species_id::identify))
