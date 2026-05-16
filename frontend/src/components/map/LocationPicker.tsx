@@ -17,7 +17,13 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { darkMapFilter, mapContainerSx } from "./mapStyle";
-import { MAP_MARKER_COLOR, addUncertaintyLayers, createCircleGeoJSON, createMap } from "./mapUtils";
+import {
+  MAP_MARKER_COLOR,
+  addUncertaintyLayers,
+  createCircleGeoJSON,
+  createMap,
+  getRadiusBounds,
+} from "./mapUtils";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -179,7 +185,16 @@ export function LocationPicker({
 
       addUncertaintyLayers(mapInstance);
 
-      if (latitude && longitude) updateMarker(longitude, latitude);
+      if (latitude && longitude) {
+        updateMarker(longitude, latitude);
+        if (uncertaintyMeters > 0) {
+          mapInstance.fitBounds(getRadiusBounds(latitude, longitude, uncertaintyMeters), {
+            padding: 40,
+            maxZoom: 18,
+            animate: false,
+          });
+        }
+      }
     });
 
     mapInstance.on("click", (e) => {
