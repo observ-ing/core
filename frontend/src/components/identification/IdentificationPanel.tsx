@@ -8,7 +8,7 @@ import type { TaxaResult } from "../../services/types";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
-import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { TaxonLink } from "../common/TaxonLink";
 import { useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
@@ -19,6 +19,8 @@ interface IdentificationPanelProps {
     cid: string;
     scientificName?: string | undefined;
     communityId?: string | undefined;
+    kingdom?: string | undefined;
+    rank?: string | undefined;
   };
   /** Full URL of the observation's primary image, for visual ID matching */
   imageUrl?: string | undefined;
@@ -119,14 +121,7 @@ export function IdentificationPanel({
           >
             Community ID
           </Typography>
-          <Typography
-            sx={{
-              fontStyle: shouldItalicizeTaxonName(currentId) ? "italic" : "normal",
-              color: "primary.main",
-            }}
-          >
-            {currentId}
-          </Typography>
+          <TaxonLink name={currentId} kingdom={observation.kingdom} rank={observation.rank} />
         </Box>
       </Stack>
       <Stack

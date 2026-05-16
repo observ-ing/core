@@ -513,6 +513,8 @@ export function ObservationDetail() {
                         cid: observation.cid,
                         scientificName: taxonomy?.scientificName,
                         communityId: observation.communityId,
+                        kingdom: taxonomy?.kingdom,
+                        rank: taxonomy?.rank,
                       }}
                       imageUrl={
                         observation.images[0] != null
