@@ -131,16 +131,19 @@ export function UploadModal() {
     // Resolve the existing taxon name back to a TaxaResult so the form
     // shows "Existing taxon" instead of incorrectly flagging it as new.
     if (!existingName) return undefined;
-    let cancelled = false;
-    void validateTaxon(existingName, existingKingdom || undefined).then((result) => {
-      if (cancelled) return;
-      if (result?.valid && result.taxon) {
-        setMatchedTaxon(result.taxon);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    validateTaxon(existingName, existingKingdom || undefined, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        if (result?.valid && result.taxon) {
+          setMatchedTaxon(result.taxon);
+        }
+      })
+      .catch(() => {
+        // Silent — fetch was aborted or failed; the unmatched-name UI is the
+        // safe default.
+      });
+    return () => controller.abort();
   }, [isOpen, currentLocation, editingObservation]);
 
   const resetForm = () => {
