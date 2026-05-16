@@ -12,6 +12,8 @@ import type {
   NotificationsResponse,
   OccurrenceDetailResponse,
   ValidateResponse,
+  UserPreferencesResponse,
+  UpdatePreferencesRequest,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -414,6 +416,27 @@ export async function markNotificationRead(id?: number): Promise<{ success: bool
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(id !== undefined ? { id } : {}),
+  });
+}
+
+// ============================================================================
+// User Preferences API Functions
+// ============================================================================
+
+export async function fetchUserPreferences(): Promise<UserPreferencesResponse> {
+  return fetchApi(`${API_BASE}/api/user/preferences`, "Failed to load preferences", {
+    credentials: "include",
+  });
+}
+
+export async function updateUserPreferences(
+  prefs: UpdatePreferencesRequest,
+): Promise<{ success: boolean }> {
+  return fetchApi(`${API_BASE}/api/user/preferences`, "Failed to update preferences", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(prefs),
   });
 }
 

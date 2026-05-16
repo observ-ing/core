@@ -4,7 +4,7 @@ import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
-import { checkAuth } from "./store/authSlice";
+import { checkAuth, loadUserPreferences } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
 import { fetchUnreadCount } from "./services/api";
 import { Sidebar } from "./components/layout/Sidebar";
@@ -63,6 +63,10 @@ function AppContent() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [user]);
+
+  useEffect(() => {
+    if (user) dispatch(loadUserPreferences());
+  }, [user, dispatch]);
 
   // Listen for system theme changes
   useEffect(() => {

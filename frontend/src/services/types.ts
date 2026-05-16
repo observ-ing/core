@@ -25,6 +25,8 @@ export type { CreateIdentificationRequest } from "../bindings/CreateIdentificati
 export type { CreateCommentRequest } from "../bindings/CreateCommentRequest";
 export type { CreateLikeRequest } from "../bindings/CreateLikeRequest";
 export type { DeleteLikeRequest } from "../bindings/DeleteLikeRequest";
+export type { UserPreferencesResponse } from "../bindings/UserPreferencesResponse";
+export type { UpdatePreferencesRequest } from "../bindings/UpdatePreferencesRequest";
 import type { Occurrence } from "../bindings/Occurrence";
 export type { Occurrence };
 

@@ -43,22 +43,12 @@ import { getObservationUrl, getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
+import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
 
 interface ImagePreview {
   file: File;
   preview: string;
 }
-
-const LICENSE_OPTIONS = [
-  { value: "CC0-1.0", label: "CC0 (Public Domain)" },
-  { value: "CC-BY-4.0", label: "CC BY (Attribution)" },
-  { value: "CC-BY-NC-4.0", label: "CC BY-NC (Attribution, Non-Commercial)" },
-  { value: "CC-BY-SA-4.0", label: "CC BY-SA (Attribution, Share-Alike)" },
-  {
-    value: "CC-BY-NC-SA-4.0",
-    label: "CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)",
-  },
-];
 
 function toDatetimeLocal(date: Date): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
@@ -70,6 +60,7 @@ export function UploadModal() {
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
+  const defaultLicense = useAppSelector((state) => state.auth.defaultLicense);
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
   const isEditMode = !!editingObservation;
@@ -78,7 +69,7 @@ export function UploadModal() {
   const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
   const [kingdom, setKingdom] = useState("");
   const [rank, setRank] = useState("");
-  const [license, setLicense] = useState("CC-BY-4.0");
+  const [license, setLicense] = useState<string>(DEFAULT_LICENSE);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -99,6 +90,7 @@ export function UploadModal() {
     if (!isOpen) return undefined;
     setIsDirty(false);
     if (!editingObservation) {
+      setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
         setLat(currentLocation.lat.toFixed(6));
         setLng(currentLocation.lng.toFixed(6));
@@ -144,14 +136,14 @@ export function UploadModal() {
         // safe default.
       });
     return () => controller.abort();
-  }, [isOpen, currentLocation, editingObservation]);
+  }, [isOpen, currentLocation, editingObservation, defaultLicense]);
 
   const resetForm = () => {
     setSpecies("");
     setMatchedTaxon(null);
     setKingdom("");
     setRank("");
-    setLicense("CC-BY-4.0");
+    setLicense(isEditMode ? DEFAULT_LICENSE : (defaultLicense ?? DEFAULT_LICENSE));
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);

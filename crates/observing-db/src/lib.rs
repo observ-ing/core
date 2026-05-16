@@ -15,6 +15,7 @@ pub mod processing;
 pub mod taxa;
 pub mod taxonomy_resolver;
 pub mod types;
+pub mod user_preferences;
 
 pub use sqlx::postgres::PgPool;
 pub use types::*;
