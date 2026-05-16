@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { searchTaxa } from "../services/api";
 import type { TaxaResult } from "../services/types";
 import { MAX_AUTOCOMPLETE_RESULTS } from "../lib/utils";
@@ -10,13 +9,12 @@ import { useAutocomplete } from "./useAutocomplete";
  * every keystroke.
  */
 export function useDebouncedTaxaSearch(debounceMs = 300) {
-  const searchFn = useCallback((query: string) => searchTaxa(query), []);
   const {
     options: suggestions,
     handleSearch: search,
     clearOptions: clearSuggestions,
   } = useAutocomplete<TaxaResult>({
-    searchFn,
+    searchFn: searchTaxa,
     filterResults: (results) => results.slice(0, MAX_AUTOCOMPLETE_RESULTS),
     debounceMs,
   });
