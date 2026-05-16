@@ -46,12 +46,17 @@ export function decodeHtmlText(html: string): string {
     .trim();
 }
 
-async function fetchCommonsImages(taxonName: string, limit: number): Promise<CommonsImage[]> {
+async function fetchCommonsImages(
+  taxonName: string,
+  limit: number,
+  signal: AbortSignal,
+): Promise<CommonsImage[]> {
   const category = `Category:${taxonName.replace(/ /g, "_")}`;
 
   // Step 1: Get file names from the category
   const listResp = await fetch(
     `https://commons.wikimedia.org/w/api.php?action=query&list=categorymembers&cmtitle=${encodeURIComponent(category)}&cmtype=file&cmlimit=${limit}&format=json&origin=*`,
+    { signal },
   );
   if (!listResp.ok) return [];
   const listData = await listResp.json();
@@ -62,6 +67,7 @@ async function fetchCommonsImages(taxonName: string, limit: number): Promise<Com
   const titles = members.map((m: { title: string }) => m.title).join("|");
   const infoResp = await fetch(
     `https://commons.wikimedia.org/w/api.php?action=query&titles=${encodeURIComponent(titles)}&prop=imageinfo&iiprop=url|extmetadata&iiurlwidth=400&format=json&origin=*`,
+    { signal },
   );
   if (!infoResp.ok) return [];
   const infoData = await infoResp.json();
@@ -94,17 +100,18 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
     setLoading(true);
-    fetchCommonsImages(taxonName, limit).then((result) => {
-      if (!cancelled) {
+    fetchCommonsImages(taxonName, limit, controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
         setImages(result);
         setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
+      })
+      .catch(() => {
+        // Silent — fetch was aborted or failed; gallery is decorative.
+      });
+    return () => controller.abort();
   }, [taxonName, limit]);
 
   if (loading) {
