@@ -272,7 +272,7 @@ async fn vite_proxy(
         .path_and_query()
         .map(|pq| pq.as_str())
         .unwrap_or("/");
-    let target_url = format!("{}{}", vite_base_url, path_query);
+    let target_url = format!("{vite_base_url}{path_query}");
 
     let method = reqwest::Method::from_bytes(req.method().as_str().as_bytes())
         .unwrap_or(reqwest::Method::GET);

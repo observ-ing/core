@@ -68,7 +68,7 @@ mod tests {
     fn test_config_error_display() {
         let err = IngesterError::Config("missing DATABASE_URL".to_string());
         assert_eq!(
-            format!("{}", err),
+            format!("{err}"),
             "Configuration error: missing DATABASE_URL"
         );
     }
@@ -76,7 +76,7 @@ mod tests {
     #[test]
     fn test_error_is_debug() {
         let err = IngesterError::Decode("x".to_string());
-        let debug_str = format!("{:?}", err);
+        let debug_str = format!("{err:?}");
         assert!(debug_str.contains("Decode"));
     }
 }

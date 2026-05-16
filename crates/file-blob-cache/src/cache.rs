@@ -53,7 +53,7 @@ impl BlobCache {
     /// Generate a cache key from DID and CID
     pub fn cache_key(did: &str, cid: &str) -> String {
         let mut hasher = Sha256::new();
-        hasher.update(format!("{}:{}", did, cid).as_bytes());
+        hasher.update(format!("{did}:{cid}").as_bytes());
         hex::encode(hasher.finalize())
     }
 
