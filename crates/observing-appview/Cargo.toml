@@ -10,7 +10,6 @@ license = "MIT OR Apache-2.0"
 axum-admin = { path = "../axum-admin" }
 observing-db = { path = "../observing-db", features = ["processing"] }
 atproto-identity = { path = "../atproto-identity" }
-nominatim-client = { path = "../nominatim-client" }
 observing-lexicons = { path = "../observing-lexicons" }
 at-uri-parser = { path = "../at-uri-parser" }
 # Taxonomy resolver (formerly observing-taxonomy)
