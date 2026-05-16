@@ -211,10 +211,11 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
 export async function validateTaxon(
   name: string,
   kingdom?: string,
+  signal?: AbortSignal,
 ): Promise<ValidateResponse | null> {
   const params = new URLSearchParams({ name });
   if (kingdom) params.set("kingdom", kingdom);
-  const response = await fetch(`${API_BASE}/api/taxa/validate?${params}`);
+  const response = await fetch(`${API_BASE}/api/taxa/validate?${params}`, signal ? { signal } : {});
   if (!response.ok) return null;
   return response.json();
 }
