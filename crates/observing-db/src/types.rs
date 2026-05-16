@@ -88,7 +88,7 @@ impl OccurrenceRow {
     pub fn blob_entries(&self) -> Vec<BlobEntry> {
         self.associated_media
             .as_ref()
-            .and_then(|v| serde_json::from_value::<Vec<BlobEntry>>(v.clone()).ok())
+            .and_then(|v| Vec::<BlobEntry>::deserialize(v).ok())
             .unwrap_or_default()
     }
 }

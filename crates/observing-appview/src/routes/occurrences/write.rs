@@ -291,7 +291,7 @@ pub async fn update_occurrence(
         for (i, blob) in existing_blobs.iter().enumerate() {
             let blob_cid = blob.image.ref_.cid();
             if retained_cids.iter().any(|cid| cid == blob_cid) {
-                match serde_json::from_value::<StrongRef>(existing_media_refs[i].clone()) {
+                match StrongRef::deserialize(&existing_media_refs[i]) {
                     Ok(strong_ref) => media_refs.push(strong_ref),
                     Err(e) => {
                         warn!(error = %e, "Failed to parse existing strong ref; dropping");
