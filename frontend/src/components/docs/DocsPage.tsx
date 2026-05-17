@@ -1,6 +1,6 @@
 import { Link as RouterLink } from "react-router-dom";
 import { Box, Container, Typography, Paper, Stack } from "@mui/material";
-import { Schema, AutoStories, GitHub, ChevronRight } from "@mui/icons-material";
+import { Schema, AutoStories, GitHub, AccountBalance, ChevronRight } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 interface DocLink {
@@ -17,6 +17,12 @@ const links: DocLink[] = [
     description: "AT Protocol record schemas that define how data is stored.",
     icon: <Schema />,
     to: "/lexicons",
+  },
+  {
+    label: "Transparency",
+    description: "Monthly Google Cloud hosting costs for Observ.ing.",
+    icon: <AccountBalance />,
+    to: "/transparency",
   },
   {
     label: "Storybook",
