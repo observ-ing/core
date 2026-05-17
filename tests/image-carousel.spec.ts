@@ -36,7 +36,7 @@ test.describe("Image Carousel", () => {
     await mockObservationDetailRoute(
       page,
       observationOverrides({
-        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+        images: [{ url: `/media/blob/${TEST_DID}/bafyimg1` }],
       }),
     );
 
@@ -62,9 +62,9 @@ test.describe("Image Carousel", () => {
       page,
       observationOverrides({
         images: [
-          `/media/blob/${TEST_DID}/bafyimg1`,
-          `/media/blob/${TEST_DID}/bafyimg2`,
-          `/media/blob/${TEST_DID}/bafyimg3`,
+          { url: `/media/blob/${TEST_DID}/bafyimg1` },
+          { url: `/media/blob/${TEST_DID}/bafyimg2` },
+          { url: `/media/blob/${TEST_DID}/bafyimg3` },
         ],
       }),
     );
@@ -94,7 +94,10 @@ test.describe("Image Carousel", () => {
     await mockObservationDetailRoute(
       page,
       observationOverrides({
-        images: [`/media/blob/${TEST_DID}/bafyimg1`, `/media/blob/${TEST_DID}/bafyimg2`],
+        images: [
+          { url: `/media/blob/${TEST_DID}/bafyimg1` },
+          { url: `/media/blob/${TEST_DID}/bafyimg2` },
+        ],
       }),
     );
 
@@ -131,7 +134,7 @@ test.describe("Image Carousel", () => {
     await mockObservationDetailRoute(
       page,
       observationOverrides({
-        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+        images: [{ url: `/media/blob/${TEST_DID}/bafyimg1` }],
       }),
     );
 
@@ -159,7 +162,7 @@ test.describe("Image Carousel", () => {
     await mockObservationDetailRoute(
       page,
       observationOverrides({
-        images: [`/media/blob/${TEST_DID}/bafyimg1`],
+        images: [{ url: `/media/blob/${TEST_DID}/bafyimg1` }],
         communityId: "Falco peregrinus",
         effectiveTaxonomy: {
           scientificName: "Falco peregrinus",

@@ -7,17 +7,7 @@ use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::responses::SuccessResponse;
 use crate::state::AppState;
-
-/// SPDX license identifiers accepted as `default_license`. Mirrors
-/// `knownValues` on `bio.lexicons.temp.v0-1.media#license` so the table
-/// never holds a value the lexicon would reject.
-const ALLOWED_LICENSES: &[&str] = &[
-    "CC0-1.0",
-    "CC-BY-4.0",
-    "CC-BY-NC-4.0",
-    "CC-BY-SA-4.0",
-    "CC-BY-NC-SA-4.0",
-];
+use crate::validation::validate_license;
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -53,11 +43,7 @@ pub async fn update_preferences(
     Json(body): Json<UpdatePreferencesRequest>,
 ) -> Result<Json<SuccessResponse>, AppError> {
     if let Some(ref license) = body.default_license {
-        if !ALLOWED_LICENSES.contains(&license.as_str()) {
-            return Err(AppError::BadRequest(format!(
-                "Unknown license value: {license}"
-            )));
-        }
+        validate_license(license)?;
     }
 
     observing_db::user_preferences::upsert(&state.pool, &user.did, body.default_license.as_deref())

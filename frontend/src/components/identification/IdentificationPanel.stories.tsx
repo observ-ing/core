@@ -43,7 +43,7 @@ export const WithImage: Story = {
       kingdom: "Plantae",
       rank: "species",
     },
-    imageUrl: OAK_OBSERVATION.images[0] ?? "",
+    imageUrl: OAK_OBSERVATION.images[0]?.url ?? "",
     latitude: 51.5074,
     longitude: -0.1278,
   },

@@ -7,6 +7,12 @@ export type CreateOccurrenceRequest = {
   coordinateUncertaintyInMeters?: number;
   eventDate?: string;
   images?: Array<ImageUpload>;
+  /**
+   * SPDX license identifier applied to each uploaded media record (e.g.
+   * `CC-BY-4.0`). Validated against `validation::ALLOWED_LICENSES`. When
+   * omitted, the PDS media record stores no license.
+   */
+  license?: string;
   scientificName?: string;
   taxonRank?: string;
   /**

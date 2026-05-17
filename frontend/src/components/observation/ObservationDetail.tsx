@@ -50,6 +50,7 @@ import {
   buildOccurrenceAtUri,
   getErrorMessage,
 } from "../../lib/utils";
+import { getLicenseLabel } from "../../lib/licenses";
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -194,6 +195,8 @@ export function ObservationDetail() {
 
   const species = observation.communityId || taxonomy?.scientificName || undefined;
 
+  const activeImage = observation.images[activeImageIndex];
+
   // Check if current user owns this observation
   const isOwner = user?.did === observation.observer.did;
 
@@ -331,7 +334,7 @@ export function ObservationDetail() {
         </Stack>
 
         {/* Images */}
-        {observation.images.length > 0 && (
+        {activeImage && (
           <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
             <ButtonBase
               onClick={() => setLightboxOpen(true)}
@@ -346,7 +349,7 @@ export function ObservationDetail() {
             >
               <Box
                 component="img"
-                src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+                src={getImageUrl(activeImage.url)}
                 alt={species}
                 sx={{
                   width: "100%",
@@ -357,11 +360,25 @@ export function ObservationDetail() {
                 }}
               />
             </ButtonBase>
+            {activeImage.license && (
+              <Typography
+                variant="caption"
+                sx={{
+                  display: "block",
+                  textAlign: "center",
+                  color: "grey.400",
+                  px: 1,
+                  pt: { xs: 1, sm: 0.5 },
+                }}
+              >
+                License: {getLicenseLabel(activeImage.license)}
+              </Typography>
+            )}
             {observation.images.length > 1 && (
               <Stack direction="row" spacing={1} sx={{ p: 1, justifyContent: "center" }}>
                 {observation.images.map((img, idx) => (
                   <ButtonBase
-                    key={img}
+                    key={img.url}
                     onClick={() => setActiveImageIndex(idx)}
                     sx={{
                       width: 60,
@@ -374,7 +391,7 @@ export function ObservationDetail() {
                   >
                     <Box
                       component="img"
-                      src={getImageUrl(img)}
+                      src={getImageUrl(img.url)}
                       alt={`Photo ${idx + 1}`}
                       sx={{ width: "100%", height: "100%", objectFit: "cover" }}
                     />
@@ -518,7 +535,7 @@ export function ObservationDetail() {
                       }}
                       imageUrl={
                         observation.images[0] != null
-                          ? getImageUrl(observation.images[0])
+                          ? getImageUrl(observation.images[0].url)
                           : undefined
                       }
                       latitude={observation.location?.latitude}
@@ -554,12 +571,13 @@ export function ObservationDetail() {
         </Box>
       </Container>
 
-      {observation.images.length > 0 && (
+      {activeImage && (
         <PhotoLightbox
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
-          src={getImageUrl(observation.images[activeImageIndex] ?? "")}
+          src={getImageUrl(activeImage.url)}
           alt={species}
+          license={activeImage.license}
         />
       )}
     </Box>

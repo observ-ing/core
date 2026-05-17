@@ -31,7 +31,7 @@ export const ExploreGridCard = memo(function ExploreGridCard({
       >
         {observation.images[0] ? (
           <ImageWithSkeleton
-            src={getImageUrl(observation.images[0])}
+            src={getImageUrl(observation.images[0].url)}
             alt={species || "Observation"}
             sx={{ aspectRatio: "1" }}
           />

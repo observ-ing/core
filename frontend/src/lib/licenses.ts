@@ -16,3 +16,13 @@ export const DEFAULT_LICENSE: LicenseValue = "CC-BY-4.0";
 export function isLicenseValue(value: string): value is LicenseValue {
   return LICENSE_OPTIONS.some((opt) => opt.value === value);
 }
+
+/**
+ * Map an SPDX license identifier to its human-readable label. Returns the
+ * input string verbatim for unknown values so unrecognized licenses still
+ * render (e.g. records written by other clients with values outside our
+ * allow-list).
+ */
+export function getLicenseLabel(value: string): string {
+  return LICENSE_OPTIONS.find((opt) => opt.value === value)?.label ?? value;
+}

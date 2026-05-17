@@ -305,7 +305,7 @@ export function ProfileView() {
               >
                 {occ.images[0] ? (
                   <ImageWithSkeleton
-                    src={getImageUrl(occ.images[0])}
+                    src={getImageUrl(occ.images[0].url)}
                     alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
                     sx={{ aspectRatio: "1" }}
                   />

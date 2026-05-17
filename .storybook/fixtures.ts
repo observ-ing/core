@@ -14,8 +14,9 @@ import type {
   User,
 } from "../frontend/src/services/types";
 
-const PHOTO =
+const PHOTO_URL =
   "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=600";
+const PHOTO = { url: PHOTO_URL, license: "CC-BY-4.0" } as const;
 const AVATAR =
   "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=80";
 
@@ -89,7 +90,7 @@ export const OAK_TAXON_DETAIL: TaxonDetail = {
   id: "Plantae/Quercus robur",
   scientificName: "Quercus robur",
   commonName: "English Oak",
-  photoUrl: PHOTO,
+  photoUrl: PHOTO_URL,
   rank: "species",
   kingdom: "Plantae",
   phylum: "Tracheophyta",

@@ -18,6 +18,7 @@ use crate::constants;
 use crate::error::AppError;
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
+use crate::validation::validate_license;
 use at_uri_parser::AtUri;
 
 use super::auto_id;
@@ -34,6 +35,11 @@ pub struct CreateOccurrenceRequest {
     event_date: Option<String>,
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
+    /// SPDX license identifier applied to each uploaded media record (e.g.
+    /// `CC-BY-4.0`). Validated against `validation::ALLOWED_LICENSES`. When
+    /// omitted, the PDS media record stores no license.
+    #[ts(optional)]
+    license: Option<String>,
     #[ts(optional)]
     scientific_name: Option<String>,
     #[ts(optional)]
@@ -73,6 +79,12 @@ pub struct UpdateOccurrenceRequest {
     /// Media whose CID is not in this list is dropped from the record.
     #[ts(optional)]
     retained_blob_cids: Option<Vec<String>>,
+    /// SPDX license to apply to *newly-uploaded* media records on this edit.
+    /// Retained media keep whatever license they were originally written with —
+    /// silently rewriting historical metadata when a default changes would lose
+    /// the user's intent at upload time.
+    #[ts(optional)]
+    license: Option<String>,
     #[ts(optional)]
     scientific_name: Option<String>,
     #[ts(optional)]
@@ -92,6 +104,10 @@ pub async fn create_occurrence(
         return Err(AppError::BadRequest("Invalid coordinates".into()));
     }
 
+    if let Some(ref license) = body.license {
+        validate_license(license)?;
+    }
+
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
@@ -99,8 +115,13 @@ pub async fn create_occurrence(
     // populated by the ingester when the firehose commit arrives; the
     // ingester resolves associatedMedia strong refs back into blob entries
     // for the `associated_media` column.
-    let (_blob_entries, media_refs) =
-        upload_media_records(&agent, &user.did, body.images.as_deref().unwrap_or(&[])).await?;
+    let (_blob_entries, media_refs) = upload_media_records(
+        &agent,
+        &user.did,
+        body.images.as_deref().unwrap_or(&[]),
+        body.license.as_deref(),
+    )
+    .await?;
 
     let record_value = build_occurrence_record_json(
         body.latitude,
@@ -217,6 +238,10 @@ pub async fn update_occurrence(
         return Err(AppError::BadRequest("Invalid coordinates".into()));
     }
 
+    if let Some(ref license) = body.license {
+        validate_license(license)?;
+    }
+
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
         AtUri::parse(&body.uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
@@ -309,8 +334,13 @@ pub async fn update_occurrence(
     }
 
     // Upload new images and append their strong refs to what was retained
-    let (_new_blob_entries, new_media_refs) =
-        upload_media_records(&agent, &user.did, body.images.as_deref().unwrap_or(&[])).await?;
+    let (_new_blob_entries, new_media_refs) = upload_media_records(
+        &agent,
+        &user.did,
+        body.images.as_deref().unwrap_or(&[]),
+        body.license.as_deref(),
+    )
+    .await?;
     media_refs.extend(new_media_refs);
 
     let record_value = build_occurrence_record_json(
@@ -410,6 +440,7 @@ async fn upload_media_records(
     agent: &AgentType,
     user_did: &str,
     images: &[ImageUpload],
+    license: Option<&str>,
 ) -> Result<(Vec<BlobEntry>, Vec<StrongRef>), AppError> {
     use base64::Engine;
 
@@ -442,6 +473,7 @@ async fn upload_media_records(
                 mime_type,
             },
             alt: None,
+            license: license.map(str::to_string),
         });
 
         // The media record still uses the raw atrium BlobRef value, which
@@ -451,10 +483,13 @@ async fn upload_media_records(
         // BlobRef type, so we stay in JSON for this single field.
         let blob_value = serde_json::to_value(&blob_resp.blob)
             .map_err(|e| AppError::Internal(format!("Failed to serialize blob: {e}")))?;
-        let media_record_value = json!({
+        let mut media_record_value = json!({
             "$type": MediaRecord::NSID,
             "image": blob_value,
         });
+        if let Some(license) = license {
+            media_record_value["license"] = serde_json::Value::String(license.to_string());
+        }
         let did_for_media = atrium_api::types::string::Did::new(user_did.to_string())
             .map_err(|e| AppError::Internal(format!("Invalid DID: {e}")))?;
         match auth::create_at_record(agent, did_for_media, MediaRecord::NSID, media_record_value)
