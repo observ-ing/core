@@ -1,5 +1,8 @@
 {
   "currency": "USD",
   "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing. Numbers are updated manually after each month closes.",
-  "months": []
+  "months": [
+    { "month": "2026-04", "cost": 43.53 },
+    { "month": "2026-03", "cost": 0.29 }
+  ]
 }
