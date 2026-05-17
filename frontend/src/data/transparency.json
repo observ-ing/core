@@ -1,8 +1,27 @@
 {
   "currency": "USD",
-  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing. Numbers are updated manually after each month closes.",
+  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by service. Figures are gross (before Free Tier and promotional credits) and are updated manually after each month closes.",
   "months": [
-    { "month": "2026-04", "cost": 43.53 },
-    { "month": "2026-03", "cost": 0.29 }
+    {
+      "month": "2026-04",
+      "services": [
+        { "name": "Cloud Run", "cost": 36.8 },
+        { "name": "Artifact Registry", "cost": 13.93 },
+        { "name": "Cloud SQL", "cost": 4.36 },
+        { "name": "Cloud Logging", "cost": 0 },
+        { "name": "Secret Manager", "cost": 0 }
+      ]
+    },
+    {
+      "month": "2026-03",
+      "services": [
+        { "name": "Cloud SQL", "cost": 0.14 },
+        { "name": "Cloud Run", "cost": 0.13 },
+        { "name": "Artifact Registry", "cost": 0.01 },
+        { "name": "Cloud Logging", "cost": 0 },
+        { "name": "Invoice", "cost": 0 },
+        { "name": "Secret Manager", "cost": 0 }
+      ]
+    }
   ]
 }
