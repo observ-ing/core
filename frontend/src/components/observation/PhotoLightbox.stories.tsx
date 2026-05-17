@@ -28,3 +28,11 @@ export const Closed: Story = {
 export const Open: Story = {
   args: { open: true },
 };
+
+export const OpenWithLicense: Story = {
+  args: { open: true, license: "CC-BY-4.0" },
+};
+
+export const OpenWithUnknownLicense: Story = {
+  args: { open: true, license: "GPL-3.0" },
+};

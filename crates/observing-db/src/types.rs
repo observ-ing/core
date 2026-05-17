@@ -9,6 +9,9 @@ pub struct BlobEntry {
     pub image: BlobImage,
     #[serde(default)]
     pub alt: Option<String>,
+    /// SPDX license identifier mirrored from the media record (e.g. `CC-BY-4.0`).
+    #[serde(default)]
+    pub license: Option<String>,
 }
 
 /// Image metadata within a blob entry.

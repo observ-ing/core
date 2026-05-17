@@ -94,7 +94,7 @@ impl Default for MediaResolver {
     }
 }
 
-/// Pull the blob ref, mime type, and alt text out of a `bio.lexicons.temp.v0-1.media`
+/// Pull the blob ref, mime type, alt text, and license out of a `bio.lexicons.temp.v0-1.media`
 /// record JSON to build a `BlobEntry`. Returns `None` if the record is missing
 /// the required blob fields.
 fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
@@ -109,12 +109,17 @@ fn media_record_to_blob_entry(record: &Value) -> Option<BlobEntry> {
         .get("alt")
         .and_then(|a| a.as_str())
         .map(|s| s.to_string());
+    let license = record
+        .get("license")
+        .and_then(|a| a.as_str())
+        .map(|s| s.to_string());
     Some(BlobEntry {
         image: BlobImage {
             ref_: BlobRef::Link { link: cid },
             mime_type,
         },
         alt,
+        license,
     })
 }
 
@@ -134,6 +139,7 @@ mod tests {
                 "size": 12345,
             },
             "alt": "A ruby-throated hummingbird at a feeder.",
+            "license": "CC-BY-4.0",
         });
 
         let entry = media_record_to_blob_entry(&record).expect("should parse");
@@ -146,6 +152,7 @@ mod tests {
             entry.alt.as_deref(),
             Some("A ruby-throated hummingbird at a feeder.")
         );
+        assert_eq!(entry.license.as_deref(), Some("CC-BY-4.0"));
     }
 
     #[test]
@@ -158,6 +165,7 @@ mod tests {
         });
         let entry = media_record_to_blob_entry(&record).expect("should parse");
         assert!(entry.alt.is_none());
+        assert!(entry.license.is_none());
     }
 
     #[test]

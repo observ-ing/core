@@ -118,7 +118,7 @@ export function UploadModal() {
         setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
       }
     }
-    setExistingImages(editingObservation.images || []);
+    setExistingImages((editingObservation.images || []).map((img) => img.url));
 
     // Resolve the existing taxon name back to a TaxaResult so the form
     // shows "Existing taxon" instead of incorrectly flagging it as new.

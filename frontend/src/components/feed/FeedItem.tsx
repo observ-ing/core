@@ -53,7 +53,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const taxonomy = observation.effectiveTaxonomy;
   const species = observation.communityId || taxonomy?.scientificName || undefined;
 
-  const imageUrl = observation.images[0] ? getImageUrl(observation.images[0]) : "";
+  const imageUrl = observation.images[0] ? getImageUrl(observation.images[0].url) : "";
 
   const observationUrl = getObservationUrl(observation.uri);
   const pdslsUrl = getPdslsUrl(observation.uri);

@@ -25,7 +25,7 @@ pub struct OccurrenceResponse {
     pub identification_count: i64,
     pub event_date: String,
     pub location: LocationResponse,
-    pub images: Vec<String>,
+    pub images: Vec<OccurrenceImage>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -33,6 +33,18 @@ pub struct OccurrenceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub viewer_has_liked: Option<bool>,
+}
+
+/// A single image attached to an occurrence, with the SPDX license the
+/// uploader chose (when one is recorded on the underlying media record).
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct OccurrenceImage {
+    pub url: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub license: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -142,10 +154,13 @@ fn profile_summary(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Profi
     }
 }
 
-fn extract_images(row: &OccurrenceRow) -> Vec<String> {
+fn extract_images(row: &OccurrenceRow) -> Vec<OccurrenceImage> {
     row.blob_entries()
         .iter()
-        .map(|blob| format!("/media/blob/{}/{}", row.did, blob.image.ref_.cid()))
+        .map(|blob| OccurrenceImage {
+            url: format!("/media/blob/{}/{}", row.did, blob.image.ref_.cid()),
+            license: blob.license.clone(),
+        })
         .collect()
 }
 
@@ -425,6 +440,15 @@ mod tests {
     }
 
     fn blob_entry(cid: &str, mime: &str, ref_style: &str) -> BlobEntry {
+        blob_entry_with_license(cid, mime, ref_style, None)
+    }
+
+    fn blob_entry_with_license(
+        cid: &str,
+        mime: &str,
+        ref_style: &str,
+        license: Option<&str>,
+    ) -> BlobEntry {
         let ref_ = match ref_style {
             "link" => BlobRef::Link {
                 link: cid.to_string(),
@@ -437,6 +461,7 @@ mod tests {
                 mime_type: mime.to_string(),
             },
             alt: None,
+            license: license.map(str::to_string),
         }
     }
 
@@ -470,7 +495,9 @@ mod tests {
             "link",
         )])));
         let images = extract_images(&row);
-        assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreiabc123"]);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].url, "/media/blob/did:plc:test/bafkreiabc123");
+        assert!(images[0].license.is_none());
     }
 
     #[test]
@@ -481,7 +508,8 @@ mod tests {
             "bare",
         )])));
         let images = extract_images(&row);
-        assert_eq!(images, vec!["/media/blob/did:plc:test/bafkreixyz789"]);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].url, "/media/blob/did:plc:test/bafkreixyz789");
     }
 
     #[test]
@@ -492,8 +520,22 @@ mod tests {
         ])));
         let images = extract_images(&row);
         assert_eq!(images.len(), 2);
-        assert!(images.contains(&"/media/blob/did:plc:test/cid1".to_string()));
-        assert!(images.contains(&"/media/blob/did:plc:test/cid2".to_string()));
+        let urls: Vec<&str> = images.iter().map(|i| i.url.as_str()).collect();
+        assert!(urls.contains(&"/media/blob/did:plc:test/cid1"));
+        assert!(urls.contains(&"/media/blob/did:plc:test/cid2"));
+    }
+
+    #[test]
+    fn test_extract_images_passes_through_license() {
+        let row = make_row(Some(blobs_to_json(vec![blob_entry_with_license(
+            "cidlic",
+            "image/jpeg",
+            "link",
+            Some("CC-BY-4.0"),
+        )])));
+        let images = extract_images(&row);
+        assert_eq!(images.len(), 1);
+        assert_eq!(images[0].license.as_deref(), Some("CC-BY-4.0"));
     }
 
     #[test]
