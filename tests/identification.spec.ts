@@ -57,7 +57,7 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
       await suggestBtn.click();
 
-      await authExpect(page.getByLabel("Species Name")).toBeVisible({
+      await authExpect(page.getByLabel("Taxon Name")).toBeVisible({
         timeout: 10000,
       });
     },
@@ -84,8 +84,8 @@ authTest.describe("Identification - Logged In", () => {
       await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
       await suggestBtn.click();
 
-      const speciesInput = page.getByLabel("Species Name");
-      await speciesInput.fill("Quercus rubra");
+      const taxonInput = page.getByLabel("Taxon Name");
+      await taxonInput.fill("Quercus rubra");
 
       const postRequest = page.waitForRequest(
         (req: Request) => req.method() === "POST" && req.url().includes("/api/identifications"),
@@ -105,9 +105,9 @@ authTest.describe("Identification - Logged In", () => {
     });
     await authExpect(suggestBtn).toBeVisible({ timeout: 10000 });
     await suggestBtn.click();
-    await authExpect(page.getByLabel("Species Name")).toBeVisible();
+    await authExpect(page.getByLabel("Taxon Name")).toBeVisible();
 
     await page.getByRole("button", { name: "Cancel" }).click();
-    await authExpect(page.getByLabel("Species Name")).not.toBeVisible();
+    await authExpect(page.getByLabel("Taxon Name")).not.toBeVisible();
   });
 });
