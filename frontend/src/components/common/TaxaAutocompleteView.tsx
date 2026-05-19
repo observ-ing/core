@@ -51,6 +51,10 @@ export function TaxaAutocompleteView({
         options={options}
         loading={loading}
         getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
+        // Control `value` alongside `inputValue` so MUI's resetInputValue
+        // (mui/material-ui#48263, shipped in @mui/material 9.0.1) doesn't
+        // clear a non-empty `inputValue` whenever the internal value is null.
+        value={value || null}
         inputValue={value}
         {...(open !== undefined ? { open } : {})}
         onInputChange={(_, v, reason) => {
