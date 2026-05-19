@@ -4,7 +4,6 @@ import {
   Box,
   ButtonBase,
   Typography,
-  TextField,
   Button,
   Chip,
   Stack,
@@ -24,6 +23,9 @@ import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
+import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
+import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
@@ -60,11 +62,6 @@ const LICENSE_OPTIONS = [
   },
 ];
 
-function toDatetimeLocal(date: Date): string {
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-}
-
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
@@ -84,7 +81,7 @@ export function UploadModal() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
-  const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
+  const [observationDate, setObservationDate] = useState<Date | null>(() => new Date());
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
@@ -117,7 +114,7 @@ export function UploadModal() {
     setMatchedTaxon(null);
     setRank("");
     if (editingObservation.eventDate) {
-      setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
+      setObservationDate(new Date(editingObservation.eventDate));
     }
     if (editingObservation.location) {
       setLat(editingObservation.location.latitude.toFixed(6));
@@ -152,7 +149,7 @@ export function UploadModal() {
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
-    setObservationDate(toDatetimeLocal(new Date()));
+    setObservationDate(new Date());
     setUncertaintyMeters(50);
     setVisualIdImageUrl(null);
     setIsDirty(false);
@@ -283,7 +280,7 @@ export function UploadModal() {
         const parsed = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
-          setObservationDate(toDatetimeLocal(date));
+          setObservationDate(date);
           dispatch(addToast({ message: "Date extracted from photo EXIF data", type: "success" }));
         }
       }
@@ -320,6 +317,11 @@ export function UploadModal() {
 
     if (!lat || !lng) {
       dispatch(addToast({ message: "Please provide a location", type: "error" }));
+      return;
+    }
+
+    if (!observationDate || isNaN(observationDate.getTime())) {
+      dispatch(addToast({ message: "Please provide a valid observation date", type: "error" }));
       return;
     }
 
@@ -361,7 +363,7 @@ export function UploadModal() {
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
           license,
-          eventDate: new Date(observationDate).toISOString(),
+          eventDate: observationDate.toISOString(),
           ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
         });
@@ -377,7 +379,7 @@ export function UploadModal() {
           }),
         );
       } else {
-        const eventDate = new Date(observationDate).toISOString();
+        const eventDate = observationDate.toISOString();
 
         const result = await submitObservation({
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
@@ -762,20 +764,19 @@ export function UploadModal() {
             </Select>
           </FormControl>
 
-          <TextField
-            fullWidth
-            label="Observation date"
-            type="datetime-local"
-            value={observationDate}
-            onChange={(e) => {
-              setObservationDate(e.target.value);
-              setIsDirty(true);
-            }}
-            margin="normal"
-            slotProps={{
-              inputLabel: { shrink: true },
-            }}
-          />
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DateTimePicker
+              label="Observation date"
+              value={observationDate}
+              onChange={(newValue) => {
+                setObservationDate(newValue);
+                setIsDirty(true);
+              }}
+              slotProps={{
+                textField: { fullWidth: true, margin: "normal" },
+              }}
+            />
+          </LocalizationProvider>
 
           <Stack
             direction="row"
