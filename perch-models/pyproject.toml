@@ -1,0 +1,77 @@
+[project]
+name = "perch-models"
+version = "0.1.0"
+description = "Perch 2.0 model preparation pipeline for Observ.ing bioacoustic identification"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pydantic>=2.5",
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+# Download the prebuilt ONNX bundle from HuggingFace + the class list.
+# This is the default path and avoids needing TensorFlow.
+download = [
+    "huggingface-hub>=0.24",
+]
+# Alternative: convert the original Perch SavedModel checkpoint to ONNX.
+# Only needed if huggingface bundles fall out of sync with the canonical
+# Perch release. Pulls in TF, tf2onnx, and onnx — together ~3 GB.
+export = [
+    "tensorflow>=2.17",
+    "tf2onnx>=1.16",
+    "onnx>=1.16",
+]
+# Verify exported artifacts produce sane output.
+verify = [
+    "onnxruntime>=1.17",
+    "soundfile>=0.12",
+]
+# Build the geo index from iNat Open Range Maps.
+geo = [
+    "geopandas>=1.0",
+    "h3>=4.1",
+    "shapely>=2.0",
+]
+# Enrich Perch's class list (which has scientific names + eBird codes) with
+# GBIF kingdom / common name so the Rust service can hydrate suggestions
+# without extra GBIF round trips per request.
+gbif = [
+    "httpx>=0.27",
+    "tenacity>=8.0",
+]
+dev = [
+    "perch-models[download,verify,geo,gbif]",
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "pyright>=1.1.400",
+]
+
+[project.scripts]
+perch-prepare = "perch_models.cli:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["perch_models*"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.pyright]
+include = ["perch_models"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+# Same rationale as bioclip-models: third-party ML libs lack stubs.
+reportMissingTypeStubs = false
+reportUnknownMemberType = false
+reportUnknownArgumentType = false
+reportUnknownVariableType = false
+reportUnknownParameterType = false
+reportUnknownLambdaType = false
+reportMissingParameterType = false
+reportUntypedFunctionDecorator = false
