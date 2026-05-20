@@ -1,0 +1,56 @@
+[package]
+name = "observing-audio-id"
+version = "0.1.0"
+edition = "2021"
+description = "Perch-based bioacoustic species identification service for Observ.ing"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Wire types shared with the appview client
+observing-audio-id-protocol = { path = "../observing-audio-id-protocol" }
+
+# ONNX inference
+ort = { version = "2.0.0-rc.12", features = ["load-dynamic", "ndarray"] }
+ndarray = "0.17"
+
+# Audio decoding (wav / mp3 / flac / ogg, pure Rust)
+symphonia = { version = "0.5", features = ["all-codecs", "all-formats"] }
+
+# Resampling to model rate (Perch 2.0 expects 32 kHz mono)
+rubato = "0.16"
+
+# Async runtime
+tokio = { workspace = true }
+
+# HTTP server
+axum = { workspace = true }
+tower-http = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
+
+# Time
+chrono = { workspace = true }
+
+# Base64 decoding
+base64 = "0.22"
+
+# Zero-copy binary loading (used by the optional geo index, same as species-id)
+bytemuck = { version = "1", features = ["derive"] }
+
+# H3 geospatial indexing (geo-prior reranking)
+h3o = { version = "0.9", default-features = false }
+
+[dev-dependencies]
+tower = { workspace = true, features = ["util"] }
+tempfile = { workspace = true }
+
+[[bin]]
+name = "observing-audio-id"
+path = "src/main.rs"
