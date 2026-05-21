@@ -247,7 +247,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          tool: sqlx-cli
+          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94; we pin to 1.93
+          # in rust-toolchain.toml. Workspace uses sqlx 0.8.x, so 0.8.6
+          # matches. Bump in lockstep when the toolchain pin moves.
+          tool: sqlx-cli@0.8.6
           no-default-features: true
           features: postgres
       - run: cargo sqlx prepare --workspace --check
@@ -306,7 +309,8 @@ jobs:
       - run: npm ci
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          tool: sqlx-cli
+          # See rust-sqlx job above for rationale on the version pin.
+          tool: sqlx-cli@0.8.6
           no-default-features: true
           features: postgres
       - name: Run database migrations and seed
