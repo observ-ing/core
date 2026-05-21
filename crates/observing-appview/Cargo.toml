@@ -60,6 +60,8 @@ atrium-api = "0.25"
 atrium-common = "0.1"
 atrium-identity = "0.1"
 atrium-oauth = "0.1"
+# Reqwest-backed XrpcClient for the AI bot's app-password session
+atrium-xrpc-client = { version = "0.5", features = ["reqwest-default-tls"] }
 hickory-resolver = "0.26"
 
 # Async trait support (needed for Store implementations)

@@ -1,3 +1,4 @@
+mod ai_agent;
 mod auth;
 mod config;
 mod constants;
@@ -71,6 +72,11 @@ async fn main() {
 
     let media = media::MediaCache::from_env().await;
 
+    let ai_agent = ai_agent::AiAgent::from_env(&config).await;
+    if ai_agent.is_none() {
+        info!("AI auto-identification disabled (AI_BLUESKY_* unset or login failed)");
+    }
+
     let state = AppState {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::new()),
@@ -81,6 +87,9 @@ async fn main() {
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
+        ai_agent,
+        ai_id_min_confidence: config.ai_id_min_confidence,
+        ai_id_in_range_only: config.ai_id_in_range_only,
     };
 
     // CORS

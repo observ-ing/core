@@ -239,6 +239,18 @@ pub fn identification_from_json(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    // App-specific extras the AI bot writes alongside `createdAt`. Not yet
+    // part of the upstream bio.lexicons schema, so we extract them from the
+    // raw JSON rather than relying on the generated lexicon types.
+    let model_name = record_json
+        .get("modelName")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let model_version = record_json
+        .get("modelVersion")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+
     let date_identified = record_json
         .get("createdAt")
         .and_then(|v| v.as_str())
@@ -260,6 +272,8 @@ pub fn identification_from_json(
         // Resolved by the taxonomy resolver before upsert; the JSON record
         // carries no consensus taxon information.
         accepted_taxon_key: None,
+        model_name,
+        model_version,
     })
 }
 
@@ -504,6 +518,75 @@ mod tests {
             params.date_identified.date_naive().to_string(),
             "2024-06-15"
         );
+    }
+
+    /// AI-authored identifications carry `modelName` + `modelVersion` as
+    /// app-specific extras (the bio.lexicons schema does not yet declare
+    /// them). The ingester must surface those into the upsert params so
+    /// downstream queries can distinguish AI from human IDs.
+    #[test]
+    fn test_identification_from_json_extracts_model_fields() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.identification",
+            "scientificName": "Quercus alba",
+            "occurrence": {
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
+                "cid": "bafyreioccurrence"
+            },
+            "createdAt": "2024-06-15T08:30:45Z",
+            "modelName": "BioCLIP",
+            "modelVersion": "bioclip-2.5-vit-h-14"
+        });
+
+        let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        let params = identification_from_json(
+            &record,
+            "uri".into(),
+            "cid".into(),
+            "did:plc:ai".into(),
+            fallback,
+        )
+        .expect("record should parse with model fields");
+
+        assert_eq!(params.model_name.as_deref(), Some("BioCLIP"));
+        assert_eq!(
+            params.model_version.as_deref(),
+            Some("bioclip-2.5-vit-h-14")
+        );
+    }
+
+    /// Human identifications do not include the AI model extras; both
+    /// fields must round-trip as `None`.
+    #[test]
+    fn test_identification_from_json_omits_model_fields_when_absent() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.identification",
+            "scientificName": "Quercus alba",
+            "occurrence": {
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
+                "cid": "bafyreioccurrence"
+            },
+            "createdAt": "2024-06-15T08:30:45Z"
+        });
+
+        let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        let params = identification_from_json(
+            &record,
+            "uri".into(),
+            "cid".into(),
+            "did:plc:human".into(),
+            fallback,
+        )
+        .expect("record should parse without model fields");
+
+        assert!(params.model_name.is_none());
+        assert!(params.model_version.is_none());
     }
 
     /// `identification_from_json` falls back to the supplied time when the

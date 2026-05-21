@@ -2,6 +2,7 @@ use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
+use crate::ai_agent::AiAgent;
 use crate::media::MediaCache;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
@@ -47,6 +48,15 @@ pub struct AppState {
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
     pub admin_dids: Vec<String>,
+    /// Bot account that publishes AI-generated identifications. `None` when
+    /// AI_BLUESKY_* env vars are unset — auto-AI-ID is then a no-op.
+    pub ai_agent: Option<Arc<AiAgent>>,
+    /// Minimum confidence for the top species-id suggestion before the AI
+    /// bot posts an identification.
+    pub ai_id_min_confidence: f32,
+    /// When true, suppress AI identifications whose top suggestion is known
+    /// out-of-range at the observation location.
+    pub ai_id_in_range_only: bool,
 }
 
 /// Create an OAuthClient.

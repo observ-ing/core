@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id,\n            identification_verification_status, type_status, date_identified,\n            kingdom, phylum, class, \"order\" as order_, family, genus\n        FROM identifications\n        WHERE subject_uri = $1\n        ORDER BY date_identified DESC\n        ",
+  "query": "\n        SELECT\n            uri, cid, did, subject_uri, subject_cid, scientific_name,\n            taxon_rank, identification_qualifier, taxon_id,\n            identification_verification_status, type_status, date_identified,\n            kingdom, phylum, class, \"order\" as order_, family, genus,\n            model_name, model_version\n        FROM identifications\n        WHERE subject_uri = $1\n        ORDER BY date_identified DESC\n        ",
   "describe": {
     "columns": [
       {
@@ -92,6 +92,16 @@
         "ordinal": 17,
         "name": "genus",
         "type_info": "Text"
+      },
+      {
+        "ordinal": 18,
+        "name": "model_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 19,
+        "name": "model_version",
+        "type_info": "Text"
       }
     ],
     "parameters": {
@@ -117,8 +127,10 @@
       true,
       true,
       true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "90b182889123c2ab7ac7bc29641c377682603262140f5ad8e49c956a1af4ea87"
+  "hash": "e3c8ee73d428bf65c64242f5f580b55ab0a70a6515ef149e174ce734e06ed686"
 }

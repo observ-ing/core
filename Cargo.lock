@@ -305,6 +305,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "atrium-xrpc-client"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d9d1c0ebd71047b85ccfcad936ded56179af24beb60239ab590c549d2325e679"
+dependencies = [
+ "atrium-xrpc",
+ "reqwest 0.12.28",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2857,6 +2867,7 @@ dependencies = [
  "atrium-common",
  "atrium-identity",
  "atrium-oauth",
+ "atrium-xrpc-client",
  "axum",
  "axum-extra",
  "base64",

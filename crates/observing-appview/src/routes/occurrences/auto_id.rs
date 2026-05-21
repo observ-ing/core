@@ -24,6 +24,8 @@ pub async fn build_identification_record(
     user_kingdom: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
+    model_name: Option<&str>,
+    model_version: Option<&str>,
 ) -> Result<Value, AppError> {
     let mut taxon_rank = None;
     let mut kingdom = None;
@@ -63,6 +65,12 @@ pub async fn build_identification_record(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
         );
+        if let Some(name) = model_name {
+            obj.insert("modelName".to_string(), serde_json::json!(name));
+        }
+        if let Some(version) = model_version {
+            obj.insert("modelVersion".to_string(), serde_json::json!(version));
+        }
     }
 
     Ok(id_value)

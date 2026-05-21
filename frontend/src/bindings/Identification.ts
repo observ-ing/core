@@ -24,4 +24,13 @@ export type Identification = {
   order?: string;
   family?: string;
   genus?: string;
+  /**
+   * Name of the AI model that authored this identification (e.g. "BioCLIP"),
+   * when present. Absent for human identifications.
+   */
+  model_name?: string;
+  /**
+   * Version string of the AI model that authored this identification.
+   */
+  model_version?: string;
 };

@@ -15,8 +15,9 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         r#"
         INSERT INTO identifications (
             uri, cid, did, subject_uri, subject_cid, scientific_name,
-            taxon_rank, taxon_id, date_identified, kingdom, accepted_taxon_key
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            taxon_rank, taxon_id, date_identified, kingdom, accepted_taxon_key,
+            model_name, model_version
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $6,
@@ -24,6 +25,8 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
             taxon_id = COALESCE($8, identifications.taxon_id),
             kingdom = COALESCE($10, identifications.kingdom),
             accepted_taxon_key = COALESCE($11, identifications.accepted_taxon_key),
+            model_name = COALESCE($12, identifications.model_name),
+            model_version = COALESCE($13, identifications.model_version),
             indexed_at = NOW()
         "#,
     )
@@ -38,6 +41,8 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
     .bind(p.date_identified)
     .bind(&p.kingdom)
     .bind(p.accepted_taxon_key)
+    .bind(&p.model_name)
+    .bind(&p.model_version)
     .execute(pool)
     .await?;
 
@@ -69,7 +74,8 @@ pub async fn get_for_occurrence(
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, date_identified,
-            kingdom, phylum, class, "order" as order_, family, genus
+            kingdom, phylum, class, "order" as order_, family, genus,
+            model_name, model_version
         FROM identifications
         WHERE subject_uri = $1
         ORDER BY date_identified DESC
@@ -96,7 +102,8 @@ pub async fn get_for_subjects_batch(
             uri, cid, did, subject_uri, subject_cid, scientific_name,
             taxon_rank, identification_qualifier, taxon_id,
             identification_verification_status, type_status, date_identified,
-            kingdom, phylum, class, "order" as order_, family, genus
+            kingdom, phylum, class, "order" as order_, family, genus,
+            model_name, model_version
         FROM identifications
         WHERE subject_uri = ANY($1)
         ORDER BY subject_uri, date_identified DESC
