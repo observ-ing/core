@@ -7,6 +7,12 @@ pub enum IngesterError {
     Database(Box<sqlx::Error>),
     Decode(String),
     Config(String),
+    /// Record could not be parsed into its lexicon type or is missing
+    /// fields the ingester treats as required (e.g. coordinates,
+    /// eventDate on an occurrence). Surfaced to the main loop so the
+    /// drop lands in `ingester.failed_records` instead of being
+    /// silently warned-and-acked.
+    Processing(String),
 }
 
 impl fmt::Display for IngesterError {
@@ -15,6 +21,7 @@ impl fmt::Display for IngesterError {
             IngesterError::Database(err) => write!(f, "Database error: {}", err),
             IngesterError::Decode(msg) => write!(f, "Decode error: {}", msg),
             IngesterError::Config(msg) => write!(f, "Configuration error: {}", msg),
+            IngesterError::Processing(msg) => write!(f, "Processing error: {}", msg),
         }
     }
 }
