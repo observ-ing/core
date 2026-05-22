@@ -13,6 +13,7 @@
 //! the ledger and call the appropriate `processing::*_from_json` +
 //! `upsert` directly without going back to the firehose.
 
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 
 /// Inputs for [`record`]. Borrowed so callers don't have to clone the
@@ -62,4 +63,55 @@ pub async fn record(
     .execute(executor)
     .await?;
     Ok(())
+}
+
+/// One row from `ingester.failed_records`, trimmed for dashboard display.
+/// Omits `record_json` (potentially large) — fetch the full row separately
+/// if a replay tool needs it.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct FailedRecordRow {
+    pub uri: String,
+    pub collection: String,
+    pub did: String,
+    pub action: String,
+    pub last_error: String,
+    pub attempts: i32,
+    pub first_attempt_at: DateTime<Utc>,
+    pub last_attempt_at: DateTime<Utc>,
+}
+
+/// Most recently re-attempted failures, newest first. Backed by the
+/// `failed_records_last_attempt_idx` index.
+pub async fn list_recent(
+    executor: impl sqlx::PgExecutor<'_>,
+    limit: i64,
+) -> Result<Vec<FailedRecordRow>, sqlx::Error> {
+    sqlx::query_as!(
+        FailedRecordRow,
+        r#"
+        SELECT
+            uri,
+            collection,
+            did,
+            action,
+            last_error,
+            attempts,
+            first_attempt_at as "first_attempt_at: DateTime<Utc>",
+            last_attempt_at  as "last_attempt_at: DateTime<Utc>"
+        FROM ingester.failed_records
+        ORDER BY last_attempt_at DESC
+        LIMIT $1
+        "#,
+        limit,
+    )
+    .fetch_all(executor)
+    .await
+}
+
+/// Total number of distinct URIs in the failure ledger.
+pub async fn count_total(executor: impl sqlx::PgExecutor<'_>) -> Result<i64, sqlx::Error> {
+    let row = sqlx::query!(r#"SELECT COUNT(*) as "count!" FROM ingester.failed_records"#)
+        .fetch_one(executor)
+        .await?;
+    Ok(row.count)
 }

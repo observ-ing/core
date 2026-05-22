@@ -7,12 +7,14 @@
 //! ingester's own counters on a single HTML page.
 //!
 //! Routes:
-//!   GET /                  Combined HTML dashboard.
-//!   GET /health            Cloud Run liveness probe (JSON).
-//!   GET /api/stats         Ingester counters (JSON).
-//!   GET /api/tap-stats     Tap state — repo/record/buffer counts and
-//!                          cursors, fetched from the embedded Tap on
-//!                          loopback (JSON).
+//!   GET /                    Combined HTML dashboard.
+//!   GET /health              Cloud Run liveness probe (JSON).
+//!   GET /api/stats           Ingester counters (JSON).
+//!   GET /api/tap-stats       Tap state — repo/record/buffer counts and
+//!                            cursors, fetched from the embedded Tap on
+//!                            loopback (JSON).
+//!   GET /api/failed-records  Recent rows from `ingester.failed_records`
+//!                            (JSON) for the dashboard's failures panel.
 
 use crate::{
     server::SharedState,
@@ -24,11 +26,14 @@ use axum::{
     routing::get,
     Router,
 };
+use observing_db::failed_records;
 use serde::Serialize;
+use sqlx::postgres::PgPool;
 use std::sync::Arc;
 use tapped::TapClient;
 use tokio::sync::OnceCell;
 use tower_http::cors::CorsLayer;
+use tracing::warn;
 
 /// Shared by all dashboard routes.
 ///
@@ -41,6 +46,11 @@ use tower_http::cors::CorsLayer;
 pub struct DashboardState {
     pub ingester: SharedState,
     pub tap: Arc<OnceCell<TapClient>>,
+    /// Connected after `Database::connect` returns in `main`. Same
+    /// late-init pattern as `tap`: the HTTP server comes up first so
+    /// the Cloud Run TCP startup probe passes, and `/api/failed-records`
+    /// reports "not yet initialized" until the pool lands.
+    pub pool: Arc<OnceCell<PgPool>>,
 }
 
 pub fn router(state: DashboardState) -> Router {
@@ -49,6 +59,7 @@ pub fn router(state: DashboardState) -> Router {
         .route("/health", get(health))
         .route("/api/stats", get(stats))
         .route("/api/tap-stats", get(tap_stats))
+        .route("/api/failed-records", get(failed_records_handler))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
@@ -161,6 +172,58 @@ async fn tap_stats(State(s): State<DashboardState>) -> Json<TapStatsResponse> {
     })
 }
 
+#[derive(Serialize)]
+struct FailedRecordsResponse {
+    total: Option<i64>,
+    items: Vec<failed_records::FailedRecordRow>,
+    /// Populated when the ledger query failed; the dashboard renders this
+    /// instead of 500-ing the whole page. `total` and `items` may still be
+    /// partially set if one query succeeded and the other didn't.
+    error: Option<String>,
+}
+
+async fn failed_records_handler(State(s): State<DashboardState>) -> Json<FailedRecordsResponse> {
+    let Some(pool) = s.pool.get() else {
+        return Json(FailedRecordsResponse {
+            total: None,
+            items: Vec::new(),
+            error: Some("database pool not yet initialized".to_string()),
+        });
+    };
+    let (items_res, total_res) = tokio::join!(
+        failed_records::list_recent(pool, 50),
+        failed_records::count_total(pool),
+    );
+
+    let mut error = None;
+    let items = match items_res {
+        Ok(rows) => rows,
+        Err(e) => {
+            warn!(error = %e, "failed_records list query failed");
+            error = Some(format!("list: {e}"));
+            Vec::new()
+        }
+    };
+    let total = match total_res {
+        Ok(n) => Some(n),
+        Err(e) => {
+            warn!(error = %e, "failed_records count query failed");
+            // Concatenate so a list error doesn't hide a count error.
+            error = Some(match error {
+                Some(prev) => format!("{prev}; count: {e}"),
+                None => format!("count: {e}"),
+            });
+            None
+        }
+    };
+
+    Json(FailedRecordsResponse {
+        total,
+        items,
+        error,
+    })
+}
+
 async fn dashboard() -> Html<&'static str> {
     Html(DASHBOARD_HTML)
 }
@@ -212,6 +275,10 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
   <h2>Recent events</h2>
   <div id="recent-events">No events yet...</div>
 
+  <h2>Failed records <span id="failed-total" style="font-weight: normal; color: #888;"></span></h2>
+  <div id="failed-records-error" class="errors"></div>
+  <div id="failed-records">Loading...</div>
+
   <script>
     function formatDuration(seconds) {
       const h = Math.floor(seconds / 3600);
@@ -230,11 +297,21 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
       return s == null || s === '' ? '-' : s;
     }
 
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
     async function refresh() {
       try {
-        const [stats, tap] = await Promise.all([
+        const [stats, tap, failed] = await Promise.all([
           fetch('/api/stats').then(r => r.json()),
           fetch('/api/tap-stats').then(r => r.json()),
+          fetch('/api/failed-records').then(r => r.json()),
         ]);
 
         const statusEl = document.getElementById('status');
@@ -262,8 +339,34 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
           eventsEl.textContent = 'No events yet...';
         } else {
           eventsEl.innerHTML = stats.recentEvents.map(e =>
-            '<div class="event">' + new Date(e.time).toLocaleTimeString() + ' [' + e.type + '] ' + e.action + ' ' + e.uri + '</div>'
+            '<div class="event">' + new Date(e.time).toLocaleTimeString() + ' [' + escapeHtml(e.type) + '] ' + escapeHtml(e.action) + ' ' + escapeHtml(e.uri) + '</div>'
           ).join('');
+        }
+
+        const totalEl = document.getElementById('failed-total');
+        totalEl.textContent = failed.total != null ? '(' + fmtNum(failed.total) + ' total)' : '';
+        document.getElementById('failed-records-error').textContent = failed.error || '';
+        const failedEl = document.getElementById('failed-records');
+        if (!failed.items || failed.items.length === 0) {
+          failedEl.textContent = failed.error ? '' : 'No failed records.';
+        } else {
+          const rows = failed.items.map(r =>
+            '<tr>' +
+              '<td>' + new Date(r.last_attempt_at).toLocaleString() + '</td>' +
+              '<td>' + fmtNum(r.attempts) + '</td>' +
+              '<td>' + escapeHtml(r.collection) + '</td>' +
+              '<td>' + escapeHtml(r.action) + '</td>' +
+              '<td style="word-break: break-all;">' + escapeHtml(r.uri) + '</td>' +
+              '<td class="err">' + escapeHtml(r.last_error) + '</td>' +
+            '</tr>'
+          ).join('');
+          failedEl.innerHTML =
+            '<table style="width: 100%;">' +
+              '<thead><tr>' +
+                '<th>Last attempt</th><th>Attempts</th><th>Collection</th><th>Action</th><th>URI</th><th>Error</th>' +
+              '</tr></thead>' +
+              '<tbody>' + rows + '</tbody>' +
+            '</table>';
         }
       } catch (err) {
         const statusEl = document.getElementById('status');

@@ -90,10 +90,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // until the cell is populated.
     let tap_cell: Arc<tokio::sync::OnceCell<TapClient>> = Arc::new(tokio::sync::OnceCell::new());
 
+    // Same late-init pattern for the DB pool: HTTP server up first so
+    // Cloud Run TCP startup probe passes, then `Database::connect` below
+    // sets this cell so `/api/failed-records` can query the ledger.
+    let pool_cell: Arc<tokio::sync::OnceCell<sqlx::postgres::PgPool>> =
+        Arc::new(tokio::sync::OnceCell::new());
+
     // Spawn HTTP server immediately so Cloud Run TCP startup probe passes.
     let dash_state = DashboardState {
         ingester: state.clone(),
         tap: tap_cell.clone(),
+        pool: pool_cell.clone(),
     };
     tokio::spawn(async move {
         if let Err(e) = serve_http(dash_state, port).await {
@@ -102,6 +109,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     });
 
     let db = Database::connect(&database_url).await?;
+    pool_cell.set(db.pool().clone()).ok();
 
     // Bring up Tap. If TAP_URL is set we treat it as already running;
     // otherwise spawn the bundled binary as a child process. The

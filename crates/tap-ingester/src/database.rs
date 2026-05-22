@@ -5,7 +5,7 @@
 //! scalar params (did, uri, cid, time, record JSON) rather than a
 //! firehose-coupled `CommitInfo` struct.
 
-use crate::error::Result;
+use crate::error::{IngesterError, Result};
 use crate::media_resolver::MediaResolver;
 use chrono::{DateTime, Utc};
 use observing_db::processing;
@@ -46,14 +46,18 @@ async fn notify_occurrence_owner(
     }
 }
 
-/// Run a `processing::*_from_json` call, returning `Ok(())` with a warning on parse failure.
-macro_rules! process_or_warn {
+/// Run a `processing::*_from_json` call, returning `Err(Processing)` on parse failure.
+///
+/// The main loop's failure path catches this, checks the subject resolver,
+/// and writes to `ingester.failed_records` if there's no cross-repo
+/// dependency to resolve — so schema/format mismatches stay observable
+/// instead of being silently warned-and-acked.
+macro_rules! process_or_fail {
     ($uri:expr, $method:ident, $label:literal, $($arg:expr),* $(,)?) => {
         match processing::$method($($arg),*) {
             Ok(p) => p,
             Err(e) => {
-                warn!(uri = %$uri, error = %e, "Failed to process {} record", $label);
-                return Ok(());
+                return Err(IngesterError::Processing(format!("{}: {}", $label, e)));
             }
         }
     };
@@ -80,6 +84,11 @@ impl Database {
         })
     }
 
+    /// Pool handle for read-only consumers (dashboard `/api/failed-records`).
+    pub fn pool(&self) -> &PgPool {
+        &self.pool
+    }
+
     pub async fn upsert_occurrence(
         &self,
         did: &str,
@@ -90,7 +99,7 @@ impl Database {
     ) -> Result<()> {
         debug!("Upserting occurrence: {}", uri);
 
-        let mut parsed = process_or_warn!(
+        let mut parsed = process_or_fail!(
             uri,
             occurrence_from_json,
             "occurrence",
@@ -143,7 +152,7 @@ impl Database {
     ) -> Result<()> {
         debug!("Upserting identification: {}", uri);
 
-        let params = process_or_warn!(
+        let params = process_or_fail!(
             uri,
             identification_from_json,
             "identification",
@@ -175,7 +184,7 @@ impl Database {
     ) -> Result<()> {
         debug!("Upserting comment: {}", uri);
 
-        let params = process_or_warn!(
+        let params = process_or_fail!(
             uri,
             comment_from_json,
             "comment",
@@ -207,7 +216,7 @@ impl Database {
     ) -> Result<()> {
         debug!("Upserting interaction: {}", uri);
 
-        let params = process_or_warn!(
+        let params = process_or_fail!(
             uri,
             interaction_from_json,
             "interaction",
@@ -238,7 +247,7 @@ impl Database {
     ) -> Result<()> {
         debug!("Upserting like: {}", uri);
 
-        let params = process_or_warn!(
+        let params = process_or_fail!(
             uri,
             like_from_json,
             "like",

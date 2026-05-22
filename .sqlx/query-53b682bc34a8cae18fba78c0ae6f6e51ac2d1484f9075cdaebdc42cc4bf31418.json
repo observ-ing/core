@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            uri,\n            collection,\n            did,\n            action,\n            last_error,\n            attempts,\n            first_attempt_at as \"first_attempt_at: DateTime<Utc>\",\n            last_attempt_at  as \"last_attempt_at: DateTime<Utc>\"\n        FROM ingester.failed_records\n        ORDER BY last_attempt_at DESC\n        LIMIT $1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "collection",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "did",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "action",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_error",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "attempts",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "first_attempt_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "last_attempt_at: DateTime<Utc>",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "53b682bc34a8cae18fba78c0ae6f6e51ac2d1484f9075cdaebdc42cc4bf31418"
+}
