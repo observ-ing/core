@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, scientific_name, event_date,\n                    ST_Y(location::geometry) as \"latitude!\",\n                    ST_X(location::geometry) as \"longitude!\",\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1 AND created_at < ($3::text)::timestamptz\n                ORDER BY created_at DESC\n                LIMIT $2\n                ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date as \"event_date!\",\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        AND did != ALL($6)\n        AND event_date IS NOT NULL\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "event_date",
+        "name": "event_date!",
         "type_info": "Timestamptz"
       },
       {
@@ -111,9 +111,12 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
+        "Float8",
+        "Float8",
+        "Float8",
         "Int8",
-        "Text"
+        "Int8",
+        "TextArray"
       ]
     },
     "nullable": [
@@ -121,7 +124,7 @@
       false,
       false,
       true,
-      false,
+      true,
       null,
       null,
       true,
@@ -140,5 +143,5 @@
       null
     ]
   },
-  "hash": "6303277f7f28430084de599a7ecd35e4583de823b270cf7b0befee8a3a2087a0"
+  "hash": "1897b04e47eade3764a988dafccb700631df09adf3d9eb6e4146ad6d774edd3a"
 }

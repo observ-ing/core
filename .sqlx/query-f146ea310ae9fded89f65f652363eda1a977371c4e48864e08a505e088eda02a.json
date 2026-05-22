@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date as \"event_date!\",\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE uri = $1\n          AND location IS NOT NULL\n          AND event_date IS NOT NULL\n        ",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "event_date",
+        "name": "event_date!",
         "type_info": "Timestamptz"
       },
       {
@@ -111,9 +111,7 @@
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "Text",
-        "TextArray"
+        "Text"
       ]
     },
     "nullable": [
@@ -121,7 +119,7 @@
       false,
       false,
       true,
-      false,
+      true,
       null,
       null,
       true,
@@ -140,5 +138,5 @@
       null
     ]
   },
-  "hash": "2699a09377ce25feceba44e901a2b1917ff21de54599ee70f8abed27bc35be0a"
+  "hash": "f146ea310ae9fded89f65f652363eda1a977371c4e48864e08a505e088eda02a"
 }

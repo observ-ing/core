@@ -59,9 +59,12 @@ pub async fn upsert(
         p.cid,
         p.did,
         p.scientific_name as _,
-        p.event_date,
-        p.longitude,
-        p.latitude,
+        p.event_date as _,
+        // ST_MakePoint is STRICT, so a NULL coord propagates through to a
+        // NULL location column — that's how survey-based occurrences land
+        // with NULL geometry until proper survey resolution fills them in.
+        p.longitude as _,
+        p.latitude as _,
         p.coordinate_uncertainty_meters as _,
         p.associated_media as _,
         p.recorded_by as _,
@@ -92,7 +95,8 @@ pub async fn get(
         OccurrenceRow,
         r#"
         SELECT
-            uri, cid, did, scientific_name, event_date,
+            uri, cid, did, scientific_name,
+            event_date as "event_date!",
             ST_Y(location::geometry) as "latitude!",
             ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
@@ -103,6 +107,8 @@ pub async fn get(
             NULL::text as source
         FROM occurrences
         WHERE uri = $1
+          AND location IS NOT NULL
+          AND event_date IS NOT NULL
         "#,
         uri,
     )
@@ -124,7 +130,8 @@ pub async fn get_nearby(
         OccurrenceRow,
         r#"
         SELECT
-            uri, cid, did, scientific_name, event_date,
+            uri, cid, did, scientific_name,
+            event_date as "event_date!",
             ST_Y(location::geometry) as "latitude!",
             ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
@@ -140,6 +147,7 @@ pub async fn get_nearby(
             $3
         )
         AND did != ALL($6)
+        AND event_date IS NOT NULL
         ORDER BY distance_meters
         LIMIT $4 OFFSET $5
         "#,
@@ -168,7 +176,8 @@ pub async fn get_by_bounding_box(
         OccurrenceRow,
         r#"
         SELECT
-            uri, cid, did, scientific_name, event_date,
+            uri, cid, did, scientific_name,
+            event_date as "event_date!",
             ST_Y(location::geometry) as "latitude!",
             ST_X(location::geometry) as "longitude!",
             coordinate_uncertainty_meters,
@@ -180,6 +189,7 @@ pub async fn get_by_bounding_box(
         FROM occurrences
         WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
         AND did != ALL($6)
+        AND event_date IS NOT NULL
         LIMIT $5
         "#,
         min_lng,
@@ -205,7 +215,8 @@ pub async fn get_feed(
             OccurrenceRow,
             r#"
             SELECT
-                uri, cid, did, scientific_name, event_date,
+                uri, cid, did, scientific_name,
+                event_date as "event_date!",
                 ST_Y(location::geometry) as "latitude!",
                 ST_X(location::geometry) as "longitude!",
                 coordinate_uncertainty_meters,
@@ -217,6 +228,8 @@ pub async fn get_feed(
             FROM occurrences
             WHERE created_at < ($2::text)::timestamptz
             AND did != ALL($3)
+            AND location IS NOT NULL
+            AND event_date IS NOT NULL
             ORDER BY created_at DESC
             LIMIT $1
             "#,
@@ -231,7 +244,8 @@ pub async fn get_feed(
             OccurrenceRow,
             r#"
             SELECT
-                uri, cid, did, scientific_name, event_date,
+                uri, cid, did, scientific_name,
+                event_date as "event_date!",
                 ST_Y(location::geometry) as "latitude!",
                 ST_X(location::geometry) as "longitude!",
                 coordinate_uncertainty_meters,
@@ -242,6 +256,8 @@ pub async fn get_feed(
                 NULL::text as source
             FROM occurrences
             WHERE did != ALL($2)
+            AND location IS NOT NULL
+            AND event_date IS NOT NULL
             ORDER BY created_at DESC
             LIMIT $1
             "#,
