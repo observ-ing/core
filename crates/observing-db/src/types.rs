@@ -217,16 +217,23 @@ pub struct UserPreferencesRow {
     pub updated_at: DateTime<Utc>,
 }
 
-/// Parameters for upserting an occurrence
+/// Parameters for upserting an occurrence.
+///
+/// `event_date`, `longitude`, and `latitude` are optional because the
+/// underlying lexicon (bio.lexicons.temp.v0-1.occurrence) lists them as
+/// optional. Survey-based records carry these on a separate
+/// bio.lexicons.temp.v0-1.survey record referenced by `eventID`. Read
+/// queries in the appview filter incomplete rows out so callers still
+/// see fully-populated occurrences.
 #[derive(Debug, Clone)]
 pub struct UpsertOccurrenceParams {
     pub uri: String,
     pub cid: String,
     pub did: String,
     pub scientific_name: Option<String>,
-    pub event_date: DateTime<Utc>,
-    pub longitude: f64,
-    pub latitude: f64,
+    pub event_date: Option<DateTime<Utc>>,
+    pub longitude: Option<f64>,
+    pub latitude: Option<f64>,
     pub coordinate_uncertainty_meters: Option<i32>,
     pub associated_media: Option<serde_json::Value>,
     pub recorded_by: Option<String>,

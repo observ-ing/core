@@ -111,13 +111,12 @@ pub fn occurrence_from_json(
         })
         .and_then(|s| s.parse::<f64>().ok());
 
-    let (lat, lng) = match (lat, lng) {
-        (Some(lat), Some(lng)) => (lat, lng),
-        _ => {
-            return Err(ProcessingError::InvalidField(
-                "missing valid coordinates".into(),
-            ))
-        }
+    // Both coordinates must be present together to mean anything; mixing
+    // one with NULL would silently misplace the point at the equator or
+    // prime meridian.
+    let coords = match (lat, lng) {
+        (Some(lat), Some(lng)) => Some((lat, lng)),
+        _ => None,
     };
 
     let event_date = record
@@ -130,8 +129,7 @@ pub fn occurrence_from_json(
                 .get("eventDate")
                 .and_then(|v| v.as_str())
                 .and_then(parse_datetime)
-        })
-        .ok_or_else(|| ProcessingError::InvalidField("missing valid eventDate".into()))?;
+        });
 
     // Extension fields: read from raw JSON (not part of bio.lexicons.temp.v0-1.occurrence schema)
     let created_at = record_json
@@ -161,8 +159,8 @@ pub fn occurrence_from_json(
             did,
             scientific_name: None,
             event_date,
-            longitude: lng,
-            latitude: lat,
+            longitude: coords.map(|(_, lng)| lng),
+            latitude: coords.map(|(lat, _)| lat),
             coordinate_uncertainty_meters: record
                 .coordinate_uncertainty_in_meters
                 .or_else(|| {
@@ -864,5 +862,35 @@ mod tests {
             "missing createdAt must fall back to the firehose commit time, \
              not event_date — otherwise feeds sort by observation date"
         );
+    }
+
+    /// Survey-based occurrences carry no inline coordinates or eventDate —
+    /// those live on the linked bio.lexicons.temp.v0-1.survey record. The
+    /// occurrence lexicon marks those fields optional, so the parser must
+    /// accept the record and let the database persist NULLs instead of
+    /// rejecting it (which previously caused identifications to FK-violate).
+    #[test]
+    fn test_occurrence_from_json_accepts_survey_based_record() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "eventID": "at://did:plc:author/bio.lexicons.temp.v0-1.survey/3xyz",
+            "taxonID": "https://www.inaturalist.org/taxa/63962",
+            "organismQuantity": "1",
+            "organismQuantityType": "individual-count"
+            // no decimalLatitude/decimalLongitude/eventDate
+        });
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".into(),
+            "bafyreioccurrence".into(),
+            "did:plc:author".into(),
+            Utc::now(),
+        )
+        .expect("survey-based occurrence must parse with NULL location/event_date");
+
+        assert!(parsed.params.latitude.is_none());
+        assert!(parsed.params.longitude.is_none());
+        assert!(parsed.params.event_date.is_none());
     }
 }

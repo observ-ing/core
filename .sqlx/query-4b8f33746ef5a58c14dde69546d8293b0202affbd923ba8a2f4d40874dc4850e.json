@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, scientific_name, event_date,\n            ST_Y(location::geometry) as \"latitude!\",\n            ST_X(location::geometry) as \"longitude!\",\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE uri = $1\n        ",
+  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date as \"event_date!\",\n                    ST_Y(location::geometry) as \"latitude!\",\n                    ST_X(location::geometry) as \"longitude!\",\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1 AND created_at < ($3::text)::timestamptz\n                AND location IS NOT NULL\n                AND event_date IS NOT NULL\n                ORDER BY created_at DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "event_date",
+        "name": "event_date!",
         "type_info": "Timestamptz"
       },
       {
@@ -111,6 +111,8 @@
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Int8",
         "Text"
       ]
     },
@@ -119,7 +121,7 @@
       false,
       false,
       true,
-      false,
+      true,
       null,
       null,
       true,
@@ -138,5 +140,5 @@
       null
     ]
   },
-  "hash": "027221eae91c91c3830f5d532ce56d1e9990fc31dcb1673bb17e962859609d0f"
+  "hash": "4b8f33746ef5a58c14dde69546d8293b0202affbd923ba8a2f4d40874dc4850e"
 }

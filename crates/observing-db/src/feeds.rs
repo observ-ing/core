@@ -14,7 +14,10 @@ pub async fn get_explore_feed(
     let mut qb = QueryBuilder::<Postgres>::new(concat!(
         "SELECT ",
         occurrence_columns!(),
-        " FROM occurrences WHERE TRUE"
+        // Skip rows missing the fields downstream callers assume are present
+        // (survey-based occurrences land with NULL location/event_date until
+        // proper survey resolution backfills them).
+        " FROM occurrences WHERE location IS NOT NULL AND event_date IS NOT NULL"
     ));
 
     if !hidden_dids.is_empty() {
@@ -71,14 +74,17 @@ pub async fn get_profile_feed(
     let limit = options.limit.unwrap_or(20);
     let feed_type = options.feed_type.as_ref().cloned().unwrap_or_default();
 
-    // Get counts
+    // Get counts. Observations count matches what feeds expose, so it
+    // filters incomplete (NULL location/event_date) rows the same way.
     let counts_row: (i64, i64, i64) = sqlx::query_as(
         r#"
         SELECT
-            (SELECT COUNT(*) FROM occurrences WHERE did = $1),
+            (SELECT COUNT(*) FROM occurrences
+             WHERE did = $1 AND location IS NOT NULL AND event_date IS NOT NULL),
             (SELECT COUNT(*) FROM identifications WHERE did = $1),
             (SELECT COUNT(DISTINCT (scientific_name, kingdom)) FROM occurrences
-             WHERE did = $1 AND scientific_name IS NOT NULL)
+             WHERE did = $1 AND scientific_name IS NOT NULL
+               AND location IS NOT NULL AND event_date IS NOT NULL)
         "#,
     )
     .bind(did)
@@ -103,7 +109,8 @@ pub async fn get_profile_feed(
                 OccurrenceRow,
                 r#"
                 SELECT
-                    uri, cid, did, scientific_name, event_date,
+                    uri, cid, did, scientific_name,
+                    event_date as "event_date!",
                     ST_Y(location::geometry) as "latitude!",
                     ST_X(location::geometry) as "longitude!",
                     coordinate_uncertainty_meters,
@@ -114,6 +121,8 @@ pub async fn get_profile_feed(
                     NULL::text as source
                 FROM occurrences
                 WHERE did = $1 AND created_at < ($3::text)::timestamptz
+                AND location IS NOT NULL
+                AND event_date IS NOT NULL
                 ORDER BY created_at DESC
                 LIMIT $2
                 "#,
@@ -128,7 +137,8 @@ pub async fn get_profile_feed(
                 OccurrenceRow,
                 r#"
                 SELECT
-                    uri, cid, did, scientific_name, event_date,
+                    uri, cid, did, scientific_name,
+                    event_date as "event_date!",
                     ST_Y(location::geometry) as "latitude!",
                     ST_X(location::geometry) as "longitude!",
                     coordinate_uncertainty_meters,
@@ -139,6 +149,8 @@ pub async fn get_profile_feed(
                     NULL::text as source
                 FROM occurrences
                 WHERE did = $1
+                AND location IS NOT NULL
+                AND event_date IS NOT NULL
                 ORDER BY created_at DESC
                 LIMIT $2
                 "#,
@@ -212,7 +224,10 @@ pub async fn get_home_feed(
     let mut qb = QueryBuilder::<Postgres>::new(concat!(
         "SELECT ",
         occurrence_columns!(),
-        " FROM occurrences WHERE TRUE"
+        // Skip rows missing the fields downstream callers assume are present
+        // (survey-based occurrences land with NULL location/event_date until
+        // proper survey resolution backfills them).
+        " FROM occurrences WHERE location IS NOT NULL AND event_date IS NOT NULL"
     ));
 
     if !hidden_dids.is_empty() {
@@ -250,7 +265,7 @@ pub async fn get_occurrences_by_taxon(
     let mut qb = QueryBuilder::<Postgres>::new(concat!(
         "SELECT ",
         occurrence_columns!(),
-        " FROM occurrences WHERE "
+        " FROM occurrences WHERE location IS NOT NULL AND event_date IS NOT NULL AND "
     ));
 
     push_consensus_rank_filter(&mut qb, &rank_lower, taxon_name);
@@ -291,7 +306,9 @@ pub async fn count_occurrences_by_taxon(
 ) -> Result<i64, sqlx::Error> {
     let rank_lower = taxon_rank.to_lowercase();
 
-    let mut qb = QueryBuilder::<Postgres>::new("SELECT COUNT(*) FROM occurrences WHERE ");
+    let mut qb = QueryBuilder::<Postgres>::new(
+        "SELECT COUNT(*) FROM occurrences WHERE location IS NOT NULL AND event_date IS NOT NULL AND ",
+    );
 
     push_consensus_rank_filter(&mut qb, &rank_lower, taxon_name);
 
