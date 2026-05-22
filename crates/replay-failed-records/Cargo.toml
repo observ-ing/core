@@ -1,0 +1,19 @@
+[package]
+name = "replay-failed-records"
+version = "0.1.0"
+edition = "2021"
+description = "One-shot CLI that replays rows from ingester.failed_records back through the upsert path"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Reaches `processing::*_from_json` (feature-gated) plus the per-collection
+# upsert helpers and the failed_records reader.
+observing-db = { path = "../observing-db", features = ["processing"] }
+
+tokio = { workspace = true }
+sqlx = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { version = "4", features = ["derive", "env"] }
