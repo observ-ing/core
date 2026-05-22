@@ -306,6 +306,13 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
         .replace(/'/g, '&#39;');
     }
 
+    // pdsls.dev paths are `https://pdsls.dev/<at-uri>` verbatim — the at:// prefix
+    // and the colons/slashes in the URI work as path chars there.
+    function pdslsLink(uri) {
+      const href = 'https://pdsls.dev/' + uri;
+      return '<a href="' + escapeHtml(href) + '" target="_blank" rel="noopener">' + escapeHtml(uri) + '</a>';
+    }
+
     async function refresh() {
       try {
         const [stats, tap, failed] = await Promise.all([
@@ -339,7 +346,7 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
           eventsEl.textContent = 'No events yet...';
         } else {
           eventsEl.innerHTML = stats.recentEvents.map(e =>
-            '<div class="event">' + new Date(e.time).toLocaleTimeString() + ' [' + escapeHtml(e.type) + '] ' + escapeHtml(e.action) + ' ' + escapeHtml(e.uri) + '</div>'
+            '<div class="event">' + new Date(e.time).toLocaleTimeString() + ' [' + escapeHtml(e.type) + '] ' + escapeHtml(e.action) + ' ' + pdslsLink(e.uri) + '</div>'
           ).join('');
         }
 
@@ -356,7 +363,7 @@ const DASHBOARD_HTML: &str = r#"<!DOCTYPE html>
               '<td>' + fmtNum(r.attempts) + '</td>' +
               '<td>' + escapeHtml(r.collection) + '</td>' +
               '<td>' + escapeHtml(r.action) + '</td>' +
-              '<td style="word-break: break-all;">' + escapeHtml(r.uri) + '</td>' +
+              '<td style="word-break: break-all;">' + pdslsLink(r.uri) + '</td>' +
               '<td class="err">' + escapeHtml(r.last_error) + '</td>' +
             '</tr>'
           ).join('');
