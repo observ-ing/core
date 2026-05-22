@@ -317,9 +317,9 @@ async fn replay_one(pool: &PgPool, row: &FailedRow, dry_run: bool) -> ReplayOutc
                     info!(uri = %row.uri, collection = %row.collection, "replayed");
                     ReplayOutcome::Replayed
                 }
-                Err(e) => ReplayOutcome::Failed(format!(
-                    "upsert succeeded but ledger delete failed: {e}"
-                )),
+                Err(e) => {
+                    ReplayOutcome::Failed(format!("upsert succeeded but ledger delete failed: {e}"))
+                }
             }
         }
         Err(e) => ReplayOutcome::Failed(e),
