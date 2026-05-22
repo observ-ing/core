@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name, event_date,\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE did != ALL($2)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date as \"event_date!\",\n                    ST_Y(location::geometry) as \"latitude!\",\n                    ST_X(location::geometry) as \"longitude!\",\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1\n                AND location IS NOT NULL\n                AND event_date IS NOT NULL\n                ORDER BY created_at DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -25,7 +25,7 @@
       },
       {
         "ordinal": 4,
-        "name": "event_date",
+        "name": "event_date!",
         "type_info": "Timestamptz"
       },
       {
@@ -111,8 +111,8 @@
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "TextArray"
+        "Text",
+        "Int8"
       ]
     },
     "nullable": [
@@ -120,7 +120,7 @@
       false,
       false,
       true,
-      false,
+      true,
       null,
       null,
       true,
@@ -139,5 +139,5 @@
       null
     ]
   },
-  "hash": "f652da74676f8279daf28d4212eeeb6a1645baa9312500e38e49a9020f0a9e09"
+  "hash": "f1e8befb63e08273954a01301e2c87fede7340c690b56281e003aba441db6a64"
 }
