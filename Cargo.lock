@@ -3711,6 +3711,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "replay-failed-records"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "observing-db",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "reqwest"
 version = "0.12.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
