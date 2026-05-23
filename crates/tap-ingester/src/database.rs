@@ -73,7 +73,12 @@ impl Database {
         info!("Connecting to database...");
         let pool = PgPoolOptions::new()
             .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(5))
+            // 5s was too tight against the shared Cloud SQL instance — the
+            // dashboard's read-path acquires were reliably timing out under
+            // even mild connection contention. 30s gives the pool room to
+            // wait through a transient spike without surfacing a user-visible
+            // failure.
+            .acquire_timeout(std::time::Duration::from_secs(30))
             .idle_timeout(Some(std::time::Duration::from_secs(300)))
             .connect(database_url)
             .await?;
