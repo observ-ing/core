@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name,\n                event_date as \"event_date!\",\n                ST_Y(location::geometry) as \"latitude!\",\n                ST_X(location::geometry) as \"longitude!\",\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE created_at < ($2::text)::timestamptz\n            AND did != ALL($3)\n            AND location IS NOT NULL\n            AND event_date IS NOT NULL\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography\n        AND did != ALL($6)\n        LIMIT $5\n        ",
   "describe": {
     "columns": [
       {
@@ -25,17 +25,17 @@
       },
       {
         "ordinal": 4,
-        "name": "event_date!",
+        "name": "event_date",
         "type_info": "Timestamptz"
       },
       {
         "ordinal": 5,
-        "name": "latitude!",
+        "name": "latitude",
         "type_info": "Float8"
       },
       {
         "ordinal": 6,
-        "name": "longitude!",
+        "name": "longitude",
         "type_info": "Float8"
       },
       {
@@ -111,8 +111,11 @@
     ],
     "parameters": {
       "Left": [
+        "Float8",
+        "Float8",
+        "Float8",
+        "Float8",
         "Int8",
-        "Text",
         "TextArray"
       ]
     },
@@ -140,5 +143,5 @@
       null
     ]
   },
-  "hash": "4c34df635d14e5cdac904c0ea27312c0ad17270782111516780e8ee1f927f127"
+  "hash": "f5774b8d2c1c5b603e5972d590027a2f657e5cb624d8237a12e864967bf7069e"
 }

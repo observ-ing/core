@@ -23,8 +23,15 @@ pub struct OccurrenceResponse {
     pub effective_taxonomy: Option<EffectiveTaxonomy>,
     #[ts(type = "number")]
     pub identification_count: i64,
-    pub event_date: String,
-    pub location: LocationResponse,
+    /// NULL on survey-based occurrences whose `eventDate` lives on the
+    /// referenced survey record we don't yet ingest. The explore page
+    /// renders a placeholder rather than dropping the observation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub event_date: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub location: Option<LocationResponse>,
     pub images: Vec<OccurrenceImage>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -255,11 +262,16 @@ pub async fn enrich_occurrences(
             community_id,
             effective_taxonomy,
             identification_count,
-            event_date: row.event_date.to_rfc3339(),
-            location: LocationResponse {
-                latitude: row.latitude,
-                longitude: row.longitude,
-                uncertainty_meters: row.coordinate_uncertainty_meters,
+            event_date: row.event_date.map(|d| d.to_rfc3339()),
+            // Coordinates come from ST_X/ST_Y(location) — both are NULL
+            // together when the column is NULL, so checking one suffices.
+            location: match (row.latitude, row.longitude) {
+                (Some(latitude), Some(longitude)) => Some(LocationResponse {
+                    latitude,
+                    longitude,
+                    uncertainty_meters: row.coordinate_uncertainty_meters,
+                }),
+                _ => None,
             },
             images,
             created_at: row.created_at.to_rfc3339(),
@@ -419,9 +431,9 @@ mod tests {
             cid: "cid".into(),
             did: "did:plc:test".into(),
             scientific_name: None,
-            event_date: Utc::now(),
-            latitude: 0.0,
-            longitude: 0.0,
+            event_date: Some(Utc::now()),
+            latitude: Some(0.0),
+            longitude: Some(0.0),
             coordinate_uncertainty_meters: None,
             associated_media: media,
             recorded_by: None,

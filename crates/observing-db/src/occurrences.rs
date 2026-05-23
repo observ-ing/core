@@ -96,9 +96,9 @@ pub async fn get(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date as "event_date!",
-            ST_Y(location::geometry) as "latitude!",
-            ST_X(location::geometry) as "longitude!",
+            event_date,
+            ST_Y(location::geometry) as latitude,
+            ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
@@ -107,8 +107,6 @@ pub async fn get(
             NULL::text as source
         FROM occurrences
         WHERE uri = $1
-          AND location IS NOT NULL
-          AND event_date IS NOT NULL
         "#,
         uri,
     )
@@ -131,9 +129,9 @@ pub async fn get_nearby(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date as "event_date!",
-            ST_Y(location::geometry) as "latitude!",
-            ST_X(location::geometry) as "longitude!",
+            event_date,
+            ST_Y(location::geometry) as latitude,
+            ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
@@ -147,7 +145,6 @@ pub async fn get_nearby(
             $3
         )
         AND did != ALL($6)
-        AND event_date IS NOT NULL
         ORDER BY distance_meters
         LIMIT $4 OFFSET $5
         "#,
@@ -177,9 +174,9 @@ pub async fn get_by_bounding_box(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date as "event_date!",
-            ST_Y(location::geometry) as "latitude!",
-            ST_X(location::geometry) as "longitude!",
+            event_date,
+            ST_Y(location::geometry) as latitude,
+            ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
@@ -189,7 +186,6 @@ pub async fn get_by_bounding_box(
         FROM occurrences
         WHERE location && ST_MakeEnvelope($1, $2, $3, $4, 4326)::geography
         AND did != ALL($6)
-        AND event_date IS NOT NULL
         LIMIT $5
         "#,
         min_lng,
@@ -216,9 +212,9 @@ pub async fn get_feed(
             r#"
             SELECT
                 uri, cid, did, scientific_name,
-                event_date as "event_date!",
-                ST_Y(location::geometry) as "latitude!",
-                ST_X(location::geometry) as "longitude!",
+                event_date,
+                ST_Y(location::geometry) as latitude,
+                ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,
                 associated_media, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
@@ -228,8 +224,6 @@ pub async fn get_feed(
             FROM occurrences
             WHERE created_at < ($2::text)::timestamptz
             AND did != ALL($3)
-            AND location IS NOT NULL
-            AND event_date IS NOT NULL
             ORDER BY created_at DESC
             LIMIT $1
             "#,
@@ -245,9 +239,9 @@ pub async fn get_feed(
             r#"
             SELECT
                 uri, cid, did, scientific_name,
-                event_date as "event_date!",
-                ST_Y(location::geometry) as "latitude!",
-                ST_X(location::geometry) as "longitude!",
+                event_date,
+                ST_Y(location::geometry) as latitude,
+                ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,
                 associated_media, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
@@ -256,8 +250,6 @@ pub async fn get_feed(
                 NULL::text as source
             FROM occurrences
             WHERE did != ALL($2)
-            AND location IS NOT NULL
-            AND event_date IS NOT NULL
             ORDER BY created_at DESC
             LIMIT $1
             "#,

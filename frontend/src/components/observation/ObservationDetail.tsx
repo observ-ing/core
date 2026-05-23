@@ -440,7 +440,7 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Observed"
-                secondary={formatDate(observation.eventDate)}
+                secondary={observation.eventDate ? formatDate(observation.eventDate) : "—"}
                 slotProps={{
                   primary: { variant: "caption", color: "text.secondary" },
                   secondary: { variant: "body1", color: "text.primary" },
@@ -455,22 +455,26 @@ export function ObservationDetail() {
               <ListItemText
                 primary="Coordinates"
                 secondary={
-                  <>
-                    {observation.location.latitude.toFixed(5)},{" "}
-                    {observation.location.longitude.toFixed(5)}
-                    {observation.location.uncertaintyMeters && (
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        sx={{
-                          color: "text.disabled",
-                        }}
-                      >
-                        {" "}
-                        (±{observation.location.uncertaintyMeters}m)
-                      </Typography>
-                    )}
-                  </>
+                  observation.location ? (
+                    <>
+                      {observation.location.latitude.toFixed(5)},{" "}
+                      {observation.location.longitude.toFixed(5)}
+                      {observation.location.uncertaintyMeters && (
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{
+                            color: "text.disabled",
+                          }}
+                        >
+                          {" "}
+                          (±{observation.location.uncertaintyMeters}m)
+                        </Typography>
+                      )}
+                    </>
+                  ) : (
+                    "—"
+                  )
                 }
                 slotProps={{
                   primary: { variant: "caption", color: "text.secondary" },
@@ -482,13 +486,15 @@ export function ObservationDetail() {
                 }}
               />
             </ListItem>
-            <Box sx={{ ml: 4.5, mb: 1 }}>
-              <LocationMap
-                latitude={observation.location.latitude}
-                longitude={observation.location.longitude}
-                uncertaintyMeters={observation.location.uncertaintyMeters}
-              />
-            </Box>
+            {observation.location && (
+              <Box sx={{ ml: 4.5, mb: 1 }}>
+                <LocationMap
+                  latitude={observation.location.latitude}
+                  longitude={observation.location.longitude}
+                  uncertaintyMeters={observation.location.uncertaintyMeters}
+                />
+              </Box>
+            )}
           </List>
 
           <Box sx={{ mt: 3 }}>

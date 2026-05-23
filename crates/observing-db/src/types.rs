@@ -60,9 +60,12 @@ pub struct OccurrenceRow {
     pub cid: String,
     pub did: String,
     pub scientific_name: Option<String>,
-    pub event_date: DateTime<Utc>,
-    pub latitude: f64,
-    pub longitude: f64,
+    /// NULL on survey-based occurrences whose `eventDate` lives on the
+    /// referenced `bio.lexicons.temp.v0-1.survey` record we don't yet
+    /// ingest. Surfaced as-is so the explore page can still display the row.
+    pub event_date: Option<DateTime<Utc>>,
+    pub latitude: Option<f64>,
+    pub longitude: Option<f64>,
     pub coordinate_uncertainty_meters: Option<i32>,
     pub associated_media: Option<serde_json::Value>,
     pub recorded_by: Option<String>,

@@ -14,8 +14,13 @@ export type Occurrence = {
   communityId?: string;
   effectiveTaxonomy?: EffectiveTaxonomy;
   identificationCount: number;
-  eventDate: string;
-  location: Location;
+  /**
+   * NULL on survey-based occurrences whose `eventDate` lives on the
+   * referenced survey record we don't yet ingest. The explore page
+   * renders a placeholder rather than dropping the observation.
+   */
+  eventDate?: string;
+  location?: Location;
   images: Array<OccurrenceImage>;
   createdAt: string;
   likeCount?: number;

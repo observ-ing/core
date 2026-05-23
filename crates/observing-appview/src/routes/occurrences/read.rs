@@ -210,18 +210,25 @@ pub async fn get_geojson(
     )
     .await?;
 
+    // Bbox query already excludes rows without `location` (the `&&`
+    // operator returns NULL there), so an unwrap here would be safe —
+    // but the row type is Option<f64>, so filter to be explicit and
+    // skip any row whose coords are somehow missing.
     let features: Vec<GeoJsonFeature> = rows
         .iter()
-        .map(|row| GeoJsonFeature {
-            feature_type: "Feature",
-            geometry: GeoJsonPoint {
-                geometry_type: "Point",
-                coordinates: [row.longitude, row.latitude],
-            },
-            properties: GeoJsonProperties {
-                uri: row.uri.clone(),
-                event_date: row.event_date.to_rfc3339(),
-            },
+        .filter_map(|row| {
+            let (lng, lat) = (row.longitude?, row.latitude?);
+            Some(GeoJsonFeature {
+                feature_type: "Feature",
+                geometry: GeoJsonPoint {
+                    geometry_type: "Point",
+                    coordinates: [lng, lat],
+                },
+                properties: GeoJsonProperties {
+                    uri: row.uri.clone(),
+                    event_date: row.event_date.map(|d| d.to_rfc3339()),
+                },
+            })
         })
         .collect();
 
