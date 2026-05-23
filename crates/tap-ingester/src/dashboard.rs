@@ -190,10 +190,11 @@ async fn failed_records_handler(State(s): State<DashboardState>) -> Json<FailedR
             error: Some("database pool not yet initialized".to_string()),
         });
     };
-    let (items_res, total_res) = tokio::join!(
-        failed_records::list_recent(pool, 50),
-        failed_records::count_total(pool),
-    );
+    // Run sequentially rather than `tokio::join!` so we only hold one
+    // pool connection at a time. Under Cloud SQL connection pressure the
+    // parallel acquire was reliably timing out on the second query.
+    let items_res = failed_records::list_recent(pool, 50).await;
+    let total_res = failed_records::count_total(pool).await;
 
     let mut error = None;
     let items = match items_res {
