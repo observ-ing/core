@@ -128,7 +128,8 @@ pub struct GeoJsonPoint {
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonProperties {
     pub uri: String,
-    pub event_date: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_date: Option<String>,
 }
 
 #[derive(Serialize)]
