@@ -519,7 +519,7 @@ jobs:
             --cpu=1 \
             --memory=2Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
+            --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=5 \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
             --min-instances=1 \
             --max-instances=1 \
