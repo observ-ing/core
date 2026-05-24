@@ -117,6 +117,7 @@ export function IdentificationPanel({
             variant="caption"
             sx={{
               color: "text.secondary",
+              display: "block",
             }}
           >
             Community ID
