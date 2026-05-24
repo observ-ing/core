@@ -20,6 +20,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ClearIcon from "@mui/icons-material/Clear";
+import VerifiedIcon from "@mui/icons-material/Verified";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -51,10 +52,12 @@ export function ExploreFilterPanel() {
     filters.endDate ? new Date(filters.endDate) : null,
   );
 
-  // Count active filters for badge
+  // Count active filters for badge — quality counts toward the chevron badge
+  // even though it lives in the header, since users still treat it as "a filter".
   const activeFilterCount = [selectedTaxon, kingdom, startDate, endDate].filter(Boolean).length;
 
-  // Apply filters
+  // Apply filters. Quality is preserved here so toggling Verifiable then editing
+  // other filters doesn't silently drop it.
   const handleApplyFilters = () => {
     const newFilters: FeedFilters = {};
 
@@ -62,12 +65,13 @@ export function ExploreFilterPanel() {
     if (kingdom) newFilters.kingdom = kingdom;
     if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0] ?? "";
     if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
+    if (filters.quality) newFilters.quality = filters.quality;
 
     dispatch(setFilters(newFilters));
     dispatch(loadInitialFeed());
   };
 
-  // Clear all filters
+  // Clear all filters (including the quality toggle)
   const handleClearFilters = () => {
     setSelectedTaxon(null);
     setTaxonQuery("");
@@ -76,6 +80,19 @@ export function ExploreFilterPanel() {
     setEndDate(null);
 
     dispatch(setFilters({}));
+    dispatch(loadInitialFeed());
+  };
+
+  // Toggle the Verifiable chip. Applies immediately rather than waiting for
+  // the Apply button so it feels like a one-click affordance.
+  const handleToggleVerifiable = () => {
+    const next: FeedFilters = { ...filters };
+    if (filters.quality === "verifiable") {
+      delete next.quality;
+    } else {
+      next.quality = "verifiable";
+    }
+    dispatch(setFilters(next));
     dispatch(loadInitialFeed());
   };
 
@@ -111,7 +128,23 @@ export function ExploreFilterPanel() {
             />
           )}
         </Stack>
-        <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
+          <Chip
+            size="small"
+            icon={<VerifiedIcon />}
+            label="Verifiable"
+            color={filters.quality === "verifiable" ? "primary" : "default"}
+            variant={filters.quality === "verifiable" ? "filled" : "outlined"}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleToggleVerifiable();
+            }}
+            aria-pressed={filters.quality === "verifiable"}
+          />
+          <IconButton size="small">
+            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+          </IconButton>
+        </Stack>
       </Box>
       {/* Collapsible filter content */}
       <Collapse in={isExpanded}>

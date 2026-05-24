@@ -43,6 +43,7 @@ export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occur
     createdAt: new Date().toISOString(),
     likeCount: 3,
     viewerHasLiked: false,
+    qualityIssues: [],
     ...overrides,
   };
 }
