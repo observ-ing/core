@@ -2,6 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use atproto_identity::{IdentityResolver, Profile};
+use observing_db::quality::QualityIssue;
 use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, OccurrenceRow};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -40,10 +41,9 @@ pub struct OccurrenceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub viewer_has_liked: Option<bool>,
-    /// Stable string codes from [`observing_db::quality`]. Empty means the
-    /// observation is "verifiable" — pass `?quality=verifiable` on feed
-    /// requests to filter to just those rows.
-    pub quality_issues: Vec<String>,
+    /// Empty means the observation is "verifiable" — pass `?quality=verifiable`
+    /// on feed requests to filter to just those rows.
+    pub quality_issues: Vec<QualityIssue>,
 }
 
 /// A single image attached to an occurrence, with the SPDX license the
@@ -259,10 +259,7 @@ pub async fn enrich_occurrences(
 
         let images = extract_images(row);
 
-        let quality_issues = observing_db::quality::compute_issues(row, community_id.is_some())
-            .into_iter()
-            .map(String::from)
-            .collect();
+        let quality_issues = observing_db::quality::compute_issues(row, community_id.is_some());
 
         results.push(OccurrenceResponse {
             uri: row.uri.clone(),

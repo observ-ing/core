@@ -5,49 +5,56 @@
 //! surface individual codes in API responses for UI badges.
 
 use crate::types::OccurrenceRow;
+use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
-/// `eventDate` is missing.
-pub const MISSING_DATE: &str = "MISSING_DATE";
-/// `decimalLatitude`/`decimalLongitude` are missing.
-pub const MISSING_LOCATION: &str = "MISSING_LOCATION";
-/// `associatedMedia` is empty or unparseable.
-pub const MISSING_MEDIA: &str = "MISSING_MEDIA";
-/// Coordinates are present but `coordinateUncertaintyInMeters` is missing
-/// or larger than [`IMPRECISE_UNCERTAINTY_THRESHOLD_M`].
-pub const COORDINATES_IMPRECISE: &str = "COORDINATES_IMPRECISE";
-/// No row in `community_ids` — no consensus identification has emerged.
-pub const NO_CONSENSUS_ID: &str = "NO_CONSENSUS_ID";
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(export, export_to = "bindings/", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum QualityIssue {
+    /// `eventDate` is missing.
+    MissingDate,
+    /// `decimalLatitude`/`decimalLongitude` are missing.
+    MissingLocation,
+    /// `associatedMedia` is empty or unparseable.
+    MissingMedia,
+    /// Coordinates are present but `coordinateUncertaintyInMeters` is missing
+    /// or larger than [`IMPRECISE_UNCERTAINTY_THRESHOLD_M`].
+    CoordinatesImprecise,
+    /// No row in `community_ids` — no consensus identification has emerged.
+    NoConsensusId,
+}
 
 /// Matches iNaturalist's "obscured location" radius, so coordinates rounded
 /// to roughly a state/province get flagged.
 pub const IMPRECISE_UNCERTAINTY_THRESHOLD_M: i32 = 5000;
 
-pub fn compute_issues(row: &OccurrenceRow, has_consensus_id: bool) -> Vec<&'static str> {
+pub fn compute_issues(row: &OccurrenceRow, has_consensus_id: bool) -> Vec<QualityIssue> {
     let mut issues = Vec::new();
 
     if row.event_date.is_none() {
-        issues.push(MISSING_DATE);
+        issues.push(QualityIssue::MissingDate);
     }
 
     let has_location = row.latitude.is_some() && row.longitude.is_some();
     if !has_location {
-        issues.push(MISSING_LOCATION);
+        issues.push(QualityIssue::MissingLocation);
     } else {
         let imprecise = match row.coordinate_uncertainty_meters {
             None => true,
             Some(u) => u > IMPRECISE_UNCERTAINTY_THRESHOLD_M,
         };
         if imprecise {
-            issues.push(COORDINATES_IMPRECISE);
+            issues.push(QualityIssue::CoordinatesImprecise);
         }
     }
 
     if row.blob_entries().is_empty() {
-        issues.push(MISSING_MEDIA);
+        issues.push(QualityIssue::MissingMedia);
     }
 
     if !has_consensus_id {
-        issues.push(NO_CONSENSUS_ID);
+        issues.push(QualityIssue::NoConsensusId);
     }
 
     issues
@@ -108,7 +115,10 @@ mod tests {
     #[test]
     fn missing_consensus_id_flags() {
         let row = base_row();
-        assert_eq!(compute_issues(&row, false), vec![NO_CONSENSUS_ID]);
+        assert_eq!(
+            compute_issues(&row, false),
+            vec![QualityIssue::NoConsensusId]
+        );
     }
 
     #[test]
@@ -116,7 +126,7 @@ mod tests {
         let mut row = base_row();
         row.event_date = None;
         let issues = compute_issues(&row, true);
-        assert!(issues.contains(&MISSING_DATE));
+        assert!(issues.contains(&QualityIssue::MissingDate));
     }
 
     #[test]
@@ -126,8 +136,8 @@ mod tests {
         row.longitude = None;
         row.coordinate_uncertainty_meters = None;
         let issues = compute_issues(&row, true);
-        assert!(issues.contains(&MISSING_LOCATION));
-        assert!(!issues.contains(&COORDINATES_IMPRECISE));
+        assert!(issues.contains(&QualityIssue::MissingLocation));
+        assert!(!issues.contains(&QualityIssue::CoordinatesImprecise));
     }
 
     #[test]
@@ -141,28 +151,34 @@ mod tests {
     fn coords_above_threshold_flag() {
         let mut row = base_row();
         row.coordinate_uncertainty_meters = Some(IMPRECISE_UNCERTAINTY_THRESHOLD_M + 1);
-        assert_eq!(compute_issues(&row, true), vec![COORDINATES_IMPRECISE]);
+        assert_eq!(
+            compute_issues(&row, true),
+            vec![QualityIssue::CoordinatesImprecise]
+        );
     }
 
     #[test]
     fn missing_uncertainty_flags_imprecise() {
         let mut row = base_row();
         row.coordinate_uncertainty_meters = None;
-        assert_eq!(compute_issues(&row, true), vec![COORDINATES_IMPRECISE]);
+        assert_eq!(
+            compute_issues(&row, true),
+            vec![QualityIssue::CoordinatesImprecise]
+        );
     }
 
     #[test]
     fn no_media_flags() {
         let mut row = base_row();
         row.associated_media = None;
-        assert_eq!(compute_issues(&row, true), vec![MISSING_MEDIA]);
+        assert_eq!(compute_issues(&row, true), vec![QualityIssue::MissingMedia]);
     }
 
     #[test]
     fn empty_media_array_flags() {
         let mut row = base_row();
         row.associated_media = Some(blobs_json(0));
-        assert_eq!(compute_issues(&row, true), vec![MISSING_MEDIA]);
+        assert_eq!(compute_issues(&row, true), vec![QualityIssue::MissingMedia]);
     }
 
     #[test]
@@ -174,10 +190,26 @@ mod tests {
         row.coordinate_uncertainty_meters = None;
         row.associated_media = None;
         let issues = compute_issues(&row, false);
-        assert!(issues.contains(&MISSING_DATE));
-        assert!(issues.contains(&MISSING_LOCATION));
-        assert!(issues.contains(&MISSING_MEDIA));
-        assert!(issues.contains(&NO_CONSENSUS_ID));
-        assert!(!issues.contains(&COORDINATES_IMPRECISE));
+        assert!(issues.contains(&QualityIssue::MissingDate));
+        assert!(issues.contains(&QualityIssue::MissingLocation));
+        assert!(issues.contains(&QualityIssue::MissingMedia));
+        assert!(issues.contains(&QualityIssue::NoConsensusId));
+        assert!(!issues.contains(&QualityIssue::CoordinatesImprecise));
+    }
+
+    #[test]
+    fn serializes_to_screaming_snake_case() {
+        assert_eq!(
+            serde_json::to_string(&QualityIssue::MissingDate).unwrap(),
+            "\"MISSING_DATE\""
+        );
+        assert_eq!(
+            serde_json::to_string(&QualityIssue::CoordinatesImprecise).unwrap(),
+            "\"COORDINATES_IMPRECISE\""
+        );
+        assert_eq!(
+            serde_json::to_string(&QualityIssue::NoConsensusId).unwrap(),
+            "\"NO_CONSENSUS_ID\""
+        );
     }
 }

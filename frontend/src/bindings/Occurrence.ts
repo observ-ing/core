@@ -3,6 +3,7 @@ import type { EffectiveTaxonomy } from "./EffectiveTaxonomy";
 import type { Location } from "./Location";
 import type { OccurrenceImage } from "./OccurrenceImage";
 import type { Profile } from "./Profile";
+import type { QualityIssue } from "./QualityIssue";
 
 /**
  * Enriched occurrence ready for API response
@@ -26,9 +27,8 @@ export type Occurrence = {
   likeCount?: number;
   viewerHasLiked?: boolean;
   /**
-   * Stable string codes from [`observing_db::quality`]. Empty means the
-   * observation is "verifiable" — pass `?quality=verifiable` on feed
-   * requests to filter to just those rows.
+   * Empty means the observation is "verifiable" — pass `?quality=verifiable`
+   * on feed requests to filter to just those rows.
    */
-  qualityIssues: Array<string>;
+  qualityIssues: Array<QualityIssue>;
 };
