@@ -339,8 +339,10 @@ pub struct ExploreFeedOptions {
 #[derive(Debug, Clone, Copy, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum QualityFilter {
-    /// Hide observations with any issues from [`crate::quality::compute_issues`].
-    Verifiable,
+    /// Hide observations with any issues from [`crate::quality::compute_issues`] —
+    /// i.e. those whose date, location, precise coords, media, and consensus
+    /// identification are all populated.
+    Complete,
 }
 
 /// Options for profile feed queries
