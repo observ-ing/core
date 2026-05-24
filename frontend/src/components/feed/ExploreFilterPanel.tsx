@@ -20,7 +20,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ClearIcon from "@mui/icons-material/Clear";
-import VerifiedIcon from "@mui/icons-material/Verified";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -83,14 +83,14 @@ export function ExploreFilterPanel() {
     dispatch(loadInitialFeed());
   };
 
-  // Toggle the Verifiable chip. Applies immediately rather than waiting for
+  // Toggle the Complete chip. Applies immediately rather than waiting for
   // the Apply button so it feels like a one-click affordance.
-  const handleToggleVerifiable = () => {
+  const handleToggleComplete = () => {
     const next: FeedFilters = { ...filters };
-    if (filters.quality === "verifiable") {
+    if (filters.quality === "complete") {
       delete next.quality;
     } else {
-      next.quality = "verifiable";
+      next.quality = "complete";
     }
     dispatch(setFilters(next));
     dispatch(loadInitialFeed());
@@ -131,15 +131,15 @@ export function ExploreFilterPanel() {
         <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
           <Chip
             size="small"
-            icon={<VerifiedIcon />}
-            label="Verifiable"
-            color={filters.quality === "verifiable" ? "primary" : "default"}
-            variant={filters.quality === "verifiable" ? "filled" : "outlined"}
+            icon={<CheckCircleIcon />}
+            label="Complete"
+            color={filters.quality === "complete" ? "primary" : "default"}
+            variant={filters.quality === "complete" ? "filled" : "outlined"}
             onClick={(e) => {
               e.stopPropagation();
-              handleToggleVerifiable();
+              handleToggleComplete();
             }}
-            aria-pressed={filters.quality === "verifiable"}
+            aria-pressed={filters.quality === "complete"}
           />
           <IconButton size="small">
             {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}

@@ -71,7 +71,7 @@ pub async fn get_explore_feed(
 /// an empty list for the row. Keep these two in sync.
 fn push_quality_filter(qb: &mut QueryBuilder<'_, Postgres>, quality: QualityFilter) {
     match quality {
-        QualityFilter::Verifiable => {
+        QualityFilter::Complete => {
             qb.push(" AND event_date IS NOT NULL");
             qb.push(" AND location IS NOT NULL");
             qb.push(" AND coordinate_uncertainty_meters IS NOT NULL");
