@@ -25,4 +25,10 @@ export type Occurrence = {
   createdAt: string;
   likeCount?: number;
   viewerHasLiked?: boolean;
+  /**
+   * Stable string codes from [`observing_db::quality`]. Empty means the
+   * observation is "verifiable" — pass `?quality=verifiable` on feed
+   * requests to filter to just those rows.
+   */
+  qualityIssues: Array<string>;
 };

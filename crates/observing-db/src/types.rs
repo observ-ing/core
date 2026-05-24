@@ -330,6 +330,25 @@ pub struct ExploreFeedOptions {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub quality: Option<QualityFilter>,
+}
+
+/// Server-side quality filter for feed queries.
+#[derive(Debug, Clone, Copy)]
+pub enum QualityFilter {
+    /// Hide observations with any issues from [`crate::quality::compute_issues`].
+    Verifiable,
+}
+
+impl QualityFilter {
+    /// Parse the `?quality=` query parameter. Unknown values fall through as None
+    /// so a typo doesn't silently exclude rows from the feed.
+    pub fn from_param(s: &str) -> Option<Self> {
+        match s {
+            "verifiable" => Some(Self::Verifiable),
+            _ => None,
+        }
+    }
 }
 
 /// Options for profile feed queries
@@ -368,6 +387,7 @@ pub struct ProfileCounts {
 pub struct HomeFeedOptions {
     pub limit: Option<i64>,
     pub cursor: Option<String>,
+    pub quality: Option<QualityFilter>,
 }
 
 /// Options for taxon occurrence queries

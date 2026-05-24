@@ -12,6 +12,7 @@ pub mod occurrences;
 pub mod private_data;
 #[cfg(feature = "processing")]
 pub mod processing;
+pub mod quality;
 pub mod taxa;
 pub mod taxonomy_resolver;
 pub mod types;
