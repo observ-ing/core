@@ -134,7 +134,7 @@ export function ExploreFilterPanel() {
             icon={<CheckCircleIcon />}
             label="Complete"
             color={filters.quality === "complete" ? "primary" : "default"}
-            variant={filters.quality === "complete" ? "filled" : "outlined"}
+            variant="outlined"
             onClick={(e) => {
               e.stopPropagation();
               handleToggleComplete();
