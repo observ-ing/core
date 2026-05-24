@@ -333,22 +333,14 @@ pub struct ExploreFeedOptions {
     pub quality: Option<QualityFilter>,
 }
 
-/// Server-side quality filter for feed queries.
-#[derive(Debug, Clone, Copy)]
+/// Server-side quality filter for feed queries. Deserialised straight from
+/// the `?quality=` query string; unknown values cause a 400 rather than
+/// silently dropping the filter.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum QualityFilter {
     /// Hide observations with any issues from [`crate::quality::compute_issues`].
     Verifiable,
-}
-
-impl QualityFilter {
-    /// Parse the `?quality=` query parameter. Unknown values fall through as None
-    /// so a typo doesn't silently exclude rows from the feed.
-    pub fn from_param(s: &str) -> Option<Self> {
-        match s {
-            "verifiable" => Some(Self::Verifiable),
-            _ => None,
-        }
-    }
 }
 
 /// Options for profile feed queries
