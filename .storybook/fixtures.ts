@@ -64,6 +64,7 @@ export const OAK_OBSERVATION: Occurrence = {
   createdAt: "2026-04-12T10:35:00Z",
   likeCount: 3,
   viewerHasLiked: false,
+  qualityIssues: [],
 };
 
 export const FERN_OBSERVATION: Occurrence = {
@@ -84,6 +85,7 @@ export const FERN_OBSERVATION: Occurrence = {
   images: [PHOTO],
   createdAt: "2026-04-10T14:05:00Z",
   likeCount: 0,
+  qualityIssues: [],
 };
 
 export const OAK_TAXON_DETAIL: TaxonDetail = {

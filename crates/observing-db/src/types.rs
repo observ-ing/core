@@ -330,6 +330,17 @@ pub struct ExploreFeedOptions {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub quality: Option<QualityFilter>,
+}
+
+/// Server-side quality filter for feed queries. Deserialised straight from
+/// the `?quality=` query string; unknown values cause a 400 rather than
+/// silently dropping the filter.
+#[derive(Debug, Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum QualityFilter {
+    /// Hide observations with any issues from [`crate::quality::compute_issues`].
+    Verifiable,
 }
 
 /// Options for profile feed queries
@@ -368,6 +379,7 @@ pub struct ProfileCounts {
 pub struct HomeFeedOptions {
     pub limit: Option<i64>,
     pub cursor: Option<String>,
+    pub quality: Option<QualityFilter>,
 }
 
 /// Options for taxon occurrence queries

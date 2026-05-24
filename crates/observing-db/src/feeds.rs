@@ -1,7 +1,8 @@
 use crate::occurrence_columns;
+use crate::quality::IMPRECISE_UNCERTAINTY_THRESHOLD_M;
 use crate::types::{
     ExploreFeedOptions, HomeFeedOptions, IdentificationRow, OccurrenceRow, ProfileCounts,
-    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
+    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, QualityFilter, TaxonOccurrenceOptions,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
@@ -47,6 +48,10 @@ pub async fn get_explore_feed(
         qb.push_bind(end_date);
     }
 
+    if let Some(quality) = options.quality {
+        push_quality_filter(&mut qb, quality);
+    }
+
     if let Some(cursor) = options.cursor.as_deref() {
         qb.push(" AND created_at < ");
         qb.push_bind(cursor);
@@ -60,6 +65,24 @@ pub async fn get_explore_feed(
     qb.build_query_as::<OccurrenceRow>()
         .fetch_all(executor)
         .await
+}
+
+/// Push a WHERE clause matching [`crate::quality::compute_issues`] returning
+/// an empty list for the row. Keep these two in sync.
+fn push_quality_filter(qb: &mut QueryBuilder<'_, Postgres>, quality: QualityFilter) {
+    match quality {
+        QualityFilter::Verifiable => {
+            qb.push(" AND event_date IS NOT NULL");
+            qb.push(" AND location IS NOT NULL");
+            qb.push(" AND coordinate_uncertainty_meters IS NOT NULL");
+            qb.push(" AND coordinate_uncertainty_meters <= ");
+            qb.push_bind(IMPRECISE_UNCERTAINTY_THRESHOLD_M);
+            qb.push(" AND COALESCE(jsonb_array_length(associated_media), 0) > 0");
+            qb.push(
+                " AND EXISTS (SELECT 1 FROM community_ids ci WHERE ci.occurrence_uri = occurrences.uri)",
+            );
+        }
+    }
 }
 
 /// Get the profile feed for a user
@@ -220,6 +243,10 @@ pub async fn get_home_feed(
         qb.push(" AND did != ALL(");
         qb.push_bind(hidden_dids.to_vec());
         qb.push(")");
+    }
+
+    if let Some(quality) = options.quality {
+        push_quality_filter(&mut qb, quality);
     }
 
     if let Some(cursor) = options.cursor.as_deref() {
