@@ -56,7 +56,7 @@ export interface FeedFilters {
   kingdom?: string;
   startDate?: string;
   endDate?: string;
-  quality?: "verifiable";
+  quality?: "complete";
 }
 
 export interface FeedResponse {
