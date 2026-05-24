@@ -1,3 +1,4 @@
+mod ai_id;
 mod auto_id;
 mod read;
 mod write;

@@ -21,7 +21,7 @@ use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
 use at_uri_parser::AtUri;
 
-use super::auto_id;
+use super::{ai_id, auto_id};
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -166,6 +166,36 @@ pub async fn create_occurrence(
                 &cid,
             )
             .await?;
+        }
+    }
+
+    // AI-authored identification: when the bot account is configured, run the
+    // image model against the first image and post a separate identification
+    // record under the bot's DID. Fired in the background so users never wait
+    // on inference, and so a bot failure can't fail their submission.
+    if let Some(ai_agent) = state.ai_agent.clone() {
+        if let Some(first_image_data) = body
+            .images
+            .as_ref()
+            .and_then(|imgs| imgs.first().map(|img| img.data.clone()))
+        {
+            let state_for_task = state.clone();
+            let uri_for_task = uri.clone();
+            let cid_for_task = cid.clone();
+            let lat = body.latitude;
+            let lng = body.longitude;
+            tokio::spawn(async move {
+                ai_id::post_ai_identification(
+                    state_for_task,
+                    ai_agent,
+                    uri_for_task,
+                    cid_for_task,
+                    first_image_data,
+                    Some(lat),
+                    Some(lng),
+                )
+                .await;
+            });
         }
     }
 
@@ -573,6 +603,8 @@ async fn create_auto_identification(
         user_kingdom,
         occurrence_uri,
         occurrence_cid,
+        None,
+        None,
     )
     .await?;
     let id_did = atrium_api::types::string::Did::new(user_did.to_string())

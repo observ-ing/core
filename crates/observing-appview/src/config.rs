@@ -14,6 +14,21 @@ pub struct Config {
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
     pub admin_dids: Vec<String>,
+    /// Handle for the AI identification bot account (e.g. "ai.observ.ing.bsky.social").
+    /// When unset (along with the other AI_BLUESKY_* vars), the auto-AI-ID feature
+    /// is disabled.
+    pub ai_bluesky_handle: Option<String>,
+    pub ai_bluesky_app_password: Option<String>,
+    /// Expected DID for the AI account; login result is verified against this.
+    pub ai_bluesky_did: Option<String>,
+    /// PDS URL for the AI account. Defaults to https://bsky.social.
+    pub ai_bluesky_pds_url: String,
+    /// Minimum cosine-similarity confidence for the top species-id suggestion
+    /// before the AI bot posts an identification.
+    pub ai_id_min_confidence: f32,
+    /// When true, suppress AI identifications whose top suggestion is known
+    /// to be out-of-range at the observation location.
+    pub ai_id_in_range_only: bool,
 }
 
 impl Config {
@@ -77,6 +92,25 @@ impl Config {
             .map(|s| parse_did_list(&s))
             .unwrap_or_default();
 
+        let ai_bluesky_handle = env::var("AI_BLUESKY_HANDLE")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let ai_bluesky_app_password = env::var("AI_BLUESKY_APP_PASSWORD")
+            .ok()
+            .filter(|s| !s.is_empty());
+        let ai_bluesky_did = env::var("AI_BLUESKY_DID")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+        let ai_bluesky_pds_url =
+            env::var("AI_BLUESKY_PDS_URL").unwrap_or_else(|_| "https://bsky.social".to_string());
+        let ai_id_min_confidence = env::var("AI_ID_MIN_CONFIDENCE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0.15);
+        let ai_id_in_range_only = env::var("AI_ID_IN_RANGE_ONLY")
+            .map(|s| matches!(s.to_ascii_lowercase().as_str(), "1" | "true" | "yes"))
+            .unwrap_or(false);
+
         Self {
             port,
             database_url,
@@ -85,6 +119,12 @@ impl Config {
             public_url,
             hidden_dids,
             admin_dids,
+            ai_bluesky_handle,
+            ai_bluesky_app_password,
+            ai_bluesky_did,
+            ai_bluesky_pds_url,
+            ai_id_min_confidence,
+            ai_id_in_range_only,
         }
     }
 }

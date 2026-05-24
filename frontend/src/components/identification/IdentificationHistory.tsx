@@ -201,6 +201,19 @@ export function IdentificationHistory({
                     {id.uri === observerFirstIdUri && (
                       <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                     )}
+                    {id.model_name && (
+                      <Chip
+                        label="AI"
+                        size="small"
+                        color="secondary"
+                        variant="outlined"
+                        title={
+                          id.model_version
+                            ? `${id.model_name} (${id.model_version})`
+                            : id.model_name
+                        }
+                      />
+                    )}
                     {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
                   </Stack>
                   <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>

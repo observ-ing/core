@@ -134,6 +134,13 @@ pub struct IdentificationRow {
     pub family: Option<String>,
     #[ts(optional)]
     pub genus: Option<String>,
+    /// Name of the AI model that authored this identification (e.g. "BioCLIP"),
+    /// when present. Absent for human identifications.
+    #[ts(optional)]
+    pub model_name: Option<String>,
+    /// Version string of the AI model that authored this identification.
+    #[ts(optional)]
+    pub model_version: Option<String>,
 }
 
 /// Comment row returned from SELECT queries
@@ -274,6 +281,11 @@ pub struct UpsertIdentificationParams {
     /// taxonomy resolver before the upsert; downstream queries
     /// (community_ids matview, taxon-page filters) join on this.
     pub accepted_taxon_key: Option<i64>,
+    /// AI model that authored this identification, when present. Stored as
+    /// app-specific extras on the AT Protocol record (not yet in the
+    /// upstream bio.lexicons schema).
+    pub model_name: Option<String>,
+    pub model_version: Option<String>,
 }
 
 /// Parameters for upserting a comment

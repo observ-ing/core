@@ -173,6 +173,8 @@ mod tests {
             order_: None,
             family: None,
             genus: None,
+            model_name: None,
+            model_version: None,
         }
     }
 
