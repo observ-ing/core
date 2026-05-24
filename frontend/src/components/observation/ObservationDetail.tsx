@@ -43,6 +43,7 @@ import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
+import { QualityIssueBadges } from "./QualityIssueBadges";
 import {
   formatDate,
   getDisplayName,
@@ -288,6 +289,11 @@ export function ObservationDetail() {
             >
               {taxonomy.vernacularName}
             </Typography>
+          )}
+          {observation.qualityIssues.length > 0 && (
+            <Box sx={{ mt: 1 }}>
+              <QualityIssueBadges issues={observation.qualityIssues} />
+            </Box>
           )}
         </Box>
 
