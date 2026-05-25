@@ -12,8 +12,7 @@
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
 
 > First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.
-> Expect 20–40 minutes on a warm laptop. See [docs/troubleshooting.md](./troubleshooting.md) if
-> anything goes sideways.
+> Expect 20–40 minutes on a warm laptop.
 
 ## Installation
 

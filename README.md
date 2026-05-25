@@ -26,13 +26,11 @@ open http://localhost:3000
 ```
 
 > Cold setup downloads ~1.4 GB of models and compiles the full Rust
-> workspace — budget 20–40 minutes the first time. If anything fails,
-> check [docs/troubleshooting.md](docs/troubleshooting.md).
+> workspace — budget 20–40 minutes the first time.
 
 ## Documentation
 
 - [Development](docs/development.md) — local setup, commands, services
-- [Troubleshooting](docs/troubleshooting.md) — common errors and fixes
 - [Contributing](CONTRIBUTING.md) — PR flow, formatting, CI gates
 - [Architecture](docs/architecture.md) — system design and components
 - [Deployment](docs/deployment.md) — Cloud Run deployment

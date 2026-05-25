@@ -4,8 +4,7 @@ Thanks for considering a contribution! This guide covers the practical
 bits: how to get a working dev environment, what CI will check, and what
 we expect in PRs.
 
-For setup, start at [docs/development.md](docs/development.md). For
-common errors, see [docs/troubleshooting.md](docs/troubleshooting.md).
+For setup, start at [docs/development.md](docs/development.md).
 
 ## Quick start
 
@@ -85,9 +84,7 @@ npm run test:e2e                # real Bluesky auth — needs credentials in .en
 
 The integration and e2e tests both expect `process-compose up -D` to
 have been run first. See
-[docs/development.md#tests](docs/development.md#tests) for details and
-[docs/troubleshooting.md#e2e-tests](docs/troubleshooting.md#e2e-tests)
-if they don't run.
+[docs/development.md#tests](docs/development.md#tests) for details.
 
 ## SQL changes
 
