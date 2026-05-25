@@ -18,12 +18,13 @@ for building the `tap` binary. Details in
 
 ```bash
 cp .env.example .env                  # then edit DATABASE_URL etc. as needed
-npm install
-./scripts/download-models.sh          # BioCLIP models (~1.4 GB, one-time)
-cargo run -p observing-migrate        # apply DB migrations (Postgres must be running)
+npm run setup                         # idempotent: prereqs, deps, tap, models, migrations
 process-compose up -D                 # start the full stack
 open http://localhost:3000
 ```
+
+If anything goes wrong, `npm run doctor` walks every prerequisite the
+stack needs and prints what's missing.
 
 > Cold setup downloads ~1.4 GB of models and compiles the full Rust
 > workspace — budget 20–40 minutes the first time.

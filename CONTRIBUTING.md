@@ -11,17 +11,19 @@ For setup, start at [docs/development.md](docs/development.md).
 ```bash
 git clone <repo>
 cd core
-cp .env.example .env                  # then edit as needed
-npm install
-./scripts/download-models.sh          # species-id models (~1.4 GB, one-time)
-cargo run -p observing-migrate        # apply DB migrations
+cp .env.example .env                  # then edit DATABASE_URL etc. as needed
+npm run setup                         # idempotent: prereqs, deps, tap, models, migrations
 process-compose up -D                 # start the stack
 open http://localhost:3000
 ```
 
+`npm run doctor` walks every prerequisite the stack needs and prints
+what's missing — run it any time things look broken.
+
 Prerequisites (Node 24+, Rust per `rust-toolchain.toml`, Postgres+PostGIS,
 process-compose, ONNX Runtime, optional Go for `tap`) are listed in
-[docs/development.md](docs/development.md#prerequisites).
+[docs/development.md](docs/development.md#prerequisites). On macOS,
+`brew bundle` installs all of them from the project's `Brewfile`.
 
 ## Branching and PRs
 
