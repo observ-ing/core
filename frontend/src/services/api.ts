@@ -117,7 +117,10 @@ export async function fetchExploreFeed(
 }
 
 export async function fetchHomeFeed(cursor?: string): Promise<HomeFeedResponse> {
-  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE });
+  // The home feed has no filter UI, so the Complete quality filter is always
+  // applied — incomplete observations (missing date/location/media/etc.) stay
+  // hidden from the signed-in landing view.
+  const params = new URLSearchParams({ limit: DEFAULT_PAGE_SIZE, quality: "complete" });
   if (cursor) params.set("cursor", cursor);
 
   const response = await fetch(`${API_BASE}/api/feeds/home?${params}`, {
