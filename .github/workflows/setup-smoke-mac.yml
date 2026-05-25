@@ -69,13 +69,20 @@ jobs:
         run: |
           # process-compose lives in an upstream tap, not core homebrew.
           brew tap f1bonacc1/tap
-          brew install f1bonacc1/tap/process-compose postgresql@16 postgis onnxruntime
-          # postgresql@16 is keg-only; expose its binaries on PATH.
-          echo "$(brew --prefix postgresql@16)/bin" >> "$GITHUB_PATH"
+          # postgis pulls in the matching postgresql@N formula as a
+          # dependency — installing them separately can land postgis's
+          # extension control file in the wrong tree.
+          brew install f1bonacc1/tap/process-compose onnxruntime postgis
+          # Discover whichever postgresql@N formula postgis depends on,
+          # expose it on PATH, and pass the formula name to later steps.
+          PG_FORMULA=$(brew deps --1 postgis | grep -E '^postgresql@' | head -1)
+          echo "Postgres formula: $PG_FORMULA"
+          echo "PG_FORMULA=$PG_FORMULA" >> "$GITHUB_ENV"
+          echo "$(brew --prefix "$PG_FORMULA")/bin" >> "$GITHUB_PATH"
 
       - name: Start Postgres and create database with PostGIS
         run: |
-          brew services start postgresql@16
+          brew services start "$PG_FORMULA"
           for i in $(seq 1 30); do
             pg_isready -q && break
             sleep 1

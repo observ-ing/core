@@ -4,7 +4,7 @@
 
 - Node.js 24+ (matches `engines.node` in `package.json` and the version CI runs)
 - Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
-- PostgreSQL 16 with the PostGIS extension
+- PostgreSQL (14+) with the PostGIS extension — production runs 16, but any modern version works locally
 - [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
 - ONNX Runtime, for the `species-id` service:
   - macOS: `brew install onnxruntime`

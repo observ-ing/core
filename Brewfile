@@ -14,8 +14,8 @@ brew "go"                # for building the upstream `tap` binary
 tap "f1bonacc1/tap"
 brew "f1bonacc1/tap/process-compose"
 
-# Database
-brew "postgresql@16"
+# Database. brew's `postgis` formula pulls in the matching postgresql
+# formula as a dependency, so installing postgis is enough.
 brew "postgis"
 
 # species-id native dependency
