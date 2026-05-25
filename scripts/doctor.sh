@@ -130,35 +130,34 @@ fi
 # ---- Postgres -------------------------------------------------------------
 
 section "Postgres"
+
+pg_running=0
 if command -v pg_isready >/dev/null 2>&1; then
   if pg_isready -q -h localhost -p 5432 2>/dev/null; then
     pass "Postgres reachable on localhost:5432"
-    pg_reachable=1
+    pg_running=1
   else
-    fail "Postgres not reachable on localhost:5432"
-    pg_reachable=0
+    fail "Postgres not reachable on localhost:5432 — start it (see docs/development.md)"
   fi
 elif command -v nc >/dev/null 2>&1; then
   if nc -z localhost 5432 2>/dev/null; then
     pass "Something is listening on localhost:5432 (install postgresql-client for a deeper check)"
-    pg_reachable=1
+    pg_running=1
   else
-    fail "Nothing listening on localhost:5432"
-    pg_reachable=0
+    fail "Nothing listening on localhost:5432 — start Postgres (see docs/development.md)"
   fi
 else
   warn "Can't probe Postgres (neither pg_isready nor nc available)"
-  pg_reachable=0
 fi
 
-if [ "$pg_reachable" = "1" ] && command -v psql >/dev/null 2>&1 && [ -n "${DATABASE_URL:-}" ]; then
+if [ "$pg_running" = "1" ] && command -v psql >/dev/null 2>&1 && [ -n "${DATABASE_URL:-}" ]; then
   postgis=$(psql "$DATABASE_URL" -tAc "SELECT 1 FROM pg_extension WHERE extname='postgis'" 2>/dev/null || true)
   if [ "$postgis" = "1" ]; then
     pass "PostGIS extension installed"
   else
     fail "PostGIS extension not installed in DATABASE_URL (or DATABASE_URL is wrong)"
   fi
-elif [ "$pg_reachable" = "1" ] && [ -z "${DATABASE_URL:-}" ]; then
+elif [ "$pg_running" = "1" ] && [ -z "${DATABASE_URL:-}" ]; then
   warn "DATABASE_URL not set — skipping PostGIS check"
 fi
 

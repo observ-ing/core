@@ -11,15 +11,17 @@ Observ.ing lets users record and share biodiversity observations on the federate
 ## Quick Start
 
 Prerequisites: Node 24+, Rust (auto-pinned by `rust-toolchain.toml`),
-PostgreSQL 16 with PostGIS, [`process-compose`](https://github.com/F1bonacc1/process-compose),
+PostgreSQL (14+) with PostGIS,
+[`process-compose`](https://github.com/F1bonacc1/process-compose),
 ONNX Runtime (`brew install onnxruntime` on macOS), and optionally Go
 for building the `tap` binary. Details in
 [docs/development.md](docs/development.md#prerequisites).
 
 ```bash
-cp .env.example .env                  # then edit DATABASE_URL etc. as needed
-npm run setup                         # idempotent: prereqs, deps, tap, models, migrations
-process-compose up -D                 # start the full stack
+cp .env.example .env                  # tweak DATABASE_URL etc. as needed
+npm run setup                         # one-time: prereqs, deps, tap, models
+# ensure Postgres is running (see docs/development.md#database-setup)
+process-compose up -D                 # runs migrations, then starts services
 open http://localhost:3000
 ```
 
