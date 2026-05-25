@@ -2,9 +2,17 @@
 
 ## Prerequisites
 
-- Node.js 20+ (for frontend build)
-- PostgreSQL with PostGIS extension
-- Rust
+- Node.js 24+ (matches `engines.node` in `package.json` and the version CI runs)
+- Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
+- PostgreSQL 16 with the PostGIS extension
+- [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
+- ONNX Runtime, for the `species-id` service:
+  - macOS: `brew install onnxruntime`
+  - Linux: install via your distro (`libonnxruntime` / `onnxruntime-dev`)
+- Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
+
+> First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.
+> Expect 20–40 minutes on a warm laptop.
 
 ## Installation
 
@@ -36,18 +44,56 @@ Native installs (Postgres.app, Homebrew `postgresql` + `postgis`, etc.) work too
 
 ## Configuration
 
-Most developer commands read `DATABASE_URL` from the environment:
+All environment variables the stack reads are listed and explained in
+[`.env.example`](../.env.example) at the project root. Copy it once and
+edit as needed:
 
 ```bash
-export DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/observing"
-export PORT=3000
+cp .env.example .env
 ```
 
-Secrets for e2e and `process-compose` live in a gitignored `.env` at the project root. Source it once per shell:
+`.env` is gitignored. `process-compose up` reads it automatically when
+started from this directory. For other shells (running `cargo run -p …`
+directly, running tests by hand, etc.) source it:
 
 ```bash
 set -a && source .env && set +a
 ```
+
+The only var that's required for the basic stack to come up is
+`DATABASE_URL` (or the `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD` quad).
+`BLUESKY_TEST_*` are only needed for `npm run test:e2e`.
+
+## Models (species-id)
+
+The `species-id` service loads BioCLIP ONNX models from `MODEL_DIR`
+(default `./models/bioclip`, ~1.4 GB). Download them once:
+
+```bash
+./scripts/download-models.sh
+```
+
+The `models/` directory is gitignored. Re-run the script after a
+checkout on a new machine, or whenever model versions are bumped.
+
+## Tap binary
+
+`tap-ingester` spawns the upstream [`tap`](https://github.com/bluesky-social/indigo/tree/main/cmd/tap)
+Go binary as a child process. It must be on `PATH` (or in the working
+directory) when `cargo run -p tap-ingester` starts.
+
+Install it once, pinned to the same revision the production Dockerfile
+and CI use:
+
+```bash
+# Same indigo commit CI builds against (see .github/workflows/ci.yml).
+INDIGO_REV=ce62b8fce9e01434213a69cb251852b2c9436cb9
+GODEBUG=netdns=go go install \
+  github.com/bluesky-social/indigo/cmd/tap@$INDIGO_REV
+```
+
+This drops `tap` into `$(go env GOPATH)/bin`; make sure that directory
+is on your `PATH`.
 
 ## Running Migrations
 
@@ -63,6 +109,20 @@ cargo sqlx migrate run --source crates/observing-db/migrations
 ```
 
 In production, migrations run in a one-shot `observing-migrate` Cloud Run Job *before* services are deployed — long-running services never run DDL. See `docs/deployment.md`.
+
+### Seed Data
+
+`tests/seed.sql` inserts a handful of observation records under the e2e
+test DID. CI loads it after migrations so e2e specs have something to
+render against; locally it's optional but useful when poking around the
+explore feed:
+
+```bash
+psql "$DATABASE_URL" -f tests/seed.sql
+```
+
+Safe to re-run only after wiping the relevant rows — it does plain
+`INSERT`s, not upserts.
 
 ## Common Commands
 
@@ -139,17 +199,32 @@ cargo run -p tap-ingester
 npm run dev
 ```
 
-### Frontend Development
+## Frontend: dev mode vs static build
 
-If there's nothing in `dist/public`, the appview running on port 3000 will proxy frontend requests to the hot-reloading Vite server running in the `frontend` process.
+The frontend runs in **one of two modes**, and which one you're in is
+determined entirely by whether `dist/public/` has files in it. Both modes
+serve the app at `http://localhost:3000` (not `:5173`) — appview is
+always the front door.
 
-If you want to mimic a more production-like setup, rebuild the static frontend files and restart:
+| Mode | When | Behavior |
+|---|---|---|
+| **Dev (Vite proxy)** | `dist/public/` is empty | Appview proxies frontend requests to the Vite dev server, which is hot-reloading frontend source. The `frontend` process must be running. This is what you want for day-to-day frontend work. |
+| **Static (prod-like)** | `dist/public/` has files | Appview serves the built bundle directly. Useful for reproducing production behavior, performance tests, or working on backend code without keeping Vite running. |
+
+**Switch to dev mode** by deleting the built bundle:
+
+```bash
+rm -rf dist/public && process-compose process restart appview
+```
+
+**Switch to static (prod-like) mode** by rebuilding:
 
 ```bash
 npm run build && process-compose process restart appview
 ```
 
-The app runs at `http://localhost:3000` (not 5173). Port 3000 serves built files from `dist/public`.
+If you change frontend code while in static mode, your edits won't show
+up until you rebuild — a common "why isn't my change appearing?" gotcha.
 
 ## Tests
 
