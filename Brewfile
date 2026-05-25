@@ -14,8 +14,11 @@ brew "go"                # for building the upstream `tap` binary
 tap "f1bonacc1/tap"
 brew "f1bonacc1/tap/process-compose"
 
-# Database. brew's `postgis` formula pulls in the matching postgresql
-# formula as a dependency, so installing postgis is enough.
+# Database. `postgis` declares its postgresql version as a *build* dep
+# (currently postgresql@17). The bottle's extension control file only
+# lives in that postgres tree, so installing a different major leaves
+# `CREATE EXTENSION postgis;` broken. Keep these two pinned in lockstep.
+brew "postgresql@17"
 brew "postgis"
 
 # species-id native dependency
