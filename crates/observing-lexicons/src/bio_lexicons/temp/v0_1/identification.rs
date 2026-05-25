@@ -16,7 +16,7 @@ use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
-use jacquard_common::types::string::{AtUri, Cid};
+use jacquard_common::types::string::{AtUri, Cid, UriValue};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
@@ -48,6 +48,9 @@ pub struct Identification<S: BosStr = DefaultStr> {
     pub occurrence: StrongRef<S>,
     ///The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).
     pub scientific_name: S,
+    ///Stable URI for the identified taxon (e.g. a GBIF species URI). Maps to Darwin Core dwc:taxonID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub taxon_id: Option<UriValue<S>>,
     ///The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub taxon_rank: Option<IdentificationTaxonRank<S>>,
@@ -318,6 +321,7 @@ pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
         Option<S>,
         Option<StrongRef<S>>,
         Option<S>,
+        Option<UriValue<S>>,
         Option<IdentificationTaxonRank<S>>,
     ),
     _type: PhantomData<fn() -> S>,
@@ -335,7 +339,7 @@ impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None),
+            _fields: (None, None, None, None, None, None),
             _type: PhantomData,
         }
     }
@@ -406,14 +410,27 @@ where
 }
 
 impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
+    /// Set the `taxonID` field (optional)
+    pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
+        self._fields.4 = value.into();
+        self
+    }
+    /// Set the `taxonID` field to an Option value (optional)
+    pub fn maybe_taxon_id(mut self, value: Option<UriValue<S>>) -> Self {
+        self._fields.4 = value;
+        self
+    }
+}
+
+impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     /// Set the `taxonRank` field (optional)
     pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
-        self._fields.4 = value.into();
+        self._fields.5 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
     pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<S>>) -> Self {
-        self._fields.4 = value;
+        self._fields.5 = value;
         self
     }
 }
@@ -431,7 +448,8 @@ where
             kingdom: self._fields.1,
             occurrence: self._fields.2.unwrap(),
             scientific_name: self._fields.3.unwrap(),
-            taxon_rank: self._fields.4,
+            taxon_id: self._fields.4,
+            taxon_rank: self._fields.5,
             extra_data: Default::default(),
         }
     }
@@ -442,7 +460,8 @@ where
             kingdom: self._fields.1,
             occurrence: self._fields.2.unwrap(),
             scientific_name: self._fields.3.unwrap(),
-            taxon_rank: self._fields.4,
+            taxon_id: self._fields.4,
+            taxon_rank: self._fields.5,
             extra_data: Some(extra_data),
         }
     }
@@ -517,6 +536,18 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_identification() -> LexiconDoc<'static> {
                                         ),
                                     ),
                                     max_length: Some(256usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("taxonID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Stable URI for the identified taxon (e.g. a GBIF species URI). Maps to Darwin Core dwc:taxonID.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::Uri),
                                     ..Default::default()
                                 }),
                             );

@@ -234,8 +234,10 @@ pub fn identification_from_json(
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
+    // Darwin Core canonical casing is `taxonID` (uppercase ID); camelCasing it
+    // would silently drop the field. See the identification lexicon on lexicons.bio.
     let taxon_id = record_json
-        .get("taxonId")
+        .get("taxonID")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
 
@@ -467,7 +469,7 @@ mod tests {
             "scientificName": "Quercus alba",
             "taxonRank": "species",
             "kingdom": "Plantae",
-            "taxonId": "gbif:2879737",
+            "taxonID": "https://www.gbif.org/species/2879737",
             "occurrence": {
                 "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
                 "cid": "bafyreioccurrence"
@@ -493,7 +495,10 @@ mod tests {
         assert_eq!(params.scientific_name, "Quercus alba");
         assert_eq!(params.taxon_rank.as_deref(), Some("species"));
         assert_eq!(params.kingdom.as_deref(), Some("Plantae"));
-        assert_eq!(params.taxon_id.as_deref(), Some("gbif:2879737"));
+        assert_eq!(
+            params.taxon_id.as_deref(),
+            Some("https://www.gbif.org/species/2879737")
+        );
         assert_eq!(
             params.subject_uri,
             "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc"
@@ -538,6 +543,77 @@ mod tests {
         .expect("record should parse without createdAt");
 
         assert_eq!(params.date_identified, fallback);
+    }
+
+    /// Regression guard: `taxonID` is the canonical Darwin Core casing
+    /// (uppercase ID) per the bio.lexicons.temp.v0-1.identification schema on
+    /// lexicons.bio. A prior bug read the camelCased `taxonId`, silently
+    /// dropping inbound values — including the iNaturalist URLs produced by
+    /// the import script. This test pins both halves:
+    ///   - `taxonID` (canonical) → extracted into `params.taxon_id`
+    ///   - `taxonId` (wrong case) → not silently picked up
+    #[test]
+    fn test_identification_from_json_extracts_canonical_taxon_id_casing() {
+        // Half 1: canonical casing with an iNaturalist URL flows through.
+        let canonical = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.identification",
+            "scientificName": "Danaus plexippus",
+            "taxonID": "https://www.inaturalist.org/taxa/48662",
+            "occurrence": {
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
+                "cid": "bafyreioccurrence"
+            },
+            "createdAt": "2024-06-15T08:30:45Z"
+        });
+
+        // Validates against the typed lexicon struct + runtime schema
+        // constraints, so any future schema drift on `taxonID` (renamed,
+        // re-cased, removed) surfaces here before the parser assertion.
+        assert_valid_lexicon::<Identification>(&canonical);
+
+        let fallback = DateTime::parse_from_rfc3339("2024-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+
+        let params = identification_from_json(
+            &canonical,
+            "uri".into(),
+            "cid".into(),
+            "did:plc:x".into(),
+            fallback,
+        )
+        .expect("record with canonical taxonID should parse");
+        assert_eq!(
+            params.taxon_id.as_deref(),
+            Some("https://www.inaturalist.org/taxa/48662"),
+            "canonical taxonID (Darwin Core casing) must flow through to params.taxon_id"
+        );
+
+        // Half 2: camelCased `taxonId` must not be silently accepted. If a
+        // future refactor re-introduces the wrong casing in the parser, this
+        // assertion fails and forces a decision rather than a silent drop.
+        let wrong_case = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.identification",
+            "scientificName": "Danaus plexippus",
+            "taxonId": "https://www.inaturalist.org/taxa/48662",
+            "occurrence": {
+                "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc",
+                "cid": "bafyreioccurrence"
+            }
+        });
+
+        let params = identification_from_json(
+            &wrong_case,
+            "uri".into(),
+            "cid".into(),
+            "did:plc:x".into(),
+            fallback,
+        )
+        .expect("record without taxonID is still structurally valid");
+        assert!(
+            params.taxon_id.is_none(),
+            "wrong-cased `taxonId` must not be picked up by the parser"
+        );
     }
 
     /// Baseline happy-path coverage for `comment_from_json`.
