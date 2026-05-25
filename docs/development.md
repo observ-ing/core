@@ -14,6 +14,38 @@
 > First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.
 > Expect 20–40 minutes on a warm laptop.
 
+On macOS, `brew bundle` installs every prerequisite listed above from
+the project's `Brewfile`. asdf/mise users get Node and Go from
+`.tool-versions`.
+
+## Scripted setup (recommended)
+
+Once Postgres is running locally (see [Database Setup](#database-setup)),
+the easiest path is:
+
+```bash
+cp .env.example .env       # then edit DATABASE_URL / DB_PASSWORD to match
+npm run setup              # bootstraps everything below in one shot
+```
+
+`npm run setup` is idempotent — re-run any time, and it skips work
+that's already done. It runs:
+
+1. Prerequisite check (Node 24+, Rust, process-compose)
+2. `npm install`
+3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
+4. `./scripts/download-models.sh` — BioCLIP models, if not present
+5. `cargo run -p observing-migrate` — if Postgres is reachable on `localhost:5432`
+
+To diagnose problems without changing anything:
+
+```bash
+npm run doctor             # read-only; prints pass/fail for every check
+```
+
+The rest of this document covers each step in detail for when you need
+to run them by hand.
+
 ## Installation
 
 ```bash
