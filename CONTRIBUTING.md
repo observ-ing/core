@@ -11,9 +11,10 @@ For setup, start at [docs/development.md](docs/development.md).
 ```bash
 git clone <repo>
 cd core
-cp .env.example .env                  # then edit DATABASE_URL etc. as needed
-npm run setup                         # idempotent: prereqs, deps, tap, models, migrations
-process-compose up -D                 # start the stack
+cp .env.example .env                  # tweak DATABASE_URL etc. as needed
+npm run setup                         # one-time: prereqs, deps, tap, models
+# ensure Postgres is running (see docs/development.md#database-setup)
+process-compose up -D                 # runs migrations, then starts services
 open http://localhost:3000
 ```
 

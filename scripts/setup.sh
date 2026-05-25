@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # Bootstrap a local development environment. Idempotent — safe to re-run.
 #
-# Steps (each step skipped if already done):
+# Steps (each skipped if already done):
 #   1. Verify Node / Rust / process-compose are installed
 #   2. Copy .env.example to .env
 #   3. npm install
 #   4. Install the upstream `tap` Go binary (./scripts/install-tap.sh)
 #   5. Download BioCLIP models (./scripts/download-models.sh)
-#   6. Run database migrations (if Postgres is reachable)
 #
-# Postgres setup is intentionally out of scope here — see docs/development.md.
+# Postgres and migrations are intentionally out of scope: `process-compose
+# up -D` brings up a managed postgis container and runs migrations
+# automatically before the app services start.
 
 set -euo pipefail
 
@@ -102,35 +103,15 @@ fi
 step "Downloading BioCLIP models"
 "$SCRIPT_DIR/download-models.sh"
 
-# ---- 6. Migrations --------------------------------------------------------
-
-step "Running database migrations"
-pg_reachable=0
-if command -v pg_isready >/dev/null 2>&1; then
-  if pg_isready -q -h localhost -p 5432 2>/dev/null; then
-    pg_reachable=1
-  fi
-elif command -v nc >/dev/null 2>&1; then
-  if nc -z localhost 5432 2>/dev/null; then
-    pg_reachable=1
-  fi
-fi
-
-if [ "$pg_reachable" = "1" ]; then
-  cargo run -p observing-migrate
-  ok "Migrations applied"
-else
-  warn "Postgres not reachable on localhost:5432 — skipping migrations."
-  warn "Start Postgres (see docs/development.md), then run: cargo run -p observing-migrate"
-fi
-
 # ---- Done -----------------------------------------------------------------
 
 step "Setup complete"
 cat <<EOF
 
 Next steps:
-  - Run ./scripts/doctor.sh anytime to diagnose problems
-  - process-compose up -D       # start the full stack
+  - Make sure Postgres is running on localhost:5432
+    (see docs/development.md#database-setup)
+  - process-compose up -D       # runs migrations, then starts services
   - open http://localhost:3000
+  - Run ./scripts/doctor.sh anytime to diagnose problems
 EOF

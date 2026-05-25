@@ -20,12 +20,11 @@ the project's `Brewfile`. asdf/mise users get Node and Go from
 
 ## Scripted setup (recommended)
 
-Once Postgres is running locally (see [Database Setup](#database-setup)),
-the easiest path is:
-
 ```bash
-cp .env.example .env       # then edit DATABASE_URL / DB_PASSWORD to match
+cp .env.example .env       # tweak DATABASE_URL / DB_PASSWORD to match your Postgres
 npm run setup              # bootstraps everything below in one shot
+# ensure Postgres is running (see Database Setup below)
+process-compose up -D      # runs migrations, then starts services
 ```
 
 `npm run setup` is idempotent — re-run any time, and it skips work
@@ -35,7 +34,11 @@ that's already done. It runs:
 2. `npm install`
 3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
 4. `./scripts/download-models.sh` — BioCLIP models, if not present
-5. `cargo run -p observing-migrate` — if Postgres is reachable on `localhost:5432`
+
+Postgres lifecycle is left to you (it's stateful and often shared
+with other projects). Migrations are run automatically by
+`process-compose up` as the first process — see
+[Running services](#running-services).
 
 To diagnose problems without changing anything:
 
@@ -54,7 +57,10 @@ npm install
 
 ## Database Setup
 
-Run PostgreSQL with PostGIS locally. All app services connect to it over `localhost:5432` — there is no Cloud SQL Proxy step in local dev; production Cloud SQL is a separate concern handled by CI (see `docs/deployment.md`).
+Run PostgreSQL with PostGIS locally. All app services connect over
+`localhost:5432` — there is no Cloud SQL Proxy step in local dev;
+production Cloud SQL is a separate concern handled by CI (see
+`docs/deployment.md`).
 
 Docker is the path of least resistance:
 
@@ -62,17 +68,17 @@ Docker is the path of least resistance:
 # One-time: create the container
 docker run --name observing-postgres \
   -e POSTGRES_PASSWORD=mysecretpassword \
+  -e POSTGRES_DB=observing \
   -p 5432:5432 \
   -d postgis/postgis
-
-# Create the database
-docker exec -it observing-postgres createdb -U postgres observing
 
 # After reboot / on subsequent sessions
 docker start observing-postgres
 ```
 
-Native installs (Postgres.app, Homebrew `postgresql` + `postgis`, etc.) work too — anything that exposes PostgreSQL with PostGIS on `localhost:5432` is fine.
+Native installs (Postgres.app, Homebrew `postgresql@N` + `postgis`,
+etc.) work too — anything that exposes PostgreSQL with PostGIS on
+`localhost:5432` is fine.
 
 ## Configuration
 
@@ -129,7 +135,14 @@ is on your `PATH`.
 
 ## Running Migrations
 
-Migrations are versioned files under `crates/observing-db/migrations/` and applied by `sqlx`. Locally you can run them either of these ways:
+Migrations are versioned files under `crates/observing-db/migrations/`
+and applied by `sqlx`. `process-compose up` runs them automatically as
+a one-shot `migrate` process that blocks `appview` and `tap-ingester`
+from starting until the schema is current — so for the default path,
+you don't have to do anything here.
+
+For the standalone case (running services directly via `cargo run -p`,
+or iterating on migration files), apply them by hand:
 
 ```bash
 # Run the same binary CI uses for the Cloud Run Job
@@ -192,7 +205,10 @@ npm run generate-rust-types
 
 ### Using process-compose (recommended)
 
-All services can be managed with `process-compose`. Config in `process-compose.yaml`. Make sure your local PostgreSQL is running first (see [Database Setup](#database-setup)) — process-compose only manages the app processes.
+With Postgres running on `localhost:5432`, `process-compose up` runs
+the one-shot `migrate` process to apply any pending DB migrations,
+then brings up `species-id`, `appview`, `tap-ingester`, and `frontend`
+in their declared dependency order. Config lives in `process-compose.yaml`.
 
 ```bash
 # Start all services (detached)
@@ -215,7 +231,8 @@ process-compose process logs <name>
 process-compose down
 ```
 
-Service names: `appview`, `frontend`, `tap-ingester`, `species-id`
+Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
+`frontend` (in startup order).
 
 ### Individual Services
 

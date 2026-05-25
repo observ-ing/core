@@ -1,41 +1,24 @@
 version: "0.5"
 
-# Requires a local PostgreSQL (with PostGIS) reachable on localhost:5432
-# before starting. See docs/development.md for setup.
+# `process-compose up -D` runs migrations and brings up the four app
+# services. Postgres lives outside process-compose — start your own
+# (Docker or native) before running this. See docs/development.md.
 
 processes:
-  appview:
-    command: cargo run -p observing-appview
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
-      - PORT=3000
-      - CACHE_DIR=./cache/media
-      - SPECIES_ID_SERVICE_URL=http://localhost:3005
-      - PUBLIC_URL=${PUBLIC_URL:-}
-    readiness_probe:
-      http_get:
-        host: localhost
-        port: 3000
-        path: /health
-      initial_delay_seconds: 120
-      period_seconds: 5
 
-  frontend:
-    command: npm run dev
-    depends_on:
-      appview:
-        condition: process_healthy
-
-  tap-ingester:
-    # Requires the upstream `tap` Go binary on PATH. Build and install
-    # once with:
-    #   GODEBUG=netdns=go go install github.com/bluesky-social/indigo/cmd/tap@<rev>
-    # See docs/development.md.
-    command: cargo run -p tap-ingester
+  # ---- Migrations -------------------------------------------------------
+  # One-shot: applies any pending migrations against the configured
+  # database, then exits. App services depend on this via
+  # `process_completed_successfully` so the schema is always current
+  # before anything reads it. Same binary CI uses for the Cloud Run Job.
+  migrate:
+    command: cargo run -p observing-migrate
     environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD}@localhost:5432/observing}
-      - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap.db}
-      - PORT=8080
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
+    availability:
+      restart: "no"
+
+  # ---- App services -----------------------------------------------------
 
   species-id:
     command: cargo run -p observing-species-id
@@ -49,3 +32,51 @@ processes:
         port: 3005
         path: /health
       initial_delay_seconds: 10
+      period_seconds: 5
+
+  appview:
+    command: cargo run -p observing-appview
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
+      - PORT=3000
+      - CACHE_DIR=./cache/media
+      - SPECIES_ID_SERVICE_URL=http://localhost:3005
+      - PUBLIC_URL=${PUBLIC_URL:-}
+    depends_on:
+      migrate:
+        condition: process_completed_successfully
+      species-id:
+        condition: process_healthy
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 3000
+        path: /health
+      initial_delay_seconds: 120
+      period_seconds: 5
+
+  tap-ingester:
+    # Spawns the upstream `tap` Go binary as a child process — it must
+    # be on PATH or in the working directory. Install once with
+    # ./scripts/install-tap.sh (or see docs/development.md).
+    command: cargo run -p tap-ingester
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
+      - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap.db}
+      - PORT=8080
+    depends_on:
+      migrate:
+        condition: process_completed_successfully
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: 8080
+        path: /health
+      initial_delay_seconds: 30
+      period_seconds: 5
+
+  frontend:
+    command: npm run dev
+    depends_on:
+      appview:
+        condition: process_healthy
