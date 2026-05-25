@@ -1,0 +1,103 @@
+name: setup-smoke-mac
+
+# Smoke-test the local-dev setup and doctor scripts on macOS. Catches
+# breakage in scripts/setup.sh, scripts/doctor.sh, scripts/install-tap.sh,
+# the Brewfile, .tool-versions, and .env.example before contributors hit
+# it. Gated on paths so we only spend macOS runner minutes when something
+# that could break setup actually changes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/setup.sh'
+      - 'scripts/doctor.sh'
+      - 'scripts/install-tap.sh'
+      - 'scripts/download-models.sh'
+      - 'Brewfile'
+      - '.tool-versions'
+      - '.env.example'
+      - 'process-compose.yaml'
+      - 'package.json'
+      - 'rust-toolchain.toml'
+      - '.github/workflows/setup-smoke-mac.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/setup.sh'
+      - 'scripts/doctor.sh'
+      - 'scripts/install-tap.sh'
+      - 'scripts/download-models.sh'
+      - 'Brewfile'
+      - '.tool-versions'
+      - '.env.example'
+      - 'process-compose.yaml'
+      - 'package.json'
+      - 'rust-toolchain.toml'
+      - '.github/workflows/setup-smoke-mac.yml'
+  workflow_dispatch:
+
+jobs:
+  setup-smoke-mac:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Pin toolchains via the same actions the rest of CI uses, rather
+      # than relying on the Brewfile's `rustup` / `node@24` formulae —
+      # that keeps this job's signal scoped to "do the scripts work?"
+      # rather than "did a brew formula get renamed this week?"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      # The system-level prereqs are what the Brewfile would install for
+      # a real contributor. Installing them by hand here (instead of
+      # `brew bundle`) lets us skip the toolchain rows that we already
+      # set up via actions above.
+      - name: Install system prerequisites
+        run: |
+          brew install process-compose postgresql@16 postgis onnxruntime
+          # postgresql@16 is keg-only; expose its binaries on PATH.
+          echo "$(brew --prefix postgresql@16)/bin" >> "$GITHUB_PATH"
+
+      - name: Start Postgres and create database with PostGIS
+        run: |
+          brew services start postgresql@16
+          for i in $(seq 1 30); do
+            pg_isready -q && break
+            sleep 1
+          done
+          createdb observing
+          psql -d observing -c "CREATE EXTENSION postgis;"
+
+      - name: Prepare .env (override DATABASE_URL for peer auth)
+        # .env.example assumes the Docker recipe (password mysecretpassword).
+        # brew's postgres uses peer auth for the local user, so override.
+        run: |
+          cp .env.example .env
+          sed -i.bak "s|^DATABASE_URL=.*|DATABASE_URL=postgresql:///observing|" .env
+          rm .env.bak
+
+      - name: Stub BioCLIP models
+        # download-models.sh short-circuits if vision_encoder.onnx exists.
+        # We're testing setup orchestration, not the 1.4 GB tar download.
+        run: |
+          mkdir -p models/bioclip
+          touch models/bioclip/vision_encoder.onnx
+
+      - name: Run npm run setup
+        run: npm run setup
+
+      - name: Run npm run doctor
+        run: npm run doctor
