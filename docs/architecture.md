@@ -126,6 +126,167 @@ Vite + React SPA.
 - `scripts/generate-rust-types.sh` - Lexicon → Rust type generator (jacquard-codegen)
 - `cloudbuild.yaml` - Multi-service Cloud Build config
 
+## Database Tables
+
+Tables live in owner-labeled schemas (`ingester`, `appview`, `public`). Unqualified references resolve via a database-wide `search_path = ingester, appview, public`.
+
+### Ingester-owned (schema `ingester`)
+
+| Table | Description | Written By | Read By |
+|-------|-------------|------------|---------|
+| `occurrences` | Biodiversity observations | Ingester | AppView |
+| `identifications` | Taxonomic determinations | Ingester | AppView |
+| `comments` | Discussion on observations | Ingester | AppView |
+| `likes` | Observation likes | Ingester | AppView |
+| `interactions` | Species interactions | Ingester | AppView |
+| `occurrence_observers` | Co-observer relationships | Ingester | AppView |
+| `notifications` | Event notifications (ID / comment / like on your observation) | Ingester | AppView (SELECT + UPDATE on `read`) |
+| `community_ids` (matview) | Consensus taxonomy per occurrence | Ingester (REFRESH) | AppView |
+
+### Tap-owned (schema `tap`)
+
+Tap (`indigo cmd/tap`) creates and manages its own tables here on first connect; tap-ingester only has `USAGE` + `CREATE` on the schema, not on individual tables. Tables aren't enumerated explicitly because Tap's schema is its internal contract — treat the schema as a black box.
+
+| Table set | Description | Written By | Read By |
+|-----------|-------------|------------|---------|
+| Tap-managed | Tracked DIDs, firehose cursor, retry/resync queues, repo metadata | Tap | Tap |
+
+### AppView-owned (schema `appview`)
+
+| Table | Description | Written By | Read By |
+|-------|-------------|------------|---------|
+| `occurrence_private_data` | Exact coordinates (geoprivacy) | AppView | AppView |
+| `notification_reads` | Per-user read-state for notifications | AppView | AppView |
+| `oauth_sessions` | Persistent user sessions | AppView | AppView |
+| `oauth_state` | Temporary PKCE flow state | AppView | AppView |
+
+### Shared reference (schema `public`)
+
+| Table | Description | Written By | Read By |
+|-------|-------------|------------|---------|
+| `sensitive_species` | Auto-obscuration rules | (manual / migrations) | AppView, Ingester |
+| `spatial_ref_sys` | PostGIS spatial reference systems | (PostGIS extension) | All |
+
+## Data Lifecycles
+
+### Creating an Observation
+
+```
+1. User fills form in frontend
+   │
+   ▼
+2. Frontend POST /api/occurrences → AppView
+   │
+   ├─▶ Validate OAuth session
+   ├─▶ Validate taxonomy (in-process GBIF + Wikidata)
+   ├─▶ Reverse geocode coordinates (Nominatim)
+   ├─▶ Upload each image as a bio.lexicons.temp.v0-1.media record on the user's PDS
+   │
+   ▼
+3. AppView creates the bio.lexicons.temp.v0-1.occurrence record on the user's PDS
+   │  createRecord({ collection: "bio.lexicons.temp.v0-1.occurrence",
+   │                 record: { ..., associatedMedia: [ strongRefs ] } })
+   │
+   ├─▶ Writes exact coords to `appview.occurrence_private_data`
+   │
+   ▼
+4. PDS commit hits the AT Protocol relay
+   │
+   ▼
+5. Tap (embedded in tap-ingester) verifies the commit
+   │
+   ├─▶ MST proof check
+   ├─▶ Signature check
+   ├─▶ Filters to configured collections
+   │
+   ▼
+6. tap-ingester receives a verified `RecordEvent`
+   │
+   ├─▶ UPSERT to `ingester.occurrences`
+   ├─▶ SYNC `ingester.occurrence_observers`
+   │
+   ▼
+7. Data now queryable via API
+```
+
+### Adding an Identification
+
+```
+1. User submits ID in frontend
+   │
+   ▼
+2. Frontend POST /api/identifications → AppView
+   │
+   ├─▶ Validate OAuth session
+   ├─▶ Validate taxonomy
+   │
+   ▼
+3. AppView creates AT Protocol record on user's PDS
+   │  createRecord({ collection: "bio.lexicons.temp.v0-1.identification", ... })
+   │
+   ▼
+4. PDS commit → relay → Tap (verify) → tap-ingester
+   │
+   ├─▶ If subject occurrence belongs to a DID Tap isn't yet tracking,
+   │   tap-ingester POSTs `/repos/add` and skips the ack so the record
+   │   is redelivered after Tap finishes the cross-repo backfill
+   ├─▶ UPSERT to `ingester.identifications`
+   ├─▶ INSERT into `ingester.notifications` (unless self-ID)
+   │
+   ▼
+5. Community ID recalculated on next matview refresh
+```
+
+### Marking a Notification as Read
+
+Notification creation is ingester-owned; read-state is appview-owned.
+
+```
+1. User views notifications → AppView SELECTs from
+   ingester.notifications LEFT JOIN appview.notification_reads
+   (produces the `read` flag).
+
+2. User clicks "mark read" → AppView INSERTs into
+   appview.notification_reads. No write to ingester schema.
+```
+
+### Firehose Ingestion
+
+```
+AT Protocol relay
+   │
+   ▼
+Tap (indigo cmd/tap, child process inside tap-ingester container)
+   │  signal_collection: bio.lexicons.temp.v0-1.occurrence
+   │  collection_filters:
+   │    - bio.lexicons.temp.v0-1.occurrence
+   │    - bio.lexicons.temp.v0-1.identification
+   │    - ing.observ.temp.comment
+   │    - ing.observ.temp.interaction
+   │    - ing.observ.temp.like
+   │
+   │  per commit:
+   │    - MST inclusion proof check
+   │    - signature check
+   │    - cross-repo backfill on previously-unknown DIDs
+   │
+   ▼
+Loopback WebSocket (tapped::TapClient)
+   │
+   ▼
+┌─────────────────────────────────────────────────────┐
+│ RecordEvent { did, collection, rkey, cid, action,  │
+│               record_as_str() }                     │
+└─────────────────────────────────────────────────────┘
+   │
+   ├─▶ Create / Update → UPSERT row
+   ├─▶ Delete           → DELETE row (cascades)
+   │
+   ▼
+Cursor + tracked-DID list persist in schema `tap` (Postgres);
+no client-side cursor saving from tap-ingester.
+```
+
 ## Community Identification
 
 Consensus algorithm similar to iNaturalist:
@@ -135,6 +296,35 @@ Consensus algorithm similar to iNaturalist:
 - **Casual**: No identifications yet
 
 Calculated in real-time, stored in a materialized view.
+
+## Geoprivacy
+
+Exact coordinates are stored separately from public data:
+
+| Table | Contains | Visibility |
+|-------|----------|------------|
+| `ingester.occurrences.location` | Potentially obscured point | Public |
+| `appview.occurrence_private_data.location` | Exact coordinates | Owner + co-observers only |
+
+Obscuration rules:
+- `geoprivacy = 'open'` → Exact location in both tables
+- `geoprivacy = 'obscured'` → Random offset in public, exact in private
+- `geoprivacy = 'private'` → No public location
+- Sensitive species → Auto-obscured based on `public.sensitive_species`
+
+## Cascade Deletes
+
+When an occurrence is deleted:
+
+```
+DELETE ingester.occurrences WHERE uri = '...'
+  └─▶ CASCADE DELETE ingester.identifications WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.comments WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.likes WHERE subject_uri = '...'
+  └─▶ CASCADE DELETE ingester.interactions WHERE subject_a/b_occurrence_uri = '...'
+  └─▶ CASCADE DELETE ingester.occurrence_observers WHERE occurrence_uri = '...'
+  └─▶ CASCADE DELETE appview.occurrence_private_data WHERE occurrence_uri = '...'
+```
 
 ## Data Ownership
 
