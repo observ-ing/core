@@ -376,6 +376,16 @@ jobs:
           echo "tap-ingester never became channel-connected"
           curl -s http://127.0.0.1:8090/health || true
           exit 1
+      - name: Reset test user PDS
+        # Delete every record the e2e suite would have created in
+        # prior runs. Bounds the backfill that `/repos/add` triggers
+        # below — without this the test user's history grows
+        # unboundedly and saturates tap-ingester's channel ahead of
+        # the live commit (#473).
+        env:
+          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
+          BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
+        run: npx tsx scripts/cleanup-test-user.ts "$BLUESKY_TEST_HANDLE" "$BLUESKY_TEST_PASSWORD"
       - name: Pre-warm Tap with the test DID
         # Tap discovers DIDs from the firehose signal-collection but the
         # round-trip is too slow for a cold CI run. Add the test DID
