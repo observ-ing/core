@@ -1,8 +1,20 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Box, Stack, Typography } from "@mui/material";
+import { Autocomplete, Box, IconButton, Stack, Typography } from "@mui/material";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
+import { nameToSlug } from "../../lib/taxonSlug";
+
+function taxonUrlFor(option: TaxaResult): string | null {
+  if (option.rank?.toLowerCase() === "kingdom") {
+    return `/taxon/${nameToSlug(option.scientificName)}`;
+  }
+  if (option.kingdom) {
+    return `/taxon/${nameToSlug(option.kingdom)}/${nameToSlug(option.scientificName)}`;
+  }
+  return null;
+}
 
 interface TaxaAutocompleteViewProps {
   value: string;
@@ -81,6 +93,7 @@ export function TaxaAutocompleteView({
         }
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
+          const taxonUrl = taxonUrlFor(option);
           return (
             <Box
               component="li"
@@ -163,6 +176,24 @@ export function TaxaAutocompleteView({
                   </Typography>
                 )}
               </Box>
+              {taxonUrl && (
+                <IconButton
+                  size="small"
+                  component="a"
+                  href={taxonUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  // MUI Autocomplete picks the row on mousedown, not click —
+                  // so stopping at click alone would still select the option.
+                  onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  title="Open taxon in new tab"
+                  aria-label={`Open ${option.scientificName} in new tab`}
+                  sx={{ p: 0.5, flexShrink: 0 }}
+                >
+                  <OpenInNewIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              )}
             </Box>
           );
         }}
