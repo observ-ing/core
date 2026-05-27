@@ -86,6 +86,13 @@ authTest.describe("Identification - Logged In", () => {
 
       const taxonInput = page.getByLabel("Taxon Name");
       await taxonInput.fill("Quercus rubra");
+      // Dismiss the autocomplete popper so it doesn't cover the Kingdom select.
+      await taxonInput.press("Escape");
+
+      // Free-form names that don't match a known taxon require a Kingdom,
+      // matching the new-observation flow.
+      await muiSelect(page, "Kingdom").click();
+      await page.getByRole("option", { name: "Plants" }).click();
 
       const postRequest = page.waitForRequest(
         (req: Request) => req.method() === "POST" && req.url().includes("/api/identifications"),
@@ -94,6 +101,7 @@ authTest.describe("Identification - Logged In", () => {
       const req = await postRequest;
       const body = JSON.parse(req.postData() || "{}");
       authExpect(body.scientificName).toBe("Quercus rubra");
+      authExpect(body.kingdom).toBe("Plantae");
     },
   );
 
