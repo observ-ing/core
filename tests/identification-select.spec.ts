@@ -51,7 +51,7 @@ authTest.describe("Suggest ID autocomplete options", () => {
   );
 
   authTest(
-    "clicking the open-in-new-tab link does not select the suggestion",
+    "clicking the open-in-new-tab link opens a new tab and keeps the popper open",
     async ({ authenticatedPage: page }) => {
       const taxonInput = page.getByRole("combobox", { name: "Taxon Name" });
       await taxonInput.click();
@@ -63,19 +63,20 @@ authTest.describe("Suggest ID autocomplete options", () => {
       const albaLink = page.getByRole("link", { name: /open quercus alba in new tab/i });
       await authExpect(albaLink).toBeVisible();
 
-      // Real users see the link open a new tab; we just need to drive the
-      // click so MUI's option-row pointer handler sees the event. Letting
-      // the anchor navigate would leave the test on /taxon/... so we
-      // neutralize target before clicking.
-      await albaLink.evaluate((el: HTMLAnchorElement) => {
-        el.removeAttribute("target");
-        el.setAttribute("href", "javascript:void(0)");
-      });
+      // The real failure for issue #419 follow-up was that mousedown
+      // shifted focus, MUI closed the popper, and the anchor unmounted
+      // before `click` fired — so no new tab opened either. Drive a
+      // real mousedown + click on the icon (not the anchor child) so
+      // MUI's row-mousedown handler sees the same event chain a user
+      // would produce, then assert: (a) a new tab opened, (b) the
+      // suggestion was NOT picked, (c) the popper is still open.
+      const popupPromise = page.waitForEvent("popup", { timeout: 5000 });
       await albaLink.click();
+      const popup = await popupPromise;
+      await popup.close();
 
-      // The suggestion must NOT have been picked: input still has the typed
-      // text, not the suggestion's scientificName.
       await authExpect(taxonInput).toHaveValue("quercus");
+      await authExpect(page.locator(".MuiAutocomplete-option").first()).toBeVisible();
     },
   );
 });

@@ -184,8 +184,14 @@ export function TaxaAutocompleteView({
                   target="_blank"
                   rel="noopener noreferrer"
                   // MUI Autocomplete picks the row on mousedown, not click —
-                  // so stopping at click alone would still select the option.
-                  onMouseDown={(e: React.MouseEvent) => e.stopPropagation()}
+                  // stop propagation so the row doesn't select. Also
+                  // preventDefault: without it the input loses focus on
+                  // mousedown, MUI closes the popper, and the anchor
+                  // unmounts before its click event can navigate.
+                  onMouseDown={(e: React.MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
                   onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   title="Open taxon in new tab"
                   aria-label={`Open ${option.scientificName} in new tab`}
