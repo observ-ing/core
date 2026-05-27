@@ -320,7 +320,10 @@ jobs:
       - name: Build frontend
         run: npm run build
       - name: Build appview
-        run: cargo build -p observing-appview
+        # `--features test-routes` mounts /api/test/* needed by the
+        # e2e CRUD test. Prod CI/CD builds without --features (see
+        # Dockerfile's `cargo build --release -p ${SERVICE}`).
+        run: cargo build -p observing-appview --features test-routes
       - name: Build tap-ingester
         run: cargo build -p tap-ingester --bin tap-ingester
       - uses: actions/setup-go@v5
@@ -350,9 +353,6 @@ jobs:
           # startup failures are debuggable; tapped defaults this to
           # /dev/null.
           TAP_INHERIT_STDIO: '1'
-          # Mounts /api/test/* in appview so the e2e CRUD test can
-          # seed records without waiting on the firehose round-trip.
-          ENABLE_TEST_ROUTES: '1'
         run: |
           PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
           PORT=8090 ./target/debug/tap-ingester > /tmp/tap-ingester.log 2>&1 &

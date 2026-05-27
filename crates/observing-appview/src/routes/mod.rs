@@ -13,4 +13,5 @@ pub mod preferences;
 pub mod profiles;
 pub mod species_id;
 pub mod taxonomy;
+#[cfg(feature = "test-routes")]
 pub mod test_seed;

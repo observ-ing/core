@@ -35,16 +35,16 @@ processes:
       period_seconds: 5
 
   appview:
-    command: cargo run -p observing-appview
+    # `--features test-routes` mounts /api/test/* used by the e2e CRUD
+    # test to seed records without waiting on the firehose. The flag
+    # is opt-in; prod builds omit it so the code isn't compiled in.
+    command: cargo run -p observing-appview --features test-routes
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
       - PORT=3000
       - CACHE_DIR=./cache/media
       - SPECIES_ID_SERVICE_URL=http://localhost:3005
       - PUBLIC_URL=${PUBLIC_URL:-}
-      # Mounts /api/test/* routes used by the e2e CRUD test to seed
-      # records without waiting on the firehose. Local-only.
-      - ENABLE_TEST_ROUTES=1
     depends_on:
       migrate:
         condition: process_completed_successfully

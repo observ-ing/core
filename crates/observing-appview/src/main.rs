@@ -209,18 +209,18 @@ async fn main() {
         );
 
     // Test-only routes that bypass the firehose round-trip for e2e
-    // assertions. Mounted only when `ENABLE_TEST_ROUTES=1` so prod
-    // never exposes them. See `routes::test_seed`.
-    let app = if config.enable_test_routes {
+    // assertions. Gated by the `test-routes` Cargo feature so the
+    // code is excluded from prod builds entirely. See
+    // `routes::test_seed` and `Cargo.toml`.
+    #[cfg(feature = "test-routes")]
+    let app = {
         tracing::warn!(
-            "ENABLE_TEST_ROUTES is set; mounting /api/test/* — must not be enabled in production"
+            "test-routes feature enabled; mounting /api/test/* — must not appear in production"
         );
         app.route(
             "/api/test/seed-record",
             post(routes::test_seed::seed_record),
         )
-    } else {
-        app
     };
 
     let app = app

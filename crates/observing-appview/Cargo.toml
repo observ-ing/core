@@ -5,6 +5,13 @@ edition = "2021"
 description = "Unified REST API and web server for Observ.ing"
 license = "MIT OR Apache-2.0"
 
+[features]
+# Mounts /api/test/* routes used by e2e tests to bypass the firehose
+# round-trip (see `routes::test_seed`). Enable in dev + CI builds, never
+# in prod — the prod Dockerfile builds without --features so the code
+# is excluded from the released binary entirely.
+test-routes = []
+
 [dependencies]
 # Internal crates
 axum-admin = { path = "../axum-admin" }
