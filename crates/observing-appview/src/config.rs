@@ -14,6 +14,9 @@ pub struct Config {
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
     pub admin_dids: Vec<String>,
+    /// When true, mount the `/api/test/*` routes used by e2e tests to
+    /// bypass the firehose round-trip. Must never be set in prod.
+    pub enable_test_routes: bool,
 }
 
 impl Config {
@@ -77,6 +80,10 @@ impl Config {
             .map(|s| parse_did_list(&s))
             .unwrap_or_default();
 
+        let enable_test_routes = env::var("ENABLE_TEST_ROUTES")
+            .map(|v| matches!(v.as_str(), "1" | "true" | "TRUE"))
+            .unwrap_or(false);
+
         Self {
             port,
             database_url,
@@ -85,6 +92,7 @@ impl Config {
             public_url,
             hidden_dids,
             admin_dids,
+            enable_test_routes,
         }
     }
 }

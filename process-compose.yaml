@@ -42,6 +42,9 @@ processes:
       - CACHE_DIR=./cache/media
       - SPECIES_ID_SERVICE_URL=http://localhost:3005
       - PUBLIC_URL=${PUBLIC_URL:-}
+      # Mounts /api/test/* routes used by the e2e CRUD test to seed
+      # records without waiting on the firehose. Local-only.
+      - ENABLE_TEST_ROUTES=1
     depends_on:
       migrate:
         condition: process_completed_successfully

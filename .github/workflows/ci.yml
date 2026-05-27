@@ -350,6 +350,9 @@ jobs:
           # startup failures are debuggable; tapped defaults this to
           # /dev/null.
           TAP_INHERIT_STDIO: '1'
+          # Mounts /api/test/* in appview so the e2e CRUD test can
+          # seed records without waiting on the firehose round-trip.
+          ENABLE_TEST_ROUTES: '1'
         run: |
           PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
           PORT=8090 ./target/debug/tap-ingester > /tmp/tap-ingester.log 2>&1 &
