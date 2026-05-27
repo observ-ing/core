@@ -35,10 +35,7 @@ processes:
       period_seconds: 5
 
   appview:
-    # `--features test-routes` mounts /api/test/* used by the e2e CRUD
-    # test to seed records without waiting on the firehose. The flag
-    # is opt-in; prod builds omit it so the code isn't compiled in.
-    command: cargo run -p observing-appview --features test-routes
+    command: cargo run -p observing-appview
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
       - PORT=3000

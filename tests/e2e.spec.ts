@@ -18,25 +18,17 @@ async function waitForOccurrenceIndexed(page: Page, uri: string, timeoutMs = 30_
   );
 }
 
-// Fetch the just-created record from the PDS and write it directly to
-// the appview DB, bypassing the firehose → tap-ingester pipeline. The
-// firehose path is non-deterministic under Tap because /repos/add for
-// the test user kicks off a full repo backfill that the new commit has
-// to wait behind (issue #473). Calling this endpoint after each PDS
-// write keeps the e2e independent of that ordering.
-async function seedRecord(page: Page, uri: string) {
-  const resp = await page.request.post(`/api/test/seed-record`, { data: { uri } });
-  if (!resp.ok()) {
-    const body = await resp.text().catch(() => "<no body>");
-    throw new Error(`seed-record failed (${resp.status()}): ${body}`);
-  }
-}
-
 /**
  * End-to-end CRUD test against a live Bluesky PDS.
  *
  * Requires BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, and BLUESKY_TEST_HANDLE.
  * Creates real records on the test user's PDS and cleans them up at the end.
+ *
+ * The firehose → tap-ingester → DB round-trip is sensitive to backfill
+ * volume: `/repos/add` for the test DID walks the user's full history
+ * before live commits are forwarded. CI runs `scripts/cleanup-test-user.ts`
+ * before tests start so the backfill is bounded and the live commit reaches
+ * the DB well within `waitForOccurrenceIndexed`'s 30s budget (issue #473).
  */
 authTest.describe("E2E CRUD flow", () => {
   let occurrenceUri: string | null = null;
@@ -79,11 +71,6 @@ authTest.describe("E2E CRUD flow", () => {
       expect(match).toBeTruthy();
       const [, did, rkey] = match!;
       occurrenceUri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
-
-      // Seed the appview DB directly from the PDS so the rest of the
-      // test isn't blocked behind the firehose backfill queue (#473).
-      // `waitForOccurrenceIndexed` below is kept as defense in depth.
-      await seedRecord(page, occurrenceUri);
     });
 
     // Step 3: add identification.

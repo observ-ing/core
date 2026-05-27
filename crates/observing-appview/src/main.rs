@@ -206,24 +206,7 @@ async fn main() {
         .route(
             "/api/taxa/{id}/occurrences",
             get(routes::taxonomy::get_taxon_occurrences_by_id),
-        );
-
-    // Test-only routes that bypass the firehose round-trip for e2e
-    // assertions. Gated by the `test-routes` Cargo feature so the
-    // code is excluded from prod builds entirely. See
-    // `routes::test_seed` and `Cargo.toml`.
-    #[cfg(feature = "test-routes")]
-    let app = {
-        tracing::warn!(
-            "test-routes feature enabled; mounting /api/test/* — must not appear in production"
-        );
-        app.route(
-            "/api/test/seed-record",
-            post(routes::test_seed::seed_record),
         )
-    };
-
-    let app = app
         // HTML admin browser (axum-admin), gated by AdminAuth. The legacy
         // `/admin` React page and `/admin/collections|tables` JSON API
         // were folded into this in #475's follow-up — `/admin` redirects
