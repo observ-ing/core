@@ -260,6 +260,10 @@ export function TaxonExplorer() {
       return;
     }
 
+    // Guard against a stale invocation (e.g. StrictMode double-fire, or rapid
+    // navigation) overwriting good state with a late "not found" response.
+    let cancelled = false;
+
     async function loadTaxon() {
       setLoading(true);
       setError(null);
@@ -285,10 +289,13 @@ export function TaxonExplorer() {
       try {
         result = await taxonPromise;
       } catch (e) {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load taxon");
         setLoading(false);
         return;
       }
+
+      if (cancelled) return;
 
       if (!result) {
         setError("Taxon not found");
@@ -297,6 +304,7 @@ export function TaxonExplorer() {
       }
 
       const obsResult = await obsPromise;
+      if (cancelled) return;
 
       setTaxon(result);
       mergeIntoTree(result);
@@ -325,6 +333,7 @@ export function TaxonExplorer() {
             }
           }),
         ).then((settled) => {
+          if (cancelled) return;
           for (const entry of settled) {
             if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
           }
@@ -334,6 +343,9 @@ export function TaxonExplorer() {
     }
 
     loadTaxon();
+    return () => {
+      cancelled = true;
+    };
   }, [lookupKingdom, lookupName, lookupId, mergeIntoTree, addChildrenToNodes, rebuildTreeFromRoot]);
 
   const handleBack = () => {
