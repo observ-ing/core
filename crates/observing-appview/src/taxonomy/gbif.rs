@@ -161,6 +161,7 @@ enum CachedValue {
     SearchResults(Vec<TaxonResult>),
     TaxonDetail(Box<TaxonDetail>),
     Children(Vec<TaxonResult>),
+    Match(Option<Box<NameUsageMatch>>),
 }
 
 impl GbifClient {
@@ -192,11 +193,29 @@ impl GbifClient {
 
     /// v2 `/species/match` with just the scientific name + optional kingdom
     /// hint. Returns `Ok(None)` on lookup failure or empty match.
+    ///
+    /// Cached: same shared moka cache used by `get_by_id` / `search` /
+    /// `get_children`. Concurrent identical lookups for the same
+    /// (name, kingdom) pair that land within the TTL share one upstream
+    /// call instead of each hitting GBIF, which avoids serving
+    /// inconsistent results when GBIF's `/species/match` flaps (#269).
+    /// Errors are not cached so transient upstream failures stay transient.
     async fn match_name_raw(
         &self,
         name: &str,
         kingdom_hint: Option<&str>,
     ) -> Result<Option<NameUsageMatch>, GbifError> {
+        let cache_key = format!(
+            "match:{}:{}",
+            name.to_lowercase(),
+            kingdom_hint.unwrap_or(""),
+        );
+        if let Some(CachedValue::Match(cached)) = self.cache.get(&cache_key).await {
+            self.hits.fetch_add(1, Ordering::Relaxed);
+            return Ok(cached.map(|b| *b));
+        }
+        self.misses.fetch_add(1, Ordering::Relaxed);
+
         // Order matches the generated signature (26 positional args).
         let result = self
             .api
@@ -232,15 +251,22 @@ impl GbifClient {
 
         let m = match result {
             Ok(rv) => rv.into_inner(),
-            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+                self.cache.insert(cache_key, CachedValue::Match(None)).await;
+                return Ok(None);
+            }
             Err(e) => return Err(e.into()),
         };
 
         // Drop empty matches (parity with the old hand-written client).
-        if m.usage.is_none() {
-            return Ok(None);
-        }
-        Ok(Some(m))
+        let resolved = if m.usage.is_none() { None } else { Some(m) };
+        self.cache
+            .insert(
+                cache_key,
+                CachedValue::Match(resolved.clone().map(Box::new)),
+            )
+            .await;
+        Ok(resolved)
     }
 
     /// v1 `/species/{key}`. Returns `Ok(None)` on 404.
