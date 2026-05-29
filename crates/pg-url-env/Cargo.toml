@@ -1,0 +1,8 @@
+[package]
+name = "pg-url-env"
+version = "0.1.0"
+edition = "2021"
+description = "Build a PostgreSQL connection URL from DATABASE_URL or DB_HOST/DB_NAME/... env vars, including Cloud SQL unix sockets"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
