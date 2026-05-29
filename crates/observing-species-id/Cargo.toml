@@ -38,12 +38,11 @@ chrono = { workspace = true }
 # Base64 decoding
 base64 = "0.22"
 
-# Zero-copy binary loading
-bytemuck = { version = "1", features = ["derive"] }
-memmap2 = "0.9"
+# Cell→ID geo index (geo-prior reranking over H3 cells)
+cell-csr-index = { path = "../cell-csr-index" }
 
-# H3 geospatial indexing (geo-prior reranking)
-h3o = { version = "0.9", default-features = false }
+# Zero-copy embedding load
+bytemuck = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 tower = { workspace = true, features = ["util"] }
