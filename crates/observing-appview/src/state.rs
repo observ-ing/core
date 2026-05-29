@@ -3,11 +3,11 @@ use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
 use crate::media::MediaCache;
-use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
 use crate::species_id_client::SpeciesIdClient;
 use crate::taxonomy_client::TaxonomyClient;
 
+use atproto_oauth_pg_store::{PgSessionStore, PgStateStore};
 use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig, DEFAULT_PLC_DIRECTORY_URL};
 use atrium_identity::handle::{AtprotoHandleResolver, AtprotoHandleResolverConfig};
 use atrium_oauth::{DefaultHttpClient, OAuthClient};

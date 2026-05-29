@@ -1,0 +1,21 @@
+[package]
+name = "atproto-oauth-pg-store"
+version = "0.1.0"
+edition = "2021"
+description = "PostgreSQL-backed StateStore and SessionStore for the atrium-oauth AT Protocol client"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# atrium-oauth store traits
+atrium-common = "0.1"
+atrium-oauth = "0.1"
+
+# Database
+sqlx = { workspace = true }
+
+# Serialization (sessions/state are stored as JSON)
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

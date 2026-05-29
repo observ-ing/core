@@ -51,7 +51,7 @@ pub async fn require_auth(pool: &PgPool, cookies: &CookieJar) -> Result<AuthUser
     let did = session_did(cookies).ok_or(())?;
 
     // Verify session exists in database
-    let session = observing_db::oauth::get_session(pool, &did)
+    let session = atproto_oauth_pg_store::get_session(pool, &did)
         .await
         .ok()
         .flatten();

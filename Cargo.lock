@@ -210,6 +210,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "atproto-oauth-pg-store"
+version = "0.1.0"
+dependencies = [
+ "atrium-common",
+ "atrium-oauth",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "tokio",
+]
+
+[[package]]
 name = "atrium-api"
 version = "0.25.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2840,6 +2852,7 @@ dependencies = [
  "at-uri-parser",
  "atproto-blob-resolver",
  "atproto-identity",
+ "atproto-oauth-pg-store",
  "atrium-api",
  "atrium-common",
  "atrium-identity",
