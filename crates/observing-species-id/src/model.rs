@@ -5,9 +5,9 @@
 
 use crate::embeddings::SpeciesEmbeddings;
 use crate::error::{Result, SpeciesIdError};
-use crate::geo_index::GeoIndex;
 use crate::preprocessing;
 use crate::types::SpeciesSuggestion;
+use cell_csr_index::CellCsrIndex;
 use ndarray::{Array1, Array4};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Value;
@@ -25,7 +25,7 @@ const GEO_BOOST_DEFAULT: f32 = 0.05;
 pub struct BioclipModel {
     session: Mutex<Session>,
     species: SpeciesEmbeddings,
-    geo_index: Option<GeoIndex>,
+    geo_index: Option<CellCsrIndex>,
     geo_boost: f32,
     pub version: String,
 }
@@ -65,7 +65,7 @@ impl BioclipModel {
         // to visual-only ranking (prior behavior).
         let geo_index_path = model_dir.join("species_geo_index.bin");
         let geo_index = if geo_index_path.exists() {
-            Some(GeoIndex::load(&geo_index_path, species.len())?)
+            Some(CellCsrIndex::load(&geo_index_path, Some(species.len()))?)
         } else {
             warn!(
                 path = %geo_index_path.display(),
@@ -129,8 +129,8 @@ impl BioclipModel {
     fn in_range_at(&self, lat_lon: Option<(f64, f64)>) -> Option<&[u32]> {
         let (lat, lon) = lat_lon?;
         let geo = self.geo_index.as_ref()?;
-        let cell_species = geo.species_at(lat, lon);
-        // species_at returns &[] both for "cell unknown" and "cell mapped
+        let cell_species = geo.ids_at(lat, lon);
+        // ids_at returns &[] both for "cell unknown" and "cell mapped
         // to no species". Treat empty as "no opinion" — the only known
         // populated case in the wild is when the cell is missing entirely,
         // and we don't want to surface false-negative `in_range = false`

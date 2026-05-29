@@ -631,6 +631,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cell-csr-index"
+version = "0.1.0"
+dependencies = [
+ "bytemuck",
+ "h3o",
+ "memmap2",
+ "tempfile",
+ "tracing",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2930,10 +2941,9 @@ dependencies = [
  "axum",
  "base64",
  "bytemuck",
+ "cell-csr-index",
  "chrono",
- "h3o",
  "image",
- "memmap2",
  "ndarray",
  "observing-species-id-protocol",
  "ort",

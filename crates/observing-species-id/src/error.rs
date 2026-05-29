@@ -46,6 +46,12 @@ impl From<image::ImageError> for SpeciesIdError {
     }
 }
 
+impl From<cell_csr_index::CellIndexError> for SpeciesIdError {
+    fn from(e: cell_csr_index::CellIndexError) -> Self {
+        Self::Config(e.to_string())
+    }
+}
+
 impl From<tracing_subscriber::filter::ParseError> for SpeciesIdError {
     fn from(e: tracing_subscriber::filter::ParseError) -> Self {
         Self::Config(e.to_string())
