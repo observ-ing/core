@@ -21,6 +21,11 @@ use tracing::{info, warn};
 /// evidence. Can be overridden at runtime via `GEO_BOOST_LAMBDA`.
 const GEO_BOOST_DEFAULT: f32 = 0.05;
 
+/// 4-byte magic tag of the `species_geo_index.bin` artifact ("Observing Geo
+/// Index v1"), produced by the bioclip-models pipeline. Passed to the generic
+/// `cell-csr-index` reader, which doesn't bake in a magic of its own.
+const GEO_INDEX_MAGIC: &[u8; 4] = b"OGI1";
+
 /// BioCLIP model wrapping the ONNX vision encoder and species embeddings
 pub struct BioclipModel {
     session: Mutex<Session>,
@@ -65,7 +70,11 @@ impl BioclipModel {
         // to visual-only ranking (prior behavior).
         let geo_index_path = model_dir.join("species_geo_index.bin");
         let geo_index = if geo_index_path.exists() {
-            Some(CellCsrIndex::load(&geo_index_path, Some(species.len()))?)
+            Some(CellCsrIndex::load(
+                &geo_index_path,
+                GEO_INDEX_MAGIC,
+                Some(species.len()),
+            )?)
         } else {
             warn!(
                 path = %geo_index_path.display(),

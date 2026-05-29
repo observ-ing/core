@@ -13,9 +13,10 @@ region/coverage membership, …).
 ```rust,ignore
 use cell_csr_index::CellCsrIndex;
 
+// `magic` is your own 4-byte file tag — the crate doesn't bake one in.
 // `Some(n)` validates the file's declared count against `n` (catches a stale
 // index whose IDs would point at the wrong rows); `None` skips that check.
-let index = CellCsrIndex::load(path, Some(num_labels))?;
+let index = CellCsrIndex::load(path, b"MYIX", Some(num_labels))?;
 
 for &id in index.ids_at(37.77, -122.42) {
     // ...

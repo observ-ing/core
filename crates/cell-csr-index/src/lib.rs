@@ -6,12 +6,15 @@
 //! "what entities are relevant at this location?" lookup (species range maps,
 //! points of interest, region/coverage membership, …).
 //!
-//! # Binary format (`OGI1`)
+//! # Binary format
+//!
+//! The 4-byte magic is **caller-supplied** (passed to [`CellCsrIndex::load`]) —
+//! it's the application's own file-type tag, so this crate doesn't bake one in.
 //!
 //! ```text
 //! Header (32 bytes):
-//!   magic[4]       = b"OGI1"
-//!   version        = u32 = 1
+//!   magic[4]       = caller's 4-byte tag
+//!   version        = u32 = 1   (this crate's layout version)
 //!   count          = u32   (number of distinct IDs the index was built for;
 //!                           optionally validated against the caller on load)
 //!   h3_resolution  = u32   (typically 4)
@@ -47,7 +50,6 @@ use std::ops::Range;
 use std::path::Path;
 use tracing::info;
 
-const MAGIC: &[u8; 4] = b"OGI1";
 const VERSION: u32 = 1;
 const HEADER_SIZE: usize = 32;
 
@@ -56,8 +58,8 @@ const HEADER_SIZE: usize = 32;
 pub enum CellIndexError {
     /// The file could not be opened or mmap'd.
     Io(std::io::Error),
-    /// The bytes are not a valid `OGI1` index (bad magic/version/size/offsets),
-    /// or its declared `count` did not match the caller's expectation.
+    /// The bytes are not a valid index (bad magic/version/size/offsets), or
+    /// its declared `count` did not match the caller's expectation.
     Format(String),
 }
 
@@ -94,17 +96,16 @@ impl Header {
     /// Parse and validate magic, version, and resolution. Does *not* check the
     /// declared `count` or file size — those need additional context; see
     /// [`Header::validate_count`] and [`Header::expected_file_size`].
-    fn parse(bytes: &[u8]) -> Result<Self> {
+    fn parse(bytes: &[u8], magic: &[u8; 4]) -> Result<Self> {
         if bytes.len() < HEADER_SIZE {
             return Err(CellIndexError::Format(format!(
                 "too short ({} bytes) to contain header",
                 bytes.len()
             )));
         }
-        if &bytes[..4] != MAGIC {
+        if &bytes[..4] != magic {
             return Err(CellIndexError::Format(format!(
-                "bad magic: expected {:?}, got {:?}",
-                MAGIC,
+                "bad magic: expected {magic:?}, got {:?}",
                 &bytes[..4]
             )));
         }
@@ -171,18 +172,22 @@ pub struct CellCsrIndex {
 impl CellCsrIndex {
     /// Load the index from a file on disk via mmap.
     ///
+    /// `magic` is the 4-byte file tag the index was written with; loading fails
+    /// with [`CellIndexError::Format`] if the file doesn't start with it. The
+    /// tag is the caller's choice — it identifies *your* index files.
+    ///
     /// If `expected_count` is `Some`, the index's declared `count` must match
     /// it or loading fails with [`CellIndexError::Format`] — use this to catch
     /// an index that is stale relative to the data its IDs reference. Pass
     /// `None` to skip the check.
-    pub fn load(path: &Path, expected_count: Option<usize>) -> Result<Self> {
+    pub fn load(path: &Path, magic: &[u8; 4], expected_count: Option<usize>) -> Result<Self> {
         let file = File::open(path).map_err(CellIndexError::Io)?;
         // SAFETY: the caller is responsible for ensuring the file is not
         // mutated while mapped (e.g. it is a read-only artifact). A concurrent
         // truncation could cause SIGBUS on access.
         let mmap = unsafe { Mmap::map(&file) }.map_err(CellIndexError::Io)?;
 
-        let header = Header::parse(&mmap)?;
+        let header = Header::parse(&mmap, magic)?;
         if let Some(expected) = expected_count {
             header.validate_count(expected)?;
         }
@@ -274,6 +279,10 @@ mod tests {
     use super::*;
     use std::io::Write;
 
+    /// Arbitrary 4-byte tag used by the test fixtures — the crate no longer
+    /// bakes in a magic, so the tests pick their own.
+    const MAGIC: &[u8; 4] = b"TST1";
+
     /// Build an in-memory index file with the CSR layout and write it to `path`.
     fn write_index(
         path: &Path,
@@ -328,7 +337,7 @@ mod tests {
         let path = dir.path().join("index.bin");
         write_index(&path, 3, Resolution::Four, &cells);
 
-        let index = CellCsrIndex::load(&path, Some(3)).unwrap();
+        let index = CellCsrIndex::load(&path, MAGIC, Some(3)).unwrap();
 
         assert_eq!(index.ids_at(37.77, -122.42), &[0, 2]);
         assert_eq!(index.ids_at(40.76, -111.89), &[1, 2]);
@@ -345,11 +354,26 @@ mod tests {
         write_index(&path, 100, Resolution::Four, &[]);
 
         // Wrong expected count is rejected...
-        assert!(CellCsrIndex::load(&path, Some(200)).is_err());
+        assert!(CellCsrIndex::load(&path, MAGIC, Some(200)).is_err());
         // ...matching count is accepted...
-        assert!(CellCsrIndex::load(&path, Some(100)).is_ok());
+        assert!(CellCsrIndex::load(&path, MAGIC, Some(100)).is_ok());
         // ...and None skips the check entirely.
-        assert!(CellCsrIndex::load(&path, None).is_ok());
+        assert!(CellCsrIndex::load(&path, MAGIC, None).is_ok());
+    }
+
+    #[test]
+    fn magic_is_caller_supplied() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("index.bin");
+        write_index(&path, 1, Resolution::Four, &[]); // written with MAGIC ("TST1")
+
+        // A different magic is rejected...
+        match CellCsrIndex::load(&path, b"OTHR", Some(1)) {
+            Err(e) => assert!(e.to_string().contains("magic"), "unexpected error: {e}"),
+            Ok(_) => panic!("a different magic should be rejected"),
+        }
+        // ...the matching magic loads.
+        assert!(CellCsrIndex::load(&path, MAGIC, Some(1)).is_ok());
     }
 
     #[test]
@@ -358,7 +382,7 @@ mod tests {
         let path = dir.path().join("index.bin");
         write_index(&path, 100, Resolution::Four, &[]);
 
-        let msg = match CellCsrIndex::load(&path, Some(200)) {
+        let msg = match CellCsrIndex::load(&path, MAGIC, Some(200)) {
             Err(e) => e.to_string(),
             Ok(_) => panic!("should reject stale index"),
         };
@@ -373,7 +397,7 @@ mod tests {
         f.write_all(b"XXXX").unwrap();
         f.write_all(&[0u8; 28]).unwrap();
 
-        let msg = match CellCsrIndex::load(&path, Some(1)) {
+        let msg = match CellCsrIndex::load(&path, MAGIC, Some(1)) {
             Err(e) => e.to_string(),
             Ok(_) => panic!("should reject bad magic"),
         };
