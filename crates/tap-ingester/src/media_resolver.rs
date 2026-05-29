@@ -25,18 +25,17 @@ use tracing::warn;
 /// Fetches `bio.lexicons.temp.v0-1.media` records from PDSes and converts them to
 /// the `BlobEntry` shape stored in `occurrences.associated_media`.
 pub struct MediaResolver {
-    client: Client,
     blob_resolver: BlobResolver,
 }
 
 impl MediaResolver {
     pub fn new() -> Self {
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .build()
+            .expect("reqwest client build should not fail with defaults");
         Self {
-            client: Client::builder()
-                .timeout(Duration::from_secs(10))
-                .build()
-                .expect("reqwest client build should not fail with defaults"),
-            blob_resolver: BlobResolver::new(),
+            blob_resolver: BlobResolver::with_client(client),
         }
     }
 
@@ -59,32 +58,11 @@ impl MediaResolver {
         let did = Did::parse(&at_uri.did).ok()?;
         let pds_url = self.blob_resolver.resolve_pds_url(&did).await.ok()?;
         let record = self
+            .blob_resolver
             .fetch_record(&pds_url, &at_uri.did, &at_uri.collection, &at_uri.rkey)
-            .await?;
+            .await
+            .ok()?;
         media_record_to_blob_entry(&record)
-    }
-
-    async fn fetch_record(
-        &self,
-        pds_url: &str,
-        did: &str,
-        collection: &str,
-        rkey: &str,
-    ) -> Option<Value> {
-        let url = format!(
-            "{}/xrpc/com.atproto.repo.getRecord?repo={}&collection={}&rkey={}",
-            pds_url.trim_end_matches('/'),
-            urlencoding::encode(did),
-            urlencoding::encode(collection),
-            urlencoding::encode(rkey),
-        );
-        let resp = self.client.get(&url).send().await.ok()?;
-        if !resp.status().is_success() {
-            return None;
-        }
-        let body: Value = resp.json().await.ok()?;
-        // getRecord wraps the record in `{ uri, cid, value }`.
-        body.get("value").cloned()
     }
 }
 

@@ -46,9 +46,8 @@ chrono = { workspace = true }
 # CLI
 clap = { version = "4", features = ["derive", "env"] }
 
-# URL utilities (used by media resolver)
+# URL utilities
 url = { workspace = true }
-urlencoding = { workspace = true }
 
 [[bin]]
 name = "tap-ingester"
