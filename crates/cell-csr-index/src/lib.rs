@@ -166,6 +166,7 @@ pub struct CellCsrIndex {
     offsets: Range<usize>,
     ids: Range<usize>,
     h3_resolution: Resolution,
+    count: usize,
 }
 
 impl CellCsrIndex {
@@ -228,7 +229,30 @@ impl CellCsrIndex {
             offsets: offsets_start..offsets_end,
             ids: ids_start..ids_end,
             h3_resolution: header.h3_resolution,
+            count: header.count as usize,
         })
+    }
+
+    /// The number of distinct IDs this index was built for (the header
+    /// `count`). This is what [`load`](Self::load)'s `expected_count` is
+    /// checked against.
+    pub fn count(&self) -> usize {
+        self.count
+    }
+
+    /// The H3 resolution the cells are indexed at.
+    pub fn resolution(&self) -> u8 {
+        u8::from(self.h3_resolution)
+    }
+
+    /// Number of distinct H3 cells in the index.
+    pub fn num_cells(&self) -> usize {
+        (self.cells.end - self.cells.start) / 8
+    }
+
+    /// Total number of `(cell, id)` entries across all cells.
+    pub fn num_entries(&self) -> usize {
+        (self.ids.end - self.ids.start) / 4
     }
 
     fn cells(&self) -> &[u64] {
@@ -350,6 +374,22 @@ mod tests {
         assert!(CellCsrIndex::load(&path, Some(100)).is_ok());
         // ...and None skips the check entirely.
         assert!(CellCsrIndex::load(&path, None).is_ok());
+    }
+
+    #[test]
+    fn exposes_header_metadata() {
+        let sf = LatLng::new(37.77, -122.42).unwrap();
+        let sf_cell: u64 = sf.to_cell(Resolution::Four).into();
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("index.bin");
+        write_index(&path, 7, Resolution::Four, &[(sf_cell, &[1, 4, 5])]);
+
+        let idx = CellCsrIndex::load(&path, Some(7)).unwrap();
+        assert_eq!(idx.count(), 7);
+        assert_eq!(idx.resolution(), 4);
+        assert_eq!(idx.num_cells(), 1);
+        assert_eq!(idx.num_entries(), 3);
     }
 
     #[test]

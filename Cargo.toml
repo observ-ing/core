@@ -1,6 +1,10 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
+# PyO3 extension-module crate: built with maturin, not part of the cargo
+# workspace (it doesn't link libpython, so it would break `cargo test
+# --workspace`). See crates/cell-csr-index-py/README.md.
+exclude = ["crates/cell-csr-index-py"]
 
 [workspace.dependencies]
 ts-rs = { version = "12", features = ["chrono-impl", "serde-json-impl"] }

@@ -1,0 +1,21 @@
+[build-system]
+requires = ["maturin>=1.7,<2"]
+build-backend = "maturin"
+
+[project]
+name = "cell-csr-index"
+version = "0.1.0"
+description = "Python bindings for the cell-csr-index H3 cell -> u32 ID lookup index"
+requires-python = ">=3.11"
+license = { text = "MIT OR Apache-2.0" }
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3 :: Only",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[tool.maturin]
+# Must match `[lib] name` in Cargo.toml.
+module-name = "cell_csr_index"

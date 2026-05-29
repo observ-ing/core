@@ -1,0 +1,31 @@
+# Standalone (nested) workspace: keeps this PyO3 crate out of the parent cargo
+# workspace so `cargo`/maturin resolve it independently. The parent also lists
+# it under `[workspace] exclude`.
+[workspace]
+
+[package]
+name = "cell-csr-index-py"
+version = "0.1.0"
+edition = "2021"
+description = "Python bindings (PyO3) for the cell-csr-index H3 cell -> u32 ID lookup index"
+license = "MIT OR Apache-2.0"
+publish = false
+
+# NOTE: this crate is intentionally excluded from the root workspace (see the
+# root Cargo.toml `[workspace] exclude`). It is a PyO3 `extension-module`, which
+# does not link libpython, so it would break the workspace-wide
+# `cargo test --workspace` link step. Build it with maturin instead.
+
+[lib]
+# The Python import name. Must match `[tool.maturin] module-name` in pyproject.
+name = "cell_csr_index"
+crate-type = ["cdylib"]
+
+[dependencies]
+# Renamed so the dependency's crate name (`cell_csr_index`) doesn't collide
+# with this crate's own library name, which is `cell_csr_index` (the Python
+# module name).
+index_core = { package = "cell-csr-index", path = "../cell-csr-index" }
+# abi3-py311: one wheel works across CPython >= 3.11 (matches bioclip-models'
+# requires-python). extension-module: don't link libpython (loaded by the host).
+pyo3 = { version = "0.23", features = ["extension-module", "abi3-py311"] }
