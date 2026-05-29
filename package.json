@@ -20,7 +20,7 @@
     "test": "playwright test --config=tests/playwright.config.ts",
     "test:e2e": "playwright test --config=tests/playwright.config.ts --project=e2e",
     "test:integration": "playwright test --config=tests/playwright.config.ts --project=integration",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run --config frontend/vitest.config.ts"
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
