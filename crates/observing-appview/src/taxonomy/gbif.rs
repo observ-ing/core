@@ -161,14 +161,21 @@ enum CachedValue {
     SearchResults(Vec<TaxonResult>),
     TaxonDetail(Box<TaxonDetail>),
     Children(Vec<TaxonResult>),
+    Match(Option<Box<NameUsageMatch>>),
 }
 
 impl GbifClient {
     const CACHE_TTL_MINS: u64 = 30;
 
     pub fn new() -> Self {
+        Self::with_base_url(GBIF_BASE_URL)
+    }
+
+    /// Construct a client pointed at an arbitrary base URL. Production uses
+    /// the GBIF host; tests point it at a wiremock server.
+    pub fn with_base_url(base_url: &str) -> Self {
         Self {
-            api: GbifChecklistbankClient::new(GBIF_BASE_URL),
+            api: GbifChecklistbankClient::new(base_url),
             wikidata: WikidataClient::new(),
             cache: Cache::builder()
                 .max_capacity(10_000)
@@ -192,11 +199,29 @@ impl GbifClient {
 
     /// v2 `/species/match` with just the scientific name + optional kingdom
     /// hint. Returns `Ok(None)` on lookup failure or empty match.
+    ///
+    /// Cached: same shared moka cache used by `get_by_id` / `search` /
+    /// `get_children`. Concurrent identical lookups for the same
+    /// (name, kingdom) pair that land within the TTL share one upstream
+    /// call instead of each hitting GBIF, which avoids serving
+    /// inconsistent results when GBIF's `/species/match` flaps (#269).
+    /// Errors are not cached so transient upstream failures stay transient.
     async fn match_name_raw(
         &self,
         name: &str,
         kingdom_hint: Option<&str>,
     ) -> Result<Option<NameUsageMatch>, GbifError> {
+        let cache_key = format!(
+            "match:{}:{}",
+            name.to_lowercase(),
+            kingdom_hint.unwrap_or(""),
+        );
+        if let Some(CachedValue::Match(cached)) = self.cache.get(&cache_key).await {
+            self.hits.fetch_add(1, Ordering::Relaxed);
+            return Ok(cached.map(|b| *b));
+        }
+        self.misses.fetch_add(1, Ordering::Relaxed);
+
         // Order matches the generated signature (26 positional args).
         let result = self
             .api
@@ -232,15 +257,22 @@ impl GbifClient {
 
         let m = match result {
             Ok(rv) => rv.into_inner(),
-            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
+                self.cache.insert(cache_key, CachedValue::Match(None)).await;
+                return Ok(None);
+            }
             Err(e) => return Err(e.into()),
         };
 
         // Drop empty matches (parity with the old hand-written client).
-        if m.usage.is_none() {
-            return Ok(None);
-        }
-        Ok(Some(m))
+        let resolved = if m.usage.is_none() { None } else { Some(m) };
+        self.cache
+            .insert(
+                cache_key,
+                CachedValue::Match(resolved.clone().map(Box::new)),
+            )
+            .await;
+        Ok(resolved)
     }
 
     /// v1 `/species/{key}`. Returns `Ok(None)` on 404.
@@ -1106,5 +1138,144 @@ mod tests {
         assert_eq!("LC".parse::<IucnCategory>(), Ok(IucnCategory::Lc));
         assert!("XX".parse::<IucnCategory>().is_err());
         assert!("ex".parse::<IucnCategory>().is_err());
+    }
+
+    // ---------- match_name_raw cache regression tests (#269) ----------
+    //
+    // These cover the fix that wraps `/v2/species/match` results in the
+    // moka cache so concurrent / repeated lookups for the same name don't
+    // each hit GBIF and risk getting inconsistent responses (the bug that
+    // produced the "Taxon not found" flash). Tests spin up a wiremock
+    // server, point a `GbifClient` at it, and assert the upstream is hit
+    // exactly the expected number of times.
+
+    use wiremock::matchers::{method, path, query_param};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
+
+    /// Minimal NameUsageMatch JSON the wire deserializer will accept,
+    /// with a real usage so the resolver doesn't drop it as "empty".
+    fn match_response_body(name: &str, key: &str) -> serde_json::Value {
+        json!({
+            "synonym": false,
+            "usage": {
+                "key": key,
+                "name": name,
+                "canonicalName": name,
+                "rank": "SPECIES"
+            },
+            "classification": []
+        })
+    }
+
+    #[tokio::test]
+    async fn match_name_raw_caches_repeated_lookups() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .and(query_param("scientificName", "Quercus alba"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(match_response_body("Quercus alba", "1")),
+            )
+            // The whole point: even two back-to-back identical lookups must
+            // hit GBIF exactly once.
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+
+        let r1 = client
+            .match_name_raw("Quercus alba", Some("Plantae"))
+            .await
+            .expect("first lookup succeeds");
+        let r2 = client
+            .match_name_raw("Quercus alba", Some("Plantae"))
+            .await
+            .expect("second lookup succeeds");
+
+        let usage1 = r1.expect("first call returns Some").usage.expect("usage");
+        let usage2 = r2.expect("second call returns Some").usage.expect("usage");
+        assert_eq!(usage1.key.as_deref(), Some("1"));
+        assert_eq!(usage2.key.as_deref(), Some("1"));
+        // server.verify() on drop will panic if expect(1) was violated.
+    }
+
+    #[tokio::test]
+    async fn match_name_raw_caches_misses_as_none() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .respond_with(ResponseTemplate::new(404))
+            // A second lookup for a name GBIF said didn't exist must also
+            // be served from cache, not re-queried.
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+
+        assert!(client
+            .match_name_raw("Doesnotexistus invalidus", None)
+            .await
+            .expect("lookup completes")
+            .is_none());
+        assert!(client
+            .match_name_raw("Doesnotexistus invalidus", None)
+            .await
+            .expect("lookup completes")
+            .is_none());
+    }
+
+    #[tokio::test]
+    async fn match_name_raw_keys_by_kingdom_hint() {
+        // Different kingdom hints must NOT collide in the cache — they
+        // can produce different matches in GBIF (the disambiguation
+        // whole reason for the hint), so each (name, kingdom) pair gets
+        // its own upstream call.
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .and(query_param("kingdom", "Plantae"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(match_response_body("Morus", "100")),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .and(query_param("kingdom", "Animalia"))
+            .respond_with(
+                ResponseTemplate::new(200).set_body_json(match_response_body("Morus", "200")),
+            )
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+
+        let plant = client
+            .match_name_raw("Morus", Some("Plantae"))
+            .await
+            .unwrap()
+            .unwrap();
+        let bird = client
+            .match_name_raw("Morus", Some("Animalia"))
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(plant.usage.unwrap().key.as_deref(), Some("100"));
+        assert_eq!(bird.usage.unwrap().key.as_deref(), Some("200"));
+
+        // And the cache really is keyed on (name, kingdom): a repeat of
+        // either lookup is served from cache, not the upstream.
+        let _ = client
+            .match_name_raw("Morus", Some("Plantae"))
+            .await
+            .unwrap();
+        let _ = client
+            .match_name_raw("Morus", Some("Animalia"))
+            .await
+            .unwrap();
     }
 }
