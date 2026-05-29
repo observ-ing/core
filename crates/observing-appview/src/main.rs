@@ -4,7 +4,6 @@ mod constants;
 mod enrichment;
 mod error;
 mod media;
-mod middleware;
 mod oauth_store;
 mod resolver;
 mod responses;
@@ -221,8 +220,8 @@ async fn main() {
         .layer(CompressionLayer::new())
         .layer(cors)
         .layer(axum_middleware::map_response({
-            let is_production = config.public_url.is_some();
-            move |response| middleware::security_headers(response, is_production)
+            let sec = axum_static_spa::SecurityHeaders::new().hsts(config.public_url.is_some());
+            move |response| axum_static_spa::security_headers(response, sec)
         }))
         .with_state(state);
 
@@ -242,7 +241,10 @@ async fn main() {
             info!(path = %path.display(), "Serving pre-built frontend");
             let fallback = ServeDir::new(&path).fallback(ServeFile::new(path.join("index.html")));
             app.fallback_service(fallback)
-                .layer(axum_middleware::from_fn(middleware::static_cache_control))
+                .layer(axum_middleware::from_fn_with_state(
+                    Arc::new(axum_static_spa::CacheControl::vite()),
+                    axum_static_spa::cache_control,
+                ))
         }
         None => {
             let vite_url = "http://localhost:5173";

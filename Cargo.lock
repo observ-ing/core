@@ -431,6 +431,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "axum-static-spa"
+version = "0.1.0"
+dependencies = [
+ "axum",
+]
+
+[[package]]
 name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2847,6 +2854,7 @@ dependencies = [
  "axum",
  "axum-admin",
  "axum-extra",
+ "axum-static-spa",
  "base64",
  "chrono",
  "file-blob-cache",

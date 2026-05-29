@@ -1,0 +1,9 @@
+[package]
+name = "axum-static-spa"
+version = "0.1.0"
+edition = "2021"
+description = "Cache-control + security-header axum middleware for serving a hashed-asset single-page app"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+axum = { workspace = true }
