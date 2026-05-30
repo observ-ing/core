@@ -46,8 +46,8 @@ impl From<image::ImageError> for SpeciesIdError {
     }
 }
 
-impl From<cell_csr_index::CellIndexError> for SpeciesIdError {
-    fn from(e: cell_csr_index::CellIndexError) -> Self {
+impl From<species_range_index::SpeciesRangeIndexError> for SpeciesIdError {
+    fn from(e: species_range_index::SpeciesRangeIndexError) -> Self {
         Self::Config(e.to_string())
     }
 }

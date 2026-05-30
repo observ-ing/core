@@ -7,10 +7,10 @@ use crate::embeddings::SpeciesEmbeddings;
 use crate::error::{Result, SpeciesIdError};
 use crate::preprocessing;
 use crate::types::SpeciesSuggestion;
-use cell_csr_index::CellCsrIndex;
 use ndarray::{Array1, Array4};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Value;
+use species_range_index::SpeciesRangeIndex;
 use std::path::Path;
 use std::sync::Mutex;
 use tracing::{info, warn};
@@ -25,7 +25,7 @@ const GEO_BOOST_DEFAULT: f32 = 0.05;
 pub struct BioclipModel {
     session: Mutex<Session>,
     species: SpeciesEmbeddings,
-    geo_index: Option<CellCsrIndex>,
+    geo_index: Option<SpeciesRangeIndex>,
     geo_boost: f32,
     pub version: String,
 }
@@ -65,7 +65,10 @@ impl BioclipModel {
         // to visual-only ranking (prior behavior).
         let geo_index_path = model_dir.join("species_geo_index.bin");
         let geo_index = if geo_index_path.exists() {
-            Some(CellCsrIndex::load(&geo_index_path, Some(species.len()))?)
+            Some(SpeciesRangeIndex::load(
+                &geo_index_path,
+                Some(species.len()),
+            )?)
         } else {
             warn!(
                 path = %geo_index_path.display(),
