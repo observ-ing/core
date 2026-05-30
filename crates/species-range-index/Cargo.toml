@@ -1,0 +1,24 @@
+[package]
+name = "species-range-index"
+version = "0.1.0"
+edition = "2021"
+description = "Zero-copy, mmap-backed index mapping H3 cells to sorted u32 ID lists, with O(log n) point lookup (lat/lon → species range IDs)"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/observ-ing/species-range-index"
+readme = "README.md"
+keywords = ["h3", "geospatial", "mmap", "index", "species"]
+categories = ["science::geo", "data-structures"]
+
+[dependencies]
+# H3 geospatial cells
+h3o = { version = "0.9", default-features = false }
+
+# Zero-copy mmap + slice reinterpretation
+memmap2 = "0.9"
+bytemuck = { version = "1", features = ["derive"] }
+
+# Logging
+tracing = "0.1"
+
+[dev-dependencies]
+tempfile = "3"

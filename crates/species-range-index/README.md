@@ -1,21 +1,23 @@
-# cell-csr-index
+# species-range-index
 
 Zero-copy, mmap-backed index mapping [H3](https://h3geo.org) cells to sorted
 `u32` ID lists, with O(log n) point lookup.
 
 Given a latitude/longitude, `ids_at` returns the IDs associated with the H3
 cell covering that point — a building block for any "what entities are relevant
-at this location?" lookup (species range maps, points of interest,
-region/coverage membership, …).
+at this location?" lookup. It is used by [observ-ing](https://github.com/observ-ing)
+as a geographic prior over species ranges (lat/lon → candidate species IDs),
+but the format is domain-agnostic (points of interest, region/coverage
+membership, …).
 
 ## Usage
 
 ```rust,ignore
-use cell_csr_index::CellCsrIndex;
+use species_range_index::SpeciesRangeIndex;
 
 // `Some(n)` validates the file's declared count against `n` (catches a stale
 // index whose IDs would point at the wrong rows); `None` skips that check.
-let index = CellCsrIndex::load(path, Some(num_labels))?;
+let index = SpeciesRangeIndex::load(path, Some(num_labels))?;
 
 for &id in index.ids_at(37.77, -122.42) {
     // ...

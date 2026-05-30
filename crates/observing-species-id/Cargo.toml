@@ -39,7 +39,7 @@ chrono = { workspace = true }
 base64 = "0.22"
 
 # Cell→ID geo index (geo-prior reranking over H3 cells)
-cell-csr-index = { path = "../cell-csr-index" }
+species-range-index = { path = "../species-range-index" }
 
 # Zero-copy embedding load
 bytemuck = { version = "1", features = ["derive"] }

@@ -1,7 +1,7 @@
 //! Zero-copy, mmap-backed index mapping [H3] cells to sorted lists of `u32`
 //! IDs, with O(log n) point lookup.
 //!
-//! Given a latitude/longitude, [`CellCsrIndex::ids_at`] returns the IDs
+//! Given a latitude/longitude, [`SpeciesRangeIndex::ids_at`] returns the IDs
 //! associated with the H3 cell covering that point — useful for any
 //! "what entities are relevant at this location?" lookup (species range maps,
 //! points of interest, region/coverage membership, …).
@@ -36,7 +36,7 @@
 
 #[cfg(not(target_endian = "little"))]
 compile_error!(
-    "cell-csr-index uses a zero-copy reinterpret of LE u32/u64; the build target is big-endian"
+    "species-range-index uses a zero-copy reinterpret of LE u32/u64; the build target is big-endian"
 );
 
 use h3o::{LatLng, Resolution};
@@ -53,7 +53,7 @@ const HEADER_SIZE: usize = 32;
 
 /// Error returned when loading or validating an index file.
 #[derive(Debug)]
-pub enum CellIndexError {
+pub enum SpeciesRangeIndexError {
     /// The file could not be opened or mmap'd.
     Io(std::io::Error),
     /// The bytes are not a valid `OGI1` index (bad magic/version/size/offsets),
@@ -61,7 +61,7 @@ pub enum CellIndexError {
     Format(String),
 }
 
-impl fmt::Display for CellIndexError {
+impl fmt::Display for SpeciesRangeIndexError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Io(e) => write!(f, "I/O error: {e}"),
@@ -70,7 +70,7 @@ impl fmt::Display for CellIndexError {
     }
 }
 
-impl std::error::Error for CellIndexError {
+impl std::error::Error for SpeciesRangeIndexError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match self {
             Self::Io(e) => Some(e),
@@ -79,7 +79,7 @@ impl std::error::Error for CellIndexError {
     }
 }
 
-type Result<T> = std::result::Result<T, CellIndexError>;
+type Result<T> = std::result::Result<T, SpeciesRangeIndexError>;
 
 /// Parsed 32-byte header. Owns only the fields the body decode/validation path
 /// cares about — the two reserved u32s are read and discarded.
@@ -96,13 +96,13 @@ impl Header {
     /// [`Header::validate_count`] and [`Header::expected_file_size`].
     fn parse(bytes: &[u8]) -> Result<Self> {
         if bytes.len() < HEADER_SIZE {
-            return Err(CellIndexError::Format(format!(
+            return Err(SpeciesRangeIndexError::Format(format!(
                 "too short ({} bytes) to contain header",
                 bytes.len()
             )));
         }
         if &bytes[..4] != MAGIC {
-            return Err(CellIndexError::Format(format!(
+            return Err(SpeciesRangeIndexError::Format(format!(
                 "bad magic: expected {:?}, got {:?}",
                 MAGIC,
                 &bytes[..4]
@@ -116,15 +116,15 @@ impl Header {
         let num_entries = read_u32_le(bytes, 20) as usize;
 
         if version != VERSION {
-            return Err(CellIndexError::Format(format!(
+            return Err(SpeciesRangeIndexError::Format(format!(
                 "unsupported version: {version} (expected {VERSION})"
             )));
         }
 
         let h3_resolution = Resolution::try_from(u8::try_from(h3_res_u32).map_err(|_| {
-            CellIndexError::Format(format!("H3 resolution {h3_res_u32} out of range"))
+            SpeciesRangeIndexError::Format(format!("H3 resolution {h3_res_u32} out of range"))
         })?)
-        .map_err(|e| CellIndexError::Format(format!("invalid H3 resolution: {e}")))?;
+        .map_err(|e| SpeciesRangeIndexError::Format(format!("invalid H3 resolution: {e}")))?;
 
         Ok(Self {
             count,
@@ -139,7 +139,7 @@ impl Header {
     /// (e.g. a label set), so the IDs would point at the wrong rows.
     fn validate_count(&self, expected: usize) -> Result<()> {
         if self.count as usize != expected {
-            return Err(CellIndexError::Format(format!(
+            return Err(SpeciesRangeIndexError::Format(format!(
                 "count ({}) does not match expected ({}) — index is stale",
                 self.count, expected
             )));
@@ -160,7 +160,7 @@ impl Header {
 /// as native-typed slices. Alignment is guaranteed by the file layout (the
 /// header is 32 bytes; `cells` is u64-aligned at offset 32; `offsets` and `ids`
 /// are u32-aligned by construction) plus mmap returning page-aligned addresses.
-pub struct CellCsrIndex {
+pub struct SpeciesRangeIndex {
     mmap: Mmap,
     cells: Range<usize>,
     offsets: Range<usize>,
@@ -168,19 +168,19 @@ pub struct CellCsrIndex {
     h3_resolution: Resolution,
 }
 
-impl CellCsrIndex {
+impl SpeciesRangeIndex {
     /// Load the index from a file on disk via mmap.
     ///
     /// If `expected_count` is `Some`, the index's declared `count` must match
-    /// it or loading fails with [`CellIndexError::Format`] — use this to catch
+    /// it or loading fails with [`SpeciesRangeIndexError::Format`] — use this to catch
     /// an index that is stale relative to the data its IDs reference. Pass
     /// `None` to skip the check.
     pub fn load(path: &Path, expected_count: Option<usize>) -> Result<Self> {
-        let file = File::open(path).map_err(CellIndexError::Io)?;
+        let file = File::open(path).map_err(SpeciesRangeIndexError::Io)?;
         // SAFETY: the caller is responsible for ensuring the file is not
         // mutated while mapped (e.g. it is a read-only artifact). A concurrent
         // truncation could cause SIGBUS on access.
-        let mmap = unsafe { Mmap::map(&file) }.map_err(CellIndexError::Io)?;
+        let mmap = unsafe { Mmap::map(&file) }.map_err(SpeciesRangeIndexError::Io)?;
 
         let header = Header::parse(&mmap)?;
         if let Some(expected) = expected_count {
@@ -189,7 +189,7 @@ impl CellCsrIndex {
 
         let expected_size = header.expected_file_size();
         if mmap.len() != expected_size {
-            return Err(CellIndexError::Format(format!(
+            return Err(SpeciesRangeIndexError::Format(format!(
                 "size mismatch: expected {} bytes, got {}",
                 expected_size,
                 mmap.len()
@@ -209,7 +209,7 @@ impl CellCsrIndex {
         let first_off = read_u32_le(&mmap, offsets_start);
         let last_off = read_u32_le(&mmap, offsets_end - 4);
         if first_off != 0 || last_off as usize != header.num_entries {
-            return Err(CellIndexError::Format(
+            return Err(SpeciesRangeIndexError::Format(
                 "offsets are malformed (bad endpoints)".to_string(),
             ));
         }
@@ -219,7 +219,7 @@ impl CellCsrIndex {
             num_entries = header.num_entries,
             h3_resolution = u8::from(header.h3_resolution),
             size_mb = mmap.len() / (1024 * 1024),
-            "cell-csr-index mmap'd"
+            "species-range-index mmap'd"
         );
 
         Ok(Self {
@@ -328,7 +328,7 @@ mod tests {
         let path = dir.path().join("index.bin");
         write_index(&path, 3, Resolution::Four, &cells);
 
-        let index = CellCsrIndex::load(&path, Some(3)).unwrap();
+        let index = SpeciesRangeIndex::load(&path, Some(3)).unwrap();
 
         assert_eq!(index.ids_at(37.77, -122.42), &[0, 2]);
         assert_eq!(index.ids_at(40.76, -111.89), &[1, 2]);
@@ -345,11 +345,11 @@ mod tests {
         write_index(&path, 100, Resolution::Four, &[]);
 
         // Wrong expected count is rejected...
-        assert!(CellCsrIndex::load(&path, Some(200)).is_err());
+        assert!(SpeciesRangeIndex::load(&path, Some(200)).is_err());
         // ...matching count is accepted...
-        assert!(CellCsrIndex::load(&path, Some(100)).is_ok());
+        assert!(SpeciesRangeIndex::load(&path, Some(100)).is_ok());
         // ...and None skips the check entirely.
-        assert!(CellCsrIndex::load(&path, None).is_ok());
+        assert!(SpeciesRangeIndex::load(&path, None).is_ok());
     }
 
     #[test]
@@ -358,7 +358,7 @@ mod tests {
         let path = dir.path().join("index.bin");
         write_index(&path, 100, Resolution::Four, &[]);
 
-        let msg = match CellCsrIndex::load(&path, Some(200)) {
+        let msg = match SpeciesRangeIndex::load(&path, Some(200)) {
             Err(e) => e.to_string(),
             Ok(_) => panic!("should reject stale index"),
         };
@@ -373,7 +373,7 @@ mod tests {
         f.write_all(b"XXXX").unwrap();
         f.write_all(&[0u8; 28]).unwrap();
 
-        let msg = match CellCsrIndex::load(&path, Some(1)) {
+        let msg = match SpeciesRangeIndex::load(&path, Some(1)) {
             Err(e) => e.to_string(),
             Ok(_) => panic!("should reject bad magic"),
         };
