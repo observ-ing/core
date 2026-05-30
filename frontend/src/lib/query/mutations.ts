@@ -8,10 +8,11 @@
 //
 // This module is imported for its side effects by QueryProvider.tsx, which
 // guarantees the defaults exist before any mutation runs or resumes.
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, type InfiniteData } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import { setOccurrenceLike } from "./occurrenceCache";
 import { qk } from "./keys";
+import type { NotificationsResponse } from "../../services/types";
 import {
   likeObservation,
   unlikeObservation,
@@ -53,13 +54,42 @@ export function useLike() {
 }
 
 // ── Notifications ────────────────────────────────────────────────────────────
-/** Mark one notification (by id) or all (no id) read; refresh list + badge. */
+/**
+ * Mark one notification (by id) or all (no id) read. Optimistically flips
+ * `read` in the cache so the unread badge / "Mark all read" button update
+ * instantly, then reconciles with the server on settle.
+ */
 export function useMarkNotificationRead() {
   return useMutation({
     mutationFn: (id?: number) => markNotificationRead(id),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.notifications() });
-      void queryClient.invalidateQueries({ queryKey: qk.unreadCount() });
+    onMutate: async (id?: number) => {
+      await queryClient.cancelQueries({ queryKey: qk.notifications() });
+      const previous = queryClient.getQueryData<InfiniteData<NotificationsResponse>>(
+        qk.notifications(),
+      );
+      queryClient.setQueryData<InfiniteData<NotificationsResponse>>(qk.notifications(), (data) =>
+        data
+          ? {
+              ...data,
+              pages: data.pages.map((page) => ({
+                ...page,
+                notifications: page.notifications.map((n) =>
+                  id === undefined || n.id === id ? { ...n, read: true } : n,
+                ),
+              })),
+            }
+          : data,
+      );
+      queryClient.setQueryData<{ count: number }>(qk.unreadCount(), (c) =>
+        id === undefined ? { count: 0 } : c ? { count: Math.max(0, c.count - 1) } : c,
+      );
+      return { previous };
+    },
+    // On success the optimistic state already matches server truth (read=true),
+    // so no refetch is needed; a natural refetch on next visit reconciles.
+    // Only roll back on a genuine failure.
+    onError: (_err, _id, context) => {
+      if (context?.previous) queryClient.setQueryData(qk.notifications(), context.previous);
     },
   });
 }
