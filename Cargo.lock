@@ -380,6 +380,7 @@ dependencies = [
 name = "axum-admin"
 version = "0.0.1"
 dependencies = [
+ "async-trait",
  "axum",
  "serde",
  "serde_json",

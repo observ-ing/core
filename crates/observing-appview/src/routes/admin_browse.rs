@@ -50,9 +50,13 @@ const ADMIN_TABLES: &[(&str, &str)] = &[
 /// middleware. Returns a fully-stated `Router` so the caller can
 /// `nest("/admin/browse", router(state))` it under the main app.
 pub fn router(state: AppState) -> Router {
-    let mut admin = axum_admin::Admin::new(state.pool.clone());
+    let mut admin = axum_admin::Admin::new();
     for (schema, name) in ADMIN_TABLES {
-        admin = admin.table(*schema, *name, |t| t);
+        admin = admin.table(axum_admin::postgres::PgTable::new(
+            state.pool.clone(),
+            *schema,
+            *name,
+        ));
     }
     admin
         .into_router("/admin/browse")

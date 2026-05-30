@@ -1,19 +1,28 @@
-//! Minimal Django-admin-style browser for Postgres, exposed as an `axum::Router`.
+//! Minimal Django-admin-style browser, exposed as an `axum::Router`.
+//!
+//! The core is storage-agnostic: every table is a [`TableSource`] plugin.
+//! The Postgres/sqlx implementation lives in [`postgres`] behind the
+//! `postgres` feature (on by default). To browse something that isn't a
+//! Postgres table — an in-memory list, a remote API, another database —
+//! implement [`TableSource`] and register it the same way.
 //!
 //! Read-only sketch. Mount it under any path:
 //!
 //! ```ignore
-//! let admin = axum_admin::Admin::new(pool)
-//!     .table("public", "posts", |t| t.searchable(["title", "body"]))
-//!     .table("public", "users", |t| t.display_name("Users"));
+//! use axum_admin::{Admin, postgres::PgTable};
+//!
+//! let admin = Admin::new()
+//!     .table(PgTable::new(pool.clone(), "public", "posts").searchable(["title", "body"]))
+//!     .table(PgTable::new(pool.clone(), "public", "users").display_name("Users"));
 //!
 //! let app = axum::Router::new().nest("/admin", admin.into_router("/admin"));
 //! ```
 //!
-//! Tables are addressed by `(schema, name)` — Postgres allows the same name
-//! in different schemas, and `information_schema` introspection needs the
-//! schema to find columns. URLs are namespaced as `/{schema}/{table}` and
-//! `/{schema}/{table}/{pk}`, in the style of Django admin's `/{app}/{model}/`.
+//! Tables are addressed by `(group, name)`. For Postgres the group is the
+//! schema — Postgres allows the same name in different schemas, and
+//! `information_schema` introspection needs the schema to find columns.
+//! URLs are namespaced as `/{group}/{name}` and `/{group}/{name}/{pk}`, in
+//! the style of Django admin's `/{app}/{model}/`.
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -25,77 +34,120 @@ use axum::routing::get;
 use axum::Router;
 use serde::Deserialize;
 use serde_json::Value as JsonValue;
-use sqlx::postgres::PgPool;
+
+#[cfg(feature = "postgres")]
+pub mod postgres;
 
 // ---------------------------------------------------------------------------
-// Public API
+// Plugin interface
+// ---------------------------------------------------------------------------
+
+/// One browsable table. This is the plugin boundary: the core knows how to
+/// route and render, a `TableSource` knows how to fetch.
+///
+/// Implementations are stored as `dyn TableSource` behind the registry, so
+/// the trait is object-safe (async methods go through `async_trait`).
+///
+/// The handler calls [`meta`](TableSource::meta) once per request and passes
+/// the result into [`list`](TableSource::list) / [`get`](TableSource::get),
+/// so a source needn't re-introspect to learn its own columns or primary key.
+#[async_trait::async_trait]
+pub trait TableSource: Send + Sync {
+    /// URL/group identity. `group` namespaces `name`; Postgres uses the
+    /// schema. Together they form the registry key and the URL path.
+    fn group(&self) -> &str;
+
+    /// The table's name within its group.
+    fn name(&self) -> &str;
+
+    /// Human-facing label for the index and headings. Defaults to [`name`](TableSource::name).
+    fn display_name(&self) -> &str {
+        self.name()
+    }
+
+    /// Whether to render a search box and pass `q` through to [`list`](TableSource::list).
+    fn searchable(&self) -> bool {
+        false
+    }
+
+    /// Describe the columns and primary key. Called once per request.
+    async fn meta(&self) -> Result<TableMeta, AdminError>;
+
+    /// Fetch a page of rows. `meta` is the value just returned by
+    /// [`meta`](TableSource::meta); `query` carries the search needle and page.
+    async fn list(&self, meta: &TableMeta, query: &ListQuery) -> Result<Vec<Row>, AdminError>;
+
+    /// Fetch a single row by its (stringified) primary key. `None` when no
+    /// such row exists.
+    async fn get(&self, meta: &TableMeta, pk: &str) -> Result<Option<Row>, AdminError>;
+}
+
+/// A row, as a JSON object keyed by column name. JSON is the neutral wire
+/// format between a source and the renderer, so the core depends on
+/// `serde_json` but not on any particular database.
+pub type Row = JsonValue;
+
+/// A single column's metadata.
+#[derive(Debug, Clone)]
+pub struct Column {
+    pub name: String,
+    /// Backend-specific type label, shown as-is (e.g. Postgres `data_type`).
+    pub data_type: String,
+    pub nullable: bool,
+}
+
+/// What a source reports about its shape.
+#[derive(Debug, Default)]
+pub struct TableMeta {
+    pub columns: Vec<Column>,
+    /// Single-column primary key, if any. `None` disables the detail view.
+    pub primary_key: Option<String>,
+}
+
+/// Query parameters shared by every list view.
+#[derive(Deserialize, Default, Debug)]
+pub struct ListQuery {
+    /// Free-text search needle, if the table is searchable.
+    pub q: Option<String>,
+    /// Zero-based page index.
+    pub page: Option<i64>,
+}
+
+// ---------------------------------------------------------------------------
+// Registry / public API
 // ---------------------------------------------------------------------------
 
 pub struct Admin {
-    pool: PgPool,
-    /// Keyed by `(schema, name)` so two schemas can have same-named tables.
-    /// `BTreeMap` ordering naturally groups by schema in the index page.
-    tables: BTreeMap<(String, String), TableConfig>,
+    /// Keyed by `(group, name)` so two groups can have same-named tables.
+    /// `BTreeMap` ordering naturally groups by `group` in the index page.
+    sources: BTreeMap<(String, String), Box<dyn TableSource>>,
     prefix: String,
 }
 
-/// Internal handler state — a normalized prefix plus the admin config.
+impl Default for Admin {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Internal handler state.
 struct AdminState {
     admin: Admin,
 }
 
-#[derive(Default, Clone)]
-pub struct TableConfig {
-    display_name: Option<String>,
-    searchable: Vec<String>,
-    page_size: Option<i64>,
-}
-
-impl TableConfig {
-    pub fn display_name(mut self, name: impl Into<String>) -> Self {
-        self.display_name = Some(name.into());
-        self
-    }
-
-    pub fn searchable<I, S>(mut self, cols: I) -> Self
-    where
-        I: IntoIterator<Item = S>,
-        S: Into<String>,
-    {
-        self.searchable = cols.into_iter().map(Into::into).collect();
-        self
-    }
-
-    pub fn page_size(mut self, n: i64) -> Self {
-        self.page_size = Some(n);
-        self
-    }
-}
-
 impl Admin {
-    pub fn new(pool: PgPool) -> Self {
+    pub fn new() -> Self {
         Self {
-            pool,
-            tables: BTreeMap::new(),
+            sources: BTreeMap::new(),
             prefix: "/admin".to_string(),
         }
     }
 
-    /// Register a table by `(schema, name)`. The closure receives a default
-    /// `TableConfig` and returns the configured one.
-    pub fn table<F>(
-        mut self,
-        schema: impl Into<String>,
-        name: impl Into<String>,
-        configure: F,
-    ) -> Self
-    where
-        F: FnOnce(TableConfig) -> TableConfig,
-    {
-        self.tables.insert(
-            (schema.into(), name.into()),
-            configure(TableConfig::default()),
-        );
+    /// Register a table plugin. Its `(group, name)` becomes the registry key
+    /// and URL path; a later registration with the same key replaces it.
+    pub fn table<T: TableSource + 'static>(mut self, source: T) -> Self {
+        let key = (source.group().to_string(), source.name().to_string());
+        self.sources.insert(key, Box::new(source));
         self
     }
 
@@ -108,8 +160,8 @@ impl Admin {
         let state = Arc::new(AdminState { admin: self });
         Router::new()
             .route("/", get(index))
-            .route("/{schema}/{table}", get(list))
-            .route("/{schema}/{table}/{pk}", get(detail))
+            .route("/{group}/{name}", get(list))
+            .route("/{group}/{name}/{pk}", get(detail))
             .with_state(state)
     }
 }
@@ -117,107 +169,37 @@ impl Admin {
 /// Strip a trailing slash so we can `format!("{prefix}/...")` cleanly.
 /// Empty input becomes `""` (mounted at root).
 fn normalize_prefix(p: &str) -> String {
-    let trimmed = p.trim_end_matches('/');
-    trimmed.to_string()
-}
-
-// ---------------------------------------------------------------------------
-// Schema introspection
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Clone)]
-#[allow(dead_code)] // data_type / is_nullable will be consumed once edit forms land.
-struct ColumnMeta {
-    name: String,
-    data_type: String,
-    is_nullable: bool,
-}
-
-#[derive(Debug)]
-struct TableSchema {
-    columns: Vec<ColumnMeta>,
-    primary_key: Option<String>,
-}
-
-async fn introspect(pool: &PgPool, schema: &str, table: &str) -> Result<TableSchema, sqlx::Error> {
-    let columns = sqlx::query_as::<_, (String, String, String)>(
-        r"
-        SELECT column_name, data_type, is_nullable
-        FROM information_schema.columns
-        WHERE table_schema = $1 AND table_name = $2
-        ORDER BY ordinal_position
-        ",
-    )
-    .bind(schema)
-    .bind(table)
-    .fetch_all(pool)
-    .await?
-    .into_iter()
-    .map(|(name, data_type, is_nullable)| ColumnMeta {
-        name,
-        data_type,
-        is_nullable: is_nullable == "YES",
-    })
-    .collect::<Vec<_>>();
-
-    // Primary key: single-column only for the sketch. Build a fully-qualified
-    // `"schema"."table"` string for `regclass` so it doesn't depend on the
-    // session search_path.
-    let qualified = format!("{}.{}", quote_ident(schema), quote_ident(table));
-    let primary_key: Option<(String,)> = sqlx::query_as(
-        r"
-        SELECT a.attname::text
-        FROM   pg_index i
-        JOIN   pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
-        WHERE  i.indrelid = ($1::text)::regclass AND i.indisprimary
-        LIMIT  1
-        ",
-    )
-    .bind(&qualified)
-    .fetch_optional(pool)
-    .await?;
-
-    Ok(TableSchema {
-        columns,
-        primary_key: primary_key.map(|(s,)| s),
-    })
+    p.trim_end_matches('/').to_string()
 }
 
 // ---------------------------------------------------------------------------
 // Handlers
 // ---------------------------------------------------------------------------
 
-#[derive(Deserialize, Default)]
-struct ListQuery {
-    q: Option<String>,
-    page: Option<i64>,
-}
-
 async fn index(State(state): State<Arc<AdminState>>) -> Html<String> {
     let admin = &state.admin;
     let mut body = String::from("<h1>Admin</h1>");
 
-    // BTreeMap iteration is sorted by `(schema, name)`, so we can group by
-    // schema with a single pass.
-    let mut current_schema: Option<&str> = None;
-    for ((schema, name), cfg) in &admin.tables {
-        if current_schema != Some(schema.as_str()) {
-            if current_schema.is_some() {
+    // BTreeMap iteration is sorted by `(group, name)`, so we can group by
+    // `group` with a single pass.
+    let mut current_group: Option<&str> = None;
+    for ((group, name), source) in &admin.sources {
+        if current_group != Some(group.as_str()) {
+            if current_group.is_some() {
                 body.push_str("</ul>");
             }
-            body.push_str(&format!("<h2>{}</h2><ul>", html_escape(schema)));
-            current_schema = Some(schema.as_str());
+            body.push_str(&format!("<h2>{}</h2><ul>", html_escape(group)));
+            current_group = Some(group.as_str());
         }
-        let label = cfg.display_name.as_deref().unwrap_or(name);
         body.push_str(&format!(
-            r#"<li><a href="{prefix}/{schema}/{name}">{label}</a></li>"#,
+            r#"<li><a href="{prefix}/{group}/{name}">{label}</a></li>"#,
             prefix = html_escape(&admin.prefix),
-            schema = html_escape(schema),
+            group = html_escape(group),
             name = html_escape(name),
-            label = html_escape(label),
+            label = html_escape(source.display_name()),
         ));
     }
-    if current_schema.is_some() {
+    if current_group.is_some() {
         body.push_str("</ul>");
     }
     Html(layout("Admin", &body))
@@ -225,71 +207,26 @@ async fn index(State(state): State<Arc<AdminState>>) -> Html<String> {
 
 async fn list(
     State(state): State<Arc<AdminState>>,
-    Path((schema_name, table)): Path<(String, String)>,
+    Path((group, name)): Path<(String, String)>,
     Query(q): Query<ListQuery>,
 ) -> Result<Html<String>, AdminError> {
     let admin = &state.admin;
-    let key = (schema_name.clone(), table.clone());
-    let cfg = admin
-        .tables
-        .get(&key)
-        .ok_or_else(|| AdminError::UnknownTable(format!("{schema_name}.{table}")))?;
-    let schema = introspect(&admin.pool, &schema_name, &table).await?;
+    let source = admin
+        .sources
+        .get(&(group.clone(), name.clone()))
+        .ok_or_else(|| AdminError::UnknownTable(format!("{group}.{name}")))?;
 
+    let meta = source.meta().await?;
+    let rows = source.list(&meta, &q).await?;
     let page = q.page.unwrap_or(0).max(0);
-    let page_size = cfg.page_size.unwrap_or(50).clamp(1, 500);
-    let offset = page * page_size;
-
-    // Whitelist the table identity by checking it exists in our config (already
-    // done above) and quote schema + table with format!. Same for the pk in
-    // ORDER BY.
-    let pk = schema.primary_key.as_deref().unwrap_or("ctid");
-
-    // Build search WHERE clause if applicable.
-    let (where_sql, search_param) = match (&q.q, cfg.searchable.is_empty()) {
-        (Some(needle), false) if !needle.is_empty() => {
-            let conds: Vec<String> = cfg
-                .searchable
-                .iter()
-                .filter(|c| schema.columns.iter().any(|col| &col.name == *c))
-                .map(|c| format!("{} ILIKE $1", quote_ident(c)))
-                .collect();
-            if conds.is_empty() {
-                ("".to_string(), None)
-            } else {
-                (
-                    format!("WHERE {}", conds.join(" OR ")),
-                    Some(format!("%{needle}%")),
-                )
-            }
-        }
-        _ => ("".to_string(), None),
-    };
-
-    let sql = format!(
-        "SELECT row_to_json(t) FROM {sch}.{tbl} t {where_sql} ORDER BY {pk} LIMIT {limit} OFFSET {offset}",
-        sch = quote_ident(&schema_name),
-        tbl = quote_ident(&table),
-        where_sql = where_sql,
-        pk = quote_ident(pk),
-        limit = page_size,
-        offset = offset,
-    );
-
-    // SQL is built from whitelisted, `quote_ident`-quoted identifiers with all
-    // values bound via `$1`, so the dynamic string is safe to assert.
-    let mut query = sqlx::query_scalar::<_, JsonValue>(sqlx::AssertSqlSafe(sql));
-    if let Some(s) = &search_param {
-        query = query.bind(s);
-    }
-    let rows = query.fetch_all(&admin.pool).await?;
 
     Ok(Html(render_list(
         &admin.prefix,
-        &schema_name,
-        &table,
-        cfg,
-        &schema,
+        &group,
+        &name,
+        source.display_name(),
+        source.searchable(),
+        &meta,
         &rows,
         page,
         &q.q,
@@ -298,42 +235,27 @@ async fn list(
 
 async fn detail(
     State(state): State<Arc<AdminState>>,
-    Path((schema_name, table, pk_value)): Path<(String, String, String)>,
+    Path((group, name, pk_value)): Path<(String, String, String)>,
 ) -> Result<Html<String>, AdminError> {
     let admin = &state.admin;
-    let key = (schema_name.clone(), table.clone());
-    let _cfg = admin
-        .tables
-        .get(&key)
-        .ok_or_else(|| AdminError::UnknownTable(format!("{schema_name}.{table}")))?;
-    let schema = introspect(&admin.pool, &schema_name, &table).await?;
-    let pk = schema
-        .primary_key
-        .as_deref()
-        .ok_or(AdminError::NoPrimaryKey)?;
+    let source = admin
+        .sources
+        .get(&(group.clone(), name.clone()))
+        .ok_or_else(|| AdminError::UnknownTable(format!("{group}.{name}")))?;
 
-    let sql = format!(
-        "SELECT row_to_json(t) FROM {sch}.{tbl} t WHERE {pk}::text = $1",
-        sch = quote_ident(&schema_name),
-        tbl = quote_ident(&table),
-        pk = quote_ident(pk),
-    );
-    // Identifiers are `quote_ident`-quoted and the pk value is bound via `$1`.
-    let row: Option<JsonValue> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
-        .bind(&pk_value)
-        .fetch_optional(&admin.pool)
-        .await?;
+    let meta = source.meta().await?;
+    let row = source
+        .get(&meta, &pk_value)
+        .await?
+        .ok_or(AdminError::NotFound)?;
 
-    match row {
-        Some(row) => Ok(Html(render_detail(
-            &admin.prefix,
-            &schema_name,
-            &table,
-            &schema,
-            &row,
-        ))),
-        None => Err(AdminError::NotFound),
-    }
+    Ok(Html(render_detail(
+        &admin.prefix,
+        &group,
+        &name,
+        &meta,
+        &row,
+    )))
 }
 
 // ---------------------------------------------------------------------------
@@ -343,25 +265,25 @@ async fn detail(
 #[allow(clippy::too_many_arguments)] // sketch: a request-context struct is more ceremony than value here.
 fn render_list(
     prefix: &str,
-    schema_name: &str,
-    table: &str,
-    cfg: &TableConfig,
-    schema: &TableSchema,
-    rows: &[JsonValue],
+    group: &str,
+    name: &str,
+    label: &str,
+    searchable: bool,
+    meta: &TableMeta,
+    rows: &[Row],
     page: i64,
     needle: &Option<String>,
 ) -> String {
-    let label = cfg.display_name.as_deref().unwrap_or(table);
-    let pk = schema.primary_key.as_deref();
+    let pk = meta.primary_key.as_deref();
 
     let mut body = format!(
-        r#"<p><a href="{prefix}">← admin</a></p><h1>{schema}.{label}</h1>"#,
+        r#"<p><a href="{prefix}">← admin</a></p><h1>{group}.{label}</h1>"#,
         prefix = html_escape(prefix),
-        schema = html_escape(schema_name),
+        group = html_escape(group),
         label = html_escape(label),
     );
 
-    if !cfg.searchable.is_empty() {
+    if searchable {
         let val = needle.as_deref().unwrap_or("");
         body.push_str(&format!(
             r#"<form method="get"><input name="q" value="{}" placeholder="search…"><button>go</button></form>"#,
@@ -370,14 +292,14 @@ fn render_list(
     }
 
     body.push_str("<table border=1 cellpadding=4><thead><tr>");
-    for col in &schema.columns {
+    for col in &meta.columns {
         body.push_str(&format!("<th>{}</th>", html_escape(&col.name)));
     }
     body.push_str("</tr></thead><tbody>");
 
     for row in rows {
         body.push_str("<tr>");
-        for col in &schema.columns {
+        for col in &meta.columns {
             let cell = row.get(&col.name).map(json_cell).unwrap_or_default();
             let is_pk = pk == Some(col.name.as_str());
             if is_pk {
@@ -389,10 +311,10 @@ fn render_list(
                     })
                     .unwrap_or_default();
                 body.push_str(&format!(
-                    r#"<td><a href="{prefix}/{schema}/{tbl}/{pk}">{cell}</a></td>"#,
+                    r#"<td><a href="{prefix}/{group}/{name}/{pk}">{cell}</a></td>"#,
                     prefix = html_escape(prefix),
-                    schema = html_escape(schema_name),
-                    tbl = html_escape(table),
+                    group = html_escape(group),
+                    name = html_escape(name),
                     pk = url_encode(&raw),
                     cell = cell,
                 ));
@@ -413,20 +335,14 @@ fn render_list(
     layout(label, &body)
 }
 
-fn render_detail(
-    prefix: &str,
-    schema_name: &str,
-    table: &str,
-    schema: &TableSchema,
-    row: &JsonValue,
-) -> String {
+fn render_detail(prefix: &str, group: &str, name: &str, meta: &TableMeta, row: &Row) -> String {
     let mut body = format!(
-        r#"<p><a href="{prefix}/{schema}/{tbl}">← {schema}.{tbl}</a></p><h1>{schema}.{tbl} detail</h1><table border=1 cellpadding=4>"#,
+        r#"<p><a href="{prefix}/{group}/{name}">← {group}.{name}</a></p><h1>{group}.{name} detail</h1><table border=1 cellpadding=4>"#,
         prefix = html_escape(prefix),
-        schema = html_escape(schema_name),
-        tbl = html_escape(table),
+        group = html_escape(group),
+        name = html_escape(name),
     );
-    for col in &schema.columns {
+    for col in &meta.columns {
         let cell = row.get(&col.name).map(json_cell).unwrap_or_default();
         body.push_str(&format!(
             "<tr><th align=left>{}</th><td>{}</td></tr>",
@@ -435,7 +351,7 @@ fn render_detail(
         ));
     }
     body.push_str("</table>");
-    layout(&format!("{schema_name}.{table} detail"), &body)
+    layout(&format!("{group}.{name} detail"), &body)
 }
 
 fn layout(title: &str, body: &str) -> String {
@@ -455,13 +371,6 @@ fn json_cell(v: &JsonValue) -> String {
         JsonValue::String(s) => html_escape(s),
         other => html_escape(&other.to_string()),
     }
-}
-
-fn quote_ident(s: &str) -> String {
-    // Postgres identifier quoting: double quotes, double any embedded quotes.
-    // The caller should have already validated the identifier against the
-    // known schema.
-    format!("\"{}\"", s.replace('"', "\"\""))
 }
 
 fn html_escape(s: &str) -> String {
@@ -489,17 +398,44 @@ fn url_encode(s: &str) -> String {
 // Errors
 // ---------------------------------------------------------------------------
 
+/// Errors surfaced by the core or by a [`TableSource`]. Plugins report
+/// backend failures via [`AdminError::backend`].
 #[derive(Debug)]
-enum AdminError {
+pub enum AdminError {
+    /// No source registered under the requested `(group, name)`.
     UnknownTable(String),
+    /// The table has no single-column primary key, so it has no detail view.
     NoPrimaryKey,
+    /// The requested row does not exist.
     NotFound,
-    Sqlx(sqlx::Error),
+    /// A plugin-specific failure (database error, network error, …).
+    Backend(Box<dyn std::error::Error + Send + Sync>),
 }
 
-impl From<sqlx::Error> for AdminError {
-    fn from(e: sqlx::Error) -> Self {
-        AdminError::Sqlx(e)
+impl AdminError {
+    /// Wrap a plugin error. Use this in `TableSource` implementations.
+    pub fn backend(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Self {
+        AdminError::Backend(e.into())
+    }
+}
+
+impl std::fmt::Display for AdminError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AdminError::UnknownTable(t) => write!(f, "unknown table: {t}"),
+            AdminError::NoPrimaryKey => write!(f, "table has no single-column primary key"),
+            AdminError::NotFound => write!(f, "row not found"),
+            AdminError::Backend(e) => write!(f, "backend error: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for AdminError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            AdminError::Backend(e) => Some(&**e),
+            _ => None,
+        }
     }
 }
 
@@ -519,11 +455,11 @@ impl IntoResponse for AdminError {
             AdminError::NotFound => {
                 (StatusCode::NOT_FOUND, "row not found".to_string()).into_response()
             }
-            AdminError::Sqlx(e) => {
-                tracing::error!(error = ?e, "axum-admin sqlx error");
+            AdminError::Backend(e) => {
+                tracing::error!(error = ?e, "axum-admin backend error");
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "database error".to_string(),
+                    "backend error".to_string(),
                 )
                     .into_response()
             }
