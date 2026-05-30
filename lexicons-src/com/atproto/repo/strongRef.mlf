@@ -1,0 +1,9 @@
+/// A URI with a content-hash fingerprint.
+self {}
+
+@main
+def type strongRef = {
+    cid!: Cid,
+    uri!: AtUri,
+};
+

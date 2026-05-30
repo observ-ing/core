@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "bio.lexicons.temp.v0-1.occurrence",
   "defs": {
@@ -24,17 +25,17 @@
           },
           "coordinateUncertaintyInMeters": {
             "type": "integer",
-            "description": "The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).",
-            "minimum": 0
+            "minimum": 0,
+            "description": "The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters)."
           },
           "associatedMedia": {
             "type": "array",
-            "description": "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
             "items": {
               "type": "ref",
               "ref": "com.atproto.repo.strongRef"
             },
-            "maxLength": 10
+            "maxLength": 10,
+            "description": "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia)."
           }
         }
       }

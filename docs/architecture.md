@@ -72,9 +72,16 @@ Supporting library crates (not separately deployed) are omitted for brevity — 
 
 ## Components
 
-### Lexicons (`lexicons/`)
+### Lexicons (`lexicons-src/` → `lexicons/`)
 
-Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/):
+Darwin Core compliant schemas for biodiversity data following [TDWG standards](https://dwc.tdwg.org/).
+
+Schemas are authored in [MLF](https://mlf.lol) ("Matt's Lexicon Format"), a
+human-friendly DSL for ATProto lexicons. The `.mlf` files in `lexicons-src/`
+are the source of truth; `lexicons/*.json` (consumed by the frontend's
+`LexiconView` and the Docker image) and the `observing-lexicons` Rust crate are
+both generated from them via `npm run generate-lexicons`. See
+[CONTRIBUTING.md](../CONTRIBUTING.md#lexicon-changes).
 
 - `bio.lexicons.temp.v0-1.occurrence` - Occurrence records
 - `bio.lexicons.temp.v0-1.identification` - Taxonomic determinations
@@ -117,13 +124,15 @@ Vite + React SPA.
 
 ## Key Files
 
-- `lexicons/` - AT Protocol lexicon definitions
+- `lexicons-src/` - Lexicon source of truth, authored in MLF (`.mlf`)
+- `lexicons/` - Generated AT Protocol JSON lexicon definitions
 - `crates/observing-appview/src/routes/` - REST API endpoint handlers
 - `crates/observing-appview/src/enrichment.rs` - Response enrichment (profiles, community IDs)
 - `crates/observing-db/src/` - PostgreSQL + PostGIS database layer
 - `crates/observing-db/src/processing.rs` - Shared record conversion (AT Protocol JSON → DB params)
 - `crates/observing-appview/src/routes/oauth.rs` - OAuth authentication
-- `scripts/generate-rust-types.sh` - Lexicon → Rust type generator (jacquard-codegen)
+- `scripts/generate-lexicons.sh` - MLF → JSON → Rust pipeline driver (mlf + jacquard-codegen)
+- `scripts/generate-rust-types.sh` - JSON lexicon → Rust type generator (jacquard-codegen)
 - `cloudbuild.yaml` - Multi-service Cloud Build config
 
 ## Database Tables

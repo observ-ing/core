@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "ing.observ.temp.comment",
   "defs": {
@@ -8,7 +9,11 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "body", "createdAt"],
+        "required": [
+          "subject",
+          "body",
+          "createdAt"
+        ],
         "properties": {
           "subject": {
             "type": "ref",
@@ -17,8 +22,8 @@
           },
           "body": {
             "type": "string",
-            "description": "The text content of the comment.",
-            "maxLength": 3000
+            "maxLength": 3000,
+            "description": "The text content of the comment."
           },
           "replyTo": {
             "type": "ref",

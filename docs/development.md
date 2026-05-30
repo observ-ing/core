@@ -197,8 +197,9 @@ cargo fmt
 # Run Rust tests
 cargo test --workspace
 
-# Generate lexicon types (Rust)
-npm run generate-rust-types
+# Regenerate lexicons after editing lexicons-src/*.mlf
+# (MLF sources → lexicons/*.json → Rust types)
+npm run generate-lexicons
 ```
 
 ## Running Services

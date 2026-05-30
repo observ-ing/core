@@ -1,0 +1,27 @@
+/// An identification suggestion for an existing observation. Used to propose or agree with a taxonomic identification.
+@main
+record identification {
+    /// A strong reference (CID + URI) to the occurrence being identified.
+    occurrence!: com.atproto.repo.strongRef,
+    /// The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).
+    scientificName!: string constrained {
+        maxLength: 256,
+    },
+    /// The taxonomic rank of the identification (Darwin Core dwc:taxonRank).
+    taxonRank: string constrained {
+        maxLength: 32,
+        knownValues: ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
+        default: "species",
+    },
+    /// Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
+    kingdom: string constrained {
+        maxLength: 64,
+    },
+    /// Stable URI for the identified taxon (e.g. a GBIF species URI). Maps to Darwin Core dwc:taxonID.
+    taxonID: Uri,
+    /// Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
+    identificationRemarks: string constrained {
+        maxLength: 3000,
+    },
+}
+

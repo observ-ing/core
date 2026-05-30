@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "bio.lexicons.temp.v0-1.media",
   "defs": {
@@ -8,18 +9,24 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["image"],
+        "required": [
+          "image"
+        ],
         "properties": {
           "image": {
             "type": "blob",
-            "accept": ["image/jpeg", "image/png", "image/webp"],
+            "accept": [
+              "image/jpeg",
+              "image/png",
+              "image/webp"
+            ],
             "maxSize": 10000000,
             "description": "The image blob reference."
           },
           "alt": {
             "type": "string",
-            "description": "Alt text description of the image for accessibility.",
-            "maxLength": 1000
+            "maxLength": 1000,
+            "description": "Alt text description of the image for accessibility."
           },
           "aspectRatio": {
             "type": "ref",
@@ -27,7 +34,7 @@
           },
           "license": {
             "type": "string",
-            "description": "SPDX license identifier for this media (maps to Dublin Core dcterms:license).",
+            "maxLength": 32,
             "knownValues": [
               "CC0-1.0",
               "CC-BY-4.0",
@@ -35,7 +42,7 @@
               "CC-BY-SA-4.0",
               "CC-BY-NC-SA-4.0"
             ],
-            "maxLength": 32
+            "description": "SPDX license identifier for this media (maps to Dublin Core dcterms:license)."
           }
         }
       }
@@ -43,7 +50,10 @@
     "aspectRatio": {
       "type": "object",
       "description": "Width and height of an image, used for proper display before loading.",
-      "required": ["width", "height"],
+      "required": [
+        "width",
+        "height"
+      ],
       "properties": {
         "width": {
           "type": "integer",

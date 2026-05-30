@@ -2,7 +2,7 @@
 
 Observ.ing uses [Darwin Core](https://dwc.tdwg.org/) terminology for biodiversity data interoperability. This document describes the **current** shape of each lexicon record. A section at the bottom lists Darwin Core terms we may adopt later.
 
-For the full, authoritative schema definitions, see the JSON files under `lexicons/bio/lexicons/temp/v0-1/`.
+For the full, authoritative schema definitions, see the MLF sources under `lexicons-src/bio/lexicons/temp/v0-1/` (or the generated JSON under `lexicons/bio/lexicons/temp/v0-1/`).
 
 ## bio.lexicons.temp.v0-1.occurrence
 

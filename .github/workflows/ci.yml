@@ -297,14 +297,16 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
+      - name: Install mlf (lexicon DSL compiler, JSON output only)
+        run: RUSTFLAGS="" cargo install --git https://tangled.org/@stavola.xyz/mlf --rev a6d5e6f83564461af6a1af156b8815208ddb4255 --no-default-features mlf-cli
       - name: Install jacquard-codegen from fork (deterministic field ordering fix)
         run: RUSTFLAGS="" cargo install --git https://tangled.org/rwell.org/jacquard.git --branch fix-builder-determinism jacquard-lexgen
-      - name: Check generated lexicon types are up to date
+      - name: Check generated lexicons (JSON + Rust) are up to date
         run: |
-          ./scripts/generate-rust-types.sh
+          ./scripts/generate-lexicons.sh
           cargo fmt -p observing-lexicons
           cargo check -p observing-lexicons
-          git diff --exit-code crates/observing-lexicons/src/
+          git diff --exit-code lexicons/ crates/observing-lexicons/src/
 
   rust-test:
     runs-on: ubuntu-latest

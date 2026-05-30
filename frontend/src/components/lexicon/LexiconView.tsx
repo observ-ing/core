@@ -19,7 +19,8 @@ import {
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
-// This avoids duplicating the schema files — the source of truth remains in /lexicons/.
+// This avoids duplicating the schema files. The JSON in /lexicons/ is
+// generated from the MLF sources in /lexicons-src/ (see CONTRIBUTING.md).
 const lexiconModules = import.meta.glob("@lexicons/**/*.json", {
   eager: true,
 });

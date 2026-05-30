@@ -105,15 +105,31 @@ have been run first. See
 
 ## Lexicon changes
 
-Lexicon types are codegen'd from `lexicons/`. If you edit them:
+Lexicons are authored in [MLF](https://mlf.lol) ("Matt's Lexicon
+Format"), a human-friendly DSL for ATProto lexicons. The `.mlf` files in
+`lexicons-src/` are the **source of truth**; everything downstream is
+generated:
+
+```
+lexicons-src/**/*.mlf   →  lexicons/**/*.json  →  crates/observing-lexicons/src/**
+        (edit these)        (generated JSON)         (generated Rust types)
+```
+
+Edit the `.mlf` files, then regenerate both the JSON and the Rust types
+in one step:
 
 ```bash
-npm run generate-rust-types
+npm run generate-lexicons      # mlf check → JSON → jacquard-codegen Rust
 cargo fmt -p observing-lexicons
 ```
 
-Commit the regenerated `crates/observing-lexicons/src/` alongside your
-lexicon edits — CI's `rust-lexicons-check` job will fail otherwise.
+The script installs the pinned `mlf` CLI on first run. Commit the
+regenerated `lexicons/` **and** `crates/observing-lexicons/src/`
+alongside your `lexicons-src/` edits — CI's `rust-lexicons-check` job
+regenerates from the `.mlf` sources and fails on any drift.
+
+> Do not hand-edit `lexicons/*.json` — those files are generated and
+> your changes will be overwritten on the next regeneration.
 
 ## What CI runs
 

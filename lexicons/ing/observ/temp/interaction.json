@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "ing.observ.temp.interaction",
   "defs": {
@@ -8,7 +9,13 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subjectA", "subjectB", "interactionType", "direction", "createdAt"],
+        "required": [
+          "subjectA",
+          "subjectB",
+          "interactionType",
+          "direction",
+          "createdAt"
+        ],
         "properties": {
           "subjectA": {
             "type": "ref",
@@ -22,7 +29,7 @@
           },
           "interactionType": {
             "type": "string",
-            "description": "Type of ecological interaction between the subjects.",
+            "maxLength": 64,
             "knownValues": [
               "predation",
               "pollination",
@@ -36,18 +43,22 @@
               "oviposition",
               "seed_dispersal"
             ],
-            "maxLength": 64
+            "description": "Type of ecological interaction between the subjects."
           },
           "direction": {
             "type": "string",
-            "description": "Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual.",
-            "enum": ["AtoB", "BtoA", "bidirectional"],
-            "default": "AtoB"
+            "enum": [
+              "AtoB",
+              "BtoA",
+              "bidirectional"
+            ],
+            "default": "AtoB",
+            "description": "Direction of the interaction: AtoB means A acts on B, BtoA means B acts on A, bidirectional means mutual."
           },
           "comment": {
             "type": "string",
-            "description": "Additional notes about the interaction.",
-            "maxLength": 3000
+            "maxLength": 3000,
+            "description": "Additional notes about the interaction."
           },
           "createdAt": {
             "type": "string",
@@ -76,24 +87,37 @@
     "taxon": {
       "type": "object",
       "description": "Taxonomic information following Darwin Core Taxon class (dwc:Taxon).",
-      "required": ["scientificName"],
+      "required": [
+        "scientificName"
+      ],
       "properties": {
         "scientificName": {
           "type": "string",
-          "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
-          "maxLength": 256
+          "maxLength": 256,
+          "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName)."
         },
         "taxonRank": {
           "type": "string",
-          "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
-          "knownValues": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
+          "maxLength": 32,
+          "knownValues": [
+            "kingdom",
+            "phylum",
+            "class",
+            "order",
+            "family",
+            "genus",
+            "species",
+            "subspecies",
+            "variety",
+            "form"
+          ],
           "default": "species",
-          "maxLength": 32
+          "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank)."
         },
         "kingdom": {
           "type": "string",
-          "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
-          "maxLength": 64
+          "maxLength": 64,
+          "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom)."
         }
       }
     }

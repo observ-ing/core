@@ -1,0 +1,15 @@
+/// A comment on an observation. Used for general discussion, questions, or additional context about an observation.
+@main
+record comment {
+    /// A strong reference (CID + URI) to the observation being commented on.
+    subject!: com.atproto.repo.strongRef,
+    /// The text content of the comment.
+    body!: string constrained {
+        maxLength: 3000,
+    },
+    /// Optional reference to another comment this is replying to, for threaded discussions.
+    replyTo: com.atproto.repo.strongRef,
+    /// Timestamp when this comment was created.
+    createdAt!: Datetime,
+}
+

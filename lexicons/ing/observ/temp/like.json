@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "ing.observ.temp.like",
   "defs": {
@@ -8,7 +9,10 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["subject", "createdAt"],
+        "required": [
+          "subject",
+          "createdAt"
+        ],
         "properties": {
           "subject": {
             "type": "ref",

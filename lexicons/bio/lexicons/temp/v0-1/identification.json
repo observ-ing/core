@@ -1,4 +1,5 @@
 {
+  "$type": "com.atproto.lexicon.schema",
   "lexicon": 1,
   "id": "bio.lexicons.temp.v0-1.identification",
   "defs": {
@@ -8,7 +9,10 @@
       "key": "tid",
       "record": {
         "type": "object",
-        "required": ["occurrence", "scientificName"],
+        "required": [
+          "occurrence",
+          "scientificName"
+        ],
         "properties": {
           "occurrence": {
             "type": "ref",
@@ -17,20 +21,31 @@
           },
           "scientificName": {
             "type": "string",
-            "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName).",
-            "maxLength": 256
+            "maxLength": 256,
+            "description": "The full scientific name, with authorship and date information if known (Darwin Core dwc:scientificName)."
           },
           "taxonRank": {
             "type": "string",
-            "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank).",
-            "knownValues": ["kingdom", "phylum", "class", "order", "family", "genus", "species", "subspecies", "variety", "form"],
+            "maxLength": 32,
+            "knownValues": [
+              "kingdom",
+              "phylum",
+              "class",
+              "order",
+              "family",
+              "genus",
+              "species",
+              "subspecies",
+              "variety",
+              "form"
+            ],
             "default": "species",
-            "maxLength": 32
+            "description": "The taxonomic rank of the identification (Darwin Core dwc:taxonRank)."
           },
           "kingdom": {
             "type": "string",
-            "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).",
-            "maxLength": 64
+            "maxLength": 64,
+            "description": "Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom)."
           },
           "taxonID": {
             "type": "string",
@@ -39,8 +54,8 @@
           },
           "identificationRemarks": {
             "type": "string",
-            "description": "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
-            "maxLength": 3000
+            "maxLength": 3000,
+            "description": "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks)."
           }
         }
       }

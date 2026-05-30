@@ -1,0 +1,19 @@
+/// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.
+@main
+record occurrence {
+    /// The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
+    eventDate: Datetime,
+    /// The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.
+    decimalLatitude: string,
+    /// The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
+    decimalLongitude: string,
+    /// The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
+    coordinateUncertaintyInMeters: integer constrained {
+        minimum: 0,
+    },
+    /// Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
+    associatedMedia: com.atproto.repo.strongRef[] constrained {
+        maxLength: 10,
+    },
+}
+

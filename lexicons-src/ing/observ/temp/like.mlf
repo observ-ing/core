@@ -1,0 +1,9 @@
+/// Record expressing appreciation of an observation.
+@main
+record like {
+    /// A strong reference to the observation being liked.
+    subject!: com.atproto.repo.strongRef,
+    /// Timestamp when this like was created.
+    createdAt!: Datetime,
+}
+

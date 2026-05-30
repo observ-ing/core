@@ -10,6 +10,7 @@
     "build-storybook": "storybook build",
     "check:stories": "node scripts/check-stories.mjs",
     "doctor": "./scripts/doctor.sh",
+    "generate-lexicons": "./scripts/generate-lexicons.sh",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "setup": "./scripts/setup.sh",
     "dev": "vite -c frontend/vite.config.ts",

@@ -196,7 +196,7 @@ fn lexicon_doc_com_atproto_repo_strongRef() -> LexiconDoc<'static> {
             map.insert(
                 SmolStr::new_static("main"),
                 LexUserType::Object(LexObject {
-                    required: Some(vec![SmolStr::new_static("uri"), SmolStr::new_static("cid")]),
+                    required: Some(vec![SmolStr::new_static("cid"), SmolStr::new_static("uri")]),
                     properties: {
                         #[allow(unused_mut)]
                         let mut map = BTreeMap::new();
