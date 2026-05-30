@@ -4458,11 +4458,11 @@ dependencies = [
 [[package]]
 name = "species-range-index"
 version = "0.1.0"
+source = "git+https://github.com/observ-ing/species-range-index?tag=v0.1.0#435fc8363b228d31b3104491893a0ef4c64908ef"
 dependencies = [
  "bytemuck",
  "h3o",
  "memmap2",
- "tempfile",
  "tracing",
 ]
 

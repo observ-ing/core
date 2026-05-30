@@ -39,7 +39,7 @@ chrono = { workspace = true }
 base64 = "0.22"
 
 # Cell→ID geo index (geo-prior reranking over H3 cells)
-species-range-index = { path = "../species-range-index" }
+species-range-index = { git = "https://github.com/observ-ing/species-range-index", tag = "v0.1.0" }
 
 # Zero-copy embedding load
 bytemuck = { version = "1", features = ["derive"] }
