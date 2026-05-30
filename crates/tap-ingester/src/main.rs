@@ -250,49 +250,17 @@ fn resolve_tap_database_url() -> String {
     if let Ok(url) = std::env::var("TAP_DATABASE_URL") {
         return url;
     }
-    let Ok(host) = std::env::var("DB_HOST") else {
-        return "sqlite:///data/tap.db".to_string();
-    };
-    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
-    let user = std::env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
-    let password = std::env::var("DB_PASSWORD").unwrap_or_default();
-    if host.starts_with("/cloudsql/") {
-        format!(
-            "postgresql://{user}:{password}@localhost/{name}?host={host}&options=-c%20search_path%3Dtap"
-        )
-    } else {
-        let port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
-        format!(
-            "postgresql://{user}:{password}@{host}:{port}/{name}?options=-c%20search_path%3Dtap"
-        )
-    }
+    // Same DB_* bundle as the app DB, but pin Tap's tables to the `tap` schema.
+    pg_url_env::postgres_url_from_db_env("observing", Some("tap"))
+        .unwrap_or_else(|| "sqlite:///data/tap.db".to_string())
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
 /// or the DB_HOST/DB_NAME/DB_USER/DB_PASSWORD bundle the existing
 /// services use for Cloud SQL socket connections.
 fn resolve_database_url() -> Result<String, Box<dyn std::error::Error>> {
-    if let Ok(url) = std::env::var("DATABASE_URL") {
-        return Ok(url);
-    }
-    let host = std::env::var("DB_HOST")
-        .map_err(|_| "DATABASE_URL or DB_HOST environment variable is required".to_string())?;
-    let name = std::env::var("DB_NAME").unwrap_or_else(|_| "observing".to_string());
-    let user = std::env::var("DB_USER").unwrap_or_else(|_| "postgres".to_string());
-    let password = std::env::var("DB_PASSWORD").unwrap_or_default();
-
-    if host.starts_with("/cloudsql/") {
-        Ok(format!(
-            "postgresql://{}:{}@localhost/{}?host={}",
-            user, password, name, host
-        ))
-    } else {
-        let port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
-        Ok(format!(
-            "postgresql://{}:{}@{}:{}/{}",
-            user, password, host, port, name
-        ))
-    }
+    pg_url_env::database_url_from_env("observing")
+        .ok_or_else(|| "DATABASE_URL or DB_HOST environment variable is required".into())
 }
 
 async fn process_record(
