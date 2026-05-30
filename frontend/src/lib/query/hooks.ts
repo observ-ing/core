@@ -1,7 +1,7 @@
 // Read hooks — one per server endpoint. Components call these instead of
 // fetching into useState/Redux; caching, dedup, offline persistence, and
 // refetch-on-focus come from the shared QueryClient.
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useAppSelector } from "../../store";
 import { qk } from "./keys";
 import {
@@ -61,6 +61,7 @@ export function useTaxonOccurrences(kingdomOrId: string, name?: string) {
     initialPageParam: undefined as Cursor,
     getNextPageParam: nextCursor,
     enabled: !!kingdomOrId,
+    placeholderData: keepPreviousData,
   });
 }
 
@@ -79,6 +80,9 @@ export function useTaxon(kingdomOrId: string | undefined, name?: string) {
     queryKey: qk.taxon(kingdomOrId ?? "", name),
     queryFn: () => fetchTaxon(kingdomOrId!, name),
     enabled: !!kingdomOrId,
+    // Keep the prior taxon's detail visible while navigating to a new one,
+    // matching the old atomic-swap behavior instead of flashing a skeleton.
+    placeholderData: keepPreviousData,
   });
 }
 

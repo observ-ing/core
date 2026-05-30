@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import {
   Box,
@@ -18,8 +18,8 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
-import { fetchProfileFeed, getImageUrl } from "../../services/api";
-import type { ProfileFeedResponse, Occurrence, Identification } from "../../services/types";
+import { getImageUrl } from "../../services/api";
+import { useProfileFeed } from "../../lib/query/hooks";
 import { getDisplayName, getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
@@ -34,54 +34,20 @@ type ProfileTab = "observations" | "identifications";
 
 export function ProfileView() {
   const { did } = useParams<{ did: string }>();
-  const [data, setData] = useState<ProfileFeedResponse | null>(null);
-  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
-  const [identifications, setIdentifications] = useState<Identification[]>([]);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [hasMore, setHasMore] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<ProfileTab>("observations");
 
-  usePageTitle(data?.profile.displayName || data?.profile.handle || "Profile");
-
-  const loadData = useCallback(
-    async (loadMore = false) => {
-      if (!did) return;
-
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const response = await fetchProfileFeed(did, loadMore ? cursor : undefined, activeTab);
-
-        if (!loadMore) {
-          setData(response);
-          setOccurrences(response.occurrences);
-          setIdentifications(response.identifications);
-        } else {
-          setOccurrences((prev) => [...prev, ...response.occurrences]);
-          setIdentifications((prev) => [...prev, ...response.identifications]);
-        }
-
-        setCursor(response.cursor);
-        setHasMore(!!response.cursor);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load profile");
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [did, cursor, activeTab],
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error } = useProfileFeed(
+    did ?? "",
+    activeTab,
   );
 
-  useEffect(() => {
-    setOccurrences([]);
-    setIdentifications([]);
-    setCursor(undefined);
-    setHasMore(true);
-    loadData(false);
-  }, [did, activeTab]);
+  const profile = data?.pages[0]?.profile;
+  const counts = data?.pages[0]?.counts;
+  const occurrences = data?.pages.flatMap((p) => p.occurrences) ?? [];
+  const identifications = data?.pages.flatMap((p) => p.identifications) ?? [];
+  const hasMore = hasNextPage;
+
+  usePageTitle(profile?.displayName || profile?.handle || "Profile");
 
   if (!did) {
     return (
@@ -100,13 +66,12 @@ export function ProfileView() {
   if (error) {
     return (
       <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography color="error">{error}</Typography>
+        <Typography color="error">
+          {error instanceof Error ? error.message : "Failed to load profile"}
+        </Typography>
       </Container>
     );
   }
-
-  const profile = data?.profile;
-  const counts = data?.counts;
 
   return (
     <Container
@@ -441,7 +406,7 @@ export function ProfileView() {
           )}
         </Box>
       )}
-      {isLoading && (occurrences.length > 0 || identifications.length > 0) && (
+      {isFetchingNextPage && (
         <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
           <CircularProgress color="primary" size={24} />
         </Box>
@@ -457,9 +422,9 @@ export function ProfileView() {
           </Typography>
         </Box>
       )}
-      {hasMore && !isLoading && (
+      {hasMore && !isLoading && !isFetchingNextPage && (
         <Box sx={{ p: 2, textAlign: "center" }}>
-          <Button variant="outlined" onClick={() => loadData(true)}>
+          <Button variant="outlined" onClick={() => void fetchNextPage()}>
             Load more
           </Button>
         </Box>

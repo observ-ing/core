@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import DOMPurify from "dompurify";
 import {
@@ -21,9 +21,8 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import { fetchTaxon, fetchTaxonObservations } from "../../services/api";
-import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { slugToName } from "../../lib/taxonSlug";
+import { useTaxon, useTaxonOccurrences } from "../../lib/query/hooks";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { TaxonLink, shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -38,15 +37,22 @@ export function TaxonDetail() {
   const { kingdom, name, id } = useParams<{ kingdom?: string; name?: string; id?: string }>();
   const navigate = useNavigate();
 
-  const [taxon, setTaxon] = useState<TaxonDetailType | null>(null);
-  const [observations, setObservations] = useState<Occurrence[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [hasMore, setHasMore] = useState(true);
   const [descExpanded, setDescExpanded] = useState(false);
   const [galleryMounted, setGalleryMounted] = useState(false);
+
+  // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
+  const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
+  const lookupName = name ? slugToName(decodeURIComponent(name)) : undefined;
+  const lookupId = id ? slugToName(decodeURIComponent(id)) : undefined;
+
+  const { data: taxon, isLoading: loading } = useTaxon(lookupKingdom ?? lookupId, lookupName);
+  const {
+    data: obsData,
+    isFetchingNextPage: loadingMore,
+    hasNextPage: hasMore,
+    fetchNextPage,
+  } = useTaxonOccurrences(lookupKingdom ?? lookupId ?? "", lookupName);
+  const observations = obsData?.pages.flatMap((p) => p.occurrences) ?? [];
 
   usePageTitle(taxon?.scientificName || "Taxon");
 
@@ -62,57 +68,6 @@ export function TaxonDetail() {
   }, [taxon]);
   const thumbnails = useWikidataThumbnails(thumbnailNames, 44);
 
-  // Determine the lookup parameters — convert URL slugs (hyphens) back to names (spaces)
-  const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
-  const lookupName = name ? slugToName(decodeURIComponent(name)) : undefined;
-  const lookupId = id ? slugToName(decodeURIComponent(id)) : undefined;
-
-  useEffect(() => {
-    if (!lookupKingdom && !lookupId) {
-      setError("No taxon specified");
-      setLoading(false);
-      return;
-    }
-
-    async function loadTaxon() {
-      setLoading(true);
-      setError(null);
-
-      let result: TaxonDetailType | null;
-      if (lookupKingdom && lookupName) {
-        result = await fetchTaxon(lookupKingdom, lookupName);
-      } else {
-        // Single param: either a kingdom name or a legacy ID
-        result = await fetchTaxon(lookupId ?? lookupKingdom ?? "");
-      }
-
-      if (result) {
-        setTaxon(result);
-        // Load initial observations
-        try {
-          let obsResult;
-          if (lookupKingdom && lookupName) {
-            obsResult = await fetchTaxonObservations(lookupKingdom, lookupName);
-          } else {
-            obsResult = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "");
-          }
-          setObservations(obsResult.occurrences);
-          setCursor(obsResult.cursor);
-          setHasMore(!!obsResult.cursor);
-        } catch {
-          // Show empty state if observations fail to load
-          setObservations([]);
-          setHasMore(false);
-        }
-      } else {
-        setError("Taxon not found");
-      }
-      setLoading(false);
-    }
-
-    loadTaxon();
-  }, [lookupKingdom, lookupName, lookupId]);
-
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
@@ -121,25 +76,9 @@ export function TaxonDetail() {
     }
   };
 
-  const loadMoreObservations = async () => {
-    if (!cursor || loadingMore) return;
-
-    setLoadingMore(true);
-    try {
-      let result;
-      if (lookupKingdom && lookupName) {
-        result = await fetchTaxonObservations(lookupKingdom, lookupName, cursor);
-      } else {
-        result = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "", undefined, cursor);
-      }
-      setObservations((prev) => [...prev, ...result.occurrences]);
-      setCursor(result.cursor);
-      setHasMore(!!result.cursor);
-    } catch {
-      // Stop pagination on error — existing observations remain visible
-      setHasMore(false);
-    }
-    setLoadingMore(false);
+  const loadMoreObservations = () => {
+    if (!hasMore || loadingMore) return;
+    void fetchNextPage();
   };
 
   if (loading) {
@@ -159,11 +98,11 @@ export function TaxonDetail() {
     );
   }
 
-  if (error || !taxon) {
+  if (!taxon) {
     return (
       <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
         <Typography color="error" sx={{ mb: 2 }}>
-          {error || "Taxon not found"}
+          Taxon not found
         </Typography>
         <Button variant="outlined" onClick={handleBack}>
           Go Back
