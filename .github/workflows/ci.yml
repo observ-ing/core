@@ -258,10 +258,10 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94; we pin to 1.93
-          # in rust-toolchain.toml. Workspace uses sqlx 0.8.x, so 0.8.6
+          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94, matching the
+          # rust-toolchain.toml pin. Workspace uses sqlx 0.9.x, so 0.9.0
           # matches. Bump in lockstep when the toolchain pin moves.
-          tool: sqlx-cli@0.8.6
+          tool: sqlx-cli@0.9.0
           no-default-features: true
           features: postgres
       - run: cargo sqlx prepare --workspace --check

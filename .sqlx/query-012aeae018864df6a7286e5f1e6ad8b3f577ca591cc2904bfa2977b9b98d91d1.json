@@ -6,92 +6,200 @@
       {
         "ordinal": 0,
         "name": "uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "uri"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "cid",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "cid"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "did",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "did"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "subject_uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "subject_uri"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "subject_cid",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "subject_cid"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "scientific_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "scientific_name"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "taxon_rank",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "taxon_rank"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "identification_qualifier",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "identification_qualifier"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "taxon_id",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "taxon_id"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "identification_verification_status",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "identification_verification_status"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "type_status",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "type_status"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "date_identified",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "date_identified"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "kingdom",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "kingdom"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "phylum",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "phylum"
+          }
+        }
       },
       {
         "ordinal": 14,
         "name": "class",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "class"
+          }
+        }
       },
       {
         "ordinal": 15,
         "name": "order_",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "order"
+          }
+        }
       },
       {
         "ordinal": 16,
         "name": "family",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "family"
+          }
+        }
       },
       {
         "ordinal": 17,
         "name": "genus",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "identifications",
+            "name": "genus"
+          }
+        }
       }
     ],
     "parameters": {
