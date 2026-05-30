@@ -45,7 +45,11 @@ pub async fn login(
         )
         .await
         .map_err(|e| {
-            error!(error = %e, "OAuth authorize failed");
+            error!(
+                error = %e,
+                "OAuth authorize failed (in local dev, an empty PUBLIC_URL can \
+                 produce an invalid redirect_uri and trigger a PDS 400)"
+            );
             AppError::BadRequest(format!("Could not initiate login: {e}"))
         })?;
 

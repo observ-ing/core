@@ -45,7 +45,11 @@ impl Config {
 
         let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
 
-        let public_url = env::var("PUBLIC_URL").ok();
+        // Treat an empty/whitespace PUBLIC_URL (e.g. `PUBLIC_URL=` in a shell
+        // or process-compose) as unset. Otherwise `Some("")` takes the
+        // production OAuth path and builds a protocol-less redirect_uri, which
+        // the PDS rejects with a cryptic 400 invalid_request in local dev.
+        let public_url = env::var("PUBLIC_URL").ok().filter(|s| !s.trim().is_empty());
 
         let hidden_dids = env::var("HIDDEN_DIDS")
             .map(|s| parse_did_list(&s))
