@@ -11,7 +11,17 @@
 import { useMutation } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import { setOccurrenceLike } from "./occurrenceCache";
-import { likeObservation, unlikeObservation } from "../../services/api";
+import { qk } from "./keys";
+import {
+  likeObservation,
+  unlikeObservation,
+  markNotificationRead,
+  updateUserPreferences,
+  submitComment,
+  submitIdentification,
+  deleteIdentification,
+} from "../../services/api";
+import type { UpdatePreferencesRequest } from "../../services/types";
 
 // ── Likes ──────────────────────────────────────────────────────────────────
 export const LIKE_MUTATION_KEY = ["like"] as const;
@@ -40,4 +50,55 @@ queryClient.setMutationDefaults(LIKE_MUTATION_KEY, {
  */
 export function useLike() {
   return useMutation<unknown, Error, LikeVars>({ mutationKey: LIKE_MUTATION_KEY });
+}
+
+// ── Notifications ────────────────────────────────────────────────────────────
+/** Mark one notification (by id) or all (no id) read; refresh list + badge. */
+export function useMarkNotificationRead() {
+  return useMutation({
+    mutationFn: (id?: number) => markNotificationRead(id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.notifications() });
+      void queryClient.invalidateQueries({ queryKey: qk.unreadCount() });
+    },
+  });
+}
+
+// ── User preferences ─────────────────────────────────────────────────────────
+export function useUpdatePreferences() {
+  return useMutation({
+    mutationFn: (prefs: UpdatePreferencesRequest) => updateUserPreferences(prefs),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.preferences() });
+    },
+  });
+}
+
+// ── Comments / identifications (refresh the parent observation detail) ───────
+export function useSubmitComment() {
+  return useMutation({
+    mutationFn: submitComment,
+    onSuccess: (_data, vars) => {
+      void queryClient.invalidateQueries({ queryKey: qk.observation(vars.occurrenceUri) });
+    },
+  });
+}
+
+export function useSubmitIdentification() {
+  return useMutation({
+    mutationFn: submitIdentification,
+    onSuccess: (_data, vars) => {
+      void queryClient.invalidateQueries({ queryKey: qk.observation(vars.occurrenceUri) });
+    },
+  });
+}
+
+/** Delete an identification by its uri; invalidate the observation it belongs to. */
+export function useDeleteIdentification(occurrenceUri: string) {
+  return useMutation({
+    mutationFn: (identificationUri: string) => deleteIdentification(identificationUri),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: qk.observation(occurrenceUri) });
+    },
+  });
 }
