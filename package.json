@@ -39,6 +39,7 @@
     "@tanstack/query-persist-client-core": "^5.100.14",
     "@tanstack/react-db": "^0.1.85",
     "@tanstack/react-query": "^5.100.14",
+    "@tanstack/react-query-persist-client": "^5.100.14",
     "@xmldom/xmldom": "^0.9.10",
     "capacitor-original-photo-picker": "github:observ-ing/capacitor-original-photo-picker",
     "date-fns": "^4.1.0",

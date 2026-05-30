@@ -27,7 +27,7 @@ import { DocsPage } from "./components/docs/DocsPage";
 import { NotificationsPage } from "./components/notifications/NotificationsPage";
 import { SettingsPage } from "./components/settings/SettingsPage";
 import { TransparencyPage } from "./components/transparency/TransparencyPage";
-import { OccurrenceDbSpike } from "./spike/OccurrenceDbSpike";
+import { QueryProvider } from "./lib/query/QueryProvider";
 import "./styles/global.css";
 
 function AppContent() {
@@ -135,8 +135,6 @@ function AppContent() {
           <Route path="/docs" element={<DocsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/transparency" element={<TransparencyPage />} />
-          {/* SPIKE: TanStack DB offline proof-of-concept. Remove with src/spike/. */}
-          <Route path="/spike/:kingdom/:name" element={<OccurrenceDbSpike />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Box>
@@ -167,7 +165,9 @@ function ThemedApp() {
 export function App() {
   return (
     <Provider store={store}>
-      <ThemedApp />
+      <QueryProvider>
+        <ThemedApp />
+      </QueryProvider>
     </Provider>
   );
 }
