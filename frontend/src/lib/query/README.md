@@ -19,23 +19,23 @@ consistency, and offline writes with one mental model — and is lighter
 
 ## Files
 
-| File | Role |
-|------|------|
-| `queryClient.ts` | The single `QueryClient` + IndexedDB persister (idb-keyval), week-long gcTime. |
-| `QueryProvider.tsx` | `PersistQueryClientProvider`; restores the cache and resumes offline mutations. Mount inside the Redux `<Provider>`. |
-| `keys.ts` | Central query-key registry. |
-| `hooks.ts` | One read hook per endpoint (`useFeed`, `useTaxon`, `useObservation`, …). |
-| `mutations.ts` | Write hooks. `useLike` is registered as a mutation *default* for offline replay; others invalidate on success. |
+| File                 | Role                                                                                                                    |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `queryClient.ts`     | The single `QueryClient` + IndexedDB persister (idb-keyval), week-long gcTime.                                          |
+| `QueryProvider.tsx`  | `PersistQueryClientProvider`; restores the cache and resumes offline mutations. Mount inside the Redux `<Provider>`.    |
+| `keys.ts`            | Central query-key registry.                                                                                             |
+| `hooks.ts`           | One read hook per endpoint (`useFeed`, `useTaxon`, `useObservation`, …).                                                |
+| `mutations.ts`       | Write hooks. `useLike` is registered as a mutation _default_ for offline replay; others invalidate on success.          |
 | `occurrenceCache.ts` | Patches an occurrence's like state across every cache that holds it (feed/profile/taxon/detail) from a single mutation. |
 
 ## Offline-write design (likes)
 
 1. `useLike().mutate({ uri, cid, liked })` — `onMutate` optimistically patches
    every occurrence cache via `setOccurrenceLike` (runs even offline).
-2. Offline, the network call is *paused* (networkMode "online"), not failed, so
+2. Offline, the network call is _paused_ (networkMode "online"), not failed, so
    nothing rolls back. The paused mutation is persisted to IndexedDB.
 3. On reload, `QueryProvider`'s `onSuccess` calls `resumePausedMutations()`;
-   `mutations.ts` registered the like mutation *default* so the persisted
+   `mutations.ts` registered the like mutation _default_ so the persisted
    mutation can find its `mutationFn` to replay.
 4. A genuine server/network error (while online) triggers `onError`, which
    reverts the optimistic patch.
@@ -47,8 +47,8 @@ observation detail, taxon detail/children, taxa search, notifications + unread
 count, likes, comments, identifications.
 
 **Stays in Redux (UI/client state):** `uiSlice` (modals, toasts, theme,
-geolocation), `feedSlice` (currentTab + filters — the query *inputs*), and the
-auth *session*.
+geolocation), `feedSlice` (currentTab + filters — the query _inputs_), and the
+auth _session_.
 
 ## Deliberate exceptions / follow-ups
 
