@@ -4726,7 +4726,6 @@ dependencies = [
  "tracing-stackdriver",
  "tracing-subscriber",
  "url",
- "urlencoding",
 ]
 
 [[package]]

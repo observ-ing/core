@@ -6,6 +6,9 @@ use std::fmt;
 pub enum BlobResolverError {
     Http(Box<reqwest::Error>),
     DidResolution(String),
+    /// A `com.atproto.repo.getRecord` request failed or returned an
+    /// unexpected body.
+    RecordFetch(String),
 }
 
 impl fmt::Display for BlobResolverError {
@@ -13,6 +16,7 @@ impl fmt::Display for BlobResolverError {
         match self {
             BlobResolverError::Http(err) => write!(f, "HTTP error: {}", err),
             BlobResolverError::DidResolution(msg) => write!(f, "DID resolution error: {}", msg),
+            BlobResolverError::RecordFetch(msg) => write!(f, "record fetch error: {}", msg),
         }
     }
 }

@@ -19,6 +19,13 @@ impl BlobResolver {
         }
     }
 
+    /// Create a resolver using a caller-provided HTTP client — e.g. one
+    /// configured with a request timeout. [`BlobResolver::new`] uses a default
+    /// client with no timeout.
+    pub fn with_client(client: Client) -> Self {
+        Self { client }
+    }
+
     /// Resolve a DID to its PDS URL
     pub async fn resolve_pds_url(&self, did: &Did) -> Result<String> {
         match did.method() {
@@ -111,6 +118,45 @@ impl BlobResolver {
         );
 
         Ok((data, content_type))
+    }
+
+    /// Fetch a record from a PDS via `com.atproto.repo.getRecord`, returning
+    /// the record's `value` (the lexicon record body).
+    ///
+    /// `getRecord` wraps the record as `{ uri, cid, value }`; this returns the
+    /// unwrapped `value`. Use [`BlobResolver::resolve_pds_url`] to obtain
+    /// `pds_url` from a DID first.
+    pub async fn fetch_record(
+        &self,
+        pds_url: &str,
+        did: &str,
+        collection: &str,
+        rkey: &str,
+    ) -> Result<serde_json::Value> {
+        let url = format!(
+            "{}/xrpc/com.atproto.repo.getRecord?repo={}&collection={}&rkey={}",
+            pds_url.trim_end_matches('/'),
+            urlencoding::encode(did),
+            urlencoding::encode(collection),
+            urlencoding::encode(rkey),
+        );
+
+        debug!(url = %url, "Fetching record from PDS");
+
+        let response = self.client.get(&url).send().await?;
+
+        if !response.status().is_success() {
+            warn!(status = %response.status(), url = %url, "Failed to fetch record");
+            return Err(BlobResolverError::RecordFetch(format!(
+                "PDS returned status {}",
+                response.status()
+            )));
+        }
+
+        let body: serde_json::Value = response.json().await?;
+        body.get("value").cloned().ok_or_else(|| {
+            BlobResolverError::RecordFetch("getRecord response missing `value` field".to_string())
+        })
     }
 }
 
