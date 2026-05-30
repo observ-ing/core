@@ -21,7 +21,7 @@ import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
 import { useAppSelector } from "../../store";
 import { getImageUrl } from "../../services/api";
-import { useLikeToggle } from "../../hooks/useLikeToggle";
+import { useLike } from "../../lib/query/mutations";
 import { TaxonLink } from "../common/TaxonLink";
 import { getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
@@ -36,10 +36,11 @@ interface FeedItemProps {
 
 export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const { liked, likeCount, handleLikeToggle } = useLikeToggle(
-    observation.viewerHasLiked ?? false,
-    observation.likeCount ?? 0,
-  );
+  // Like state lives in the query cache: the optimistic mutation patches the
+  // occurrence in every cache that holds it, so reading the prop is reactive.
+  const liked = observation.viewerHasLiked ?? false;
+  const likeCount = observation.likeCount ?? 0;
+  const like = useLike();
   const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -214,7 +215,9 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
           <span>
             <IconButton
               size="small"
-              onClick={() => handleLikeToggle(observation.uri, observation.cid)}
+              onClick={() =>
+                like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+              }
               disabled={!currentUser}
               aria-label={liked ? "Unlike" : "Like"}
               sx={{
