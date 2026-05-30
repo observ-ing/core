@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Box,
@@ -24,18 +24,15 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import {
-  fetchObservation,
-  getImageUrl,
-  deleteIdentification,
-  pollObservation,
-} from "../../services/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { getImageUrl, deleteIdentification, pollObservation } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { useLikeToggle } from "../../hooks/useLikeToggle";
+import { useObservation } from "../../lib/query/hooks";
+import { useLike } from "../../lib/query/mutations";
+import { qk } from "../../lib/query/keys";
 import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
-import type { Occurrence, Identification, Comment } from "../../services/types";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
@@ -59,77 +56,42 @@ export function ObservationDetail() {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
 
-  const [observation, setObservation] = useState<Occurrence | null>(null);
-  const [identifications, setIdentifications] = useState<Identification[]>([]);
-  const [comments, setComments] = useState<Comment[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const { liked, setLiked, likeCount, setLikeCount, handleLikeToggle } = useLikeToggle();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const menuOpen = Boolean(anchorEl);
+
+  // Reconstruct AT URI from route params
+  const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
+
+  const queryClient = useQueryClient();
+  const obsQuery = useObservation(atUri ?? undefined);
+  const observation = obsQuery.data?.occurrence ?? null;
+  const identifications = obsQuery.data?.identifications ?? [];
+  const comments = obsQuery.data?.comments ?? [];
+  const loading = obsQuery.isLoading;
+
+  // Like state is sourced from the cached occurrence; the optimistic mutation
+  // patches it in place (and across every other cache that holds it).
+  const liked = observation?.viewerHasLiked ?? false;
+  const likeCount = observation?.likeCount ?? 0;
+  const like = useLike();
 
   usePageTitle(
     observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Observation",
   );
 
-  // Reconstruct AT URI from route params
-  const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
-
-  useEffect(() => {
-    if (!atUri) {
-      setError("No observation URI provided");
-      setLoading(false);
-      return;
-    }
-
-    async function loadObservation() {
-      setLoading(true);
-      setError(null);
-
-      if (!atUri) return;
-      const result = await fetchObservation(atUri);
-      if (result?.occurrence) {
-        setObservation(result.occurrence);
-        setLiked(result.occurrence.viewerHasLiked ?? false);
-        setLikeCount(result.occurrence.likeCount ?? 0);
-        setIdentifications(result.identifications || []);
-        setComments(result.comments || []);
-      } else {
-        setError("Observation not found");
-      }
-      setLoading(false);
-    }
-
-    loadObservation();
-  }, [atUri, setLiked, setLikeCount]);
+  // After a child mutation (identification/comment/delete) lands, refetch the
+  // detail so the new state shows.
+  const refreshObservation = () => {
+    if (atUri) void queryClient.invalidateQueries({ queryKey: qk.observation(atUri) });
+  };
 
   const handleBack = () => {
     if (window.history.length > 1) {
       navigate(-1);
     } else {
       navigate("/");
-    }
-  };
-
-  const handleIdentificationSuccess = async () => {
-    if (atUri) {
-      const result = await fetchObservation(atUri);
-      if (result?.occurrence) {
-        setObservation(result.occurrence);
-        setIdentifications(result.identifications || []);
-        setComments(result.comments || []);
-      }
-    }
-  };
-
-  const handleCommentAdded = async () => {
-    if (atUri) {
-      const result = await fetchObservation(atUri);
-      if (result) {
-        setComments(result.comments || []);
-      }
     }
   };
 
@@ -174,12 +136,12 @@ export function ObservationDetail() {
     );
   }
 
-  if (error || !observation) {
+  if (!observation) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
         <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
           <Typography color="error" sx={{ mb: 2 }}>
-            {error || "Observation not found"}
+            {!atUri ? "No observation URI provided" : "Observation not found"}
           </Typography>
           <Button variant="outlined" onClick={handleBack}>
             Go Back
@@ -310,7 +272,9 @@ export function ObservationDetail() {
             <span>
               <IconButton
                 size="small"
-                onClick={() => observation && handleLikeToggle(observation.uri, observation.cid)}
+                onClick={() =>
+                  like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+                }
                 disabled={!user}
                 aria-label={liked ? "Unlike" : "Like"}
                 sx={{
@@ -523,7 +487,7 @@ export function ObservationDetail() {
                       );
                     }
                     dispatch(addToast({ message: "Identification deleted", type: "success" }));
-                    await handleIdentificationSuccess();
+                    refreshObservation();
                   } catch (error) {
                     const message = getErrorMessage(error, "Failed to delete identification");
                     dispatch(addToast({ message, type: "error" }));
@@ -552,7 +516,7 @@ export function ObservationDetail() {
                       }
                       latitude={observation.location?.latitude}
                       longitude={observation.location?.longitude}
-                      onSuccess={handleIdentificationSuccess}
+                      onSuccess={refreshObservation}
                     />
                   ) : (
                     <Typography
@@ -577,7 +541,7 @@ export function ObservationDetail() {
               observationUri={observation.uri}
               observationCid={observation.cid}
               comments={comments}
-              onCommentAdded={handleCommentAdded}
+              onCommentAdded={refreshObservation}
             />
           </Box>
         </Box>

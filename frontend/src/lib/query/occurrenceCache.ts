@@ -30,8 +30,7 @@ export function setOccurrenceLike(uri: string, liked: boolean): void {
   // Infinite list caches (feed / profileFeed / taxonOccurrences).
   queryClient.setQueriesData<InfiniteData<OccurrencePage>>(
     {
-      predicate: (query) =>
-        (OCCURRENCE_LIST_TAGS as ReadonlyArray<unknown>).includes(query.queryKey[0]),
+      predicate: (query) => OCCURRENCE_LIST_TAGS.some((tag) => tag === query.queryKey[0]),
     },
     (data) => {
       if (!data?.pages) return data;

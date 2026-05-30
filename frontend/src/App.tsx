@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
@@ -6,7 +6,7 @@ import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth, loadUserPreferences } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
-import { fetchUnreadCount } from "./services/api";
+import { useUnreadCount } from "./lib/query/hooks";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
 import { LandingPage } from "./components/landing/LandingPage";
@@ -33,10 +33,12 @@ import "./styles/global.css";
 function AppContent() {
   const dispatch = useAppDispatch();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const user = useAppSelector((state) => state.auth.user);
   const isAuthLoading = useAppSelector((state) => state.auth.isLoading);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Unread notification badge — polls every 30s while signed in (see hook).
+  const { data: unreadData } = useUnreadCount();
+  const unreadCount = unreadData?.count ?? 0;
 
   const handleDrawerOpen = () => setMobileOpen(true);
   const handleDrawerClose = () => setMobileOpen(false);
@@ -44,27 +46,6 @@ function AppContent() {
   useEffect(() => {
     dispatch(checkAuth());
   }, [dispatch]);
-
-  // Poll unread notification count
-  useEffect(() => {
-    if (!user) {
-      setUnreadCount(0);
-      return;
-    }
-    const poll = async () => {
-      try {
-        const data = await fetchUnreadCount();
-        setUnreadCount(data.count);
-      } catch {
-        // Silent — count is best-effort.
-      }
-    };
-    void poll();
-    intervalRef.current = setInterval(poll, 30_000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [user]);
 
   useEffect(() => {
     if (user) dispatch(loadUserPreferences());

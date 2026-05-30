@@ -22,6 +22,7 @@ import {
 import type { FeedFilters } from "../../services/types";
 
 type Cursor = string | undefined;
+const initialCursor: Cursor = undefined;
 const nextCursor = (last: { cursor?: string }): Cursor => last.cursor ?? undefined;
 
 // ── Occurrence feeds (infinite) ──────────────────────────────────────────────
@@ -38,7 +39,7 @@ export function useFeed() {
       tab === "home" && isAuthenticated
         ? fetchHomeFeed(pageParam)
         : fetchExploreFeed(pageParam, filters),
-    initialPageParam: undefined as Cursor,
+    initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
   });
 }
@@ -47,7 +48,7 @@ export function useProfileFeed(did: string, type: "observations" | "identificati
   return useInfiniteQuery({
     queryKey: qk.profileFeed(did, type),
     queryFn: ({ pageParam }: { pageParam: Cursor }) => fetchProfileFeed(did, pageParam, type),
-    initialPageParam: undefined as Cursor,
+    initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
     enabled: !!did,
   });
@@ -58,7 +59,7 @@ export function useTaxonOccurrences(kingdomOrId: string, name?: string) {
     queryKey: qk.taxonOccurrences(kingdomOrId, name),
     queryFn: ({ pageParam }: { pageParam: Cursor }) =>
       fetchTaxonObservations(kingdomOrId, name, pageParam),
-    initialPageParam: undefined as Cursor,
+    initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
     enabled: !!kingdomOrId,
     placeholderData: keepPreviousData,
@@ -70,7 +71,7 @@ export function useTaxonOccurrences(kingdomOrId: string, name?: string) {
 export function useObservation(uri: string | undefined) {
   return useQuery({
     queryKey: qk.observation(uri ?? ""),
-    queryFn: () => fetchObservation(uri!),
+    queryFn: () => fetchObservation(uri ?? ""),
     enabled: !!uri,
   });
 }
@@ -78,7 +79,7 @@ export function useObservation(uri: string | undefined) {
 export function useTaxon(kingdomOrId: string | undefined, name?: string) {
   return useQuery({
     queryKey: qk.taxon(kingdomOrId ?? "", name),
-    queryFn: () => fetchTaxon(kingdomOrId!, name),
+    queryFn: () => fetchTaxon(kingdomOrId ?? "", name),
     enabled: !!kingdomOrId,
     // Keep the prior taxon's detail visible while navigating to a new one,
     // matching the old atomic-swap behavior instead of flashing a skeleton.
@@ -130,7 +131,7 @@ export function useNotifications() {
   return useInfiniteQuery({
     queryKey: qk.notifications(),
     queryFn: ({ pageParam }: { pageParam: Cursor }) => fetchNotifications(pageParam),
-    initialPageParam: undefined as Cursor,
+    initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
   });
 }
