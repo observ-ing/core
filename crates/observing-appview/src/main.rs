@@ -264,6 +264,18 @@ async fn main() {
 
     info!(port = config.port, "Listening");
 
+    // Surface the app's "front door" URL so humans (and tools) know where to
+    // open it. appview is always the front door on `PORT` — NOT the Vite dev
+    // server's :5173. In local dev the OAuth callback is registered at
+    // 127.0.0.1, so browsing at `localhost` breaks the session cookie origin.
+    match &config.public_url {
+        Some(url) => info!("Serving at {url}"),
+        None => info!(
+            "Open the app at http://127.0.0.1:{}  (use 127.0.0.1, not localhost, so OAuth callback cookies match)",
+            config.port
+        ),
+    }
+
     axum::serve(listener, app).await.expect("Server failed");
 }
 
