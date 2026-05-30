@@ -6,42 +6,90 @@
       {
         "ordinal": 0,
         "name": "uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "uri"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "collection",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "collection"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "did",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "did"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "action",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "action"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "last_error",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "last_error"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "attempts",
-        "type_info": "Int4"
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "attempts"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "first_attempt_at: DateTime<Utc>",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "first_attempt_at"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "last_attempt_at: DateTime<Utc>",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "last_attempt_at"
+          }
+        }
       }
     ],
     "parameters": {

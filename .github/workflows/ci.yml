@@ -252,18 +252,42 @@ jobs:
 
   rust-sqlx:
     runs-on: ubuntu-latest
+    # sqlx-cli 0.9 `prepare --check` requires a live database connection; the
+    # offline-without-DB mode that 0.8.x supported is gone. Stand up the same
+    # Postgres service the e2e/test jobs use and run migrations first so the
+    # query macros can re-describe against the real schema.
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: observing
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94; we pin to 1.93
-          # in rust-toolchain.toml. Workspace uses sqlx 0.8.x, so 0.8.6
+          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94, satisfied by the
+          # rust-toolchain.toml pin. Workspace uses sqlx 0.9.x, so 0.9.0
           # matches. Bump in lockstep when the toolchain pin moves.
-          tool: sqlx-cli@0.8.6
+          tool: sqlx-cli@0.9.0
           no-default-features: true
           features: postgres
+      - name: Run database migrations
+        # Sets the database-level search_path (ingester, appview, public) so
+        # the unqualified table names in the query macros resolve.
+        run: sqlx migrate run --source crates/observing-db/migrations
       - run: cargo sqlx prepare --workspace --check
 
   rust-lexicons-check:
@@ -321,7 +345,7 @@ jobs:
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
           # See rust-sqlx job above for rationale on the version pin.
-          tool: sqlx-cli@0.8.6
+          tool: sqlx-cli@0.9.0
           no-default-features: true
           features: postgres
       - name: Run database migrations and seed

@@ -6,37 +6,79 @@
       {
         "ordinal": 0,
         "name": "uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "uri"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "collection",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "collection"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "did",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "did"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "cid",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "cid"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "action",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "action"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "record_json",
-        "type_info": "Jsonb"
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "record_json"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "last_attempt_at!: DateTime<Utc>",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "failed_records",
+            "name": "last_attempt_at"
+          }
+        }
       }
     ],
     "parameters": {

@@ -6,72 +6,156 @@
       {
         "ordinal": 0,
         "name": "uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "uri"
+          }
+        }
       },
       {
         "ordinal": 1,
         "name": "cid",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "cid"
+          }
+        }
       },
       {
         "ordinal": 2,
         "name": "did",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "did"
+          }
+        }
       },
       {
         "ordinal": 3,
         "name": "subject_a_occurrence_uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_a_occurrence_uri"
+          }
+        }
       },
       {
         "ordinal": 4,
         "name": "subject_a_taxon_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_a_taxon_name"
+          }
+        }
       },
       {
         "ordinal": 5,
         "name": "subject_a_kingdom",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_a_kingdom"
+          }
+        }
       },
       {
         "ordinal": 6,
         "name": "subject_b_occurrence_uri",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_b_occurrence_uri"
+          }
+        }
       },
       {
         "ordinal": 7,
         "name": "subject_b_taxon_name",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_b_taxon_name"
+          }
+        }
       },
       {
         "ordinal": 8,
         "name": "subject_b_kingdom",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "subject_b_kingdom"
+          }
+        }
       },
       {
         "ordinal": 9,
         "name": "interaction_type",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "interaction_type"
+          }
+        }
       },
       {
         "ordinal": 10,
         "name": "direction",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "direction"
+          }
+        }
       },
       {
         "ordinal": 11,
         "name": "comment",
-        "type_info": "Text"
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "comment"
+          }
+        }
       },
       {
         "ordinal": 12,
         "name": "created_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "created_at"
+          }
+        }
       },
       {
         "ordinal": 13,
         "name": "indexed_at",
-        "type_info": "Timestamptz"
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "interactions",
+            "name": "indexed_at"
+          }
+        }
       }
     ],
     "parameters": {

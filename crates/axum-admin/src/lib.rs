@@ -276,7 +276,9 @@ async fn list(
         offset = offset,
     );
 
-    let mut query = sqlx::query_scalar::<_, JsonValue>(&sql);
+    // SQL is built from whitelisted, `quote_ident`-quoted identifiers with all
+    // values bound via `$1`, so the dynamic string is safe to assert.
+    let mut query = sqlx::query_scalar::<_, JsonValue>(sqlx::AssertSqlSafe(sql));
     if let Some(s) = &search_param {
         query = query.bind(s);
     }
@@ -316,7 +318,8 @@ async fn detail(
         tbl = quote_ident(&table),
         pk = quote_ident(pk),
     );
-    let row: Option<JsonValue> = sqlx::query_scalar(&sql)
+    // Identifiers are `quote_ident`-quoted and the pk value is bound via `$1`.
+    let row: Option<JsonValue> = sqlx::query_scalar(sqlx::AssertSqlSafe(sql))
         .bind(&pk_value)
         .fetch_optional(&admin.pool)
         .await?;

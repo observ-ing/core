@@ -69,7 +69,7 @@ pub async fn get_explore_feed(
 
 /// Push a WHERE clause matching [`crate::quality::compute_issues`] returning
 /// an empty list for the row. Keep these two in sync.
-fn push_quality_filter(qb: &mut QueryBuilder<'_, Postgres>, quality: QualityFilter) {
+fn push_quality_filter(qb: &mut QueryBuilder<Postgres>, quality: QualityFilter) {
     match quality {
         QualityFilter::Complete => {
             qb.push(" AND event_date IS NOT NULL");
@@ -342,11 +342,7 @@ pub async fn count_occurrences_by_taxon(
 /// not whatever the submitter typed into their occurrence record.
 /// Submitters routinely leave higher-rank columns blank, so filtering on
 /// `occurrences.kingdom` directly drops legitimate observations.
-fn push_consensus_rank_filter<'a>(
-    qb: &mut QueryBuilder<'a, Postgres>,
-    rank_lower: &str,
-    taxon_name: &'a str,
-) {
+fn push_consensus_rank_filter(qb: &mut QueryBuilder<Postgres>, rank_lower: &str, taxon_name: &str) {
     let column = match rank_lower {
         "species" | "subspecies" | "variety" => "t.species",
         "genus" => "t.genus",

@@ -55,7 +55,8 @@ pub async fn get_by_key(
     taxon_key: i64,
 ) -> Result<Option<TaxonRow>, sqlx::Error> {
     let sql = format!("SELECT {SELECT_COLUMNS} FROM taxa WHERE taxon_key = $1");
-    sqlx::query_as::<_, TaxonRow>(&sql)
+    // `sql` interpolates only the static `SELECT_COLUMNS` const; the key is bound.
+    sqlx::query_as::<_, TaxonRow>(sqlx::AssertSqlSafe(sql))
         .bind(taxon_key)
         .fetch_optional(executor)
         .await
@@ -80,7 +81,8 @@ pub async fn get_by_name(
            ORDER BY (status = 'ACCEPTED') DESC, taxon_key ASC
            LIMIT 1"#
     );
-    sqlx::query_as::<_, TaxonRow>(&sql)
+    // `sql` interpolates only the static `SELECT_COLUMNS` const; values are bound.
+    sqlx::query_as::<_, TaxonRow>(sqlx::AssertSqlSafe(sql))
         .bind(scientific_name)
         .bind(kingdom_hint)
         .fetch_optional(executor)

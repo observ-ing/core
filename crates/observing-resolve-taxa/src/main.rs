@@ -138,20 +138,22 @@ where
     if let Some(limit) = cli.limit {
         q.push_str(&format!(" LIMIT {limit}"));
     }
-    let pairs: Vec<(String, Option<String>)> = match sqlx::query(&q).fetch_all(pool).await {
-        Ok(rows) => rows
-            .into_iter()
-            .map(|r| {
-                let name: String = r.get("scientific_name");
-                let kingdom: Option<String> = r.try_get("kingdom").ok();
-                (name, kingdom)
-            })
-            .collect(),
-        Err(e) => {
-            error!(error = %e, "Failed to enumerate identifications needing resolution");
-            return Err(std::process::ExitCode::from(1));
-        }
-    };
+    // `q` is a static query plus an optional `LIMIT` from the typed `cli.limit` integer.
+    let pairs: Vec<(String, Option<String>)> =
+        match sqlx::query(sqlx::AssertSqlSafe(q)).fetch_all(pool).await {
+            Ok(rows) => rows
+                .into_iter()
+                .map(|r| {
+                    let name: String = r.get("scientific_name");
+                    let kingdom: Option<String> = r.try_get("kingdom").ok();
+                    (name, kingdom)
+                })
+                .collect(),
+            Err(e) => {
+                error!(error = %e, "Failed to enumerate identifications needing resolution");
+                return Err(std::process::ExitCode::from(1));
+            }
+        };
 
     info!(
         pairs = pairs.len(),
