@@ -5,10 +5,19 @@ edition = "2021"
 description = "A Django-admin-style read-only browser for Postgres, served as an axum Router"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["postgres"]
+# The Postgres/sqlx `TableSource` plugin. Disable to use `axum-admin` with
+# only your own `TableSource` implementations and no sqlx dependency.
+postgres = ["dep:sqlx"]
+
 [dependencies]
 axum = { workspace = true }
-sqlx = { workspace = true, features = ["json"] }
-tokio = { workspace = true }
+async-trait = "0.1"
 serde = { workspace = true }
 serde_json = { workspace = true }
 tracing = { workspace = true }
+sqlx = { workspace = true, features = ["json"], optional = true }
+
+[dev-dependencies]
+tokio = { workspace = true }

@@ -4,6 +4,8 @@
 //! Run with: `cargo run -p axum-admin --example serve`
 
 use axum::Router;
+use axum_admin::postgres::PgTable;
+use axum_admin::Admin;
 use sqlx::postgres::PgPoolOptions;
 
 #[tokio::main]
@@ -15,13 +17,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .connect(&url)
         .await?;
 
-    let admin = axum_admin::Admin::new(pool)
-        .table("public", "posts", |t| {
-            t.display_name("Posts").searchable(["title", "body"])
-        })
-        .table("public", "users", |t| {
-            t.display_name("Users").searchable(["name", "email"])
-        });
+    // Each table is a plugin. `PgTable` is the Postgres/sqlx implementation;
+    // register your own `TableSource` here too.
+    let admin = Admin::new()
+        .table(PgTable::new(pool.clone(), "public", "posts").searchable(["title", "body"]))
+        .table(PgTable::new(pool.clone(), "public", "users").display_name("Users"));
 
     let app = Router::new().nest("/admin", admin.into_router("/admin"));
 
