@@ -25,7 +25,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setFilters, loadInitialFeed } from "../../store/feedSlice";
+import { setFilters } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { KINGDOMS as KINGDOM_OPTIONS } from "../../lib/kingdoms";
@@ -67,8 +67,8 @@ export function ExploreFilterPanel() {
     if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
     if (filters.quality) newFilters.quality = filters.quality;
 
+    // Updating filters changes useFeed's query key, which refetches the feed.
     dispatch(setFilters(newFilters));
-    dispatch(loadInitialFeed());
   };
 
   // Clear all filters (including the quality toggle)
@@ -80,7 +80,6 @@ export function ExploreFilterPanel() {
     setEndDate(null);
 
     dispatch(setFilters({}));
-    dispatch(loadInitialFeed());
   };
 
   // Toggle the Complete chip. Applies immediately rather than waiting for
@@ -93,7 +92,6 @@ export function ExploreFilterPanel() {
       next.quality = "complete";
     }
     dispatch(setFilters(next));
-    dispatch(loadInitialFeed());
   };
 
   return (
