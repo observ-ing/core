@@ -65,6 +65,14 @@ pub trait TableSource: Send + Sync {
         self.name()
     }
 
+    /// Short label for the datastore backing this table — e.g. `"postgres"`,
+    /// `"http"`. Shown beside each entry in the UI so a remote/HTTP source is
+    /// visibly distinct from a real database table rather than blending in.
+    /// Defaults to `"—"`.
+    fn datastore(&self) -> &str {
+        "—"
+    }
+
     /// Whether to render a search box and pass `q` through to [`list`](TableSource::list).
     fn searchable(&self) -> bool {
         false
@@ -192,11 +200,12 @@ async fn index(State(state): State<Arc<AdminState>>) -> Html<String> {
             current_group = Some(group.as_str());
         }
         body.push_str(&format!(
-            r#"<li><a href="{prefix}/{group}/{name}">{label}</a></li>"#,
+            r#"<li><a href="{prefix}/{group}/{name}">{label}</a> <span class="ds">{ds}</span></li>"#,
             prefix = html_escape(&admin.prefix),
             group = html_escape(group),
             name = html_escape(name),
             label = html_escape(source.display_name()),
+            ds = html_escape(source.datastore()),
         ));
     }
     if current_group.is_some() {
@@ -225,6 +234,7 @@ async fn list(
         &group,
         &name,
         source.display_name(),
+        source.datastore(),
         source.searchable(),
         &meta,
         &rows,
@@ -253,6 +263,7 @@ async fn detail(
         &admin.prefix,
         &group,
         &name,
+        source.datastore(),
         &meta,
         &row,
     )))
@@ -268,6 +279,7 @@ fn render_list(
     group: &str,
     name: &str,
     label: &str,
+    datastore: &str,
     searchable: bool,
     meta: &TableMeta,
     rows: &[Row],
@@ -277,10 +289,11 @@ fn render_list(
     let pk = meta.primary_key.as_deref();
 
     let mut body = format!(
-        r#"<p><a href="{prefix}">← admin</a></p><h1>{group}.{label}</h1>"#,
+        r#"<p><a href="{prefix}">← admin</a></p><h1>{group}.{label} <span class="ds">{ds}</span></h1>"#,
         prefix = html_escape(prefix),
         group = html_escape(group),
         label = html_escape(label),
+        ds = html_escape(datastore),
     );
 
     if searchable {
@@ -335,12 +348,20 @@ fn render_list(
     layout(label, &body)
 }
 
-fn render_detail(prefix: &str, group: &str, name: &str, meta: &TableMeta, row: &Row) -> String {
+fn render_detail(
+    prefix: &str,
+    group: &str,
+    name: &str,
+    datastore: &str,
+    meta: &TableMeta,
+    row: &Row,
+) -> String {
     let mut body = format!(
-        r#"<p><a href="{prefix}/{group}/{name}">← {group}.{name}</a></p><h1>{group}.{name} detail</h1><table border=1 cellpadding=4>"#,
+        r#"<p><a href="{prefix}/{group}/{name}">← {group}.{name}</a></p><h1>{group}.{name} detail <span class="ds">{ds}</span></h1><table border=1 cellpadding=4>"#,
         prefix = html_escape(prefix),
         group = html_escape(group),
         name = html_escape(name),
+        ds = html_escape(datastore),
     );
     for col in &meta.columns {
         let cell = row.get(&col.name).map(json_cell).unwrap_or_default();
@@ -359,7 +380,10 @@ fn layout(title: &str, body: &str) -> String {
         r#"<!doctype html><html><head><meta charset="utf-8"><title>{title}</title>
 <style>body{{font:14px/1.4 system-ui;margin:2rem;max-width:1100px}}
 table{{border-collapse:collapse}}th,td{{vertical-align:top}}
-a{{color:#0366d6}}</style></head><body>{body}</body></html>"#,
+a{{color:#0366d6}}
+.ds{{font-size:.8em;font-weight:normal;color:#666;background:#f0f0f0;
+border:1px solid #ddd;border-radius:3px;padding:0 .35em;vertical-align:middle}}
+h1 .ds{{font-size:.5em}}</style></head><body>{body}</body></html>"#,
         title = html_escape(title),
         body = body,
     )
