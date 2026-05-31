@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from "@reduxjs/toolkit";
 import type { User } from "../services/types";
 import * as api from "../services/api";
+import { clearQueryCache } from "../lib/query/queryClient";
 
 interface AuthState {
   user: User | null;
@@ -24,6 +25,9 @@ export const loadUserPreferences = createAsyncThunk("auth/loadUserPreferences", 
 
 export const logout = createAsyncThunk("auth/logout", async () => {
   await api.logout();
+  // Drop all cached per-user server state so the next viewer on this device
+  // can't see the previous one's likes/feeds/notifications.
+  await clearQueryCache();
 });
 
 const authSlice = createSlice({
