@@ -34,7 +34,9 @@ RUN npm run build
 # ---------------------------------------------------------------------------
 # Stage: chef – install cargo-chef
 # ---------------------------------------------------------------------------
-FROM rust:1.93-slim-bookworm AS chef
+# Keep in lockstep with rust-toolchain.toml (and the sqlx MSRV it satisfies):
+# sqlx 0.9 requires rustc >= 1.94, so 1.93 here broke the image build / deploy.
+FROM rust:1.95-slim-bookworm AS chef
 
 RUN apt-get update && apt-get install -y \
     pkg-config \
