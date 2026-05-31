@@ -20,7 +20,6 @@ import {
   updateUserPreferences,
   submitComment,
   submitIdentification,
-  deleteIdentification,
 } from "../../services/api";
 import type { UpdatePreferencesRequest, UserPreferencesResponse } from "../../services/types";
 
@@ -132,16 +131,6 @@ export function useSubmitIdentification() {
     mutationFn: submitIdentification,
     onSuccess: (_data, vars) => {
       void queryClient.invalidateQueries({ queryKey: qk.observation(vars.occurrenceUri) });
-    },
-  });
-}
-
-/** Delete an identification by its uri; invalidate the observation it belongs to. */
-export function useDeleteIdentification(occurrenceUri: string) {
-  return useMutation({
-    mutationFn: (identificationUri: string) => deleteIdentification(identificationUri),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.observation(occurrenceUri) });
     },
   });
 }

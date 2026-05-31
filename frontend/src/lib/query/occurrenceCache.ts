@@ -49,3 +49,24 @@ export function setOccurrenceLike(uri: string, liked: boolean): void {
     data ? { ...data, occurrence: applyLike(data.occurrence, liked) } : data,
   );
 }
+
+/**
+ * Refetch every occurrence list (feed / profile / taxon). Call after a
+ * create / update / delete so the new/changed/removed observation is reflected
+ * everywhere — replaces the old full-page reloads.
+ */
+export function invalidateOccurrenceLists(): Promise<void> {
+  return queryClient.invalidateQueries({
+    predicate: (query) => OCCURRENCE_LIST_TAGS.some((tag) => tag === query.queryKey[0]),
+  });
+}
+
+/** Refetch one observation's detail cache (after an edit). */
+export function invalidateObservation(uri: string): Promise<void> {
+  return queryClient.invalidateQueries({ queryKey: ["observation", uri] });
+}
+
+/** Drop one observation's detail cache (after a delete). */
+export function removeObservation(uri: string): void {
+  queryClient.removeQueries({ queryKey: ["observation", uri] });
+}

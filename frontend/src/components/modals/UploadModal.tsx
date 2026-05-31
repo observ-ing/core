@@ -25,9 +25,11 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
+import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
+import { invalidateObservation, invalidateOccurrenceLists } from "../../lib/query/occurrenceCache";
 import {
   submitObservation,
   updateObservation,
@@ -58,6 +60,7 @@ function toDatetimeLocal(date: Date): string {
 
 export function UploadModal() {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
@@ -401,8 +404,14 @@ export function UploadModal() {
         );
       }
 
-      // Navigate to the observation page
-      window.location.href = getObservationUrl(observationUri);
+      // Refresh the feeds (and the observation's own detail, on edit) so the
+      // new/updated observation shows, then close the modal and client-side
+      // navigate to it — no full-page reload.
+      invalidateObservation(observationUri);
+      await invalidateOccurrenceLists();
+      dispatch(closeUploadModal());
+      resetForm();
+      navigate(getObservationUrl(observationUri));
     } catch (error) {
       dispatch(
         addToast({

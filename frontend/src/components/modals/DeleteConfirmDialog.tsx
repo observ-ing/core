@@ -13,6 +13,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { deleteObservation, pollObservation } from "../../services/api";
+import { invalidateOccurrenceLists, removeObservation } from "../../lib/query/occurrenceCache";
 import { getErrorMessage } from "../../lib/utils";
 
 export function DeleteConfirmDialog() {
@@ -37,9 +38,14 @@ export function DeleteConfirmDialog() {
     try {
       await deleteObservation(observation.uri);
 
-      // Wait for the ingester to remove the row; the navigate/reload below
-      // would otherwise briefly show the deleted observation in the feed.
+      // Wait for the ingester to remove the row; refreshing the feed caches
+      // before this would otherwise briefly show the deleted observation.
       await pollObservation(observation.uri, (r) => !r?.occurrence);
+
+      // Drop the detail cache and refetch the feeds so the observation
+      // disappears everywhere — no full-page reload needed.
+      removeObservation(observation.uri);
+      await invalidateOccurrenceLists();
 
       dispatch(
         addToast({
@@ -49,13 +55,9 @@ export function DeleteConfirmDialog() {
       );
       dispatch(closeDeleteConfirm());
 
-      // Navigate away if on the observation detail page
-      const isOnDetailPage = location.pathname.includes("/observation/");
-      if (isOnDetailPage) {
+      // If we were on the deleted observation's detail page, leave it.
+      if (location.pathname.includes("/observation/")) {
         navigate("/");
-      } else {
-        // Reload the page to refresh the feed
-        window.location.reload();
       }
     } catch (error) {
       const message = getErrorMessage(error, "Failed to delete observation");
