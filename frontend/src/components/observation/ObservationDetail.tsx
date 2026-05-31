@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import {
   Box,
@@ -33,7 +33,6 @@ import { checkAuth } from "../../store/authSlice";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
-import { LocationMap } from "../map/LocationMap";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
@@ -41,6 +40,12 @@ import { QualityIssueBadges } from "./QualityIssueBadges";
 import { UserCard } from "../common/UserCard";
 import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
+
+// Lazy so maplibre-gl is split into its own chunk, loaded only when an
+// observation actually has a location to map.
+const LocationMap = lazy(() =>
+  import("../map/LocationMap").then((m) => ({ default: m.LocationMap })),
+);
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -431,11 +436,13 @@ export function ObservationDetail() {
             </ListItem>
             {observation.location && (
               <Box sx={{ ml: 4.5, mb: 1 }}>
-                <LocationMap
-                  latitude={observation.location.latitude}
-                  longitude={observation.location.longitude}
-                  uncertaintyMeters={observation.location.uncertaintyMeters}
-                />
+                <Suspense fallback={<Box sx={{ height: 180 }} />}>
+                  <LocationMap
+                    latitude={observation.location.latitude}
+                    longitude={observation.location.longitude}
+                    uncertaintyMeters={observation.location.uncertaintyMeters}
+                  />
+                </Suspense>
               </Box>
             )}
           </List>
