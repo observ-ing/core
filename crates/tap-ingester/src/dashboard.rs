@@ -15,6 +15,9 @@
 //!                            loopback (JSON).
 //!   GET /api/failed-records  Recent rows from `ingester.failed_records`
 //!                            (JSON) for the dashboard's failures panel.
+//!   GET /api/repos           Per-repo Tap state (JSON): each tracked DID
+//!                            enriched with its `repo_info` (state, rev,
+//!                            error, retries, record count).
 
 use crate::{
     server::SharedState,
@@ -26,7 +29,7 @@ use axum::{
     routing::get,
     Router,
 };
-use observing_db::failed_records;
+use observing_db::{failed_records, repos};
 use serde::Serialize;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
@@ -60,6 +63,7 @@ pub fn router(state: DashboardState) -> Router {
         .route("/api/stats", get(stats))
         .route("/api/tap-stats", get(tap_stats))
         .route("/api/failed-records", get(failed_records_handler))
+        .route("/api/repos", get(repos_handler))
         .layer(CorsLayer::permissive())
         .with_state(state)
 }
@@ -221,6 +225,100 @@ async fn failed_records_handler(State(s): State<DashboardState>) -> Json<FailedR
         total,
         items,
         error,
+    })
+}
+
+/// One tracked repo's live Tap state, as rendered for the admin.
+#[derive(Serialize)]
+struct RepoRow {
+    did: String,
+    handle: String,
+    /// Tap's `RepoState`, lowercased (`active`/`resyncing`/`error`/…), or
+    /// `unknown` if `repo_info` failed for this DID.
+    state: String,
+    rev: String,
+    /// Tap-side error string for the repo (empty when healthy).
+    error: String,
+    retries: u32,
+    records: u64,
+    /// Set only when the `repo_info` call itself failed for this DID; the
+    /// other fields are then placeholders.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    info_error: Option<String>,
+}
+
+#[derive(Serialize)]
+struct ReposResponse {
+    repos: Vec<RepoRow>,
+    /// Top-level failure (pool/Tap not ready, or the DID query failed). Per-DID
+    /// `repo_info` failures are reported inline via `RepoRow::info_error`.
+    error: Option<String>,
+}
+
+/// Enumerate the DIDs that have produced ingested records and enrich each with
+/// its embedded-Tap `repo_info`. Tap has no "list tracked repos" endpoint, so
+/// the DID set comes from our own tables; `repo_info` is the per-DID lookup.
+async fn repos_handler(State(s): State<DashboardState>) -> Json<ReposResponse> {
+    let Some(pool) = s.pool.get() else {
+        return Json(ReposResponse {
+            repos: Vec::new(),
+            error: Some("database pool not yet initialized".to_string()),
+        });
+    };
+    let Some(tap) = s.tap.get() else {
+        return Json(ReposResponse {
+            repos: Vec::new(),
+            error: Some("tap not yet initialized".to_string()),
+        });
+    };
+
+    let dids = match repos::tracked_dids(pool).await {
+        Ok(dids) => dids,
+        Err(e) => {
+            warn!(error = %e, "tracked_dids query failed");
+            return Json(ReposResponse {
+                repos: Vec::new(),
+                error: Some(format!("dids: {e}")),
+            });
+        }
+    };
+
+    // Sequential is fine: the tracked set is tiny (single digits) and each
+    // call is a loopback request to the embedded Tap.
+    let mut rows = Vec::with_capacity(dids.len());
+    for did in dids {
+        match tap.repo_info(&did).await {
+            Ok(info) => rows.push(RepoRow {
+                did: info.did,
+                handle: info.handle,
+                // RepoState is `#[serde(rename_all = "lowercase")]`, so it
+                // serializes to a bare string; pull that out for the row.
+                state: serde_json::to_value(info.state)
+                    .ok()
+                    .and_then(|v| v.as_str().map(str::to_string))
+                    .unwrap_or_else(|| "unknown".to_string()),
+                rev: info.rev,
+                error: info.error,
+                retries: info.retries,
+                records: info.records,
+                info_error: None,
+            }),
+            Err(e) => rows.push(RepoRow {
+                did,
+                handle: String::new(),
+                state: "unknown".to_string(),
+                rev: String::new(),
+                error: String::new(),
+                retries: 0,
+                records: 0,
+                info_error: Some(e.to_string()),
+            }),
+        }
+    }
+
+    Json(ReposResponse {
+        repos: rows,
+        error: None,
     })
 }
 
