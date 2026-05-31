@@ -558,13 +558,26 @@ jobs:
             --region=$REGION \
             --wait
 
+      # --no-cpu-throttling is load-bearing here, not a tuning knob. Cloud
+      # Run's default ("CPU only during request processing") throttles the
+      # instance to ~0 CPU whenever no HTTP request is in flight. But the
+      # ingester does all its work in a long-running background loop (consume
+      # the full network firehose via the embedded Tap, filter, upsert) — it
+      # is not request-driven. Under the default the consumer is CPU-starved,
+      # caps at a few hundred events/s, can't keep pace with the live
+      # firehose, and falls irrecoverably behind the relay's ~72h retention
+      # window (see incident 2026-05-31). always-allocated CPU lets the loop
+      # run at full speed. --cpu=2 gives headroom for decoding every event on
+      # the network (CBOR decode is CPU-bound). min/max-instances=1 keeps it a
+      # singleton so there's exactly one consumer per cursor.
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
             --image=$REGISTRY/tap-ingester:latest \
             --region=$REGION \
             --allow-unauthenticated \
-            --cpu=1 \
+            --cpu=2 \
+            --no-cpu-throttling \
             --memory=2Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=5,TAP_INHERIT_STDIO=1 \
