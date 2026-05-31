@@ -2,7 +2,8 @@ import { useEffect, useRef, useCallback } from "react";
 import { Box, Container, Typography, CircularProgress } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { loadFeed, loadInitialFeed, switchTab } from "../../store/feedSlice";
+import { switchTab } from "../../store/feedSlice";
+import { useFeed } from "../../lib/query/hooks";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
@@ -19,28 +20,28 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const { observations, isLoading, currentTab, hasMore } = useAppSelector((state) => state.feed);
+  const currentTab = useAppSelector((state) => state.feed.currentTab);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Sync route tab with store
+  // Sync route tab into the store; useFeed reads it back as a query input.
   useEffect(() => {
     if (tab !== currentTab) {
       dispatch(switchTab(tab));
     }
   }, [dispatch, tab, currentTab]);
 
-  useEffect(() => {
-    dispatch(loadInitialFeed());
-  }, [dispatch, currentTab]);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useFeed();
+  const observations = data?.pages.flatMap((page) => page.occurrences) ?? [];
+  const hasMore = hasNextPage;
 
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
-    if (!el || isLoading || !hasMore) return;
+    if (!el || isFetchingNextPage || !hasNextPage) return;
 
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-      dispatch(loadFeed());
+      void fetchNextPage();
     }
-  }, [dispatch, isLoading, hasMore]);
+  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
 
   const handleEdit = useCallback(
     (occurrence: Occurrence) => {
@@ -107,7 +108,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                 )}
               </Box>
 
-              {isLoading && observations.length > 0 && (
+              {isFetchingNextPage && (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
                   <CircularProgress color="primary" size={24} />
                 </Box>
@@ -144,7 +145,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
               {isLoading && observations.length === 0 && <FeedSkeletonList count={3} />}
 
-              {isLoading && observations.length > 0 && (
+              {isFetchingNextPage && (
                 <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
                   <CircularProgress color="primary" size={24} />
                 </Box>

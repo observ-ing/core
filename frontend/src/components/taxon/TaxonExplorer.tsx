@@ -2,9 +2,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Box, Container, Typography, Button, Drawer } from "@mui/material";
 import type { TreeViewDefaultItemModelProperties } from "@mui/x-tree-view";
-import { fetchTaxon, fetchTaxonObservations, fetchTaxonChildren } from "../../services/api";
-import type { TaxonDetail, Occurrence, TaxaResult } from "../../services/types";
+import { fetchTaxonChildren } from "../../services/api";
+import type { TaxonDetail, TaxaResult } from "../../services/types";
 import { slugToName, nameToSlug } from "../../lib/taxonSlug";
+import { useTaxon, useTaxonOccurrences } from "../../lib/query/hooks";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { TaxonDetailPanel } from "./TaxonDetailPanel";
@@ -55,14 +56,6 @@ export function TaxonExplorer() {
   const { kingdom, name, id } = useParams<{ kingdom?: string; name?: string; id?: string }>();
   const navigate = useNavigate();
 
-  const [taxon, setTaxon] = useState<TaxonDetail | null>(null);
-  const [observations, setObservations] = useState<Occurrence[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [hasMore, setHasMore] = useState(true);
-
   // Tree state
   const nodesRef = useRef<Map<string, TreeNode>>(new Map());
   const [treeItems, setTreeItems] = useState<TaxonTreeItem[]>([]);
@@ -74,6 +67,35 @@ export function TaxonExplorer() {
   const lookupKingdom = kingdom ? slugToName(decodeURIComponent(kingdom)) : undefined;
   const lookupName = name ? slugToName(decodeURIComponent(name)) : undefined;
   const lookupId = id ? slugToName(decodeURIComponent(id)) : undefined;
+
+  // Map the route params onto the (kingdomOrId, name?) arg shape the read hooks
+  // expect — matching how the old fetchTaxon/fetchTaxonObservations were called.
+  const queryKingdomOrId =
+    lookupKingdom && lookupName ? lookupKingdom : (lookupId ?? lookupKingdom ?? "");
+  const queryName = lookupKingdom && lookupName ? lookupName : undefined;
+
+  const taxonQuery = useTaxon(queryKingdomOrId || undefined, queryName);
+  const occurrencesQuery = useTaxonOccurrences(queryKingdomOrId, queryName);
+
+  const taxon = taxonQuery.data ?? null;
+  const observations = occurrencesQuery.data?.pages.flatMap((page) => page.occurrences) ?? [];
+  const hasMore = occurrencesQuery.hasNextPage;
+  const loadingMore = occurrencesQuery.isFetchingNextPage;
+  const noTaxonSpecified = !queryKingdomOrId && !lookupId;
+  // Mirror the old `loading` flag: true while the taxon read is in flight (on
+  // first load and on every subsequent navigation) so the tree stays frozen.
+  // The disabled query (no taxon specified) is never "loading" — it shows the
+  // error view immediately, as before.
+  const loading = !noTaxonSpecified && taxonQuery.isFetching;
+  const error = noTaxonSpecified
+    ? "No taxon specified"
+    : taxonQuery.isError
+      ? taxonQuery.error instanceof Error
+        ? taxonQuery.error.message
+        : "Failed to load taxon"
+      : !taxonQuery.isFetching && taxonQuery.isSuccess && taxon === null
+        ? "Taxon not found"
+        : null;
 
   usePageTitle(taxon?.scientificName || "Taxon");
 
@@ -252,101 +274,50 @@ export function TaxonExplorer() {
     [addChildrenToNodes, rebuildTreeFromRoot],
   );
 
-  // Fetch taxon data when URL changes
+  // When the taxon read resolves, merge it into the tree and lazily backfill
+  // each ancestor's children (aunts/uncles) in the background. The taxon +
+  // observations fetches themselves are handled by the read hooks above.
   useEffect(() => {
-    if (!lookupKingdom && !lookupId) {
-      setError("No taxon specified");
-      setLoading(false);
-      return;
-    }
+    if (!taxon) return;
 
     // Guard against a stale invocation (e.g. StrictMode double-fire, or rapid
-    // navigation) overwriting good state with a late "not found" response.
+    // navigation) backfilling the tree after the taxon has already changed.
     let cancelled = false;
 
-    async function loadTaxon() {
-      setLoading(true);
-      setError(null);
+    mergeIntoTree(taxon);
 
-      // Fetch taxon + observations in parallel so we can swap both in atomically
-      // once ready, instead of updating the header before observations arrive.
-      const taxonPromise =
-        lookupKingdom && lookupName
-          ? fetchTaxon(lookupKingdom, lookupName)
-          : fetchTaxon(lookupId ?? lookupKingdom ?? "");
-
-      const obsPromise: Promise<{ occurrences: Occurrence[]; cursor?: string }> = (async () => {
-        try {
-          return lookupKingdom && lookupName
-            ? await fetchTaxonObservations(lookupKingdom, lookupName)
-            : await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "");
-        } catch {
-          return { occurrences: [] };
-        }
-      })();
-
-      let result: TaxonDetail | null;
-      try {
-        result = await taxonPromise;
-      } catch (e) {
-        if (cancelled) return;
-        setError(e instanceof Error ? e.message : "Failed to load taxon");
-        setLoading(false);
-        return;
-      }
-
-      if (cancelled) return;
-
-      if (!result) {
-        setError("Taxon not found");
-        setLoading(false);
-        return;
-      }
-
-      const obsResult = await obsPromise;
-      if (cancelled) return;
-
-      setTaxon(result);
-      mergeIntoTree(result);
-      setObservations(obsResult.occurrences);
-      setCursor(obsResult.cursor);
-      setHasMore(!!obsResult.cursor);
-      setLoading(false);
-
-      // Fetch siblings of each ancestor in parallel so the tree shows
-      // aunts/uncles (and direct siblings of the current taxon) without
-      // waiting for user interaction. Runs in the background — don't await.
-      const k = result.kingdom || lookupKingdom || "";
-      const ancestors = result.ancestors ?? [];
-      if (ancestors.length > 0) {
-        Promise.all(
-          ancestors.map(async (a) => {
-            const isKingdom = a.rank === "kingdom";
-            const ancestorId = isKingdom ? a.name : nodeId(k, a.name);
-            // Kingdom-rank ancestors are looked up with their own name as the kingdom param
-            const lookupK = isKingdom ? a.name : k;
-            try {
-              const children = await fetchTaxonChildren(lookupK, a.name);
-              return { ancestorId, children };
-            } catch {
-              return null;
-            }
-          }),
-        ).then((settled) => {
-          if (cancelled) return;
-          for (const entry of settled) {
-            if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
+    // Fetch siblings of each ancestor in parallel so the tree shows
+    // aunts/uncles (and direct siblings of the current taxon) without
+    // waiting for user interaction. Runs in the background — don't await.
+    const k = taxon.kingdom || lookupKingdom || "";
+    const ancestors = taxon.ancestors ?? [];
+    if (ancestors.length > 0) {
+      Promise.all(
+        ancestors.map(async (a) => {
+          const isKingdom = a.rank === "kingdom";
+          const ancestorId = isKingdom ? a.name : nodeId(k, a.name);
+          // Kingdom-rank ancestors are looked up with their own name as the kingdom param
+          const lookupK = isKingdom ? a.name : k;
+          try {
+            const children = await fetchTaxonChildren(lookupK, a.name);
+            return { ancestorId, children };
+          } catch {
+            return null;
           }
-          rebuildTreeFromRoot();
-        });
-      }
+        }),
+      ).then((settled) => {
+        if (cancelled) return;
+        for (const entry of settled) {
+          if (entry) addChildrenToNodes(entry.ancestorId, entry.children);
+        }
+        rebuildTreeFromRoot();
+      });
     }
 
-    loadTaxon();
     return () => {
       cancelled = true;
     };
-  }, [lookupKingdom, lookupName, lookupId, mergeIntoTree, addChildrenToNodes, rebuildTreeFromRoot]);
+  }, [taxon, lookupKingdom, mergeIntoTree, addChildrenToNodes, rebuildTreeFromRoot]);
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -356,23 +327,9 @@ export function TaxonExplorer() {
     }
   };
 
-  const loadMoreObservations = async () => {
-    if (!cursor || loadingMore) return;
-    setLoadingMore(true);
-    try {
-      let result;
-      if (lookupKingdom && lookupName) {
-        result = await fetchTaxonObservations(lookupKingdom, lookupName, cursor);
-      } else {
-        result = await fetchTaxonObservations(lookupId ?? lookupKingdom ?? "", undefined, cursor);
-      }
-      setObservations((prev) => [...prev, ...result.occurrences]);
-      setCursor(result.cursor);
-      setHasMore(!!result.cursor);
-    } catch {
-      setHasMore(false);
-    }
-    setLoadingMore(false);
+  const loadMoreObservations = () => {
+    if (!hasMore || loadingMore) return;
+    void occurrencesQuery.fetchNextPage();
   };
 
   const handleTreeSelect = (id: string) => {

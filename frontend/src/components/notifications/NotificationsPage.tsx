@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
@@ -14,68 +14,37 @@ import {
   ListItemButton,
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { fetchNotifications, markNotificationRead, getImageUrl } from "../../services/api";
+import { getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
+import { useNotifications } from "../../lib/query/hooks";
+import { useMarkNotificationRead } from "../../lib/query/mutations";
 
 export function NotificationsPage() {
   usePageTitle("Notifications");
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [cursor, setCursor] = useState<string | undefined>();
-  const [hasMore, setHasMore] = useState(true);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const loadNotifications = useCallback(async (loadCursor?: string) => {
-    setIsLoading(true);
-    try {
-      const data = await fetchNotifications(loadCursor);
-      if (loadCursor) {
-        setNotifications((prev) => [...prev, ...data.notifications]);
-      } else {
-        setNotifications(data.notifications);
-      }
-      setCursor(data.cursor ?? undefined);
-      setHasMore(data.notifications.length === 20);
-    } catch {
-      // Ignore fetch errors — previously loaded notifications remain visible
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadNotifications();
-  }, [loadNotifications]);
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useNotifications();
+  const notifications = data?.pages.flatMap((page) => page.notifications) ?? [];
+  const markRead = useMarkNotificationRead();
 
   const handleScroll = useCallback(() => {
     const el = contentRef.current;
-    if (!el || isLoading || !hasMore) return;
+    if (!el || isFetchingNextPage || !hasNextPage) return;
     if (el.scrollTop + el.clientHeight >= el.scrollHeight - 200) {
-      loadNotifications(cursor);
+      void fetchNextPage();
     }
-  }, [isLoading, hasMore, cursor, loadNotifications]);
+  }, [fetchNextPage, isFetchingNextPage, hasNextPage]);
 
-  useEffect(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    el.addEventListener("scroll", handleScroll);
-    return () => el.removeEventListener("scroll", handleScroll);
-  }, [handleScroll]);
-
-  const handleMarkAllRead = async () => {
-    await markNotificationRead();
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const handleMarkAllRead = () => {
+    markRead.mutate(undefined);
   };
 
-  const handleClick = async (notification: Notification) => {
+  const handleClick = (notification: Notification) => {
     if (!notification.read) {
-      await markNotificationRead(notification.id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n)),
-      );
+      markRead.mutate(notification.id);
     }
     navigate(getObservationUrl(notification.subjectUri));
   };
@@ -96,7 +65,11 @@ export function NotificationsPage() {
   const hasUnread = notifications.some((n) => !n.read);
 
   return (
-    <Box ref={contentRef} sx={{ flex: 1, overflow: "auto", height: "100%" }}>
+    <Box
+      ref={contentRef}
+      onScroll={handleScroll}
+      sx={{ flex: 1, overflow: "auto", height: "100%" }}
+    >
       <Container maxWidth="sm" sx={{ py: 3 }}>
         <Box
           sx={{
@@ -175,7 +148,7 @@ export function NotificationsPage() {
           ))}
         </List>
 
-        {isLoading && (
+        {(isLoading || isFetchingNextPage) && (
           <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
             <CircularProgress size={24} />
           </Box>
