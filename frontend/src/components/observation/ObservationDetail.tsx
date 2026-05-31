@@ -516,7 +516,6 @@ export function ObservationDetail() {
                       }
                       latitude={observation.location?.latitude}
                       longitude={observation.location?.longitude}
-                      onSuccess={refreshObservation}
                     />
                   ) : (
                     <Typography
@@ -541,7 +540,6 @@ export function ObservationDetail() {
               observationUri={observation.uri}
               observationCid={observation.cid}
               comments={comments}
-              onCommentAdded={refreshObservation}
             />
           </Box>
         </Box>
