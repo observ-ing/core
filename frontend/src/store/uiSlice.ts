@@ -84,7 +84,9 @@ const uiSlice = createSlice({
     },
     addToast: (state, action: PayloadAction<{ message: string; type: "success" | "error" }>) => {
       state.toasts.push({
-        id: Date.now().toString(),
+        // randomUUID, not Date.now(): two toasts dispatched in the same tick
+        // would collide, and removeToast filters by id — removing both.
+        id: crypto.randomUUID(),
         ...action.payload,
       });
     },
