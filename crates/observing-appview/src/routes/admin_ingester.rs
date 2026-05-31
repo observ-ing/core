@@ -27,6 +27,9 @@ enum View {
     /// The embedded Tap's state — repo/record/buffer counts and cursors — as
     /// metric/value rows. From `/api/tap-stats`.
     TapState,
+    /// One row per tracked repo, each enriched with its Tap `repo_info`
+    /// (state, rev, error, retries, record count). From `/api/repos`.
+    Repos,
 }
 
 impl View {
@@ -35,6 +38,7 @@ impl View {
         match self {
             View::RecentEvents | View::Stats => "/api/stats",
             View::TapState => "/api/tap-stats",
+            View::Repos => "/api/repos",
         }
     }
 
@@ -44,6 +48,7 @@ impl View {
             View::RecentEvents => "recent_events",
             View::Stats => "stats",
             View::TapState => "tap_state",
+            View::Repos => "repos",
         }
     }
 }
@@ -61,7 +66,7 @@ impl IngesterApi {
     pub fn tables(base_url: &str) -> Vec<IngesterApi> {
         let base = base_url.trim_end_matches('/').to_string();
         let client = reqwest::Client::new();
-        [View::RecentEvents, View::Stats, View::TapState]
+        [View::RecentEvents, View::Stats, View::TapState, View::Repos]
             .into_iter()
             .map(|view| IngesterApi {
                 client: client.clone(),
@@ -129,6 +134,24 @@ impl IngesterApi {
                 }
                 rows
             }
+            // Each element is already a per-repo object; pass them through.
+            View::Repos => {
+                let mut rows = snapshot
+                    .get("repos")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                // If the list came back empty *and* the ingester reported a
+                // top-level error (pool/Tap not ready, DID query failed),
+                // surface it as a row so the admin sees why the table is empty
+                // rather than an unexplained blank.
+                if rows.is_empty() {
+                    if let Some(err) = snapshot.get("error").and_then(Value::as_str) {
+                        rows.push(json!({ "did": "(error)", "info_error": err }));
+                    }
+                }
+                rows
+            }
         }
     }
 }
@@ -169,6 +192,19 @@ impl TableSource for IngesterApi {
         let (cols, pk) = match self.view {
             View::RecentEvents => (columns(&["type", "action", "uri", "time"]), "uri"),
             View::Stats | View::TapState => (columns(&["metric", "value"]), "metric"),
+            View::Repos => (
+                columns(&[
+                    "did",
+                    "handle",
+                    "state",
+                    "rev",
+                    "retries",
+                    "records",
+                    "error",
+                    "info_error",
+                ]),
+                "did",
+            ),
         };
         Ok(TableMeta {
             columns: cols,
@@ -272,6 +308,31 @@ mod tests {
         assert_eq!(errors["value"], json!(["repo_count: boom"]));
         // Missing counts/cursors still render as null rows.
         assert_eq!(rows[0], json!({ "metric": "repo_count", "value": null }));
+    }
+
+    #[test]
+    fn repos_pass_through_each_repo_row() {
+        let snapshot = json!({
+            "repos": [
+                { "did": "did:plc:a", "handle": "a.test", "state": "active", "rev": "3k...", "error": "", "retries": 0, "records": 12 },
+                { "did": "did:plc:b", "handle": "", "state": "unknown", "rev": "", "error": "", "retries": 0, "records": 0, "info_error": "timeout" }
+            ],
+            "error": null
+        });
+        let rows = table("repos").rows_from(&snapshot);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["did"], "did:plc:a");
+        assert_eq!(rows[0]["state"], "active");
+        assert_eq!(rows[1]["info_error"], "timeout");
+    }
+
+    #[test]
+    fn repos_surface_top_level_error_when_empty() {
+        let snapshot = json!({ "repos": [], "error": "tap not yet initialized" });
+        let rows = table("repos").rows_from(&snapshot);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0]["did"], "(error)");
+        assert_eq!(rows[0]["info_error"], "tap not yet initialized");
     }
 
     #[test]
