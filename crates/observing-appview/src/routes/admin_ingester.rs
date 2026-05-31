@@ -1,11 +1,12 @@
 //! HTTP-backed `TableSource` plugins that surface the tap-ingester service's
 //! runtime interface in the admin browser.
 //!
-//! The ingester keeps its live state in memory — per-collection counters plus
-//! the last few firehose events — and exposes it as JSON at `/api/stats`.
-//! These tables fetch that endpoint over HTTP and map the response into rows,
-//! so the ingester's interface is browseable from the same auth-gated admin
-//! surface as the Postgres tables, with no SQL backend behind it.
+//! The ingester keeps its live state in memory and exposes it as JSON — its
+//! own counters and recent events at `/api/stats`, and the embedded Tap's
+//! repo/record/buffer counts and cursors at `/api/tap-stats`. These tables
+//! fetch those endpoints over HTTP and map the responses into rows, so the
+//! ingester's interface is browseable from the same auth-gated admin surface
+//! as the Postgres tables, with no SQL backend behind it.
 //!
 //! This is the first non-Postgres `TableSource`: it proves the abstraction
 //! holds across a process boundary. Registered by `admin_browse::router` when
@@ -15,14 +16,36 @@ use async_trait::async_trait;
 use axum_admin::{AdminError, Column, ListQuery, Row, TableMeta, TableSource};
 use serde_json::{json, Value};
 
-/// Which slice of `/api/stats` a table presents.
+/// Which slice of the ingester's JSON API a table presents.
 #[derive(Clone, Copy)]
 enum View {
-    /// The last-N firehose events: type, action, uri, time.
+    /// The last-N firehose events: type, action, uri, time. From `/api/stats`.
     RecentEvents,
     /// The ingester's scalar state (connection, uptime, counters) as
-    /// metric/value rows.
+    /// metric/value rows. From `/api/stats`.
     Stats,
+    /// The embedded Tap's state — repo/record/buffer counts and cursors — as
+    /// metric/value rows. From `/api/tap-stats`.
+    TapState,
+}
+
+impl View {
+    /// The ingester endpoint this view reads.
+    fn endpoint(self) -> &'static str {
+        match self {
+            View::RecentEvents | View::Stats => "/api/stats",
+            View::TapState => "/api/tap-stats",
+        }
+    }
+
+    /// The table name within the `ingester` group.
+    fn name(self) -> &'static str {
+        match self {
+            View::RecentEvents => "recent_events",
+            View::Stats => "stats",
+            View::TapState => "tap_state",
+        }
+    }
 }
 
 /// One ingester table, backed by an HTTP GET to the ingester's JSON API.
@@ -34,28 +57,23 @@ pub struct IngesterApi {
 
 impl IngesterApi {
     /// Build every ingester table against `base_url` (e.g.
-    /// `http://localhost:9000`). The pair shares one `reqwest::Client`.
+    /// `http://localhost:9000`). They share one `reqwest::Client`.
     pub fn tables(base_url: &str) -> Vec<IngesterApi> {
         let base = base_url.trim_end_matches('/').to_string();
         let client = reqwest::Client::new();
-        vec![
-            IngesterApi {
+        [View::RecentEvents, View::Stats, View::TapState]
+            .into_iter()
+            .map(|view| IngesterApi {
                 client: client.clone(),
                 base_url: base.clone(),
-                view: View::RecentEvents,
-            },
-            IngesterApi {
-                client,
-                base_url: base,
-                view: View::Stats,
-            },
-        ]
+                view,
+            })
+            .collect()
     }
 
-    /// Fetch and parse `/api/stats`. Shared by every view since the endpoint
-    /// returns the whole snapshot in one document.
-    async fn fetch_stats(&self) -> Result<Value, AdminError> {
-        let url = format!("{}/api/stats", self.base_url);
+    /// Fetch and parse this view's endpoint.
+    async fn fetch(&self) -> Result<Value, AdminError> {
+        let url = format!("{}{}", self.base_url, self.view.endpoint());
         self.client
             .get(&url)
             .send()
@@ -89,6 +107,28 @@ impl IngesterApi {
                 }
                 rows
             }
+            View::TapState => {
+                let cursors = snapshot.get("cursors");
+                let mut rows = vec![
+                    metric_row("repo_count", snapshot.get("repoCount")),
+                    metric_row("record_count", snapshot.get("recordCount")),
+                    metric_row("outbox_buffer", snapshot.get("outboxBuffer")),
+                    metric_row("resync_buffer", snapshot.get("resyncBuffer")),
+                    metric_row("cursor_firehose", cursors.and_then(|c| c.get("firehose"))),
+                    metric_row(
+                        "cursor_list_repos",
+                        cursors.and_then(|c| c.get("listRepos")),
+                    ),
+                ];
+                // `/api/tap-stats` reports partial failures in an `errors`
+                // array rather than 500-ing; surface them as a row when present.
+                if let Some(errors) = snapshot.get("errors").and_then(Value::as_array) {
+                    if !errors.is_empty() {
+                        rows.push(json!({ "metric": "errors", "value": errors }));
+                    }
+                }
+                rows
+            }
         }
     }
 }
@@ -118,16 +158,13 @@ impl TableSource for IngesterApi {
     }
 
     fn name(&self) -> &str {
-        match self.view {
-            View::RecentEvents => "recent_events",
-            View::Stats => "stats",
-        }
+        self.view.name()
     }
 
     async fn meta(&self) -> Result<TableMeta, AdminError> {
         let (cols, pk) = match self.view {
             View::RecentEvents => (columns(&["type", "action", "uri", "time"]), "uri"),
-            View::Stats => (columns(&["metric", "value"]), "metric"),
+            View::Stats | View::TapState => (columns(&["metric", "value"]), "metric"),
         };
         Ok(TableMeta {
             columns: cols,
@@ -138,7 +175,7 @@ impl TableSource for IngesterApi {
     async fn list(&self, _meta: &TableMeta, _query: &ListQuery) -> Result<Vec<Row>, AdminError> {
         // These datasets are tiny (≤10 events, a handful of metrics), so we
         // return the whole snapshot and ignore paging/search.
-        Ok(self.rows_from(&self.fetch_stats().await?))
+        Ok(self.rows_from(&self.fetch().await?))
     }
 
     async fn get(&self, meta: &TableMeta, pk: &str) -> Result<Option<Row>, AdminError> {
@@ -147,7 +184,7 @@ impl TableSource for IngesterApi {
             .as_deref()
             .ok_or(AdminError::NoPrimaryKey)?;
         Ok(self
-            .rows_from(&self.fetch_stats().await?)
+            .rows_from(&self.fetch().await?)
             .into_iter()
             .find(|row| row.get(key).and_then(Value::as_str) == Some(pk)))
     }
@@ -197,6 +234,40 @@ mod tests {
         );
         // Every row is keyed by the `metric` primary key.
         assert!(rows.iter().all(|r| r.get("metric").is_some()));
+    }
+
+    #[test]
+    fn tap_state_flattens_counts_and_cursors() {
+        let snapshot = json!({
+            "repoCount": 42,
+            "recordCount": 1000,
+            "outboxBuffer": 3,
+            "resyncBuffer": 0,
+            "cursors": { "firehose": 12345, "listRepos": "abc" },
+            "errors": []
+        });
+        let rows = table("tap_state").rows_from(&snapshot);
+        // 4 counts + 2 cursors; no `errors` row since the array is empty.
+        assert_eq!(rows.len(), 6);
+        assert_eq!(rows[0], json!({ "metric": "repo_count", "value": 42 }));
+        assert_eq!(
+            rows[4],
+            json!({ "metric": "cursor_firehose", "value": 12345 })
+        );
+        assert_eq!(
+            rows[5],
+            json!({ "metric": "cursor_list_repos", "value": "abc" })
+        );
+    }
+
+    #[test]
+    fn tap_state_surfaces_errors_when_present() {
+        let snapshot = json!({ "errors": ["repo_count: boom"] });
+        let rows = table("tap_state").rows_from(&snapshot);
+        let errors = rows.iter().find(|r| r["metric"] == "errors").unwrap();
+        assert_eq!(errors["value"], json!(["repo_count: boom"]));
+        // Missing counts/cursors still render as null rows.
+        assert_eq!(rows[0], json!({ "metric": "repo_count", "value": null }));
     }
 
     #[test]
