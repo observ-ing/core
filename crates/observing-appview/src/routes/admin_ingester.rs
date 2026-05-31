@@ -161,6 +161,10 @@ impl TableSource for IngesterApi {
         self.view.name()
     }
 
+    fn datastore(&self) -> &str {
+        "http"
+    }
+
     async fn meta(&self) -> Result<TableMeta, AdminError> {
         let (cols, pk) = match self.view {
             View::RecentEvents => (columns(&["type", "action", "uri", "time"]), "uri"),

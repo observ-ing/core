@@ -78,6 +78,10 @@ impl TableSource for PgTable {
         self.display_name.as_deref().unwrap_or(&self.name)
     }
 
+    fn datastore(&self) -> &str {
+        "postgres"
+    }
+
     fn searchable(&self) -> bool {
         !self.searchable.is_empty()
     }
