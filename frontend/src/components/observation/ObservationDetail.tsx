@@ -320,7 +320,7 @@ export function ObservationDetail() {
               <Box
                 component="img"
                 src={getImageUrl(activeImage.url)}
-                alt={species}
+                alt={species || "Observation photo"}
                 sx={{
                   width: "100%",
                   maxHeight: 400,
@@ -550,7 +550,7 @@ export function ObservationDetail() {
           open={lightboxOpen}
           onClose={() => setLightboxOpen(false)}
           src={getImageUrl(activeImage.url)}
-          alt={species}
+          alt={species || "Observation photo"}
           license={activeImage.license}
         />
       )}
