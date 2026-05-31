@@ -22,7 +22,7 @@ import {
   submitIdentification,
   deleteIdentification,
 } from "../../services/api";
-import type { UpdatePreferencesRequest } from "../../services/types";
+import type { UpdatePreferencesRequest, UserPreferencesResponse } from "../../services/types";
 
 // ── Likes ──────────────────────────────────────────────────────────────────
 export const LIKE_MUTATION_KEY = ["like"] as const;
@@ -95,11 +95,24 @@ export function useMarkNotificationRead() {
 }
 
 // ── User preferences ─────────────────────────────────────────────────────────
+/**
+ * Update preferences with an optimistic cache patch + rollback. No refetch:
+ * the server echoes exactly what we send (it just stores `defaultLicense`), so
+ * the optimistic value already matches server truth on success.
+ */
 export function useUpdatePreferences() {
   return useMutation({
     mutationFn: (prefs: UpdatePreferencesRequest) => updateUserPreferences(prefs),
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: qk.preferences() });
+    onMutate: async (prefs: UpdatePreferencesRequest) => {
+      await queryClient.cancelQueries({ queryKey: qk.preferences() });
+      const previous = queryClient.getQueryData<UserPreferencesResponse>(qk.preferences());
+      queryClient.setQueryData<UserPreferencesResponse>(qk.preferences(), {
+        defaultLicense: prefs.defaultLicense,
+      });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) queryClient.setQueryData(qk.preferences(), context.previous);
     },
   });
 }

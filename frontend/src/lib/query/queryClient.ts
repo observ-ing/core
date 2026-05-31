@@ -12,6 +12,7 @@ import { get, set, del } from "idb-keyval";
 
 const ONE_MINUTE = 60 * 1000;
 export const PERSIST_MAX_AGE = 7 * 24 * 60 * 60 * 1000; // 1 week
+const PERSIST_KEY = "obsv-query-cache";
 
 export const queryClient = new QueryClient({
   defaultOptions: {
@@ -34,10 +35,25 @@ export const queryClient = new QueryClient({
 // idb-keyval (get/set/del) adapted to the AsyncStorage shape the persister
 // wants. getItem must return null (not undefined) when a key is absent.
 export const persister = createAsyncStoragePersister({
-  key: "obsv-query-cache",
+  key: PERSIST_KEY,
   storage: {
     getItem: async (k) => (await get(k)) ?? null,
     setItem: async (k, v) => set(k, v),
     removeItem: async (k) => del(k),
   },
 });
+
+/**
+ * Wipe all cached server state — in-memory and the persisted IndexedDB blob.
+ * Call on logout / account switch so a shared device can never surface the
+ * previous viewer's cached, viewer-dependent data (likes, feeds, notifications).
+ */
+export async function clearQueryCache(): Promise<void> {
+  queryClient.clear();
+  try {
+    await del(PERSIST_KEY);
+  } catch {
+    // IndexedDB may be unavailable (private browsing, test env). The in-memory
+    // clear above is the critical part; never let this block logout.
+  }
+}
