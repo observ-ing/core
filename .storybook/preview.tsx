@@ -3,6 +3,7 @@ import { withThemeFromJSXProvider } from "@storybook/addon-themes";
 import { ThemeProvider, CssBaseline } from "@mui/material";
 import { MemoryRouter } from "react-router-dom";
 import { Provider } from "react-redux";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initialize, mswLoader } from "msw-storybook-addon";
 import { darkTheme, lightTheme } from "../frontend/src/theme";
 import { makeMockStore } from "./mockStore";
@@ -40,12 +41,20 @@ const preview: Preview = {
     }),
     (Story, context) => {
       const store = makeMockStore(context.parameters.storeOptions);
+      // Fresh client per render so components using query hooks (likes,
+      // comments, identifications) have a QueryClient and don't bleed cache
+      // between stories.
+      const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+      });
       const initialEntries = context.parameters.routerInitialEntries ?? ["/"];
       return (
         <Provider store={store}>
-          <MemoryRouter initialEntries={initialEntries}>
-            <Story />
-          </MemoryRouter>
+          <QueryClientProvider client={queryClient}>
+            <MemoryRouter initialEntries={initialEntries}>
+              <Story />
+            </MemoryRouter>
+          </QueryClientProvider>
         </Provider>
       );
     },

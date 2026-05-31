@@ -15,10 +15,10 @@ import {
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { submitComment } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { addToast } from "../../store/uiSlice";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
+import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
 import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
@@ -27,29 +27,26 @@ interface CommentSectionProps {
   observationUri: string;
   observationCid: string;
   comments: Comment[];
-  onCommentAdded?: () => void;
 }
 
-export function CommentSection({
-  observationUri,
-  observationCid,
-  comments,
-  onCommentAdded,
-}: CommentSectionProps) {
+export function CommentSection({ observationUri, observationCid, comments }: CommentSectionProps) {
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState("");
   const [menuAnchorEl, setMenuAnchorEl] = useState<{ [key: string]: HTMLElement | null }>({});
 
+  // The mutation invalidates the parent observation on success, so the new
+  // comment shows up without the caller wiring a refetch callback.
+  const submitComment = useSubmitComment();
   const submitFn = useCallback(
     () =>
-      submitComment({
+      submitComment.mutateAsync({
         occurrenceUri: observationUri,
         occurrenceCid: observationCid,
         body: body.trim(),
       }),
-    [observationUri, observationCid, body],
+    [submitComment, observationUri, observationCid, body],
   );
 
   const { isSubmitting, handleSubmit: doSubmit } = useFormSubmit(submitFn, {
@@ -57,7 +54,6 @@ export function CommentSection({
     onSuccess: () => {
       setBody("");
       setShowForm(false);
-      onCommentAdded?.();
     },
   });
 

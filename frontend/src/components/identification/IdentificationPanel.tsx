@@ -18,8 +18,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
-import { submitIdentification } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
+import { useSubmitIdentification } from "../../lib/query/mutations";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
@@ -45,7 +45,6 @@ interface IdentificationPanelProps {
   latitude?: number | undefined;
   /** Observation longitude, passed to species-id for geo-prior context */
   longitude?: number | undefined;
-  onSuccess?: (() => void) | undefined;
 }
 
 export function IdentificationPanel({
@@ -53,7 +52,6 @@ export function IdentificationPanel({
   imageUrl,
   latitude,
   longitude,
-  onSuccess,
 }: IdentificationPanelProps) {
   const dispatch = useAppDispatch();
   const [showSuggestForm, setShowSuggestForm] = useState(false);
@@ -64,19 +62,22 @@ export function IdentificationPanel({
 
   const currentId = observation.communityId || observation.scientificName || "Unknown";
 
+  // The mutation invalidates the parent observation on success, so the new
+  // identification shows up without a caller-supplied refetch callback.
+  const submitId = useSubmitIdentification();
+
   const agreeFn = useCallback(
     () =>
-      submitIdentification({
+      submitId.mutateAsync({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         scientificName: currentId,
       }),
-    [observation.uri, observation.cid, currentId],
+    [submitId, observation.uri, observation.cid, currentId],
   );
 
   const { isSubmitting: isAgreeing, handleSubmit: handleAgree } = useFormSubmit(agreeFn, {
     successMessage: "Your agreement has been recorded!",
-    onSuccess: () => onSuccess?.(),
   });
 
   const effectiveKingdom = matchedTaxon?.kingdom ?? (kingdom || undefined);
@@ -84,14 +85,14 @@ export function IdentificationPanel({
 
   const suggestFn = useCallback(
     () =>
-      submitIdentification({
+      submitId.mutateAsync({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         scientificName: taxonName.trim(),
         ...(effectiveKingdom ? { kingdom: effectiveKingdom } : {}),
         ...(effectiveRank ? { taxonRank: effectiveRank } : {}),
       }),
-    [observation.uri, observation.cid, taxonName, effectiveKingdom, effectiveRank],
+    [submitId, observation.uri, observation.cid, taxonName, effectiveKingdom, effectiveRank],
   );
 
   const { isSubmitting: isSuggesting, handleSubmit: doSuggest } = useFormSubmit(suggestFn, {
@@ -102,7 +103,6 @@ export function IdentificationPanel({
       setMatchedTaxon(null);
       setKingdom("");
       setRank("");
-      onSuccess?.();
     },
   });
 
