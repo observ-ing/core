@@ -55,15 +55,12 @@ auth _session_.
 - **Auth session (`/oauth/me`)** stays in `authSlice`. It's the auth gate read
   by many components, has no offline value (it's a session check), and
   migrating it is high-blast-radius for no benefit.
-- **User preferences / `defaultLicense`** still load via `authSlice`
-  (`loadUserPreferences`). `useUserPreferences` / `useUpdatePreferences` hooks
-  exist and are ready, but `SettingsPage` + `UploadModal` + `App` all read
-  `defaultLicense` from Redux today; migrating is a contained follow-up.
 - **`useObservationsGeoJSON`** hook exists but has no consumer yet (no map view
   calls the geojson endpoint). Ready when a map feature needs it.
-- **Cache eviction on logout** is not yet wired — on logout/account-switch we
-  should `queryClient.clear()` + drop the persisted IndexedDB key so a shared
-  device can't surface a previous viewer's cached data. Tracked as a follow-up.
 - **Offline replay is wired for likes only.** Larger writes (observation
   upload/edit with images, comments, identifications) are online-only; they
   invalidate caches on success.
+
+Done in later passes: cache eviction on logout (`clearQueryCache` in the logout
+thunk) and user preferences (`useUserPreferences` / `useUpdatePreferences`;
+`defaultLicense` no longer lives in Redux).
