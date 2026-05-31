@@ -1,72 +1,42 @@
-import { useEffect, useState } from "react";
-
-const cache = new Map<string, string | null>();
+import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 /**
  * Batch-fetch taxon thumbnail images from Wikidata using a single SPARQL query.
  * Uses P225 (taxon name) to match taxa and P18 (image) to get images.
  * Returns a map of taxon name → thumbnail URL.
+ *
+ * Backed by TanStack Query: the whole name set is one query (so a taxon page's
+ * names still resolve in a single SPARQL request), cached + persisted to
+ * IndexedDB and never refetched (taxon images are effectively static).
  */
 export function useWikidataThumbnails(names: string[], size: number = 48): Map<string, string> {
-  const [thumbnails, setThumbnails] = useState<Map<string, string>>(new Map());
+  // Unique + sorted so different orderings of the same names share a cache
+  // entry. Query hashes the key deeply, so a fresh array each render is fine.
+  const wanted = [...new Set(names)].sort();
 
-  useEffect(() => {
-    if (names.length === 0) return;
+  const { data } = useQuery({
+    queryKey: ["wikidataThumbnails", wanted, size],
+    queryFn: ({ signal }) => fetchBatch(wanted, size, signal),
+    enabled: wanted.length > 0,
+    staleTime: Infinity,
+    // Decorative + external rate-limited API: don't retry or noisily refetch.
+    retry: false,
+  });
 
-    // Check which names still need fetching
-    const resolved = new Map<string, string>();
-    const needed: string[] = [];
-
-    for (const name of names) {
-      if (cache.has(name)) {
-        const url = cache.get(name);
-        if (url) resolved.set(name, url);
-      } else {
-        needed.push(name);
-      }
-    }
-
-    if (resolved.size > 0) {
-      setThumbnails(new Map(resolved));
-    }
-
-    if (needed.length === 0) return;
-
-    const controller = new AbortController();
-
-    fetchBatch(needed, size, controller.signal).then((results) => {
-      if (controller.signal.aborted) return;
-
-      // Cache all results (including misses as null)
-      for (const name of needed) {
-        const url = results.get(name) ?? null;
-        cache.set(name, url);
-      }
-
-      setThumbnails((prev) => {
-        const next = new Map(prev);
-        for (const [name, url] of results) {
-          next.set(name, url);
-        }
-        return next;
-      });
-    });
-
-    return () => controller.abort();
-    // names.join("|") captures the identity of the array's contents; listing
-    // `names` itself would re-fire every render on fresh array literals.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [names.join("|"), size]);
-
-  return thumbnails;
+  return useMemo(() => new Map(Object.entries(data ?? {})), [data]);
 }
 
+/**
+ * Fetch thumbnails for `names` in one SPARQL request. Returns a plain object
+ * (not a Map) so the persisted query cache can JSON-serialize it.
+ */
 async function fetchBatch(
   names: string[],
   size: number,
   signal: AbortSignal,
-): Promise<Map<string, string>> {
-  const results = new Map<string, string>();
+): Promise<Record<string, string>> {
+  const results: Record<string, string> = {};
 
   // Build SPARQL VALUES clause with escaped names
   const values = names.map((n) => `"${n.replace(/"/g, '\\"')}"`).join(" ");
@@ -76,32 +46,26 @@ async function fetchBatch(
   ?item wdt:P18 ?image .
 }`;
 
-  try {
-    const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
-    const resp = await fetch(url, {
-      headers: { Accept: "application/sparql-results+json" },
-      signal,
-    });
-    if (!resp.ok) return results;
+  const url = `https://query.wikidata.org/sparql?query=${encodeURIComponent(query)}&format=json`;
+  const resp = await fetch(url, {
+    headers: { Accept: "application/sparql-results+json" },
+    signal,
+  });
+  if (!resp.ok) return results;
 
-    const data = await resp.json();
-    for (const binding of data.results?.bindings ?? []) {
-      const name = binding.taxonName?.value;
-      const imageUri = binding.image?.value;
-      if (name && imageUri && !results.has(name)) {
-        // imageUri is like http://commons.wikimedia.org/wiki/Special:FilePath/Foo.jpg
-        // Extract filename and build a sized thumbnail URL
-        const filename = imageUri.split("/").pop();
-        if (filename) {
-          results.set(
-            name,
-            `https://commons.wikimedia.org/wiki/Special:FilePath/${filename}?width=${size}`,
-          );
-        }
+  const data = await resp.json();
+  for (const binding of data.results?.bindings ?? []) {
+    const name = binding.taxonName?.value;
+    const imageUri = binding.image?.value;
+    if (name && imageUri && !(name in results)) {
+      // imageUri is like http://commons.wikimedia.org/wiki/Special:FilePath/Foo.jpg
+      // Extract filename and build a sized thumbnail URL
+      const filename = imageUri.split("/").pop();
+      if (filename) {
+        results[name] =
+          `https://commons.wikimedia.org/wiki/Special:FilePath/${filename}?width=${size}`;
       }
     }
-  } catch {
-    // Silently fail — thumbnails are decorative
   }
 
   return results;
