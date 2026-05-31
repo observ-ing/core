@@ -58,6 +58,13 @@ pub fn router(state: AppState) -> Router {
             *name,
         ));
     }
+    // The ingester's runtime interface, when its URL is configured. These are
+    // HTTP-backed `TableSource`s (no SQL) — see `admin_ingester`.
+    if let Some(url) = &state.ingester_url {
+        for table in crate::routes::admin_ingester::IngesterApi::tables(url) {
+            admin = admin.table(table);
+        }
+    }
     admin
         .into_router("/admin/browse")
         .layer(axum::middleware::from_fn_with_state(state, require_admin))

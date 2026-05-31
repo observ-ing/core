@@ -47,6 +47,9 @@ pub struct AppState {
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
     pub admin_dids: Vec<String>,
+    /// Base URL of the tap-ingester service, if configured. Enables the
+    /// HTTP-backed `ingester/*` tables in the admin browser.
+    pub ingester_url: Option<String>,
 }
 
 /// Create an OAuthClient.
