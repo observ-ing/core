@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Box,
   Container,
@@ -16,9 +15,9 @@ import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { setThemeMode, type ThemeMode, addToast } from "../../store/uiSlice";
-import { setDefaultLicense } from "../../store/authSlice";
+import { useUserPreferences } from "../../lib/query/hooks";
+import { useUpdatePreferences } from "../../lib/query/mutations";
 import { LICENSE_OPTIONS } from "../../lib/licenses";
-import { updateUserPreferences } from "../../services/api";
 
 const NO_DEFAULT = "__none__";
 
@@ -27,32 +26,30 @@ export function SettingsPage() {
   const dispatch = useAppDispatch();
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const user = useAppSelector((state) => state.auth.user);
-  const defaultLicense = useAppSelector((state) => state.auth.defaultLicense);
-  const [saving, setSaving] = useState(false);
+  const { data: prefs } = useUserPreferences();
+  const defaultLicense = prefs?.defaultLicense ?? null;
+  const updatePrefs = useUpdatePreferences();
 
   const handleThemeChange = (_: React.MouseEvent<HTMLElement>, value: ThemeMode | null) => {
     if (value) dispatch(setThemeMode(value));
   };
 
-  const handleLicenseChange = async (e: SelectChangeEvent<string>) => {
+  const handleLicenseChange = (e: SelectChangeEvent<string>) => {
     const raw = e.target.value;
     const next = raw === NO_DEFAULT ? null : raw;
-    const previous = defaultLicense;
-    dispatch(setDefaultLicense(next));
-    setSaving(true);
-    try {
-      await updateUserPreferences({ defaultLicense: next });
-    } catch (err) {
-      dispatch(setDefaultLicense(previous));
-      dispatch(
-        addToast({
-          message: err instanceof Error ? err.message : "Failed to save preference",
-          type: "error",
-        }),
-      );
-    } finally {
-      setSaving(false);
-    }
+    // The hook applies the change optimistically and rolls back on error.
+    updatePrefs.mutate(
+      { defaultLicense: next },
+      {
+        onError: (err) =>
+          dispatch(
+            addToast({
+              message: err instanceof Error ? err.message : "Failed to save preference",
+              type: "error",
+            }),
+          ),
+      },
+    );
   };
 
   return (
@@ -127,7 +124,7 @@ export function SettingsPage() {
               Pre-fill the license for new observation photos. You can still change it on each
               upload.
             </Typography>
-            <FormControl fullWidth size="small" disabled={saving}>
+            <FormControl fullWidth size="small" disabled={updatePrefs.isPending}>
               <InputLabel id="default-license-label">Default license</InputLabel>
               <Select
                 labelId="default-license-label"

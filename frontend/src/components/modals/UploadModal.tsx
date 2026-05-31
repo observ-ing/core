@@ -27,6 +27,7 @@ import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
+import { useUserPreferences } from "../../lib/query/hooks";
 import {
   submitObservation,
   updateObservation,
@@ -60,7 +61,7 @@ export function UploadModal() {
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
-  const defaultLicense = useAppSelector((state) => state.auth.defaultLicense);
+  const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
   const isEditMode = !!editingObservation;
