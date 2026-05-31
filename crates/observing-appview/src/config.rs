@@ -8,6 +8,10 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     /// URL for the species identification service (optional)
     pub species_id_service_url: Option<String>,
+    /// Base URL for the tap-ingester service (optional). When set, its
+    /// runtime interface is exposed as `ingester/*` tables in the admin
+    /// browser; when unset, those tables are simply not registered.
+    pub ingester_url: Option<String>,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
@@ -45,6 +49,10 @@ impl Config {
 
         let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
 
+        let ingester_url = env::var("INGESTER_URL")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+
         // Treat an empty/whitespace PUBLIC_URL (e.g. `PUBLIC_URL=` in a shell
         // or process-compose) as unset. Otherwise `Some("")` takes the
         // production OAuth path and builds a protocol-less redirect_uri, which
@@ -64,6 +72,7 @@ impl Config {
             database_url,
             cors_origins,
             species_id_service_url,
+            ingester_url,
             public_url,
             hidden_dids,
             admin_dids,

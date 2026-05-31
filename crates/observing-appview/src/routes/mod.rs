@@ -1,4 +1,5 @@
 pub mod admin_browse;
+pub mod admin_ingester;
 pub mod comments;
 pub mod feeds;
 pub mod health;

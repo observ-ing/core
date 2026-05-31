@@ -81,6 +81,7 @@ async fn main() {
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
+        ingester_url: config.ingester_url.clone(),
     };
 
     // CORS
