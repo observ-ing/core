@@ -513,6 +513,9 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
       REGION: us-central1
       PUBLIC_URL: https://observ.ing
+      # tap-ingester's Cloud Run custom domain; the appview reads its
+      # /api/stats + /api/tap-stats to render the ingester/* admin tables.
+      INGESTER_URL: https://ingester.observ.ing
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -578,7 +581,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|INGESTER_URL=$INGESTER_URL|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
