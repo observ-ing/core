@@ -155,6 +155,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // (we run this once), so .ok() the result.
     tap_cell.set(tap.clone()).ok();
 
+    // Periodic heartbeat so Cloud Logging has a steady signal to build
+    // log-based metrics on (cursor progression = liveness; a flat cursor
+    // or growing resync buffer = stall). Without this, logs are purely
+    // event-driven and there's nothing to graph between reconnects.
+    tokio::spawn(heartbeat(state.clone(), tap.clone()));
+
     // Resolver for cross-repo subject DIDs: when an identification/comment/
     // like references an occurrence on a DID Tap isn't tracking, the
     // resolver POSTs `/repos/add` and we suppress the ack so Tap redelivers
@@ -224,6 +230,42 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     warn!("tap channel closed");
     // _process drops here, sending SIGTERM to the embedded Tap.
     Ok(())
+}
+
+/// Emit a structured heartbeat log every 60s. `tracing_stackdriver`
+/// renders each field into `jsonPayload.*`, so a log-based metric can
+/// extract `firehose_cursor` (should keep climbing) and `resync_buffer`
+/// (should stay near zero) to chart ingester health over time.
+///
+/// `firehose_cursor` is a relay sequence number, not a timestamp, so this
+/// detects stalls (cursor stops advancing) rather than absolute time lag.
+async fn heartbeat(state: SharedState, tap: TapClient) {
+    let mut ticker = tokio::time::interval(std::time::Duration::from_secs(60));
+    loop {
+        ticker.tick().await;
+        let (connected, events_total, errors) = {
+            let s = state.read().await;
+            let st = &s.stats;
+            (
+                s.connected,
+                st.occurrences + st.identifications + st.comments + st.interactions + st.likes,
+                st.errors,
+            )
+        };
+        let firehose_cursor = tap.cursors().await.ok().and_then(|c| c.firehose);
+        let resync_buffer = tap.resync_buffer().await.ok();
+        info!(
+            heartbeat = true,
+            connected,
+            events_total,
+            errors,
+            // -1 / 0 sentinels keep the field numeric for log-based metrics
+            // even when the Tap query failed this tick.
+            firehose_cursor = firehose_cursor.unwrap_or(-1),
+            resync_buffer = resync_buffer.unwrap_or(0),
+            "ingester heartbeat"
+        );
+    }
 }
 
 async fn serve_http(state: DashboardState, port: u16) -> std::io::Result<()> {
