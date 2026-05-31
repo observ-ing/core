@@ -95,7 +95,9 @@ export function TaxonLink({
           fontStyle: shouldItalicize ? "italic" : "normal",
           cursor: "pointer",
           "&:hover": {
-            bgcolor: "rgba(255, 255, 255, 0.08)",
+            // Theme token (mode-aware): a hardcoded white rgba was invisible /
+            // wrong in light mode.
+            bgcolor: "action.hover",
           },
         }}
       />
