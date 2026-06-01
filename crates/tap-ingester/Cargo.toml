@@ -31,6 +31,16 @@ tower-http = { workspace = true }
 # HTTP client used by the media resolver
 reqwest = { workspace = true }
 
+# Firehose lag probe: a short-lived subscribeRepos connection at the current
+# cursor to read the relay's commit time (heartbeat turns it into lag_seconds).
+# tokio-tungstenite is already in the tree transitively; pin the same 0.28 line.
+# native-tls (not rustls) to match sqlx's TLS stack and sidestep rustls 0.23's
+# manual-CryptoProvider requirement.
+tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "native-tls"] }
+futures-util = "0.3"
+# Decode the two concatenated CBOR objects (header + body) of a firehose frame.
+ciborium = "0.2"
+
 # Database
 sqlx = { workspace = true }
 
