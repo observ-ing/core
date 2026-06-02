@@ -36,6 +36,7 @@
 mod dashboard;
 mod database;
 mod error;
+mod lag_probe;
 mod media_resolver;
 mod server;
 mod subject_resolver;
@@ -159,7 +160,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // log-based metrics on (cursor progression = liveness; a flat cursor
     // or growing resync buffer = stall). Without this, logs are purely
     // event-driven and there's nothing to graph between reconnects.
-    tokio::spawn(heartbeat(state.clone(), tap.clone()));
+    tokio::spawn(heartbeat(
+        state.clone(),
+        tap.clone(),
+        resolve_lag_probe_relay(),
+    ));
 
     // Resolver for cross-repo subject DIDs: when an identification/comment/
     // like references an occurrence on a DID Tap isn't tracking, the
@@ -246,7 +251,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///   a rising value is the most direct "can't keep up" signal.
 /// - `resync_buffer`: backfill queue depth (should stay near zero).
 /// - `firehose_cursor`: still logged (raw seq) for reference / probing.
-async fn heartbeat(state: SharedState, tap: TapClient) {
+/// - `lag_seconds`: wall-clock seconds behind the live firehose, from probing
+///   the relay for the commit time at the current cursor. `-1` when there's no
+///   cursor yet or the probe failed/timed out this tick. This is the absolute
+///   "how far behind" signal `cursor_advance` can't give: it plateaus near the
+///   relay's ~72h retention floor when stalled and trends to zero when caught
+///   up. (Stackdriver camelCases it to `lagSeconds`.)
+///
+/// `relay_url` must be the relay Tap consumes from; an empty string disables
+/// the probe (sentinel `-1`), e.g. where outbound firehose access is blocked.
+async fn heartbeat(state: SharedState, tap: TapClient, relay_url: String) {
     let mut ticker = tokio::time::interval(std::time::Duration::from_secs(60));
     // Previous firehose cursor, for computing per-tick advancement.
     let mut prev_cursor: Option<i64> = None;
@@ -278,6 +292,19 @@ async fn heartbeat(state: SharedState, tap: TapClient) {
             }
         }
 
+        // Absolute lag: probe the relay for the commit time at the current
+        // cursor and subtract from now. Skipped (sentinel -1) when the probe is
+        // disabled, there's no usable cursor, or the relay didn't answer.
+        let lag_seconds = match (relay_url.is_empty(), firehose_cursor) {
+            (false, Some(cur)) if cur > 0 => {
+                match lag_probe::probe_cursor_time(&relay_url, cur).await {
+                    Some(at_cursor) => (Utc::now() - at_cursor).num_seconds(),
+                    None => -1,
+                }
+            }
+            _ => -1,
+        };
+
         info!(
             heartbeat = true,
             connected,
@@ -290,6 +317,7 @@ async fn heartbeat(state: SharedState, tap: TapClient) {
             cursor_advance,
             outbox_buffer = outbox_buffer.unwrap_or(0),
             resync_buffer = resync_buffer.unwrap_or(0),
+            lag_seconds,
             "ingester heartbeat"
         );
     }
@@ -322,6 +350,15 @@ fn resolve_tap_database_url() -> String {
     // Same DB_* bundle as the app DB, but pin Tap's tables to the `tap` schema.
     pg_url_env::postgres_url_from_db_env("observing", Some("tap"))
         .unwrap_or_else(|| "sqlite:///data/tap.db".to_string())
+}
+
+/// Relay the heartbeat's lag probe connects to. Must match the relay Tap
+/// consumes from (sequence numbers are relay-specific) — Tap is left on its
+/// default `relay1.us-east.bsky.network`, so this default matches. Override
+/// with `LAG_PROBE_RELAY_URL`; set it empty to disable the probe.
+fn resolve_lag_probe_relay() -> String {
+    std::env::var("LAG_PROBE_RELAY_URL")
+        .unwrap_or_else(|_| "wss://relay1.us-east.bsky.network".to_string())
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly
