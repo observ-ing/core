@@ -1,0 +1,61 @@
+-- Drop the FKs from firehose-delivered social/annotation records to
+-- occurrences(uri); treat those references as SOFT (resolved at read time)
+-- instead of enforced at write time.
+--
+-- Affected: identifications, comments, likes, interactions (subject_a + _b).
+-- These are the records the ingester pulls independently off the firehose
+-- (the bio.lexicons.temp.v0-1.identification / .occurrence and
+-- ing.observ.temp.{comment,interaction,like} collections), each referencing an
+-- occurrence by URI.
+--
+-- Why: each FK is checked at INSERT, which assumes firehose records arrive
+-- ordered and complete. They don't. A referencing record can be ingested
+-- before its occurrence (out-of-order delivery, within or across commits), or
+-- the occurrence may never arrive (firehose gap past relay retention, a deleted
+-- occurrence, or a cross-repo subject whose repo isn't tracked yet). Under the
+-- hard FK every such case became a *permanent* failure: the insert was rejected
+-- (..._fkey), parked in ingester.failed_records, and never retried -- stuck
+-- forever if the occurrence never showed. We hit this with identifications
+-- (136 stuck rows); the others share the identical shape and only escaped so
+-- far because likes/comments/interactions are after-the-fact actions on an
+-- already-present observation, so they rarely race their occurrence. This
+-- removes the failure class entirely. Continues what
+-- 20260522000000_optional_occurrence_location.sql began from the occurrence
+-- side.
+--
+-- Soft reference makes ingestion order-independent: the record is always
+-- stored, and its occurrence is joined at read time. The consumers that matter
+-- already INNER JOIN occurrences (the ingester.community_ids materialized view;
+-- the appview feeds; like/comment/interaction displays are occurrence-scoped),
+-- so a row with no occurrence is simply invisible until/unless the occurrence
+-- lands, at which point it self-heals with no replay.
+--
+-- Intentional tradeoffs:
+--   * Loses ON DELETE CASCADE on these tables. Deleting an occurrence no longer
+--     auto-removes its identifications/comments/likes/interactions; they become
+--     harmless orphans (excluded by the inner joins above). Reclaim with a
+--     periodic sweep, e.g.:
+--         DELETE FROM identifications i
+--         WHERE NOT EXISTS (SELECT 1 FROM occurrences o WHERE o.uri = i.subject_uri);
+--       (and likewise comments.subject_uri, likes.subject_uri,
+--        interactions.subject_a_occurrence_uri / subject_b_occurrence_uri)
+--   * Counts that don't join occurrences (e.g. the profile identification count
+--     COUNT(*) FROM identifications WHERE did = $1) now include orphans -- they
+--     count records authored, regardless of whether the subject occurrence is
+--     present.
+--
+-- NOT dropped: occurrence_observers.occurrence_uri. That table is not an
+-- independently-delivered collection -- it's the observer/recordedBy list
+-- written *with* the occurrence, so its parent always exists. No ordering
+-- exposure; its cascade is correct.
+--
+-- Subject columns and their indexes are kept (still used for the read-time
+-- join). Unqualified names resolve via the migrate role's search_path
+-- (= ingester), matching 20260522000000. Constraint names are Postgres'
+-- auto-generated defaults; IF EXISTS keeps this idempotent.
+
+ALTER TABLE identifications DROP CONSTRAINT IF EXISTS identifications_subject_uri_fkey;
+ALTER TABLE comments        DROP CONSTRAINT IF EXISTS comments_subject_uri_fkey;
+ALTER TABLE likes           DROP CONSTRAINT IF EXISTS likes_subject_uri_fkey;
+ALTER TABLE interactions    DROP CONSTRAINT IF EXISTS interactions_subject_a_occurrence_uri_fkey;
+ALTER TABLE interactions    DROP CONSTRAINT IF EXISTS interactions_subject_b_occurrence_uri_fkey;
