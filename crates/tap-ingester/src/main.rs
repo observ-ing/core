@@ -234,13 +234,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// Emit a structured heartbeat log every 60s. `tracing_stackdriver`
 /// renders each field into `jsonPayload.*`, so a log-based metric can
-/// extract `firehose_cursor` (should keep climbing) and `resync_buffer`
-/// (should stay near zero) to chart ingester health over time.
+/// chart ingester health over time.
 ///
-/// `firehose_cursor` is a relay sequence number, not a timestamp, so this
-/// detects stalls (cursor stops advancing) rather than absolute time lag.
+/// Key fields:
+/// - `cursor_advance`: firehose cursor delta since the previous tick. The
+///   absolute cursor is a ~3e10 sequence number that no distribution metric
+///   can chart usefully; the per-tick *delta* is a small, chartable number
+///   that IS the lag signal — a flat-zero advance while `connected` means a
+///   stall, sustained-low means falling behind the live firehose.
+/// - `outbox_buffer`: matched records buffered for delivery to the ingester;
+///   a rising value is the most direct "can't keep up" signal.
+/// - `resync_buffer`: backfill queue depth (should stay near zero).
+/// - `firehose_cursor`: still logged (raw seq) for reference / probing.
 async fn heartbeat(state: SharedState, tap: TapClient) {
     let mut ticker = tokio::time::interval(std::time::Duration::from_secs(60));
+    // Previous firehose cursor, for computing per-tick advancement.
+    let mut prev_cursor: Option<i64> = None;
     loop {
         ticker.tick().await;
         let (connected, events_total, errors) = {
@@ -254,14 +263,32 @@ async fn heartbeat(state: SharedState, tap: TapClient) {
         };
         let firehose_cursor = tap.cursors().await.ok().and_then(|c| c.firehose);
         let resync_buffer = tap.resync_buffer().await.ok();
+        let outbox_buffer = tap.outbox_buffer().await.ok();
+
+        // Advancement since last tick. Skip (sentinel -1) on the first tick
+        // and across a cursor reset/restart (current < prev, or a 0/unknown
+        // cursor) so a restart doesn't masquerade as negative throughput.
+        let cursor_advance = match (prev_cursor, firehose_cursor) {
+            (Some(prev), Some(cur)) if cur >= prev && prev > 0 => cur - prev,
+            _ => -1,
+        };
+        if let Some(cur) = firehose_cursor {
+            if cur > 0 {
+                prev_cursor = Some(cur);
+            }
+        }
+
         info!(
             heartbeat = true,
             connected,
             events_total,
             errors,
-            // -1 / 0 sentinels keep the field numeric for log-based metrics
-            // even when the Tap query failed this tick.
+            // -1 / 0 sentinels keep fields numeric for log-based metrics even
+            // when a Tap query failed this tick (or on the first/reset tick
+            // for cursor_advance).
             firehose_cursor = firehose_cursor.unwrap_or(-1),
+            cursor_advance,
+            outbox_buffer = outbox_buffer.unwrap_or(0),
             resync_buffer = resync_buffer.unwrap_or(0),
             "ingester heartbeat"
         );
