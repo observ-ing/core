@@ -512,9 +512,13 @@ async fn upload_media_records(
     Ok((blob_entries, media_refs))
 }
 
-/// Build the `bio.lexicons.temp.v0-1.occurrence` record body (schema fields only)
-/// and serialize it to JSON for the PDS write API. `media_refs` are attached
-/// via the typed builder's `associatedMedia` field. Defaults `eventDate` to now.
+/// Build the `bio.lexicons.temp.v0-1.occurrence` record body and serialize it
+/// to JSON for the PDS write API. `media_refs` are attached via the typed
+/// builder's `associatedMedia` field. Defaults `eventDate` to now, and stamps a
+/// `createdAt` field (the AT Protocol authoring time) so the firehose ingester
+/// records when the post was authored on the PDS rather than when it was
+/// ingested. `createdAt` is an app-specific extension, not part of the upstream
+/// occurrence lexicon; see the matching handling in the identification path.
 fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
@@ -546,7 +550,20 @@ fn build_occurrence_record_json(
         .maybe_associated_media(associated_media)
         .build();
 
-    auth::serialize_at_record(&record)
+    let mut record_value = auth::serialize_at_record(&record)?;
+
+    // App-specific fields (not in upstream lexicon, stored as extra data in the
+    // AT Protocol record). `createdAt` is the post authoring time; the ingester
+    // reads it into `occurrences.created_at` (which the feed sorts by), falling
+    // back to ingestion time only when it is absent.
+    if let Some(obj) = record_value.as_object_mut() {
+        obj.insert(
+            "createdAt".to_string(),
+            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+        );
+    }
+
+    Ok(record_value)
 }
 
 /// Create an identification record on the PDS for the given occurrence. The

@@ -1,0 +1,39 @@
+-- Occurrence feed time is now the PDS authoring time, not the ingestion time.
+--
+-- Background: the home/explore feeds sort by occurrences.created_at DESC. That
+-- column is populated by the ingester from the record's `createdAt` field
+-- (observing-db processing.rs), falling back to the firehose ingestion time
+-- (Utc::now()) when the field is absent. Until now the occurrence write path
+-- never stamped `createdAt` -- it isn't part of the bio.lexicons.temp.v0-1
+-- .occurrence lexicon -- so every occurrence fell through to the fallback and
+-- the feed was effectively ordered by *ingestion* time. The appview now writes
+-- a `createdAt` extension field on occurrence creation (matching what
+-- identifications/comments/likes already do), so newly authored occurrences
+-- carry their true PDS authoring time end-to-end.
+--
+-- This migration is intentionally a NO-OP on data. It exists to document why
+-- existing rows are left untouched.
+--
+-- Why no backfill: the true authoring time of an already-ingested occurrence is
+-- unrecoverable here. We do not retain the raw record JSON for successful
+-- occurrences (only ingester.failed_records keeps record_json, and only for
+-- failures), so there is no stored `createdAt` to read. The columns we do have
+-- are all wrong or lossy as a substitute:
+--   * created_at  -- already the best available estimate. For normally
+--                    live-ingested posts it sits within seconds of authoring
+--                    time; rewriting it gains nothing.
+--   * indexed_at  -- the DB insert time; same ingestion-time bias, no better.
+--   * event_date  -- when the observation *occurred*, a user-supplied value
+--                    routinely backdated to when a photo was taken. Copying it
+--                    into created_at would yank any backdated observation far
+--                    down the feed -- corrupting the common case to maybe help
+--                    the rare replayed-record case. Not worth it.
+--
+-- So existing rows keep their ingestion-time created_at (a close estimate for
+-- the live-ingested majority), and the fix is forward-looking: occurrences
+-- authored after this deploy carry an accurate PDS authoring time. Records from
+-- other AT Protocol clients that never set `createdAt` continue to fall back to
+-- ingestion time, by design.
+--
+-- No schema or data changes below -- this file is documentation-only.
+SELECT 1;
