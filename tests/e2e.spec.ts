@@ -63,14 +63,29 @@ authTest.describe("E2E CRUD flow", () => {
       await latInput.fill("37.7749");
       await page.getByLabel("Longitude").fill("-122.4194");
 
+      // Submission is now non-blocking: the modal closes as soon as the PDS
+      // write returns and the ingester poll runs in the background behind the
+      // TopBar indicator — the app no longer waits for indexing or navigates to
+      // the new observation. So capture the create response for the at-uri,
+      // assert the modal closed in place, then drive to the detail page once
+      // the ingester has indexed it (where the rest of the flow operates).
+      const createResp = page.waitForResponse(
+        (resp) => resp.request().method() === "POST" && resp.url().includes("/api/occurrences"),
+        { timeout: 30_000 },
+      );
       await page.getByRole("button", { name: /Submit/i }).click();
-      await page.waitForURL(/\/observation\//, { timeout: 30000 });
+      const resp = await createResp;
+      expect(resp.ok()).toBeTruthy();
+      occurrenceUri = (await resp.json()).uri as string;
 
-      const url = page.url();
-      const match = url.match(/\/observation\/([^/]+)\/([^/]+)/);
+      // Modal closes immediately and we stay put (no redirect to /observation).
+      await expect(page.getByLabel(/Taxon/i)).not.toBeVisible({ timeout: 10_000 });
+
+      const match = occurrenceUri.match(/^at:\/\/([^/]+)\/[^/]+\/([^/]+)$/);
       expect(match).toBeTruthy();
       const [, did, rkey] = match!;
-      occurrenceUri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
+      await waitForOccurrenceIndexed(page, occurrenceUri);
+      await page.goto(`/observation/${did}/${rkey}`);
     });
 
     // Step 3: add identification.

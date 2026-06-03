@@ -25,6 +25,7 @@ import { getDisplayName } from "../../lib/utils";
 import logoSvg from "../../assets/logo.svg";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
+import { PendingIndicator } from "./PendingIndicator";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -163,6 +164,8 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                 <Settings />
               </IconButton>
             </Tooltip>
+
+            <PendingIndicator />
 
             {isAuthLoading ? (
               <Skeleton variant="circular" width={40} height={40} />

@@ -2,11 +2,13 @@ import { combineReducers, configureStore, type Action } from "@reduxjs/toolkit";
 import authReducer from "../frontend/src/store/authSlice";
 import feedReducer from "../frontend/src/store/feedSlice";
 import uiReducer from "../frontend/src/store/uiSlice";
+import pendingReducer from "../frontend/src/store/pendingSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
   feed: feedReducer,
   ui: uiReducer,
+  pending: pendingReducer,
 });
 
 type PreloadedState = Parameters<typeof configureStore<ReturnType<typeof rootReducer>>>[0]["preloadedState"];

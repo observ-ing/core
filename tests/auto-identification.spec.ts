@@ -79,7 +79,13 @@ authTest.describe("Auto-Identification on Upload", () => {
       await page.getByLabel("Longitude").fill("-122.4194");
 
       await page.getByRole("button", { name: /Submit/i }).click();
-      await page.waitForURL(/\/observation\//, { timeout: 15_000 });
+
+      // Submission no longer navigates: the modal closes in place and the
+      // ingester poll runs in the background behind the TopBar indicator. Wait
+      // for the modal to close, then go to the (mocked) detail page directly to
+      // assert the auto-created identification rendered.
+      await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible({ timeout: 10_000 });
+      await page.goto(`/observation/${MOCK_OBS_DID}/${AUTO_ID_RKEY}`);
 
       await authExpect(page.getByText("Identification History")).toBeVisible({ timeout: 10000 });
       await authExpect(page.getByText("Quercus alba", { exact: false }).first()).toBeVisible();

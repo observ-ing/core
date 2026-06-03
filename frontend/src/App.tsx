@@ -6,6 +6,7 @@ import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
+import { resumePendingSubmissions } from "./store/pendingSlice";
 import { useUnreadCount } from "./lib/query/hooks";
 import { Sidebar } from "./components/layout/Sidebar";
 import { TopBar } from "./components/layout/TopBar";
@@ -45,6 +46,8 @@ function AppContent() {
 
   useEffect(() => {
     dispatch(checkAuth());
+    // Re-arm submissions that were still pending on the last page unload.
+    dispatch(resumePendingSubmissions());
   }, [dispatch]);
 
   // Listen for system theme changes

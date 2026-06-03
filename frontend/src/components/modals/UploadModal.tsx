@@ -25,24 +25,18 @@ import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
-import { useNavigate } from "react-router-dom";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
+import { trackSubmission } from "../../store/pendingSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
-import { invalidateObservation, invalidateOccurrenceLists } from "../../lib/query/occurrenceCache";
-import {
-  submitObservation,
-  updateObservation,
-  pollObservation,
-  validateTaxon,
-} from "../../services/api";
+import { submitObservation, updateObservation, validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { LocationPicker } from "../map/LocationPicker";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
-import { getObservationUrl, getErrorMessage } from "../../lib/utils";
+import { getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
@@ -60,7 +54,6 @@ function toDatetimeLocal(date: Date): string {
 
 export function UploadModal() {
   const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
@@ -309,11 +302,6 @@ export function UploadModal() {
     void handlePickImages();
   };
 
-  // On update the URI is stable, so matching on CID is required to
-  // distinguish the ingester's new row from the pre-update one.
-  const waitForObservation = (uri: string, targetCid: string) =>
-    pollObservation(uri, (r) => r?.occurrence?.cid === targetCid);
-
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
 
@@ -343,7 +331,8 @@ export function UploadModal() {
         })),
       );
 
-      let observationUri: string;
+      let result: { uri: string; cid: string };
+      let kind: "create" | "update";
 
       if (isEditMode && editingObservation) {
         // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
@@ -351,7 +340,7 @@ export function UploadModal() {
           return url.split("/").at(-1) ?? "";
         });
 
-        const result = await updateObservation({
+        result = await updateObservation({
           uri: editingObservation.uri,
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
@@ -364,21 +353,11 @@ export function UploadModal() {
           ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
         });
-
-        // Wait for the ingester to refresh the row to the new CID
-        await waitForObservation(result.uri, result.cid);
-        observationUri = result.uri;
-
-        dispatch(
-          addToast({
-            message: "Observation updated successfully!",
-            type: "success",
-          }),
-        );
+        kind = "update";
       } else {
         const eventDate = new Date(observationDate).toISOString();
 
-        const result = await submitObservation({
+        result = await submitObservation({
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
           ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
@@ -389,29 +368,17 @@ export function UploadModal() {
           eventDate,
           ...(imageData.length > 0 ? { images: imageData } : {}),
         });
-
-        // Wait for the observation to be processed by the ingester
-        const processed = await waitForObservation(result.uri, result.cid);
-        observationUri = result.uri;
-
-        dispatch(
-          addToast({
-            message: processed
-              ? "Observation submitted successfully!"
-              : "Observation submitted! It may take a moment to appear.",
-            type: "success",
-          }),
-        );
+        kind = "create";
       }
 
-      // Refresh the feeds (and the observation's own detail, on edit) so the
-      // new/updated observation shows, then close the modal and client-side
-      // navigate to it — no full-page reload.
-      invalidateObservation(observationUri);
-      await invalidateOccurrenceLists();
+      // The PDS write succeeded. Close the modal immediately so the submission
+      // feels instant — the ingester poll, completion toast, and cache
+      // invalidation run in the background (surfaced by the TopBar pending
+      // indicator). The user stays on the current page; the new/updated row
+      // appears in place once the ingester catches up.
       dispatch(closeUploadModal());
       resetForm();
-      navigate(getObservationUrl(observationUri));
+      void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
     } catch (error) {
       dispatch(
         addToast({
