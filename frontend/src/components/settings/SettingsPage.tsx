@@ -13,8 +13,9 @@ import {
 } from "@mui/material";
 import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useToast } from "../../hooks/useToast";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { setThemeMode, type ThemeMode, addToast } from "../../store/uiSlice";
+import { setThemeMode, type ThemeMode } from "../../store/uiSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useUpdatePreferences } from "../../lib/query/mutations";
 import { LICENSE_OPTIONS } from "../../lib/licenses";
@@ -24,6 +25,7 @@ const NO_DEFAULT = "__none__";
 export function SettingsPage() {
   usePageTitle("Settings");
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const themeMode = useAppSelector((state) => state.ui.themeMode);
   const user = useAppSelector((state) => state.auth.user);
   const { data: prefs } = useUserPreferences();
@@ -42,12 +44,7 @@ export function SettingsPage() {
       { defaultLicense: next },
       {
         onError: (err) =>
-          dispatch(
-            addToast({
-              message: err instanceof Error ? err.message : "Failed to save preference",
-              type: "error",
-            }),
-          ),
+          toast.error(err instanceof Error ? err.message : "Failed to save preference"),
       },
     );
   };

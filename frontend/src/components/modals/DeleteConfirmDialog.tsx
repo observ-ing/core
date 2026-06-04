@@ -10,14 +10,16 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
+import { closeDeleteConfirm } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { deleteObservation, pollObservation } from "../../services/api";
 import { invalidateOccurrenceLists, removeObservation } from "../../lib/query/occurrenceCache";
 import { getErrorMessage } from "../../lib/utils";
+import { useToast } from "../../hooks/useToast";
 
 export function DeleteConfirmDialog() {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
   const observation = useAppSelector((state) => state.ui.deleteConfirmObservation);
@@ -47,12 +49,7 @@ export function DeleteConfirmDialog() {
       removeObservation(observation.uri);
       await invalidateOccurrenceLists();
 
-      dispatch(
-        addToast({
-          message: "Observation deleted successfully",
-          type: "success",
-        }),
-      );
+      toast.success("Observation deleted successfully");
       dispatch(closeDeleteConfirm());
 
       // If we were on the deleted observation's detail page, leave it.
@@ -61,7 +58,7 @@ export function DeleteConfirmDialog() {
       }
     } catch (error) {
       const message = getErrorMessage(error, "Failed to delete observation");
-      dispatch(addToast({ message, type: "error" }));
+      toast.error(message);
       if (message.includes("Session expired")) {
         dispatch(checkAuth());
       }
