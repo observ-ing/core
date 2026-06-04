@@ -122,6 +122,7 @@ export function NotificationsPage() {
                   avatarSize={40}
                   {...(n.actor?.avatar ? { avatarSrc: getImageUrl(n.actor.avatar) } : {})}
                   nameVariant="body2"
+                  showHandle
                   trailing={
                     <Typography component="span" variant="body2">
                       {getKindText(n.kind)}
