@@ -1,14 +1,7 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Typography,
-  Button,
-  CircularProgress,
-} from "@mui/material";
+import { Typography } from "@mui/material";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm, addToast } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
@@ -74,36 +67,28 @@ export function DeleteConfirmDialog() {
     observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Unidentified";
 
   return (
-    <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>
-      <DialogTitle>Delete Observation?</DialogTitle>
-      <DialogContent>
-        <Typography>
-          Are you sure you want to delete this observation of <strong>{species}</strong>?
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            mt: 1,
-          }}
-        >
-          This action cannot be undone. All identifications and comments will also be deleted.
-        </Typography>
-      </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
-        <Button onClick={handleClose} disabled={isDeleting} color="inherit">
-          Cancel
-        </Button>
-        <Button
-          onClick={handleConfirmDelete}
-          color="error"
-          variant="contained"
-          disabled={isDeleting}
-          startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : undefined}
-        >
-          {isDeleting ? "Deleting..." : "Delete"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+    <ConfirmDialog
+      open={isOpen}
+      onCancel={handleClose}
+      onConfirm={handleConfirmDelete}
+      title="Delete Observation?"
+      confirmLabel="Delete"
+      pendingLabel="Deleting..."
+      destructive
+      pending={isDeleting}
+    >
+      <Typography>
+        Are you sure you want to delete this observation of <strong>{species}</strong>?
+      </Typography>
+      <Typography
+        variant="body2"
+        sx={{
+          color: "text.secondary",
+          mt: 1,
+        }}
+      >
+        This action cannot be undone. All identifications and comments will also be deleted.
+      </Typography>
+    </ConfirmDialog>
   );
 }
