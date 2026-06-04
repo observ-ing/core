@@ -20,18 +20,12 @@ export const WithActiveFilters: Story = {
     storeOptions: {
       preloadedState: {
         feed: {
-          observations: [],
-          cursor: undefined,
-          isLoading: false,
-          currentTab: "explore" as const,
-          hasMore: true,
           filters: {
             taxon: "Quercus robur",
             kingdom: "Plantae",
             startDate: "2026-01-01",
             endDate: "2026-04-30",
           },
-          isAuthenticated: false,
         },
       },
     },

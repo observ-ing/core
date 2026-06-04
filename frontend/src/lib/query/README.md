@@ -47,7 +47,8 @@ observation detail, taxon detail/children, taxa search, notifications + unread
 count, likes, comments, identifications.
 
 **Stays in Redux (UI/client state):** `uiSlice` (modals, toasts, theme,
-geolocation), `feedSlice` (currentTab + filters — the query _inputs_), and the
+geolocation), `feedSlice` (explore filters — a query _input_ shared with the
+filter panel; the active tab is the route, read from the `tab` prop), and the
 auth _session_.
 
 ## Deliberate exceptions / follow-ups
