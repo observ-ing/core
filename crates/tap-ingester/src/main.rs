@@ -469,7 +469,7 @@ fn subject_uri_is_occurrence(record: &Value) -> bool {
 }
 
 fn format_uri(record: &RecordEvent) -> String {
-    format!("at://{}/{}/{}", record.did, record.collection, record.rkey)
+    at_uri_parser::AtUri::new(&record.did, &record.collection, &record.rkey).to_string()
 }
 
 fn record_json(record: &RecordEvent) -> Option<Value> {
