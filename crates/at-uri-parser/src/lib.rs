@@ -1,8 +1,12 @@
-//! Parser for AT Protocol URIs
+//! Parser and builder for AT Protocol URIs
 //!
-//! Parses URIs of the form `at://did/collection/rkey` into their component parts.
+//! Parses URIs of the form `at://did/collection/rkey` into their component
+//! parts, and builds them back from components ([`AtUri::new`] +
+//! [`Display`](std::fmt::Display)). Parsing and rendering round-trip:
+//! `AtUri::parse(s).unwrap().to_string() == s`.
 
 use regex::Regex;
+use std::fmt;
 use std::sync::LazyLock;
 
 /// Parsed components of an AT Protocol URI
@@ -17,6 +21,22 @@ static AT_URI_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"^at://([^/]+)/([^/]+)/([^/]+)$").unwrap());
 
 impl AtUri {
+    /// Build an AT Protocol URI from its components.
+    ///
+    /// The inverse of [`parse`](Self::parse); render it to a string with
+    /// [`to_string`](ToString::to_string) / [`Display`](fmt::Display).
+    pub fn new(
+        did: impl Into<String>,
+        collection: impl Into<String>,
+        rkey: impl Into<String>,
+    ) -> Self {
+        Self {
+            did: did.into(),
+            collection: collection.into(),
+            rkey: rkey.into(),
+        }
+    }
+
     /// Parse an AT Protocol URI like "at://did:plc:xxx/collection/rkey"
     pub fn parse(uri: &str) -> Option<Self> {
         let caps = AT_URI_RE.captures(uri)?;
@@ -28,9 +48,34 @@ impl AtUri {
     }
 }
 
+impl fmt::Display for AtUri {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "at://{}/{}/{}", self.did, self.collection, self.rkey)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_build_and_display() {
+        let uri = AtUri::new(
+            "did:plc:abc123",
+            "bio.lexicons.temp.v0-1.occurrence",
+            "rkey1",
+        );
+        assert_eq!(
+            uri.to_string(),
+            "at://did:plc:abc123/bio.lexicons.temp.v0-1.occurrence/rkey1"
+        );
+    }
+
+    #[test]
+    fn test_parse_display_round_trip() {
+        let s = "at://did:web:example.com/ing.observ.temp.like/abc";
+        assert_eq!(AtUri::parse(s).expect("valid AT URI").to_string(), s);
+    }
 
     #[test]
     fn test_parse_valid_uri() {
