@@ -268,32 +268,11 @@ export function ProfileView() {
                 to={getObservationUrl(occ.uri)}
                 sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
               >
-                {occ.images[0] ? (
-                  <ImageWithSkeleton
-                    src={getImageUrl(occ.images[0].url)}
-                    alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
-                    sx={{ aspectRatio: "1" }}
-                  />
-                ) : (
-                  <Box
-                    sx={{
-                      aspectRatio: "1",
-                      bgcolor: "action.hover",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "text.disabled",
-                      }}
-                    >
-                      No image
-                    </Typography>
-                  </Box>
-                )}
+                <ImageWithSkeleton
+                  src={occ.images[0] ? getImageUrl(occ.images[0].url) : undefined}
+                  alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
+                  sx={{ aspectRatio: "1" }}
+                />
                 <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
                   <Typography
                     variant="body2"

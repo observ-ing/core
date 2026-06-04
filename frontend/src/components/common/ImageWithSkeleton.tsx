@@ -1,16 +1,41 @@
 import { useState } from "react";
-import { Box, CardMedia, Skeleton } from "@mui/material";
+import { Box, CardMedia, Skeleton, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
 
 interface ImageWithSkeletonProps {
-  src: string;
+  src?: string | undefined;
   alt: string;
   sx?: SxProps<Theme>;
   loading?: "lazy" | "eager";
+  emptyText?: string;
 }
 
-export function ImageWithSkeleton({ src, alt, sx, loading = "lazy" }: ImageWithSkeletonProps) {
+export function ImageWithSkeleton({
+  src,
+  alt,
+  sx,
+  loading = "lazy",
+  emptyText = "No image",
+}: ImageWithSkeletonProps) {
   const [loaded, setLoaded] = useState(false);
+
+  if (!src) {
+    return (
+      <Box
+        sx={{
+          bgcolor: "action.hover",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          ...sx,
+        }}
+      >
+        <Typography variant="body2" sx={{ color: "text.disabled" }}>
+          {emptyText}
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden", ...sx }}>

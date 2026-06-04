@@ -29,32 +29,11 @@ export const ExploreGridCard = memo(function ExploreGridCard({
           alignItems: "stretch",
         }}
       >
-        {observation.images[0] ? (
-          <ImageWithSkeleton
-            src={getImageUrl(observation.images[0].url)}
-            alt={species || "Observation"}
-            sx={{ aspectRatio: "1" }}
-          />
-        ) : (
-          <Box
-            sx={{
-              aspectRatio: "1",
-              bgcolor: "action.hover",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.disabled",
-              }}
-            >
-              No image
-            </Typography>
-          </Box>
-        )}
+        <ImageWithSkeleton
+          src={observation.images[0] ? getImageUrl(observation.images[0].url) : undefined}
+          alt={species || "Observation"}
+          sx={{ aspectRatio: "1" }}
+        />
         <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
           <Typography
             variant="body2"
