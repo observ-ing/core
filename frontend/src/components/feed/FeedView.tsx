@@ -11,6 +11,7 @@ import { ProfileObservationCardSkeleton } from "../profile/ProfileObservationCar
 import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
 import { FeedEndIndicator } from "./FeedEndIndicator";
+import { observationGridSx } from "../common/observationGridLayout";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -74,18 +75,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
         <Container maxWidth={tab === "explore" ? "md" : "sm"} disableGutters>
           {tab === "explore" ? (
             <>
-              <Box
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: {
-                    xs: "repeat(2, 1fr)",
-                    sm: "repeat(3, 1fr)",
-                    md: "repeat(4, 1fr)",
-                  },
-                  gap: 1.5,
-                  p: 1.5,
-                }}
-              >
+              <Box sx={observationGridSx(4)}>
                 {observations.map((obs) => (
                   <ExploreGridCard key={obs.uri} observation={obs} />
                 ))}
