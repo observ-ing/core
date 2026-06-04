@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Dialog,
@@ -12,8 +11,7 @@ import {
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeDeleteConfirm } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
-import { deleteObservation, pollObservation } from "../../services/api";
-import { invalidateOccurrenceLists, removeObservation } from "../../lib/query/occurrenceCache";
+import { useDeleteObservation } from "../../lib/query/mutations";
 import { getErrorMessage } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
 
@@ -23,7 +21,8 @@ export function DeleteConfirmDialog() {
   const navigate = useNavigate();
   const location = useLocation();
   const observation = useAppSelector((state) => state.ui.deleteConfirmObservation);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const deleteObs = useDeleteObservation();
+  const isDeleting = deleteObs.isPending;
 
   const isOpen = !!observation;
 
@@ -33,38 +32,29 @@ export function DeleteConfirmDialog() {
     }
   };
 
-  const handleConfirmDelete = async () => {
+  const handleConfirmDelete = () => {
     if (!observation) return;
 
-    setIsDeleting(true);
-    try {
-      await deleteObservation(observation.uri);
+    // The hook waits for the ingester to drop the row, then drops the detail
+    // cache and refetches the feeds so the observation disappears everywhere.
+    deleteObs.mutate(observation.uri, {
+      onSuccess: () => {
+        toast.success("Observation deleted successfully");
+        dispatch(closeDeleteConfirm());
 
-      // Wait for the ingester to remove the row; refreshing the feed caches
-      // before this would otherwise briefly show the deleted observation.
-      await pollObservation(observation.uri, (r) => !r?.occurrence);
-
-      // Drop the detail cache and refetch the feeds so the observation
-      // disappears everywhere — no full-page reload needed.
-      removeObservation(observation.uri);
-      await invalidateOccurrenceLists();
-
-      toast.success("Observation deleted successfully");
-      dispatch(closeDeleteConfirm());
-
-      // If we were on the deleted observation's detail page, leave it.
-      if (location.pathname.includes("/observation/")) {
-        navigate("/");
-      }
-    } catch (error) {
-      const message = getErrorMessage(error, "Failed to delete observation");
-      toast.error(message);
-      if (message.includes("Session expired")) {
-        dispatch(checkAuth());
-      }
-    } finally {
-      setIsDeleting(false);
-    }
+        // If we were on the deleted observation's detail page, leave it.
+        if (location.pathname.includes("/observation/")) {
+          navigate("/");
+        }
+      },
+      onError: (error) => {
+        const message = getErrorMessage(error, "Failed to delete observation");
+        toast.error(message);
+        if (message.includes("Session expired")) {
+          dispatch(checkAuth());
+        }
+      },
+    });
   };
 
   const species =
