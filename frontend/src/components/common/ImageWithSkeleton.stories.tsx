@@ -19,6 +19,7 @@ const meta = {
   argTypes: {
     src: { control: { type: "text" } },
     alt: { control: { type: "text" } },
+    emptyText: { control: { type: "text" } },
   },
 } satisfies Meta<typeof ImageWithSkeleton>;
 
@@ -29,6 +30,29 @@ export const Loaded: Story = {
   args: {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=320",
     alt: "Quercus robur leaves",
+  },
+};
+
+export const EmptyFallback: Story = {
+  args: {
+    src: undefined,
+    alt: "No observation image",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          "When no `src` is provided, the component renders the built-in 'No image' placeholder instead of an image.",
+      },
+    },
+  },
+};
+
+export const EmptyFallbackCustomText: Story = {
+  args: {
+    src: undefined,
+    alt: "No observation image",
+    emptyText: "No photo yet",
   },
 };
 
