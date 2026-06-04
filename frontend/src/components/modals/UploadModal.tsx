@@ -15,10 +15,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -33,6 +29,7 @@ import { useUserPreferences } from "../../lib/query/hooks";
 import { submitObservation, updateObservation, validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
+import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { LocationPicker } from "../map/LocationPicker";
@@ -753,27 +750,16 @@ export function UploadModal() {
           </Stack>
         </form>
       </ModalOverlay>
-      <Dialog
+      <ConfirmDialog
         open={discardConfirmOpen}
-        onClose={() => setDiscardConfirmOpen(false)}
-        maxWidth="xs"
-        fullWidth
-      >
-        <DialogTitle>Discard changes?</DialogTitle>
-        <DialogContent>
-          <Typography>
-            You have unsaved changes. If you close now, your in-progress data will be lost.
-          </Typography>
-        </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setDiscardConfirmOpen(false)} color="inherit">
-            Keep editing
-          </Button>
-          <Button onClick={handleConfirmDiscard} color="error" variant="contained">
-            Discard
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onCancel={() => setDiscardConfirmOpen(false)}
+        onConfirm={handleConfirmDiscard}
+        title="Discard changes?"
+        message="You have unsaved changes. If you close now, your in-progress data will be lost."
+        cancelLabel="Keep editing"
+        confirmLabel="Discard"
+        destructive
+      />
       <PhotoLightbox
         open={lightbox !== null}
         onClose={() => setLightbox(null)}
