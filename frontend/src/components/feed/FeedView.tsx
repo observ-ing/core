@@ -1,8 +1,7 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useRef, useCallback } from "react";
 import { Box, Container, Typography, CircularProgress } from "@mui/material";
-import { useAppDispatch, useAppSelector } from "../../store";
+import { useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { switchTab } from "../../store/feedSlice";
 import { useFeed } from "../../lib/query/hooks";
 import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
@@ -20,17 +19,9 @@ interface FeedViewProps {
 export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
-  const currentTab = useAppSelector((state) => state.feed.currentTab);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Sync route tab into the store; useFeed reads it back as a query input.
-  useEffect(() => {
-    if (tab !== currentTab) {
-      dispatch(switchTab(tab));
-    }
-  }, [dispatch, tab, currentTab]);
-
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useFeed();
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useFeed(tab);
   const observations = data?.pages.flatMap((page) => page.occurrences) ?? [];
   const hasMore = hasNextPage;
 
@@ -60,7 +51,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
   return (
     <Box sx={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
       {/* Filter panel for explore tab only */}
-      {currentTab === "explore" && (
+      {tab === "explore" && (
         <Box sx={{ flexShrink: 0 }}>
           <Container maxWidth="sm" disableGutters>
             <Box sx={{ px: 2, pt: 2 }}>
@@ -80,8 +71,8 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
           "&::-webkit-scrollbar": { display: "none" },
         }}
       >
-        <Container maxWidth={currentTab === "explore" ? "md" : "sm"} disableGutters>
-          {currentTab === "explore" ? (
+        <Container maxWidth={tab === "explore" ? "md" : "sm"} disableGutters>
+          {tab === "explore" ? (
             <>
               <Box
                 sx={{

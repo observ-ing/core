@@ -19,7 +19,7 @@ import {
   fetchUnreadCount,
   fetchUserPreferences,
 } from "../../services/api";
-import type { FeedFilters } from "../../services/types";
+import type { FeedFilters, FeedTab } from "../../services/types";
 
 type Cursor = string | undefined;
 const initialCursor: Cursor = undefined;
@@ -27,9 +27,11 @@ const nextCursor = (last: { cursor?: string }): Cursor => last.cursor ?? undefin
 
 // ── Occurrence feeds (infinite) ──────────────────────────────────────────────
 
-/** Home/explore feed. Reads tab + filters + auth from Redux as query inputs. */
-export function useFeed() {
-  const tab = useAppSelector((s) => s.feed.currentTab);
+/**
+ * Home/explore feed. The active tab comes from the route (passed by the
+ * caller); filters + auth are read from Redux. All three form the query key.
+ */
+export function useFeed(tab: FeedTab) {
   const filters = useAppSelector((s) => s.feed.filters);
   const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
 
