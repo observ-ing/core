@@ -22,14 +22,12 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
-import { useQueryClient } from "@tanstack/react-query";
-import { getImageUrl, deleteIdentification, pollObservation } from "../../services/api";
+import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
-import { useLike } from "../../lib/query/mutations";
-import { qk } from "../../lib/query/keys";
+import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
 import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
@@ -59,7 +57,6 @@ export function ObservationDetail() {
   // Reconstruct AT URI from route params
   const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
 
-  const queryClient = useQueryClient();
   const obsQuery = useObservation(atUri ?? undefined);
   const observation = obsQuery.data?.occurrence ?? null;
   const identifications = obsQuery.data?.identifications ?? [];
@@ -71,16 +68,13 @@ export function ObservationDetail() {
   const liked = observation?.viewerHasLiked ?? false;
   const likeCount = observation?.likeCount ?? 0;
   const like = useLike();
+  // Waits for the ingester to drop the identification, then refetches the
+  // detail so the removed row disappears.
+  const deleteId = useDeleteIdentification();
 
   usePageTitle(
     observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Observation",
   );
-
-  // After a child mutation (identification/comment/delete) lands, refetch the
-  // detail so the new state shows.
-  const refreshObservation = () => {
-    if (atUri) void queryClient.invalidateQueries({ queryKey: qk.observation(atUri) });
-  };
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -454,19 +448,10 @@ export function ObservationDetail() {
                 kingdom={taxonomy?.kingdom}
                 currentUserDid={user?.did}
                 onDeleteIdentification={async (uri) => {
+                  if (!atUri) return;
                   try {
-                    await deleteIdentification(uri);
-                    // Wait for the ingester to remove the identification;
-                    // refetching immediately would show the stale row and
-                    // make the delete look like it failed.
-                    if (atUri) {
-                      await pollObservation(
-                        atUri,
-                        (r) => !r?.identifications?.some((id) => id.uri === uri),
-                      );
-                    }
+                    await deleteId.mutateAsync({ uri, occurrenceUri: atUri });
                     toast.success("Identification deleted");
-                    refreshObservation();
                   } catch (error) {
                     const message = getErrorMessage(error, "Failed to delete identification");
                     toast.error(message);

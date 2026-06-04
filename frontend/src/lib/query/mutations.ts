@@ -10,7 +10,12 @@
 // guarantees the defaults exist before any mutation runs or resumes.
 import { useMutation, type InfiniteData } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
-import { setOccurrenceLike } from "./occurrenceCache";
+import {
+  setOccurrenceLike,
+  invalidateOccurrenceLists,
+  invalidateObservation,
+  removeObservation,
+} from "./occurrenceCache";
 import { qk } from "./keys";
 import type { NotificationsResponse } from "../../services/types";
 import {
@@ -20,6 +25,11 @@ import {
   updateUserPreferences,
   submitComment,
   submitIdentification,
+  submitObservation,
+  updateObservation,
+  deleteObservation,
+  deleteIdentification,
+  pollObservation,
 } from "../../services/api";
 import type { UpdatePreferencesRequest, UserPreferencesResponse } from "../../services/types";
 
@@ -131,6 +141,66 @@ export function useSubmitIdentification() {
     mutationFn: submitIdentification,
     onSuccess: (_data, vars) => {
       void queryClient.invalidateQueries({ queryKey: qk.observation(vars.occurrenceUri) });
+    },
+  });
+}
+
+// ── Observation write path (create / update / delete) ────────────────────────
+// These wrap the PDS write plus the post-write ingester-consistency poll the
+// components used to do inline, so a settled mutation means the change is
+// already visible to the API (no stale row / ghost record) before the caches
+// refresh.
+
+/**
+ * Create an observation. The PDS write returns immediately; the caller closes
+ * the modal and hands the new uri/cid to the `trackSubmission` thunk, which
+ * owns the background ingester poll + completion toast + pending indicator. The
+ * hook stays a thin wrapper so that lifecycle is unchanged.
+ */
+export function useSubmitObservation() {
+  return useMutation({ mutationFn: submitObservation });
+}
+
+/** Edit an observation. Lifecycle mirrors {@link useSubmitObservation}. */
+export function useUpdateObservation() {
+  return useMutation({ mutationFn: updateObservation });
+}
+
+/**
+ * Delete an observation: write to the PDS, then wait for the ingester to drop
+ * the row (refreshing the feeds before that would briefly show the deleted
+ * observation). On success drop the detail cache and refetch every occurrence
+ * list so it disappears everywhere — no full-page reload.
+ */
+export function useDeleteObservation() {
+  return useMutation({
+    mutationFn: async (uri: string) => {
+      await deleteObservation(uri);
+      await pollObservation(uri, (r) => !r?.occurrence);
+    },
+    onSuccess: (_data, uri) => {
+      removeObservation(uri);
+      void invalidateOccurrenceLists();
+    },
+  });
+}
+
+/**
+ * Delete an identification: write to the PDS, then wait for the ingester to
+ * remove it from the parent observation (refetching immediately would show the
+ * stale row and make the delete look like it failed), then refetch the detail.
+ */
+export function useDeleteIdentification() {
+  return useMutation({
+    mutationFn: async ({ uri, occurrenceUri }: { uri: string; occurrenceUri: string }) => {
+      await deleteIdentification(uri);
+      await pollObservation(
+        occurrenceUri,
+        (r) => !r?.identifications?.some((id) => id.uri === uri),
+      );
+    },
+    onSuccess: (_data, { occurrenceUri }) => {
+      void invalidateObservation(occurrenceUri);
     },
   });
 }

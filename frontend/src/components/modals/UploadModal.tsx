@@ -26,7 +26,8 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { useToast } from "../../hooks/useToast";
 import { useUserPreferences } from "../../lib/query/hooks";
-import { submitObservation, updateObservation, validateTaxon } from "../../services/api";
+import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
+import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConfirmDialog } from "../common/ConfirmDialog";
@@ -61,6 +62,10 @@ export function UploadModal() {
 
   const isEditMode = !!editingObservation;
 
+  const submitObs = useSubmitObservation();
+  const updateObs = useUpdateObservation();
+  const isSubmitting = submitObs.isPending || updateObs.isPending;
+
   const [species, setSpecies] = useState("");
   const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
   const [kingdom, setKingdom] = useState("");
@@ -68,7 +73,6 @@ export function UploadModal() {
   const [license, setLicense] = useState<string>(DEFAULT_LICENSE);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
@@ -298,26 +302,37 @@ export function UploadModal() {
       return;
     }
 
-    setIsSubmitting(true);
+    const imageData = await Promise.all(
+      images.map(async (img) => ({
+        data: await fileToBase64(img.file),
+        mimeType: img.file.type,
+      })),
+    );
 
-    try {
-      const imageData = await Promise.all(
-        images.map(async (img) => ({
-          data: await fileToBase64(img.file),
-          mimeType: img.file.type,
-        })),
-      );
+    const kind: "create" | "update" = isEditMode ? "update" : "create";
 
-      let result: { uri: string; cid: string };
-      let kind: "create" | "update";
+    // The PDS write succeeded. Close the modal immediately so the submission
+    // feels instant — the ingester poll, completion toast, and cache
+    // invalidation run in the background (surfaced by the TopBar pending
+    // indicator). The user stays on the current page; the new/updated row
+    // appears in place once the ingester catches up.
+    const onSuccess = (result: { uri: string; cid: string }) => {
+      dispatch(closeUploadModal());
+      resetForm();
+      void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
+    };
+    const onError = (error: Error) => {
+      toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
+    };
 
-      if (isEditMode && editingObservation) {
-        // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
-        const retainedBlobCids = existingImages.map((url) => {
-          return url.split("/").at(-1) ?? "";
-        });
+    if (isEditMode && editingObservation) {
+      // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
+      const retainedBlobCids = existingImages.map((url) => {
+        return url.split("/").at(-1) ?? "";
+      });
 
-        result = await updateObservation({
+      updateObs.mutate(
+        {
           uri: editingObservation.uri,
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
@@ -329,12 +344,12 @@ export function UploadModal() {
           eventDate: new Date(observationDate).toISOString(),
           ...(imageData.length > 0 ? { images: imageData } : {}),
           retainedBlobCids,
-        });
-        kind = "update";
-      } else {
-        const eventDate = new Date(observationDate).toISOString();
-
-        result = await submitObservation({
+        },
+        { onSuccess, onError },
+      );
+    } else {
+      submitObs.mutate(
+        {
           ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
           ...(trimmedSpecies && kingdom ? { kingdom } : {}),
           ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
@@ -342,24 +357,11 @@ export function UploadModal() {
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
           license,
-          eventDate,
+          eventDate: new Date(observationDate).toISOString(),
           ...(imageData.length > 0 ? { images: imageData } : {}),
-        });
-        kind = "create";
-      }
-
-      // The PDS write succeeded. Close the modal immediately so the submission
-      // feels instant — the ingester poll, completion toast, and cache
-      // invalidation run in the background (surfaced by the TopBar pending
-      // indicator). The user stays on the current page; the new/updated row
-      // appears in place once the ingester catches up.
-      dispatch(closeUploadModal());
-      resetForm();
-      void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
-    } catch (error) {
-      toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
-    } finally {
-      setIsSubmitting(false);
+        },
+        { onSuccess, onError },
+      );
     }
   };
 
