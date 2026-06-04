@@ -1,21 +1,14 @@
 import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Container,
-  Typography,
-  Button,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemButton,
-} from "@mui/material";
+import { Box, Container, Typography, Button, List, ListItem, ListItemButton } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
+import { CenteredSpinner } from "../common/CenteredSpinner";
+import { EmptyState } from "../common/EmptyState";
 import { useNotifications } from "../../lib/query/hooks";
 import { useMarkNotificationRead } from "../../lib/query/mutations";
 
@@ -93,15 +86,7 @@ export function NotificationsPage() {
         </Box>
 
         {!isLoading && notifications.length === 0 && (
-          <Typography
-            sx={{
-              color: "text.secondary",
-              textAlign: "center",
-              mt: 4,
-            }}
-          >
-            No notifications yet
-          </Typography>
+          <EmptyState message="No notifications yet" p={0} sx={{ mt: 4 }} />
         )}
 
         <List disablePadding>
@@ -139,11 +124,7 @@ export function NotificationsPage() {
           ))}
         </List>
 
-        {(isLoading || isFetchingNextPage) && (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
-            <CircularProgress size={24} />
-          </Box>
-        )}
+        {(isLoading || isFetchingNextPage) && <CenteredSpinner p={0} sx={{ py: 3 }} />}
       </Container>
     </Box>
   );

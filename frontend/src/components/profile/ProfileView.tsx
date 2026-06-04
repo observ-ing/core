@@ -7,7 +7,6 @@ import {
   Tabs,
   Tab,
   Button,
-  CircularProgress,
   Stack,
   Card,
   CardActionArea,
@@ -24,6 +23,8 @@ import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
+import { CenteredSpinner } from "../common/CenteredSpinner";
+import { EmptyState } from "../common/EmptyState";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
@@ -343,21 +344,9 @@ export function ProfileView() {
           )}
         </Box>
       )}
-      {isFetchingNextPage && (
-        <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-          <CircularProgress color="primary" size={24} />
-        </Box>
-      )}
+      {isFetchingNextPage && <CenteredSpinner color="primary" />}
       {!isLoading && occurrences.length === 0 && identifications.length === 0 && (
-        <Box sx={{ p: 4, textAlign: "center" }}>
-          <Typography
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            No activity yet
-          </Typography>
-        </Box>
+        <EmptyState message="No activity yet" />
       )}
       {hasMore && !isLoading && !isFetchingNextPage && (
         <Box sx={{ p: 2, textAlign: "center" }}>
