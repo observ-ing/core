@@ -1,5 +1,5 @@
 import { useRef, useCallback } from "react";
-import { Box, Container, Typography, CircularProgress } from "@mui/material";
+import { Box, Container } from "@mui/material";
 import { useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useFeed } from "../../lib/query/hooks";
@@ -12,6 +12,8 @@ import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
 import { FeedEndIndicator } from "./FeedEndIndicator";
 import { observationGridSx } from "../common/observationGridLayout";
+import { CenteredSpinner } from "../common/CenteredSpinner";
+import { EmptyState } from "../common/EmptyState";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -89,22 +91,10 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                 )}
               </Box>
 
-              {isFetchingNextPage && (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-                  <CircularProgress color="primary" size={24} />
-                </Box>
-              )}
+              {isFetchingNextPage && <CenteredSpinner color="primary" />}
 
               {!isLoading && observations.length === 0 && (
-                <Box sx={{ p: 4, textAlign: "center" }}>
-                  <Typography
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    No observations yet. Be the first to post!
-                  </Typography>
-                </Box>
+                <EmptyState message="No observations yet. Be the first to post!" />
               )}
 
               {!isLoading && !hasMore && observations.length > 0 && (
@@ -126,22 +116,10 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
 
               {isLoading && observations.length === 0 && <FeedSkeletonList count={3} />}
 
-              {isFetchingNextPage && (
-                <Box sx={{ display: "flex", justifyContent: "center", p: 4 }}>
-                  <CircularProgress color="primary" size={24} />
-                </Box>
-              )}
+              {isFetchingNextPage && <CenteredSpinner color="primary" />}
 
               {!isLoading && observations.length === 0 && (
-                <Box sx={{ p: 4, textAlign: "center" }}>
-                  <Typography
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    No observations yet. Be the first to post!
-                  </Typography>
-                </Box>
+                <EmptyState message="No observations yet. Be the first to post!" />
               )}
 
               {!isLoading && !hasMore && observations.length > 0 && <FeedEndIndicator />}
