@@ -6,6 +6,33 @@ use crate::types::{
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
+/// Append the keyset-pagination predicate for a feed cursor.
+///
+/// Feeds order by `(created_at DESC, uri DESC)`. `created_at` is not unique, so
+/// a timestamp-only cursor (`created_at < $ts`) skips every other row sharing
+/// the boundary timestamp and ties sort arbitrarily between queries. The cursor
+/// encodes both halves as `"<created_at>|<uri>"` (see
+/// `OccurrenceResponse::feed_cursor` in the appview) and we compare the row
+/// tuple against it. Any caller that uses this MUST order by
+/// `created_at DESC, uri DESC` so the predicate and sort agree. Legacy
+/// single-value cursors (no `|`) fall back to the timestamp-only predicate.
+fn push_keyset_cursor(qb: &mut QueryBuilder<Postgres>, cursor: &str) {
+    match cursor.split_once('|') {
+        Some((created_at, uri)) => {
+            qb.push(" AND (created_at, uri) < (");
+            qb.push_bind(created_at.to_string());
+            qb.push("::timestamptz, ");
+            qb.push_bind(uri.to_string());
+            qb.push(")");
+        }
+        None => {
+            qb.push(" AND created_at < ");
+            qb.push_bind(cursor.to_string());
+            qb.push("::timestamptz");
+        }
+    }
+}
+
 /// Get the explore feed with optional filters
 pub async fn get_explore_feed(
     executor: impl sqlx::PgExecutor<'_>,
@@ -53,13 +80,11 @@ pub async fn get_explore_feed(
     }
 
     if let Some(cursor) = options.cursor.as_deref() {
-        qb.push(" AND created_at < ");
-        qb.push_bind(cursor);
-        qb.push("::timestamptz");
+        push_keyset_cursor(&mut qb, cursor);
     }
 
     let limit = options.limit.unwrap_or(20);
-    qb.push(" ORDER BY created_at DESC LIMIT ");
+    qb.push(" ORDER BY created_at DESC, uri DESC LIMIT ");
     qb.push_bind(limit);
 
     qb.build_query_as::<OccurrenceRow>()
@@ -250,13 +275,11 @@ pub async fn get_home_feed(
     }
 
     if let Some(cursor) = options.cursor.as_deref() {
-        qb.push(" AND created_at < ");
-        qb.push_bind(cursor);
-        qb.push("::timestamptz");
+        push_keyset_cursor(&mut qb, cursor);
     }
 
     let limit = options.limit.unwrap_or(20);
-    qb.push(" ORDER BY created_at DESC LIMIT ");
+    qb.push(" ORDER BY created_at DESC, uri DESC LIMIT ");
     qb.push_bind(limit);
 
     qb.build_query_as::<OccurrenceRow>()
@@ -297,12 +320,10 @@ pub async fn get_occurrences_by_taxon(
     }
 
     if let Some(cursor) = options.cursor.as_deref() {
-        qb.push(" AND created_at < ");
-        qb.push_bind(cursor);
-        qb.push("::timestamptz");
+        push_keyset_cursor(&mut qb, cursor);
     }
 
-    qb.push(" ORDER BY created_at DESC LIMIT ");
+    qb.push(" ORDER BY created_at DESC, uri DESC LIMIT ");
     qb.push_bind(limit);
 
     qb.build_query_as::<OccurrenceRow>()
@@ -358,4 +379,32 @@ fn push_consensus_rank_filter(qb: &mut QueryBuilder<Postgres>, rank_lower: &str,
     qb.push(" = ");
     qb.push_bind(taxon_name);
     qb.push(")");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keyset_cursor_compound_uses_row_value_comparison() {
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT 1 FROM occurrences WHERE TRUE");
+        push_keyset_cursor(&mut qb, "2026-06-02T21:13:49Z|at://did:plc:x/coll/rkey");
+        let sql = qb.sql();
+        let sql = sql.as_str();
+        // Tuple comparison against (created_at, uri) so a shared timestamp can't
+        // skip or duplicate rows at the page boundary.
+        assert!(sql.contains("(created_at, uri) < ("), "got: {sql}");
+        assert!(sql.contains("::timestamptz"));
+    }
+
+    #[test]
+    fn keyset_cursor_legacy_value_falls_back_to_timestamp() {
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT 1 FROM occurrences WHERE TRUE");
+        push_keyset_cursor(&mut qb, "2026-06-02T21:13:49Z");
+        let sql = qb.sql();
+        let sql = sql.as_str();
+        // A pre-upgrade cursor (no `|`) still paginates, just without the tiebreaker.
+        assert!(sql.contains("AND created_at < "), "got: {sql}");
+        assert!(!sql.contains("(created_at, uri)"), "got: {sql}");
+    }
 }

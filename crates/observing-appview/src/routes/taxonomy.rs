@@ -167,7 +167,7 @@ pub async fn get_taxon_occurrences_by_kingdom_name(
     )
     .await;
 
-    let next_cursor = occurrences.last().map(|o| o.created_at.clone());
+    let next_cursor = occurrences.last().map(|o| o.feed_cursor());
 
     Ok(Json(OccurrenceListResponse {
         occurrences,
@@ -260,7 +260,7 @@ pub async fn get_taxon_occurrences_by_id(
     )
     .await;
 
-    let next_cursor = occurrences.last().map(|o| o.created_at.clone());
+    let next_cursor = occurrences.last().map(|o| o.feed_cursor());
 
     Ok(Json(OccurrenceListResponse {
         occurrences,

@@ -46,6 +46,17 @@ pub struct OccurrenceResponse {
     pub quality_issues: Vec<QualityIssue>,
 }
 
+impl OccurrenceResponse {
+    /// Keyset-pagination cursor for the feeds: `created_at` paired with the
+    /// unique `uri` tiebreaker, matching the feed `ORDER BY (created_at DESC,
+    /// uri DESC)`. `created_at` alone is not unique, so a timestamp-only cursor
+    /// skips or duplicates rows that share a timestamp. The db side decodes
+    /// this in `observing_db::feeds::push_keyset_cursor`.
+    pub fn feed_cursor(&self) -> String {
+        format!("{}|{}", self.created_at, self.uri)
+    }
+}
+
 /// A single image attached to an occurrence, with the SPDX license the
 /// uploader chose (when one is recorded on the underlying media record).
 #[derive(Debug, Clone, Serialize, TS)]
