@@ -28,10 +28,11 @@ import { useQueryClient } from "@tanstack/react-query";
 import { getImageUrl, deleteIdentification, pollObservation } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike } from "../../lib/query/mutations";
 import { qk } from "../../lib/query/keys";
-import { openDeleteConfirm, openEditModal, addToast } from "../../store/uiSlice";
+import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
@@ -54,6 +55,7 @@ export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const user = useAppSelector((state) => state.auth.user);
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -486,11 +488,11 @@ export function ObservationDetail() {
                         (r) => !r?.identifications?.some((id) => id.uri === uri),
                       );
                     }
-                    dispatch(addToast({ message: "Identification deleted", type: "success" }));
+                    toast.success("Identification deleted");
                     refreshObservation();
                   } catch (error) {
                     const message = getErrorMessage(error, "Failed to delete identification");
-                    dispatch(addToast({ message, type: "error" }));
+                    toast.error(message);
                     if (message.includes("Session expired")) {
                       dispatch(checkAuth());
                     }

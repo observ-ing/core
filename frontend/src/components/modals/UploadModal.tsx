@@ -26,8 +26,9 @@ import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { closeUploadModal, addToast, consumePendingUploadFiles } from "../../store/uiSlice";
+import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice";
 import { trackSubmission } from "../../store/pendingSlice";
+import { useToast } from "../../hooks/useToast";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { submitObservation, updateObservation, validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
@@ -54,6 +55,7 @@ function toDatetimeLocal(date: Date): string {
 
 export function UploadModal() {
   const dispatch = useAppDispatch();
+  const toast = useToast();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const user = useAppSelector((state) => state.auth.user);
@@ -168,32 +170,17 @@ export function UploadModal() {
   const addFiles = (files: File[]) => {
     for (const file of files) {
       if (!VALID_TYPES.includes(file.type)) {
-        dispatch(
-          addToast({
-            message: `Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`,
-            type: "error",
-          }),
-        );
+        toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
         continue;
       }
 
       if (file.size > MAX_FILE_SIZE) {
-        dispatch(
-          addToast({
-            message: `File too large: ${file.name}. Max size is 10MB.`,
-            type: "error",
-          }),
-        );
+        toast.error(`File too large: ${file.name}. Max size is 10MB.`);
         continue;
       }
 
       if (images.length >= MAX_IMAGES) {
-        dispatch(
-          addToast({
-            message: `Maximum ${MAX_IMAGES} images allowed.`,
-            type: "error",
-          }),
-        );
+        toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
         break;
       }
 
@@ -213,7 +200,7 @@ export function UploadModal() {
   const handlePickImages = async () => {
     const remaining = MAX_IMAGES - images.length;
     if (remaining <= 0) {
-      dispatch(addToast({ message: `Maximum ${MAX_IMAGES} images allowed.`, type: "error" }));
+      toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
       return;
     }
     const files = await pickPhotos({
@@ -262,9 +249,7 @@ export function UploadModal() {
 
           setLat(latitude.toFixed(6));
           setLng(longitude.toFixed(6));
-          dispatch(
-            addToast({ message: "Location extracted from photo EXIF data", type: "success" }),
-          );
+          toast.success("Location extracted from photo EXIF data");
         }
       }
 
@@ -276,7 +261,7 @@ export function UploadModal() {
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
           setObservationDate(toDatetimeLocal(date));
-          dispatch(addToast({ message: "Date extracted from photo EXIF data", type: "success" }));
+          toast.success("Date extracted from photo EXIF data");
         }
       }
     } catch (error) {
@@ -306,18 +291,13 @@ export function UploadModal() {
     e.preventDefault();
 
     if (!lat || !lng) {
-      dispatch(addToast({ message: "Please provide a location", type: "error" }));
+      toast.error("Please provide a location");
       return;
     }
 
     const trimmedSpecies = species.trim();
     if (trimmedSpecies && !matchedTaxon && !kingdom) {
-      dispatch(
-        addToast({
-          message: "Please select a kingdom for the taxon name you entered",
-          type: "error",
-        }),
-      );
+      toast.error("Please select a kingdom for the taxon name you entered");
       return;
     }
 
@@ -380,12 +360,7 @@ export function UploadModal() {
       resetForm();
       void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
     } catch (error) {
-      dispatch(
-        addToast({
-          message: `Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`,
-          type: "error",
-        }),
-      );
+      toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
     } finally {
       setIsSubmitting(false);
     }

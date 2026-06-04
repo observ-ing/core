@@ -15,9 +15,9 @@ import {
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { useAppSelector, useAppDispatch } from "../../store";
-import { addToast } from "../../store/uiSlice";
+import { useAppSelector } from "../../store";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
+import { useToast } from "../../hooks/useToast";
 import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
 import { getPdslsUrl } from "../../lib/utils";
@@ -30,7 +30,7 @@ interface CommentSectionProps {
 }
 
 export function CommentSection({ observationUri, observationCid, comments }: CommentSectionProps) {
-  const dispatch = useAppDispatch();
+  const toast = useToast();
   const user = useAppSelector((state) => state.auth.user);
   const [showForm, setShowForm] = useState(false);
   const [body, setBody] = useState("");
@@ -69,7 +69,7 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
     e.preventDefault();
 
     if (!body.trim()) {
-      dispatch(addToast({ message: "Please enter a comment", type: "error" }));
+      toast.error("Please enter a comment");
       return;
     }
 

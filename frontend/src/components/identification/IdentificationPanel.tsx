@@ -24,9 +24,8 @@ import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
 import { TaxonLink } from "../common/TaxonLink";
-import { useAppDispatch } from "../../store";
-import { addToast } from "../../store/uiSlice";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
+import { useToast } from "../../hooks/useToast";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 
@@ -53,7 +52,7 @@ export function IdentificationPanel({
   latitude,
   longitude,
 }: IdentificationPanelProps) {
-  const dispatch = useAppDispatch();
+  const toast = useToast();
   const [showSuggestForm, setShowSuggestForm] = useState(false);
   const [taxonName, setTaxonName] = useState("");
   const [matchedTaxon, setMatchedTaxon] = useState<TaxaResult | null>(null);
@@ -118,17 +117,12 @@ export function IdentificationPanel({
     e.preventDefault();
 
     if (!taxonName.trim()) {
-      dispatch(addToast({ message: "Please enter a taxon name", type: "error" }));
+      toast.error("Please enter a taxon name");
       return;
     }
 
     if (!matchedTaxon && !kingdom) {
-      dispatch(
-        addToast({
-          message: "Please select a kingdom for the taxon name you entered",
-          type: "error",
-        }),
-      );
+      toast.error("Please select a kingdom for the taxon name you entered");
       return;
     }
 
