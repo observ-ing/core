@@ -28,6 +28,7 @@ import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
 import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
+import { observationGridSx } from "../common/observationGridLayout";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
 type ProfileTab = "observations" | "identifications";
@@ -250,17 +251,7 @@ export function ProfileView() {
       </Tabs>
       {/* Observations Grid */}
       {activeTab === "observations" && (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "repeat(2, 1fr)",
-              sm: "repeat(3, 1fr)",
-            },
-            gap: 1.5,
-            p: 1.5,
-          }}
-        >
+        <Box sx={observationGridSx()}>
           {occurrences.map((occ) => (
             <Card key={occ.uri} sx={{ display: "flex", flexDirection: "column" }}>
               <CardActionArea
@@ -317,17 +308,7 @@ export function ProfileView() {
       )}
       {/* Identifications Grid */}
       {activeTab === "identifications" && (
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: {
-              xs: "repeat(2, 1fr)",
-              sm: "repeat(3, 1fr)",
-            },
-            gap: 1.5,
-            p: 1.5,
-          }}
-        >
+        <Box sx={observationGridSx()}>
           {identifications.map((id) => (
             <Card key={id.uri} sx={{ display: "flex", flexDirection: "column" }}>
               <CardActionArea
