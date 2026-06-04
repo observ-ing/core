@@ -57,7 +57,7 @@ pub async fn get_explore(
     .await;
 
     let next_cursor = if occurrences.len() as i64 == limit {
-        occurrences.last().map(|o| o.created_at.clone())
+        occurrences.last().map(|o| o.feed_cursor())
     } else {
         None
     };
@@ -113,7 +113,7 @@ pub async fn get_home(
     .await;
 
     let next_cursor = if occurrences.len() as i64 == limit {
-        occurrences.last().map(|o| o.created_at.clone())
+        occurrences.last().map(|o| o.feed_cursor())
     } else {
         None
     };
