@@ -3,12 +3,14 @@ import { useDispatch, useSelector, type TypedUseSelectorHook } from "react-redux
 import authReducer from "./authSlice";
 import feedReducer from "./feedSlice";
 import uiReducer from "./uiSlice";
+import pendingReducer from "./pendingSlice";
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     feed: feedReducer,
     ui: uiReducer,
+    pending: pendingReducer,
   },
 });
 
