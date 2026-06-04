@@ -48,6 +48,10 @@ use chrono::Utc;
 use clap::Parser;
 use dashboard::DashboardState;
 use database::Database;
+use observing_collections::{
+    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
+    OCCURRENCE_COLLECTION,
+};
 use observing_db::failed_records::FailedRecord;
 use serde_json::Value;
 use server::{ServerState, SharedState};
@@ -56,10 +60,7 @@ use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, T
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
-use types::{
-    RecentEvent, COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION,
-    LIKE_COLLECTION, OCCURRENCE_COLLECTION,
-};
+use types::RecentEvent;
 
 #[derive(Parser)]
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]

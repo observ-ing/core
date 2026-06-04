@@ -30,14 +30,10 @@ use std::time::Duration;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
-// Duplicated from tap-ingester::types because tap-ingester is a bin-only
-// crate with no library target to import from. Keep in sync if either side
-// changes.
-const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.v0-1.occurrence";
-const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.v0-1.identification";
-const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
-const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
-const LIKE_COLLECTION: &str = "ing.observ.temp.like";
+use observing_collections::{
+    COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
+    OCCURRENCE_COLLECTION,
+};
 
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]

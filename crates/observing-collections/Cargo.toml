@@ -1,0 +1,13 @@
+[package]
+name = "observing-collections"
+version = "0.1.0"
+edition = "2021"
+description = "Canonical AT Protocol collection NSIDs ingested by observ.ing, derived from the generated lexicon types"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Source of truth: the generated record types expose their NSID as an
+# associated const, so the collection constants below cannot drift from the
+# lexicon schemas (e.g. during the lexicons.bio migration).
+observing-lexicons = { path = "../observing-lexicons" }
+jacquard-common = "0.12.0-beta.2"

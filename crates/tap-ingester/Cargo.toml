@@ -12,6 +12,8 @@ tapped = { workspace = true }
 # Database write path (shared processing module).
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-lexicons = { path = "../observing-lexicons" }
+# Canonical collection NSIDs (Tap filters + record-dispatch keys).
+observing-collections = { path = "../observing-collections" }
 
 # Postgres connection URL from env (DATABASE_URL or DB_* / Cloud SQL socket)
 pg-url-env = { path = "../pg-url-env" }

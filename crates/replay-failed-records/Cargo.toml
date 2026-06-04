@@ -9,6 +9,8 @@ license = "MIT OR Apache-2.0"
 # Reaches `processing::*_from_json` (feature-gated) plus the per-collection
 # upsert helpers and the failed_records reader.
 observing-db = { path = "../observing-db", features = ["processing"] }
+# Canonical collection NSIDs, shared with tap-ingester (no more hand-kept copy).
+observing-collections = { path = "../observing-collections" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }

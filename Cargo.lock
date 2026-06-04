@@ -2891,6 +2891,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "observing-collections"
+version = "0.1.0"
+dependencies = [
+ "jacquard-common",
+ "observing-lexicons",
+]
+
+[[package]]
 name = "observing-db"
 version = "0.1.0"
 dependencies = [
@@ -3712,6 +3720,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "observing-collections",
  "observing-db",
  "serde_json",
  "sqlx",
@@ -4715,6 +4724,7 @@ dependencies = [
  "ciborium",
  "clap",
  "futures-util",
+ "observing-collections",
  "observing-db",
  "observing-lexicons",
  "pg-url-env",
