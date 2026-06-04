@@ -1,9 +1,7 @@
 import { useState, useCallback, type FormEvent } from "react";
-import { Link as RouterLink } from "react-router-dom";
 import {
   Box,
   Typography,
-  Avatar,
   Stack,
   Paper,
   TextField,
@@ -22,6 +20,7 @@ import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
 import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
+import { UserCard } from "../common/UserCard";
 
 interface CommentSectionProps {
   observationUri: string;
@@ -147,45 +146,16 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
                 },
               }}
             >
-              <Stack
-                direction="row"
-                spacing={1.5}
-                sx={{
-                  alignItems: "flex-start",
-                }}
-              >
-                <RouterLink
-                  to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}
-                >
-                  <Avatar
-                    {...(comment.commenter?.avatar ? { src: comment.commenter.avatar } : {})}
-                    sx={{ width: 32, height: 32 }}
-                  >
-                    {(comment.commenter?.displayName || comment.commenter?.handle || "?")[0]}
-                  </Avatar>
-                </RouterLink>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      alignItems: "center",
-                    }}
-                  >
-                    <RouterLink
-                      to={`/profile/${encodeURIComponent(comment.commenter?.did || comment.did)}`}
-                      style={{ textDecoration: "none" }}
-                    >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: "medium",
-                          color: "text.primary",
-                        }}
-                      >
-                        {comment.commenter?.displayName || comment.commenter?.handle || "Unknown"}
-                      </Typography>
-                    </RouterLink>
+              <UserCard
+                actor={comment.commenter ?? {}}
+                linkDid={comment.commenter?.did || comment.did}
+                avatarSize={32}
+                alignItems="flex-start"
+                link
+                nameVariant="body2"
+                nameSx={{ fontWeight: "medium" }}
+                trailing={
+                  <>
                     <Typography
                       variant="caption"
                       sx={{
@@ -221,12 +191,14 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
                         </MenuItem>
                       </Menu>
                     </Box>
-                  </Stack>
+                  </>
+                }
+                belowName={
                   <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
                     {comment.body}
                   </Typography>
-                </Box>
-              </Stack>
+                }
+              />
             </Box>
           ))}
         </Stack>

@@ -1,18 +1,15 @@
 import { memo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Box,
-  Avatar,
   Typography,
   IconButton,
   Menu,
   MenuItem,
   Card,
-  CardHeader,
   CardContent,
   CardActions,
   CardActionArea,
-  Stack,
   Tooltip,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -23,7 +20,8 @@ import { useAppSelector } from "../../store";
 import { getImageUrl } from "../../services/api";
 import { useLike } from "../../lib/query/mutations";
 import { TaxonLink } from "../common/TaxonLink";
-import { getDisplayName, getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { UserCard } from "../common/UserCard";
+import { getPdslsUrl, getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
@@ -47,7 +45,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const isOwnPost = currentUser?.did === observation.observer.did;
 
   const owner = observation.observer;
-  const displayName = getDisplayName(owner);
   const handle = owner.handle ? `@${owner.handle}` : "";
   const timeAgo = <RelativeTime date={new Date(observation.createdAt)} />;
 
@@ -93,97 +90,65 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
     navigate(observationUrl);
   };
 
-  const avatarEl = (
-    <Avatar
-      component={Link}
-      to={`/profile/${encodeURIComponent(owner.did)}`}
-      {...(owner.avatar ? { src: owner.avatar } : {})}
-      alt={displayName}
-      onClick={(e) => e.stopPropagation()}
-      sx={{ width: 40, height: 40, cursor: "pointer" }}
-    />
-  );
-
-  const titleEl = (
-    <Stack
-      direction="row"
-      spacing={1}
-      sx={{
-        alignItems: "baseline",
-        flexWrap: "wrap",
-      }}
-    >
-      <Typography
-        component={Link}
-        to={`/profile/${encodeURIComponent(owner.did)}`}
-        onClick={(e) => e.stopPropagation()}
-        sx={{
-          fontWeight: 600,
-          color: "text.primary",
-          textDecoration: "none",
-          "&:hover": { textDecoration: "underline" },
-        }}
-      >
-        {displayName}
-      </Typography>
-      {handle && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.disabled",
-          }}
-        >
-          {handle}
-        </Typography>
-      )}
-    </Stack>
-  );
-
   return (
     <Card sx={FEED_CARD_SX}>
       <CardActionArea onClick={handleCardClick} component="div">
-        <CardHeader
-          avatar={avatarEl}
-          title={titleEl}
-          subheader={timeAgo}
-          slotProps={{ subheader: { variant: "body2", color: "text.disabled" } }}
-          action={
-            <>
-              <IconButton
-                size="small"
-                onClick={handleMenuOpen}
-                aria-label="More options"
-                sx={{ color: "text.disabled" }}
-              >
-                <MoreVertIcon fontSize="small" />
-              </IconButton>
-              <Menu
-                anchorEl={anchorEl}
-                open={menuOpen}
-                onClose={handleMenuClose}
-                onClick={(e) => e.stopPropagation()}
-                anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                transformOrigin={{ vertical: "top", horizontal: "right" }}
-              >
-                {isOwnPost && onEdit && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
-                {isOwnPost && onDelete && (
-                  <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-                    Delete
-                  </MenuItem>
-                )}
-                <MenuItem
-                  component="a"
-                  href={pdslsUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  View on AT Protocol
+        <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
+          <UserCard
+            actor={owner}
+            avatarSize={40}
+            spacing={1}
+            link
+            stopPropagation
+            nameSx={{ "&:hover": { textDecoration: "underline" } }}
+            trailing={
+              handle ? (
+                <Typography variant="body2" sx={{ color: "text.disabled" }}>
+                  {handle}
+                </Typography>
+              ) : undefined
+            }
+            belowName={
+              <Typography variant="body2" sx={{ color: "text.disabled" }}>
+                {timeAgo}
+              </Typography>
+            }
+          />
+          <Box>
+            <IconButton
+              size="small"
+              onClick={handleMenuOpen}
+              aria-label="More options"
+              sx={{ color: "text.disabled" }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+            <Menu
+              anchorEl={anchorEl}
+              open={menuOpen}
+              onClose={handleMenuClose}
+              onClick={(e) => e.stopPropagation()}
+              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+              transformOrigin={{ vertical: "top", horizontal: "right" }}
+            >
+              {isOwnPost && onEdit && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
+              {isOwnPost && onDelete && (
+                <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
+                  Delete
                 </MenuItem>
-              </Menu>
-            </>
-          }
-        />
+              )}
+              <MenuItem
+                component="a"
+                href={pdslsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                View on AT Protocol
+              </MenuItem>
+            </Menu>
+          </Box>
+        </Box>
 
         {imageUrl && (
           <ImageWithSkeleton

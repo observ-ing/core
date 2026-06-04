@@ -6,11 +6,8 @@ import {
   Typography,
   Button,
   CircularProgress,
-  Avatar,
   List,
   ListItem,
-  ListItemAvatar,
-  ListItemText,
   ListItemButton,
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -18,6 +15,7 @@ import { getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
+import { UserCard } from "../common/UserCard";
 import { useNotifications } from "../../lib/query/hooks";
 import { useMarkNotificationRead } from "../../lib/query/mutations";
 
@@ -118,30 +116,23 @@ export function NotificationsPage() {
               }}
             >
               <ListItemButton onClick={() => handleClick(n)} sx={{ borderRadius: 2, py: 1.5 }}>
-                <ListItemAvatar>
-                  <Avatar
-                    {...(n.actor?.avatar ? { src: getImageUrl(n.actor.avatar) } : {})}
-                    sx={{ width: 40, height: 40 }}
-                  />
-                </ListItemAvatar>
-                <ListItemText
-                  primary={
-                    <>
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        sx={{
-                          fontWeight: 600,
-                        }}
-                      >
-                        @{n.actor?.handle || n.actorDid}
-                      </Typography>{" "}
-                      <Typography component="span" variant="body2">
-                        {getKindText(n.kind)}
-                      </Typography>
-                    </>
+                <UserCard
+                  actor={n.actor ?? {}}
+                  linkDid={n.actorDid}
+                  avatarSize={40}
+                  {...(n.actor?.avatar ? { avatarSrc: getImageUrl(n.actor.avatar) } : {})}
+                  nameVariant="body2"
+                  showHandle
+                  trailing={
+                    <Typography component="span" variant="body2">
+                      {getKindText(n.kind)}
+                    </Typography>
                   }
-                  secondary={<RelativeTime date={new Date(n.createdAt)} />}
+                  belowName={
+                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                      <RelativeTime date={new Date(n.createdAt)} />
+                    </Typography>
+                  }
                 />
               </ListItemButton>
             </ListItem>
