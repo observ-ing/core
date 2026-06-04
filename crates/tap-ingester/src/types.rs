@@ -23,14 +23,6 @@ pub struct RecentEvent {
     pub time: chrono::DateTime<chrono::Utc>,
 }
 
-/// Collections we ingest. Used both as Tap collection-filters and as
-/// dispatch keys in `process_record`.
-pub const OCCURRENCE_COLLECTION: &str = "bio.lexicons.temp.v0-1.occurrence";
-pub const IDENTIFICATION_COLLECTION: &str = "bio.lexicons.temp.v0-1.identification";
-pub const COMMENT_COLLECTION: &str = "ing.observ.temp.comment";
-pub const INTERACTION_COLLECTION: &str = "ing.observ.temp.interaction";
-pub const LIKE_COLLECTION: &str = "ing.observ.temp.like";
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -56,17 +48,5 @@ mod tests {
         let json = serde_json::to_string(&event).unwrap();
         assert!(json.contains("\"type\""));
         assert!(json.contains("occurrence"));
-    }
-
-    #[test]
-    fn test_collection_constants() {
-        assert_eq!(OCCURRENCE_COLLECTION, "bio.lexicons.temp.v0-1.occurrence");
-        assert_eq!(
-            IDENTIFICATION_COLLECTION,
-            "bio.lexicons.temp.v0-1.identification"
-        );
-        assert_eq!(COMMENT_COLLECTION, "ing.observ.temp.comment");
-        assert_eq!(INTERACTION_COLLECTION, "ing.observ.temp.interaction");
-        assert_eq!(LIKE_COLLECTION, "ing.observ.temp.like");
     }
 }
