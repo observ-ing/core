@@ -8,6 +8,8 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 # Wire types shared with the appview client
 observing-species-id-protocol = { path = "../observing-species-id-protocol" }
+# Shared HTTP server bootstrap (bind + serve)
+observing-bootstrap = { path = "../observing-bootstrap" }
 
 # ONNX inference
 ort = { version = "2.0.0-rc.12", features = ["load-dynamic", "ndarray"] }

@@ -1,0 +1,11 @@
+[package]
+name = "observing-bootstrap"
+version = "0.1.0"
+edition = "2021"
+description = "Shared service-bootstrap helpers for observ.ing binaries"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+axum = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }

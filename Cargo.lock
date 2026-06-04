@@ -2872,6 +2872,7 @@ dependencies = [
  "hickory-resolver",
  "jacquard-common",
  "moka",
+ "observing-bootstrap",
  "observing-db",
  "observing-lexicons",
  "observing-species-id-protocol",
@@ -2888,6 +2889,15 @@ dependencies = [
  "urlencoding",
  "wikidata-client",
  "wiremock",
+]
+
+[[package]]
+name = "observing-bootstrap"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2960,6 +2970,7 @@ dependencies = [
  "chrono",
  "image",
  "ndarray",
+ "observing-bootstrap",
  "observing-species-id-protocol",
  "ort",
  "serde",
@@ -4724,6 +4735,7 @@ dependencies = [
  "ciborium",
  "clap",
  "futures-util",
+ "observing-bootstrap",
  "observing-collections",
  "observing-db",
  "observing-lexicons",

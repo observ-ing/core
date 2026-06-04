@@ -325,11 +325,7 @@ async fn heartbeat(state: SharedState, tap: TapClient, relay_url: String) {
 }
 
 async fn serve_http(state: DashboardState, port: u16) -> std::io::Result<()> {
-    let router = dashboard::router(state);
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-    info!("Starting HTTP server on {}", addr);
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, router).await
+    observing_bootstrap::serve(dashboard::router(state), port).await
 }
 
 /// Backing DB URL for the embedded Tap.
