@@ -259,12 +259,6 @@ async fn main() {
         }
     };
 
-    let listener = tokio::net::TcpListener::bind(format!("0.0.0.0:{}", config.port))
-        .await
-        .expect("Failed to bind");
-
-    info!(port = config.port, "Listening");
-
     // Surface the app's "front door" URL so humans (and tools) know where to
     // open it. appview is always the front door on `PORT` — NOT the Vite dev
     // server's :5173. In local dev the OAuth callback is registered at
@@ -277,7 +271,9 @@ async fn main() {
         ),
     }
 
-    axum::serve(listener, app).await.expect("Server failed");
+    observing_bootstrap::serve(app, config.port)
+        .await
+        .expect("Server failed");
 }
 
 async fn vite_proxy(

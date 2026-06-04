@@ -40,12 +40,7 @@ pub fn create_router(state: SharedState) -> Router {
 
 /// Start the HTTP server
 pub async fn start_server(state: SharedState, port: u16) -> std::io::Result<()> {
-    let router = create_router(state);
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-    info!("Starting HTTP server on {}", addr);
-
-    let listener = tokio::net::TcpListener::bind(addr).await?;
-    axum::serve(listener, router).await
+    observing_bootstrap::serve(create_router(state), port).await
 }
 
 /// Health check endpoint
