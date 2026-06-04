@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import {
   Box,
   Container,
-  Avatar,
   Typography,
   Tabs,
   Tab,
@@ -20,8 +19,9 @@ import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
 import { getImageUrl } from "../../services/api";
 import { useProfileFeed } from "../../lib/query/hooks";
-import { getDisplayName, getObservationUrl } from "../../lib/utils";
+import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
+import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
@@ -88,38 +88,15 @@ export function ProfileView() {
         <ProfileHeaderSkeleton />
       ) : (
         <Box sx={PROFILE_HEADER_SX}>
-          <Stack
-            direction="row"
+          <UserCard
+            actor={profile ?? {}}
+            linkDid={did}
+            avatarSize={PROFILE_AVATAR_SIZE}
             spacing={2}
-            sx={{
-              alignItems: "center",
-            }}
-          >
-            <Avatar
-              {...(profile?.avatar ? { src: profile.avatar } : {})}
-              alt={profile?.displayName || profile?.handle || did}
-              sx={{ width: PROFILE_AVATAR_SIZE, height: PROFILE_AVATAR_SIZE }}
-            />
-            <Box>
-              <Typography
-                variant="h5"
-                sx={{
-                  fontWeight: 600,
-                }}
-              >
-                {getDisplayName({ ...profile, did })}
-              </Typography>
-              {profile?.handle && (
-                <Typography
-                  sx={{
-                    color: "text.disabled",
-                  }}
-                >
-                  @{profile.handle}
-                </Typography>
-              )}
-            </Box>
-          </Stack>
+            nameVariant="h5"
+            showHandle
+            handleVariant="body1"
+          />
 
           {/* Stats */}
           {counts && (

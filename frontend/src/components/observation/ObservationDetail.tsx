@@ -4,7 +4,6 @@ import {
   Box,
   Container,
   Typography,
-  Avatar,
   Button,
   Stack,
   IconButton,
@@ -14,7 +13,6 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemAvatar,
   ListItemText,
   Tooltip,
 } from "@mui/material";
@@ -41,13 +39,8 @@ import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { QualityIssueBadges } from "./QualityIssueBadges";
-import {
-  formatDate,
-  getDisplayName,
-  getPdslsUrl,
-  buildOccurrenceAtUri,
-  getErrorMessage,
-} from "../../lib/utils";
+import { UserCard } from "../common/UserCard";
+import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
 export function ObservationDetail() {
@@ -150,9 +143,6 @@ export function ObservationDetail() {
       </Box>
     );
   }
-
-  const displayName = getDisplayName(observation.observer);
-  const handle = observation.observer.handle ? `@${observation.observer.handle}` : "";
 
   const taxonomy = observation.effectiveTaxonomy;
 
@@ -386,20 +376,7 @@ export function ObservationDetail() {
               borderRadius: 1,
             }}
           >
-            <ListItemAvatar>
-              <Avatar
-                {...(observation.observer.avatar ? { src: observation.observer.avatar } : {})}
-                alt={displayName}
-              />
-            </ListItemAvatar>
-            <ListItemText
-              primary={displayName}
-              secondary={handle || undefined}
-              slotProps={{
-                primary: { sx: { fontWeight: 600 } },
-                secondary: { sx: { color: "text.disabled" } },
-              }}
-            />
+            <UserCard actor={observation.observer} avatarSize={40} spacing={2} showHandle />
           </ListItem>
 
           {/* Observation Details */}
