@@ -9,7 +9,6 @@ import {
   Chip,
   Stack,
   IconButton,
-  Alert,
   CircularProgress,
   FormControl,
   InputLabel,
@@ -56,7 +55,6 @@ export function UploadModal() {
   const toast = useToast();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
-  const user = useAppSelector((state) => state.auth.user);
   const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
 
@@ -394,11 +392,6 @@ export function UploadModal() {
   return (
     <>
       <ModalOverlay isOpen={isOpen} onClose={handleRequestClose}>
-        {user && (
-          <Alert severity="success" sx={{ mb: 2, mx: -1, mt: -1 }}>
-            Posting as {user.handle ? `@${user.handle}` : user.did}
-          </Alert>
-        )}
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
           {isEditMode ? "Edit Observation" : "New Observation"}
         </Typography>
