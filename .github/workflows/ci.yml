@@ -492,7 +492,12 @@ jobs:
         with:
           context: .
           file: Dockerfile
-          build-args: SERVICE=${{ matrix.service }}
+          # VITE_MAPTILER_KEY is consumed only by the appview frontend build
+          # (other services prune that stage). Must be a key allowed for
+          # https://observ.ing. Unset → map falls back to keyless CARTO tiles.
+          build-args: |
+            SERVICE=${{ matrix.service }}
+            VITE_MAPTILER_KEY=${{ secrets.VITE_MAPTILER_KEY }}
           push: true
           tags: ${{ env.REGISTRY }}/${{ matrix.service }}:latest
           cache-from: |
