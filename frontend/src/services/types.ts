@@ -8,6 +8,8 @@
  * but aren't yet in the Rust structs, or with client-side-only fields.
  */
 
+import type { ConservationStatus } from "../bindings/ConservationStatus";
+
 // ============================================================================
 // Generated types (from Rust via ts-rs) — re-exported as-is
 // ============================================================================
@@ -194,4 +196,24 @@ export interface Notification {
 export interface NotificationsResponse {
   notifications: Notification[];
   cursor?: string;
+}
+
+// Discovery: "what could you find near here" (range-index driven). Each item is
+// a species expected at the requested point, enriched for display.
+export interface DiscoverSpecies {
+  scientificName: string;
+  commonName?: string;
+  kingdom?: string;
+  photoUrl?: string;
+  conservationStatus?: ConservationStatus;
+  /** GBIF id / kingdom-name slug for the `/taxon/...` link target. */
+  taxonId?: string;
+}
+
+export interface DiscoverResponse {
+  /** False when the range index has no opinion at this point (ocean/poles). */
+  areaHasData: boolean;
+  totalInRange: number;
+  remaining: number;
+  items: DiscoverSpecies[];
 }
