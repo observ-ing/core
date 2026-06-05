@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT did, default_license, updated_at\n        FROM user_preferences\n        WHERE did = $1\n        ",
+  "query": "\n        SELECT did, default_license, basemap, updated_at\n        FROM user_preferences\n        WHERE did = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,17 @@
       },
       {
         "ordinal": 2,
+        "name": "basemap",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "user_preferences",
+            "name": "basemap"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -45,8 +56,9 @@
     "nullable": [
       false,
       true,
+      true,
       false
     ]
   },
-  "hash": "2314feb90c848f01b06e99b39a119853180baa7bafb8cef23b554cce967e8e7a"
+  "hash": "9b4d658a5f5f427468062d4b0a82d3c965f03375bee9fcd44ba13e9ae8642e21"
 }

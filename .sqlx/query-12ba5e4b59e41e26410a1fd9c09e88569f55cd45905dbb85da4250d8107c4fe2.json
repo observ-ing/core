@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO user_preferences (did, default_license, basemap)\n        VALUES ($1, $2, $3)\n        ON CONFLICT (did) DO UPDATE SET\n            default_license = EXCLUDED.default_license,\n            basemap = EXCLUDED.basemap,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "12ba5e4b59e41e26410a1fd9c09e88569f55cd45905dbb85da4250d8107c4fe2"
+}

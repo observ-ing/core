@@ -7,7 +7,7 @@ use crate::auth::AuthUser;
 use crate::error::AppError;
 use crate::responses::SuccessResponse;
 use crate::state::AppState;
-use crate::validation::validate_license;
+use crate::validation::{validate_basemap, validate_license};
 
 #[derive(Serialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -15,6 +15,8 @@ use crate::validation::validate_license;
 pub struct UserPreferencesResponse {
     #[ts(type = "string | null")]
     pub default_license: Option<String>,
+    #[ts(type = "string | null")]
+    pub basemap: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -25,6 +27,11 @@ pub struct UpdatePreferencesRequest {
     #[serde(default)]
     #[ts(type = "string | null")]
     pub default_license: Option<String>,
+    /// Map basemap id ("outdoor" | "topo" | "streets" | "satellite"). Pass
+    /// `null` to clear.
+    #[serde(default)]
+    #[ts(type = "string | null")]
+    pub basemap: Option<String>,
 }
 
 pub async fn get_preferences(
@@ -33,7 +40,8 @@ pub async fn get_preferences(
 ) -> Result<Json<UserPreferencesResponse>, AppError> {
     let row = observing_db::user_preferences::get(&state.pool, &user.did).await?;
     Ok(Json(UserPreferencesResponse {
-        default_license: row.and_then(|r| r.default_license),
+        default_license: row.as_ref().and_then(|r| r.default_license.clone()),
+        basemap: row.and_then(|r| r.basemap),
     }))
 }
 
@@ -45,9 +53,17 @@ pub async fn update_preferences(
     if let Some(ref license) = body.default_license {
         validate_license(license)?;
     }
+    if let Some(ref basemap) = body.basemap {
+        validate_basemap(basemap)?;
+    }
 
-    observing_db::user_preferences::upsert(&state.pool, &user.did, body.default_license.as_deref())
-        .await?;
+    observing_db::user_preferences::upsert(
+        &state.pool,
+        &user.did,
+        body.default_license.as_deref(),
+        body.basemap.as_deref(),
+    )
+    .await?;
 
     Ok(Json(SuccessResponse { success: true }))
 }

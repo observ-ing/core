@@ -217,6 +217,7 @@ pub struct OccurrencePrivateDataRow {
 pub struct UserPreferencesRow {
     pub did: String,
     pub default_license: Option<String>,
+    pub basemap: Option<String>,
     pub updated_at: DateTime<Utc>,
 }
 

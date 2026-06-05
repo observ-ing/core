@@ -34,3 +34,17 @@ pub fn validate_license(value: &str) -> Result<(), AppError> {
     }
     Ok(())
 }
+
+/// Map basemap ids offered by the selector. Mirrors the `BasemapId` union in
+/// `frontend/src/components/map/mapStyle.ts`, so the stored preference can't
+/// hold a value the client doesn't recognize.
+pub const ALLOWED_BASEMAPS: &[&str] = &["outdoor", "topo", "streets", "satellite"];
+
+pub fn validate_basemap(value: &str) -> Result<(), AppError> {
+    if !ALLOWED_BASEMAPS.contains(&value) {
+        return Err(AppError::BadRequest(format!(
+            "Unknown basemap value: {value}"
+        )));
+    }
+    Ok(())
+}

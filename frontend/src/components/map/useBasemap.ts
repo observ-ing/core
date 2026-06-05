@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
-import { BASEMAPS, DEFAULT_BASEMAP, type BasemapId } from "./mapStyle";
+import { DEFAULT_BASEMAP, isBasemapId, type BasemapId } from "./mapStyle";
+import { useAppSelector } from "../../store";
+import { useUserPreferences } from "../../lib/query/hooks";
+import { useUpdatePreferences } from "../../lib/query/mutations";
 
 const STORAGE_KEY = "observing-basemap";
 const CHANGE_EVENT = "observing-basemap-change";
 
-const isBasemapId = (value: string | null): value is BasemapId =>
-  BASEMAPS.some((b) => b.id === value);
-
-export function getStoredBasemap(): BasemapId {
+function getStoredBasemap(): BasemapId {
   try {
     const value = localStorage.getItem(STORAGE_KEY);
     return isBasemapId(value) ? value : DEFAULT_BASEMAP;
@@ -16,11 +16,11 @@ export function getStoredBasemap(): BasemapId {
   }
 }
 
-export function setStoredBasemap(id: BasemapId): void {
+function setStoredBasemap(id: BasemapId): void {
   try {
     localStorage.setItem(STORAGE_KEY, id);
   } catch {
-    // Storage disabled (private mode) — keep the in-memory choice via the event.
+    // Storage disabled (private mode) — the change event still syncs this tab.
   }
   // The native `storage` event only fires in *other* tabs, so dispatch our own
   // so every map in this document updates immediately.
@@ -28,12 +28,19 @@ export function setStoredBasemap(id: BasemapId): void {
 }
 
 /**
- * Persisted basemap preference, shared across every map in the app and synced
- * live between components (and across tabs).
+ * Effective basemap + setter. The choice is persisted in localStorage (so it
+ * works logged-out and across reloads, and stays in sync across every map and
+ * tab) AND, when signed in, synced to the user's server preferences so it
+ * follows them across devices.
  */
 export function useBasemap(): [BasemapId, (id: BasemapId) => void] {
-  const [basemap, setLocal] = useState<BasemapId>(getStoredBasemap);
+  const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
+  const { data: prefs } = useUserPreferences();
+  const updatePrefs = useUpdatePreferences();
 
+  // Local copy drives the logged-out case + instant updates; synced across maps
+  // and tabs via the custom + storage events.
+  const [local, setLocal] = useState<BasemapId>(getStoredBasemap);
   useEffect(() => {
     const sync = () => setLocal(getStoredBasemap());
     window.addEventListener(CHANGE_EVENT, sync);
@@ -44,6 +51,22 @@ export function useBasemap(): [BasemapId, (id: BasemapId) => void] {
     };
   }, []);
 
-  const setBasemap = useCallback((id: BasemapId) => setStoredBasemap(id), []);
+  // When signed in, the saved server value is authoritative. Mirror it into
+  // localStorage so it persists and every map picks it up.
+  const serverBasemap = prefs && isBasemapId(prefs.basemap) ? prefs.basemap : undefined;
+  useEffect(() => {
+    if (serverBasemap && serverBasemap !== getStoredBasemap()) setStoredBasemap(serverBasemap);
+  }, [serverBasemap]);
+
+  const basemap = serverBasemap ?? local;
+
+  const setBasemap = useCallback(
+    (id: BasemapId) => {
+      setStoredBasemap(id); // instant local update for every map (+ logged-out persistence)
+      if (isAuthenticated) updatePrefs.mutate({ basemap: id });
+    },
+    [isAuthenticated, updatePrefs],
+  );
+
   return [basemap, setBasemap];
 }
