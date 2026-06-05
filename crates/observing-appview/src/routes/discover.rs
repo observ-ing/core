@@ -171,8 +171,17 @@ async fn discover(
     let remaining = remaining_species.len();
 
     let limit = q.limit.unwrap_or(DEFAULT_LIMIT).clamp(1, MAX_LIMIT);
-    let sample = sample_diversified(remaining_species, daily_seed(q.lat, q.lon, did), limit);
-    let items = enrich(state, sample).await;
+    // The index is presence-only, so a uniform sample skews to the obscure
+    // long tail — and most of those lack a Wikidata photo, which reads as
+    // broken in a grid. Oversample, enrich, then float photographed species up
+    // (stable, so the daily diversification is preserved within each group)
+    // and trim to `limit`. A cheap stand-in for a real charisma/abundance
+    // signal until the index can expose range size.
+    let oversample = (limit * 3).min(60);
+    let sample = sample_diversified(remaining_species, daily_seed(q.lat, q.lon, did), oversample);
+    let mut items = enrich(state, sample).await;
+    items.sort_by_key(|it| it.photo_url.is_none());
+    items.truncate(limit);
 
     Json(DiscoverResponse {
         area_has_data: true,
