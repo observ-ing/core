@@ -5,4 +5,9 @@ export type UpdatePreferencesRequest = {
    * Pass `null` to clear the user's saved default.
    */
   defaultLicense: string | null;
+  /**
+   * Map basemap id ("outdoor" | "topo" | "streets" | "satellite"). Pass
+   * `null` to clear.
+   */
+  basemap: string | null;
 };

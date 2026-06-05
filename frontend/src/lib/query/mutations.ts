@@ -104,20 +104,45 @@ export function useMarkNotificationRead() {
 }
 
 // ── User preferences ─────────────────────────────────────────────────────────
+/** A partial preferences update: omit a field to leave it unchanged, or pass
+ * `null` to clear it. */
+export type PreferencesPatch = Partial<UpdatePreferencesRequest>;
+
 /**
- * Update preferences with an optimistic cache patch + rollback. No refetch:
- * the server echoes exactly what we send (it just stores `defaultLicense`), so
- * the optimistic value already matches server truth on success.
+ * Merge a patch over the current cached prefs into a *full* request. The upsert
+ * writes every column, so omitting a field would otherwise clear it — sending
+ * the merged full object keeps the other preferences intact.
+ */
+function mergePrefs(
+  patch: PreferencesPatch,
+  current: UserPreferencesResponse | undefined,
+): UpdatePreferencesRequest {
+  return {
+    defaultLicense:
+      patch.defaultLicense !== undefined ? patch.defaultLicense : (current?.defaultLicense ?? null),
+    basemap: patch.basemap !== undefined ? patch.basemap : (current?.basemap ?? null),
+  };
+}
+
+/**
+ * Update one or more preferences with an optimistic cache patch + rollback.
+ * Accepts a partial and merges it over the cache so untouched fields persist.
+ * No refetch: the server echoes what we send, so the optimistic value already
+ * matches server truth on success.
  */
 export function useUpdatePreferences() {
   return useMutation({
-    mutationFn: (prefs: UpdatePreferencesRequest) => updateUserPreferences(prefs),
-    onMutate: async (prefs: UpdatePreferencesRequest) => {
+    mutationFn: (patch: PreferencesPatch) =>
+      updateUserPreferences(
+        mergePrefs(patch, queryClient.getQueryData<UserPreferencesResponse>(qk.preferences())),
+      ),
+    onMutate: async (patch: PreferencesPatch) => {
       await queryClient.cancelQueries({ queryKey: qk.preferences() });
       const previous = queryClient.getQueryData<UserPreferencesResponse>(qk.preferences());
-      queryClient.setQueryData<UserPreferencesResponse>(qk.preferences(), {
-        defaultLicense: prefs.defaultLicense,
-      });
+      queryClient.setQueryData<UserPreferencesResponse>(
+        qk.preferences(),
+        mergePrefs(patch, previous),
+      );
       return { previous };
     },
     onError: (_err, _vars, context) => {

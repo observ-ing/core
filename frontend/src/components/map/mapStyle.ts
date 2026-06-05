@@ -2,22 +2,29 @@ import type { Theme } from "@mui/material";
 import type { SystemStyleObject } from "@mui/system";
 
 export type BasemapMode = "light" | "dark";
-export type BasemapId = "outdoor" | "streets" | "satellite";
+export type BasemapId = "outdoor" | "topo" | "streets" | "satellite";
 
 /** Basemaps offered in the selector, in display order. */
 export const BASEMAPS: ReadonlyArray<{ id: BasemapId; label: string }> = [
   { id: "outdoor", label: "Outdoor" },
+  { id: "topo", label: "Topo" },
   { id: "streets", label: "Streets" },
   { id: "satellite", label: "Satellite" },
 ];
 
 export const DEFAULT_BASEMAP: BasemapId = "outdoor";
 
+/** Narrow an arbitrary string (e.g. a stored preference) to a known basemap. */
+export function isBasemapId(value: string | null | undefined): value is BasemapId {
+  return BASEMAPS.some((b) => b.id === value);
+}
+
 // MapTiler style slug per basemap + theme. "satellite" uses the Hybrid style so
 // place/road labels stay on top of the imagery, and imagery is identical in
 // light and dark (no separate dark slug).
 const MAPTILER_SLUGS: Record<BasemapId, { light: string; dark: string }> = {
   outdoor: { light: "outdoor-v2", dark: "outdoor-v2-dark" },
+  topo: { light: "topo-v2", dark: "topo-v2-dark" },
   streets: { light: "streets-v2", dark: "streets-v2-dark" },
   satellite: { light: "hybrid", dark: "hybrid" },
 };
