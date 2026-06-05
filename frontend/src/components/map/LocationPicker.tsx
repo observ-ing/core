@@ -16,14 +16,17 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { darkMapFilter, mapContainerSx } from "./mapStyle";
+import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
   MAP_MARKER_COLOR,
   addUncertaintyLayers,
   createCircleGeoJSON,
   createMap,
   getRadiusBounds,
+  setBasemapStyle,
 } from "./mapUtils";
+import { useBasemap } from "./useBasemap";
+import { BasemapSelector } from "./BasemapSelector";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -76,6 +79,14 @@ export function LocationPicker({
   const [lngInput, setLngInput] = useState(longitude?.toFixed(6) ?? "");
   const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
+  const mode = theme.palette.mode;
+  const [basemap] = useBasemap();
+  // Latest mode/basemap for the init effect (which runs once); theme/basemap
+  // changes are handled by swapping the style, not rebuilding the map.
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const basemapRef = useRef(basemap);
+  basemapRef.current = basemap;
 
   const updateMarker = useCallback(
     (lng: number, lat: number, radius?: number) => {
@@ -159,10 +170,14 @@ export function LocationPicker({
     const safeLat = latitude && Number.isFinite(latitude) ? latitude : 0;
     const safeLng = longitude && Number.isFinite(longitude) ? longitude : 0;
 
-    const { map: mapInstance, geolocateControl } = createMap(mapContainer.current, {
-      center: [safeLng, safeLat],
-      zoom: latitude && longitude ? 12 : 1,
-    });
+    const { map: mapInstance, geolocateControl } = createMap(
+      mapContainer.current,
+      {
+        center: [safeLng, safeLat],
+        zoom: latitude && longitude ? 12 : 1,
+      },
+      { mode: modeRef.current, basemap: basemapRef.current },
+    );
 
     // Update marker and inputs when user geolocates via the built-in control
     geolocateControl?.on("geolocate", (e: GeolocationPosition) => {
@@ -214,6 +229,18 @@ export function LocationPicker({
       marker.current = null;
     };
   }, []);
+
+  // Swap the style on theme/basemap change, preserving the current view,
+  // marker, and uncertainty circle (skips the initial render — the map starts
+  // in the right style).
+  const firstStyle = useRef(true);
+  useEffect(() => {
+    if (firstStyle.current) {
+      firstStyle.current = false;
+      return;
+    }
+    if (map.current) setBasemapStyle(map.current, basemap, mode);
+  }, [mode, basemap]);
 
   // Update marker and center when props change externally
   useEffect(() => {
@@ -318,10 +345,10 @@ export function LocationPicker({
           );
         }}
       />
-      <Box
-        ref={mapContainer}
-        sx={[mapContainerSx, theme.palette.mode === "dark" && darkMapFilter]}
-      />
+      <Box sx={[{ position: "relative" }, mapContainerSx]}>
+        <Box ref={mapContainer} sx={{ position: "absolute", inset: 0 }} />
+        {MAPTILER_ENABLED && <BasemapSelector />}
+      </Box>
       <Button
         size="small"
         onClick={() => setShowCoordinates((v) => !v)}

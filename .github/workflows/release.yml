@@ -46,6 +46,12 @@ jobs:
       - run: npm run build
         env:
           VITE_API_URL: https://observ.ing
+          # Map basemap key. The APK WebView runs at origin https://localhost
+          # (Capacitor default), so this key must allow https://localhost +
+          # capacitor://localhost in the MapTiler dashboard — NOT only
+          # observ.ing. Set the secret accordingly. Optional: unset → keyless
+          # CARTO fallback.
+          VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
       - run: npx cap add android
       - run: npx cap sync android
 
