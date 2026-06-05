@@ -23,7 +23,11 @@ const GEO_BOOST_DEFAULT: f32 = 0.05;
 
 /// BioCLIP model wrapping the ONNX vision encoder and species embeddings
 pub struct BioclipModel {
-    session: Mutex<Session>,
+    /// ONNX vision encoder. `None` in geo-only mode (`SPECIES_ID_GEO_ONLY`),
+    /// where only the range index is served (`/species-in-range`) and
+    /// `/identify` is disabled — for fast startup, or environments where the
+    /// ONNX runtime can't initialize.
+    session: Option<Mutex<Session>>,
     species: SpeciesEmbeddings,
     geo_index: Option<SpeciesRangeIndex>,
     geo_boost: f32,
@@ -38,26 +42,37 @@ impl BioclipModel {
     /// - `{model_dir}/species_embeddings.bin` - pre-computed text embeddings
     /// - `{model_dir}/species_labels.json` - species metadata
     pub fn load(model_dir: &Path) -> Result<Self> {
-        let onnx_path = model_dir.join("vision_encoder.onnx");
+        // The vision encoder load is skippable: geo-only mode serves just the
+        // range index (`/species-in-range`) and disables `/identify`. Lets the
+        // service start fast, and start at all where the ONNX runtime can't
+        // initialize.
+        let session = if std::env::var("SPECIES_ID_GEO_ONLY").is_ok() {
+            warn!(
+                "SPECIES_ID_GEO_ONLY set: skipping ONNX vision encoder — /identify disabled, serving /species-in-range only"
+            );
+            None
+        } else {
+            let onnx_path = model_dir.join("vision_encoder.onnx");
+            info!(path = %onnx_path.display(), "Loading ONNX vision encoder");
 
-        info!(path = %onnx_path.display(), "Loading ONNX vision encoder");
+            let session = Session::builder()
+                .map_err(|e| SpeciesIdError::Model(e.to_string()))?
+                .with_optimization_level(GraphOptimizationLevel::Level3)
+                .map_err(|e| SpeciesIdError::Model(e.to_string()))?
+                .with_intra_threads(4)
+                .map_err(|e| SpeciesIdError::Model(e.to_string()))?
+                .commit_from_file(&onnx_path)
+                .map_err(|e| {
+                    SpeciesIdError::Model(format!(
+                        "Failed to load ONNX model from {}: {}",
+                        onnx_path.display(),
+                        e
+                    ))
+                })?;
 
-        let session = Session::builder()
-            .map_err(|e| SpeciesIdError::Model(e.to_string()))?
-            .with_optimization_level(GraphOptimizationLevel::Level3)
-            .map_err(|e| SpeciesIdError::Model(e.to_string()))?
-            .with_intra_threads(4)
-            .map_err(|e| SpeciesIdError::Model(e.to_string()))?
-            .commit_from_file(&onnx_path)
-            .map_err(|e| {
-                SpeciesIdError::Model(format!(
-                    "Failed to load ONNX model from {}: {}",
-                    onnx_path.display(),
-                    e
-                ))
-            })?;
-
-        info!("ONNX vision encoder loaded");
+            info!("ONNX vision encoder loaded");
+            Some(Mutex::new(session))
+        };
 
         let species = SpeciesEmbeddings::load(model_dir)?;
 
@@ -86,7 +101,7 @@ impl BioclipModel {
         }
 
         Ok(Self {
-            session: Mutex::new(session),
+            session,
             species,
             geo_index,
             geo_boost,
@@ -113,6 +128,11 @@ impl BioclipModel {
         lat_lon: Option<(f64, f64)>,
         limit: usize,
     ) -> Result<Vec<SpeciesSuggestion>> {
+        if self.session.is_none() {
+            return Err(SpeciesIdError::Model(
+                "vision model not loaded (geo-only mode)".to_string(),
+            ));
+        }
         let input_tensor = preprocessing::preprocess_image(image_bytes)?;
         let embedding = self.run_vision_encoder(input_tensor)?;
         let mut scores = self.species.similarities(&embedding).to_vec();
@@ -171,6 +191,8 @@ impl BioclipModel {
 
         let mut session = self
             .session
+            .as_ref()
+            .ok_or_else(|| SpeciesIdError::Model("vision model not loaded".to_string()))?
             .lock()
             .map_err(|e| SpeciesIdError::Model(format!("Session lock poisoned: {}", e)))?;
 
