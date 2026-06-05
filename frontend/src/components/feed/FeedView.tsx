@@ -14,6 +14,7 @@ import { FeedEndIndicator } from "./FeedEndIndicator";
 import { observationGridSx } from "../common/observationGridLayout";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { DiscoverNearYou } from "../discover/DiscoverNearYou";
 
 interface FeedViewProps {
   tab?: FeedTab;
@@ -103,6 +104,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
             </>
           ) : (
             <>
+              <DiscoverNearYou />
               <Box>
                 {observations.map((obs) => (
                   <FeedItem

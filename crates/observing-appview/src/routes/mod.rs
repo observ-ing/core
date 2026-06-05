@@ -1,6 +1,7 @@
 pub mod admin_browse;
 pub mod admin_ingester;
 pub mod comments;
+pub mod discover;
 pub mod feeds;
 pub mod health;
 pub mod identifications;

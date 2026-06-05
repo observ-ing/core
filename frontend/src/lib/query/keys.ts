@@ -24,6 +24,8 @@ export const qk = {
   notifications: () => ["notifications"] as const,
   unreadCount: () => ["unreadCount"] as const,
   preferences: () => ["preferences"] as const,
+  discoverHere: (lat: number, lon: number) =>
+    ["discoverHere", Math.round(lat * 100) / 100, Math.round(lon * 100) / 100] as const,
 } as const;
 
 // Key tags whose caches contain `occurrences: Occurrence[]` pages.

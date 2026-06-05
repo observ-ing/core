@@ -1,7 +1,9 @@
 use reqwest::Client;
 use std::time::Duration;
 
-pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse};
+pub use observing_species_id_protocol::{
+    IdentifyRequest, IdentifyResponse, SpeciesInRangeResponse, SpeciesRef,
+};
 
 /// HTTP client for the species identification service
 pub struct SpeciesIdClient {
@@ -47,6 +49,26 @@ impl SpeciesIdClient {
         self.client
             .post(&url)
             .json(&body)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await
+    }
+
+    /// Species whose iNat range covers `(lat, lon)`, from the service's geo
+    /// range index. The data source for the discovery surfaces. Errors
+    /// propagate for the same reason as [`identify`](Self::identify).
+    pub async fn species_in_range(
+        &self,
+        latitude: f64,
+        longitude: f64,
+    ) -> Result<SpeciesInRangeResponse, reqwest::Error> {
+        let url = format!("{}/species-in-range", self.base_url);
+
+        self.client
+            .get(&url)
+            .query(&[("lat", latitude), ("lon", longitude)])
             .send()
             .await?
             .error_for_status()?

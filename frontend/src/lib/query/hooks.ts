@@ -18,6 +18,7 @@ import {
   fetchNotifications,
   fetchUnreadCount,
   fetchUserPreferences,
+  fetchDiscoverHere,
 } from "../../services/api";
 import type { FeedFilters, FeedTab } from "../../services/types";
 
@@ -155,6 +156,22 @@ export function useUserPreferences() {
     queryKey: qk.preferences(),
     queryFn: fetchUserPreferences,
     enabled: isAuthenticated,
+  });
+}
+
+/**
+ * "What could you find near here" — species expected at a point, from the
+ * range index. Disabled until coordinates are known (geolocation/pin).
+ */
+export function useDiscoverHere(coords: { lat: number; lon: number } | null, limit = 12) {
+  return useQuery({
+    queryKey: coords ? qk.discoverHere(coords.lat, coords.lon) : ["discoverHere", "pending"],
+    queryFn: () => {
+      if (!coords) throw new Error("coordinates not resolved"); // unreachable: gated by `enabled`
+      return fetchDiscoverHere(coords.lat, coords.lon, limit);
+    },
+    enabled: !!coords,
+    staleTime: 1000 * 60 * 30,
   });
 }
 

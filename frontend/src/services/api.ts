@@ -14,6 +14,7 @@ import type {
   ValidateResponse,
   UserPreferencesResponse,
   UpdatePreferencesRequest,
+  DiscoverResponse,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -490,6 +491,17 @@ export async function identifySpecies(data: {
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(data),
+  });
+}
+
+export async function fetchDiscoverHere(
+  lat: number,
+  lon: number,
+  limit = 12,
+): Promise<DiscoverResponse> {
+  const params = new URLSearchParams({ lat: String(lat), lon: String(lon), limit: String(limit) });
+  return fetchApi(`${API_BASE}/api/discover/here?${params}`, "Failed to load nearby species", {
+    credentials: "include",
   });
 }
 

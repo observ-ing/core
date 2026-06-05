@@ -188,6 +188,9 @@ async fn main() {
         // Actors
         // Species identification
         .route("/api/species-id", post(routes::species_id::identify))
+        // Discovery: "what could you find near here" (range index)
+        .route("/api/discover/here", get(routes::discover::here))
+        .route("/api/discover/to-find", get(routes::discover::to_find))
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))
