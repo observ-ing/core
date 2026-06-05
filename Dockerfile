@@ -29,6 +29,15 @@ RUN npm ci
 
 COPY frontend/ frontend/
 COPY lexicons/ lexicons/
+
+# MapTiler key for the map basemap, baked into the JS bundle at build time.
+# Pass it when building the appview image:
+#   docker build --build-arg SERVICE=observing-appview \
+#     --build-arg VITE_MAPTILER_KEY=<key allowed for https://observ.ing> ...
+# Optional — without it the map falls back to keyless CARTO vector tiles. Lives
+# only in this build stage; the runtime image just copies dist/public.
+ARG VITE_MAPTILER_KEY=
+ENV VITE_MAPTILER_KEY=${VITE_MAPTILER_KEY}
 RUN npm run build
 
 # ---------------------------------------------------------------------------

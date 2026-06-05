@@ -1,14 +1,17 @@
 import { useEffect, useRef } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { darkMapFilter, mapContainerSx } from "./mapStyle";
+import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
   createCircleGeoJSON,
   createMap,
   getRadiusBounds,
   MAP_MARKER_COLOR,
   addUncertaintyLayers,
+  setBasemapStyle,
 } from "./mapUtils";
+import { useBasemap } from "./useBasemap";
+import { BasemapSelector } from "./BasemapSelector";
 import maplibregl from "maplibre-gl";
 
 export interface LocationMapProps {
@@ -21,6 +24,15 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const theme = useTheme();
+  const mode = theme.palette.mode;
+  const [basemap] = useBasemap();
+  // Read the latest mode/basemap inside the create effect without making them
+  // dependencies (theme/basemap changes swap the style in a separate effect
+  // rather than rebuilding the map).
+  const modeRef = useRef(mode);
+  modeRef.current = mode;
+  const basemapRef = useRef(basemap);
+  basemapRef.current = basemap;
 
   const validCoords = Number.isFinite(latitude) && Number.isFinite(longitude);
 
@@ -41,7 +53,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
         interactive: true,
         scrollZoom: false,
       },
-      { geolocate: false },
+      { geolocate: false, mode: modeRef.current, basemap: basemapRef.current },
     );
 
     mapInstance.on("load", () => {
@@ -75,6 +87,17 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
     };
   }, [latitude, longitude, uncertaintyMeters, validCoords]);
 
+  // Swap the style when the theme or basemap changes, without rebuilding the
+  // map (skips the initial render — the map starts in the right style).
+  const firstStyle = useRef(true);
+  useEffect(() => {
+    if (firstStyle.current) {
+      firstStyle.current = false;
+      return;
+    }
+    if (map.current) setBasemapStyle(map.current, basemap, mode);
+  }, [mode, basemap]);
+
   if (!validCoords) {
     return (
       <Box
@@ -101,13 +124,9 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
   }
 
   return (
-    <Box
-      ref={mapContainer}
-      sx={[
-        { position: "relative" },
-        mapContainerSx,
-        theme.palette.mode === "dark" && darkMapFilter,
-      ]}
-    />
+    <Box sx={[{ position: "relative" }, mapContainerSx]}>
+      <Box ref={mapContainer} sx={{ position: "absolute", inset: 0 }} />
+      {MAPTILER_ENABLED && <BasemapSelector />}
+    </Box>
   );
 }

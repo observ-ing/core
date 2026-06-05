@@ -1,5 +1,5 @@
 import maplibregl from "maplibre-gl";
-import { mapStyle } from "./mapStyle";
+import { basemapStyleUrl, DEFAULT_BASEMAP, type BasemapId, type BasemapMode } from "./mapStyle";
 
 /** Approximate meters per degree of latitude at the equator */
 export const METERS_PER_DEGREE = 111320;
@@ -13,12 +13,16 @@ interface CreateMapResult {
 export function createMap(
   container: HTMLElement,
   options: Omit<maplibregl.MapOptions, "container" | "style">,
-  { geolocate = true }: { geolocate?: boolean } = {},
+  {
+    geolocate = true,
+    basemap = DEFAULT_BASEMAP,
+    mode = "light",
+  }: { geolocate?: boolean; basemap?: BasemapId; mode?: BasemapMode } = {},
 ): CreateMapResult {
   const map = new maplibregl.Map({
     ...options,
     container,
-    style: mapStyle,
+    style: basemapStyleUrl(basemap, mode),
   });
 
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
@@ -32,6 +36,29 @@ export function createMap(
   }
 
   return { map, geolocateControl };
+}
+
+/**
+ * Swap the basemap (chosen style + theme mode), preserving the runtime-added
+ * uncertainty source + layers across the style change (a plain `setStyle`
+ * would drop them). Markers are DOM overlays and persist on their own.
+ */
+export function setBasemapStyle(map: maplibregl.Map, basemap: BasemapId, mode: BasemapMode): void {
+  map.setStyle(basemapStyleUrl(basemap, mode), {
+    diff: true,
+    transformStyle: (previous, next) => {
+      if (!previous) return next;
+      const uncertainty = previous.sources["uncertainty"];
+      const keptLayers = previous.layers.filter(
+        (layer) => layer.id === "uncertainty-fill" || layer.id === "uncertainty-outline",
+      );
+      return {
+        ...next,
+        sources: uncertainty ? { ...next.sources, uncertainty } : next.sources,
+        layers: [...next.layers, ...keptLayers],
+      };
+    },
+  });
 }
 
 /** Color used for uncertainty circles and map markers */
