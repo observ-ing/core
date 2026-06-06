@@ -12,26 +12,23 @@
 //! Approach: iterate the `occurrences` table (we already hold every `uri` +
 //! `did`), resolve each author's PDS, `getRecord` the live occurrence,
 //! re-parse it via `processing::occurrence_from_json` (which now extracts the
-//! quantity fields), and `occurrences::upsert` the result.
+//! quantity fields), and `occurrences::upsert` the result. The shared
+//! `observing_bootstrap::job` harness supplies the CLI flags, pool setup, and
+//! the bounded-concurrency drive loop; this binary supplies the query and the
+//! per-row fetch/parse/upsert.
 //!
 //! Safe to re-run: the upsert COALESCEs the backfilled columns
 //! (`organism_quantity = COALESCE($n, occurrences.organism_quantity)`), so a
 //! second pass never clobbers a value with NULL, and `associated_media` is
 //! likewise preserved. Records that have been deleted from their PDS, or whose
 //! PDS is unreachable, are skipped rather than failing the run.
-//!
-//! This deliberately mirrors `replay-failed-records`: a small, restartable,
-//! operator-driven job that bypasses the live-firehose wrappers (media
-//! resolution, notifications) and talks to the parser + upsert directly.
 
-use at_uri_parser::AtUri;
 use atproto_blob_resolver::BlobResolver;
-use atproto_identity::Did;
 use chrono::{DateTime, Utc};
 use clap::Parser;
-use futures::stream::{self, StreamExt};
+use observing_bootstrap::job::{self, JobOpts, Outcome};
 use observing_db::{occurrences, processing};
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPool;
 use std::process::ExitCode;
 use std::time::Duration;
 use tracing::{error, info, warn};
@@ -40,14 +37,8 @@ use tracing_subscriber::{prelude::*, EnvFilter};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Re-fetch and parse, but don't write to the database. Reports what would
-    /// be filled.
-    #[arg(long)]
-    dry_run: bool,
-
-    /// Cap on rows to process this run. Unbounded if omitted.
-    #[arg(long)]
-    limit: Option<i64>,
+    #[command(flatten)]
+    job: JobOpts,
 
     /// Only process occurrences authored by this DID. Useful for verifying
     /// behavior on one repo before the full sweep.
@@ -86,23 +77,10 @@ async fn main() -> ExitCode {
 
     let args = Args::parse();
 
-    let database_url = match std::env::var("DATABASE_URL") {
-        Ok(v) => v,
-        Err(_) => {
-            error!("DATABASE_URL is required");
-            return ExitCode::from(2);
-        }
-    };
-
-    let pool = match PgPoolOptions::new()
-        .max_connections(args.concurrency.max(1) as u32 + 1)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&database_url)
-        .await
-    {
+    let pool = match job::connect_pool(args.concurrency).await {
         Ok(p) => p,
         Err(e) => {
-            error!(error = %e, "failed to connect");
+            error!("{e}");
             return ExitCode::from(1);
         }
     };
@@ -114,38 +92,32 @@ async fn main() -> ExitCode {
         .expect("reqwest client build should not fail with defaults");
     let resolver = BlobResolver::with_client(http);
 
-    match run(&pool, &resolver, &args).await {
-        Ok(summary) => {
-            info!(
-                scanned = summary.scanned,
-                upserted = summary.upserted,
-                filled = summary.filled,
-                skipped = summary.skipped,
-                failed = summary.failed,
-                "done"
-            );
-            ExitCode::SUCCESS
-        }
+    let rows = match fetch_rows(&pool, &args).await {
+        Ok(r) => r,
         Err(e) => {
-            error!(error = %e, "fatal error");
-            ExitCode::from(1)
+            error!(error = %e, "failed to list occurrences");
+            return ExitCode::from(1);
         }
-    }
+    };
+    info!(candidates = rows.len(), "occurrences to re-fetch");
+
+    let summary = job::drive(rows, args.concurrency, |row| {
+        backfill_one(&pool, &resolver, row, args.job.dry_run)
+    })
+    .await;
+
+    info!(
+        scanned = summary.scanned(),
+        done = ?summary.done,
+        skipped = summary.skipped,
+        failed = summary.failed,
+        "done"
+    );
+    ExitCode::SUCCESS
 }
 
-#[derive(Default, Debug)]
-struct Summary {
-    scanned: u64,
-    /// Rows successfully re-upserted (or that would be, under --dry-run).
-    upserted: u64,
-    /// Subset of `upserted` whose re-parsed record carried a quantity value.
-    filled: u64,
-    skipped: u64,
-    failed: u64,
-}
-
-async fn run(pool: &PgPool, resolver: &BlobResolver, args: &Args) -> Result<Summary, sqlx::Error> {
-    let rows = sqlx::query_as!(
+async fn fetch_rows(pool: &PgPool, args: &Args) -> Result<Vec<OccurrenceRef>, sqlx::Error> {
+    sqlx::query_as!(
         OccurrenceRef,
         r#"
         SELECT uri, did, cid, created_at as "created_at!: DateTime<Utc>"
@@ -157,82 +129,26 @@ async fn run(pool: &PgPool, resolver: &BlobResolver, args: &Args) -> Result<Summ
         "#,
         args.all,
         args.did.as_deref(),
-        args.limit,
+        args.job.limit,
     )
     .fetch_all(pool)
-    .await?;
-
-    info!(candidates = rows.len(), "occurrences to re-fetch");
-
-    let outcomes = stream::iter(rows.iter())
-        .map(|row| backfill_one(pool, resolver, row, args.dry_run))
-        .buffer_unordered(args.concurrency.max(1))
-        .collect::<Vec<_>>()
-        .await;
-
-    let mut summary = Summary {
-        scanned: outcomes.len() as u64,
-        ..Default::default()
-    };
-    for outcome in outcomes {
-        match outcome {
-            Outcome::Upserted { filled } => {
-                summary.upserted += 1;
-                if filled {
-                    summary.filled += 1;
-                }
-            }
-            Outcome::Skipped => summary.skipped += 1,
-            Outcome::Failed => summary.failed += 1,
-        }
-    }
-
-    Ok(summary)
-}
-
-enum Outcome {
-    Upserted { filled: bool },
-    Skipped,
-    Failed,
+    .await
 }
 
 async fn backfill_one(
     pool: &PgPool,
     resolver: &BlobResolver,
-    row: &OccurrenceRef,
+    row: OccurrenceRef,
     dry_run: bool,
 ) -> Outcome {
-    let Some(at_uri) = AtUri::parse(&row.uri) else {
-        warn!(uri = %row.uri, "skipped: unparseable AT-URI");
-        return Outcome::Skipped;
-    };
-    let did = match Did::parse(&at_uri.did) {
-        Ok(d) => d,
-        Err(e) => {
-            warn!(uri = %row.uri, error = %e, "skipped: unparseable DID");
-            return Outcome::Skipped;
-        }
-    };
-
-    let pds_url = match resolver.resolve_pds_url(&did).await {
-        Ok(url) => url,
-        Err(e) => {
-            warn!(uri = %row.uri, error = %e, "skipped: DID resolution failed");
-            return Outcome::Skipped;
-        }
-    };
-
     // A fetch failure here is expected for records that have since been
     // deleted, or whose PDS is temporarily unreachable. Treat it as a skip so
     // the sweep completes; `failed` stays reserved for parse/write errors,
     // which point at a real bug rather than transient/network state.
-    let record = match resolver
-        .fetch_record(&pds_url, &at_uri.did, &at_uri.collection, &at_uri.rkey)
-        .await
-    {
+    let record = match resolver.fetch_record_by_aturi(&row.uri).await {
         Ok(v) => v,
         Err(e) => {
-            warn!(uri = %row.uri, error = %e, "skipped: getRecord failed");
+            warn!(uri = %row.uri, error = %e, "skipped: could not fetch record");
             return Outcome::Skipped;
         }
     };
@@ -253,16 +169,11 @@ async fn backfill_one(
 
     let filled =
         parsed.params.organism_quantity.is_some() || parsed.params.organism_quantity_type.is_some();
+    let label = if filled { "filled" } else { "unchanged" };
 
     if dry_run {
-        info!(
-            uri = %row.uri,
-            filled,
-            organism_quantity = ?parsed.params.organism_quantity,
-            organism_quantity_type = ?parsed.params.organism_quantity_type,
-            "would upsert"
-        );
-        return Outcome::Upserted { filled };
+        info!(uri = %row.uri, filled, "would upsert");
+        return Outcome::Done(label);
     }
 
     match occurrences::upsert(pool, &parsed.params).await {
@@ -275,7 +186,7 @@ async fn backfill_one(
                     "backfilled quantity"
                 );
             }
-            Outcome::Upserted { filled }
+            Outcome::Done(label)
         }
         Err(e) => {
             warn!(uri = %row.uri, error = %e, "failed: upsert");

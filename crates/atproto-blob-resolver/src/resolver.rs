@@ -2,6 +2,7 @@
 
 use crate::error::{BlobResolverError, Result};
 use crate::types::PlcDirectoryResponse;
+use at_uri_parser::AtUri;
 use atproto_identity::{Did, DidMethod};
 use reqwest::Client;
 use tracing::{debug, warn};
@@ -157,6 +158,26 @@ impl BlobResolver {
         body.get("value").cloned().ok_or_else(|| {
             BlobResolverError::RecordFetch("getRecord response missing `value` field".to_string())
         })
+    }
+
+    /// Fetch a record straight from its `at://…` URI: parse the URI, resolve
+    /// the author's PDS, and [`fetch_record`](Self::fetch_record) the
+    /// referenced record's `value`.
+    ///
+    /// Consolidates the parse-URI → resolve-DID → `getRecord` dance that every
+    /// caller (the ingester's media resolver, backfill jobs) would otherwise
+    /// repeat. URI/DID parse failures surface as
+    /// [`BlobResolverError::RecordFetch`] / [`BlobResolverError::DidResolution`].
+    pub async fn fetch_record_by_aturi(&self, at_uri: &str) -> Result<serde_json::Value> {
+        let parsed = AtUri::parse(at_uri).ok_or_else(|| {
+            BlobResolverError::RecordFetch(format!("unparseable AT-URI: {at_uri}"))
+        })?;
+        let did = Did::parse(&parsed.did).map_err(|e| {
+            BlobResolverError::DidResolution(format!("unparseable DID in {at_uri}: {e}"))
+        })?;
+        let pds_url = self.resolve_pds_url(&did).await?;
+        self.fetch_record(&pds_url, &parsed.did, &parsed.collection, &parsed.rkey)
+            .await
     }
 }
 

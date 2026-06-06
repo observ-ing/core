@@ -198,6 +198,7 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "atproto-blob-resolver"
 version = "0.1.0"
 dependencies = [
+ "at-uri-parser",
  "atproto-identity",
  "reqwest 0.13.3",
  "serde",
@@ -445,15 +446,12 @@ dependencies = [
 name = "backfill-occurrences"
 version = "0.1.0"
 dependencies = [
- "at-uri-parser",
  "atproto-blob-resolver",
- "atproto-identity",
  "chrono",
  "clap",
- "futures",
+ "observing-bootstrap",
  "observing-db",
  "reqwest 0.13.3",
- "serde_json",
  "sqlx",
  "tokio",
  "tracing",
@@ -2915,6 +2913,9 @@ name = "observing-bootstrap"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "clap",
+ "futures",
+ "sqlx",
  "tokio",
  "tracing",
 ]
@@ -3750,6 +3751,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
+ "observing-bootstrap",
  "observing-collections",
  "observing-db",
  "serde_json",

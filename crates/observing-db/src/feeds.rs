@@ -163,7 +163,7 @@ pub async fn get_profile_feed(
                     NULL::text as source
                 FROM occurrences
                 WHERE did = $1 AND created_at < ($3::text)::timestamptz
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, uri DESC
                 LIMIT $2
                 "#,
                 did,
@@ -190,7 +190,7 @@ pub async fn get_profile_feed(
                     NULL::text as source
                 FROM occurrences
                 WHERE did = $1
-                ORDER BY created_at DESC
+                ORDER BY created_at DESC, uri DESC
                 LIMIT $2
                 "#,
                 did,

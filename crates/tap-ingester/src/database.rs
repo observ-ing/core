@@ -8,10 +8,17 @@
 use crate::error::{IngesterError, Result};
 use crate::media_resolver::MediaResolver;
 use chrono::{DateTime, Utc};
+use observing_db::identifications::CommunityIdsRefresher;
 use observing_db::processing;
 use serde_json::Value;
 use sqlx::postgres::{PgPool, PgPoolOptions};
+use std::time::Duration;
 use tracing::{debug, info, warn};
+
+/// Debounce window for coalescing `community_ids` matview refreshes. Trades up
+/// to this much staleness in the consensus view for bounded refresh cost on
+/// the firehose hot path.
+const COMMUNITY_IDS_REFRESH_DEBOUNCE: Duration = Duration::from_secs(2);
 
 /// Look up the occurrence owner and create a notification (skips self-notifications)
 async fn notify_occurrence_owner(
@@ -66,6 +73,7 @@ macro_rules! process_or_fail {
 pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
+    community_ids_refresher: CommunityIdsRefresher,
 }
 
 impl Database {
@@ -78,9 +86,12 @@ impl Database {
             .connect(database_url)
             .await?;
         info!("Database connection established");
+        let community_ids_refresher =
+            CommunityIdsRefresher::spawn(pool.clone(), COMMUNITY_IDS_REFRESH_DEBOUNCE);
         Ok(Self {
             pool,
             media_resolver: MediaResolver::new(),
+            community_ids_refresher,
         })
     }
 
@@ -164,6 +175,9 @@ impl Database {
         );
 
         observing_db::identifications::upsert(&self.pool, &params).await?;
+        // Signal post-commit; the background debouncer coalesces the matview
+        // refresh so we don't re-aggregate the whole table per firehose event.
+        self.community_ids_refresher.request_refresh();
         notify_occurrence_owner(&self.pool, did, "identification", &params.subject_uri, uri).await;
         Ok(())
     }
@@ -171,6 +185,7 @@ impl Database {
     pub async fn delete_identification(&self, uri: &str) -> Result<()> {
         debug!("Deleting identification: {}", uri);
         observing_db::identifications::delete(&self.pool, uri).await?;
+        self.community_ids_refresher.request_refresh();
         Ok(())
     }
 

@@ -1,5 +1,5 @@
 import type { Page, Route } from "@playwright/test";
-import type { TaxaResult } from "../../frontend/src/bindings/TaxaResult";
+import type { TaxaResult } from "../../src/bindings/TaxaResult";
 
 /** Canned taxa results keyed by query substring (lowercase). */
 const TAXA_FIXTURES: Record<string, TaxaResult[]> = {

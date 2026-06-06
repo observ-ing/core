@@ -11,6 +11,10 @@ license = "MIT OR Apache-2.0"
 observing-db = { path = "../observing-db", features = ["processing"] }
 # Canonical collection NSIDs, shared with tap-ingester (no more hand-kept copy).
 observing-collections = { path = "../observing-collections" }
+# Shared batch-job scaffolding: CLI flags, pool setup, the drive loop.
+observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = [
+    "job",
+] }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }

@@ -12,6 +12,9 @@ reqwest = { workspace = true }
 # DID newtype
 atproto-identity = { path = "../atproto-identity" }
 
+# AT-URI parsing, for `fetch_record_by_aturi`
+at-uri-parser = { path = "../at-uri-parser" }
+
 # Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }

@@ -157,13 +157,13 @@ In production, migrations run in a one-shot `observing-migrate` Cloud Run Job *b
 
 ### Seed Data
 
-`tests/seed.sql` inserts a handful of observation records under the e2e
+`frontend/tests/seed.sql` inserts a handful of observation records under the e2e
 test DID. CI loads it after migrations so e2e specs have something to
 render against; locally it's optional but useful when poking around the
 explore feed:
 
 ```bash
-psql "$DATABASE_URL" -f tests/seed.sql
+psql "$DATABASE_URL" -f frontend/tests/seed.sql
 ```
 
 Safe to re-run only after wiping the relevant rows — it does plain

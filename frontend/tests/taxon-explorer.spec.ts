@@ -1,6 +1,6 @@
 import { test, expect, type Page, type Route } from "@playwright/test";
-import type { TaxonAncestor } from "../frontend/src/bindings/TaxonAncestor";
-import type { TaxaResult } from "../frontend/src/bindings/TaxaResult";
+import type { TaxonAncestor } from "../src/bindings/TaxonAncestor";
+import type { TaxaResult } from "../src/bindings/TaxaResult";
 
 /**
  * Integration test for TaxonExplorer: verifies the classification tree builds

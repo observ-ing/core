@@ -23,6 +23,9 @@ ts-rs = { workspace = true }
 # Logging
 tracing = { workspace = true }
 
+# Async runtime: background community_ids refresh debouncer
+tokio = { workspace = true, features = ["rt", "sync", "time"] }
+
 # Time
 chrono = { workspace = true }
 
