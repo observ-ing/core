@@ -82,7 +82,7 @@ export class OccurrenceUploader {
       decimalLatitude: String(data.location.decimalLatitude),
       decimalLongitude: String(data.location.decimalLongitude),
       eventDate: data.eventDate,
-      associatedMedia: mediaRefs,
+      media: mediaRefs,
     };
     if (data.location.coordinateUncertaintyInMeters != null) {
       record["coordinateUncertaintyInMeters"] = data.location.coordinateUncertaintyInMeters;
