@@ -12,7 +12,7 @@ import type {
   Profile,
   TaxonDetail,
   User,
-} from "../frontend/src/services/types";
+} from "../src/services/types";
 
 const PHOTO_URL =
   "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=600";

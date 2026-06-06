@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box, Button } from "@mui/material";
 import { IdentificationHistory } from "./IdentificationHistory";
-import { ALICE_PROFILE, BOB_PROFILE, OAK_IDENTIFICATION } from "../../../../.storybook/fixtures";
+import { ALICE_PROFILE, BOB_PROFILE, OAK_IDENTIFICATION } from "../../../.storybook/fixtures";
 import type { Identification } from "../../services/types";
 
 const BOB_ID: Identification = {

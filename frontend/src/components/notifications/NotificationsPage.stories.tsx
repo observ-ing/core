@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { NotificationsPage } from "./NotificationsPage";
-import { BOB_PROFILE, OAK_OBSERVATION } from "../../../../.storybook/fixtures";
+import { BOB_PROFILE, OAK_OBSERVATION } from "../../../.storybook/fixtures";
 import type { Notification } from "../../services/types";
 
 const NOTIFICATIONS: Notification[] = [

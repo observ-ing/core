@@ -7,7 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build -c frontend/vite.config.ts",
-    "build-storybook": "storybook build",
+    "build-storybook": "storybook build -c frontend/.storybook",
     "check:stories": "node scripts/check-stories.mjs",
     "doctor": "./scripts/doctor.sh",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
@@ -16,7 +16,7 @@
     "fmt": "oxfmt frontend/src frontend/tests scripts",
     "fmt:check": "oxfmt --check frontend/src frontend/tests scripts",
     "lint": "oxlint frontend/src",
-    "storybook": "storybook dev -p 6006",
+    "storybook": "storybook dev -p 6006 -c frontend/.storybook",
     "test": "playwright test --config=frontend/tests/playwright.config.ts",
     "test:e2e": "playwright test --config=frontend/tests/playwright.config.ts --project=e2e",
     "test:integration": "playwright test --config=frontend/tests/playwright.config.ts --project=integration",

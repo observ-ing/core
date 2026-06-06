@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { UploadModal } from "./UploadModal";
-import { ALICE_USER, OAK_OBSERVATION } from "../../../../.storybook/fixtures";
+import { ALICE_USER, OAK_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Modals/UploadModal",

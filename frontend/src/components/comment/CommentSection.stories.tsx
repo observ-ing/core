@@ -6,7 +6,7 @@ import {
   ALICE_PROFILE,
   OAK_OBSERVATION,
   SAMPLE_COMMENT,
-} from "../../../../.storybook/fixtures";
+} from "../../../.storybook/fixtures";
 import type { Comment } from "../../services/types";
 
 const REPLY_COMMENT: Comment = {

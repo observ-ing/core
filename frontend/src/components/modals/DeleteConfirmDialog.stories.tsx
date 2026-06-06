@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { DeleteConfirmDialog } from "./DeleteConfirmDialog";
-import { OAK_OBSERVATION } from "../../../../.storybook/fixtures";
+import { OAK_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Modals/DeleteConfirmDialog",
