@@ -11,7 +11,7 @@ default = ["http"]
 http = ["dep:axum", "dep:tokio"]
 # One-shot batch-job scaffolding (`job` module): shared CLI flags, a
 # bounded-concurrency drive loop, and pool setup. Pulls sqlx/clap/futures.
-job = ["dep:sqlx", "dep:clap", "dep:futures"]
+job = ["dep:sqlx", "dep:clap", "dep:futures", "dep:pg-url-env"]
 
 [dependencies]
 tracing = { workspace = true }
@@ -20,3 +20,4 @@ tokio = { workspace = true, optional = true }
 sqlx = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
 clap = { version = "4", features = ["derive"], optional = true }
+pg-url-env = { path = "../pg-url-env", optional = true }

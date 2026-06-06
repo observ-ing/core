@@ -62,13 +62,19 @@ impl Summary {
     }
 }
 
-/// Connect a pool sized for `concurrency` in-flight queries, reading
-/// `DATABASE_URL` from the environment.
+/// Connect a pool sized for `concurrency` in-flight queries.
+///
+/// The connection string is resolved the same way the services resolve theirs:
+/// `DATABASE_URL` if set (local dev), otherwise assembled from the
+/// `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD` parts (Cloud Run + Cloud SQL,
+/// where the role-scoped password comes from a secret). This lets a job run
+/// under a least-privilege DB role in prod without anyone holding a full URL.
 ///
 /// Returns a human-readable error string suitable for logging immediately
 /// before a non-zero exit.
 pub async fn connect_pool(concurrency: usize) -> Result<PgPool, String> {
-    let url = std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL is required".to_string())?;
+    let url = pg_url_env::database_url_from_env("observing")
+        .ok_or_else(|| "set DATABASE_URL, or DB_HOST/DB_NAME/DB_USER/DB_PASSWORD".to_string())?;
     PgPoolOptions::new()
         .max_connections(concurrency.max(1) as u32 + 1)
         .acquire_timeout(Duration::from_secs(30))

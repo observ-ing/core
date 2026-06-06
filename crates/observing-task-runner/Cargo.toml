@@ -1,25 +1,31 @@
 [package]
-name = "replay-failed-records"
+name = "observing-task-runner"
 version = "0.1.0"
 edition = "2021"
-description = "One-shot CLI that replays rows from ingester.failed_records back through the upsert path"
+description = "One-off operational tasks for observ.ing (backfills, ledger replays), dispatched by subcommand"
 license = "MIT OR Apache-2.0"
 
+[[bin]]
+name = "observing-task-runner"
+path = "src/main.rs"
+
 [dependencies]
-# Reaches `processing::*_from_json` (feature-gated) plus the per-collection
-# upsert helpers and the failed_records reader.
+# `processing::*_from_json` (feature-gated) + the per-collection upsert helpers.
 observing-db = { path = "../observing-db", features = ["processing"] }
-# Canonical collection NSIDs, shared with tap-ingester (no more hand-kept copy).
+# Canonical collection NSIDs (replay dispatch).
 observing-collections = { path = "../observing-collections" }
-# Shared batch-job scaffolding: CLI flags, pool setup, the drive loop.
+# Shared batch-task scaffolding: CLI flags, pool setup, the drive loop.
 observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = [
     "job",
 ] }
+# DID -> PDS resolution + `getRecord` (occurrence backfill).
+atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }
 serde_json = { workspace = true }
 chrono = { workspace = true }
+reqwest = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 clap = { version = "4", features = ["derive", "env"] }

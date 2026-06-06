@@ -1,5 +1,5 @@
-//! One-shot CLI that re-fetches occurrence records from their authoring PDS
-//! and re-runs them through the normal occurrence upsert.
+//! `backfill-occurrences` task: re-fetch occurrence records from their
+//! authoring PDS and re-run them through the normal occurrence upsert.
 //!
 //! Why this exists: extracted columns are populated from the lexicon record at
 //! ingest time. When a new field is added to the schema (e.g.
@@ -14,8 +14,7 @@
 //! re-parse it via `processing::occurrence_from_json` (which now extracts the
 //! quantity fields), and `occurrences::upsert` the result. The shared
 //! `observing_bootstrap::job` harness supplies the CLI flags, pool setup, and
-//! the bounded-concurrency drive loop; this binary supplies the query and the
-//! per-row fetch/parse/upsert.
+//! the bounded-concurrency drive loop.
 //!
 //! Safe to re-run: the upsert COALESCEs the backfilled columns
 //! (`organism_quantity = COALESCE($n, occurrences.organism_quantity)`), so a
@@ -25,18 +24,15 @@
 
 use atproto_blob_resolver::BlobResolver;
 use chrono::{DateTime, Utc};
-use clap::Parser;
 use observing_bootstrap::job::{self, JobOpts, Outcome};
 use observing_db::{occurrences, processing};
 use sqlx::postgres::PgPool;
 use std::process::ExitCode;
 use std::time::Duration;
 use tracing::{error, info, warn};
-use tracing_subscriber::{prelude::*, EnvFilter};
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
+#[derive(clap::Args, Debug)]
+pub struct Args {
     #[command(flatten)]
     job: JobOpts,
 
@@ -66,17 +62,7 @@ struct OccurrenceRef {
     created_at: DateTime<Utc>,
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("backfill_occurrences=info"));
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
-    let args = Args::parse();
-
+pub async fn run(args: Args) -> ExitCode {
     let pool = match job::connect_pool(args.concurrency).await {
         Ok(p) => p,
         Err(e) => {

@@ -1,45 +1,39 @@
-//! One-shot CLI that replays rows from `ingester.failed_records` back through
-//! the normal upsert path.
+//! `replay-failed-records` task: replay rows from `ingester.failed_records`
+//! back through the normal upsert path.
 //!
 //! Why this exists: when tap-ingester can't persist a record (parse failure,
-//! FK violation, etc.) and the cross-repo resolver has nothing to do,
-//! `main.rs` writes the original payload to `failed_records` and acks the
-//! event to Tap. Tap considers the event delivered and won't re-emit it.
-//! After a fix lands that would unblock the record (e.g. PR #511 making
-//! occurrence coordinates optional), the only way to re-process those
-//! events is from the ledger.
+//! FK violation, etc.) and the cross-repo resolver has nothing to do, it
+//! writes the original payload to `failed_records` and acks the event to Tap.
+//! Tap considers the event delivered and won't re-emit it. After a fix lands
+//! that would unblock the record (e.g. PR #511 making occurrence coordinates
+//! optional), the only way to re-process those events is from the ledger.
 //!
 //! Approach: read each row's `record_json`, dispatch by `collection` through
 //! the matching `observing_db::processing::*_from_json` parser, hand the
 //! result to the per-table `upsert` helper, and DELETE the ledger row on
 //! success. Failures are logged and left in the ledger for inspection. The
 //! shared `observing_bootstrap::job` harness supplies the CLI flags, pool
-//! setup, and drive loop; this binary supplies the query and per-row logic.
+//! setup, and drive loop.
 //!
 //! Intentionally bypasses the tap-ingester wrappers: skips media resolution
 //! and notification creation. Those are live-firehose concerns, not replay
-//! concerns. The architecture comment on `failed_records.rs` spells this
-//! out: "a future replay job can iterate the ledger and call the
-//! appropriate processing::*_from_json + upsert directly".
+//! concerns.
 
 use chrono::{DateTime, Utc};
-use clap::Parser;
 use observing_bootstrap::job::{self, JobOpts, Outcome};
 use observing_db::{comments, identifications, interactions, likes, occurrences, processing};
 use serde_json::Value;
 use sqlx::postgres::PgPool;
 use std::process::ExitCode;
 use tracing::{error, info, warn};
-use tracing_subscriber::{prelude::*, EnvFilter};
 
 use observing_collections::{
     COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
     OCCURRENCE_COLLECTION,
 };
 
-#[derive(Parser, Debug)]
-#[command(version, about, long_about = None)]
-struct Args {
+#[derive(clap::Args, Debug)]
+pub struct Args {
     #[command(flatten)]
     job: JobOpts,
 
@@ -60,17 +54,7 @@ struct FailedRow {
     last_attempt_at: DateTime<Utc>,
 }
 
-#[tokio::main]
-async fn main() -> ExitCode {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("replay_failed_records=info"));
-    tracing_subscriber::registry()
-        .with(env_filter)
-        .with(tracing_subscriber::fmt::layer())
-        .init();
-
-    let args = Args::parse();
-
+pub async fn run(args: Args) -> ExitCode {
     let pool = match job::connect_pool(2).await {
         Ok(p) => p,
         Err(e) => {

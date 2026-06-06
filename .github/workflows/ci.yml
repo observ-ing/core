@@ -470,6 +470,7 @@ jobs:
           - observing-species-id
           - observing-migrate
           - tap-ingester
+          - observing-task-runner
     steps:
       - uses: actions/checkout@v4
 
@@ -562,6 +563,24 @@ jobs:
           gcloud run jobs execute observing-migrate \
             --region=$REGION \
             --wait
+
+      # One-shot operational tasks (backfills, ledger replays). Deployed as a
+      # Cloud Run Job but deliberately NOT executed here — an operator triggers
+      # a run on demand, e.g.
+      #   gcloud run jobs execute observing-task-runner --region=us-central1 \
+      #     --wait --args=backfill-occurrences,--dry-run,--all
+      # Runs as the ingester role (same writes as the firehose path), so no
+      # admin credential and no DB URL ever leaves the cluster.
+      - name: Deploy task-runner
+        run: |
+          gcloud run jobs deploy observing-task-runner \
+            --image=$REGISTRY/observing-task-runner:latest \
+            --region=$REGION \
+            --set-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=RUST_LOG=observing_task_runner=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
+            --max-retries=0 \
+            --task-timeout=3600
 
       # --no-cpu-throttling is load-bearing here, not a tuning knob. Cloud
       # Run's default ("CPU only during request processing") throttles the

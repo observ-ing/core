@@ -443,22 +443,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "backfill-occurrences"
-version = "0.1.0"
-dependencies = [
- "atproto-blob-resolver",
- "chrono",
- "clap",
- "observing-bootstrap",
- "observing-db",
- "reqwest 0.13.3",
- "sqlx",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2915,6 +2899,7 @@ dependencies = [
  "axum",
  "clap",
  "futures",
+ "pg-url-env",
  "sqlx",
  "tokio",
  "tracing",
@@ -3012,6 +2997,24 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "ts-rs",
+]
+
+[[package]]
+name = "observing-task-runner"
+version = "0.1.0"
+dependencies = [
+ "atproto-blob-resolver",
+ "chrono",
+ "clap",
+ "observing-bootstrap",
+ "observing-collections",
+ "observing-db",
+ "reqwest 0.13.3",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]
@@ -3744,22 +3747,6 @@ checksum = "158a764437582235e3501f683b93a0a6f8d825d04a789dbe5ed30b8799b8908a"
 dependencies = [
  "hashbrown 0.16.1",
  "memchr",
-]
-
-[[package]]
-name = "replay-failed-records"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "observing-bootstrap",
- "observing-collections",
- "observing-db",
- "serde_json",
- "sqlx",
- "tokio",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
