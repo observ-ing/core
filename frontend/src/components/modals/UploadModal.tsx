@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import { lazy, Suspense, useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
   Avatar,
   Box,
@@ -32,13 +32,18 @@ import { ModalOverlay } from "./ModalOverlay";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
-import { LocationPicker } from "../map/LocationPicker";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
 import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
+
+// Lazy so maplibre-gl (heavy) is split into its own chunk, loaded only when the
+// upload modal actually opens (the MUI Dialog doesn't mount children until then).
+const LocationPicker = lazy(() =>
+  import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
+);
 
 interface ImagePreview {
   file: File;
@@ -547,16 +552,31 @@ export function UploadModal() {
             JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
           </Typography>
 
-          <LocationPicker
-            latitude={lat ? parseFloat(lat) : null}
-            longitude={lng ? parseFloat(lng) : null}
-            onChange={handleLocationChange}
-            uncertaintyMeters={uncertaintyMeters}
-            onUncertaintyChange={(m) => {
-              setUncertaintyMeters(m);
-              setIsDirty(true);
-            }}
-          />
+          <Suspense
+            fallback={
+              <Box
+                sx={{
+                  height: 260,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <CircularProgress size={24} />
+              </Box>
+            }
+          >
+            <LocationPicker
+              latitude={lat ? parseFloat(lat) : null}
+              longitude={lng ? parseFloat(lng) : null}
+              onChange={handleLocationChange}
+              uncertaintyMeters={uncertaintyMeters}
+              onUncertaintyChange={(m) => {
+                setUncertaintyMeters(m);
+                setIsDirty(true);
+              }}
+            />
+          </Suspense>
 
           <TaxaAutocomplete
             value={species}

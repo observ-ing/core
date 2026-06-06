@@ -20,9 +20,6 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/, /^\/oauth/, /^\/media/, /^\/admin/],
         globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
         cleanupOutdatedCaches: true,
-        // Bumped from default 2 MiB so the current bundle precaches.
-        // Code-splitting is the proper fix; tracked separately.
-        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Only cache routes whose responses are independent of the viewer.
         // /api/taxa/{...}/occurrences and other enrichment-touched routes
         // embed `viewer_has_liked` and must NOT be cached without per-user
