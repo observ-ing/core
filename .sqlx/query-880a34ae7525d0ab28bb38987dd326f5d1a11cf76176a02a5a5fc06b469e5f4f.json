@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date,\n                    ST_Y(location::geometry) as latitude,\n                    ST_X(location::geometry) as longitude,\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    organism_quantity, organism_quantity_type,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1 AND created_at < ($3::text)::timestamptz\n                ORDER BY created_at DESC\n                LIMIT $2\n                ",
+  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date,\n                    ST_Y(location::geometry) as latitude,\n                    ST_X(location::geometry) as longitude,\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    organism_quantity, organism_quantity_type,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1 AND created_at < ($3::text)::timestamptz\n                ORDER BY created_at DESC, uri DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -270,5 +270,5 @@
       null
     ]
   },
-  "hash": "38b8578794bea02954d8788ba0a2e2b166a4613af0bb009f59eba105ec146754"
+  "hash": "880a34ae7525d0ab28bb38987dd326f5d1a11cf76176a02a5a5fc06b469e5f4f"
 }
