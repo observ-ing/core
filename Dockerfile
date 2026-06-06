@@ -13,7 +13,8 @@
 # spawns it as a child process at runtime.
 #
 # Supported SERVICE values:
-#   observing-appview, observing-species-id, observing-migrate, tap-ingester
+#   observing-appview, observing-species-id, observing-migrate, tap-ingester,
+#   observing-task-runner
 
 ARG SERVICE=observing-appview
 
@@ -168,6 +169,18 @@ COPY --from=builder /app/target/release/observing-migrate /app/observing-migrate
 
 ENV RUST_LOG=observing_migrate=info,sqlx::migrate=info
 CMD ["/app/observing-migrate"]
+
+# ---------------------------------------------------------------------------
+# Stage: runtime for the task runner (one-shot Cloud Run Job, subcommand-based)
+# ---------------------------------------------------------------------------
+FROM runtime-base AS runtime-observing-task-runner
+
+COPY --from=builder /app/target/release/observing-task-runner /app/observing-task-runner
+
+ENV RUST_LOG=observing_task_runner=info
+# ENTRYPOINT (not CMD) so the Cloud Run Job's `--args` append the subcommand +
+# flags, e.g. `--args=backfill-occurrences,--dry-run,--all`.
+ENTRYPOINT ["/app/observing-task-runner"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for species-id
