@@ -258,46 +258,6 @@ export class OccurrenceUploader {
 
     return exifData;
   }
-
-  /**
-   * Compress an image for upload
-   */
-  async compressImage(file: File, maxWidth = 2048, quality = 0.85): Promise<File> {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
-      img.onload = () => {
-        let { width, height } = img;
-
-        // Scale down if necessary
-        if (width > maxWidth) {
-          height = (height * maxWidth) / width;
-          width = maxWidth;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        ctx?.drawImage(img, 0, 0, width, height);
-
-        canvas.toBlob(
-          (blob) => {
-            if (blob) {
-              resolve(new File([blob], file.name, { type: "image/jpeg" }));
-            } else {
-              reject(new Error("Failed to compress image"));
-            }
-          },
-          "image/jpeg",
-          quality,
-        );
-      };
-
-      img.onerror = () => reject(new Error("Failed to load image"));
-      img.src = URL.createObjectURL(file);
-    });
-  }
 }
 
 export type { OccurrenceData, UploadResult, ExifData };
