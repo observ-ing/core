@@ -160,6 +160,15 @@ async fn run(pool: &PgPool, args: &Args) -> Result<Summary, sqlx::Error> {
         }
     }
 
+    // `identifications::upsert` no longer refreshes the `community_ids` matview
+    // per row (it aggregates the whole table — O(n²) across a batch). Refresh
+    // once after the batch drains so replayed identifications are reflected.
+    if !args.dry_run && summary.replayed > 0 {
+        if let Err(e) = identifications::refresh_community_ids(pool).await {
+            warn!(error = %e, "failed to refresh community_ids after replay");
+        }
+    }
+
     Ok(summary)
 }
 
