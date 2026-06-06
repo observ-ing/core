@@ -442,6 +442,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "backfill-occurrences"
+version = "0.1.0"
+dependencies = [
+ "at-uri-parser",
+ "atproto-blob-resolver",
+ "atproto-identity",
+ "chrono",
+ "clap",
+ "futures",
+ "observing-db",
+ "reqwest 0.13.3",
+ "serde_json",
+ "sqlx",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "base-x"
 version = "0.2.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
