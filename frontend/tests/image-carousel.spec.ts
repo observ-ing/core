@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockObservationDetailRoute } from "./helpers/mock-observation";
-import type { Occurrence } from "../frontend/src/services/types";
+import type { Occurrence } from "../src/services/types";
 
 const TEST_DID = "did:plc:testuser123";
 const TEST_RKEY = "obs456";

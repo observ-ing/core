@@ -1,11 +1,6 @@
 import type { Page, Route } from "@playwright/test";
 import { MOCK_TEST_USER } from "./test-users";
-import type {
-  Occurrence,
-  Identification,
-  Comment,
-  FeedResponse,
-} from "../../frontend/src/services/types";
+import type { Occurrence, Identification, Comment, FeedResponse } from "../../src/services/types";
 
 export const MOCK_OBS_DID = MOCK_TEST_USER.did;
 export const MOCK_OBS_RKEY = "test123";
