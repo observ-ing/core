@@ -7,7 +7,7 @@ import {
   OAK_OBSERVATION,
   FERN_OBSERVATION,
   OAK_IDENTIFICATION,
-} from "../../../../.storybook/fixtures";
+} from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Profile/ProfileView",

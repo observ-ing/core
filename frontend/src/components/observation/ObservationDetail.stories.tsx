@@ -2,11 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { Routes, Route } from "react-router-dom";
 import { ObservationDetail } from "./ObservationDetail";
-import {
-  OAK_OBSERVATION,
-  OAK_IDENTIFICATION,
-  SAMPLE_COMMENT,
-} from "../../../../.storybook/fixtures";
+import { OAK_OBSERVATION, OAK_IDENTIFICATION, SAMPLE_COMMENT } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Observation/ObservationDetail",

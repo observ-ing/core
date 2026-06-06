@@ -1,10 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TaxonDetailPanel } from "./TaxonDetailPanel";
-import {
-  OAK_TAXON_DETAIL,
-  OAK_OBSERVATION,
-  FERN_OBSERVATION,
-} from "../../../../.storybook/fixtures";
+import { OAK_TAXON_DETAIL, OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Taxon/TaxonDetailPanel",

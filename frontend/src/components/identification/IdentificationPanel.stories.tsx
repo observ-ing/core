@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mui/material";
 import { IdentificationPanel } from "./IdentificationPanel";
-import { OAK_OBSERVATION } from "../../../../.storybook/fixtures";
+import { OAK_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Identification/IdentificationPanel",

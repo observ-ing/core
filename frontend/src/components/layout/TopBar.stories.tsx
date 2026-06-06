@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TopBar } from "./TopBar";
-import { ALICE_USER } from "../../../../.storybook/fixtures";
+import { ALICE_USER } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Layout/TopBar",

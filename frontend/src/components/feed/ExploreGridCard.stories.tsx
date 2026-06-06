@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mui/material";
 import { ExploreGridCard } from "./ExploreGridCard";
-import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../../.storybook/fixtures";
+import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Feed/ExploreGridCard",

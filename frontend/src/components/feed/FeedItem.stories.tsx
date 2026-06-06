@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { FeedItem } from "./FeedItem";
-import { ALICE_USER, OAK_OBSERVATION, FERN_OBSERVATION } from "../../../../.storybook/fixtures";
+import { ALICE_USER, OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Feed/FeedItem",

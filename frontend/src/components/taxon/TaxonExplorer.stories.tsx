@@ -2,11 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { Routes, Route } from "react-router-dom";
 import { TaxonExplorer } from "./TaxonExplorer";
-import {
-  OAK_TAXON_DETAIL,
-  OAK_OBSERVATION,
-  FERN_OBSERVATION,
-} from "../../../../.storybook/fixtures";
+import { OAK_TAXON_DETAIL, OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Taxon/TaxonExplorer",

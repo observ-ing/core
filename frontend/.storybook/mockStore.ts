@@ -1,8 +1,8 @@
 import { combineReducers, configureStore, type Action } from "@reduxjs/toolkit";
-import authReducer from "../frontend/src/store/authSlice";
-import feedReducer from "../frontend/src/store/feedSlice";
-import uiReducer from "../frontend/src/store/uiSlice";
-import pendingReducer from "../frontend/src/store/pendingSlice";
+import authReducer from "../src/store/authSlice";
+import feedReducer from "../src/store/feedSlice";
+import uiReducer from "../src/store/uiSlice";
+import pendingReducer from "../src/store/pendingSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,

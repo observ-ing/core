@@ -5,7 +5,7 @@ import { MemoryRouter } from "react-router-dom";
 import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initialize, mswLoader } from "msw-storybook-addon";
-import { darkTheme, lightTheme } from "../frontend/src/theme";
+import { darkTheme, lightTheme } from "../src/theme";
 import { makeMockStore } from "./mockStore";
 import { defaultHandlers } from "./handlers";
 

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { FeedView } from "./FeedView";
-import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../../.storybook/fixtures";
+import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Feed/FeedView",
