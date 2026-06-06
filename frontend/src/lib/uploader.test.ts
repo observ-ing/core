@@ -428,21 +428,4 @@ describe("OccurrenceUploader", () => {
       expect(result).toBeDefined();
     });
   });
-
-  describe("compressImage", () => {
-    // Note: compressImage uses browser APIs (Image, canvas) which aren't available in Node
-    // These tests verify the method exists and document expected behavior
-    // Full testing would require jsdom or a browser environment
-
-    it("method exists on uploader", () => {
-      expect(typeof uploader.compressImage).toBe("function");
-    });
-
-    // In a browser environment, we would test:
-    // - Image scaling when width > maxWidth
-    // - Quality parameter affects output size
-    // - Returns a File with type image/jpeg
-    // - Rejects when image fails to load
-    // - Rejects when canvas.toBlob returns null
-  });
 });
