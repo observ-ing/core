@@ -22,6 +22,16 @@ export type Occurrence = {
    */
   eventDate?: string;
   location?: Location;
+  /**
+   * Darwin Core dwc:organismQuantity — free text (an int/float, or
+   * categorical like "many"/"10-100").
+   */
+  organismQuantity?: string;
+  /**
+   * Darwin Core dwc:organismQuantityType — open vocabulary
+   * ("individuals", "percent-cover", ...).
+   */
+  organismQuantityType?: string;
   images: Array<OccurrenceImage>;
   createdAt: string;
   likeCount?: number;

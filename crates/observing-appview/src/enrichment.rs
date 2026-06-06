@@ -33,6 +33,16 @@ pub struct OccurrenceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub location: Option<LocationResponse>,
+    /// Darwin Core dwc:organismQuantity — free text (an int/float, or
+    /// categorical like "many"/"10-100").
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub organism_quantity: Option<String>,
+    /// Darwin Core dwc:organismQuantityType — open vocabulary
+    /// ("individuals", "percent-cover", ...).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub organism_quantity_type: Option<String>,
     pub images: Vec<OccurrenceImage>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -290,6 +300,8 @@ pub async fn enrich_occurrences(
                 }),
                 _ => None,
             },
+            organism_quantity: row.organism_quantity.clone(),
+            organism_quantity_type: row.organism_quantity_type.clone(),
             images,
             created_at: row.created_at.to_rfc3339(),
             like_count: Some(*like_counts.get(&row.uri).unwrap_or(&0)),
@@ -463,6 +475,8 @@ mod tests {
             order_: None,
             family: None,
             genus: None,
+            organism_quantity: None,
+            organism_quantity_type: None,
             created_at: Utc::now(),
             distance_meters: None,
             source: None,

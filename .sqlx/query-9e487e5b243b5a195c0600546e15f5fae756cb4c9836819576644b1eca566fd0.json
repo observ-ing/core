@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date,\n                    ST_Y(location::geometry) as latitude,\n                    ST_X(location::geometry) as longitude,\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1\n                ORDER BY created_at DESC\n                LIMIT $2\n                ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            organism_quantity, organism_quantity_type,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE uri = $1\n        ",
   "describe": {
     "columns": [
       {
@@ -193,6 +193,28 @@
       },
       {
         "ordinal": 18,
+        "name": "organism_quantity",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "organism_quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "organism_quantity_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "organism_quantity_type"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -203,13 +225,13 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "distance_meters",
         "type_info": "Float8",
         "origin": "Expression"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "source",
         "type_info": "Text",
         "origin": "Expression"
@@ -217,8 +239,7 @@
     ],
     "parameters": {
       "Left": [
-        "Text",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -240,10 +261,12 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       null,
       null
     ]
   },
-  "hash": "6a3a73c649d6c23699979c7f4cd88bcd9f76a6b16ebaa93e14711da7c44bd3ad"
+  "hash": "9e487e5b243b5a195c0600546e15f5fae756cb4c9836819576644b1eca566fd0"
 }
