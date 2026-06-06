@@ -351,7 +351,7 @@ jobs:
       - name: Run database migrations and seed
         run: |
           sqlx migrate run --source crates/observing-db/migrations
-          psql $DATABASE_URL -f tests/seed.sql
+          psql $DATABASE_URL -f frontend/tests/seed.sql
       - name: Build frontend
         run: npm run build
       - name: Build appview
