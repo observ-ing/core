@@ -8,6 +8,12 @@ test.describe("Accessibility", () => {
   // TC-A11Y-001: Keyboard navigation
   test("tab navigates through interactive elements", async ({ page }) => {
     await page.goto("/");
+    // The home route is lazy-loaded and swaps from the feed to the landing page
+    // once auth resolves. Wait for a known landing-page control to be visible so
+    // the interactive elements are mounted before tabbing through them —
+    // otherwise the Tab presses race the Suspense/auth transition, focus falls
+    // back to <body>, and `:focus` matches nothing. See issue #607.
+    await expect(page.getByRole("button", { name: "Log in" }).first()).toBeVisible();
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
     await page.keyboard.press("Tab");
