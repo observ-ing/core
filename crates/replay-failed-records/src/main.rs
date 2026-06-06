@@ -12,7 +12,9 @@
 //! Approach: read each row's `record_json`, dispatch by `collection` through
 //! the matching `observing_db::processing::*_from_json` parser, hand the
 //! result to the per-table `upsert` helper, and DELETE the ledger row on
-//! success. Failures are logged and left in the ledger for inspection.
+//! success. Failures are logged and left in the ledger for inspection. The
+//! shared `observing_bootstrap::job` harness supplies the CLI flags, pool
+//! setup, and drive loop; this binary supplies the query and per-row logic.
 //!
 //! Intentionally bypasses the tap-ingester wrappers: skips media resolution
 //! and notification creation. Those are live-firehose concerns, not replay
@@ -22,11 +24,11 @@
 
 use chrono::{DateTime, Utc};
 use clap::Parser;
+use observing_bootstrap::job::{self, JobOpts, Outcome};
 use observing_db::{comments, identifications, interactions, likes, occurrences, processing};
 use serde_json::Value;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPool;
 use std::process::ExitCode;
-use std::time::Duration;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -38,13 +40,8 @@ use observing_collections::{
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Print what would be replayed without writing to the database.
-    #[arg(long)]
-    dry_run: bool,
-
-    /// Cap on rows to process this run. Unbounded if omitted.
-    #[arg(long)]
-    limit: Option<i64>,
+    #[command(flatten)]
+    job: JobOpts,
 
     /// Only replay rows whose `collection` matches this NSID exactly.
     /// Useful for verifying behavior on one collection before running the
@@ -74,57 +71,54 @@ async fn main() -> ExitCode {
 
     let args = Args::parse();
 
-    let database_url = match std::env::var("DATABASE_URL") {
-        Ok(v) => v,
-        Err(_) => {
-            error!("DATABASE_URL is required");
-            return ExitCode::from(2);
-        }
-    };
-
-    let pool = match PgPoolOptions::new()
-        .max_connections(2)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&database_url)
-        .await
-    {
+    let pool = match job::connect_pool(2).await {
         Ok(p) => p,
         Err(e) => {
-            error!(error = %e, "failed to connect");
+            error!("{e}");
             return ExitCode::from(1);
         }
     };
 
-    match run(&pool, &args).await {
-        Ok(summary) => {
-            info!(
-                replayed = summary.replayed,
-                failed = summary.failed,
-                skipped = summary.skipped,
-                "done"
-            );
-            ExitCode::SUCCESS
-        }
+    let rows = match fetch_rows(&pool, &args).await {
+        Ok(r) => r,
         Err(e) => {
-            error!(error = %e, "fatal error");
-            ExitCode::from(1)
+            error!(error = %e, "failed to read failed_records");
+            return ExitCode::from(1);
+        }
+    };
+    info!(candidates = rows.len(), "rows to consider");
+
+    // Strictly sequential (concurrency 1): the query orders occurrences first
+    // so children referencing them via subject_uri don't FK-violate, and
+    // multiple updates to one URI must replay in order. buffer_unordered(1)
+    // preserves that submission order.
+    let summary = job::drive(rows, 1, |row| replay_one(&pool, row, args.job.dry_run)).await;
+
+    // `identifications::upsert` no longer refreshes the `community_ids` matview
+    // per row (it aggregates the whole table — O(n²) across a batch). Refresh
+    // once after the batch drains so replayed identifications are reflected.
+    if !args.job.dry_run && summary.done.values().sum::<u64>() > 0 {
+        if let Err(e) = identifications::refresh_community_ids(&pool).await {
+            warn!(error = %e, "failed to refresh community_ids after replay");
         }
     }
+
+    info!(
+        scanned = summary.scanned(),
+        done = ?summary.done,
+        skipped = summary.skipped,
+        failed = summary.failed,
+        "done"
+    );
+    ExitCode::SUCCESS
 }
 
-#[derive(Default, Debug)]
-struct Summary {
-    replayed: u64,
-    failed: u64,
-    skipped: u64,
-}
-
-async fn run(pool: &PgPool, args: &Args) -> Result<Summary, sqlx::Error> {
+async fn fetch_rows(pool: &PgPool, args: &Args) -> Result<Vec<FailedRow>, sqlx::Error> {
     // Occurrences first so children referencing them via subject_uri don't
     // FK-violate within this same run. Within each group, oldest first so
     // multiple updates to the same URI replay in chronological order
     // (upserts are idempotent, but ordering keeps the final state honest).
-    let rows = sqlx::query_as!(
+    sqlx::query_as!(
         FailedRow,
         r#"
         SELECT uri, collection, did, cid, action,
@@ -138,56 +132,24 @@ async fn run(pool: &PgPool, args: &Args) -> Result<Summary, sqlx::Error> {
         LIMIT COALESCE($2, 9223372036854775807)
         "#,
         args.collection.as_deref(),
-        args.limit,
+        args.job.limit,
     )
     .fetch_all(pool)
-    .await?;
-
-    info!(candidates = rows.len(), "rows to consider");
-
-    let mut summary = Summary::default();
-    for row in rows {
-        match replay_one(pool, &row, args.dry_run).await {
-            ReplayOutcome::Replayed => summary.replayed += 1,
-            ReplayOutcome::Skipped(reason) => {
-                info!(uri = %row.uri, %reason, "skipped");
-                summary.skipped += 1;
-            }
-            ReplayOutcome::Failed(err) => {
-                warn!(uri = %row.uri, error = %err, "replay failed");
-                summary.failed += 1;
-            }
-        }
-    }
-
-    // `identifications::upsert` no longer refreshes the `community_ids` matview
-    // per row (it aggregates the whole table — O(n²) across a batch). Refresh
-    // once after the batch drains so replayed identifications are reflected.
-    if !args.dry_run && summary.replayed > 0 {
-        if let Err(e) = identifications::refresh_community_ids(pool).await {
-            warn!(error = %e, "failed to refresh community_ids after replay");
-        }
-    }
-
-    Ok(summary)
+    .await
 }
 
-enum ReplayOutcome {
-    Replayed,
-    Skipped(String),
-    Failed(String),
-}
-
-async fn replay_one(pool: &PgPool, row: &FailedRow, dry_run: bool) -> ReplayOutcome {
+async fn replay_one(pool: &PgPool, row: FailedRow, dry_run: bool) -> Outcome {
     // Deletes don't carry a record_json and don't need parsing — replaying
     // them is just re-issuing the DELETE, which is idempotent. Worth doing
     // if we ever ledger delete failures, but for now treat as skipped so
     // the operator can spot them.
     if row.action == "delete" {
-        return ReplayOutcome::Skipped("action=delete".into());
+        info!(uri = %row.uri, reason = "action=delete", "skipped");
+        return Outcome::Skipped;
     }
     let Some(record_json) = row.record_json.as_ref() else {
-        return ReplayOutcome::Skipped("record_json is NULL".into());
+        info!(uri = %row.uri, reason = "record_json is NULL", "skipped");
+        return Outcome::Skipped;
     };
     let cid = row.cid.clone().unwrap_or_default();
 
@@ -299,7 +261,8 @@ async fn replay_one(pool: &PgPool, row: &FailedRow, dry_run: bool) -> ReplayOutc
             }
         }
         other => {
-            return ReplayOutcome::Skipped(format!("unsupported collection: {other}"));
+            info!(uri = %row.uri, reason = %format!("unsupported collection: {other}"), "skipped");
+            return Outcome::Skipped;
         }
     };
 
@@ -307,7 +270,7 @@ async fn replay_one(pool: &PgPool, row: &FailedRow, dry_run: bool) -> ReplayOutc
         Ok(()) => {
             if dry_run {
                 info!(uri = %row.uri, collection = %row.collection, "would replay");
-                return ReplayOutcome::Replayed;
+                return Outcome::Done("replayed");
             }
             // Drop the ledger row only after the upsert lands, so a crash
             // mid-run leaves the row queued for the next pass.
@@ -320,13 +283,17 @@ async fn replay_one(pool: &PgPool, row: &FailedRow, dry_run: bool) -> ReplayOutc
             {
                 Ok(_) => {
                     info!(uri = %row.uri, collection = %row.collection, "replayed");
-                    ReplayOutcome::Replayed
+                    Outcome::Done("replayed")
                 }
                 Err(e) => {
-                    ReplayOutcome::Failed(format!("upsert succeeded but ledger delete failed: {e}"))
+                    warn!(uri = %row.uri, error = %e, "upsert succeeded but ledger delete failed");
+                    Outcome::Failed
                 }
             }
         }
-        Err(e) => ReplayOutcome::Failed(e),
+        Err(e) => {
+            warn!(uri = %row.uri, error = %e, "replay failed");
+            Outcome::Failed
+        }
     }
 }

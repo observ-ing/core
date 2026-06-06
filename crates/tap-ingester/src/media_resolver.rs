@@ -12,9 +12,7 @@
 //! records arrive on the firehose before the occurrence that references them
 //! — the appview uploads them first — so this typically succeeds.
 
-use at_uri_parser::AtUri;
 use atproto_blob_resolver::BlobResolver;
-use atproto_identity::Did;
 use observing_db::processing::AssociatedMediaRef;
 use observing_db::types::{BlobEntry, BlobImage, BlobRef};
 use reqwest::Client;
@@ -54,12 +52,9 @@ impl MediaResolver {
     }
 
     async fn resolve_one(&self, r: &AssociatedMediaRef) -> Option<BlobEntry> {
-        let at_uri = AtUri::parse(&r.uri)?;
-        let did = Did::parse(&at_uri.did).ok()?;
-        let pds_url = self.blob_resolver.resolve_pds_url(&did).await.ok()?;
         let record = self
             .blob_resolver
-            .fetch_record(&pds_url, &at_uri.did, &at_uri.collection, &at_uri.rkey)
+            .fetch_record_by_aturi(&r.uri)
             .await
             .ok()?;
         media_record_to_blob_entry(&record)

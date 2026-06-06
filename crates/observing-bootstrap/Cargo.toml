@@ -5,7 +5,18 @@ edition = "2021"
 description = "Shared service-bootstrap helpers for observ.ing binaries"
 license = "MIT OR Apache-2.0"
 
+[features]
+default = ["http"]
+# HTTP service scaffolding (`serve`). Pulls axum.
+http = ["dep:axum", "dep:tokio"]
+# One-shot batch-job scaffolding (`job` module): shared CLI flags, a
+# bounded-concurrency drive loop, and pool setup. Pulls sqlx/clap/futures.
+job = ["dep:sqlx", "dep:clap", "dep:futures"]
+
 [dependencies]
-axum = { workspace = true }
-tokio = { workspace = true }
 tracing = { workspace = true }
+axum = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+sqlx = { workspace = true, optional = true }
+futures = { workspace = true, optional = true }
+clap = { version = "4", features = ["derive"], optional = true }
