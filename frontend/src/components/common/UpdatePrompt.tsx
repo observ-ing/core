@@ -31,6 +31,15 @@ export function UpdatePrompt() {
 
   const close = () => setNeedRefresh(false);
 
+  const reload = async () => {
+    // updateServiceWorker(true) only reloads via the SW's "controlling" event,
+    // which never fires if there's no waiting worker (already activated in
+    // another tab, reclaimed by the browser) or no prior controller (first
+    // uncontrolled load). Force a reload afterward so the button always works.
+    await updateServiceWorker(true);
+    window.location.reload();
+  };
+
   return (
     <Snackbar
       open={needRefresh}
@@ -39,7 +48,7 @@ export function UpdatePrompt() {
       anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       action={
         <>
-          <Button color="inherit" size="small" onClick={() => updateServiceWorker(true)}>
+          <Button color="inherit" size="small" onClick={reload}>
             Reload
           </Button>
           <Button color="inherit" size="small" onClick={close}>
