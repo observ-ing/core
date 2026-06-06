@@ -49,9 +49,9 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
 }
 
 /// A strong reference to a `bio.lexicons.temp.v0-1.media` record, as it appears
-/// in an occurrence's `associatedMedia` array. Callers (the ingester) resolve
-/// these by fetching the referenced record from the author's PDS to build
-/// `BlobEntry` values for `associated_media`.
+/// in an occurrence's `media` array (legacy: `associatedMedia`). Callers (the
+/// ingester) resolve these by fetching the referenced record from the author's
+/// PDS to build `BlobEntry` values for `associated_media`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssociatedMediaRef {
     pub uri: String,
@@ -138,8 +138,11 @@ pub fn occurrence_from_json(
         .and_then(parse_datetime)
         .unwrap_or(fallback_time);
 
+    // The lexicon renamed `associatedMedia` → `media`; read the current key,
+    // falling back to the legacy one for already-published records.
     let associated_media_refs: Vec<AssociatedMediaRef> = record_json
-        .get("associatedMedia")
+        .get("media")
+        .or_else(|| record_json.get("associatedMedia"))
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
@@ -170,7 +173,7 @@ pub fn occurrence_from_json(
                 })
                 .map(|v| v as i32),
             // Try legacy "blobs" field first (inline image embeds), then skip
-            // "associatedMedia" (strong refs that require media record resolution).
+            // "media" (strong refs that require media record resolution).
             // The appview write path provides blob entries directly via parsed.params.
             associated_media: record_json.get("blobs").and_then(|v| {
                 // Borrow-deserialize to validate shape without cloning the Value.
@@ -837,7 +840,7 @@ mod tests {
     /// the ingester use to turn a PDS occurrence record into a DB row. The
     /// appview's create path writes occurrences in the
     /// `bio.lexicons.temp.v0-1.occurrence` shape, where images are referenced via
-    /// `associatedMedia` strong refs to separate `bio.lexicons.temp.v0-1.media`
+    /// `media` strong refs to separate `bio.lexicons.temp.v0-1.media`
     /// records — there is no inline `blobs` field on the occurrence itself.
     ///
     /// Resolving those strong refs requires HTTP calls to the author's PDS,
@@ -846,14 +849,14 @@ mod tests {
     /// covers the first half of that pipeline: the parser must surface the
     /// strong refs so the ingester has something to resolve.
     #[test]
-    fn test_occurrence_from_json_extracts_associated_media_refs() {
+    fn test_occurrence_from_json_extracts_media_refs() {
         let record = serde_json::json!({
             "$type": "bio.lexicons.temp.v0-1.occurrence",
             "decimalLatitude": "37.7749",
             "decimalLongitude": "-122.4194",
             "coordinateUncertaintyInMeters": 10,
             "eventDate": "2024-06-15T08:30:45.123Z",
-            "associatedMedia": [
+            "media": [
                 {
                     "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123",
                     "cid": "bafyreiabc123"
@@ -891,7 +894,7 @@ mod tests {
                     cid: "bafyreidef456".into(),
                 },
             ],
-            "occurrence_from_json must surface associatedMedia strong refs so the \
+            "occurrence_from_json must surface media strong refs so the \
              ingester can resolve them; without this, ingester-only writes lose \
              every photo on new observations"
         );
@@ -899,6 +902,42 @@ mod tests {
             parsed.params.associated_media.is_none(),
             "synchronous parser should not populate associated_media from strong \
              refs — that is the ingester's async job"
+        );
+    }
+
+    /// Records published before the `associatedMedia` → `media` lexicon rename
+    /// still carry the legacy key; the parser must keep resolving their photos.
+    #[test]
+    fn test_occurrence_from_json_falls_back_to_legacy_associated_media() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15T08:30:45.123Z",
+            "associatedMedia": [
+                {
+                    "uri": "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123",
+                    "cid": "bafyreiabc123"
+                }
+            ]
+        });
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".to_string(),
+            "bafyreioccurrence".to_string(),
+            "did:plc:author".to_string(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        assert_eq!(
+            parsed.associated_media_refs,
+            vec![AssociatedMediaRef {
+                uri: "at://did:plc:author/bio.lexicons.temp.v0-1.media/abc123".into(),
+                cid: "bafyreiabc123".into(),
+            }],
+            "legacy associatedMedia strong refs must still resolve after the rename"
         );
     }
 

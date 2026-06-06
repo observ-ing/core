@@ -529,7 +529,7 @@ fn build_occurrence_record_json(
         .parse()
         .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
 
-    let associated_media = if media_refs.is_empty() {
+    let media = if media_refs.is_empty() {
         None
     } else {
         Some(media_refs)
@@ -543,7 +543,7 @@ fn build_occurrence_record_json(
                 as i64,
         )
         .event_date(event_date)
-        .maybe_associated_media(associated_media)
+        .maybe_media(media)
         .build();
 
     auth::serialize_at_record(&record)

@@ -16,7 +16,7 @@ use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
-use jacquard_common::types::string::{AtUri, Cid, Datetime};
+use jacquard_common::types::string::{AtUri, Cid, Datetime, UriValue};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
@@ -38,9 +38,9 @@ use serde::{Deserialize, Serialize};
     bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
 pub struct Occurrence<S: BosStr = DefaultStr> {
-    ///Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).
+    ///Identification accepted by the occurrence user as the source of taxonID. Must be accompanied by taxonID. Indirectly maps to Darwin Core dwc:isAcceptedIdentification.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub associated_media: Option<Vec<StrongRef<S>>>,
+    pub accepted_identification_id: Option<StrongRef<S>>,
     ///The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub coordinate_uncertainty_in_meters: Option<i64>,
@@ -53,8 +53,105 @@ pub struct Occurrence<S: BosStr = DefaultStr> {
     ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_date: Option<Datetime>,
+    ///Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub media: Option<Vec<StrongRef<S>>>,
+    ///The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organism_quantity: Option<S>,
+    ///The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub organism_quantity_type: Option<OccurrenceOrganismQuantityType<S>>,
+    ///Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub taxon_id: Option<UriValue<S>>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+/// The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum OccurrenceOrganismQuantityType<S: BosStr = DefaultStr> {
+    Individuals,
+    PercentCover,
+    Other(S),
+}
+
+impl<S: BosStr> OccurrenceOrganismQuantityType<S> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Individuals => "individuals",
+            Self::PercentCover => "percent-cover",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
+            "individuals" => Self::Individuals,
+            "percent-cover" => Self::PercentCover,
+            _ => Self::Other(s),
+        }
+    }
+}
+
+impl<S: BosStr> core::fmt::Display for OccurrenceOrganismQuantityType<S> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<S: BosStr> AsRef<str> for OccurrenceOrganismQuantityType<S> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<S: BosStr> Serialize for OccurrenceOrganismQuantityType<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for OccurrenceOrganismQuantityType<S> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
+    }
+}
+
+impl<S: BosStr + Default> Default for OccurrenceOrganismQuantityType<S> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl<S: BosStr> jacquard_common::IntoStatic for OccurrenceOrganismQuantityType<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = OccurrenceOrganismQuantityType<S::Output>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            OccurrenceOrganismQuantityType::Individuals => {
+                OccurrenceOrganismQuantityType::Individuals
+            }
+            OccurrenceOrganismQuantityType::PercentCover => {
+                OccurrenceOrganismQuantityType::PercentCover
+            }
+            OccurrenceOrganismQuantityType::Other(v) => {
+                OccurrenceOrganismQuantityType::Other(v.into_static())
+            }
+        }
+    }
 }
 
 /// Typed wrapper for GetRecord response with this collection's record type.
@@ -112,22 +209,22 @@ impl<S: BosStr> LexiconSchema for Occurrence<S> {
         lexicon_doc_bio_lexicons_temp_v0_1_occurrence()
     }
     fn validate(&self) -> Result<(), ConstraintError> {
-        if let Some(ref value) = self.associated_media {
-            #[allow(unused_comparisons)]
-            if value.len() > 10usize {
-                return Err(ConstraintError::MaxLength {
-                    path: ValidationPath::from_field("associated_media"),
-                    max: 10usize,
-                    actual: value.len(),
-                });
-            }
-        }
         if let Some(ref value) = self.coordinate_uncertainty_in_meters {
             if *value < 0i64 {
                 return Err(ConstraintError::Minimum {
                     path: ValidationPath::from_field("coordinate_uncertainty_in_meters"),
                     min: 0i64,
                     actual: *value,
+                });
+            }
+        }
+        if let Some(ref value) = self.media {
+            #[allow(unused_comparisons)]
+            if value.len() > 10usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("media"),
+                    max: 10usize,
+                    actual: value.len(),
                 });
             }
         }
@@ -158,11 +255,15 @@ pub mod occurrence_state {
 pub struct OccurrenceBuilder<S: BosStr, St: occurrence_state::State> {
     _state: PhantomData<fn() -> St>,
     _fields: (
-        Option<Vec<StrongRef<S>>>,
+        Option<StrongRef<S>>,
         Option<i64>,
         Option<S>,
         Option<S>,
         Option<Datetime>,
+        Option<Vec<StrongRef<S>>>,
+        Option<S>,
+        Option<OccurrenceOrganismQuantityType<S>>,
+        Option<UriValue<S>>,
     ),
     _type: PhantomData<fn() -> S>,
 }
@@ -179,20 +280,20 @@ impl<S: BosStr> OccurrenceBuilder<S, occurrence_state::Empty> {
     pub fn new() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None),
+            _fields: (None, None, None, None, None, None, None, None, None),
             _type: PhantomData,
         }
     }
 }
 
 impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
-    /// Set the `associatedMedia` field (optional)
-    pub fn associated_media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
+    /// Set the `acceptedIdentificationID` field (optional)
+    pub fn accepted_identification_id(mut self, value: impl Into<Option<StrongRef<S>>>) -> Self {
         self._fields.0 = value.into();
         self
     }
-    /// Set the `associatedMedia` field to an Option value (optional)
-    pub fn maybe_associated_media(mut self, value: Option<Vec<StrongRef<S>>>) -> Self {
+    /// Set the `acceptedIdentificationID` field to an Option value (optional)
+    pub fn maybe_accepted_identification_id(mut self, value: Option<StrongRef<S>>) -> Self {
         self._fields.0 = value;
         self
     }
@@ -250,6 +351,64 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+    /// Set the `media` field (optional)
+    pub fn media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
+        self._fields.5 = value.into();
+        self
+    }
+    /// Set the `media` field to an Option value (optional)
+    pub fn maybe_media(mut self, value: Option<Vec<StrongRef<S>>>) -> Self {
+        self._fields.5 = value;
+        self
+    }
+}
+
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+    /// Set the `organismQuantity` field (optional)
+    pub fn organism_quantity(mut self, value: impl Into<Option<S>>) -> Self {
+        self._fields.6 = value.into();
+        self
+    }
+    /// Set the `organismQuantity` field to an Option value (optional)
+    pub fn maybe_organism_quantity(mut self, value: Option<S>) -> Self {
+        self._fields.6 = value;
+        self
+    }
+}
+
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+    /// Set the `organismQuantityType` field (optional)
+    pub fn organism_quantity_type(
+        mut self,
+        value: impl Into<Option<OccurrenceOrganismQuantityType<S>>>,
+    ) -> Self {
+        self._fields.7 = value.into();
+        self
+    }
+    /// Set the `organismQuantityType` field to an Option value (optional)
+    pub fn maybe_organism_quantity_type(
+        mut self,
+        value: Option<OccurrenceOrganismQuantityType<S>>,
+    ) -> Self {
+        self._fields.7 = value;
+        self
+    }
+}
+
+impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+    /// Set the `taxonID` field (optional)
+    pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
+        self._fields.8 = value.into();
+        self
+    }
+    /// Set the `taxonID` field to an Option value (optional)
+    pub fn maybe_taxon_id(mut self, value: Option<UriValue<S>>) -> Self {
+        self._fields.8 = value;
+        self
+    }
+}
+
 impl<S: BosStr, St> OccurrenceBuilder<S, St>
 where
     St: occurrence_state::State,
@@ -257,22 +416,30 @@ where
     /// Build the final struct.
     pub fn build(self) -> Occurrence<S> {
         Occurrence {
-            associated_media: self._fields.0,
+            accepted_identification_id: self._fields.0,
             coordinate_uncertainty_in_meters: self._fields.1,
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
+            media: self._fields.5,
+            organism_quantity: self._fields.6,
+            organism_quantity_type: self._fields.7,
+            taxon_id: self._fields.8,
             extra_data: Default::default(),
         }
     }
     /// Build the final struct with custom extra_data.
     pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Occurrence<S> {
         Occurrence {
-            associated_media: self._fields.0,
+            accepted_identification_id: self._fields.0,
             coordinate_uncertainty_in_meters: self._fields.1,
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
+            media: self._fields.5,
+            organism_quantity: self._fields.6,
+            organism_quantity_type: self._fields.7,
+            taxon_id: self._fields.8,
             extra_data: Some(extra_data),
         }
     }
@@ -302,18 +469,9 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                             #[allow(unused_mut)]
                             let mut map = BTreeMap::new();
                             map.insert(
-                                SmolStr::new_static("associatedMedia"),
-                                LexObjectProperty::Array(LexArray {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
-                                        ),
-                                    ),
-                                    items: LexArrayItem::Ref(LexRef {
-                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
-                                        ..Default::default()
-                                    }),
-                                    max_length: Some(10usize),
+                                SmolStr::new_static("acceptedIdentificationID"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
                                     ..Default::default()
                                 }),
                             );
@@ -355,6 +513,56 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                                         ),
                                     ),
                                     format: Some(LexStringFormat::Datetime),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("media"),
+                                LexObjectProperty::Array(LexArray {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.",
+                                        ),
+                                    ),
+                                    items: LexArrayItem::Ref(LexRef {
+                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                        ..Default::default()
+                                    }),
+                                    max_length: Some(10usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("organismQuantity"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("organismQuantityType"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("taxonID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID).",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::Uri),
                                     ..Default::default()
                                 }),
                             );

@@ -27,14 +27,33 @@
             "description": "The horizontal distance (in meters) from the given coordinates describing the smallest circle containing the whole of the Location (Darwin Core dwc:coordinateUncertaintyInMeters).",
             "minimum": 0
           },
-          "associatedMedia": {
+          "media": {
             "type": "array",
-            "description": "Strong references to media records documenting the observation (Darwin Core dwc:associatedMedia).",
+            "description": "Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.",
             "items": {
               "type": "ref",
               "ref": "com.atproto.repo.strongRef"
             },
             "maxLength": 10
+          },
+          "organismQuantity": {
+            "type": "string",
+            "description": "The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity)."
+          },
+          "organismQuantityType": {
+            "type": "string",
+            "description": "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
+            "knownValues": ["individuals", "percent-cover"]
+          },
+          "taxonID": {
+            "type": "string",
+            "format": "uri",
+            "description": "Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID)."
+          },
+          "acceptedIdentificationID": {
+            "type": "ref",
+            "ref": "com.atproto.repo.strongRef",
+            "description": "Identification accepted by the occurrence user as the source of taxonID. Must be accompanied by taxonID. Indirectly maps to Darwin Core dwc:isAcceptedIdentification."
           }
         }
       }
