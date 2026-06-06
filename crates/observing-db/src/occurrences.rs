@@ -16,6 +16,7 @@ macro_rules! occurrence_columns {
     coordinate_uncertainty_meters,
     associated_media, recorded_by,
     taxon_id, taxon_rank, kingdom, phylum, class, "order", family, genus,
+    organism_quantity, organism_quantity_type,
     created_at,
     NULL::float8 as distance_meters,
     NULL::text as source
@@ -35,12 +36,15 @@ pub async fn upsert(
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom,
+            organism_quantity, organism_quantity_type,
             created_at
         ) VALUES (
             $1, $2, $3, $4, $5,
             ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
             $8, $9, $10,
-            $11, $12, $13, $14
+            $11, $12, $13,
+            $14, $15,
+            $16
         )
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
@@ -53,6 +57,8 @@ pub async fn upsert(
             taxon_id = COALESCE($11, occurrences.taxon_id),
             taxon_rank = COALESCE($12, occurrences.taxon_rank),
             kingdom = COALESCE($13, occurrences.kingdom),
+            organism_quantity = COALESCE($14, occurrences.organism_quantity),
+            organism_quantity_type = COALESCE($15, occurrences.organism_quantity_type),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -71,6 +77,8 @@ pub async fn upsert(
         p.taxon_id as _,
         p.taxon_rank as _,
         p.kingdom as _,
+        p.organism_quantity as _,
+        p.organism_quantity_type as _,
         p.created_at,
     )
     .execute(executor)
@@ -102,6 +110,7 @@ pub async fn get(
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+            organism_quantity, organism_quantity_type,
             created_at,
             NULL::float8 as distance_meters,
             NULL::text as source
@@ -135,6 +144,7 @@ pub async fn get_nearby(
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+            organism_quantity, organism_quantity_type,
             created_at,
             ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,
             NULL::text as source
@@ -180,6 +190,7 @@ pub async fn get_by_bounding_box(
             coordinate_uncertainty_meters,
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+            organism_quantity, organism_quantity_type,
             created_at,
             NULL::float8 as distance_meters,
             NULL::text as source
@@ -218,6 +229,7 @@ pub async fn get_feed(
                 coordinate_uncertainty_meters,
                 associated_media, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                organism_quantity, organism_quantity_type,
                 created_at,
                 NULL::float8 as distance_meters,
                 NULL::text as source
@@ -245,6 +257,7 @@ pub async fn get_feed(
                 coordinate_uncertainty_meters,
                 associated_media, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                organism_quantity, organism_quantity_type,
                 created_at,
                 NULL::float8 as distance_meters,
                 NULL::text as source

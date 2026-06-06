@@ -172,6 +172,11 @@ pub fn occurrence_from_json(
                         .and_then(|v| v.as_i64())
                 })
                 .map(|v| v as i32),
+            organism_quantity: record.organism_quantity.map(|q| q.to_string()),
+            organism_quantity_type: record
+                .organism_quantity_type
+                .as_ref()
+                .map(|t| t.as_str().to_string()),
             // Try legacy "blobs" field first (inline image embeds), then skip
             // "media" (strong refs that require media record resolution).
             // The appview write path provides blob entries directly via parsed.params.
@@ -1007,5 +1012,61 @@ mod tests {
         assert!(parsed.params.latitude.is_none());
         assert!(parsed.params.longitude.is_none());
         assert!(parsed.params.event_date.is_none());
+    }
+
+    /// `organismQuantity` / `organismQuantityType` are surfaced from the
+    /// lexicon into the upsert params. The quantity is free text; the type is
+    /// normalized through the lexicon's open vocabulary (known values keep
+    /// their canonical spelling, anything else round-trips verbatim).
+    #[test]
+    fn test_occurrence_from_json_extracts_organism_quantity() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15T08:30:45Z",
+            "organismQuantity": "10-100",
+            "organismQuantityType": "individuals"
+        });
+
+        assert_valid_lexicon::<Occurrence>(&record);
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".into(),
+            "bafyreioccurrence".into(),
+            "did:plc:author".into(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        assert_eq!(parsed.params.organism_quantity.as_deref(), Some("10-100"));
+        assert_eq!(
+            parsed.params.organism_quantity_type.as_deref(),
+            Some("individuals")
+        );
+    }
+
+    /// Records without the quantity fields leave both params as NULL.
+    #[test]
+    fn test_occurrence_from_json_omits_absent_organism_quantity() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15T08:30:45Z"
+        });
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".into(),
+            "bafyreioccurrence".into(),
+            "did:plc:author".into(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        assert!(parsed.params.organism_quantity.is_none());
+        assert!(parsed.params.organism_quantity_type.is_none());
     }
 }

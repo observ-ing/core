@@ -157,6 +157,7 @@ pub async fn get_profile_feed(
                     coordinate_uncertainty_meters,
                     associated_media, recorded_by,
                     taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                    organism_quantity, organism_quantity_type,
                     created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source
@@ -183,6 +184,7 @@ pub async fn get_profile_feed(
                     coordinate_uncertainty_meters,
                     associated_media, recorded_by,
                     taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
+                    organism_quantity, organism_quantity_type,
                     created_at,
                     NULL::float8 as distance_meters,
                     NULL::text as source

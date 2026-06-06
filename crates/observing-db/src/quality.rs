@@ -86,6 +86,8 @@ mod tests {
             order_: None,
             family: None,
             genus: None,
+            organism_quantity: None,
+            organism_quantity_type: None,
             created_at: Utc::now(),
             distance_meters: None,
             source: None,

@@ -80,6 +80,15 @@ pub struct OccurrenceRow {
     pub family: Option<String>,
     pub genus: Option<String>,
     pub created_at: DateTime<Utc>,
+    /// Darwin Core dwc:organismQuantity (free text). Only selected by the
+    /// single-occurrence and feed queries that include the shared
+    /// `occurrence_columns!` set; defaults to None elsewhere.
+    #[sqlx(default)]
+    pub organism_quantity: Option<String>,
+    /// Darwin Core dwc:organismQuantityType (open vocabulary). See
+    /// `organism_quantity`.
+    #[sqlx(default)]
+    pub organism_quantity_type: Option<String>,
     /// Only present in nearby queries
     #[sqlx(default)]
     pub distance_meters: Option<f64>,
@@ -239,6 +248,12 @@ pub struct UpsertOccurrenceParams {
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
     pub coordinate_uncertainty_meters: Option<i32>,
+    /// Darwin Core dwc:organismQuantity — free text (an int/float, or
+    /// categorical like "many"/"10-100").
+    pub organism_quantity: Option<String>,
+    /// Darwin Core dwc:organismQuantityType — open vocabulary
+    /// ("individuals", "percent-cover", ...).
+    pub organism_quantity_type: Option<String>,
     pub associated_media: Option<serde_json::Value>,
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,

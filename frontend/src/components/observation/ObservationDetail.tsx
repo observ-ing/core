@@ -22,6 +22,7 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
+import NumbersIcon from "@mui/icons-material/Numbers";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -395,6 +396,40 @@ export function ObservationDetail() {
                 }}
               />
             </ListItem>
+
+            {observation.organismQuantity && (
+              <ListItem disableGutters alignItems="flex-start">
+                <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                  <NumbersIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                </ListItemIcon>
+                <ListItemText
+                  primary="Quantity"
+                  secondary={
+                    <>
+                      {observation.organismQuantity}
+                      {observation.organismQuantityType && (
+                        <Typography
+                          component="span"
+                          variant="body2"
+                          sx={{ color: "text.disabled" }}
+                        >
+                          {" "}
+                          ({observation.organismQuantityType.replace(/-/g, " ")})
+                        </Typography>
+                      )}
+                    </>
+                  }
+                  slotProps={{
+                    primary: { variant: "caption", color: "text.secondary" },
+                    secondary: {
+                      variant: "body1",
+                      color: "text.primary",
+                      component: "div",
+                    },
+                  }}
+                />
+              </ListItem>
+            )}
 
             <ListItem disableGutters alignItems="flex-start">
               <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>

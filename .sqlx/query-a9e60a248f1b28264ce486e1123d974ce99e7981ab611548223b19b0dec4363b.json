@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        AND did != ALL($6)\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            organism_quantity, organism_quantity_type,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        AND did != ALL($6)\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
   "describe": {
     "columns": [
       {
@@ -193,6 +193,28 @@
       },
       {
         "ordinal": 18,
+        "name": "organism_quantity",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "organism_quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "organism_quantity_type",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "organism_quantity_type"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -203,13 +225,13 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "distance_meters",
         "type_info": "Float8",
         "origin": "Expression"
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "source",
         "type_info": "Text",
         "origin": "Expression"
@@ -244,10 +266,12 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       null,
       null
     ]
   },
-  "hash": "e611a0eec458dc9f59d13e99eb6ac827383166b37b4f8f538d36542f3593ff7e"
+  "hash": "a9e60a248f1b28264ce486e1123d974ce99e7981ab611548223b19b0dec4363b"
 }
