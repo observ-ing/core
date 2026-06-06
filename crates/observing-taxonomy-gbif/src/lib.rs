@@ -92,15 +92,49 @@ impl TaxonomyUpstream for GbifUpstream {
     }
 
     async fn get_by_key(&self, taxon_key: i64) -> Result<Option<UpstreamMatch>, ResolveError> {
-        // GBIF's species-detail endpoint lacks the keyed classification chain
-        // that `match_name` returns, so we'd need follow-up calls per ancestor
-        // to construct anything resolver-shaped. Until that's wired up,
-        // by-key lookups always miss the upstream — callers will fall back
-        // to whatever's cached. This is fine for now: by-key lookups today
-        // come from `accepted_taxon_key` chases on synonym rows we haven't
-        // finished plumbing.
-        let _ = taxon_key;
-        Ok(None)
+        // The v2 `/species/match` endpoint accepts a `usageKey` and returns the
+        // same `NameUsageMatch` (usage + classification chain) as a name match,
+        // so a by-key lookup reuses the exact response shape `match_name` does.
+        let usage_key = taxon_key.to_string();
+        let result = self
+            .api
+            .match_names(
+                None,             //  1 class
+                None,             //  2 exclude
+                None,             //  3 family
+                None,             //  4 generic_name
+                None,             //  5 genus
+                None,             //  6 infraspecific_epithet
+                None,             //  7 kingdom
+                None,             //  8 order
+                None,             //  9 phylum
+                None,             // 10 scientific_name
+                None,             // 11 scientific_name_authorship
+                None,             // 12 scientific_name_id
+                None,             // 13 species
+                None,             // 14 specific_epithet
+                None,             // 15 strict
+                None,             // 16 subfamily
+                None,             // 17 subgenus
+                None,             // 18 subtribe
+                None,             // 19 superfamily
+                None,             // 20 taxon_concept_id
+                None,             // 21 taxon_id
+                None,             // 22 taxon_rank
+                None,             // 23 tribe
+                Some(&usage_key), // 24 usage_key
+                None,             // 25 verbatim_taxon_rank
+                None,             // 26 verbose
+            )
+            .await;
+
+        let m: NameUsageMatch = match result {
+            Ok(rv) => rv.into_inner(),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
+            Err(e) => return Err(ResolveError::Upstream(e.to_string())),
+        };
+
+        Ok(build_upstream_match(m))
     }
 }
 

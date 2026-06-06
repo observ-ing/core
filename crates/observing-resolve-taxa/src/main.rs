@@ -25,6 +25,8 @@
 //!   cargo run --bin resolve_taxa -- --interval-secs 300
 //!   cargo run --bin resolve_taxa -- --rate-limit-ms 200 --limit 1000
 
+mod taxon_uri;
+
 use std::time::Duration;
 
 use clap::Parser;
@@ -34,6 +36,12 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::{PgPool, Row};
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
+use wikidata_client::WikidataClient;
+
+use taxon_uri::TaxonRef;
+
+/// Wikidata property id for an iNaturalist taxon.
+const WIKIDATA_INATURALIST_PROPERTY: &str = "P3151";
 
 #[derive(Parser, Clone)]
 #[command(about = "Resolve and cache taxonomy for already-ingested identifications")]
@@ -91,9 +99,10 @@ async fn main() -> std::process::ExitCode {
 
     let upstream = GbifUpstream::default();
     let resolver = Resolver::new(&pool, &upstream);
+    let wikidata = WikidataClient::new();
 
     loop {
-        match run_pass(&pool, &resolver, &cli).await {
+        match run_pass(&pool, &resolver, &wikidata, &cli).await {
             Ok(PassOutcome::DryRunDone) => return std::process::ExitCode::SUCCESS,
             Ok(PassOutcome::Done) => {}
             Err(code) => return code,
@@ -115,13 +124,41 @@ enum PassOutcome {
     DryRunDone,
 }
 
-/// Run one resolution pass: enumerate unresolved pairs, resolve each,
-/// stamp matching identifications, refresh the matview.
+/// Run one resolution pass: resolve unresolved identifications by scientific
+/// name, then mop up any still-unresolved rows that carry a `taxon_id` URI by
+/// resolving the URI directly, and finally refresh the matview.
 async fn run_pass<U>(
     pool: &PgPool,
     resolver: &Resolver<'_, PgPool, U>,
+    wikidata: &WikidataClient,
     cli: &Cli,
 ) -> Result<PassOutcome, std::process::ExitCode>
+where
+    U: observing_db::taxonomy_resolver::TaxonomyUpstream,
+{
+    run_name_pass(pool, resolver, cli).await?;
+    run_taxon_id_pass(pool, resolver, wikidata, cli).await?;
+
+    if cli.dry_run {
+        return Ok(PassOutcome::DryRunDone);
+    }
+
+    // One matview refresh covers both passes.
+    info!("Resolution pass complete; refreshing community_ids");
+    if let Err(e) = observing_db::identifications::refresh_community_ids(pool).await {
+        error!(error = %e, "Failed to refresh community_ids matview");
+        return Err(std::process::ExitCode::from(1));
+    }
+
+    Ok(PassOutcome::Done)
+}
+
+/// Resolve unresolved identifications by `(scientific_name, kingdom)`.
+async fn run_name_pass<U>(
+    pool: &PgPool,
+    resolver: &Resolver<'_, PgPool, U>,
+    cli: &Cli,
+) -> Result<(), std::process::ExitCode>
 where
     U: observing_db::taxonomy_resolver::TaxonomyUpstream,
 {
@@ -161,14 +198,14 @@ where
     );
 
     if pairs.is_empty() {
-        return Ok(PassOutcome::Done);
+        return Ok(());
     }
 
     if cli.dry_run {
         for (name, kingdom) in &pairs {
-            info!(name = %name, kingdom = ?kingdom, "Would resolve");
+            info!(name = %name, kingdom = ?kingdom, "Would resolve by name");
         }
-        return Ok(PassOutcome::DryRunDone);
+        return Ok(());
     }
 
     let mut resolved = 0u64;
@@ -224,7 +261,7 @@ where
                 resolved,
                 not_found,
                 updated_rows,
-                "Progress",
+                "Name-pass progress",
             );
         }
         rate_limit(cli).await;
@@ -232,15 +269,166 @@ where
 
     info!(
         resolved,
-        not_found, errors, updated_rows, "Resolution pass complete; refreshing community_ids"
+        not_found, errors, updated_rows, "Name pass complete"
     );
+    Ok(())
+}
 
-    if let Err(e) = observing_db::identifications::refresh_community_ids(pool).await {
-        error!(error = %e, "Failed to refresh community_ids matview");
-        return Err(std::process::ExitCode::from(1));
+/// Mop up identifications that name resolution couldn't key but that carry a
+/// `taxon_id` URI: resolve the URI to a GBIF key directly and stamp it. Only
+/// touches rows still `accepted_taxon_key IS NULL`, so this is a strict
+/// fallback to the name pass above.
+async fn run_taxon_id_pass<U>(
+    pool: &PgPool,
+    resolver: &Resolver<'_, PgPool, U>,
+    wikidata: &WikidataClient,
+    cli: &Cli,
+) -> Result<(), std::process::ExitCode>
+where
+    U: observing_db::taxonomy_resolver::TaxonomyUpstream,
+{
+    let mut q = String::from(
+        r#"SELECT DISTINCT taxon_id
+           FROM identifications
+           WHERE accepted_taxon_key IS NULL
+             AND taxon_id IS NOT NULL
+             AND taxon_id <> ''
+           ORDER BY taxon_id"#,
+    );
+    if let Some(limit) = cli.limit {
+        q.push_str(&format!(" LIMIT {limit}"));
+    }
+    // `q` is a static query plus an optional `LIMIT` from the typed `cli.limit` integer.
+    let uris: Vec<String> = match sqlx::query(sqlx::AssertSqlSafe(q)).fetch_all(pool).await {
+        Ok(rows) => rows.into_iter().map(|r| r.get("taxon_id")).collect(),
+        Err(e) => {
+            error!(error = %e, "Failed to enumerate identifications with unresolved taxon_id");
+            return Err(std::process::ExitCode::from(1));
+        }
+    };
+
+    info!(uris = uris.len(), "Discovered taxon_id URIs to resolve");
+
+    if uris.is_empty() {
+        return Ok(());
     }
 
-    Ok(PassOutcome::Done)
+    if cli.dry_run {
+        for uri in &uris {
+            info!(uri = %uri, parsed = ?taxon_uri::parse(uri), "Would resolve by URI");
+        }
+        return Ok(());
+    }
+
+    let mut resolved = 0u64;
+    let mut not_found = 0u64;
+    let mut errors = 0u64;
+    let mut updated_rows = 0u64;
+
+    for (i, uri) in uris.iter().enumerate() {
+        let key = match resolve_taxon_uri(uri, resolver, wikidata).await {
+            Ok(Some(key)) => {
+                resolved += 1;
+                key
+            }
+            Ok(None) => {
+                not_found += 1;
+                rate_limit(cli).await;
+                continue;
+            }
+            Err(e) => {
+                errors += 1;
+                warn!(uri = %uri, error = %e, "taxon_id resolve failed");
+                rate_limit(cli).await;
+                continue;
+            }
+        };
+
+        // Stamp every identification carrying this exact URI that the name
+        // pass left unresolved.
+        let update_sql = r#"UPDATE identifications
+            SET accepted_taxon_key = $1, indexed_at = NOW()
+            WHERE accepted_taxon_key IS NULL
+              AND taxon_id = $2"#;
+        match sqlx::query(update_sql)
+            .bind(key)
+            .bind(uri)
+            .execute(pool)
+            .await
+        {
+            Ok(res) => updated_rows += res.rows_affected(),
+            Err(e) => {
+                errors += 1;
+                warn!(uri = %uri, error = %e, "Failed to update identifications");
+            }
+        }
+
+        if (i + 1) % 50 == 0 {
+            info!(
+                processed = i + 1,
+                total = uris.len(),
+                resolved,
+                not_found,
+                updated_rows,
+                "taxon_id-pass progress",
+            );
+        }
+        rate_limit(cli).await;
+    }
+
+    info!(
+        resolved,
+        not_found, errors, updated_rows, "taxon_id pass complete"
+    );
+    Ok(())
+}
+
+/// Resolve a single `taxon_id` URI to a GBIF usage key. GBIF URIs carry the
+/// key directly; iNaturalist / Wikidata URIs cross-walk to one through
+/// Wikidata's external-ID properties. Returns `Ok(None)` for an unrecognized
+/// URI, a missing cross-walk, or a key with no upstream match.
+async fn resolve_taxon_uri<U>(
+    uri: &str,
+    resolver: &Resolver<'_, PgPool, U>,
+    wikidata: &WikidataClient,
+) -> Result<Option<i64>, observing_db::taxonomy_resolver::ResolveError>
+where
+    U: observing_db::taxonomy_resolver::TaxonomyUpstream,
+{
+    let key = match taxon_uri::parse(uri) {
+        TaxonRef::Gbif(key) => key,
+        TaxonRef::INaturalist(id) => {
+            match wikidata
+                .gbif_key_for(WIKIDATA_INATURALIST_PROPERTY, &id)
+                .await
+            {
+                Some(key) => key,
+                None => {
+                    warn!(uri = %uri, "No GBIF cross-walk for iNaturalist taxon_id");
+                    return Ok(None);
+                }
+            }
+        }
+        TaxonRef::Wikidata(qid) => match wikidata.gbif_key_for_entity(&qid).await {
+            Some(key) => key,
+            None => {
+                warn!(uri = %uri, "No GBIF cross-walk for Wikidata taxon_id");
+                return Ok(None);
+            }
+        },
+        TaxonRef::Unknown(u) => {
+            warn!(uri = %u, "Unrecognized taxon_id URI; skipping");
+            return Ok(None);
+        }
+    };
+
+    match resolver.resolve_by_key(key).await? {
+        Some(row) => Ok(Some(row.accepted_taxon_key.unwrap_or(row.taxon_key))),
+        None => {
+            warn!(uri = %uri, key, "taxon_id key not found upstream");
+            Ok(None)
+        }
+    }
 }
 
 async fn rate_limit(cli: &Cli) {

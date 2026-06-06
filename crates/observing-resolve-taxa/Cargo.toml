@@ -8,6 +8,7 @@ license = "MIT OR Apache-2.0"
 [dependencies]
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
+wikidata-client = { path = "../wikidata-client" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }

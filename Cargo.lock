@@ -2978,6 +2978,7 @@ dependencies = [
  "tracing",
  "tracing-stackdriver",
  "tracing-subscriber",
+ "wikidata-client",
 ]
 
 [[package]]

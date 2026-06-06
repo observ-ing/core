@@ -154,6 +154,57 @@ impl WikidataClient {
         result
     }
 
+    /// Cross-walk an external taxon identifier to a GBIF backbone usage key.
+    ///
+    /// Finds the Wikidata item carrying `external_id` on `source_property`
+    /// (e.g. `P3151` for iNaturalist taxon id) and reads its GBIF ID
+    /// (`P846`). Returns `None` if no item matches, the item has no GBIF ID,
+    /// the GBIF ID isn't an integer, or the query fails.
+    pub async fn gbif_key_for(&self, source_property: &str, external_id: &str) -> Option<i64> {
+        let query = format!(
+            r#"SELECT ?gbif WHERE {{
+    ?item wdt:{source_property} "{external_id}" .
+    ?item wdt:P846 ?gbif .
+}} LIMIT 1"#,
+        );
+        self.first_gbif_key(&query).await
+    }
+
+    /// Cross-walk a Wikidata entity id (e.g. `Q158746`) to a GBIF backbone
+    /// usage key by reading its GBIF ID (`P846`). Returns `None` on a
+    /// non-Q-id, a missing/ non-integer GBIF ID, or a query failure.
+    pub async fn gbif_key_for_entity(&self, qid: &str) -> Option<i64> {
+        // `qid` is interpolated unquoted as `wd:{qid}`, so guard against
+        // anything that isn't a bare item id before it reaches the query.
+        let is_qid = matches!(qid.strip_prefix('Q'), Some(d)
+            if !d.is_empty() && d.chars().all(|c| c.is_ascii_digit()));
+        if !is_qid {
+            return None;
+        }
+        let query = format!(
+            r#"SELECT ?gbif WHERE {{
+    wd:{qid} wdt:P846 ?gbif .
+}} LIMIT 1"#,
+        );
+        self.first_gbif_key(&query).await
+    }
+
+    /// Run a SPARQL query whose first binding exposes a `?gbif` literal and
+    /// parse it as a GBIF usage key.
+    async fn first_gbif_key(&self, query: &str) -> Option<i64> {
+        let bindings = match self.sparql_query(query).await {
+            Ok(b) => b,
+            Err(e) => {
+                warn!(error = ?e, "Wikidata GBIF cross-walk failed");
+                return None;
+            }
+        };
+        bindings
+            .first()
+            .and_then(|b| b.get("gbif"))
+            .and_then(|v| v.value.parse::<i64>().ok())
+    }
+
     /// Fetch images (Wikidata property P18) for items matching external IDs.
     ///
     /// Returns a map of external ID to Wikimedia Commons thumbnail URL, with the
