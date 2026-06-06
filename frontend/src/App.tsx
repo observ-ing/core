@@ -17,6 +17,7 @@ import { UploadModal } from "./components/modals/UploadModal";
 import { DeleteConfirmDialog } from "./components/modals/DeleteConfirmDialog";
 import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
+import { ErrorBoundary } from "./components/common/ErrorBoundary";
 import { OfflineBanner } from "./components/common/OfflineBanner";
 import { UpdatePrompt } from "./components/common/UpdatePrompt";
 import { QueryProvider } from "./lib/query/QueryProvider";
@@ -136,28 +137,32 @@ function AppContent() {
           minHeight: 0,
         }}
       >
-        <Suspense
-          fallback={
-            <Box sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <CircularProgress />
-            </Box>
-          }
-        >
-          <Routes>
-            <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
-            <Route path="/explore" element={<FeedView tab="explore" />} />
-            <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
-            <Route path="/profile/:did" element={<ProfileView />} />
-            <Route path="/notifications" element={<NotificationsPage />} />
-            <Route path="/taxon/:kingdom/:name" element={<TaxonExplorer />} />
-            <Route path="/taxon/:id" element={<TaxonExplorer />} />
-            <Route path="/lexicons" element={<LexiconView />} />
-            <Route path="/docs" element={<DocsPage />} />
-            <Route path="/settings" element={<SettingsPage />} />
-            <Route path="/transparency" element={<TransparencyPage />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Suspense>
+        <ErrorBoundary resetKey={location.pathname}>
+          <Suspense
+            fallback={
+              <Box
+                sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+              >
+                <CircularProgress />
+              </Box>
+            }
+          >
+            <Routes>
+              <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
+              <Route path="/explore" element={<FeedView tab="explore" />} />
+              <Route path="/observation/:did/:rkey" element={<ObservationDetail />} />
+              <Route path="/profile/:did" element={<ProfileView />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
+              <Route path="/taxon/:kingdom/:name" element={<TaxonExplorer />} />
+              <Route path="/taxon/:id" element={<TaxonExplorer />} />
+              <Route path="/lexicons" element={<LexiconView />} />
+              <Route path="/docs" element={<DocsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/transparency" element={<TransparencyPage />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </Box>
       {!showLanding && <FAB />}
       <LoginModal />
