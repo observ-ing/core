@@ -22,7 +22,8 @@ import {
 } from "@mui/material";
 import { Person, Login, Logout, MenuBook, Settings, Menu as MenuIcon } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
-import logoSvg from "../../assets/logo.svg";
+import { Logo } from "../common/Logo";
+import { Wordmark } from "../common/Wordmark";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { PendingIndicator } from "./PendingIndicator";
@@ -99,19 +100,10 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                 "&:hover": { opacity: 0.8 },
               }}
             >
-              <img src={logoSvg} alt="" width={32} height={32} />
-              <Typography
-                variant="h6"
-                component="span"
-                sx={{
-                  fontWeight: 800,
-                  color: "primary.main",
-                  display: { xs: "none", sm: "block" },
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                Observ.ing
-              </Typography>
+              <Box sx={{ color: "primary.main", display: "inline-flex" }}>
+                <Logo size={32} />
+              </Box>
+              <Wordmark sx={{ display: { xs: "none", sm: "block" } }} />
             </Box>
 
             {/* Desktop Nav */}

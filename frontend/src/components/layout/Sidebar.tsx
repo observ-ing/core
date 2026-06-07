@@ -8,10 +8,10 @@ import {
   ListItemText,
   Box,
   Divider,
-  Typography,
 } from "@mui/material";
 import { Login, Logout, MenuBook } from "@mui/icons-material";
-import logoSvg from "../../assets/logo.svg";
+import { Logo } from "../common/Logo";
+import { Wordmark } from "../common/Wordmark";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 
@@ -53,18 +53,10 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
           textDecoration: "none",
         }}
       >
-        <img src={logoSvg} alt="" width={28} height={28} />
-        <Typography
-          variant="h6"
-          component="span"
-          sx={{
-            fontWeight: 800,
-            color: "primary.main",
-            letterSpacing: "-0.02em",
-          }}
-        >
-          Observ.ing
-        </Typography>
+        <Box sx={{ color: "primary.main", display: "inline-flex" }}>
+          <Logo size={28} />
+        </Box>
+        <Wordmark />
       </Box>
 
       <Divider />
