@@ -1,16 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { QualityIssueBadges } from "./QualityIssueBadges";
+import { DataQualitySection } from "./DataQualitySection";
 
 const meta = {
-  title: "Observation/QualityIssueBadges",
-  component: QualityIssueBadges,
+  title: "Observation/DataQualitySection",
+  component: DataQualitySection,
   tags: ["autodocs"],
-} satisfies Meta<typeof QualityIssueBadges>;
+} satisfies Meta<typeof DataQualitySection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const NoIssues: Story = {
+export const AllMet: Story = {
   args: { issues: [] },
 };
 
@@ -26,7 +26,7 @@ export const Multiple: Story = {
   args: { issues: ["MISSING_DATE", "COORDINATES_IMPRECISE", "NO_CONSENSUS_ID"] },
 };
 
-export const AllIssues: Story = {
+export const NoneMet: Story = {
   args: {
     issues: [
       "MISSING_DATE",
