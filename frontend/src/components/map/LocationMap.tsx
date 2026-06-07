@@ -125,7 +125,11 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
 
   return (
     <Box sx={[{ position: "relative" }, mapContainerSx]}>
-      <Box ref={mapContainer} sx={{ position: "absolute", inset: 0 }} />
+      {/* Fill the parent via width/height, NOT position:absolute+inset — maplibre
+          adds `.maplibregl-map { position: relative }`, which ties on specificity
+          with emotion's `position:absolute` and wins by load order in the prod CSS
+          bundle, collapsing the container to height 0 (a blank map). */}
+      <Box ref={mapContainer} sx={{ width: "100%", height: "100%" }} />
       {MAPTILER_ENABLED && <BasemapSelector />}
     </Box>
   );
