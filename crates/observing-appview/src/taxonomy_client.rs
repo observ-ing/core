@@ -39,6 +39,12 @@ pub struct TaxonomyClient {
 #[ts(export, rename = "TaxaResult", export_to = "bindings/")]
 pub struct TaxonResult {
     pub id: String,
+    /// Stable URI for this taxon (e.g. `https://www.gbif.org/species/{key}`),
+    /// suitable for Darwin Core dwc:taxonID. `None` when GBIF didn't supply a
+    /// backbone key. Distinct from `id`, which is a path-based slug used for
+    /// in-app taxon navigation.
+    #[ts(optional)]
+    pub taxon_id: Option<String>,
     pub scientific_name: String,
     #[ts(optional)]
     pub common_name: Option<String>,

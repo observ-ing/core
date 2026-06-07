@@ -3,6 +3,13 @@ import type { ConservationStatus } from "./ConservationStatus";
 
 export type TaxaResult = {
   id: string;
+  /**
+   * Stable URI for this taxon (e.g. `https://www.gbif.org/species/{key}`),
+   * suitable for Darwin Core dwc:taxonID. `None` when GBIF didn't supply a
+   * backbone key. Distinct from `id`, which is a path-based slug used for
+   * in-app taxon navigation.
+   */
+  taxonId?: string;
   scientificName: string;
   commonName?: string;
   photoUrl?: string;

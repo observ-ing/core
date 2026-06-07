@@ -49,6 +49,10 @@ pub struct CreateOccurrenceRequest {
     /// and acts as a fallback when validation doesn't return a kingdom.
     #[ts(optional)]
     kingdom: Option<String>,
+    /// Stable taxon URI from a GBIF autocomplete pick (e.g. a GBIF species
+    /// URI). Written to the auto-created identification's `taxonID` field.
+    #[ts(optional)]
+    taxon_id: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -92,6 +96,9 @@ pub struct UpdateOccurrenceRequest {
     /// See `CreateOccurrenceRequest::kingdom`.
     #[ts(optional)]
     kingdom: Option<String>,
+    /// See `CreateOccurrenceRequest::taxon_id`.
+    #[ts(optional)]
+    taxon_id: Option<String>,
 }
 
 pub async fn create_occurrence(
@@ -162,6 +169,7 @@ pub async fn create_occurrence(
                 scientific_name,
                 body.taxon_rank.as_deref(),
                 body.kingdom.as_deref(),
+                body.taxon_id.as_deref(),
                 &uri,
                 &cid,
             )
@@ -415,6 +423,7 @@ pub async fn update_occurrence(
                     trimmed,
                     body.taxon_rank.as_deref(),
                     body.kingdom.as_deref(),
+                    body.taxon_id.as_deref(),
                     &uri,
                     &cid,
                 )
@@ -512,9 +521,13 @@ async fn upload_media_records(
     Ok((blob_entries, media_refs))
 }
 
-/// Build the `bio.lexicons.temp.v0-1.occurrence` record body (schema fields only)
-/// and serialize it to JSON for the PDS write API. `media_refs` are attached
-/// via the typed builder's `associatedMedia` field. Defaults `eventDate` to now.
+/// Build the `bio.lexicons.temp.v0-1.occurrence` record body and serialize it
+/// to JSON for the PDS write API. `media_refs` are attached via the typed
+/// builder's `associatedMedia` field. Defaults `eventDate` to now, and stamps a
+/// `createdAt` field (the AT Protocol authoring time) so the firehose ingester
+/// records when the post was authored on the PDS rather than when it was
+/// ingested. `createdAt` is an app-specific extension, not part of the upstream
+/// occurrence lexicon; see the matching handling in the identification path.
 fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
@@ -546,7 +559,20 @@ fn build_occurrence_record_json(
         .maybe_media(media)
         .build();
 
-    auth::serialize_at_record(&record)
+    let mut record_value = auth::serialize_at_record(&record)?;
+
+    // App-specific fields (not in upstream lexicon, stored as extra data in the
+    // AT Protocol record). `createdAt` is the post authoring time; the ingester
+    // reads it into `occurrences.created_at` (which the feed sorts by), falling
+    // back to ingestion time only when it is absent.
+    if let Some(obj) = record_value.as_object_mut() {
+        obj.insert(
+            "createdAt".to_string(),
+            serde_json::json!(chrono::Utc::now().to_rfc3339()),
+        );
+    }
+
+    Ok(record_value)
 }
 
 /// Create an identification record on the PDS for the given occurrence. The
@@ -563,6 +589,7 @@ async fn create_auto_identification(
     scientific_name: &str,
     user_taxon_rank: Option<&str>,
     user_kingdom: Option<&str>,
+    user_taxon_id: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
 ) -> Result<(), AppError> {
@@ -571,6 +598,7 @@ async fn create_auto_identification(
         scientific_name,
         user_taxon_rank,
         user_kingdom,
+        user_taxon_id,
         occurrence_uri,
         occurrence_cid,
     )

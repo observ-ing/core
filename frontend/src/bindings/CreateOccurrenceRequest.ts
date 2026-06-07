@@ -21,4 +21,9 @@ export type CreateOccurrenceRequest = {
    * and acts as a fallback when validation doesn't return a kingdom.
    */
   kingdom?: string;
+  /**
+   * Stable taxon URI from a GBIF autocomplete pick (e.g. a GBIF species
+   * URI). Written to the auto-created identification's `taxonID` field.
+   */
+  taxonId?: string;
 };

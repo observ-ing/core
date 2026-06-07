@@ -134,6 +134,13 @@ fn rank_to_string<R: serde::Serialize>(rank: &R) -> Option<String> {
         .and_then(|v| v.as_str().map(str::to_string))
 }
 
+/// Build a stable GBIF species URI for a backbone usage key. This is the
+/// value stored as Darwin Core dwc:taxonID on records, and the same shape the
+/// ingester parses back out (`https://www.gbif.org/species/{key}`).
+fn gbif_taxon_uri(key: u64) -> String {
+    format!("https://www.gbif.org/species/{key}")
+}
+
 /// Build a path-based taxon identifier: "{kingdom}/{name}", or just
 /// "{name}" for kingdom-rank taxa.
 fn build_taxon_path(scientific_name: &str, rank: &str, kingdom: Option<&str>) -> String {
@@ -793,6 +800,7 @@ impl GbifClient {
 
         TaxonResult {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
+            taxon_id: Some(gbif_taxon_uri(item.key as u64)),
             scientific_name: name.to_string(),
             common_name: item.vernacular_name.clone(),
             photo_url: None,
@@ -831,6 +839,7 @@ impl GbifClient {
 
         TaxonResult {
             id: build_taxon_path(name, &rank, item.kingdom.as_deref()),
+            taxon_id: item.key.map(|k| gbif_taxon_uri(k as u64)),
             scientific_name: name.to_string(),
             common_name,
             photo_url: None,
@@ -896,6 +905,11 @@ impl GbifClient {
 
         TaxonResult {
             id: build_taxon_path(resolved_name, &resolved_rank, resolved_kingdom.as_deref()),
+            taxon_id: usage
+                .key
+                .as_deref()
+                .and_then(|k| k.parse::<u64>().ok())
+                .map(gbif_taxon_uri),
             scientific_name: resolved_name.to_string(),
             common_name: None,
             photo_url: None,
