@@ -29,4 +29,8 @@ export type UpdateOccurrenceRequest = {
    * See `CreateOccurrenceRequest::kingdom`.
    */
   kingdom?: string;
+  /**
+   * See `CreateOccurrenceRequest::taxon_id`.
+   */
+  taxonId?: string;
 };
