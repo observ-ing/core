@@ -1,3 +1,4 @@
+use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::UriValue;
 use observing_lexicons::bio_lexicons::temp::v0_1::identification::{
@@ -50,30 +51,56 @@ pub async fn build_identification_record(
         kingdom = user_kingdom.map(str::to_owned);
     }
 
-    let occurrence = auth::build_strong_ref(occurrence_uri, occurrence_cid)?;
+    assemble_identification_record(
+        scientific_name,
+        taxon_rank.as_deref(),
+        kingdom.as_deref(),
+        taxon_id.as_deref(),
+        occurrence_uri,
+        occurrence_cid,
+    )
+}
 
-    // `taxonID` has lexicon format `uri`; drop anything that doesn't parse as a
-    // URI rather than letting an invalid value fail the whole record write.
-    let taxon_id_uri = taxon_id
-        .as_deref()
-        .and_then(|s| UriValue::new_owned(s).ok());
+/// Assemble the AT Protocol identification record JSON from already-resolved
+/// fields. Split out from [`build_identification_record`] so the record shape
+/// (including `taxonID` coercion and the app-specific `createdAt` stamp) can be
+/// unit-tested without a live taxonomy lookup.
+fn assemble_identification_record(
+    scientific_name: &str,
+    taxon_rank: Option<&str>,
+    kingdom: Option<&str>,
+    taxon_id: Option<&str>,
+    occurrence_uri: &str,
+    occurrence_cid: &str,
+) -> Result<Value, AppError> {
+    let occurrence = auth::build_strong_ref(occurrence_uri, occurrence_cid)?;
 
     let record = Identification::new()
         .occurrence(occurrence)
         .scientific_name(scientific_name)
-        .maybe_taxon_rank(
-            taxon_rank
-                .as_deref()
-                .map(|s| IdentificationTaxonRank::from_value(s.into())),
-        )
-        .maybe_kingdom(kingdom.as_deref().map(Into::into))
-        .maybe_taxon_id(taxon_id_uri)
+        .maybe_taxon_rank(taxon_rank.map(|s| IdentificationTaxonRank::from_value(s.into())))
+        .maybe_kingdom(kingdom.map(Into::into))
         .build();
 
     let mut id_value = auth::serialize_at_record(&record)?;
 
-    // App-specific fields (not in upstream lexicon, stored as extra data in the AT Protocol record)
     if let Some(obj) = id_value.as_object_mut() {
+        // `taxonID` uses Darwin Core's canonical uppercase-`ID` casing, which is
+        // what the ingester (`observing-db::processing`) reads. The generated
+        // lexicon struct's `taxon_id` field serializes as camelCase `taxonId`
+        // (no field-level rename under `rename_all = "camelCase"`), which the
+        // ingester deliberately ignores — so write the key by hand like
+        // `createdAt`. Require a real URI scheme (lexicon format `uri`); a bare
+        // string parses as `UriValue::Any`, which we drop rather than letting a
+        // bad value through into the record.
+        let taxon_id_uri = taxon_id
+            .and_then(|s| UriValue::<SmolStr>::new_owned(s).ok())
+            .filter(|uri| !matches!(uri, UriValue::Any(_)));
+        if let Some(uri) = taxon_id_uri {
+            obj.insert("taxonID".to_string(), serde_json::json!(uri.as_str()));
+        }
+        // App-specific field (not in the upstream lexicon), stored as extra data
+        // in the AT Protocol record.
         obj.insert(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
@@ -86,4 +113,73 @@ pub async fn build_identification_record(
 /// The NSID for identifications, re-exported for convenience.
 pub fn identification_nsid() -> &'static str {
     IdentificationRecord::NSID
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const OCCURRENCE_URI: &str = "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/abc";
+    const OCCURRENCE_CID: &str = "bafyreioccurrence";
+
+    /// A GBIF autocomplete pick threads its species URI straight onto the
+    /// record's Darwin Core `taxonID` field (canonical uppercase-`ID` casing
+    /// the ingester reads back in `observing-db::processing`).
+    #[test]
+    fn writes_gbif_taxon_id_to_record() {
+        let value = assemble_identification_record(
+            "Passer domesticus",
+            Some("species"),
+            Some("Animalia"),
+            Some("https://www.gbif.org/species/5231190"),
+            OCCURRENCE_URI,
+            OCCURRENCE_CID,
+        )
+        .expect("record assembles");
+
+        assert_eq!(value["scientificName"], "Passer domesticus");
+        assert_eq!(value["taxonID"], "https://www.gbif.org/species/5231190");
+    }
+
+    /// No taxon URI (e.g. a free-text name with no autocomplete pick) leaves
+    /// `taxonID` off the record entirely rather than emitting a null/empty.
+    #[test]
+    fn omits_taxon_id_when_absent() {
+        let value = assemble_identification_record(
+            "Passer domesticus",
+            Some("species"),
+            None,
+            None,
+            OCCURRENCE_URI,
+            OCCURRENCE_CID,
+        )
+        .expect("record assembles");
+
+        assert!(
+            value.get("taxonID").is_none(),
+            "taxonID must be absent, got {:?}",
+            value.get("taxonID")
+        );
+    }
+
+    /// A value that isn't a parseable URI is dropped rather than failing the
+    /// whole write — the record is still published, just without `taxonID`.
+    #[test]
+    fn drops_non_uri_taxon_id() {
+        let value = assemble_identification_record(
+            "Passer domesticus",
+            Some("species"),
+            None,
+            Some("not a uri"),
+            OCCURRENCE_URI,
+            OCCURRENCE_CID,
+        )
+        .expect("record still assembles");
+
+        assert!(
+            value.get("taxonID").is_none(),
+            "a non-URI taxonID must be dropped, got {:?}",
+            value.get("taxonID")
+        );
+    }
 }

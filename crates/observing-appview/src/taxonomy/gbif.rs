@@ -1154,6 +1154,41 @@ mod tests {
         assert!("ex".parse::<IucnCategory>().is_err());
     }
 
+    #[test]
+    fn test_gbif_taxon_uri_format() {
+        // The shape the ingester parses back out (`observing-db::processing`).
+        assert_eq!(
+            gbif_taxon_uri(5231190),
+            "https://www.gbif.org/species/5231190"
+        );
+    }
+
+    #[test]
+    fn test_search_result_carries_gbif_taxon_id() {
+        let client = GbifClient::new();
+        let mut item = make_search_result("Passer domesticus", "SPECIES", None, vec![]);
+        item.key = Some(5231190);
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(
+            result.taxon_id.as_deref(),
+            Some("https://www.gbif.org/species/5231190"),
+            "a backbone key must surface as a stable dwc:taxonID URI"
+        );
+    }
+
+    #[test]
+    fn test_search_result_taxon_id_none_without_key() {
+        let client = GbifClient::new();
+        // `make_search_result` leaves `key` unset (None).
+        let item = make_search_result("Passer domesticus", "SPECIES", None, vec![]);
+        let result = client.search_result_to_taxon(&item);
+        assert!(
+            result.taxon_id.is_none(),
+            "no backbone key means no taxonID, got {:?}",
+            result.taxon_id
+        );
+    }
+
     // ---------- match_name_raw cache regression tests (#269) ----------
     //
     // These cover the fix that wraps `/v2/species/match` results in the
@@ -1291,5 +1326,49 @@ mod tests {
             .match_name_raw("Morus", Some("Animalia"))
             .await
             .unwrap();
+    }
+
+    /// End-to-end through the public `validate` path: an EXACT GBIF match
+    /// resolves a taxon whose `taxon_id` is the GBIF species URI. This is the
+    /// value the occurrence write path reads back as the identification's
+    /// `taxonID` when the user didn't supply one from autocomplete.
+    #[tokio::test]
+    async fn validate_exact_match_carries_gbif_taxon_id() {
+        let server = MockServer::start().await;
+        // Diagnostics needs its non-nullable collection fields present, the
+        // same way `make_search_result` fills empty required arrays/maps.
+        let body = json!({
+            "synonym": false,
+            "usage": {
+                "key": "5231190",
+                "name": "Passer domesticus",
+                "canonicalName": "Passer domesticus",
+                "rank": "SPECIES"
+            },
+            "classification": [],
+            "diagnostics": {
+                "matchType": "EXACT",
+                "issues": [],
+                "processingFlags": [],
+                "alternatives": [],
+                "timings": {}
+            }
+        });
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(body))
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let resp = client.validate("Passer domesticus", None).await;
+
+        assert!(resp.valid, "an EXACT match should validate");
+        let taxon = resp.taxon.expect("an exact match returns a taxon");
+        assert_eq!(
+            taxon.taxon_id.as_deref(),
+            Some("https://www.gbif.org/species/5231190"),
+            "the resolved taxon carries the GBIF species URI used as dwc:taxonID"
+        );
     }
 }
