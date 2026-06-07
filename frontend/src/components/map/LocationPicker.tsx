@@ -87,29 +87,31 @@ export function LocationPicker({
   modeRef.current = mode;
   const basemapRef = useRef(basemap);
   basemapRef.current = basemap;
+  // Latest uncertainty radius for stable callbacks (e.g. the map "click"
+  // handler, which is bound once on init); reading the prop directly would
+  // capture a stale value and reset the circle to the old radius on click.
+  const uncertaintyMetersRef = useRef(uncertaintyMeters);
+  uncertaintyMetersRef.current = uncertaintyMeters;
 
-  const updateMarker = useCallback(
-    (lng: number, lat: number, radius?: number) => {
-      if (!map.current) return;
+  const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
+    if (!map.current) return;
 
-      if (marker.current) {
-        marker.current.setLngLat([lng, lat]);
-      } else {
-        marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
-          .setLngLat([lng, lat])
-          .addTo(map.current);
-      }
+    if (marker.current) {
+      marker.current.setLngLat([lng, lat]);
+    } else {
+      marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
+        .setLngLat([lng, lat])
+        .addTo(map.current);
+    }
 
-      // Update uncertainty circle
-      const effectiveRadius = radius ?? uncertaintyMeters;
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
-      const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
-      if (source) {
-        source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
-      }
-    },
-    [uncertaintyMeters],
-  );
+    // Update uncertainty circle
+    const effectiveRadius = radius ?? uncertaintyMetersRef.current;
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
+    const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+    if (source) {
+      source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
+    }
+  }, []);
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
