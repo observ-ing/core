@@ -3,7 +3,7 @@ import { Box, Button, Card, CardContent, Container, Typography } from "@mui/mate
 import { Explore, GitHub, Schema } from "@mui/icons-material";
 import { useAppDispatch } from "../../store";
 import { openLoginModal } from "../../store/uiSlice";
-import logoSvg from "../../assets/logo.svg";
+import { Logo } from "../common/Logo";
 
 const features = [
   {
@@ -52,8 +52,8 @@ export function LandingPage() {
         }}
       >
         <Container maxWidth="sm">
-          <Box sx={{ mb: 3 }}>
-            <img src={logoSvg} alt="" width={64} height={64} />
+          <Box sx={{ mb: 3, color: "primary.main", display: "inline-flex" }}>
+            <Logo size={64} />
           </Box>
           <Typography
             variant="h1"

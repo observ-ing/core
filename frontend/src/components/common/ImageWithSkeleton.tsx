@@ -23,7 +23,9 @@ export function ImageWithSkeleton({
     return (
       <Box
         sx={{
-          bgcolor: "action.hover",
+          // Warm parchment fill rather than MUI's cool black-alpha grey, so
+          // empty tiles sit in the bone/forest palette instead of clashing.
+          bgcolor: "placeholder",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",

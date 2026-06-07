@@ -18,7 +18,7 @@ export default defineConfig({
       workbox: {
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/, /^\/oauth/, /^\/media/, /^\/admin/],
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest}"],
+        globPatterns: ["**/*.{js,css,html,ico,png,svg,webmanifest,woff2}"],
         cleanupOutdatedCaches: true,
         // Only cache routes whose responses are independent of the viewer.
         // /api/taxa/{...}/occurrences and other enrichment-touched routes
@@ -75,7 +75,14 @@ export default defineConfig({
   },
   server: {
     fs: {
-      allow: [path.resolve(__dirname, "../lexicons"), "."],
+      // `../node_modules` so the dev server can serve dependency assets that
+      // live outside the `src` root — e.g. the self-hosted @fontsource woff2
+      // files (otherwise they 403 and the brand fonts fall back to system sans).
+      allow: [
+        path.resolve(__dirname, "../lexicons"),
+        path.resolve(__dirname, "../node_modules"),
+        ".",
+      ],
     },
     hmr: {
       // When accessed via the Rust proxy on port 3000, HMR WebSocket must still
