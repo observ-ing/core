@@ -89,7 +89,9 @@ authTest.describe("Auto-Identification on Upload", () => {
 
       await authExpect(page.getByText("Identification History")).toBeVisible({ timeout: 10000 });
       await authExpect(page.getByText("Quercus alba", { exact: false }).first()).toBeVisible();
-      await authExpect(page.getByText("Community ID")).toBeVisible();
+      // `exact` so this matches only the identification's "Community ID"
+      // caption, not the "Has a community ID" row in the data quality section.
+      await authExpect(page.getByText("Community ID", { exact: true })).toBeVisible();
     },
   );
 });
