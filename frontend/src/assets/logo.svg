@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="40 40 120 120">
   <g transform="translate(100,100) rotate(-45)">
-    <path d="M-60,0 Q0,-70 60,0 Q0,70 -60,0Z" fill="#1e5631"/>
+    <path d="M-60,0 Q0,-70 60,0 Q0,70 -60,0Z" fill="#3a7d44"/>
     <circle cx="0" cy="0" r="18" fill="#ffffff"/>
-    <circle cx="0" cy="0" r="9" fill="#1e5631"/>
+    <circle cx="0" cy="0" r="9" fill="#3a7d44"/>
     <circle cx="3.5" cy="-3.5" r="2.5" fill="#ffffff" opacity="0.65"/>
   </g>
 </svg>

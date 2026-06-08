@@ -39,10 +39,12 @@ const sharedConfig = {
 const darkPalette = {
   mode: "dark" as const,
   primary: {
-    // Brighter accent green for legibility against the dark background —
-    // the old #22c55e didn't hold enough contrast next to the off-white text.
-    main: "#8ab87a",
-    dark: "#6fa05f",
+    // Muted mid-green accent. Toned down from the brighter #8ab87a so the mark
+    // sits at the same visual weight as the lightened light-mode mark (#3a7d44)
+    // rather than reading much lighter — while still holding enough contrast
+    // against the dark background and the off-white text.
+    main: "#5e9d5a",
+    dark: "#4d8449",
     contrastText: "#0e0e0d",
   },
   background: {
@@ -68,8 +70,11 @@ const lightPalette = {
   mode: "light" as const,
   primary: {
     // Forest green — more ownable than the previous Material Design green.
-    main: "#1e5631",
-    dark: "#143d22",
+    // Using the palette's lighter tone (#3a7d44) for the mark so it converges
+    // in visual weight with the muted dark-mode accent (#5e9d5a), instead of
+    // reading much darker. The deeper #1e5631 becomes the hover/pressed shade.
+    main: "#3a7d44",
+    dark: "#1e5631",
     contrastText: "#ffffff",
   },
   background: {
