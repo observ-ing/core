@@ -6,6 +6,15 @@ export type UpdateOccurrenceRequest = {
   latitude: number;
   longitude: number;
   coordinateUncertaintyInMeters?: number;
+  /**
+   * See `CreateOccurrenceRequest::organism_quantity`. Omitting it clears the
+   * value on the record, so the edit form sends back the existing value.
+   */
+  organismQuantity?: string;
+  /**
+   * See `CreateOccurrenceRequest::organism_quantity_type`.
+   */
+  organismQuantityType?: string;
   eventDate?: string;
   /**
    * Newly-added images to upload and attach, in addition to any retained ones.

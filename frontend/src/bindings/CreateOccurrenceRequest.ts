@@ -5,6 +5,16 @@ export type CreateOccurrenceRequest = {
   latitude: number;
   longitude: number;
   coordinateUncertaintyInMeters?: number;
+  /**
+   * Darwin Core dwc:organismQuantity — free text (a count, a range like
+   * "10-100", or a categorical value like "many"). Written verbatim.
+   */
+  organismQuantity?: string;
+  /**
+   * Darwin Core dwc:organismQuantityType — the quantification system the
+   * quantity uses ("individuals", "percent-cover", or an open-vocab value).
+   */
+  organismQuantityType?: string;
   eventDate?: string;
   images?: Array<ImageUpload>;
   /**

@@ -14,8 +14,12 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
 import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
 import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
@@ -55,6 +59,15 @@ function toDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+// Darwin Core dwc:organismQuantityType values the backend lexicon recognizes.
+// "individuals" is the default for a plain count; the observation view renders
+// the chosen type next to the number (e.g. "12 (individuals)").
+const ORGANISM_QUANTITY_TYPES = [
+  { value: "individuals", label: "Individuals" },
+  { value: "percent-cover", label: "Percent cover" },
+] as const;
+const DEFAULT_ORGANISM_QUANTITY_TYPE = "individuals";
+
 export function UploadModal() {
   const dispatch = useAppDispatch();
   const toast = useToast();
@@ -80,6 +93,14 @@ export function UploadModal() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
+  // Darwin Core organismQuantity (+ its type). Kept out of the default flow in a
+  // collapsed "More details" section — most users identifying a single organism
+  // never touch it.
+  const [organismQuantity, setOrganismQuantity] = useState("");
+  const [organismQuantityType, setOrganismQuantityType] = useState<string>(
+    DEFAULT_ORGANISM_QUANTITY_TYPE,
+  );
+  const [moreDetailsOpen, setMoreDetailsOpen] = useState(false);
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -92,6 +113,9 @@ export function UploadModal() {
   useEffect(() => {
     if (!isOpen) return undefined;
     setIsDirty(false);
+    setOrganismQuantity("");
+    setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
+    setMoreDetailsOpen(false);
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
@@ -122,6 +146,15 @@ export function UploadModal() {
       }
     }
     setExistingImages((editingObservation.images || []).map((img) => img.url));
+    // Pre-fill quantity and expand the section so an existing value is visible
+    // (and not silently wiped) when editing.
+    if (editingObservation.organismQuantity) {
+      setOrganismQuantity(editingObservation.organismQuantity);
+      setOrganismQuantityType(
+        editingObservation.organismQuantityType || DEFAULT_ORGANISM_QUANTITY_TYPE,
+      );
+      setMoreDetailsOpen(true);
+    }
 
     // Resolve the existing taxon name back to a TaxaResult so the form
     // shows "Existing taxon" instead of incorrectly flagging it as new.
@@ -152,6 +185,9 @@ export function UploadModal() {
     setExistingImages([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setUncertaintyMeters(50);
+    setOrganismQuantity("");
+    setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
+    setMoreDetailsOpen(false);
     setVisualIdImageUrl(null);
     setIsDirty(false);
   };
@@ -344,6 +380,12 @@ export function UploadModal() {
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
+          ...(organismQuantity.trim()
+            ? {
+                organismQuantity: organismQuantity.trim(),
+                ...(organismQuantityType ? { organismQuantityType } : {}),
+              }
+            : {}),
           license,
           eventDate: new Date(observationDate).toISOString(),
           ...(imageData.length > 0 ? { images: imageData } : {}),
@@ -361,6 +403,12 @@ export function UploadModal() {
           latitude: parseFloat(lat),
           longitude: parseFloat(lng),
           coordinateUncertaintyInMeters: uncertaintyMeters,
+          ...(organismQuantity.trim()
+            ? {
+                organismQuantity: organismQuantity.trim(),
+                ...(organismQuantityType ? { organismQuantityType } : {}),
+              }
+            : {}),
           license,
           eventDate: new Date(observationDate).toISOString(),
           ...(imageData.length > 0 ? { images: imageData } : {}),
@@ -737,6 +785,61 @@ export function UploadModal() {
               inputLabel: { shrink: true },
             }}
           />
+
+          <Accordion
+            expanded={moreDetailsOpen}
+            onChange={(_, expanded) => setMoreDetailsOpen(expanded)}
+            disableGutters
+            elevation={0}
+            square
+            sx={{
+              mt: 1,
+              bgcolor: "transparent",
+              "&:before": { display: "none" },
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />} sx={{ px: 0, minHeight: "auto" }}>
+              <Typography variant="body2" color="text.secondary">
+                More details (optional)
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails sx={{ px: 0, pt: 0 }}>
+              <Stack direction="row" spacing={1}>
+                <TextField
+                  label="Quantity"
+                  value={organismQuantity}
+                  onChange={(e) => {
+                    setOrganismQuantity(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  margin="normal"
+                  placeholder="e.g. 1, 12, or 10–100"
+                  sx={{ flex: 1 }}
+                />
+                <FormControl margin="normal" sx={{ minWidth: 150 }}>
+                  <InputLabel id="organism-quantity-type-label">Type</InputLabel>
+                  <Select
+                    labelId="organism-quantity-type-label"
+                    value={organismQuantityType}
+                    label="Type"
+                    onChange={(e) => {
+                      setOrganismQuantityType(e.target.value);
+                      setIsDirty(true);
+                    }}
+                  >
+                    {ORGANISM_QUANTITY_TYPES.map((opt) => (
+                      <MenuItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Stack>
+              <Typography variant="caption" color="text.secondary">
+                How many organisms you observed. Optional — leave blank if unsure.
+              </Typography>
+            </AccordionDetails>
+          </Accordion>
 
           <Stack
             direction="row"
