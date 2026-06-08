@@ -6,7 +6,9 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
-use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{Occurrence, OccurrenceRecord};
+use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{
+    Occurrence, OccurrenceOrganismQuantityType, OccurrenceRecord,
+};
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use serde::Deserialize;
 use serde_json::json;
@@ -31,6 +33,14 @@ pub struct CreateOccurrenceRequest {
     longitude: f64,
     #[ts(optional)]
     coordinate_uncertainty_in_meters: Option<i32>,
+    /// Darwin Core dwc:organismQuantity — free text (a count, a range like
+    /// "10-100", or a categorical value like "many"). Written verbatim.
+    #[ts(optional)]
+    organism_quantity: Option<String>,
+    /// Darwin Core dwc:organismQuantityType — the quantification system the
+    /// quantity uses ("individuals", "percent-cover", or an open-vocab value).
+    #[ts(optional)]
+    organism_quantity_type: Option<String>,
     #[ts(optional)]
     event_date: Option<String>,
     #[ts(optional)]
@@ -74,6 +84,13 @@ pub struct UpdateOccurrenceRequest {
     longitude: f64,
     #[ts(optional)]
     coordinate_uncertainty_in_meters: Option<i32>,
+    /// See `CreateOccurrenceRequest::organism_quantity`. Omitting it clears the
+    /// value on the record, so the edit form sends back the existing value.
+    #[ts(optional)]
+    organism_quantity: Option<String>,
+    /// See `CreateOccurrenceRequest::organism_quantity_type`.
+    #[ts(optional)]
+    organism_quantity_type: Option<String>,
     #[ts(optional)]
     event_date: Option<String>,
     /// Newly-added images to upload and attach, in addition to any retained ones.
@@ -134,6 +151,8 @@ pub async fn create_occurrence(
         body.latitude,
         body.longitude,
         body.coordinate_uncertainty_in_meters,
+        body.organism_quantity.as_deref(),
+        body.organism_quantity_type.as_deref(),
         body.event_date.as_deref(),
         media_refs,
     )?;
@@ -355,6 +374,8 @@ pub async fn update_occurrence(
         body.latitude,
         body.longitude,
         body.coordinate_uncertainty_in_meters,
+        body.organism_quantity.as_deref(),
+        body.organism_quantity_type.as_deref(),
         body.event_date.as_deref(),
         media_refs,
     )?;
@@ -532,6 +553,8 @@ fn build_occurrence_record_json(
     latitude: f64,
     longitude: f64,
     coordinate_uncertainty_in_meters: Option<i32>,
+    organism_quantity: Option<&str>,
+    organism_quantity_type: Option<&str>,
     event_date: Option<&str>,
     media_refs: Vec<StrongRef>,
 ) -> Result<serde_json::Value, AppError> {
@@ -556,6 +579,16 @@ fn build_occurrence_record_json(
                 as i64,
         )
         .event_date(event_date)
+        .maybe_organism_quantity(
+            organism_quantity
+                .filter(|s| !s.is_empty())
+                .map(SmolStr::from),
+        )
+        .maybe_organism_quantity_type(
+            organism_quantity_type
+                .filter(|s| !s.is_empty())
+                .map(|s| OccurrenceOrganismQuantityType::from_value(SmolStr::from(s))),
+        )
         .maybe_media(media)
         .build();
 

@@ -231,6 +231,8 @@ export async function submitObservation(data: {
   latitude: number;
   longitude: number;
   coordinateUncertaintyInMeters?: number;
+  organismQuantity?: string;
+  organismQuantityType?: string;
   license?: string;
   eventDate: string;
   images?: Array<{ data: string; mimeType: string }>;
@@ -259,6 +261,8 @@ export async function updateObservation(data: {
   latitude: number;
   longitude: number;
   coordinateUncertaintyInMeters?: number;
+  organismQuantity?: string;
+  organismQuantityType?: string;
   license?: string;
   eventDate: string;
   images?: Array<{ data: string; mimeType: string }>;
