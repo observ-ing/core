@@ -53,6 +53,7 @@
   },
   "devDependencies": {
     "@atproto/api": "^0.19.18",
+    "@atproto/dev-env": "^0.5.8",
     "@capacitor/cli": "^8.3.4",
     "@playwright/test": "^1.60.0",
     "@storybook/addon-a11y": "^10.3.6",
