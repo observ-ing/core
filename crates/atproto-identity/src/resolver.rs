@@ -30,6 +30,22 @@ impl IdentityResolver {
         Self::with_service_url(DEFAULT_SERVICE_URL)
     }
 
+    /// Create a resolver, honoring `HANDLE_RESOLVER_URL` as an override for the
+    /// service base used to resolve handles (point this at a local
+    /// `@atproto/dev-env` PDS for isolated e2e). Falls back to the public
+    /// Bluesky API. did:plc resolution is governed separately by
+    /// [`crate::plc_directory_url`].
+    pub fn from_env() -> Self {
+        match std::env::var("HANDLE_RESOLVER_URL")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+        {
+            Some(url) => Self::with_service_url(&url),
+            None => Self::new(),
+        }
+    }
+
     /// Create a new resolver with a custom Bluesky API URL
     pub fn with_service_url(service_url: &str) -> Self {
         let client = Client::builder()
