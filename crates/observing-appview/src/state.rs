@@ -8,7 +8,7 @@ use crate::resolver::HickoryDnsTxtResolver;
 use crate::species_id_client::SpeciesIdClient;
 use crate::taxonomy_client::TaxonomyClient;
 
-use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig, DEFAULT_PLC_DIRECTORY_URL};
+use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig};
 use atrium_identity::handle::{AtprotoHandleResolver, AtprotoHandleResolverConfig};
 use atrium_oauth::{DefaultHttpClient, OAuthClient};
 
@@ -62,7 +62,7 @@ pub fn create_oauth_client(pool: PgPool, public_url: Option<&str>, port: u16) ->
 
     let resolver = atrium_oauth::OAuthResolverConfig {
         did_resolver: CommonDidResolver::new(CommonDidResolverConfig {
-            plc_directory_url: DEFAULT_PLC_DIRECTORY_URL.to_string(),
+            plc_directory_url: atproto_identity::plc_directory_url(),
             http_client: http_client.clone(),
         }),
         handle_resolver: AtprotoHandleResolver::new(AtprotoHandleResolverConfig {

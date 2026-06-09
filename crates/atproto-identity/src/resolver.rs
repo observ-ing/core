@@ -19,6 +19,7 @@ const BATCH_SIZE: usize = 25;
 pub struct IdentityResolver {
     client: Client,
     service_url: String,
+    plc_directory_url: String,
     identity_cache: Cache<String, ResolveResult>,
     profile_cache: Cache<String, Arc<Profile>>,
 }
@@ -49,6 +50,7 @@ impl IdentityResolver {
         Self {
             client,
             service_url: service_url.to_string(),
+            plc_directory_url: crate::plc_directory_url(),
             identity_cache,
             profile_cache,
         }
@@ -168,7 +170,7 @@ impl IdentityResolver {
     /// Get the DID document for a DID
     async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
         let url = match did.method() {
-            DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
+            DidMethod::Plc(_) => format!("{}/{}", self.plc_directory_url, did.as_str()),
             DidMethod::Web(host) => {
                 let domain = host.replace("%3A", ":");
                 format!("https://{domain}/.well-known/did.json")
