@@ -138,7 +138,7 @@ test.describe("Explore Filters", () => {
     await mediaChip.click();
 
     const feedRequest = page.waitForRequest(
-      (req) => req.url().includes("/api/feeds/explore") && req.url().includes("quality=media"),
+      (req) => req.url().includes("/api/feeds/explore") && req.url().includes("quality=HAS_MEDIA"),
     );
     await page.getByRole("button", { name: "Apply Filters" }).click();
     await feedRequest;

@@ -5,7 +5,8 @@
 //! surface individual codes in API responses for UI badges.
 
 use crate::types::OccurrenceRow;
-use serde::de::{self, Deserializer};
+use serde::de::value::{Error as ValueError, StrDeserializer};
+use serde::de::{self, Deserializer, IntoDeserializer};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use ts_rs::TS;
@@ -39,7 +40,14 @@ pub const IMPRECISE_UNCERTAINTY_THRESHOLD_M: i32 = 5000;
 /// the location is present, mirroring the observation data-quality checklist:
 /// precision can't be "met" when there are no coordinates at all (the issue is
 /// suppressed in that case rather than reported).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+///
+/// The serde representation is the single source of truth for the wire tokens:
+/// it is exported to the frontend as `bindings/QualityCriterion.ts` and reused
+/// by [`FromStr`] below, so the UI, the `?quality=` parser, and the generated
+/// type can't drift.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(export, export_to = "bindings/", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum QualityCriterion {
     /// `eventDate` is present (no [`QualityIssue::MissingDate`]).
     HasDate,
@@ -64,26 +72,24 @@ impl QualityCriterion {
         QualityCriterion::HasMedia,
         QualityCriterion::HasConsensusId,
     ];
+}
 
-    /// Parse a single wire token. Tokens mirror the ids used by the frontend
-    /// data-quality checklist so the two share one vocabulary.
-    fn from_token(token: &str) -> Option<Self> {
-        match token {
-            "date" => Some(Self::HasDate),
-            "location" => Some(Self::HasLocation),
-            "precise" => Some(Self::PreciseLocation),
-            "media" => Some(Self::HasMedia),
-            "consensus" => Some(Self::HasConsensusId),
-            _ => None,
-        }
+impl FromStr for QualityCriterion {
+    type Err = String;
+
+    /// Parse a single wire token via the derived [`Deserialize`], so the
+    /// accepted tokens always match the serde / TS representation.
+    fn from_str(token: &str) -> Result<Self, Self::Err> {
+        let de: StrDeserializer<ValueError> = token.into_deserializer();
+        Self::deserialize(de).map_err(|_| format!("unknown quality criterion: {token}"))
     }
 }
 
 /// Parsed `?quality=` value: the set of criteria every returned row must meet.
 ///
-/// The wire format is a comma-separated list of criterion tokens (`date`,
-/// `location`, `precise`, `media`, `consensus`), with `complete` as shorthand
-/// for [`QualityCriterion::ALL`]. An empty selection applies no filter. Unknown
+/// The wire format is a comma-separated list of [`QualityCriterion`] tokens
+/// (e.g. `HAS_MEDIA,HAS_CONSENSUS_ID`), with `complete` as shorthand for
+/// [`QualityCriterion::ALL`]. An empty selection applies no filter. Unknown
 /// tokens fail to parse, which axum surfaces as a 400 rather than silently
 /// dropping the filter.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -116,9 +122,7 @@ impl FromStr for QualitySelection {
                 QualityCriterion::ALL.into_iter().for_each(&mut push);
                 continue;
             }
-            let criterion = QualityCriterion::from_token(token)
-                .ok_or_else(|| format!("unknown quality criterion: {token}"))?;
-            push(criterion);
+            push(token.parse()?);
         }
         Ok(QualitySelection { criteria })
     }
@@ -322,7 +326,7 @@ mod tests {
 
     #[test]
     fn parses_individual_criteria_preserving_order() {
-        let sel: QualitySelection = "media,consensus".parse().unwrap();
+        let sel: QualitySelection = "HAS_MEDIA,HAS_CONSENSUS_ID".parse().unwrap();
         assert_eq!(
             sel.criteria,
             vec![QualityCriterion::HasMedia, QualityCriterion::HasConsensusId]
@@ -337,7 +341,7 @@ mod tests {
 
     #[test]
     fn dedupes_and_skips_blanks() {
-        let sel: QualitySelection = "date, ,date,media".parse().unwrap();
+        let sel: QualitySelection = "HAS_DATE, ,HAS_DATE,HAS_MEDIA".parse().unwrap();
         assert_eq!(
             sel.criteria,
             vec![QualityCriterion::HasDate, QualityCriterion::HasMedia]
@@ -352,6 +356,17 @@ mod tests {
 
     #[test]
     fn unknown_token_is_rejected() {
-        assert!("date,bogus".parse::<QualitySelection>().is_err());
+        assert!("HAS_DATE,bogus".parse::<QualitySelection>().is_err());
+    }
+
+    #[test]
+    fn token_parsing_matches_serde_representation() {
+        // FromStr must accept exactly what serde emits for every criterion,
+        // guarding the StrDeserializer-based parse against drift.
+        for criterion in QualityCriterion::ALL {
+            let token = serde_json::to_value(criterion).unwrap();
+            let token = token.as_str().unwrap();
+            assert_eq!(token.parse::<QualityCriterion>().unwrap(), criterion);
+        }
     }
 }
