@@ -111,7 +111,7 @@ export async function fetchExploreFeed(
   if (filters?.kingdom) params.set("kingdom", filters.kingdom);
   if (filters?.startDate) params.set("startDate", filters.startDate);
   if (filters?.endDate) params.set("endDate", filters.endDate);
-  if (filters?.quality) params.set("quality", filters.quality);
+  if (filters?.quality?.length) params.set("quality", filters.quality.join(","));
 
   return fetchApi(`${API_BASE}/api/feeds/explore?${params}`, "Failed to load explore feed");
 }

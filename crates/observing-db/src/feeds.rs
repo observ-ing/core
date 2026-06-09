@@ -1,8 +1,8 @@
 use crate::occurrence_columns;
-use crate::quality::IMPRECISE_UNCERTAINTY_THRESHOLD_M;
+use crate::quality::{QualityCriterion, IMPRECISE_UNCERTAINTY_THRESHOLD_M};
 use crate::types::{
     ExploreFeedOptions, HomeFeedOptions, IdentificationRow, OccurrenceRow, ProfileCounts,
-    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, QualityFilter, TaxonOccurrenceOptions,
+    ProfileFeedOptions, ProfileFeedResult, ProfileFeedType, TaxonOccurrenceOptions,
 };
 use sqlx::{PgPool, Postgres, QueryBuilder};
 
@@ -75,8 +75,8 @@ pub async fn get_explore_feed(
         qb.push_bind(end_date);
     }
 
-    if let Some(quality) = options.quality {
-        push_quality_filter(&mut qb, quality);
+    if !options.quality.is_empty() {
+        push_quality_filter(&mut qb, &options.quality.criteria);
     }
 
     if let Some(cursor) = options.cursor.as_deref() {
@@ -92,20 +92,36 @@ pub async fn get_explore_feed(
         .await
 }
 
-/// Push a WHERE clause matching [`crate::quality::compute_issues`] returning
-/// an empty list for the row. Keep these two in sync.
-fn push_quality_filter(qb: &mut QueryBuilder<Postgres>, quality: QualityFilter) {
-    match quality {
-        QualityFilter::Complete => {
-            qb.push(" AND event_date IS NOT NULL");
-            qb.push(" AND location IS NOT NULL");
-            qb.push(" AND coordinate_uncertainty_meters IS NOT NULL");
-            qb.push(" AND coordinate_uncertainty_meters <= ");
-            qb.push_bind(IMPRECISE_UNCERTAINTY_THRESHOLD_M);
-            qb.push(" AND COALESCE(jsonb_array_length(associated_media), 0) > 0");
-            qb.push(
-                " AND EXISTS (SELECT 1 FROM community_ids ci WHERE ci.occurrence_uri = occurrences.uri)",
-            );
+/// Push one WHERE clause per requested criterion. Each clause matches the
+/// corresponding branch of [`crate::quality::compute_issues`] — i.e. the row
+/// is kept only when that quality issue would be absent. Keep the two in sync:
+/// requesting every criterion must select exactly the "no issues" rows.
+fn push_quality_filter(qb: &mut QueryBuilder<Postgres>, criteria: &[QualityCriterion]) {
+    for criterion in criteria {
+        match criterion {
+            QualityCriterion::HasDate => {
+                qb.push(" AND event_date IS NOT NULL");
+            }
+            QualityCriterion::HasLocation => {
+                qb.push(" AND location IS NOT NULL");
+            }
+            QualityCriterion::PreciseLocation => {
+                // Precision implies a location is present, mirroring
+                // compute_issues suppressing CoordinatesImprecise when the
+                // coordinates are missing entirely.
+                qb.push(" AND location IS NOT NULL");
+                qb.push(" AND coordinate_uncertainty_meters IS NOT NULL");
+                qb.push(" AND coordinate_uncertainty_meters <= ");
+                qb.push_bind(IMPRECISE_UNCERTAINTY_THRESHOLD_M);
+            }
+            QualityCriterion::HasMedia => {
+                qb.push(" AND COALESCE(jsonb_array_length(associated_media), 0) > 0");
+            }
+            QualityCriterion::HasConsensusId => {
+                qb.push(
+                    " AND EXISTS (SELECT 1 FROM community_ids ci WHERE ci.occurrence_uri = occurrences.uri)",
+                );
+            }
         }
     }
 }
@@ -272,8 +288,8 @@ pub async fn get_home_feed(
         qb.push(")");
     }
 
-    if let Some(quality) = options.quality {
-        push_quality_filter(&mut qb, quality);
+    if !options.quality.is_empty() {
+        push_quality_filter(&mut qb, &options.quality.criteria);
     }
 
     if let Some(cursor) = options.cursor.as_deref() {

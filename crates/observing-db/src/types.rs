@@ -1,3 +1,4 @@
+use crate::quality::QualitySelection;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
@@ -346,19 +347,9 @@ pub struct ExploreFeedOptions {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
-    pub quality: Option<QualityFilter>,
-}
-
-/// Server-side quality filter for feed queries. Deserialised straight from
-/// the `?quality=` query string; unknown values cause a 400 rather than
-/// silently dropping the filter.
-#[derive(Debug, Clone, Copy, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum QualityFilter {
-    /// Hide observations with any issues from [`crate::quality::compute_issues`] —
-    /// i.e. those whose date, location, precise coords, media, and consensus
-    /// identification are all populated.
-    Complete,
+    /// Data-quality criteria every returned row must meet. Empty applies no
+    /// filter; see [`crate::quality::QualitySelection`].
+    pub quality: QualitySelection,
 }
 
 /// Options for profile feed queries
@@ -397,7 +388,9 @@ pub struct ProfileCounts {
 pub struct HomeFeedOptions {
     pub limit: Option<i64>,
     pub cursor: Option<String>,
-    pub quality: Option<QualityFilter>,
+    /// Data-quality criteria every returned row must meet. The home feed
+    /// always requests `complete`; see [`crate::quality::QualitySelection`].
+    pub quality: QualitySelection,
 }
 
 /// Options for taxon occurrence queries

@@ -5,7 +5,10 @@
 //! surface individual codes in API responses for UI badges.
 
 use crate::types::OccurrenceRow;
+use serde::de::value::{Error as ValueError, StrDeserializer};
+use serde::de::{self, Deserializer, IntoDeserializer};
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use ts_rs::TS;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
@@ -28,6 +31,112 @@ pub enum QualityIssue {
 /// Matches iNaturalist's "obscured location" radius, so coordinates rounded
 /// to roughly a state/province get flagged.
 pub const IMPRECISE_UNCERTAINTY_THRESHOLD_M: i32 = 5000;
+
+/// A single data-quality criterion a feed row can be required to meet. Each is
+/// the positive counterpart of a [`QualityIssue`] — a row meets the criterion
+/// when the corresponding issue is *absent* (see [`compute_issues`]).
+///
+/// [`PreciseLocation`](QualityCriterion::PreciseLocation) additionally implies
+/// the location is present, mirroring the observation data-quality checklist:
+/// precision can't be "met" when there are no coordinates at all (the issue is
+/// suppressed in that case rather than reported).
+///
+/// The serde representation is the single source of truth for the wire tokens:
+/// it is exported to the frontend as `bindings/QualityCriterion.ts` and reused
+/// by [`FromStr`] below, so the UI, the `?quality=` parser, and the generated
+/// type can't drift.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[ts(export, export_to = "bindings/", rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum QualityCriterion {
+    /// `eventDate` is present (no [`QualityIssue::MissingDate`]).
+    HasDate,
+    /// Coordinates are present (no [`QualityIssue::MissingLocation`]).
+    HasLocation,
+    /// Coordinates are present and precise (no `MissingLocation` /
+    /// `CoordinatesImprecise`).
+    PreciseLocation,
+    /// At least one photo or sound (no [`QualityIssue::MissingMedia`]).
+    HasMedia,
+    /// A consensus identification exists (no [`QualityIssue::NoConsensusId`]).
+    HasConsensusId,
+}
+
+impl QualityCriterion {
+    /// Every criterion, in checklist order. The `complete` shorthand selects
+    /// exactly this set — a row meeting all of them has no quality issues.
+    pub const ALL: [QualityCriterion; 5] = [
+        QualityCriterion::HasDate,
+        QualityCriterion::HasLocation,
+        QualityCriterion::PreciseLocation,
+        QualityCriterion::HasMedia,
+        QualityCriterion::HasConsensusId,
+    ];
+}
+
+impl FromStr for QualityCriterion {
+    type Err = String;
+
+    /// Parse a single wire token via the derived [`Deserialize`], so the
+    /// accepted tokens always match the serde / TS representation.
+    fn from_str(token: &str) -> Result<Self, Self::Err> {
+        let de: StrDeserializer<ValueError> = token.into_deserializer();
+        Self::deserialize(de).map_err(|_| format!("unknown quality criterion: {token}"))
+    }
+}
+
+/// Parsed `?quality=` value: the set of criteria every returned row must meet.
+///
+/// The wire format is a comma-separated list of [`QualityCriterion`] tokens
+/// (e.g. `HAS_MEDIA,HAS_CONSENSUS_ID`), with `complete` as shorthand for
+/// [`QualityCriterion::ALL`]. An empty selection applies no filter. Unknown
+/// tokens fail to parse, which axum surfaces as a 400 rather than silently
+/// dropping the filter.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct QualitySelection {
+    pub criteria: Vec<QualityCriterion>,
+}
+
+impl QualitySelection {
+    pub fn is_empty(&self) -> bool {
+        self.criteria.is_empty()
+    }
+}
+
+impl FromStr for QualitySelection {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let mut criteria = Vec::new();
+        let mut push = |c: QualityCriterion| {
+            if !criteria.contains(&c) {
+                criteria.push(c);
+            }
+        };
+        for token in s.split(',') {
+            let token = token.trim();
+            if token.is_empty() {
+                continue;
+            }
+            if token == "complete" {
+                QualityCriterion::ALL.into_iter().for_each(&mut push);
+                continue;
+            }
+            push(token.parse()?);
+        }
+        Ok(QualitySelection { criteria })
+    }
+}
+
+impl<'de> Deserialize<'de> for QualitySelection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let raw = String::deserialize(deserializer)?;
+        raw.parse().map_err(de::Error::custom)
+    }
+}
 
 pub fn compute_issues(row: &OccurrenceRow, has_consensus_id: bool) -> Vec<QualityIssue> {
     let mut issues = Vec::new();
@@ -213,5 +322,51 @@ mod tests {
             serde_json::to_string(&QualityIssue::NoConsensusId).unwrap(),
             "\"NO_CONSENSUS_ID\""
         );
+    }
+
+    #[test]
+    fn parses_individual_criteria_preserving_order() {
+        let sel: QualitySelection = "HAS_MEDIA,HAS_CONSENSUS_ID".parse().unwrap();
+        assert_eq!(
+            sel.criteria,
+            vec![QualityCriterion::HasMedia, QualityCriterion::HasConsensusId]
+        );
+    }
+
+    #[test]
+    fn complete_expands_to_all_criteria() {
+        let sel: QualitySelection = "complete".parse().unwrap();
+        assert_eq!(sel.criteria, QualityCriterion::ALL.to_vec());
+    }
+
+    #[test]
+    fn dedupes_and_skips_blanks() {
+        let sel: QualitySelection = "HAS_DATE, ,HAS_DATE,HAS_MEDIA".parse().unwrap();
+        assert_eq!(
+            sel.criteria,
+            vec![QualityCriterion::HasDate, QualityCriterion::HasMedia]
+        );
+    }
+
+    #[test]
+    fn empty_string_is_empty_selection() {
+        let sel: QualitySelection = "".parse().unwrap();
+        assert!(sel.is_empty());
+    }
+
+    #[test]
+    fn unknown_token_is_rejected() {
+        assert!("HAS_DATE,bogus".parse::<QualitySelection>().is_err());
+    }
+
+    #[test]
+    fn token_parsing_matches_serde_representation() {
+        // FromStr must accept exactly what serde emits for every criterion,
+        // guarding the StrDeserializer-based parse against drift.
+        for criterion in QualityCriterion::ALL {
+            let token = serde_json::to_value(criterion).unwrap();
+            let token = token.as_str().unwrap();
+            assert_eq!(token.parse::<QualityCriterion>().unwrap(), criterion);
+        }
     }
 }
