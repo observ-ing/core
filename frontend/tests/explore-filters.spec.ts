@@ -127,4 +127,20 @@ test.describe("Explore Filters", () => {
     // After applying, the badge should show "1"
     await expect(page.locator(".MuiChip-root").filter({ hasText: "1" }).first()).toBeVisible();
   });
+
+  // TC-FILTER-008: Data-quality criteria filter the feed request
+  test("selecting a data-quality criterion filters the feed request", async ({ page }) => {
+    await page.getByRole("heading", { name: "Filters" }).click();
+
+    // Require a photo/sound, then apply
+    const mediaChip = page.getByRole("button", { name: "Has photo/sound" });
+    await expect(mediaChip).toBeVisible();
+    await mediaChip.click();
+
+    const feedRequest = page.waitForRequest(
+      (req) => req.url().includes("/api/feeds/explore") && req.url().includes("quality=media"),
+    );
+    await page.getByRole("button", { name: "Apply Filters" }).click();
+    await feedRequest;
+  });
 });

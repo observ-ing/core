@@ -30,6 +30,9 @@ export type { UpdatePreferencesRequest } from "../bindings/UpdatePreferencesRequ
 import type { Occurrence } from "../bindings/Occurrence";
 export type { Occurrence };
 
+import type { QualityCriterion } from "../lib/qualityCriteria";
+export type { QualityCriterion };
+
 // ============================================================================
 // Extended generated types
 // ============================================================================
@@ -56,7 +59,8 @@ export interface FeedFilters {
   kingdom?: string;
   startDate?: string;
   endDate?: string;
-  quality?: "complete";
+  /** Data-quality criteria every result must meet; empty/undefined applies no filter. */
+  quality?: QualityCriterion[];
 }
 
 export interface FeedResponse {

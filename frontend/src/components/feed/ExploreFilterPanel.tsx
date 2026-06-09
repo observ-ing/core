@@ -20,7 +20,7 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ClearIcon from "@mui/icons-material/Clear";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -29,6 +29,7 @@ import { setFilters } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
 import { KINGDOMS as KINGDOM_OPTIONS } from "../../lib/kingdoms";
+import { QUALITY_CRITERIA, type QualityCriterion } from "../../lib/qualityCriteria";
 
 const KINGDOMS = [{ value: "", label: "All Kingdoms" }, ...KINGDOM_OPTIONS];
 
@@ -52,12 +53,15 @@ export function ExploreFilterPanel() {
     filters.endDate ? new Date(filters.endDate) : null,
   );
 
-  // Count active filters for badge — quality counts toward the chevron badge
-  // even though it lives in the header, since users still treat it as "a filter".
-  const activeFilterCount = [selectedTaxon, kingdom, startDate, endDate].filter(Boolean).length;
+  // Required data-quality criteria. Each selected criterion narrows the feed to
+  // rows that meet it; selecting all five is equivalent to "fully complete".
+  const [quality, setQuality] = useState<QualityCriterion[]>(filters.quality ?? []);
 
-  // Apply filters. Quality is preserved here so toggling Verifiable then editing
-  // other filters doesn't silently drop it.
+  // Count active filters for the chevron badge. Each required quality criterion
+  // counts on its own, since users treat them as individual filters.
+  const activeFilterCount =
+    [selectedTaxon, kingdom, startDate, endDate].filter(Boolean).length + quality.length;
+
   const handleApplyFilters = () => {
     const newFilters: FeedFilters = {};
 
@@ -65,33 +69,28 @@ export function ExploreFilterPanel() {
     if (kingdom) newFilters.kingdom = kingdom;
     if (startDate) newFilters.startDate = startDate.toISOString().split("T")[0] ?? "";
     if (endDate) newFilters.endDate = endDate.toISOString().split("T")[0] ?? "";
-    if (filters.quality) newFilters.quality = filters.quality;
+    if (quality.length) newFilters.quality = quality;
 
     // Updating filters changes useFeed's query key, which refetches the feed.
     dispatch(setFilters(newFilters));
   };
 
-  // Clear all filters (including the quality toggle)
+  // Clear all filters (including the quality criteria)
   const handleClearFilters = () => {
     setSelectedTaxon(null);
     setTaxonQuery("");
     setKingdom("");
     setStartDate(null);
     setEndDate(null);
+    setQuality([]);
 
     dispatch(setFilters({}));
   };
 
-  // Toggle the Complete chip. Applies immediately rather than waiting for
-  // the Apply button so it feels like a one-click affordance.
-  const handleToggleComplete = () => {
-    const next: FeedFilters = { ...filters };
-    if (filters.quality === "complete") {
-      delete next.quality;
-    } else {
-      next.quality = "complete";
-    }
-    dispatch(setFilters(next));
+  // Toggle a single quality criterion in the pending selection. Applied with
+  // the rest of the filters via the Apply button.
+  const toggleQuality = (id: QualityCriterion) => {
+    setQuality((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
   };
 
   return (
@@ -126,23 +125,7 @@ export function ExploreFilterPanel() {
             />
           )}
         </Stack>
-        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center" }}>
-          <Chip
-            size="small"
-            icon={<CheckCircleIcon />}
-            label="Complete"
-            color={filters.quality === "complete" ? "primary" : "default"}
-            variant="outlined"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleToggleComplete();
-            }}
-            aria-pressed={filters.quality === "complete"}
-          />
-          <IconButton size="small">
-            {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          </IconButton>
-        </Stack>
+        <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
       </Box>
       {/* Collapsible filter content */}
       <Collapse in={isExpanded}>
@@ -251,6 +234,33 @@ export function ExploreFilterPanel() {
               />
             </Stack>
           </LocalizationProvider>
+
+          {/* Data quality — require one or more criteria (matches the
+              checklist shown on each observation) */}
+          <Box sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mb: 1 }}>
+              <VerifiedOutlinedIcon fontSize="small" color="action" />
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                Data quality
+              </Typography>
+            </Stack>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+              {QUALITY_CRITERIA.map((criterion) => {
+                const selected = quality.includes(criterion.id);
+                return (
+                  <Chip
+                    key={criterion.id}
+                    size="small"
+                    label={criterion.label}
+                    color={selected ? "primary" : "default"}
+                    variant={selected ? "filled" : "outlined"}
+                    onClick={() => toggleQuality(criterion.id)}
+                    aria-pressed={selected}
+                  />
+                );
+              })}
+            </Box>
+          </Box>
 
           {/* Action Buttons */}
           <Stack

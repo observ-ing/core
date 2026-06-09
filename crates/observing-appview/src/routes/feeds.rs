@@ -1,6 +1,7 @@
 use axum::extract::{Query, State};
 use axum::Json;
-use observing_db::types::{ExploreFeedOptions, HomeFeedOptions, QualityFilter};
+use observing_db::quality::QualitySelection;
+use observing_db::types::{ExploreFeedOptions, HomeFeedOptions};
 use serde::Deserialize;
 
 use crate::auth::session_did;
@@ -20,7 +21,7 @@ pub struct ExploreParams {
     start_date: Option<String>,
     #[serde(rename = "endDate")]
     end_date: Option<String>,
-    quality: Option<QualityFilter>,
+    quality: Option<QualitySelection>,
 }
 
 pub async fn get_explore(
@@ -40,7 +41,7 @@ pub async fn get_explore(
         kingdom: params.kingdom.clone(),
         start_date: params.start_date.clone(),
         end_date: params.end_date.clone(),
-        quality: params.quality,
+        quality: params.quality.unwrap_or_default(),
     };
 
     let rows =
@@ -80,7 +81,7 @@ pub async fn get_explore(
 pub struct HomeParams {
     limit: Option<i64>,
     cursor: Option<String>,
-    quality: Option<QualityFilter>,
+    quality: Option<QualitySelection>,
 }
 
 pub async fn get_home(
@@ -97,7 +98,7 @@ pub async fn get_home(
     let options = HomeFeedOptions {
         limit: Some(limit),
         cursor: params.cursor,
-        quality: params.quality,
+        quality: params.quality.unwrap_or_default(),
     };
 
     let rows =
