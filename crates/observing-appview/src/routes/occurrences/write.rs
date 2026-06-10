@@ -218,6 +218,7 @@ pub async fn delete_occurrence(
     }
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
+    let (collection, rkey) = auth::parse_collection_and_rkey(&at_uri)?;
     agent
         .api
         .com
@@ -225,15 +226,9 @@ pub async fn delete_occurrence(
         .repo
         .delete_record(
             atrium_api::com::atproto::repo::delete_record::InputData {
-                collection: at_uri
-                    .collection
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?,
+                collection,
                 repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: at_uri
-                    .rkey
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?,
+                rkey,
                 swap_commit: None,
                 swap_record: None,
             }
@@ -283,14 +278,7 @@ pub async fn update_occurrence(
         ));
     }
 
-    let collection_nsid: atrium_api::types::string::Nsid = at_uri
-        .collection
-        .parse()
-        .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?;
-    let rkey_parsed: atrium_api::types::string::RecordKey = at_uri
-        .rkey
-        .parse()
-        .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?;
+    let (collection_nsid, rkey_parsed) = auth::parse_collection_and_rkey(&at_uri)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
