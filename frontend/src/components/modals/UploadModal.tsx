@@ -37,7 +37,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
-import { getErrorMessage } from "../../lib/utils";
+import { getErrorMessage, fileToBase64 } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
@@ -416,26 +416,6 @@ export function UploadModal() {
         { onSuccess, onError },
       );
     }
-  };
-
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== "string") {
-          reject(new Error("Expected string result"));
-          return;
-        }
-        const base64 = reader.result.split(",")[1];
-        if (!base64) {
-          reject(new Error("Invalid data URL format"));
-          return;
-        }
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
   };
 
   const handleLocationChange = (newLat: number, newLng: number) => {
