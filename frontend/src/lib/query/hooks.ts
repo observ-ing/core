@@ -29,20 +29,31 @@ const nextCursor = (last: { cursor?: string }): Cursor => last.cursor ?? undefin
 
 /**
  * Home/explore feed. The active tab comes from the route (passed by the
- * caller); filters + auth are read from Redux. All three form the query key.
+ * caller); filters + auth are read from Redux. All form the query key.
+ *
+ * `isAuthenticated` drives the endpoint choice (signed-in home vs. explore
+ * fallback) AND is part of the query key, so the two responses never share a
+ * cache entry and an auth flip refetches. We also wait for the startup auth
+ * check (`isLoading`) to settle before fetching: otherwise the home tab would
+ * fire an explore request during the brief window where a logged-in user still
+ * reads as unauthenticated, cache it under the home key, and — since auth isn't
+ * a refetch trigger on its own — leave the wrong feed showing until the next
+ * stale refetch.
  */
 export function useFeed(tab: FeedTab) {
   const filters = useAppSelector((s) => s.feed.filters);
   const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
+  const authResolved = useAppSelector((s) => !s.auth.isLoading);
 
   return useInfiniteQuery({
-    queryKey: qk.feed(tab, filters),
+    queryKey: qk.feed(tab, filters, isAuthenticated),
     queryFn: ({ pageParam }: { pageParam: Cursor }) =>
       tab === "home" && isAuthenticated
         ? fetchHomeFeed(pageParam)
         : fetchExploreFeed(pageParam, filters),
     initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
+    enabled: authResolved,
   });
 }
 
