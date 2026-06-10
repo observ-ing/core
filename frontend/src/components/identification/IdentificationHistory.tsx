@@ -8,6 +8,7 @@ import {
   Paper,
   Chip,
   IconButton,
+  Link as MuiLink,
   Menu,
   MenuItem,
 } from "@mui/material";
@@ -176,9 +177,11 @@ export function IdentificationHistory({
                       flexWrap: "wrap",
                     }}
                   >
-                    <RouterLink
+                    <MuiLink
+                      component={RouterLink}
                       to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
-                      style={{ textDecoration: "none" }}
+                      underline="none"
+                      color="inherit"
                     >
                       <Typography
                         variant="body2"
@@ -189,7 +192,7 @@ export function IdentificationHistory({
                       >
                         {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
                       </Typography>
-                    </RouterLink>
+                    </MuiLink>
                     <Typography
                       variant="caption"
                       sx={{
