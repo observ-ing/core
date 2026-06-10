@@ -19,6 +19,7 @@
     "storybook": "storybook dev -p 6006 -c frontend/.storybook",
     "test": "playwright test --config=frontend/tests/playwright.config.ts",
     "test:e2e": "playwright test --config=frontend/tests/playwright.config.ts --project=e2e",
+    "test:e2e:devenv": "tsx scripts/e2e-devenv.ts",
     "test:integration": "playwright test --config=frontend/tests/playwright.config.ts --project=integration",
     "test:unit": "vitest run --config frontend/vitest.config.ts"
   },
