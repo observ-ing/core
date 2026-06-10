@@ -141,6 +141,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(pw) = admin_password.as_deref() {
                 builder = builder.admin_password(pw.to_string());
             }
+            // dev-env override: point Tap's DID resolution + firehose at a local
+            // @atproto/dev-env network so e2e test records never touch the
+            // public firehose. Both no-op in production (vars unset); Tap then
+            // uses its built-in plc.directory + public relay defaults.
+            if let Some(url) = parse_url_env("PLC_DIRECTORY_URL") {
+                info!(plc_url = %url, "overriding Tap PLC directory");
+                builder = builder.plc_url(url);
+            }
+            if let Some(url) = parse_url_env("TAP_RELAY_URL") {
+                info!(relay_url = %url, "overriding Tap relay/firehose source");
+                builder = builder.relay_url(url);
+            }
             // tapped defaults Tap's stdio to /dev/null. In CI we want
             // Tap's startup logs visible so failures are debuggable.
             if std::env::var("TAP_INHERIT_STDIO").is_ok() {
@@ -349,13 +361,34 @@ fn resolve_tap_database_url() -> String {
         .unwrap_or_else(|| "sqlite:///data/tap.db".to_string())
 }
 
-/// Relay the heartbeat's lag probe connects to. Must match the relay Tap
-/// consumes from (sequence numbers are relay-specific) — Tap is left on its
-/// default `relay1.us-east.bsky.network`, so this default matches. Override
-/// with `LAG_PROBE_RELAY_URL`; set it empty to disable the probe.
+/// Relay the heartbeat's lag probe connects to. Must match the firehose Tap
+/// consumes from (sequence numbers are source-specific). Resolution order:
+/// `LAG_PROBE_RELAY_URL` (explicit; set empty to disable the probe), else
+/// `TAP_RELAY_URL` (so a dev-env override is tracked automatically), else the
+/// public relay that matches Tap's built-in default.
 fn resolve_lag_probe_relay() -> String {
-    std::env::var("LAG_PROBE_RELAY_URL")
+    if let Ok(url) = std::env::var("LAG_PROBE_RELAY_URL") {
+        return url;
+    }
+    std::env::var("TAP_RELAY_URL")
         .unwrap_or_else(|_| "wss://relay1.us-east.bsky.network".to_string())
+}
+
+/// Parse an optional URL env var, warning (and treating as unset) on a bad
+/// value rather than failing startup.
+fn parse_url_env(name: &str) -> Option<url::Url> {
+    let raw = std::env::var(name).ok()?;
+    let raw = raw.trim();
+    if raw.is_empty() {
+        return None;
+    }
+    match raw.parse() {
+        Ok(url) => Some(url),
+        Err(e) => {
+            warn!(var = name, value = raw, error = %e, "ignoring unparseable URL env var");
+            None
+        }
+    }
 }
 
 /// Build a Postgres connection string from either DATABASE_URL directly

@@ -11,3 +11,17 @@ mod types;
 pub use did::{Did, DidMethod, DidParseError};
 pub use resolver::IdentityResolver;
 pub use types::{Profile, ResolveResult};
+
+/// Base URL of the PLC directory used to resolve `did:plc:` documents.
+///
+/// Overridable via the `PLC_DIRECTORY_URL` env var so the stack can be pointed
+/// at a local `@atproto/dev-env` PLC for isolated e2e tests; falls back to the
+/// public directory. The returned value never has a trailing slash, so callers
+/// can build URLs as `format!("{base}/{did}")`.
+pub fn plc_directory_url() -> String {
+    std::env::var("PLC_DIRECTORY_URL")
+        .ok()
+        .map(|s| s.trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "https://plc.directory".to_string())
+}
