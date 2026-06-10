@@ -25,7 +25,9 @@ use atrium_oauth::{DefaultHttpClient, OAuthClient};
 /// stack is pointed at a local `@atproto/dev-env` PDS for isolated e2e, where
 /// `.test` handles cannot resolve via DNS.
 pub enum AppHandleResolver {
-    Dns(AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>),
+    // Boxed: the DNS resolver is ~10x larger than the AppView variant
+    // (clippy::large_enum_variant).
+    Dns(Box<AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>>),
     AppView(AppViewHandleResolver<DefaultHttpClient>),
 }
 
@@ -58,10 +60,12 @@ fn build_handle_resolver(http_client: Arc<DefaultHttpClient>) -> AppHandleResolv
                 http_client,
             }))
         }
-        None => AppHandleResolver::Dns(AtprotoHandleResolver::new(AtprotoHandleResolverConfig {
-            dns_txt_resolver: HickoryDnsTxtResolver::default(),
-            http_client,
-        })),
+        None => AppHandleResolver::Dns(Box::new(AtprotoHandleResolver::new(
+            AtprotoHandleResolverConfig {
+                dns_txt_resolver: HickoryDnsTxtResolver::default(),
+                http_client,
+            },
+        ))),
     }
 }
 
