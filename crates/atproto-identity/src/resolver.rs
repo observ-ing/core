@@ -167,29 +167,12 @@ impl IdentityResolver {
 
     /// Get the DID document for a DID
     async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
-        let url = match did.method() {
-            DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
-            DidMethod::Web(host) => {
-                let domain = host.replace("%3A", ":");
-                format!("https://{domain}/.well-known/did.json")
-            }
-        };
-
-        match self.client.get(&url).send().await {
-            Ok(response) if response.status().is_success() => {
-                response.json::<DidDocument>().await.ok()
-            }
-            _ => None,
-        }
+        fetch_did_document(&self.client, did).await
     }
 
     /// Get the PDS endpoint for a DID
     pub async fn get_pds_endpoint(&self, did: &Did) -> Option<String> {
-        let doc = self.get_did_document(did).await?;
-        doc.service?
-            .iter()
-            .find(|s| s.id == "#atproto_pds")
-            .map(|s| s.service_endpoint.clone())
+        resolve_pds_endpoint(&self.client, did).await
     }
 
     /// Get a user's profile
@@ -286,4 +269,36 @@ impl Default for IdentityResolver {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Fetch and deserialize a DID document. `did:plc` is resolved via
+/// plc.directory; `did:web` via the host's `/.well-known/did.json`.
+async fn fetch_did_document(client: &Client, did: &Did) -> Option<DidDocument> {
+    let url = match did.method() {
+        DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
+        DidMethod::Web(host) => {
+            let domain = host.replace("%3A", ":");
+            format!("https://{domain}/.well-known/did.json")
+        }
+    };
+
+    match client.get(&url).send().await {
+        Ok(response) if response.status().is_success() => response.json::<DidDocument>().await.ok(),
+        _ => None,
+    }
+}
+
+/// Resolve a DID to its `#atproto_pds` service endpoint, if the DID document
+/// declares one.
+///
+/// A standalone counterpart to [`IdentityResolver::get_pds_endpoint`] that takes
+/// a borrowed [`Client`] instead of an `IdentityResolver`, so callers that only
+/// need PDS resolution (e.g. blob/record fetching) can reuse this logic without
+/// constructing the handle/profile caches.
+pub async fn resolve_pds_endpoint(client: &Client, did: &Did) -> Option<String> {
+    let doc = fetch_did_document(client, did).await?;
+    doc.service?
+        .iter()
+        .find(|s| s.id == "#atproto_pds")
+        .map(|s| s.service_endpoint.clone())
 }
