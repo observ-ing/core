@@ -3,28 +3,30 @@
 use crate::error::{BlobResolverError, Result};
 use crate::types::PlcDirectoryResponse;
 use at_uri_parser::AtUri;
-use atproto_identity::{Did, DidMethod};
+use atproto_identity::{plc_directory_url, Did, DidMethod};
 use reqwest::Client;
 use tracing::{debug, warn};
 
 /// Resolves AT Protocol DIDs to PDS endpoints and fetches blobs
 pub struct BlobResolver {
     client: Client,
+    plc_directory_url: String,
 }
 
 impl BlobResolver {
     /// Create a new blob resolver
     pub fn new() -> Self {
-        Self {
-            client: Client::new(),
-        }
+        Self::with_client(Client::new())
     }
 
     /// Create a resolver using a caller-provided HTTP client — e.g. one
     /// configured with a request timeout. [`BlobResolver::new`] uses a default
     /// client with no timeout.
     pub fn with_client(client: Client) -> Self {
-        Self { client }
+        Self {
+            client,
+            plc_directory_url: plc_directory_url(),
+        }
     }
 
     /// Resolve a DID to its PDS URL
@@ -35,9 +37,9 @@ impl BlobResolver {
         }
     }
 
-    /// Resolve a did:plc: DID via plc.directory
+    /// Resolve a did:plc: DID via the PLC directory
     async fn resolve_plc_did(&self, did: &Did) -> Result<String> {
-        let url = format!("https://plc.directory/{}", did.as_str());
+        let url = format!("{}/{}", self.plc_directory_url, did.as_str());
         debug!(did = %did, url = %url, "Resolving PLC DID");
 
         let response = self.client.get(&url).send().await?;

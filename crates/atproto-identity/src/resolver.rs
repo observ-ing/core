@@ -19,6 +19,7 @@ const BATCH_SIZE: usize = 25;
 pub struct IdentityResolver {
     client: Client,
     service_url: String,
+    plc_directory_url: String,
     identity_cache: Cache<String, ResolveResult>,
     profile_cache: Cache<String, Arc<Profile>>,
 }
@@ -27,6 +28,22 @@ impl IdentityResolver {
     /// Create a new resolver with default settings
     pub fn new() -> Self {
         Self::with_service_url(DEFAULT_SERVICE_URL)
+    }
+
+    /// Create a resolver, honoring `HANDLE_RESOLVER_URL` as an override for the
+    /// service base used to resolve handles (point this at a local
+    /// `@atproto/dev-env` PDS for isolated e2e). Falls back to the public
+    /// Bluesky API. did:plc resolution is governed separately by
+    /// [`crate::plc_directory_url`].
+    pub fn from_env() -> Self {
+        match std::env::var("HANDLE_RESOLVER_URL")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+        {
+            Some(url) => Self::with_service_url(&url),
+            None => Self::new(),
+        }
     }
 
     /// Create a new resolver with a custom Bluesky API URL
@@ -49,6 +66,7 @@ impl IdentityResolver {
         Self {
             client,
             service_url: service_url.to_string(),
+            plc_directory_url: crate::plc_directory_url(),
             identity_cache,
             profile_cache,
         }
@@ -168,7 +186,7 @@ impl IdentityResolver {
     /// Get the DID document for a DID
     async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
         let url = match did.method() {
-            DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
+            DidMethod::Plc(_) => format!("{}/{}", self.plc_directory_url, did.as_str()),
             DidMethod::Web(host) => {
                 let domain = host.replace("%3A", ":");
                 format!("https://{domain}/.well-known/did.json")
