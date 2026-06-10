@@ -37,7 +37,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
-import { getErrorMessage, fileToBase64 } from "../../lib/utils";
+import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
@@ -119,8 +119,8 @@ export function UploadModal() {
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
-        setLat(currentLocation.lat.toFixed(6));
-        setLng(currentLocation.lng.toFixed(6));
+        setLat(formatCoordinate(currentLocation.lat));
+        setLng(formatCoordinate(currentLocation.lng));
       }
       const pending = consumePendingUploadFiles();
       if (pending.length > 0) {
@@ -139,8 +139,8 @@ export function UploadModal() {
       setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
     }
     if (editingObservation.location) {
-      setLat(editingObservation.location.latitude.toFixed(6));
-      setLng(editingObservation.location.longitude.toFixed(6));
+      setLat(formatCoordinate(editingObservation.location.latitude));
+      setLng(formatCoordinate(editingObservation.location.longitude));
       if (editingObservation.location.uncertaintyMeters) {
         setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
       }
@@ -287,8 +287,8 @@ export function UploadModal() {
           if (latRefValue === "S") latitude = -Math.abs(latitude);
           if (lngRefValue === "W") longitude = -Math.abs(longitude);
 
-          setLat(latitude.toFixed(6));
-          setLng(longitude.toFixed(6));
+          setLat(formatCoordinate(latitude));
+          setLng(formatCoordinate(longitude));
           toast.success("Location extracted from photo EXIF data");
         }
       }
@@ -402,8 +402,8 @@ export function UploadModal() {
   };
 
   const handleLocationChange = (newLat: number, newLng: number) => {
-    setLat(newLat.toFixed(6));
-    setLng(newLng.toFixed(6));
+    setLat(formatCoordinate(newLat));
+    setLng(formatCoordinate(newLng));
     setIsDirty(true);
   };
 
