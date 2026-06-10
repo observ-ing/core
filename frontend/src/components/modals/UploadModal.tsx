@@ -364,6 +364,28 @@ export function UploadModal() {
       toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
     };
 
+    // Fields shared by create and update; the update path adds `uri` and
+    // `retainedBlobCids` on top. Conditional spreads omit empty/unset values
+    // so we never send blank taxonomy or quantity fields.
+    const commonPayload = {
+      ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
+      ...(trimmedSpecies && kingdom ? { kingdom } : {}),
+      ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
+      ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
+      latitude: parseFloat(lat),
+      longitude: parseFloat(lng),
+      coordinateUncertaintyInMeters: uncertaintyMeters,
+      ...(organismQuantity.trim()
+        ? {
+            organismQuantity: organismQuantity.trim(),
+            ...(organismQuantityType ? { organismQuantityType } : {}),
+          }
+        : {}),
+      license,
+      eventDate: new Date(observationDate).toISOString(),
+      ...(imageData.length > 0 ? { images: imageData } : {}),
+    };
+
     if (isEditMode && editingObservation) {
       // Extract CIDs from retained existing image URLs (/media/blob/{did}/{cid})
       const retainedBlobCids = existingImages.map((url) => {
@@ -371,50 +393,11 @@ export function UploadModal() {
       });
 
       updateObs.mutate(
-        {
-          uri: editingObservation.uri,
-          ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
-          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
-          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
-          ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-          coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(organismQuantity.trim()
-            ? {
-                organismQuantity: organismQuantity.trim(),
-                ...(organismQuantityType ? { organismQuantityType } : {}),
-              }
-            : {}),
-          license,
-          eventDate: new Date(observationDate).toISOString(),
-          ...(imageData.length > 0 ? { images: imageData } : {}),
-          retainedBlobCids,
-        },
+        { uri: editingObservation.uri, ...commonPayload, retainedBlobCids },
         { onSuccess, onError },
       );
     } else {
-      submitObs.mutate(
-        {
-          ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
-          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
-          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
-          ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-          coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(organismQuantity.trim()
-            ? {
-                organismQuantity: organismQuantity.trim(),
-                ...(organismQuantityType ? { organismQuantityType } : {}),
-              }
-            : {}),
-          license,
-          eventDate: new Date(observationDate).toISOString(),
-          ...(imageData.length > 0 ? { images: imageData } : {}),
-        },
-        { onSuccess, onError },
-      );
+      submitObs.mutate(commonPayload, { onSuccess, onError });
     }
   };
 
