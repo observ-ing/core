@@ -58,6 +58,10 @@ export function TaxonExplorer() {
 
   // Tree state
   const nodesRef = useRef<Map<string, TreeNode>>(new Map());
+  // Kingdom whose classification currently populates nodesRef. The explorer
+  // shows one kingdom at a time, so a change means we've jumped kingdoms (e.g.
+  // via search) and must drop the old nodes.
+  const treeKingdomRef = useRef<string>("");
   const [treeItems, setTreeItems] = useState<TaxonTreeItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>("");
@@ -129,8 +133,16 @@ export function TaxonExplorer() {
   /** Merge a taxon detail's ancestors + children into the tree node map */
   const mergeIntoTree = useCallback(
     (detail: TaxonDetail) => {
-      const nodes = nodesRef.current;
       const k = detail.kingdom || lookupKingdom || "";
+      // Jumped to a different kingdom — drop the previous kingdom's nodes so a
+      // stale root can't win in rebuildTreeFromRoot (which picks the first root
+      // it finds). Within a kingdom we keep nodes so the tree stays expanded
+      // across navigation.
+      if (k && treeKingdomRef.current && treeKingdomRef.current !== k) {
+        nodesRef.current = new Map();
+      }
+      if (k) treeKingdomRef.current = k;
+      const nodes = nodesRef.current;
       const ancestors = detail.ancestors ?? [];
 
       // Add ancestor nodes (linked parent → child along the path)
