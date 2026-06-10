@@ -59,6 +59,66 @@ function toDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+interface ImageThumbnailProps {
+  src: string;
+  alt: string;
+  onEnlarge: () => void;
+  onRemove: () => void;
+}
+
+// An 80x80 photo tile with a zoom-on-click image and a corner remove button.
+// Shared by the existing-images and newly-added-images rows in the form.
+function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        width: 80,
+        height: 80,
+        borderRadius: 1,
+        overflow: "hidden",
+        border: 1,
+        borderColor: "divider",
+      }}
+    >
+      <ButtonBase
+        onClick={onEnlarge}
+        aria-label="Enlarge photo"
+        sx={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          cursor: "zoom-in",
+        }}
+      >
+        <Box
+          component="img"
+          src={src}
+          alt={alt}
+          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      </ButtonBase>
+      <IconButton
+        size="small"
+        onClick={onRemove}
+        aria-label="Remove image"
+        sx={{
+          position: "absolute",
+          top: 2,
+          right: 2,
+          bgcolor: "rgba(0, 0, 0, 0.7)",
+          color: "white",
+          width: 20,
+          height: 20,
+          "&:hover": { bgcolor: "error.main" },
+        }}
+      >
+        <CloseIcon sx={{ fontSize: 14 }} />
+      </IconButton>
+    </Box>
+  );
+}
+
 // Darwin Core dwc:organismQuantityType values the backend lexicon recognizes.
 // "individuals" is the default for a plain count; the observation view renders
 // the chosen type next to the number (e.g. "12 (individuals)").
@@ -472,102 +532,22 @@ export function UploadModal() {
           {(existingImages.length > 0 || images.length > 0) && (
             <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
               {existingImages.map((url, index) => (
-                <Box
+                <ImageThumbnail
                   key={`existing-${index}`}
-                  sx={{
-                    position: "relative",
-                    width: 80,
-                    height: 80,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <ButtonBase
-                    onClick={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
-                    aria-label="Enlarge photo"
-                    sx={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      cursor: "zoom-in",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={url}
-                      alt={`Existing ${index + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  </ButtonBase>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveExistingImage(index)}
-                    aria-label="Remove image"
-                    sx={{
-                      position: "absolute",
-                      top: 2,
-                      right: 2,
-                      bgcolor: "rgba(0, 0, 0, 0.7)",
-                      color: "white",
-                      width: 20,
-                      height: 20,
-                      "&:hover": { bgcolor: "error.main" },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
+                  src={url}
+                  alt={`Existing ${index + 1}`}
+                  onEnlarge={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
+                  onRemove={() => handleRemoveExistingImage(index)}
+                />
               ))}
               {images.map((img, index) => (
-                <Box
+                <ImageThumbnail
                   key={`new-${index}`}
-                  sx={{
-                    position: "relative",
-                    width: 80,
-                    height: 80,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <ButtonBase
-                    onClick={() => setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })}
-                    aria-label="Enlarge photo"
-                    sx={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      cursor: "zoom-in",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  </ButtonBase>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveImage(index)}
-                    aria-label="Remove image"
-                    sx={{
-                      position: "absolute",
-                      top: 2,
-                      right: 2,
-                      bgcolor: "rgba(0, 0, 0, 0.7)",
-                      color: "white",
-                      width: 20,
-                      height: 20,
-                      "&:hover": { bgcolor: "error.main" },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
+                  src={img.preview}
+                  alt={`Preview ${index + 1}`}
+                  onEnlarge={() => setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })}
+                  onRemove={() => handleRemoveImage(index)}
+                />
               ))}
             </Stack>
           )}
