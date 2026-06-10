@@ -226,7 +226,8 @@ export async function validateTaxon(
   return response.json();
 }
 
-export async function submitObservation(data: {
+/** Fields accepted when creating or updating an occurrence record. */
+export interface ObservationInput {
   scientificName?: string;
   latitude: number;
   longitude: number;
@@ -246,7 +247,11 @@ export async function submitObservation(data: {
   order?: string;
   family?: string;
   genus?: string;
-}): Promise<{ uri: string; cid: string }> {
+}
+
+export async function submitObservation(
+  data: ObservationInput,
+): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/occurrences`, "Failed to submit", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -255,29 +260,9 @@ export async function submitObservation(data: {
   });
 }
 
-export async function updateObservation(data: {
-  uri: string;
-  scientificName?: string;
-  latitude: number;
-  longitude: number;
-  coordinateUncertaintyInMeters?: number;
-  organismQuantity?: string;
-  organismQuantityType?: string;
-  license?: string;
-  eventDate: string;
-  images?: Array<{ data: string; mimeType: string }>;
-  retainedBlobCids?: string[];
-  // Taxonomy fields
-  taxonId?: string;
-  taxonRank?: string;
-  vernacularName?: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
-}): Promise<{ uri: string; cid: string }> {
+export async function updateObservation(
+  data: ObservationInput & { uri: string; retainedBlobCids?: string[] },
+): Promise<{ uri: string; cid: string }> {
   return fetchApi(`${API_BASE}/api/occurrences`, "Failed to update", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
