@@ -4,7 +4,6 @@ import {
   Box,
   Typography,
   Button,
-  CircularProgress,
   Stack,
   IconButton,
   Chip,
@@ -20,6 +19,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
+import { LoadMoreButton } from "../common/LoadMoreButton";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
@@ -371,14 +371,7 @@ export function TaxonDetailPanel({
             <FeedItem key={obs.uri} observation={obs} />
           ))}
 
-          {hasMore && (
-            <Box sx={{ p: 2, textAlign: "center" }}>
-              <Button variant="text" onClick={onLoadMore} disabled={loadingMore}>
-                {loadingMore ? <CircularProgress size={20} sx={{ mr: 1 }} /> : null}
-                Load more
-              </Button>
-            </Box>
-          )}
+          {hasMore && <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />}
         </Box>
       )}
     </Box>
