@@ -57,60 +57,63 @@ impl From<GbifClientError<()>> for GbifError {
     }
 }
 
-/// IUCN Red List conservation status categories.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IucnCategory {
-    /// Extinct
-    Ex,
-    /// Extinct in the Wild
-    Ew,
-    /// Critically Endangered
-    Cr,
-    /// Endangered
-    En,
-    /// Vulnerable
-    Vu,
-    /// Near Threatened
-    Nt,
-    /// Least Concern
-    Lc,
-    /// Data Deficient
-    Dd,
-    /// Not Evaluated
-    Ne,
-}
-
-impl std::str::FromStr for IucnCategory {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "EX" => Ok(Self::Ex),
-            "EW" => Ok(Self::Ew),
-            "CR" => Ok(Self::Cr),
-            "EN" => Ok(Self::En),
-            "VU" => Ok(Self::Vu),
-            "NT" => Ok(Self::Nt),
-            "LC" => Ok(Self::Lc),
-            "DD" => Ok(Self::Dd),
-            "NE" => Ok(Self::Ne),
-            _ => Err(()),
+/// Defines [`IucnCategory`] and its IUCN Red List code mapping from a single
+/// source of truth, so the variant list, `FromStr` parser, and `Display`
+/// formatter can never drift out of sync.
+macro_rules! iucn_categories {
+    ($( $(#[doc = $doc:literal])* $variant:ident => $code:literal ),+ $(,)?) => {
+        /// IUCN Red List conservation status categories.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum IucnCategory {
+            $( $(#[doc = $doc])* $variant, )+
         }
-    }
+
+        impl IucnCategory {
+            /// This category's IUCN Red List code (e.g. `"EX"`).
+            pub fn as_code(self) -> &'static str {
+                match self {
+                    $( Self::$variant => $code, )+
+                }
+            }
+        }
+
+        impl std::str::FromStr for IucnCategory {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    $( $code => Ok(Self::$variant), )+
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl std::fmt::Display for IucnCategory {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_code())
+            }
+        }
+    };
 }
 
-fn iucn_to_string(c: IucnCategory) -> String {
-    match c {
-        IucnCategory::Ex => "EX",
-        IucnCategory::Ew => "EW",
-        IucnCategory::Cr => "CR",
-        IucnCategory::En => "EN",
-        IucnCategory::Vu => "VU",
-        IucnCategory::Nt => "NT",
-        IucnCategory::Lc => "LC",
-        IucnCategory::Dd => "DD",
-        IucnCategory::Ne => "NE",
-    }
-    .to_string()
+iucn_categories! {
+    /// Extinct
+    Ex => "EX",
+    /// Extinct in the Wild
+    Ew => "EW",
+    /// Critically Endangered
+    Cr => "CR",
+    /// Endangered
+    En => "EN",
+    /// Vulnerable
+    Vu => "VU",
+    /// Near Threatened
+    Nt => "NT",
+    /// Least Concern
+    Lc => "LC",
+    /// Data Deficient
+    Dd => "DD",
+    /// Not Evaluated
+    Ne => "NE",
 }
 
 /// Walk a v2 match's additional_status entries, find one tagged with the
@@ -701,7 +704,7 @@ impl GbifClient {
         let gbif_match = self.match_name_raw(name, None).await.ok()??;
         let category = extract_iucn_status(&gbif_match)?;
         Some(ConservationStatus {
-            category: iucn_to_string(category),
+            category: category.as_code().to_owned(),
             source: "IUCN".to_string(),
         })
     }
@@ -871,7 +874,7 @@ impl GbifClient {
                     .as_deref()
                     .and_then(|code| code.parse::<IucnCategory>().ok())
                     .map(|category| ConservationStatus {
-                        category: iucn_to_string(category),
+                        category: category.as_code().to_owned(),
                         source: "IUCN".to_string(),
                     })
             } else {
