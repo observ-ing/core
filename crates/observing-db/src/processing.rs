@@ -10,7 +10,10 @@ use crate::types::{
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
-use observing_lexicons::ing_observ::temp::{comment::Comment, interaction::Interaction};
+use observing_lexicons::ing_observ::temp::{
+    comment::Comment,
+    interaction::{Interaction, InteractionSubject},
+};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -302,6 +305,31 @@ pub fn comment_from_json(
     })
 }
 
+/// The occurrence/taxon fields extracted from one side of an interaction.
+/// Both `subject_a` and `subject_b` flatten into the same four columns, so
+/// the extraction lives in one place to keep the two sides from drifting.
+struct SubjectFields {
+    occurrence_uri: Option<String>,
+    occurrence_cid: Option<String>,
+    taxon_name: Option<String>,
+    kingdom: Option<String>,
+}
+
+fn extract_subject_fields(subject: &InteractionSubject) -> SubjectFields {
+    SubjectFields {
+        occurrence_uri: subject.occurrence.as_ref().map(|o| o.uri.to_string()),
+        occurrence_cid: subject.occurrence.as_ref().map(|o| o.cid.to_string()),
+        taxon_name: subject
+            .taxon
+            .as_ref()
+            .map(|t| t.scientific_name.to_string()),
+        kingdom: subject
+            .taxon
+            .as_ref()
+            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
+    }
+}
+
 /// Convert an interaction record JSON to database params.
 pub fn interaction_from_json(
     record_json: &Value,
@@ -316,50 +344,21 @@ pub fn interaction_from_json(
 
     let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(fallback_time);
 
+    let subject_a = extract_subject_fields(&record.subject_a);
+    let subject_b = extract_subject_fields(&record.subject_b);
+
     Ok(UpsertInteractionParams {
         uri,
         cid,
         did,
-        subject_a_occurrence_uri: record
-            .subject_a
-            .occurrence
-            .as_ref()
-            .map(|o| o.uri.to_string()),
-        subject_a_occurrence_cid: record
-            .subject_a
-            .occurrence
-            .as_ref()
-            .map(|o| o.cid.to_string()),
-        subject_a_taxon_name: record
-            .subject_a
-            .taxon
-            .as_ref()
-            .map(|t| t.scientific_name.to_string()),
-        subject_a_kingdom: record
-            .subject_a
-            .taxon
-            .as_ref()
-            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
-        subject_b_occurrence_uri: record
-            .subject_b
-            .occurrence
-            .as_ref()
-            .map(|o| o.uri.to_string()),
-        subject_b_occurrence_cid: record
-            .subject_b
-            .occurrence
-            .as_ref()
-            .map(|o| o.cid.to_string()),
-        subject_b_taxon_name: record
-            .subject_b
-            .taxon
-            .as_ref()
-            .map(|t| t.scientific_name.to_string()),
-        subject_b_kingdom: record
-            .subject_b
-            .taxon
-            .as_ref()
-            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
+        subject_a_occurrence_uri: subject_a.occurrence_uri,
+        subject_a_occurrence_cid: subject_a.occurrence_cid,
+        subject_a_taxon_name: subject_a.taxon_name,
+        subject_a_kingdom: subject_a.kingdom,
+        subject_b_occurrence_uri: subject_b.occurrence_uri,
+        subject_b_occurrence_cid: subject_b.occurrence_cid,
+        subject_b_taxon_name: subject_b.taxon_name,
+        subject_b_kingdom: subject_b.kingdom,
         interaction_type: record.interaction_type.as_ref().to_string(),
         direction: record.direction.to_string(),
         comment: record.comment.map(|s| s.to_string()),
