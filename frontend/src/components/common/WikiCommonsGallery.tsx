@@ -141,11 +141,12 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
         {images.map((img, idx) => (
           <ImageListItem key={idx}>
             <MuiLink href={img.pageUrl} target="_blank" rel="noopener noreferrer">
-              <img
+              <Box
+                component="img"
                 src={img.thumbUrl}
                 alt={`Wikimedia Commons image ${idx + 1}`}
                 loading="lazy"
-                style={{ borderRadius: 4, display: "block", width: "100%" }}
+                sx={{ borderRadius: 0.5, display: "block", width: "100%" }}
                 onError={(e) => {
                   if (e.target instanceof HTMLImageElement) {
                     e.target.style.display = "none";
