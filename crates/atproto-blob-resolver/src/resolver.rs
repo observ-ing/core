@@ -1,7 +1,6 @@
 //! DID resolution and blob fetching from AT Protocol PDS servers
 
 use crate::error::{BlobResolverError, Result};
-use crate::types::PlcDirectoryResponse;
 use at_uri_parser::AtUri;
 use atproto_identity::{Did, DidMethod};
 use reqwest::Client;
@@ -27,45 +26,24 @@ impl BlobResolver {
         Self { client }
     }
 
-    /// Resolve a DID to its PDS URL
+    /// Resolve a DID to its PDS URL.
+    ///
+    /// `did:plc` resolution (plc.directory lookup + `#atproto_pds` extraction) is
+    /// delegated to [`atproto_identity::resolve_pds_endpoint`] — the same
+    /// implementation `IdentityResolver` uses — so the logic lives in one place.
+    /// `did:web` keeps the host-derived shortcut below.
     pub async fn resolve_pds_url(&self, did: &Did) -> Result<String> {
         match did.method() {
-            DidMethod::Plc(_) => self.resolve_plc_did(did).await,
+            DidMethod::Plc(_) => atproto_identity::resolve_pds_endpoint(&self.client, did)
+                .await
+                .ok_or_else(|| {
+                    BlobResolverError::DidResolution(format!(
+                        "could not resolve PDS endpoint for {}",
+                        did.as_str()
+                    ))
+                }),
             DidMethod::Web(host) => self.resolve_web_did(did, host),
         }
-    }
-
-    /// Resolve a did:plc: DID via plc.directory
-    async fn resolve_plc_did(&self, did: &Did) -> Result<String> {
-        let url = format!("https://plc.directory/{}", did.as_str());
-        debug!(did = %did, url = %url, "Resolving PLC DID");
-
-        let response = self.client.get(&url).send().await?;
-
-        if !response.status().is_success() {
-            return Err(BlobResolverError::DidResolution(format!(
-                "PLC directory returned status {}",
-                response.status()
-            )));
-        }
-
-        let doc: PlcDirectoryResponse = response.json().await?;
-
-        // Find the #atproto_pds service
-        let pds_url = doc
-            .service
-            .and_then(|services| {
-                services
-                    .into_iter()
-                    .find(|s| s.id == "#atproto_pds")
-                    .map(|s| s.service_endpoint)
-            })
-            .ok_or_else(|| {
-                BlobResolverError::DidResolution("No PDS service found in DID document".to_string())
-            })?;
-
-        debug!(did = %did, pds_url = %pds_url, "Resolved PDS URL");
-        Ok(pds_url)
     }
 
     /// Resolve a did:web: DID by constructing URL from the host portion.

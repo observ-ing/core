@@ -9,5 +9,5 @@ mod resolver;
 mod types;
 
 pub use did::{Did, DidMethod, DidParseError};
-pub use resolver::IdentityResolver;
+pub use resolver::{resolve_pds_endpoint, IdentityResolver};
 pub use types::{Profile, ResolveResult};
