@@ -373,6 +373,7 @@ export function TaxonExplorer() {
     onExpandedItemsChange: setExpandedItems,
     onSelectedItemsChange: handleTreeSelect,
     onItemExpansionToggle: handleTreeExpansionToggle,
+    onSearchNavigate: () => setMobileTreeOpen(false),
   };
 
   // Only show the skeleton on the very first load. On subsequent navigations

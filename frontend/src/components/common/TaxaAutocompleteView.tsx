@@ -6,7 +6,7 @@ import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
 import { nameToSlug } from "../../lib/taxonSlug";
 
-function taxonUrlFor(option: TaxaResult): string | null {
+export function taxonUrlFor(option: TaxaResult): string | null {
   if (option.rank?.toLowerCase() === "kingdom") {
     return `/taxon/${nameToSlug(option.scientificName)}`;
   }

@@ -2,6 +2,7 @@ import { Box, CircularProgress, Typography } from "@mui/material";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
+import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 
 interface TaxonTreePanelProps {
@@ -14,6 +15,8 @@ interface TaxonTreePanelProps {
   onExpandedItemsChange: (ids: string[]) => void;
   onSelectedItemsChange: (id: string) => void;
   onItemExpansionToggle: (id: string, isExpanded: boolean) => void;
+  /** Called after the search box navigates (e.g. to close the mobile drawer). */
+  onSearchNavigate?: (() => void) | undefined;
 }
 
 function renderTreeItems(
@@ -92,6 +95,7 @@ export function TaxonTreePanel({
   onExpandedItemsChange,
   onSelectedItemsChange,
   onItemExpansionToggle,
+  onSearchNavigate,
 }: TaxonTreePanelProps) {
   return (
     <Box
@@ -99,33 +103,42 @@ export function TaxonTreePanel({
         p: 1,
         height: "100%",
         overflow: "auto",
-        pointerEvents: disabled ? "none" : "auto",
-        opacity: disabled ? 0.5 : 1,
         transition: "opacity 0.15s",
       }}
     >
-      <Typography
-        variant="subtitle2"
+      <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
+        <TaxonSearchBox onNavigate={onSearchNavigate} />
+      </Box>
+      <Box
         sx={{
-          color: "text.secondary",
-          px: 1,
-          py: 1,
+          pointerEvents: disabled ? "none" : "auto",
+          opacity: disabled ? 0.5 : 1,
+          transition: "opacity 0.15s",
         }}
       >
-        Classification
-      </Typography>
-      <SimpleTreeView
-        expansionTrigger="iconContainer"
-        expandedItems={expandedItems}
-        selectedItems={selectedItems}
-        onExpandedItemsChange={(_e, ids) => onExpandedItemsChange(ids)}
-        onSelectedItemsChange={(_e, id) => {
-          if (id) onSelectedItemsChange(id);
-        }}
-        onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
-      >
-        {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
-      </SimpleTreeView>
+        <Typography
+          variant="subtitle2"
+          sx={{
+            color: "text.secondary",
+            px: 1,
+            py: 1,
+          }}
+        >
+          Classification
+        </Typography>
+        <SimpleTreeView
+          expansionTrigger="iconContainer"
+          expandedItems={expandedItems}
+          selectedItems={selectedItems}
+          onExpandedItemsChange={(_e, ids) => onExpandedItemsChange(ids)}
+          onSelectedItemsChange={(_e, id) => {
+            if (id) onSelectedItemsChange(id);
+          }}
+          onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
+        >
+          {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
+        </SimpleTreeView>
+      </Box>
     </Box>
   );
 }
