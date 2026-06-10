@@ -104,3 +104,28 @@ export function getDisplayName(
 export function getErrorMessage(error: unknown, fallback = "Unknown error"): string {
   return error instanceof Error ? error.message : fallback;
 }
+
+/**
+ * Read a file/blob and return just the base64 payload (the part after the
+ * `data:...;base64,` prefix of a data URL). Rejects if the result isn't a
+ * usable data URL.
+ */
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Expected string result"));
+        return;
+      }
+      const base64 = reader.result.split(",")[1];
+      if (!base64) {
+        reject(new Error("Invalid data URL format"));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}

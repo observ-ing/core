@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { identifySpecies, type SpeciesSuggestion } from "../services/api";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
+import { fileToBase64 } from "../lib/utils";
 
 interface UseVisualIdOptions {
   imageUrl: string;
@@ -33,11 +34,7 @@ export function useVisualId({
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
-      const base64 = await new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(String(reader.result ?? "").split(",")[1] ?? "");
-        reader.readAsDataURL(blob);
-      });
+      const base64 = await fileToBase64(blob);
 
       const params: Parameters<typeof identifySpecies>[0] = {
         image: base64,
