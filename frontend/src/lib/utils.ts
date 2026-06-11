@@ -5,6 +5,14 @@
 /** Maximum number of results shown in autocomplete dropdowns. */
 export const MAX_AUTOCOMPLETE_RESULTS = 5;
 
+/** Decimal places used when formatting latitude/longitude for display and inputs. */
+export const COORDINATE_PRECISION = 6;
+
+/** Format a latitude or longitude to the standard coordinate precision. */
+export function formatCoordinate(value: number): string {
+  return value.toFixed(COORDINATE_PRECISION);
+}
+
 /**
  * Format a Date as a compact relative time string (e.g., "now", "5m", "2h", "3d")
  * For dates older than a week, returns a formatted date string.
