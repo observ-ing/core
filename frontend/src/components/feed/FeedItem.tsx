@@ -185,9 +185,10 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                 <span>
                   <IconButton
                     size="small"
-                    onClick={() =>
-                      like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked });
+                    }}
                     disabled={!currentUser}
                     aria-label={liked ? "Unlike" : "Like"}
                     sx={{
