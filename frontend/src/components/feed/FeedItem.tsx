@@ -8,7 +8,6 @@ import {
   MenuItem,
   Card,
   CardContent,
-  CardActions,
   CardActionArea,
   Tooltip,
 } from "@mui/material";
@@ -157,53 +156,59 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             sx={{ height: FEED_IMAGE_MAX_HEIGHT }}
           />
         )}
+      </CardActionArea>
 
-        <CardContent>
-          <Box sx={{ fontSize: "1.1rem" }}>
+      {/* Species name and like button share a row. Kept outside CardActionArea
+          so the like button stays a standalone control and doesn't fold into
+          the card's accessible name or trigger card navigation. */}
+      <CardContent>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+          }}
+        >
+          <Box sx={{ fontSize: "1.1rem", minWidth: 0 }}>
             {species ? (
-              <TaxonLink
-                name={species}
-                kingdom={taxonomy?.kingdom}
-                rank={taxonomy?.rank}
-                onClick={(e) => e.stopPropagation()}
-              />
+              <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank={taxonomy?.rank} />
             ) : (
               <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
                 Unidentified
               </Typography>
             )}
           </Box>
-        </CardContent>
-      </CardActionArea>
-      <CardActions disableSpacing sx={{ pt: 0 }}>
-        <Tooltip title={!currentUser ? "Log in to like" : ""}>
-          <span>
-            <IconButton
-              size="small"
-              onClick={() =>
-                like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-              }
-              disabled={!currentUser}
-              aria-label={liked ? "Unlike" : "Like"}
-              sx={{
-                color: liked ? "error.main" : "text.disabled",
-              }}
-            >
-              {liked ? <FavoriteIcon fontSize="small" /> : <FavoriteBorderIcon fontSize="small" />}
-            </IconButton>
-          </span>
-        </Tooltip>
-        {likeCount > 0 && (
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            {likeCount}
-          </Typography>
-        )}
-      </CardActions>
+          <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
+            <Tooltip title={!currentUser ? "Log in to like" : ""}>
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+                  }
+                  disabled={!currentUser}
+                  aria-label={liked ? "Unlike" : "Like"}
+                  sx={{
+                    color: liked ? "error.main" : "text.disabled",
+                  }}
+                >
+                  {liked ? (
+                    <FavoriteIcon fontSize="small" />
+                  ) : (
+                    <FavoriteBorderIcon fontSize="small" />
+                  )}
+                </IconButton>
+              </span>
+            </Tooltip>
+            {likeCount > 0 && (
+              <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                {likeCount}
+              </Typography>
+            )}
+          </Box>
+        </Box>
+      </CardContent>
     </Card>
   );
 });
