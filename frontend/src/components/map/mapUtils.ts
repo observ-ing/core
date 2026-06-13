@@ -26,6 +26,8 @@ export function createMap(
     style: basemapStyleUrl(basemap, mode),
   });
 
+  suppressMissingImages(map);
+
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
   let geolocateControl: maplibregl.GeolocateControl | undefined;
@@ -37,6 +39,23 @@ export function createMap(
   }
 
   return { map, geolocateControl };
+}
+
+/**
+ * Silence MapLibre's `styleimagemissing` warnings. The MapTiler outdoor style
+ * references sprite icons for many OSM POI subclasses (artwork, gallery,
+ * arts_centre, tenrikyo, ...) that aren't in our sprite sheet; without a handler
+ * MapLibre logs a warning per missing id. We register a tiny transparent
+ * placeholder for any missing id so the warning stops. The handler persists
+ * across `setStyle` (basemap/theme swaps), so it only needs to be wired once.
+ */
+function suppressMissingImages(map: maplibregl.Map): void {
+  map.on("styleimagemissing", (e) => {
+    const id = e.id;
+    // Guard against double-add: the event can fire repeatedly for the same id.
+    if (map.hasImage(id)) return;
+    map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
+  });
 }
 
 /**

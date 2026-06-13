@@ -82,10 +82,14 @@ export function useTaxonOccurrences(kingdomOrId: string, name?: string) {
 // ── Single reads ─────────────────────────────────────────────────────────────
 
 export function useObservation(uri: string | undefined) {
+  // Once a delete for this observation starts, stop fetching it: the mutation
+  // removes the detail cache, and without this the still-mounted detail page
+  // would refetch the now-deleted row (a 404) before navigating away.
+  const isDeleting = useAppSelector((s) => s.ui.deletingObservationUri === uri);
   return useQuery({
     queryKey: qk.observation(uri ?? ""),
     queryFn: () => fetchObservation(uri ?? ""),
-    enabled: !!uri,
+    enabled: !!uri && !isDeleting,
   });
 }
 
