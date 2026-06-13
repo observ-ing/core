@@ -17,6 +17,7 @@ const TREE_WIDTH = 300;
 interface TreeNode {
   id: string;
   name: string;
+  commonName?: string | undefined;
   rank: string;
   kingdom: string;
   childrenLoaded: boolean;
@@ -30,6 +31,7 @@ function nodeId(kingdom: string, name: string): string {
 
 export interface TaxonTreeItem extends TreeViewDefaultItemModelProperties {
   rank: string;
+  commonName?: string | undefined;
   children?: TaxonTreeItem[];
 }
 
@@ -45,6 +47,7 @@ function buildItems(id: string, nodes: Map<string, TreeNode>): TaxonTreeItem[] {
     id: node.id,
     label: node.name,
     rank: node.rank,
+    commonName: node.commonName,
   };
   if (children.length > 0) {
     item.children = children;
@@ -170,6 +173,7 @@ export function TaxonExplorer() {
       const existing = nodes.get(currentId);
       if (existing) {
         existing.childrenLoaded = true;
+        if (!existing.commonName) existing.commonName = detail.commonName;
         // Merge children (union)
         for (const cid of currentChildren) {
           if (!existing.childIds.includes(cid)) {
@@ -180,6 +184,7 @@ export function TaxonExplorer() {
         nodes.set(currentId, {
           id: currentId,
           name: detail.scientificName,
+          commonName: detail.commonName,
           rank: detail.rank,
           kingdom: k,
           childrenLoaded: true,
@@ -194,6 +199,7 @@ export function TaxonExplorer() {
           nodes.set(childId, {
             id: childId,
             name: child.scientificName,
+            commonName: child.commonName,
             rank: child.rank,
             kingdom: k,
             childrenLoaded: false,
@@ -241,6 +247,7 @@ export function TaxonExplorer() {
         nodes.set(childId, {
           id: childId,
           name: child.scientificName,
+          commonName: child.commonName,
           rank: child.rank,
           kingdom: parent.kingdom,
           childrenLoaded: false,
