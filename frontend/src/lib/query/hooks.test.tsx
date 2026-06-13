@@ -14,15 +14,18 @@ import type * as ApiModule from "../../services/api";
 // every other export intact (hooks.ts pulls many names from this module).
 const fetchHomeFeed = vi.fn(async () => ({ occurrences: [], cursor: undefined }));
 const fetchExploreFeed = vi.fn(async () => ({ occurrences: [], cursor: undefined }));
+const fetchObservation = vi.fn(async () => null);
 vi.mock("../../services/api", async (importOriginal) => ({
   ...(await importOriginal<typeof ApiModule>()),
   fetchHomeFeed: (...args: unknown[]) => fetchHomeFeed(...args),
   fetchExploreFeed: (...args: unknown[]) => fetchExploreFeed(...args),
+  fetchObservation: (...args: unknown[]) => fetchObservation(...args),
 }));
 
 // Imported after the mock is registered so the hook closes over the stubs.
-import { useFeed } from "./hooks";
+import { useFeed, useObservation } from "./hooks";
 import { qk } from "./keys";
+import uiReducer, { startDeletingObservation } from "../../store/uiSlice";
 
 const TEST_USER: User = { did: "did:plc:tester", handle: "tester.example" };
 
@@ -124,5 +127,60 @@ describe("useFeed", () => {
     // The shared "feed" tag is preserved so the like-patcher still matches.
     expect(signedOut[0]).toBe("feed");
     expect(signedIn[0]).toBe("feed");
+  });
+});
+
+// The detail query must go quiet the instant a delete for that observation
+// starts. Otherwise the delete mutation's `removeQueries` runs while this
+// query still has an active observer, React Query refetches to repopulate it,
+// and the request hits the now-deleted row -> a 404 in the gap before the
+// detail page navigates away. `useObservation` gates `enabled` on
+// `ui.deletingObservationUri`.
+describe("useObservation", () => {
+  const URI = "at://did:plc:tester/bio.lexicons.temp.v0-1.occurrence/abc";
+
+  function makeUiStore() {
+    return configureStore({ reducer: { ui: uiReducer } });
+  }
+
+  function uiWrapper(store: ReturnType<typeof makeUiStore>, client: QueryClient) {
+    return ({ children }: { children: ReactNode }) => (
+      <Provider store={store}>
+        <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      </Provider>
+    );
+  }
+
+  beforeEach(() => {
+    fetchObservation.mockClear();
+  });
+
+  it("fetches the observation when no delete is in progress", async () => {
+    const store = makeUiStore();
+    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+
+    await waitFor(() => expect(fetchObservation).toHaveBeenCalledTimes(1));
+    expect(fetchObservation).toHaveBeenCalledWith(URI);
+  });
+
+  it("does not fetch while that observation is being deleted", async () => {
+    const store = makeUiStore();
+    store.dispatch(startDeletingObservation(URI));
+    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+
+    // Give React Query a turn; the query must stay disabled, so no refetch of
+    // the row the delete is about to remove.
+    await Promise.resolve();
+    expect(fetchObservation).not.toHaveBeenCalled();
+  });
+
+  it("still fetches when a different observation is being deleted", async () => {
+    const store = makeUiStore();
+    store.dispatch(
+      startDeletingObservation("at://did:plc:other/bio.lexicons.temp.v0-1.occurrence/zzz"),
+    );
+    renderHook(() => useObservation(URI), { wrapper: uiWrapper(store, makeClient()) });
+
+    await waitFor(() => expect(fetchObservation).toHaveBeenCalledTimes(1));
   });
 });

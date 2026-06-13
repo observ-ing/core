@@ -49,13 +49,25 @@ export function createMap(
  * placeholder for any missing id so the warning stops. The handler persists
  * across `setStyle` (basemap/theme swaps), so it only needs to be wired once.
  */
-function suppressMissingImages(map: maplibregl.Map): void {
+export function suppressMissingImages(map: StyleImageMissingMap): void {
   map.on("styleimagemissing", (e) => {
     const id = e.id;
     // Guard against double-add: the event can fire repeatedly for the same id.
     if (map.hasImage(id)) return;
     map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
   });
+}
+
+/**
+ * The minimal slice of a maplibre map that {@link suppressMissingImages}
+ * touches. A real `maplibregl.Map` satisfies it; declaring it as a structural
+ * type lets the handler be unit-tested with a lightweight fake instead of a
+ * real WebGL map.
+ */
+export interface StyleImageMissingMap {
+  on(type: "styleimagemissing", listener: (e: { id: string }) => void): unknown;
+  hasImage(id: string): boolean | undefined;
+  addImage(id: string, image: { width: number; height: number; data: Uint8Array }): void;
 }
 
 /**
