@@ -31,6 +31,11 @@ function renderTreeItems(
       <TreeItem
         key={item.id}
         itemId={item.id}
+        // The expand/collapse arrow lives inside the selectable content, so a
+        // click on it bubbles up and selects (navigates to) the item. Stop the
+        // arrow click from reaching the content handler; MUI runs this before
+        // its own expansion logic, so collapsing/expanding still works.
+        slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.25 }}>
             <Box
