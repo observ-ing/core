@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl";
+import type { FeatureCollection, Polygon } from "geojson";
 import { basemapStyleUrl, DEFAULT_BASEMAP, type BasemapId, type BasemapMode } from "./mapStyle";
 
 /** Approximate meters per degree of latitude at the equator */
@@ -107,7 +108,7 @@ export function createCircleGeoJSON(
   lng: number,
   lat: number,
   radiusMeters: number,
-): GeoJSON.FeatureCollection {
+): FeatureCollection<Polygon> {
   const points = 64;
   const coords: [number, number][] = [];
 
