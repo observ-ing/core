@@ -80,6 +80,7 @@
     "vite-plugin-pwa": {
       "vite": "$vite"
     },
+    "esbuild": "^0.28.1",
     "serialize-javascript": "^7.0.5"
   },
   "engines": {
