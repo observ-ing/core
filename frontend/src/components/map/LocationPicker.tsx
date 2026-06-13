@@ -56,6 +56,8 @@ function sliderToValue(slider: number): number {
 const SLIDER_MIN = valueToSlider(1);
 const SLIDER_MAX = valueToSlider(500000);
 const SLIDER_MARKS = [
+  { value: valueToSlider(1), label: "1m" },
+  { value: valueToSlider(10), label: "10m" },
   { value: valueToSlider(100), label: "100m" },
   { value: valueToSlider(1000), label: "1km" },
   { value: valueToSlider(10000), label: "10km" },
