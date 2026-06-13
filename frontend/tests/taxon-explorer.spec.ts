@@ -149,19 +149,23 @@ test.describe("Taxon Explorer - Classification tree", () => {
     const tree = page.getByRole("tree");
     await expect(tree).toBeVisible();
 
-    // Tree items are named "<scientificName> <rank>" (e.g. "Quercus genus").
+    // Tree items are named "<scientificName> <rank>" (e.g. "Quercus genus"),
+    // or "<scientificName> <commonName> <rank>" when a common name is present.
     // Anchoring on the rank suffix makes assertions unambiguous when a name
     // is a prefix of another (e.g. "Quercus" vs "Quercus agrifolia").
-    const treeitem = (name: string, rank: string) =>
-      tree.getByRole("treeitem", { name: `${name} ${rank}`, exact: true });
+    const treeitem = (name: string, rank: string, commonName?: string) =>
+      tree.getByRole("treeitem", {
+        name: commonName ? `${name} ${commonName} ${rank}` : `${name} ${rank}`,
+        exact: true,
+      });
 
     // The full ancestor chain must be present as tree items.
     for (const ancestor of QUERCUS_AGRIFOLIA_ANCESTORS) {
       await expect(treeitem(ancestor.name, ancestor.rank)).toBeVisible();
     }
 
-    // The current taxon itself.
-    await expect(treeitem("Quercus agrifolia", "species")).toBeVisible();
+    // The current taxon itself (its detail fixture carries a common name).
+    await expect(treeitem("Quercus agrifolia", "species", "Coast Live Oak")).toBeVisible();
 
     // Aunts/uncles: at least one sibling must appear at each ancestor level.
     // These names are distinct from anything on the ancestor path, so their

@@ -37,7 +37,7 @@ function renderTreeItems(
         // its own expansion logic, so collapsing/expanding still works.
         slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.25 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.5 }}>
             <Box
               sx={{
                 width: 20,
@@ -58,24 +58,44 @@ function renderTreeItems(
                 />
               )}
             </Box>
-            <Typography
-              variant="body2"
-              component="span"
-              sx={{
-                fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
-                  ? "italic"
-                  : "normal",
-                fontWeight: item.id === selectedId ? 700 : 400,
-              }}
-            >
-              {item.label}
-            </Typography>
+            <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
+              <Typography
+                variant="body2"
+                component="span"
+                noWrap
+                sx={{
+                  fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
+                    ? "italic"
+                    : "normal",
+                  fontWeight: item.id === selectedId ? 700 : 400,
+                }}
+              >
+                {item.label}
+              </Typography>
+              {item.commonName && (
+                <Typography
+                  variant="caption"
+                  component="span"
+                  noWrap
+                  sx={{
+                    color: "text.secondary",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {item.commonName}
+                </Typography>
+              )}
+            </Box>
             <Typography
               variant="caption"
               component="span"
               sx={{
-                color: "text.disabled",
+                ml: 1,
                 flexShrink: 0,
+                color: "text.disabled",
+                fontSize: "0.65rem",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
               }}
             >
               {item.rank}
