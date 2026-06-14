@@ -2,7 +2,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Typography } from "@mui/material";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { useAppDispatch, useAppSelector } from "../../store";
-import { closeDeleteConfirm } from "../../store/uiSlice";
+import {
+  closeDeleteConfirm,
+  startDeletingObservation,
+  clearDeletingObservation,
+} from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
 import { useDeleteObservation } from "../../lib/query/mutations";
 import { getErrorMessage } from "../../lib/utils";
@@ -28,9 +32,15 @@ export function DeleteConfirmDialog() {
   const handleConfirmDelete = () => {
     if (!observation) return;
 
+    // Disable the detail query for this uri up front so the still-mounted detail
+    // page doesn't refetch the row (a 404) once the mutation removes it from the
+    // cache, in the gap before we navigate home.
+    const uri = observation.uri;
+    dispatch(startDeletingObservation(uri));
+
     // The hook waits for the ingester to drop the row, then drops the detail
     // cache and refetches the feeds so the observation disappears everywhere.
-    deleteObs.mutate(observation.uri, {
+    deleteObs.mutate(uri, {
       onSuccess: () => {
         toast.success("Observation deleted successfully");
         dispatch(closeDeleteConfirm());
@@ -39,8 +49,12 @@ export function DeleteConfirmDialog() {
         if (location.pathname.includes("/observation/")) {
           navigate("/");
         }
+        dispatch(clearDeletingObservation());
       },
       onError: (error) => {
+        // Re-enable the query: the row still exists, so the detail page should
+        // recover its data.
+        dispatch(clearDeletingObservation());
         const message = getErrorMessage(error, "Failed to delete observation");
         toast.error(message);
         if (message.includes("Session expired")) {

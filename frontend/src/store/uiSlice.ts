@@ -35,6 +35,10 @@ interface UIState {
   uploadModalOpen: boolean;
   editingObservation: Occurrence | null;
   deleteConfirmObservation: Occurrence | null;
+  // AT URI of an observation whose delete is in progress / just completed. The
+  // detail query is disabled for it so it doesn't refetch the now-removed row
+  // (a 404) in the gap before the detail page navigates away.
+  deletingObservationUri: string | null;
   toasts: Toast[];
   currentLocation: { lat: number; lng: number } | null;
   themeMode: ThemeMode;
@@ -48,6 +52,7 @@ const initialState: UIState = {
   uploadModalOpen: false,
   editingObservation: null,
   deleteConfirmObservation: null,
+  deletingObservationUri: null,
   toasts: [],
   currentLocation: null,
   themeMode: storedTheme,
@@ -81,6 +86,12 @@ const uiSlice = createSlice({
     },
     closeDeleteConfirm: (state) => {
       state.deleteConfirmObservation = null;
+    },
+    startDeletingObservation: (state, action: PayloadAction<string>) => {
+      state.deletingObservationUri = action.payload;
+    },
+    clearDeletingObservation: (state) => {
+      state.deletingObservationUri = null;
     },
     addToast: (state, action: PayloadAction<{ message: string; type: "success" | "error" }>) => {
       state.toasts.push({
@@ -117,6 +128,8 @@ export const {
   closeUploadModal,
   openDeleteConfirm,
   closeDeleteConfirm,
+  startDeletingObservation,
+  clearDeletingObservation,
   addToast,
   removeToast,
   setCurrentLocation,

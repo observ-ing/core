@@ -40,6 +40,23 @@ authTest.describe("Upload Modal - Logged In", () => {
     await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
   });
 
+  // Regression: the create speed-dial must stay closed after an action opens
+  // and then closes the upload modal. The SpeedDial used to re-open when focus
+  // returned to the FAB on modal close (MUI opens the dial on focus).
+  authTest(
+    "create FAB menu stays closed after the modal closes",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page); // opens the dial, picks New Observation, opens modal
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
+
+      // Focus has returned to the FAB; the dial must not have re-opened.
+      await authExpect(page.getByRole("menuitem", { name: "New Observation" })).not.toBeVisible();
+      await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
+    },
+  );
+
   // TC-UPLOAD-003: Authenticated mode banner
   authTest("upload modal shows posting as handle", async ({ authenticatedPage: page }) => {
     await page.goto("/");

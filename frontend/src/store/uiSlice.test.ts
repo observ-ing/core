@@ -8,6 +8,8 @@ import uiReducer, {
   closeUploadModal,
   openDeleteConfirm,
   closeDeleteConfirm,
+  startDeletingObservation,
+  clearDeletingObservation,
   addToast,
   removeToast,
   setCurrentLocation,
@@ -146,6 +148,28 @@ describe("uiSlice", () => {
       store.dispatch(closeDeleteConfirm());
 
       expect(store.getState().ui.deleteConfirmObservation).toBeNull();
+    });
+  });
+
+  describe("deleting observation", () => {
+    it("defaults to no observation being deleted", () => {
+      const store = createTestStore();
+      expect(store.getState().ui.deletingObservationUri).toBeNull();
+    });
+
+    it("records the uri whose delete is in progress", () => {
+      const store = createTestStore();
+      store.dispatch(startDeletingObservation(mockOccurrence.uri));
+
+      expect(store.getState().ui.deletingObservationUri).toBe(mockOccurrence.uri);
+    });
+
+    it("clears the in-progress uri", () => {
+      const store = createTestStore();
+      store.dispatch(startDeletingObservation(mockOccurrence.uri));
+      store.dispatch(clearDeletingObservation());
+
+      expect(store.getState().ui.deletingObservationUri).toBeNull();
     });
   });
 
