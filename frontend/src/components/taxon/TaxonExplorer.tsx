@@ -464,6 +464,7 @@ export function TaxonExplorer() {
         observations={observations}
         hasMore={hasMore}
         loadingMore={loadingMore}
+        loading={loading}
         onLoadMore={loadMoreObservations}
         onBack={handleBack}
         onToggleTree={() => setMobileTreeOpen(true)}
