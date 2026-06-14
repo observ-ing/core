@@ -24,7 +24,7 @@ export const logout = createAsyncThunk("auth/logout", async () => {
   await api.logout();
   // Drop all cached per-user server state so the next viewer on this device
   // can't see the previous one's likes/feeds/notifications/preferences.
-  await clearQueryCache();
+  clearQueryCache();
 });
 
 const authSlice = createSlice({
