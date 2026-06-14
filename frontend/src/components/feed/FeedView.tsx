@@ -65,29 +65,50 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
         <Box sx={{ flexShrink: 0 }}>
           <Container maxWidth="sm" disableGutters>
             <Box sx={{ px: 2, pt: 2 }}>
-              <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 1 }}>
-                <ToggleButtonGroup
-                  size="small"
-                  exclusive
-                  value={viewMode}
-                  onChange={(_, value) => {
-                    if (value) setViewMode(value);
+              {/* On narrow screens the layout toggle shares a line with the
+                  filter panel header to save vertical space; on wider screens
+                  it sits in its own right-aligned row above the panel. */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "row", sm: "column" },
+                  alignItems: { xs: "flex-start", sm: "stretch" },
+                  gap: { xs: 1, sm: 0 },
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    mb: { xs: 0, sm: 1 },
+                    order: { xs: 2, sm: 0 },
                   }}
-                  aria-label="Results layout"
                 >
-                  <ToggleButton value="grid" aria-label="Grid view">
-                    <Tooltip title="Grid">
-                      <GridViewIcon fontSize="small" />
-                    </Tooltip>
-                  </ToggleButton>
-                  <ToggleButton value="table" aria-label="Table view">
-                    <Tooltip title="Table">
-                      <TableRowsIcon fontSize="small" />
-                    </Tooltip>
-                  </ToggleButton>
-                </ToggleButtonGroup>
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={viewMode}
+                    onChange={(_, value) => {
+                      if (value) setViewMode(value);
+                    }}
+                    aria-label="Results layout"
+                  >
+                    <ToggleButton value="grid" aria-label="Grid view">
+                      <Tooltip title="Grid">
+                        <GridViewIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                    <ToggleButton value="table" aria-label="Table view">
+                      <Tooltip title="Table">
+                        <TableRowsIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <Box sx={{ flex: { xs: 1, sm: "unset" }, minWidth: 0, order: { xs: 1, sm: 0 } }}>
+                  <ExploreFilterPanel />
+                </Box>
               </Box>
-              <ExploreFilterPanel />
             </Box>
           </Container>
         </Box>
