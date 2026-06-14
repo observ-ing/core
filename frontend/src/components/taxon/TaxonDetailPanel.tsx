@@ -7,6 +7,7 @@ import {
   Stack,
   IconButton,
   Divider,
+  LinearProgress,
   Link as MuiLink,
   Accordion,
   AccordionSummary,
@@ -27,6 +28,8 @@ interface TaxonDetailPanelProps {
   observations: Occurrence[];
   hasMore: boolean;
   loadingMore: boolean;
+  /** A newly-selected taxon is loading; the still-visible content is stale. */
+  loading?: boolean;
   onLoadMore: () => void;
   onBack: () => void;
   onToggleTree?: () => void;
@@ -38,6 +41,7 @@ export function TaxonDetailPanel({
   observations,
   hasMore,
   loadingMore,
+  loading = false,
   onLoadMore,
   onBack,
   onToggleTree,
@@ -75,35 +79,29 @@ export function TaxonDetailPanel({
           </IconButton>
         )}
       </Box>
-      {/* Main Content */}
-      <Box sx={{ p: 3 }}>
-        <TaxonHeroCard taxon={taxon} heroUrl={heroUrl} />
+      {/* While a newly-selected taxon loads we keep the previous one visible
+          (no empty flash) but signal the swap: a progress bar pinned below the
+          header, plus a dimmed, inert content area — mirroring how the
+          classification tree is disabled during the same load. */}
+      {loading && <LinearProgress sx={{ position: "sticky", top: 0, zIndex: 2 }} />}
+      <Box
+        sx={{
+          opacity: loading ? 0.5 : 1,
+          pointerEvents: loading ? "none" : "auto",
+          transition: "opacity 0.2s",
+        }}
+      >
+        {/* Main Content */}
+        <Box sx={{ p: 3 }}>
+          <TaxonHeroCard taxon={taxon} heroUrl={heroUrl} />
 
-        {/* Media Gallery — lazy-loaded */}
-        <Accordion
-          sx={{ mt: 3 }}
-          onChange={(_e, expanded) => {
-            if (expanded) setGalleryMounted(true);
-          }}
-        >
-          <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-            <Typography
-              variant="subtitle2"
-              sx={{
-                color: "text.secondary",
-              }}
-            >
-              Media
-            </Typography>
-          </AccordionSummary>
-          <AccordionDetails>
-            {galleryMounted ? <WikiCommonsGallery taxonName={taxon.scientificName} /> : null}
-          </AccordionDetails>
-        </Accordion>
-
-        {/* Descriptions */}
-        {taxon.descriptions && taxon.descriptions.length > 0 && (
-          <Accordion defaultExpanded>
+          {/* Media Gallery — lazy-loaded */}
+          <Accordion
+            sx={{ mt: 3 }}
+            onChange={(_e, expanded) => {
+              if (expanded) setGalleryMounted(true);
+            }}
+          >
             <AccordionSummary expandIcon={<ExpandMoreIcon />}>
               <Typography
                 variant="subtitle2"
@@ -111,141 +109,160 @@ export function TaxonDetailPanel({
                   color: "text.secondary",
                 }}
               >
-                Description
+                Media
               </Typography>
             </AccordionSummary>
             <AccordionDetails>
-              {taxon.descriptions.slice(0, 2).map((d, idx) => (
-                <Box key={idx} sx={{ mb: idx < (taxon.descriptions?.length ?? 0) - 1 ? 2 : 0 }}>
-                  <Typography
-                    variant="body2"
-                    component="div"
-                    sx={{
-                      ...(!descExpanded && {
-                        display: "-webkit-box",
-                        WebkitLineClamp: 6,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }),
-                      "& p": { m: 0 },
-                      "& em, & i": { fontStyle: "italic" },
-                    }}
-                    // eslint-disable-next-line react/no-danger -- sanitized with DOMPurify
-                    dangerouslySetInnerHTML={{
-                      __html: DOMPurify.sanitize(d.description, {
-                        ALLOWED_TAGS: ["p", "br", "em", "i", "strong", "b", "a"],
-                        ALLOWED_ATTR: ["href", "target", "rel"],
-                      }),
-                    }}
-                  />
-                  {d.source && (
+              {galleryMounted ? <WikiCommonsGallery taxonName={taxon.scientificName} /> : null}
+            </AccordionDetails>
+          </Accordion>
+
+          {/* Descriptions */}
+          {taxon.descriptions && taxon.descriptions.length > 0 && (
+            <Accordion defaultExpanded>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
+                  Description
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                {taxon.descriptions.slice(0, 2).map((d, idx) => (
+                  <Box key={idx} sx={{ mb: idx < (taxon.descriptions?.length ?? 0) - 1 ? 2 : 0 }}>
                     <Typography
+                      variant="body2"
+                      component="div"
+                      sx={{
+                        ...(!descExpanded && {
+                          display: "-webkit-box",
+                          WebkitLineClamp: 6,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }),
+                        "& p": { m: 0 },
+                        "& em, & i": { fontStyle: "italic" },
+                      }}
+                      // eslint-disable-next-line react/no-danger -- sanitized with DOMPurify
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(d.description, {
+                          ALLOWED_TAGS: ["p", "br", "em", "i", "strong", "b", "a"],
+                          ALLOWED_ATTR: ["href", "target", "rel"],
+                        }),
+                      }}
+                    />
+                    {d.source && (
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                          mt: 0.5,
+                          display: "block",
+                        }}
+                      >
+                        Source: {d.source}
+                      </Typography>
+                    )}
+                  </Box>
+                ))}
+                <Button
+                  size="small"
+                  onClick={() => setDescExpanded((v) => !v)}
+                  sx={{ mt: 1, textTransform: "none" }}
+                >
+                  {descExpanded ? "Show less" : "Read more"}
+                </Button>
+              </AccordionDetails>
+            </Accordion>
+          )}
+
+          {/* References */}
+          {taxon.references && taxon.references.length > 0 && (
+            <Accordion>
+              <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "text.secondary",
+                  }}
+                >
+                  References ({taxon.references.length})
+                </Typography>
+              </AccordionSummary>
+              <AccordionDetails>
+                <Stack spacing={0.5}>
+                  {taxon.references.slice(0, 5).map((r, idx) => (
+                    <Typography
+                      key={idx}
                       variant="caption"
                       sx={{
                         color: "text.secondary",
-                        mt: 0.5,
-                        display: "block",
                       }}
                     >
-                      Source: {d.source}
+                      {r.link || r.doi ? (
+                        <MuiLink
+                          href={r.link || `https://doi.org/${r.doi}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          color="primary"
+                        >
+                          {r.citation}
+                        </MuiLink>
+                      ) : (
+                        r.citation
+                      )}
                     </Typography>
-                  )}
-                </Box>
-              ))}
-              <Button
-                size="small"
-                onClick={() => setDescExpanded((v) => !v)}
-                sx={{ mt: 1, textTransform: "none" }}
-              >
-                {descExpanded ? "Show less" : "Read more"}
-              </Button>
-            </AccordionDetails>
-          </Accordion>
-        )}
-
-        {/* References */}
-        {taxon.references && taxon.references.length > 0 && (
-          <Accordion>
-            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-              <Typography
-                variant="subtitle2"
-                sx={{
-                  color: "text.secondary",
-                }}
-              >
-                References ({taxon.references.length})
-              </Typography>
-            </AccordionSummary>
-            <AccordionDetails>
-              <Stack spacing={0.5}>
-                {taxon.references.slice(0, 5).map((r, idx) => (
-                  <Typography
-                    key={idx}
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    {r.link || r.doi ? (
-                      <MuiLink
-                        href={r.link || `https://doi.org/${r.doi}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        color="primary"
-                      >
-                        {r.citation}
-                      </MuiLink>
-                    ) : (
-                      r.citation
-                    )}
-                  </Typography>
-                ))}
-              </Stack>
-            </AccordionDetails>
-          </Accordion>
-        )}
-      </Box>
-      {/* Observations Section */}
-      <Divider />
-      <Box sx={{ px: 3, py: 2 }}>
-        <Typography
-          variant="subtitle2"
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          Recent Observations
-        </Typography>
-      </Box>
-      {observations.length === 0 ? (
-        <Box sx={{ px: 3, py: 5, textAlign: "center" }}>
+                  ))}
+                </Stack>
+              </AccordionDetails>
+            </Accordion>
+          )}
+        </Box>
+        {/* Observations Section */}
+        <Divider />
+        <Box sx={{ px: 3, py: 2 }}>
           <Typography
+            variant="subtitle2"
             sx={{
               color: "text.secondary",
-              mb: 0.5,
             }}
           >
-            No observations yet
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.disabled",
-            }}
-          >
-            Be the first to observe <em>{taxon.commonName || taxon.scientificName}</em> on
-            Observ.ing!
+            Recent Observations
           </Typography>
         </Box>
-      ) : (
-        <Box>
-          {observations.map((obs) => (
-            <FeedItem key={obs.uri} observation={obs} />
-          ))}
+        {observations.length === 0 ? (
+          <Box sx={{ px: 3, py: 5, textAlign: "center" }}>
+            <Typography
+              sx={{
+                color: "text.secondary",
+                mb: 0.5,
+              }}
+            >
+              No observations yet
+            </Typography>
+            <Typography
+              variant="body2"
+              sx={{
+                color: "text.disabled",
+              }}
+            >
+              Be the first to observe <em>{taxon.commonName || taxon.scientificName}</em> on
+              Observ.ing!
+            </Typography>
+          </Box>
+        ) : (
+          <Box>
+            {observations.map((obs) => (
+              <FeedItem key={obs.uri} observation={obs} />
+            ))}
 
-          {hasMore && <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />}
-        </Box>
-      )}
+            {hasMore && <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />}
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
