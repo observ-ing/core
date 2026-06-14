@@ -19,8 +19,8 @@ unused_imports = "allow"
 all = "allow"
 
 [dependencies]
-jacquard-common = "0.12.0-beta.2"
-jacquard-derive = "0.12.0-beta.2"
-jacquard-lexicon = "0.12.0-beta.2"
+jacquard-common = "0.12"
+jacquard-derive = "0.12"
+jacquard-lexicon = "0.12"
 rustversion = "1"
 serde = { workspace = true }
