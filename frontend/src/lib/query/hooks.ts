@@ -54,6 +54,13 @@ export function useFeed(tab: FeedTab) {
     initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
     enabled: authResolved,
+    // The feed is an infinite, newest-first list. A background refetch re-pulls
+    // every loaded page and can reorder/duplicate rows under the reader, so we
+    // don't auto-refresh it on tab focus and give it a longer staleTime so
+    // re-entering the feed mid-session doesn't swap content. A real reload (or a
+    // future pull-to-refresh) still fetches fresh.
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

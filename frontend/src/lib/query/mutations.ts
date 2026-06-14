@@ -1,13 +1,13 @@
-// Write mutations with offline-replay support.
+// Write mutations.
 //
-// Mutation *defaults* (not just hook options) are registered on the shared
-// client so that a mutation paused while offline — and persisted to IndexedDB
-// across a reload — can be resumed later: TanStack Query only persists a
-// mutation's key + variables, then looks up the mutationFn from these defaults
-// to replay it. The provider calls resumePausedMutations() after restore.
+// The like mutation is registered as a client *default* (not just hook options)
+// so its mutationFn/onMutate/onError live in one place and the optimistic patch
+// stays consistent everywhere a like is toggled. With networkMode "online", a
+// like tapped offline is paused (not failed) and resumes on reconnect within
+// the session — there's no cross-reload persistence (the cache is in-memory).
 //
 // This module is imported for its side effects by QueryProvider.tsx, which
-// guarantees the defaults exist before any mutation runs or resumes.
+// guarantees the defaults exist before any mutation runs.
 import { useMutation, type InfiniteData } from "@tanstack/react-query";
 import { queryClient } from "./queryClient";
 import {

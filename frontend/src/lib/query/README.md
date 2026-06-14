@@ -1,43 +1,49 @@
 # Server-state layer (TanStack Query)
 
-All data fetched from the API lives in a single TanStack Query cache, persisted
-to IndexedDB. **Redux keeps only client/UI state.** This is what lets
-viewer-dependent data (e.g. occurrences embedding `viewerHasLiked`) be cached
-per-user and survive an offline reload — something the service-worker cache
-can't do safely, since it keys by URL and is blind to the viewer.
+All data fetched from the API lives in a single **in-memory** TanStack Query
+cache. **Redux keeps only client/UI state.** The cache dedups requests, keeps
+views consistent (one like patches the feed, profile, taxon, and detail caches
+at once), and powers optimistic writes — but it is not persisted to disk, so a
+reload always refetches from the server.
+
+## Why in-memory only (no IndexedDB persistence)
+
+This layer originally persisted the cache to IndexedDB for offline reads +
+offline-write replay. We removed that: offline isn't a product requirement, and
+restoring a stale snapshot on every load made fast-moving views — chiefly the
+newest-first feed — visibly swap from cached → fresh a second after paint. An
+in-memory cache keeps the wins that matter (dedup, cross-view consistency,
+optimistic likes) without the stale-on-load swap, and drops the persist packages
+from the bundle. A like tapped offline still pauses and resumes on reconnect
+_within a session_ (networkMode "online"); it just isn't replayed across a
+reload.
 
 ## Why TanStack Query (not TanStack DB)
 
 The original spike used TanStack DB collections. The production layer uses plain
-**TanStack Query** because the requirement included **offline-write replay**
-(queue a like made offline, replay on reconnect) — a native Query feature
-(persisted paused mutations + `resumePausedMutations`). DB collections roll
-failed writes back rather than queuing them, and would have sat redundantly on
-top of Query anyway. Query alone delivers offline reads, cross-view
-consistency, and offline writes with one mental model — and is lighter
-(dropping the DB packages reduced the main bundle).
+**TanStack Query** for dedup, cross-view consistency, pagination, and optimistic
+writes under one mental model — lighter than DB collections sitting on top of
+Query, and DB rolls failed writes back rather than pausing/resuming them.
 
 ## Files
 
 | File                 | Role                                                                                                                    |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `queryClient.ts`     | The single `QueryClient` + IndexedDB persister (idb-keyval), week-long gcTime.                                          |
-| `QueryProvider.tsx`  | `PersistQueryClientProvider`; restores the cache and resumes offline mutations. Mount inside the Redux `<Provider>`.    |
+| `queryClient.ts`     | The single in-memory `QueryClient` and its default refetch policy.                                                      |
+| `QueryProvider.tsx`  | `QueryClientProvider`. Mount inside the Redux `<Provider>`.                                                             |
 | `keys.ts`            | Central query-key registry.                                                                                             |
 | `hooks.ts`           | One read hook per endpoint (`useFeed`, `useTaxon`, `useObservation`, …).                                                |
-| `mutations.ts`       | Write hooks. `useLike` is registered as a mutation _default_ for offline replay; others invalidate on success.          |
+| `mutations.ts`       | Write hooks. `useLike` is registered as a mutation _default_ (optimistic, in one place); others invalidate on success.  |
 | `occurrenceCache.ts` | Patches an occurrence's like state across every cache that holds it (feed/profile/taxon/detail) from a single mutation. |
 
-## Offline-write design (likes)
+## Optimistic-write design (likes)
 
 1. `useLike().mutate({ uri, cid, liked })` — `onMutate` optimistically patches
    every occurrence cache via `setOccurrenceLike` (runs even offline).
 2. Offline, the network call is _paused_ (networkMode "online"), not failed, so
-   nothing rolls back. The paused mutation is persisted to IndexedDB.
-3. On reload, `QueryProvider`'s `onSuccess` calls `resumePausedMutations()`;
-   `mutations.ts` registered the like mutation _default_ so the persisted
-   mutation can find its `mutationFn` to replay.
-4. A genuine server/network error (while online) triggers `onError`, which
+   nothing rolls back. It resumes automatically on reconnect within the session.
+   (The cache is in-memory, so a paused like does not survive a reload.)
+3. A genuine server/network error (while online) triggers `onError`, which
    reverts the optimistic patch.
 
 ## Server-vs-client boundary
@@ -58,9 +64,9 @@ auth _session_.
   migrating it is high-blast-radius for no benefit.
 - **`useObservationsGeoJSON`** hook exists but has no consumer yet (no map view
   calls the geojson endpoint). Ready when a map feature needs it.
-- **Offline replay is wired for likes only.** Larger writes (observation
-  upload/edit with images, comments, identifications) are online-only; they
-  invalidate caches on success.
+- **Optimistic patching is wired for likes only.** Larger writes (observation
+  upload/edit with images, comments, identifications) invalidate caches on
+  success rather than patching optimistically.
 
 Done in later passes: cache eviction on logout (`clearQueryCache` in the logout
 thunk) and user preferences (`useUserPreferences` / `useUpdatePreferences`;
