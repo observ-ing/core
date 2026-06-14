@@ -38,17 +38,19 @@ function renderTreeItems(
         slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.5 }}>
-            <Box
-              sx={{
-                width: 20,
-                height: 20,
-                flexShrink: 0,
-                borderRadius: 0.5,
-                overflow: "hidden",
-                bgcolor: "action.hover",
-              }}
-            >
-              {thumb && (
+            {/* Only reserve the thumbnail slot when there's actually an image —
+                most taxa have none, and a column of empty placeholders is just
+                noise that steals width the name needs at depth. */}
+            {thumb && (
+              <Box
+                sx={{
+                  width: 20,
+                  height: 20,
+                  flexShrink: 0,
+                  borderRadius: 0.5,
+                  overflow: "hidden",
+                }}
+              >
                 <Box
                   component="img"
                   src={thumb}
@@ -56,13 +58,14 @@ function renderTreeItems(
                   loading="lazy"
                   sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
-              )}
-            </Box>
+              </Box>
+            )}
             <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
               <Typography
                 variant="body2"
                 component="span"
                 noWrap
+                title={String(item.label)}
                 sx={{
                   fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
                     ? "italic"
@@ -77,6 +80,7 @@ function renderTreeItems(
                   variant="caption"
                   component="span"
                   noWrap
+                  title={item.commonName}
                   sx={{
                     color: "text.secondary",
                     lineHeight: 1.2,
@@ -86,12 +90,18 @@ function renderTreeItems(
                 </Typography>
               )}
             </Box>
+            {/* Rank yields to the name: with a large flex-shrink it collapses
+                before the (more important) name truncates, so short names show
+                the rank and long names reclaim the full row. */}
             <Typography
               variant="caption"
               component="span"
               sx={{
-                ml: 1,
-                flexShrink: 0,
+                ml: 0.75,
+                flexShrink: 100,
+                minWidth: 0,
+                overflow: "hidden",
+                whiteSpace: "nowrap",
                 color: "text.disabled",
                 fontSize: "0.65rem",
                 letterSpacing: "0.04em",
