@@ -1,10 +1,23 @@
 import { defineConfig } from "vite";
 import { fileURLToPath } from "url";
+import { createRequire } from "module";
 import path from "path";
 import react from "@vitejs/plugin-react";
 import { VitePWA } from "vite-plugin-pwa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+
+// Resolve where dependencies actually live. A hardcoded `../node_modules` is
+// wrong inside a git worktree without its own `node_modules`: deps resolve
+// (hoisted) to the main checkout's node_modules, so the self-hosted @fontsource
+// woff2 files end up outside `fs.allow` and 403 — brand fonts then fall back to
+// system sans. Anchoring on a real dependency follows the same upward lookup
+// Node/Vite use, so this points at the node_modules that is genuinely in play.
+const resolvedNodeModules = path.resolve(
+  path.dirname(require.resolve("@fontsource/dm-sans/package.json")),
+  "../..",
+);
 
 export default defineConfig({
   plugins: [
@@ -75,14 +88,11 @@ export default defineConfig({
   },
   server: {
     fs: {
-      // `../node_modules` so the dev server can serve dependency assets that
-      // live outside the `src` root — e.g. the self-hosted @fontsource woff2
-      // files (otherwise they 403 and the brand fonts fall back to system sans).
-      allow: [
-        path.resolve(__dirname, "../lexicons"),
-        path.resolve(__dirname, "../node_modules"),
-        ".",
-      ],
+      // Allow serving dependency assets that live outside the `src` root — e.g.
+      // the self-hosted @fontsource woff2 files (otherwise they 403 and the
+      // brand fonts fall back to system sans). `resolvedNodeModules` finds the
+      // node_modules actually in use (see its definition for the worktree case).
+      allow: [path.resolve(__dirname, "../lexicons"), resolvedNodeModules, "."],
     },
     hmr: {
       // When accessed via the Rust proxy on port 3000, HMR WebSocket must still
