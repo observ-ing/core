@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE occurrences SET event_date_start = $2, event_date_end = $3 WHERE uri = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ce2762f7b00c2433f9d631f7c1eee6501da0fbe236d9344dc31cbce88bc9bf9b"
+}

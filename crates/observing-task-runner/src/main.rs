@@ -10,6 +10,7 @@
 //!
 //! ```text
 //! observing-task-runner backfill-occurrences --dry-run --all
+//! observing-task-runner backfill-event-date-bounds --dry-run
 //! observing-task-runner replay-failed-records --collection bio.lexicons.temp.v0-1.occurrence
 //! ```
 //!
@@ -20,6 +21,7 @@ use clap::{Parser, Subcommand};
 use std::process::ExitCode;
 use tracing_subscriber::{prelude::*, EnvFilter};
 
+mod backfill_event_date_bounds;
 mod backfill_occurrences;
 mod replay_failed_records;
 
@@ -35,6 +37,9 @@ enum Task {
     /// Re-fetch occurrences from their authoring PDS and re-run the upsert, to
     /// backfill newly-extracted columns (organismQuantity/organismQuantityType).
     BackfillOccurrences(backfill_occurrences::Args),
+    /// Recompute event_date_start/end from event_date_raw, recovering bounds
+    /// for EDTF values the old parser couldn't handle. No PDS round-trip.
+    BackfillEventDateBounds(backfill_event_date_bounds::Args),
     /// Replay rows from `ingester.failed_records` back through the upsert path.
     ReplayFailedRecords(replay_failed_records::Args),
 }
@@ -52,6 +57,7 @@ async fn main() -> ExitCode {
 
     match Cli::parse().task {
         Task::BackfillOccurrences(args) => backfill_occurrences::run(args).await,
+        Task::BackfillEventDateBounds(args) => backfill_event_date_bounds::run(args).await,
         Task::ReplayFailedRecords(args) => replay_failed_records::run(args).await,
     }
 }

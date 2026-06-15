@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT uri, event_date_raw as \"event_date_raw!\"\n        FROM occurrences\n        WHERE event_date_raw IS NOT NULL\n          AND ($1::bool OR event_date_start IS NULL)\n          AND ($2::text IS NULL OR did = $2)\n        ORDER BY created_at ASC\n        LIMIT COALESCE($3, 9223372036854775807)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "uri"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "event_date_raw!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "event_date_raw"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "0997507aabef9d86f861b24b19dacd60f768afcaa57992e5d7addc1c2c65a054"
+}
