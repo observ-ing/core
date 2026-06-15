@@ -39,7 +39,12 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
-import { formatDate, getPdslsUrl, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
+import {
+  formatEventDate,
+  getPdslsUrl,
+  buildOccurrenceAtUri,
+  getErrorMessage,
+} from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
 // Lazy so maplibre-gl is split into its own chunk, loaded only when an
@@ -384,7 +389,7 @@ export function ObservationDetail() {
               </ListItemIcon>
               <ListItemText
                 primary="Observed"
-                secondary={observation.eventDate ? formatDate(observation.eventDate) : "—"}
+                secondary={observation.eventDate ? formatEventDate(observation.eventDate) : "—"}
                 slotProps={{
                   primary: { variant: "caption", color: "text.secondary" },
                   secondary: { variant: "body1", color: "text.primary" },

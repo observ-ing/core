@@ -80,7 +80,8 @@ export const FERN_OBSERVATION: Occurrence = {
     genus: "Polypodium",
   },
   identificationCount: 1,
-  eventDate: "2026-04-10T14:00:00Z",
+  // A date-range eventDate (Darwin Core interval) to exercise range rendering.
+  eventDate: "2026-04-08/2026-04-10",
   location: { latitude: 51.51, longitude: -0.13 },
   images: [PHOTO],
   createdAt: "2026-04-10T14:05:00Z",

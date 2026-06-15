@@ -59,6 +59,59 @@ export function formatDate(dateString: string): string {
   });
 }
 
+const YEAR_RE = /^\d{4}$/;
+const YEAR_MONTH_RE = /^\d{4}-\d{2}$/;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Format one endpoint of a Darwin Core eventDate at its own precision. Reduced
+ * precision is shown as-is ("1971", "June 1906"); date-only values are
+ * formatted in UTC so they don't shift a day across timezones. Unparseable
+ * input is returned verbatim.
+ */
+function formatEventDatePart(part: string): string {
+  const p = part.trim();
+  if (YEAR_RE.test(p)) return p;
+  if (YEAR_MONTH_RE.test(p)) {
+    const [y = "", m = ""] = p.split("-");
+    return new Date(Date.UTC(Number(y), Number(m) - 1, 1)).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    });
+  }
+  if (DATE_ONLY_RE.test(p)) {
+    const [y = "", m = "", d = ""] = p.split("-");
+    return new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const date = new Date(p);
+  if (Number.isNaN(date.getTime())) return p;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Format a Darwin Core eventDate, which may be a single date, a date-time, a
+ * reduced-precision value ("1971", "1906-06"), or an interval whose endpoints
+ * are separated by a solidus ("1995-05-21/1995-05-23"). Intervals render as
+ * "<start> – <end>".
+ */
+export function formatEventDate(value: string): string {
+  const slash = value.indexOf("/");
+  if (slash === -1) return formatEventDatePart(value);
+  return `${formatEventDatePart(value.slice(0, slash))} – ${formatEventDatePart(
+    value.slice(slash + 1),
+  )}`;
+}
+
 /**
  * Generate a PDSLS URL for viewing an AT Protocol record
  */

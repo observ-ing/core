@@ -152,6 +152,10 @@ export function UploadModal() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
+  // Optional interval end (Darwin Core eventDate may be a range). Empty means a
+  // single date/time; when set, the observation spans `observationDate`'s day
+  // through this day inclusive, written as a `YYYY-MM-DD/YYYY-MM-DD` interval.
+  const [observationEndDate, setObservationEndDate] = useState("");
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   // Darwin Core organismQuantity (+ its type). Kept out of the default flow in a
   // collapsed "More details" section — most users identifying a single organism
@@ -196,7 +200,18 @@ export function UploadModal() {
     setMatchedTaxon(null);
     setRank("");
     if (editingObservation.eventDate) {
-      setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
+      const parts = editingObservation.eventDate.split("/");
+      const start = parts[0] ?? editingObservation.eventDate;
+      const end = parts[1];
+      if (end) {
+        // Interval: ranges are recorded at day precision, so seed the start
+        // input at midnight of its day and populate the end-date field.
+        setObservationDate(`${start.slice(0, 10)}T00:00`);
+        setObservationEndDate(end.slice(0, 10));
+      } else {
+        setObservationDate(toDatetimeLocal(new Date(start)));
+        setObservationEndDate("");
+      }
     }
     if (editingObservation.location) {
       setLat(formatCoordinate(editingObservation.location.latitude));
@@ -244,6 +259,7 @@ export function UploadModal() {
     setImages([]);
     setExistingImages([]);
     setObservationDate(toDatetimeLocal(new Date()));
+    setObservationEndDate("");
     setUncertaintyMeters(50);
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
@@ -395,6 +411,20 @@ export function UploadModal() {
       return;
     }
 
+    // eventDate is a single date-time, or a `YYYY-MM-DD/YYYY-MM-DD` interval
+    // (day precision) when an end date is given.
+    const startDay = observationDate.slice(0, 10);
+    let eventDate: string;
+    if (observationEndDate) {
+      if (observationEndDate < startDay) {
+        toast.error("End date can't be before the start date");
+        return;
+      }
+      eventDate = `${startDay}/${observationEndDate}`;
+    } else {
+      eventDate = new Date(observationDate).toISOString();
+    }
+
     const trimmedSpecies = species.trim();
     if (trimmedSpecies && !matchedTaxon && !kingdom) {
       toast.error("Please select a kingdom for the taxon name you entered");
@@ -442,7 +472,7 @@ export function UploadModal() {
           }
         : {}),
       license,
-      eventDate: new Date(observationDate).toISOString(),
+      eventDate,
       ...(imageData.length > 0 ? { images: imageData } : {}),
     };
 
@@ -716,7 +746,7 @@ export function UploadModal() {
 
           <TextField
             fullWidth
-            label="Observation date"
+            label={observationEndDate ? "Start date" : "Observation date"}
             type="datetime-local"
             value={observationDate}
             onChange={(e) => {
@@ -726,6 +756,28 @@ export function UploadModal() {
             margin="normal"
             slotProps={{
               inputLabel: { shrink: true },
+            }}
+          />
+
+          <TextField
+            fullWidth
+            label="End date (optional)"
+            type="date"
+            value={observationEndDate}
+            onChange={(e) => {
+              setObservationEndDate(e.target.value);
+              setIsDirty(true);
+            }}
+            margin="normal"
+            error={observationEndDate !== "" && observationEndDate < observationDate.slice(0, 10)}
+            helperText={
+              observationEndDate !== "" && observationEndDate < observationDate.slice(0, 10)
+                ? "End date can't be before the start date."
+                : "Set to record an observation spanning a date range."
+            }
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: observationDate.slice(0, 10) },
             }}
           />
 
