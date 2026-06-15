@@ -231,13 +231,13 @@ pub fn occurrence_from_json(
         })
         .filter(|s| !s.trim().is_empty());
 
-    // Sortable instant: the start of the interval the eventDate denotes.
-    // NULL when the value is absent or not a recognized date/interval — the
-    // raw string is still preserved for display.
-    let event_date = event_date_raw
-        .as_deref()
-        .and_then(expand_event_date)
-        .map(|b| b.start);
+    // Half-open [start, end) bounds of the interval the eventDate denotes:
+    // feeds sort by start, date filters overlap against both. NULL when the
+    // value is absent or not a recognized date/interval — the raw string is
+    // still preserved for display.
+    let event_date_bounds = event_date_raw.as_deref().and_then(expand_event_date);
+    let event_date_start = event_date_bounds.map(|b| b.start);
+    let event_date_end = event_date_bounds.map(|b| b.end);
 
     // Extension fields: read from raw JSON (not part of bio.lexicons.temp.v0-1.occurrence schema)
     let created_at = record_json
@@ -269,7 +269,8 @@ pub fn occurrence_from_json(
             cid,
             did,
             scientific_name: None,
-            event_date,
+            event_date_start,
+            event_date_end,
             event_date_raw,
             longitude: coords.map(|(_, lng)| lng),
             latitude: coords.map(|(lat, _)| lat),
@@ -1170,7 +1171,8 @@ mod tests {
 
         assert!(parsed.params.latitude.is_none());
         assert!(parsed.params.longitude.is_none());
-        assert!(parsed.params.event_date.is_none());
+        assert!(parsed.params.event_date_start.is_none());
+        assert!(parsed.params.event_date_end.is_none());
     }
 
     /// `organismQuantity` / `organismQuantityType` are surfaced from the

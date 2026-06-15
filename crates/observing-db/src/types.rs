@@ -63,9 +63,10 @@ pub struct OccurrenceRow {
     pub scientific_name: Option<String>,
     /// The verbatim Darwin Core `eventDate` string — a single date, date-time,
     /// or interval (e.g. `1971`, `1995-05-21/1995-05-23`). Surfaced as-is for
-    /// display; selected aliased from the `event_date_raw` column. The sortable
-    /// instant derived from it lives in the `event_date` column, used only by
-    /// feed ordering/filters (not read back into this struct).
+    /// display; selected aliased from the `event_date_raw` column. The derived
+    /// `[start, end)` instants live in the `event_date_start`/`event_date_end`
+    /// columns, used only by feed ordering/filters (not read back into this
+    /// struct).
     /// NULL on survey-based occurrences whose `eventDate` lives on a referenced
     /// `bio.lexicons.temp.v0-1.survey` record we don't yet ingest.
     pub event_date: Option<String>,
@@ -249,12 +250,16 @@ pub struct UpsertOccurrenceParams {
     pub cid: String,
     pub did: String,
     pub scientific_name: Option<String>,
-    /// Sortable instant: the start of the interval `event_date_raw` denotes.
-    /// NULL when the raw value is absent or not a recognized date/interval.
-    pub event_date: Option<DateTime<Utc>>,
+    /// Start of the half-open `[start, end)` interval `event_date_raw` denotes:
+    /// the value feeds sort by. NULL when the raw value is absent or not a
+    /// recognized date/interval.
+    pub event_date_start: Option<DateTime<Utc>>,
+    /// Exclusive end of that interval (e.g. `1971` → `1972-01-01`). Set together
+    /// with `event_date_start`; date-overlap filters compare against both.
+    pub event_date_end: Option<DateTime<Utc>>,
     /// Verbatim Darwin Core `eventDate` (date, date-time, or interval), kept
-    /// for display and round-tripping. May be present even when `event_date`
-    /// is NULL (an unparseable but non-empty value).
+    /// for display and round-tripping. May be present even when the bounds are
+    /// NULL (an unparseable but non-empty value).
     pub event_date_raw: Option<String>,
     pub longitude: Option<f64>,
     pub latitude: Option<f64>,
