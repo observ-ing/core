@@ -8,9 +8,14 @@ mod did;
 mod resolver;
 mod types;
 
-pub use did::{Did, DidMethod, DidParseError};
+pub use did::{DidExt, DidMethod};
 pub use resolver::IdentityResolver;
 pub use types::{Profile, ResolveResult};
+
+/// Validated AT Protocol DID, backed by jacquard's `Did` (default `SmolStr`
+/// backing). jacquard owns the syntax validation; [`DidExt`] adds method
+/// classification on top.
+pub type Did = jacquard_common::types::string::Did;
 
 /// Base URL of the PLC directory used to resolve `did:plc:` documents.
 ///

@@ -6,6 +6,9 @@ description = "AT Protocol identity resolution and profile caching"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+# AT Protocol types (validated DID)
+jacquard-common = "0.12"
+
 # HTTP client
 reqwest = { workspace = true }
 
