@@ -21,7 +21,8 @@ use crate::error::AppError;
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
-use at_uri_parser::AtUri;
+use jacquard_common::types::string::AtUri;
+use std::str::FromStr;
 
 use super::auto_id;
 
@@ -209,9 +210,10 @@ pub async fn delete_occurrence(
     user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri =
+        AtUri::from_str(&uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
 
-    if at_uri.did != user.did {
+    if at_uri.authority().as_str() != user.did {
         return Err(AppError::Forbidden(
             "You can only delete your own records".into(),
         ));
@@ -266,13 +268,16 @@ pub async fn update_occurrence(
 
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
-        AtUri::parse(&body.uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
-    if at_uri.did != user.did {
+        AtUri::from_str(&body.uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
+    if at_uri.authority().as_str() != user.did {
         return Err(AppError::Forbidden(
             "You can only edit your own records".into(),
         ));
     }
-    if at_uri.collection != OccurrenceRecord::NSID {
+    if at_uri
+        .collection()
+        .is_none_or(|c| c.as_str() != OccurrenceRecord::NSID)
+    {
         return Err(AppError::BadRequest(
             "URI does not reference an occurrence record".into(),
         ));

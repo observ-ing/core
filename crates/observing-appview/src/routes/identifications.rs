@@ -16,7 +16,8 @@ use crate::responses::{IdentificationListResponse, RecordCreatedResponse, Succes
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonFields;
 use crate::validation::validate_string_length;
-use at_uri_parser::AtUri;
+use jacquard_common::types::string::AtUri;
+use std::str::FromStr;
 
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
@@ -117,9 +118,10 @@ pub async fn delete_identification(
     user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri =
+        AtUri::from_str(&uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
 
-    if at_uri.did != user.did {
+    if at_uri.authority().as_str() != user.did {
         return Err(AppError::Forbidden(
             "You can only delete your own records".into(),
         ));
