@@ -167,7 +167,7 @@ pub async fn get_profile_feed(
                 r#"
                 SELECT
                     uri, cid, did, scientific_name,
-                    event_date,
+                    event_date_raw as event_date,
                     ST_Y(location::geometry) as latitude,
                     ST_X(location::geometry) as longitude,
                     coordinate_uncertainty_meters,
@@ -194,7 +194,7 @@ pub async fn get_profile_feed(
                 r#"
                 SELECT
                     uri, cid, did, scientific_name,
-                    event_date,
+                    event_date_raw as event_date,
                     ST_Y(location::geometry) as latitude,
                     ST_X(location::geometry) as longitude,
                     coordinate_uncertainty_meters,

@@ -10,7 +10,7 @@ use crate::types::{OccurrenceRow, UpsertOccurrenceParams};
 macro_rules! occurrence_columns {
     () => {
         r#"
-    uri, cid, did, scientific_name, event_date,
+    uri, cid, did, scientific_name, event_date_raw as event_date,
     ST_Y(location::geometry) as latitude,
     ST_X(location::geometry) as longitude,
     coordinate_uncertainty_meters,
@@ -37,19 +37,20 @@ pub async fn upsert(
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom,
             organism_quantity, organism_quantity_type,
-            created_at
+            created_at, event_date_raw
         ) VALUES (
             $1, $2, $3, $4, $5,
             ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
             $8, $9, $10,
             $11, $12, $13,
             $14, $15,
-            $16
+            $16, $17
         )
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
             scientific_name = $4,
             event_date = $5,
+            event_date_raw = $17,
             location = ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
             coordinate_uncertainty_meters = $8,
             associated_media = COALESCE($9, occurrences.associated_media),
@@ -80,6 +81,7 @@ pub async fn upsert(
         p.organism_quantity as _,
         p.organism_quantity_type as _,
         p.created_at,
+        p.event_date_raw as _,
     )
     .execute(executor)
     .await?;
@@ -104,7 +106,7 @@ pub async fn get(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date,
+            event_date_raw as event_date,
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
@@ -138,7 +140,7 @@ pub async fn get_nearby(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date,
+            event_date_raw as event_date,
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
@@ -184,7 +186,7 @@ pub async fn get_by_bounding_box(
         r#"
         SELECT
             uri, cid, did, scientific_name,
-            event_date,
+            event_date_raw as event_date,
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
@@ -223,7 +225,7 @@ pub async fn get_feed(
             r#"
             SELECT
                 uri, cid, did, scientific_name,
-                event_date,
+                event_date_raw as event_date,
                 ST_Y(location::geometry) as latitude,
                 ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,
@@ -251,7 +253,7 @@ pub async fn get_feed(
             r#"
             SELECT
                 uri, cid, did, scientific_name,
-                event_date,
+                event_date_raw as event_date,
                 ST_Y(location::geometry) as latitude,
                 ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,

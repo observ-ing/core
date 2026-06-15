@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            organism_quantity, organism_quantity_type,\n            created_at,\n            NULL::float8 as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE uri = $1\n        ",
+  "query": "\n        SELECT\n            uri, cid, did, scientific_name,\n            event_date_raw as event_date,\n            ST_Y(location::geometry) as latitude,\n            ST_X(location::geometry) as longitude,\n            coordinate_uncertainty_meters,\n            associated_media, recorded_by,\n            taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n            organism_quantity, organism_quantity_type,\n            created_at,\n            ST_Distance(location, ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography) as distance_meters,\n            NULL::text as source\n        FROM occurrences\n        WHERE ST_DWithin(\n            location,\n            ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,\n            $3\n        )\n        AND did != ALL($6)\n        ORDER BY distance_meters\n        LIMIT $4 OFFSET $5\n        ",
   "describe": {
     "columns": [
       {
@@ -50,11 +50,11 @@
       {
         "ordinal": 4,
         "name": "event_date",
-        "type_info": "Timestamptz",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "occurrences",
-            "name": "event_date"
+            "name": "event_date_raw"
           }
         }
       },
@@ -239,7 +239,12 @@
     ],
     "parameters": {
       "Left": [
-        "Text"
+        "Float8",
+        "Float8",
+        "Float8",
+        "Int8",
+        "Int8",
+        "TextArray"
       ]
     },
     "nullable": [
@@ -268,5 +273,5 @@
       null
     ]
   },
-  "hash": "9e487e5b243b5a195c0600546e15f5fae756cb4c9836819576644b1eca566fd0"
+  "hash": "ba3b4f9eeccafaa3563e7410fe658886ae552130dfbeac8fdf31df6b7d324fd7"
 }

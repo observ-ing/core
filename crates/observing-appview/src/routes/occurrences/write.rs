@@ -549,9 +549,15 @@ fn build_occurrence_record_json(
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
     let event_date_str = event_date.unwrap_or(&now_rfc3339);
-    let event_date: Datetime = event_date_str
-        .parse()
-        .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
+
+    // Accept any Darwin Core eventDate the lexicon allows — a single date,
+    // date-time, or interval (e.g. "1971", "1995-05-21/1995-05-23"). Validate
+    // by expanding to a [start, end) range and reject only values we can't
+    // recognize at all; the raw string is stored verbatim so ranges and
+    // reduced precision round-trip to the PDS.
+    if observing_db::processing::expand_event_date(event_date_str).is_none() {
+        return Err(AppError::BadRequest("Invalid eventDate format".into()));
+    }
 
     let media = if media_refs.is_empty() {
         None
@@ -566,7 +572,7 @@ fn build_occurrence_record_json(
             coordinate_uncertainty_in_meters.unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY)
                 as i64,
         )
-        .event_date(event_date)
+        .event_date(SmolStr::from(event_date_str))
         .maybe_organism_quantity(
             organism_quantity
                 .filter(|s| !s.is_empty())

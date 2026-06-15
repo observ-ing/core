@@ -289,7 +289,9 @@ pub async fn enrich_occurrences(
             community_id,
             effective_taxonomy,
             identification_count,
-            event_date: row.event_date.map(|d| d.to_rfc3339()),
+            // Raw Darwin Core eventDate string (date, date-time, or interval),
+            // passed through verbatim for display.
+            event_date: row.event_date.clone(),
             // Coordinates come from ST_X/ST_Y(location) — both are NULL
             // together when the column is NULL, so checking one suffices.
             location: match (row.latitude, row.longitude) {
@@ -461,7 +463,7 @@ mod tests {
             cid: "cid".into(),
             did: "did:plc:test".into(),
             scientific_name: None,
-            event_date: Some(Utc::now()),
+            event_date: Some("2024-06-15".into()),
             latitude: Some(0.0),
             longitude: Some(0.0),
             coordinate_uncertainty_meters: None,

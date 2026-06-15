@@ -8,7 +8,7 @@ use crate::types::{
     BlobEntry, CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams,
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, Datelike, NaiveDateTime, TimeZone, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
 use observing_lexicons::ing_observ::temp::{
     comment::Comment,
@@ -49,6 +49,99 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
     DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.naive_utc())
         .ok()
+}
+
+/// A Darwin Core `eventDate` value normalized to the half-open `[start, end)`
+/// UTC interval it denotes. A single value expands to the implicit interval of
+/// its stated precision (`1971` → `[1971-01-01, 1972-01-01)`); an explicit
+/// interval spans from the start of its first component to the end of its last.
+///
+/// `start` is what feeds sort by; `[start, end)` is what date filters overlap
+/// against (see PR #2). The raw string is kept separately for display fidelity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EventDateBounds {
+    /// Earliest instant the value could refer to (inclusive).
+    pub start: DateTime<Utc>,
+    /// Latest instant the value could refer to (exclusive).
+    pub end: DateTime<Utc>,
+}
+
+/// Expand a Darwin Core `eventDate` string into a half-open `[start, end)` UTC
+/// interval, or `None` if it is not a recognized date / date-time / interval.
+///
+/// Accepts the value space the `bio.lexicons.temp.v0-1.occurrence` lexicon
+/// documents: ISO 8601-1 single dates (`1971`, `1906-06`, `1963-03-08`),
+/// date-times (`1963-03-08T14:07:00-06:00`), and ISO 8601-2 intervals whose
+/// start and end are separated by a solidus (`1995-05-21/1995-05-23`). Reduced
+/// precision is treated as the implicit interval it denotes. This is a
+/// deliberate subset of EDTF: uncertainty flags (`?`/`~`/`%`) and unspecified
+/// digits (`196X`) are rejected rather than guessed at. A naive date-time with
+/// no offset is read as UTC.
+pub fn expand_event_date(s: &str) -> Option<EventDateBounds> {
+    let s = s.trim();
+    match s.split_once('/') {
+        // Interval: span from the start of the first component to the end of
+        // the last. `expand_component` returns each side's own `[start, end)`.
+        Some((from, to)) => {
+            let (start, _) = expand_component(from.trim())?;
+            let (_, end) = expand_component(to.trim())?;
+            (start < end).then_some(EventDateBounds { start, end })
+        }
+        None => {
+            let (start, end) = expand_component(s)?;
+            Some(EventDateBounds { start, end })
+        }
+    }
+}
+
+/// Expand a single (non-interval) date value to the `[start, end)` interval of
+/// its stated precision.
+fn expand_component(s: &str) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+    use chrono::{Duration, NaiveDate};
+
+    // Full date-time: `1963-03-08T14:07:00-06:00` (or trailing `Z`). A second
+    // of precision is the smallest unit we distinguish here.
+    if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+        let start = dt.with_timezone(&Utc);
+        return Some((start, start + Duration::seconds(1)));
+    }
+    // Date-time without an offset: read as UTC (lenient — the lexicon asks for
+    // an offset, but legacy/hand-entered values may omit it).
+    if let Ok(ndt) = NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
+        let start = ndt.and_utc();
+        return Some((start, start + Duration::seconds(1)));
+    }
+    // Date: `1963-03-08`.
+    if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
+        let start = d.and_hms_opt(0, 0, 0)?.and_utc();
+        return Some((start, start + Duration::days(1)));
+    }
+    // Year-month: `1906-06`. parse_from_str would accept a missing day, so
+    // require the exact `YYYY-MM` shape before treating it as month precision.
+    if s.len() == 7 && s.as_bytes()[4] == b'-' {
+        if let Ok(d) = NaiveDate::parse_from_str(&format!("{s}-01"), "%Y-%m-%d") {
+            let start = d.and_hms_opt(0, 0, 0)?.and_utc();
+            return Some((start, first_of_next_month(d.year(), d.month())?));
+        }
+    }
+    // Year: `1971`.
+    if s.len() == 4 && s.bytes().all(|b| b.is_ascii_digit()) {
+        let year: i32 = s.parse().ok()?;
+        let start = Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).single()?;
+        let end = Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).single()?;
+        return Some((start, end));
+    }
+    None
+}
+
+/// First instant of the month after `year-month`, in UTC.
+fn first_of_next_month(year: i32, month: u32) -> Option<DateTime<Utc>> {
+    let (y, m) = if month == 12 {
+        (year + 1, 1)
+    } else {
+        (year, month + 1)
+    };
+    Utc.with_ymd_and_hms(y, m, 1, 0, 0, 0).single()
 }
 
 /// A strong reference to a `bio.lexicons.temp.v0-1.media` record, as it appears
@@ -122,17 +215,29 @@ pub fn occurrence_from_json(
         _ => None,
     };
 
-    let event_date = record
+    // The raw eventDate string is the source of truth for display and for
+    // round-tripping ranges / reduced precision (e.g. "1971" or
+    // "1995-05-21/1995-05-23"); `event_date` below is a sortable instant
+    // derived from it. Fall back to the raw JSON key for legacy records.
+    let event_date_raw = record
         .event_date
         .as_ref()
-        .and_then(|d| parse_datetime(&d.to_string()))
+        .map(|d| d.to_string())
         .or_else(|| {
-            // Fallback: read eventDate from raw JSON (legacy records)
             record_json
                 .get("eventDate")
                 .and_then(|v| v.as_str())
-                .and_then(parse_datetime)
-        });
+                .map(|s| s.to_string())
+        })
+        .filter(|s| !s.trim().is_empty());
+
+    // Sortable instant: the start of the interval the eventDate denotes.
+    // NULL when the value is absent or not a recognized date/interval — the
+    // raw string is still preserved for display.
+    let event_date = event_date_raw
+        .as_deref()
+        .and_then(expand_event_date)
+        .map(|b| b.start);
 
     // Extension fields: read from raw JSON (not part of bio.lexicons.temp.v0-1.occurrence schema)
     let created_at = record_json
@@ -165,6 +270,7 @@ pub fn occurrence_from_json(
             did,
             scientific_name: None,
             event_date,
+            event_date_raw,
             longitude: coords.map(|(_, lng)| lng),
             latitude: coords.map(|(lat, _)| lat),
             coordinate_uncertainty_meters: record
@@ -398,6 +504,60 @@ mod tests {
     use jacquard_lexicon::schema::LexiconSchema;
     use observing_lexicons::bio_lexicons::temp::v0_1::identification::Identification;
     use observing_lexicons::ing_observ::temp::like::Like;
+
+    fn ts(s: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    }
+
+    #[test]
+    fn expand_event_date_covers_lexicon_examples() {
+        // Single date.
+        let b = expand_event_date("1963-03-08").unwrap();
+        assert_eq!(b.start, ts("1963-03-08T00:00:00Z"));
+        assert_eq!(b.end, ts("1963-03-09T00:00:00Z"));
+
+        // Year only.
+        let b = expand_event_date("1971").unwrap();
+        assert_eq!(b.start, ts("1971-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1972-01-01T00:00:00Z"));
+
+        // Year-month (December exercises the year rollover).
+        let b = expand_event_date("1906-06").unwrap();
+        assert_eq!(b.start, ts("1906-06-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1906-07-01T00:00:00Z"));
+        assert_eq!(
+            expand_event_date("1906-12").unwrap().end,
+            ts("1907-01-01T00:00:00Z")
+        );
+
+        // Full date-time with offset, normalized to UTC.
+        let b = expand_event_date("1963-03-08T14:07:00-06:00").unwrap();
+        assert_eq!(b.start, ts("1963-03-08T20:07:00Z"));
+        assert_eq!(b.end, ts("1963-03-08T20:07:01Z"));
+
+        // Interval: start of the first day through end of the last day.
+        let b = expand_event_date("1995-05-21/1995-05-23").unwrap();
+        assert_eq!(b.start, ts("1995-05-21T00:00:00Z"));
+        assert_eq!(b.end, ts("1995-05-24T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_mixed_precision_interval() {
+        // Reduced-precision bounds expand to their own day/month/year extents.
+        let b = expand_event_date("1995-05/1996").unwrap();
+        assert_eq!(b.start, ts("1995-05-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1997-01-01T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_rejects_unparseable() {
+        assert!(expand_event_date("").is_none());
+        assert!(expand_event_date("not a date").is_none());
+        assert!(expand_event_date("196X").is_none()); // EDTF unspecified digit
+        assert!(expand_event_date("1984?").is_none()); // EDTF uncertainty flag
+        assert!(expand_event_date("1995-13").is_none()); // invalid month
+        assert!(expand_event_date("2000/1999").is_none()); // inverted interval
+    }
 
     /// Asserts the JSON fixture is a structurally valid record under its
     /// declared lexicon: it deserializes into the typed lexicon struct *and*
