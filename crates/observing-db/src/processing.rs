@@ -8,7 +8,7 @@ use crate::types::{
     BlobEntry, CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams,
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
-use chrono::{DateTime, Datelike, NaiveDateTime, TimeZone, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
 use observing_lexicons::ing_observ::temp::{
     comment::Comment,
@@ -69,79 +69,100 @@ pub struct EventDateBounds {
 /// Expand a Darwin Core `eventDate` string into a half-open `[start, end)` UTC
 /// interval, or `None` if it is not a recognized date / date-time / interval.
 ///
-/// Accepts the value space the `bio.lexicons.temp.v0-1.occurrence` lexicon
-/// documents: ISO 8601-1 single dates (`1971`, `1906-06`, `1963-03-08`),
-/// date-times (`1963-03-08T14:07:00-06:00`), and ISO 8601-2 intervals whose
-/// start and end are separated by a solidus (`1995-05-21/1995-05-23`). Reduced
-/// precision is treated as the implicit interval it denotes. This is a
-/// deliberate subset of EDTF: uncertainty flags (`?`/`~`/`%`) and unspecified
-/// digits (`196X`) are rejected rather than guessed at. A naive date-time with
-/// no offset is read as UTC.
+/// Parsing is delegated to the `edtf` crate, so the full EDTF (ISO 8601-2)
+/// value space is accepted: ISO 8601-1 single dates and date-times, reduced
+/// precision (`1971`, `1906-06`), unspecified digits (`196X` decade, `19XX`
+/// century), uncertainty/approximation flags (`1984?`, `1984~`), and intervals
+/// separated by a solidus (`1995-05-21/1995-05-23`). Every value is normalized
+/// to the implicit interval its precision denotes — `1971` → `[1971-01-01,
+/// 1972-01-01)`, `196X` → `[1960-01-01, 1970-01-01)`.
+///
+/// Returns `None` (raw string still preserved upstream for display) for inputs
+/// with no finite, sortable bounds: open/unknown-terminal intervals (`2019/..`,
+/// `/2019`), 5+ digit `Y`-years, and inverted intervals.
 pub fn expand_event_date(s: &str) -> Option<EventDateBounds> {
+    use edtf::level_1::Edtf;
+
     let s = s.trim();
-    match s.split_once('/') {
-        // Interval: span from the start of the first component to the end of
-        // the last. `expand_component` returns each side's own `[start, end)`.
-        Some((from, to)) => {
-            let (start, _) = expand_component(from.trim())?;
-            let (_, end) = expand_component(to.trim())?;
-            (start < end).then_some(EventDateBounds { start, end })
+
+    // Fast path for full RFC 3339 timestamps. The app writes `eventDate` via
+    // `Date#toISOString()`, which includes fractional seconds (`...:00.000Z`) —
+    // valid RFC 3339 but NOT valid EDTF, so the crate would reject it. Parse
+    // these directly (also covers any offset) before falling back to EDTF.
+    if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+        let start = dt.with_timezone(&Utc);
+        return Some(EventDateBounds {
+            start,
+            end: start + chrono::Duration::seconds(1),
+        });
+    }
+
+    match Edtf::parse(s).ok()? {
+        Edtf::DateTime(dt) => {
+            // A complete instant; treat second precision as a 1-second interval.
+            // `to_chrono` honors the value's offset (a naive time is read as UTC).
+            let start = dt.to_chrono(&Utc);
+            Some(EventDateBounds {
+                start,
+                end: start + chrono::Duration::seconds(1),
+            })
         }
-        None => {
-            let (start, end) = expand_component(s)?;
+        Edtf::Date(date) => {
+            let (start, end) = date_bounds(date)?;
             Some(EventDateBounds { start, end })
         }
+        Edtf::Interval(from, to) => {
+            // Span from the start of the first endpoint to the end of the last.
+            let (start, _) = date_bounds(from)?;
+            let (_, end) = date_bounds(to)?;
+            (start < end).then_some(EventDateBounds { start, end })
+        }
+        Edtf::IntervalFrom(..) | Edtf::IntervalTo(..) | Edtf::YYear(_) => None,
     }
 }
 
-/// Expand a single (non-interval) date value to the `[start, end)` interval of
-/// its stated precision.
-fn expand_component(s: &str) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
-    use chrono::{Duration, NaiveDate};
+/// The half-open `[start, end)` UTC interval an EDTF date denotes, widened to
+/// its stated precision. Uncertainty/approximation flags don't affect bounds.
+fn date_bounds(date: edtf::level_1::Date) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+    use edtf::level_1::{Precision, Season};
 
-    // Full date-time: `1963-03-08T14:07:00-06:00` (or trailing `Z`). A second
-    // of precision is the smallest unit we distinguish here.
-    if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
-        let start = dt.with_timezone(&Utc);
-        return Some((start, start + Duration::seconds(1)));
-    }
-    // Date-time without an offset: read as UTC (lenient — the lexicon asks for
-    // an offset, but legacy/hand-entered values may omit it).
-    if let Ok(ndt) = NaiveDateTime::parse_from_str(s, "%Y-%m-%dT%H:%M:%S") {
-        let start = ndt.and_utc();
-        return Some((start, start + Duration::seconds(1)));
-    }
-    // Date: `1963-03-08`.
-    if let Ok(d) = NaiveDate::parse_from_str(s, "%Y-%m-%d") {
-        let start = d.and_hms_opt(0, 0, 0)?.and_utc();
-        return Some((start, start + Duration::days(1)));
-    }
-    // Year-month: `1906-06`. parse_from_str would accept a missing day, so
-    // require the exact `YYYY-MM` shape before treating it as month precision.
-    if s.len() == 7 && s.as_bytes()[4] == b'-' {
-        if let Ok(d) = NaiveDate::parse_from_str(&format!("{s}-01"), "%Y-%m-%d") {
-            let start = d.and_hms_opt(0, 0, 0)?.and_utc();
-            return Some((start, first_of_next_month(d.year(), d.month())?));
+    match date.precision() {
+        Precision::Day(y, m, d) => {
+            let start = ymd(y, m, d)?;
+            Some((start, start + chrono::Duration::days(1)))
         }
+        // A specific or unspecified day within a known month.
+        Precision::Month(y, m) | Precision::DayOfMonth(y, m) => {
+            Some((ymd(y, m, 1)?, first_of_next_month(y, m)?))
+        }
+        // A known year with an unknown or unspecified month/day.
+        Precision::Year(y) | Precision::MonthOfYear(y) | Precision::DayOfYear(y) => {
+            Some((ymd(y, 1, 1)?, ymd(y.checked_add(1)?, 1, 1)?))
+        }
+        Precision::Decade(y) => Some((ymd(y, 1, 1)?, ymd(y.checked_add(10)?, 1, 1)?)),
+        Precision::Century(y) => Some((ymd(y, 1, 1)?, ymd(y.checked_add(100)?, 1, 1)?)),
+        // Meteorological quarters; Winter spans into the following year.
+        Precision::Season(y, season) => match season {
+            Season::Spring => Some((ymd(y, 3, 1)?, ymd(y, 6, 1)?)),
+            Season::Summer => Some((ymd(y, 6, 1)?, ymd(y, 9, 1)?)),
+            Season::Autumn => Some((ymd(y, 9, 1)?, ymd(y, 12, 1)?)),
+            Season::Winter => Some((ymd(y, 12, 1)?, ymd(y.checked_add(1)?, 3, 1)?)),
+        },
     }
-    // Year: `1971`.
-    if s.len() == 4 && s.bytes().all(|b| b.is_ascii_digit()) {
-        let year: i32 = s.parse().ok()?;
-        let start = Utc.with_ymd_and_hms(year, 1, 1, 0, 0, 0).single()?;
-        let end = Utc.with_ymd_and_hms(year + 1, 1, 1, 0, 0, 0).single()?;
-        return Some((start, end));
-    }
-    None
+}
+
+/// Midnight UTC on the given calendar date, or `None` if it isn't a real date.
+fn ymd(year: i32, month: u32, day: u32) -> Option<DateTime<Utc>> {
+    Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).single()
 }
 
 /// First instant of the month after `year-month`, in UTC.
 fn first_of_next_month(year: i32, month: u32) -> Option<DateTime<Utc>> {
-    let (y, m) = if month == 12 {
-        (year + 1, 1)
+    if month >= 12 {
+        ymd(year.checked_add(1)?, 1, 1)
     } else {
-        (year, month + 1)
-    };
-    Utc.with_ymd_and_hms(y, m, 1, 0, 0, 0).single()
+        ymd(year, month + 1, 1)
+    }
 }
 
 /// A strong reference to a `bio.lexicons.temp.v0-1.media` record, as it appears
@@ -543,6 +564,15 @@ mod tests {
     }
 
     #[test]
+    fn expand_event_date_accepts_fractional_second_rfc3339() {
+        // What the frontend actually sends: `Date#toISOString()` includes
+        // milliseconds, which is valid RFC 3339 but not valid EDTF.
+        let b = expand_event_date("2026-06-15T19:37:00.000Z").unwrap();
+        assert_eq!(b.start, ts("2026-06-15T19:37:00Z"));
+        assert_eq!(b.end, ts("2026-06-15T19:37:01Z"));
+    }
+
+    #[test]
     fn expand_event_date_mixed_precision_interval() {
         // Reduced-precision bounds expand to their own day/month/year extents.
         let b = expand_event_date("1995-05/1996").unwrap();
@@ -551,13 +581,37 @@ mod tests {
     }
 
     #[test]
-    fn expand_event_date_rejects_unparseable() {
+    fn expand_event_date_handles_edtf_unspecified_and_uncertain() {
+        // Unspecified digits widen to a decade / century.
+        let b = expand_event_date("196X").unwrap();
+        assert_eq!(b.start, ts("1960-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1970-01-01T00:00:00Z"));
+        let b = expand_event_date("19XX").unwrap();
+        assert_eq!(b.start, ts("1900-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("2000-01-01T00:00:00Z"));
+
+        // Uncertainty/approximation flags don't change the bounds.
+        let b = expand_event_date("1984?").unwrap();
+        assert_eq!(b.start, ts("1984-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1985-01-01T00:00:00Z"));
+
+        // An unspecified month/day still resolves to its containing extent.
+        let b = expand_event_date("1931-XX").unwrap();
+        assert_eq!(b.start, ts("1931-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1932-01-01T00:00:00Z"));
+        let b = expand_event_date("1931-08-XX").unwrap();
+        assert_eq!(b.start, ts("1931-08-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1931-09-01T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_rejects_unsortable() {
         assert!(expand_event_date("").is_none());
         assert!(expand_event_date("not a date").is_none());
-        assert!(expand_event_date("196X").is_none()); // EDTF unspecified digit
-        assert!(expand_event_date("1984?").is_none()); // EDTF uncertainty flag
         assert!(expand_event_date("1995-13").is_none()); // invalid month
         assert!(expand_event_date("2000/1999").is_none()); // inverted interval
+        assert!(expand_event_date("2019/..").is_none()); // open-ended interval
+        assert!(expand_event_date("/2019").is_none()); // unknown start
     }
 
     /// Asserts the JSON fixture is a structurally valid record under its

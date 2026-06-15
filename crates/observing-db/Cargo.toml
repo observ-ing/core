@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [features]
 default = []
-processing = ["observing-lexicons"]
+processing = ["observing-lexicons", "edtf"]
 
 [dependencies]
 # Database
@@ -31,6 +31,10 @@ chrono = { workspace = true }
 
 # Optional: AT Protocol lexicon types for record processing
 observing-lexicons = { path = "../observing-lexicons", optional = true }
+
+# Optional: EDTF (ISO 8601-2) parsing for Darwin Core eventDate, including
+# reduced precision, unspecified digits, and intervals. Used by `processing`.
+edtf = { version = "0.2", features = ["chrono"], optional = true }
 
 # Test-only: lexicon constraint validation in processing tests
 [dev-dependencies]
