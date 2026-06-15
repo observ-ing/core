@@ -113,7 +113,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
               </Typography>
             }
           />
-          <Box>
+          <Box sx={{ ml: "auto" }}>
             <IconButton
               size="small"
               onClick={handleMenuOpen}
