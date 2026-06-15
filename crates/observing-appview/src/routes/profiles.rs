@@ -1,3 +1,4 @@
+use atproto_identity::Did;
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use observing_db::types::{ProfileFeedOptions, ProfileFeedType};
@@ -24,6 +25,12 @@ pub async fn get_profile_feed(
     Path(did): Path<String>,
     Query(params): Query<ProfileFeedParams>,
 ) -> Result<Json<ProfileFeedResponse>, AppError> {
+    // Validate the path DID up front: a malformed identifier is rejected with
+    // 400 instead of fanning out into a DB feed query and an outbound
+    // app.bsky.actor.getProfile call. Mirrors the media blob handler.
+    let did = Did::new_owned(&did)
+        .map_err(|e| AppError::BadRequest(format!("Invalid DID: {e}")))?;
+
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
@@ -41,7 +48,8 @@ pub async fn get_profile_feed(
         feed_type: Some(feed_type),
     };
 
-    let result = observing_db::feeds::get_profile_feed(&state.pool, &did, &options).await?;
+    let result =
+        observing_db::feeds::get_profile_feed(&state.pool, did.as_str(), &options).await?;
 
     let viewer = session_did(&cookies);
     let (occurrences, identifications, profile) = tokio::join!(
@@ -53,7 +61,7 @@ pub async fn get_profile_feed(
             viewer.as_deref(),
         ),
         enrichment::enrich_identifications(&state.resolver, &result.identifications),
-        state.resolver.get_profile(&did),
+        state.resolver.get_profile(did.as_str()),
     );
 
     let next_cursor = occurrences
@@ -68,7 +76,7 @@ pub async fn get_profile_feed(
 
     Ok(Json(ProfileFeedResponse {
         profile: ProfileSummary {
-            did: did.clone(),
+            did: did.as_str().to_string(),
             handle: profile.as_ref().map(|p| p.handle.clone()),
             display_name: profile.as_ref().and_then(|p| p.display_name.clone()),
             avatar: profile.as_ref().and_then(|p| p.avatar.clone()),
