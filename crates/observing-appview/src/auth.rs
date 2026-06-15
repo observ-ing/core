@@ -71,11 +71,11 @@ pub fn build_strong_ref(uri: &str, cid: &str) -> Result<StrongRef, AppError> {
         .build())
 }
 
-/// Parse the `collection` and `rkey` segments of a parsed [`at_uri_parser::AtUri`]
-/// into the strongly-typed atproto values needed for repo `deleteRecord` /
-/// `putRecord` calls, wrapping parse failures in a consistent `AppError`.
+/// Parse the `collection` and `rkey` segments of a parsed [`AtUri`] into the
+/// strongly-typed atproto values needed for repo `deleteRecord` / `putRecord`
+/// calls, wrapping parse failures in a consistent `AppError`.
 pub fn parse_collection_and_rkey(
-    at_uri: &at_uri_parser::AtUri,
+    at_uri: &AtUri,
 ) -> Result<
     (
         atrium_api::types::string::Nsid,
@@ -84,11 +84,15 @@ pub fn parse_collection_and_rkey(
     AppError,
 > {
     let collection = at_uri
-        .collection
+        .collection()
+        .ok_or_else(|| AppError::Internal("AT URI missing collection".into()))?
+        .as_str()
         .parse()
         .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?;
     let rkey = at_uri
-        .rkey
+        .rkey()
+        .ok_or_else(|| AppError::Internal("AT URI missing rkey".into()))?
+        .as_str()
         .parse()
         .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?;
     Ok((collection, rkey))

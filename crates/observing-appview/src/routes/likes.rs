@@ -15,7 +15,8 @@ use crate::auth::{self, AuthUser};
 use crate::error::AppError;
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AppState, OAuthClientType};
-use at_uri_parser::AtUri;
+use jacquard_common::types::string::AtUri;
+use std::str::FromStr;
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -107,12 +108,12 @@ async fn find_like_uri_with_retry(
 /// fails (URI parsing, session restore, network call), which the caller can
 /// safely ignore.
 async fn try_delete_atp_record(oauth_client: &OAuthClientType, uri: &str, did: &str) -> Option<()> {
-    let at_uri = AtUri::parse(uri)?;
+    let at_uri = AtUri::from_str(uri).ok()?;
     let did_parsed = atrium_api::types::string::Did::new(did.to_owned()).ok()?;
     let session = oauth_client.restore(&did_parsed).await.ok()?;
     let agent = atrium_api::agent::Agent::new(session);
-    let collection = at_uri.collection.parse().ok()?;
-    let rkey = at_uri.rkey.parse().ok()?;
+    let collection = at_uri.collection()?.as_str().parse().ok()?;
+    let rkey = at_uri.rkey()?.as_str().parse().ok()?;
 
     agent
         .api

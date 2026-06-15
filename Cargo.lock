@@ -164,13 +164,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "at-uri-parser"
-version = "0.1.0"
-dependencies = [
- "regex",
-]
-
-[[package]]
 name = "atoi"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -198,8 +191,8 @@ checksum = "1505bd5d3d116872e7271a6d4e16d81d0c8570876c8de68093a09ac269d8aac0"
 name = "atproto-blob-resolver"
 version = "0.1.0"
 dependencies = [
- "at-uri-parser",
  "atproto-identity",
+ "jacquard-common",
  "reqwest 0.13.4",
  "serde",
  "serde_json",
@@ -2854,7 +2847,6 @@ name = "observing-appview"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "at-uri-parser",
  "atproto-blob-resolver",
  "atproto-identity",
  "atrium-api",
@@ -4735,7 +4727,6 @@ checksum = "7b2093cf4c8eb1e67749a6762251bc9cd836b6fc171623bd0a9d324d37af2417"
 name = "tap-ingester"
 version = "0.1.0"
 dependencies = [
- "at-uri-parser",
  "atproto-blob-resolver",
  "atproto-identity",
  "axum",
@@ -4743,6 +4734,7 @@ dependencies = [
  "ciborium",
  "clap",
  "futures-util",
+ "jacquard-common",
  "observing-bootstrap",
  "observing-collections",
  "observing-db",

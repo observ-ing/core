@@ -12,7 +12,6 @@ axum-admin = { path = "../axum-admin" }
 observing-db = { path = "../observing-db", features = ["processing"] }
 atproto-identity = { path = "../atproto-identity" }
 observing-lexicons = { path = "../observing-lexicons" }
-at-uri-parser = { path = "../at-uri-parser" }
 # Taxonomy resolver (formerly observing-taxonomy)
 gbif = "0.1"
 wikidata-client = { path = "../wikidata-client" }
