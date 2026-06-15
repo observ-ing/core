@@ -226,7 +226,7 @@ pub async fn get_geojson(
                 },
                 properties: GeoJsonProperties {
                     uri: row.uri.clone(),
-                    event_date: row.event_date.map(|d| d.to_rfc3339()),
+                    event_date: row.event_date.clone(),
                 },
             })
         })
