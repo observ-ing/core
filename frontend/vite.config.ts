@@ -19,6 +19,12 @@ const resolvedNodeModules = path.resolve(
   "../..",
 );
 
+// Single knob for the dev-server port (defaults to Vite's usual 5173). A
+// multi-worktree setup can relocate the whole dev server with one env var
+// (e.g. VITE_PORT=5273) and the HMR client follows along instead of flooding
+// the console reconnecting to a stale 5173. See issue #659.
+const devPort = Number(process.env.VITE_PORT) || 5173;
+
 export default defineConfig({
   plugins: [
     react(),
@@ -87,6 +93,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
+    port: devPort,
+    // Pin the port so the resolved dev-server port can't silently drift off
+    // `devPort` (Vite would otherwise auto-increment past a busy port and
+    // leave `hmr.clientPort` pointing at the wrong server).
+    strictPort: true,
     fs: {
       // Allow serving dependency assets that live outside the `src` root — e.g.
       // the self-hosted @fontsource woff2 files (otherwise they 403 and the
@@ -95,10 +106,12 @@ export default defineConfig({
       allow: [path.resolve(__dirname, "../lexicons"), resolvedNodeModules, "."],
     },
     hmr: {
-      // When accessed via the Rust proxy on port 3000, HMR WebSocket must still
-      // connect directly to Vite so it isn't routed through the proxy
-      host: 'localhost',
-      clientPort: 5173,
+      // When accessed via the Rust proxy on port 3000, the HMR WebSocket must
+      // still connect directly to Vite so it isn't routed through the proxy.
+      // Follows `devPort` rather than a hardcoded 5173 so other-port worktrees
+      // don't flood the console reconnecting to the wrong server.
+      host: "localhost",
+      clientPort: devPort,
     },
     proxy: {
       "/api": "http://localhost:3000",
