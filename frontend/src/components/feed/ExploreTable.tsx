@@ -66,6 +66,24 @@ function formatDate(iso?: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Compact one endpoint of a Darwin Core eventDate: trim a full date-time to its
+// date portion, but keep reduced precision ("1971", "1906-06") as-is.
+function compactEventDatePart(part: string): string {
+  const p = part.trim();
+  if (p.length > 10) {
+    const d = new Date(p);
+    if (!Number.isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  }
+  return p;
+}
+
+// Render an eventDate compactly for the table, preserving intervals as
+// "<start> – <end>". Falls back to an em dash when absent.
+function formatEventDateCell(value?: string): string {
+  if (!value) return "—";
+  return value.split("/").map(compactEventDatePart).join(" – ");
+}
+
 function formatCoord(n?: number): string {
   return typeof n === "number" ? n.toFixed(5) : "—";
 }
@@ -128,7 +146,7 @@ const ExploreTableRow = memo(function ExploreTableRow({
         {text(tax?.genus)}
       </TableCell>
       <TableCell>{getDisplayName(obs.observer)}</TableCell>
-      <TableCell>{formatDate(obs.eventDate)}</TableCell>
+      <TableCell>{formatEventDateCell(obs.eventDate)}</TableCell>
       <TableCell sx={numericSx}>{formatCoord(obs.location?.latitude)}</TableCell>
       <TableCell sx={numericSx}>{formatCoord(obs.location?.longitude)}</TableCell>
       <TableCell sx={numericSx}>
