@@ -26,8 +26,64 @@ const FRAME_JPEG_QUALITY = 0.7;
  */
 const MIN_GAP_MS = 700;
 
-/** How many candidates to show in the live overlay. */
-const LIVE_LIMIT = 3;
+/**
+ * How many candidates to request per frame. A few more than we display gives
+ * the temporal aggregation more signal (a species ranked 4th one frame and 1st
+ * the next still accumulates).
+ */
+const LIVE_LIMIT = 5;
+
+/**
+ * Temporal smoothing: a single frame's top guess is noisy, so we aggregate the
+ * recent ones. We keep at most `AGG_MAX_SAMPLES` inferences from the last
+ * `AGG_WINDOW_MS`, and rank species by their *mean* confidence across that
+ * window — counting frames where a species didn't appear as 0. That rewards
+ * species detected consistently over ones that flicker in for a single frame.
+ *
+ * At ~2.4s per inference (latency + gap) an 8s window holds ~3–4 frames — enough
+ * to average out noise while still re-converging quickly when you pan to a new
+ * subject. The sample cap is a backstop in case inference gets much faster.
+ */
+const AGG_WINDOW_MS = 8000;
+const AGG_MAX_SAMPLES = 10;
+
+/** How many aggregated candidates to surface to the overlay. */
+const DISPLAY_LIMIT = 4;
+
+interface Sample {
+  t: number;
+  suggestions: SpeciesSuggestion[];
+}
+
+/**
+ * Collapse a window of per-frame results into a single ranked list. Each
+ * species' score is the sum of its confidences across the window divided by the
+ * frame count, so a strong-every-frame detection outranks a strong-once one.
+ * Metadata (common name, range, taxonomy) is taken from its latest appearance.
+ */
+function aggregate(samples: Sample[]): SpeciesSuggestion[] {
+  const frameCount = samples.length;
+  if (frameCount === 0) return [];
+
+  const acc = new Map<string, { sum: number; latest: SpeciesSuggestion }>();
+  // Oldest-to-newest, so `latest` ends up holding the most recent appearance.
+  for (const sample of samples) {
+    for (const s of sample.suggestions) {
+      const cur = acc.get(s.scientificName);
+      if (cur) {
+        cur.sum += s.confidence;
+        cur.latest = s;
+      } else {
+        acc.set(s.scientificName, { sum: s.confidence, latest: s });
+      }
+    }
+  }
+
+  return [...acc.values()]
+    .map(({ sum, latest }) => ({ ...latest, confidence: sum / frameCount }))
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, DISPLAY_LIMIT);
+}
 
 function captureFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement): string | null {
   const { videoWidth, videoHeight } = video;
@@ -53,6 +109,7 @@ export function useLiveId({ videoRef, active, latitude, longitude }: UseLiveIdOp
   const [suggestions, setSuggestions] = useState<SpeciesSuggestion[]>([]);
   const [isInferring, setIsInferring] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const samplesRef = useRef<Sample[]>([]);
 
   useEffect(() => {
     if (!active) return;
@@ -61,6 +118,7 @@ export function useLiveId({ videoRef, active, latitude, longitude }: UseLiveIdOp
       canvasRef.current = document.createElement("canvas");
     }
     const canvas = canvasRef.current;
+    samplesRef.current = [];
 
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -82,7 +140,17 @@ export function useLiveId({ videoRef, active, latitude, longitude }: UseLiveIdOp
             if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
 
             const result = await identifySpecies(params);
-            if (!cancelled) setSuggestions(result.suggestions);
+            if (!cancelled) {
+              // Append this frame, then drop anything older than the window or
+              // beyond the sample cap, and republish the smoothed ranking.
+              const now = Date.now();
+              const cutoff = now - AGG_WINDOW_MS;
+              const next = [...samplesRef.current, { t: now, suggestions: result.suggestions }]
+                .filter((s) => s.t >= cutoff)
+                .slice(-AGG_MAX_SAMPLES);
+              samplesRef.current = next;
+              setSuggestions(aggregate(next));
+            }
           } catch {
             // Transient failures (offline, server hiccup) are expected in a
             // continuous loop — keep the last result and try again next tick.
