@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import { Box, Button, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import PlaceIcon from "@mui/icons-material/Place";
@@ -23,10 +23,37 @@ export function LiveIdView() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  // Location is a hard requirement: it drives the geo range filtering, so the
+  // camera doesn't start until it's granted (rather than best-effort).
+  const [locationState, setLocationState] = useState<"prompting" | "granted" | "denied">(
+    "prompting",
+  );
 
-  // Acquire the rear camera. Cleanup stops every track so the camera light
-  // goes off the moment we leave the view.
+  const requestLocation = useCallback(() => {
+    if (!navigator.geolocation) {
+      setLocationState("denied");
+      return;
+    }
+    setLocationState("prompting");
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        setLocationState("granted");
+      },
+      () => setLocationState("denied"),
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  // Ask for location up front, before the camera or any identification starts.
   useEffect(() => {
+    requestLocation();
+  }, [requestLocation]);
+
+  // Acquire the rear camera only once location is granted. Cleanup stops every
+  // track so the camera light goes off the moment we leave the view.
+  useEffect(() => {
+    if (locationState !== "granted") return;
     let stream: MediaStream | null = null;
     let cancelled = false;
 
@@ -54,25 +81,7 @@ export function LiveIdView() {
       stream?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     };
-  }, []);
-
-  // Best-effort location for the geo range boost; identification works without it.
-  useEffect(() => {
-    if (!navigator.geolocation) return;
-    let cancelled = false;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (!cancelled) {
-          setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-        }
-      },
-      () => {},
-      { enableHighAccuracy: false, timeout: 5000, maximumAge: 60_000 },
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [locationState]);
 
   const { suggestions, isInferring } = useLiveId({
     videoRef,
@@ -113,6 +122,58 @@ export function LiveIdView() {
   const sorted = [...suggestions].sort((a, b) => b.confidence - a.confidence);
   const top = sorted[0];
   const rest = sorted.slice(1);
+
+  // Location gate — the camera never starts until we have coordinates.
+  if (locationState !== "granted") {
+    return (
+      <Box
+        sx={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 1300,
+          bgcolor: "black",
+          color: "white",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          gap: 2,
+          p: 3,
+        }}
+      >
+        <IconButton
+          onClick={handleClose}
+          aria-label="Close"
+          sx={{ position: "absolute", top: 8, left: 8, color: "white" }}
+        >
+          <CloseIcon />
+        </IconButton>
+        <PlaceIcon sx={{ fontSize: 48, opacity: 0.85 }} />
+        {locationState === "prompting" ? (
+          <>
+            <Typography variant="h6">Allow location access</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8, maxWidth: 320 }}>
+              Live identification uses your location to narrow suggestions to species found near
+              you. Allow location access to continue.
+            </Typography>
+            <CircularProgress size={20} sx={{ color: "white", mt: 1 }} />
+          </>
+        ) : (
+          <>
+            <Typography variant="h6">Location required</Typography>
+            <Typography variant="body2" sx={{ opacity: 0.8, maxWidth: 320 }}>
+              Live identification needs your location. Enable location access for this site in your
+              browser settings, then try again.
+            </Typography>
+            <Button variant="contained" color="primary" onClick={requestLocation} sx={{ mt: 1 }}>
+              Try again
+            </Button>
+          </>
+        )}
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ position: "fixed", inset: 0, zIndex: 1300, bgcolor: "black" }}>
