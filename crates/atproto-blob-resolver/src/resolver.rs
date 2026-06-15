@@ -2,9 +2,10 @@
 
 use crate::error::{BlobResolverError, Result};
 use crate::types::PlcDirectoryResponse;
-use at_uri_parser::AtUri;
 use atproto_identity::{plc_directory_url, Did, DidMethod};
+use jacquard_common::types::string::AtUri;
 use reqwest::Client;
+use std::str::FromStr;
 use tracing::{debug, warn};
 
 /// Resolves AT Protocol DIDs to PDS endpoints and fetches blobs
@@ -171,15 +172,25 @@ impl BlobResolver {
     /// repeat. URI/DID parse failures surface as
     /// [`BlobResolverError::RecordFetch`] / [`BlobResolverError::DidResolution`].
     pub async fn fetch_record_by_aturi(&self, at_uri: &str) -> Result<serde_json::Value> {
-        let parsed = AtUri::parse(at_uri).ok_or_else(|| {
-            BlobResolverError::RecordFetch(format!("unparseable AT-URI: {at_uri}"))
-        })?;
-        let did = Did::parse(&parsed.did).map_err(|e| {
+        let parsed = AtUri::from_str(at_uri)
+            .map_err(|_| BlobResolverError::RecordFetch(format!("unparseable AT-URI: {at_uri}")))?;
+        let (Some(collection), Some(rkey)) = (parsed.collection(), parsed.rkey()) else {
+            return Err(BlobResolverError::RecordFetch(format!(
+                "AT-URI missing collection/rkey: {at_uri}"
+            )));
+        };
+        let authority = parsed.authority();
+        let did = Did::parse(authority.as_str()).map_err(|e| {
             BlobResolverError::DidResolution(format!("unparseable DID in {at_uri}: {e}"))
         })?;
         let pds_url = self.resolve_pds_url(&did).await?;
-        self.fetch_record(&pds_url, &parsed.did, &parsed.collection, &parsed.rkey)
-            .await
+        self.fetch_record(
+            &pds_url,
+            authority.as_str(),
+            collection.as_str(),
+            rkey.as_str(),
+        )
+        .await
     }
 }
 

@@ -498,7 +498,15 @@ fn subject_uri_is_occurrence(record: &Value) -> bool {
 }
 
 fn format_uri(record: &RecordEvent) -> String {
-    at_uri_parser::AtUri::new(&record.did, &record.collection, &record.rkey).to_string()
+    let built: Result<jacquard_common::types::string::AtUri, _> =
+        jacquard_common::types::string::AtUri::from_parts_owned(
+            &record.did,
+            &record.collection,
+            &record.rkey,
+        );
+    built
+        .map(|uri| uri.as_str().to_string())
+        .unwrap_or_else(|_| format!("at://{}/{}/{}", record.did, record.collection, record.rkey))
 }
 
 fn record_json(record: &RecordEvent) -> Option<Value> {
