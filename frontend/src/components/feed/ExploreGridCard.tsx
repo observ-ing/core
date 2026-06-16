@@ -2,7 +2,7 @@ import { memo } from "react";
 import { Link } from "react-router-dom";
 import { Typography, Card, CardActionArea, CardContent } from "@mui/material";
 import type { Occurrence } from "../../services/types";
-import { useAppSelector } from "../../store";
+import { useIsPending } from "../../store/pendingSlice";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
@@ -20,9 +20,7 @@ export const ExploreGridCard = memo(function ExploreGridCard({
   const species = observation.communityId || observation.effectiveTaxonomy?.scientificName;
   // Optimistic tombstone awaiting ingestion: dim it and block navigation to a
   // detail page that would 404 until the record lands.
-  const isPending = useAppSelector((state) =>
-    state.pending.submissions.some((s) => s.uri === observation.uri),
-  );
+  const isPending = useIsPending(observation.uri);
 
   return (
     <Card sx={{ display: "flex", flexDirection: "column", position: "relative" }}>

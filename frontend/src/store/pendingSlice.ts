@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
+import { useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./index";
 import { fetchObservation, pollObservation } from "../services/api";
 import { reconcileOccurrence } from "../lib/query/occurrenceCache";
@@ -142,3 +143,25 @@ const pendingSlice = createSlice({
 });
 
 export default pendingSlice.reducer;
+
+// Read patterns for the in-flight set live with the slice so the navbar
+// indicator and the per-row tombstone styling share one definition of
+// "pending" — keyed by the same stable atproto `uri`.
+
+/** Number of submissions still being ingested (drives the TopBar indicator). */
+export const selectPendingCount = (state: RootState): number => state.pending.submissions.length;
+
+/** Selector: is the observation at `uri` a still-processing submission? */
+export const selectIsPending =
+  (uri: string) =>
+  (state: RootState): boolean =>
+    state.pending.submissions.some((s) => s.uri === uri);
+
+/**
+ * Whether `uri` is a freshly-submitted observation the ingester hasn't
+ * confirmed yet — the tombstone rows render dimmed while this is true.
+ * Returns a primitive, so the subscription stays cheap and churn-free.
+ */
+export function useIsPending(uri: string): boolean {
+  return useSelector(selectIsPending(uri));
+}

@@ -16,6 +16,7 @@ import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
 import { useAppSelector } from "../../store";
+import { useIsPending } from "../../store/pendingSlice";
 import { getImageUrl } from "../../services/api";
 import { useLike } from "../../lib/query/mutations";
 import { TaxonLink } from "../common/TaxonLink";
@@ -43,11 +44,8 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const navigate = useNavigate();
   const currentUser = useAppSelector((state) => state.auth.user);
   const isOwnPost = currentUser?.did === observation.observer.did;
-  // True while this is an optimistic tombstone the ingester hasn't confirmed
-  // yet. Selecting a primitive keeps the subscription cheap and churn-free.
-  const isPending = useAppSelector((state) =>
-    state.pending.submissions.some((s) => s.uri === observation.uri),
-  );
+  // True while this is an optimistic tombstone the ingester hasn't confirmed yet.
+  const isPending = useIsPending(observation.uri);
 
   const owner = observation.observer;
   const handle = owner.handle ? `@${owner.handle}` : "";
