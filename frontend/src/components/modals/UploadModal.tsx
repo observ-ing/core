@@ -30,6 +30,7 @@ import { trackSubmission } from "../../store/pendingSlice";
 import { useToast } from "../../hooks/useToast";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
+import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
@@ -135,6 +136,7 @@ export function UploadModal() {
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const isEditMode = !!editingObservation;
 
@@ -442,11 +444,35 @@ export function UploadModal() {
 
     // The PDS write succeeded. Close the modal immediately so the submission
     // feels instant — the ingester poll, completion toast, and cache
-    // invalidation run in the background (surfaced by the TopBar pending
-    // indicator). The user stays on the current page; the new/updated row
-    // appears in place once the ingester catches up.
+    // reconciliation run in the background (surfaced by the TopBar pending
+    // indicator). For a create we also splice an optimistic "tombstone" row
+    // into the feeds so the new observation shows up right away (dimmed) instead
+    // of after the ingester catches up; trackSubmission swaps it for the real
+    // record once ingested.
     const onSuccess = (result: { uri: string; cid: string }) => {
       dispatch(closeUploadModal());
+      if (kind === "create" && currentUser) {
+        prependOccurrence(
+          makeTombstoneOccurrence({
+            uri: result.uri,
+            cid: result.cid,
+            observer: currentUser,
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng),
+            uncertaintyMeters: uncertaintyMeters,
+            eventDate,
+            scientificName: trimmedSpecies || undefined,
+            kingdom: kingdom || undefined,
+            rank: matchedTaxon?.rank ?? rank ?? undefined,
+            imageUrls: imageData.map((img) => `data:${img.mimeType};base64,${img.data}`),
+            license,
+            organismQuantity: organismQuantity.trim() || undefined,
+            organismQuantityType: organismQuantityType || undefined,
+            createdAt: new Date().toISOString(),
+          }),
+          currentUser.did,
+        );
+      }
       resetForm();
       void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
     };

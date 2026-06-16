@@ -1,12 +1,14 @@
 import { memo } from "react";
 import { Link } from "react-router-dom";
-import { Box, Typography, Card, CardActionArea, CardContent } from "@mui/material";
+import { Typography, Card, CardActionArea, CardContent } from "@mui/material";
 import type { Occurrence } from "../../services/types";
+import { useIsPending } from "../../store/pendingSlice";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
+import { PendingBadge } from "./PendingBadge";
 
 interface ExploreGridCardProps {
   observation: Occurrence;
@@ -16,17 +18,23 @@ export const ExploreGridCard = memo(function ExploreGridCard({
   observation,
 }: ExploreGridCardProps) {
   const species = observation.communityId || observation.effectiveTaxonomy?.scientificName;
+  // Optimistic tombstone awaiting ingestion: dim it and block navigation to a
+  // detail page that would 404 until the record lands.
+  const isPending = useIsPending(observation.uri);
 
   return (
-    <Card sx={{ display: "flex", flexDirection: "column" }}>
+    <Card sx={{ display: "flex", flexDirection: "column", position: "relative" }}>
+      {isPending && <PendingBadge />}
       <CardActionArea
         component={Link}
         to={getObservationUrl(observation.uri)}
+        onClick={isPending ? (e) => e.preventDefault() : undefined}
         sx={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
+          ...(isPending && { opacity: 0.7, pointerEvents: "none" }),
         }}
       >
         <ImageWithSkeleton
