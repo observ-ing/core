@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::did::Did;
+use jacquard_common::types::string::Did;
 
 /// AT Protocol profile
 #[derive(Debug, Clone, Serialize, Deserialize)]
