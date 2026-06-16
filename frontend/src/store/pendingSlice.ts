@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { RootState, AppDispatch } from "./index";
-import { pollObservation } from "../services/api";
+import { fetchObservation, pollObservation } from "../services/api";
+import { reconcileOccurrence } from "../lib/query/occurrenceCache";
 import { addToast } from "./uiSlice";
 
 const STORAGE_KEY = "observing-pending-submissions";
@@ -58,14 +59,13 @@ function persist(submissions: PendingSubmission[]) {
 
 // Poll the ingester for a freshly written observation in the background, then
 // notify on completion. The upload modal closes as soon as the PDS write
-// returns, so this work is invisible to the user except for the TopBar pending
-// indicator (driven by this slice) and this final toast.
+// returns; a client-built tombstone row (added by the modal on success) stands
+// in for the record in the feeds until this poll confirms ingestion.
 //
-// We deliberately do NOT refetch the feeds or observation detail here: the
-// record is now ingested and click-safe, and the lists pick it up on their
-// next natural refresh (navigation, window refocus, manual reload). The toast
-// is the only signal — see the discussion around optimistic prepend / in-place
-// refetch that we intentionally skipped.
+// Once the ingester has the canonical record we fetch it and `reconcileOccurrence`
+// swaps it in for the tombstone in-place — no full feed refetch, so the feed's
+// no-reorder behavior is preserved. On ingester timeout we leave the optimistic
+// row as-is; it reconciles on the next natural refresh.
 //
 // pollObservation never throws (network errors resolve to a missed predicate),
 // so this thunk fulfils even on ingester timeout — `processed` just reports
@@ -77,6 +77,14 @@ export const trackSubmission = createAsyncThunk<
   { state: RootState; dispatch: AppDispatch }
 >("pending/trackSubmission", async ({ uri, cid, kind }, { dispatch }) => {
   const processed = await pollObservation(uri, (r) => r?.occurrence?.cid === cid);
+
+  // Replace the tombstone (or a pre-edit row) with the canonical record now that
+  // the ingester has the matching cid. Both create and update benefit: the
+  // freshly-resolved taxonomy and real blob URLs land without a feed refetch.
+  if (processed) {
+    const detail = await fetchObservation(uri);
+    if (detail) reconcileOccurrence(detail);
+  }
 
   if (kind === "update") {
     dispatch(addToast({ message: "Observation updated successfully!", type: "success" }));

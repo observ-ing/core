@@ -286,6 +286,10 @@ export async function deleteIdentification(uri: string): Promise<{ success: bool
 }
 
 export function getImageUrl(path: string): string {
+  // Already-complete URLs pass through untouched — notably the inline `data:`
+  // preview an optimistic tombstone row carries before the ingester returns the
+  // real `/media/blob/...` path. Only API-relative paths get the base prepended.
+  if (/^(?:data:|blob:|https?:)/.test(path)) return path;
   return `${API_BASE}${path}`;
 }
 

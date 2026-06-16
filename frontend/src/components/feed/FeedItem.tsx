@@ -23,6 +23,7 @@ import { UserCard } from "../common/UserCard";
 import { getPdslsUrl, getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
+import { PendingBadge } from "./PendingBadge";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
 interface FeedItemProps {
@@ -42,6 +43,11 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const navigate = useNavigate();
   const currentUser = useAppSelector((state) => state.auth.user);
   const isOwnPost = currentUser?.did === observation.observer.did;
+  // True while this is an optimistic tombstone the ingester hasn't confirmed
+  // yet. Selecting a primitive keeps the subscription cheap and churn-free.
+  const isPending = useAppSelector((state) =>
+    state.pending.submissions.some((s) => s.uri === observation.uri),
+  );
 
   const owner = observation.observer;
   const handle = owner.handle ? `@${owner.handle}` : "";
@@ -90,8 +96,16 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   };
 
   return (
-    <Card sx={FEED_CARD_SX}>
-      <CardActionArea onClick={handleCardClick} component="div">
+    <Card sx={{ ...FEED_CARD_SX, position: "relative", ...(isPending && { opacity: 0.7 }) }}>
+      {isPending && <PendingBadge />}
+      {/* While pending the row isn't ingested: navigation 404s and the menu's
+          edit/delete act on a record that doesn't exist yet, so we freeze all
+          interaction inside the action area until reconciliation. */}
+      <CardActionArea
+        onClick={isPending ? undefined : handleCardClick}
+        component="div"
+        sx={isPending ? { pointerEvents: "none" } : undefined}
+      >
         <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
           <UserCard
             actor={owner}
@@ -187,7 +201,7 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
                   onClick={() =>
                     like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
                   }
-                  disabled={!currentUser}
+                  disabled={!currentUser || isPending}
                   aria-label={liked ? "Unlike" : "Like"}
                   sx={{
                     color: liked ? "error.main" : "text.disabled",
