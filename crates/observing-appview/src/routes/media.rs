@@ -64,7 +64,7 @@ pub async fn get_thumb(
 }
 
 async fn serve_blob(media: &MediaCache, did_str: &str, cid: &str) -> Response {
-    let did = match Did::parse(did_str) {
+    let did = match Did::new_owned(did_str) {
         Ok(d) => d,
         Err(e) => {
             warn!(did = %did_str, error = %e, "Rejecting blob request with invalid DID");

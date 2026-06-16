@@ -6,7 +6,9 @@ use moka::future::Cache;
 use reqwest::Client;
 use tracing::{debug, error, warn};
 
-use crate::did::{Did, DidMethod};
+use jacquard_common::types::string::Did;
+
+use crate::did::{DidExt, DidMethod};
 use crate::types::{
     DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
 };
@@ -88,7 +90,7 @@ impl IdentityResolver {
             Ok(response) if response.status().is_success() => {
                 match response.json::<ResolveHandleResponse>().await {
                     Ok(data) => {
-                        let did = match Did::parse(&data.did) {
+                        let did = match Did::new_owned(&data.did) {
                             Ok(d) => d,
                             Err(e) => {
                                 warn!(
@@ -186,10 +188,14 @@ impl IdentityResolver {
     /// Get the DID document for a DID
     async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
         let url = match did.method() {
-            DidMethod::Plc(_) => format!("{}/{}", self.plc_directory_url, did.as_str()),
-            DidMethod::Web(host) => {
+            Some(DidMethod::Plc(_)) => format!("{}/{}", self.plc_directory_url, did.as_str()),
+            Some(DidMethod::Web(host)) => {
                 let domain = host.replace("%3A", ":");
                 format!("https://{domain}/.well-known/did.json")
+            }
+            None => {
+                warn!(did = %did, "unsupported DID method; cannot resolve document");
+                return None;
             }
         };
 
