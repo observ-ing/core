@@ -4,6 +4,7 @@ import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import AddAPhotoIcon from "@mui/icons-material/AddAPhoto";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
 import { useNavigate } from "react-router-dom";
+import { Capacitor } from "@capacitor/core";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { openUploadModal, setPendingUploadFiles } from "../../store/uiSlice";
 import { pickPhotos } from "../../lib/photoPicker";
@@ -36,7 +37,12 @@ export function FAB() {
   const actions = [
     { icon: <CameraAltIcon />, name: "New Observation", action: handleNewObservation },
     { icon: <AddAPhotoIcon />, name: "Quick Photo", action: handleQuickPhoto },
-    { icon: <CenterFocusStrongIcon />, name: "Live ID", action: handleLiveId },
+    // Live ID relies on getUserMedia, which only works on web/PWA. Native
+    // builds would open a broken viewfinder, so hide the entry point there
+    // until a Capacitor camera-preview plugin is wired up.
+    ...(Capacitor.isNativePlatform()
+      ? []
+      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: handleLiveId }]),
   ];
 
   return (
