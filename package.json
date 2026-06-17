@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.3.4",
-    "@capacitor/camera": "^8.2.0",
     "@capacitor/core": "^8.3.4",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",

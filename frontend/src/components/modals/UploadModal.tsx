@@ -322,7 +322,6 @@ export function UploadModal() {
       return;
     }
     const files = await pickPhotos({
-      source: "gallery",
       multiple: true,
       maxCount: remaining,
     });
