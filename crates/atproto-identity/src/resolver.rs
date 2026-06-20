@@ -21,7 +21,6 @@ const BATCH_SIZE: usize = 25;
 pub struct IdentityResolver {
     client: Client,
     service_url: String,
-    plc_directory_url: String,
     identity_cache: Cache<String, ResolveResult>,
     profile_cache: Cache<String, Arc<Profile>>,
 }
@@ -68,7 +67,6 @@ impl IdentityResolver {
         Self {
             client,
             service_url: service_url.to_string(),
-            plc_directory_url: crate::plc_directory_url(),
             identity_cache,
             profile_cache,
         }
@@ -187,33 +185,12 @@ impl IdentityResolver {
 
     /// Get the DID document for a DID
     async fn get_did_document(&self, did: &Did) -> Option<DidDocument> {
-        let url = match did.method() {
-            Some(DidMethod::Plc(_)) => format!("{}/{}", self.plc_directory_url, did.as_str()),
-            Some(DidMethod::Web(host)) => {
-                let domain = host.replace("%3A", ":");
-                format!("https://{domain}/.well-known/did.json")
-            }
-            None => {
-                warn!(did = %did, "unsupported DID method; cannot resolve document");
-                return None;
-            }
-        };
-
-        match self.client.get(&url).send().await {
-            Ok(response) if response.status().is_success() => {
-                response.json::<DidDocument>().await.ok()
-            }
-            _ => None,
-        }
+        fetch_did_document(&self.client, did).await
     }
 
     /// Get the PDS endpoint for a DID
     pub async fn get_pds_endpoint(&self, did: &Did) -> Option<String> {
-        let doc = self.get_did_document(did).await?;
-        doc.service?
-            .iter()
-            .find(|s| s.id == "#atproto_pds")
-            .map(|s| s.service_endpoint.clone())
+        resolve_pds_endpoint(&self.client, did).await
     }
 
     /// Get a user's profile
@@ -310,4 +287,40 @@ impl Default for IdentityResolver {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Fetch and deserialize a DID document. `did:plc` is resolved via
+/// plc.directory; `did:web` via the host's `/.well-known/did.json`.
+async fn fetch_did_document(client: &Client, did: &Did) -> Option<DidDocument> {
+    let url = match did.method() {
+        Some(DidMethod::Plc(_)) => format!("{}/{}", crate::plc_directory_url(), did.as_str()),
+        Some(DidMethod::Web(host)) => {
+            let domain = host.replace("%3A", ":");
+            format!("https://{domain}/.well-known/did.json")
+        }
+        None => {
+            warn!(did = %did, "unsupported DID method; cannot resolve document");
+            return None;
+        }
+    };
+
+    match client.get(&url).send().await {
+        Ok(response) if response.status().is_success() => response.json::<DidDocument>().await.ok(),
+        _ => None,
+    }
+}
+
+/// Resolve a DID to its `#atproto_pds` service endpoint, if the DID document
+/// declares one.
+///
+/// A standalone counterpart to [`IdentityResolver::get_pds_endpoint`] that takes
+/// a borrowed [`Client`] instead of an `IdentityResolver`, so callers that only
+/// need PDS resolution (e.g. blob/record fetching) can reuse this logic without
+/// constructing the handle/profile caches.
+pub async fn resolve_pds_endpoint(client: &Client, did: &Did) -> Option<String> {
+    let doc = fetch_did_document(client, did).await?;
+    doc.service?
+        .iter()
+        .find(|s| s.id == "#atproto_pds")
+        .map(|s| s.service_endpoint.clone())
 }

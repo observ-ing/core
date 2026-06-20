@@ -9,7 +9,7 @@ mod resolver;
 mod types;
 
 pub use did::{DidExt, DidMethod};
-pub use resolver::IdentityResolver;
+pub use resolver::{resolve_pds_endpoint, IdentityResolver};
 pub use types::{Profile, ResolveResult};
 
 /// Validated AT Protocol DID, backed by jacquard's `Did` (default `SmolStr`
