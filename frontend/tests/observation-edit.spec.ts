@@ -5,6 +5,7 @@ import {
   mockOwnObservationFeed,
   mockObservationDetailRoute,
 } from "./helpers/mock-observation";
+import { gotoUploadStep } from "./helpers/navigation";
 
 test.describe("Observation Edit - Logged Out", () => {
   // TC-EDIT-002: Edit menu item hidden for others' observations
@@ -93,7 +94,8 @@ authTest.describe("Observation Edit - Logged In", () => {
     await page.getByRole("menuitem", { name: "Edit" }).click();
     await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
-    // Species input should have value
+    // Species input lives in the (collapsed) Identify step; reveal it first.
+    await gotoUploadStep(page, "Identify");
     const speciesInput = page.getByLabel(/Taxon/i);
     await authExpect(speciesInput).toHaveValue("Quercus alba");
   });

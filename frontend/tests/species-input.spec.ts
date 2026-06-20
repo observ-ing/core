@@ -1,5 +1,5 @@
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 
@@ -31,6 +31,8 @@ authTest.describe("Species Input", () => {
     await mockTaxaSearchRoute(page);
     await page.goto("/");
     await openUploadModal(page);
+    // Taxon input lives in the Identify step; reveal it for every test here.
+    await gotoUploadStep(page, "Identify");
   });
 
   // TC-SPECIES-001: Common name autocomplete
