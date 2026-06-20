@@ -17,6 +17,7 @@ const TREE_WIDTH = 300;
 interface TreeNode {
   id: string;
   name: string;
+  commonName?: string | undefined;
   rank: string;
   kingdom: string;
   childrenLoaded: boolean;
@@ -30,6 +31,7 @@ function nodeId(kingdom: string, name: string): string {
 
 export interface TaxonTreeItem extends TreeViewDefaultItemModelProperties {
   rank: string;
+  commonName?: string | undefined;
   children?: TaxonTreeItem[];
 }
 
@@ -45,6 +47,7 @@ function buildItems(id: string, nodes: Map<string, TreeNode>): TaxonTreeItem[] {
     id: node.id,
     label: node.name,
     rank: node.rank,
+    commonName: node.commonName,
   };
   if (children.length > 0) {
     item.children = children;
@@ -58,6 +61,10 @@ export function TaxonExplorer() {
 
   // Tree state
   const nodesRef = useRef<Map<string, TreeNode>>(new Map());
+  // Kingdom whose classification currently populates nodesRef. The explorer
+  // shows one kingdom at a time, so a change means we've jumped kingdoms (e.g.
+  // via search) and must drop the old nodes.
+  const treeKingdomRef = useRef<string>("");
   const [treeItems, setTreeItems] = useState<TaxonTreeItem[]>([]);
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [selectedItem, setSelectedItem] = useState<string>("");
@@ -129,8 +136,16 @@ export function TaxonExplorer() {
   /** Merge a taxon detail's ancestors + children into the tree node map */
   const mergeIntoTree = useCallback(
     (detail: TaxonDetail) => {
-      const nodes = nodesRef.current;
       const k = detail.kingdom || lookupKingdom || "";
+      // Jumped to a different kingdom — drop the previous kingdom's nodes so a
+      // stale root can't win in rebuildTreeFromRoot (which picks the first root
+      // it finds). Within a kingdom we keep nodes so the tree stays expanded
+      // across navigation.
+      if (k && treeKingdomRef.current && treeKingdomRef.current !== k) {
+        nodesRef.current = new Map();
+      }
+      if (k) treeKingdomRef.current = k;
+      const nodes = nodesRef.current;
       const ancestors = detail.ancestors ?? [];
 
       // Add ancestor nodes (linked parent → child along the path)
@@ -170,6 +185,7 @@ export function TaxonExplorer() {
       const existing = nodes.get(currentId);
       if (existing) {
         existing.childrenLoaded = true;
+        if (!existing.commonName) existing.commonName = detail.commonName;
         // Merge children (union)
         for (const cid of currentChildren) {
           if (!existing.childIds.includes(cid)) {
@@ -180,6 +196,7 @@ export function TaxonExplorer() {
         nodes.set(currentId, {
           id: currentId,
           name: detail.scientificName,
+          commonName: detail.commonName,
           rank: detail.rank,
           kingdom: k,
           childrenLoaded: true,
@@ -194,6 +211,7 @@ export function TaxonExplorer() {
           nodes.set(childId, {
             id: childId,
             name: child.scientificName,
+            commonName: child.commonName,
             rank: child.rank,
             kingdom: k,
             childrenLoaded: false,
@@ -241,6 +259,7 @@ export function TaxonExplorer() {
         nodes.set(childId, {
           id: childId,
           name: child.scientificName,
+          commonName: child.commonName,
           rank: child.rank,
           kingdom: parent.kingdom,
           childrenLoaded: false,
@@ -373,6 +392,7 @@ export function TaxonExplorer() {
     onExpandedItemsChange: setExpandedItems,
     onSelectedItemsChange: handleTreeSelect,
     onItemExpansionToggle: handleTreeExpansionToggle,
+    onSearchNavigate: () => setMobileTreeOpen(false),
   };
 
   // Only show the skeleton on the very first load. On subsequent navigations
@@ -444,6 +464,7 @@ export function TaxonExplorer() {
         observations={observations}
         hasMore={hasMore}
         loadingMore={loadingMore}
+        loading={loading}
         onLoadMore={loadMoreObservations}
         onBack={handleBack}
         onToggleTree={() => setMobileTreeOpen(true)}

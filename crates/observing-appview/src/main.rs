@@ -73,7 +73,7 @@ async fn main() {
 
     let state = AppState {
         pool,
-        resolver: Arc::new(atproto_identity::IdentityResolver::new()),
+        resolver: Arc::new(atproto_identity::IdentityResolver::from_env()),
         taxonomy: Arc::new(TaxonomyClient::new()),
         species_id,
         oauth_client: Arc::new(oauth_client),

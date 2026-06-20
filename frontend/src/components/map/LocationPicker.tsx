@@ -27,6 +27,7 @@ import {
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
 import { BasemapSelector } from "./BasemapSelector";
+import { formatCoordinate } from "../../lib/utils";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -55,6 +56,8 @@ function sliderToValue(slider: number): number {
 const SLIDER_MIN = valueToSlider(1);
 const SLIDER_MAX = valueToSlider(500000);
 const SLIDER_MARKS = [
+  { value: valueToSlider(1), label: "1m" },
+  { value: valueToSlider(10), label: "10m" },
   { value: valueToSlider(100), label: "100m" },
   { value: valueToSlider(1000), label: "1km" },
   { value: valueToSlider(10000), label: "10km" },
@@ -75,8 +78,8 @@ export function LocationPicker({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [latInput, setLatInput] = useState(latitude?.toFixed(6) ?? "");
-  const [lngInput, setLngInput] = useState(longitude?.toFixed(6) ?? "");
+  const [latInput, setLatInput] = useState(latitude != null ? formatCoordinate(latitude) : "");
+  const [lngInput, setLngInput] = useState(longitude != null ? formatCoordinate(longitude) : "");
   const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
   const mode = theme.palette.mode;
@@ -120,8 +123,8 @@ export function LocationPicker({
       }
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     },
     [onChange, updateMarker],
   );
@@ -186,8 +189,8 @@ export function LocationPicker({
       const { latitude: lat, longitude: lng } = e.coords;
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     });
 
     mapInstance.on("load", () => {
@@ -218,8 +221,8 @@ export function LocationPicker({
       const { lng, lat } = e.lngLat;
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     });
 
     map.current = mapInstance;
@@ -257,8 +260,8 @@ export function LocationPicker({
     ) {
       updateMarker(longitude, latitude);
       map.current.setCenter([longitude, latitude]);
-      setLatInput(latitude.toFixed(6));
-      setLngInput(longitude.toFixed(6));
+      setLatInput(formatCoordinate(latitude));
+      setLngInput(formatCoordinate(longitude));
     }
   }, [latitude, longitude, updateMarker]);
 

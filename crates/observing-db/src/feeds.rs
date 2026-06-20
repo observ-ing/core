@@ -65,15 +65,11 @@ pub async fn get_explore_feed(
         push_consensus_rank_filter(&mut qb, "kingdom", kingdom);
     }
 
-    if let Some(start_date) = options.start_date.as_deref() {
-        qb.push(" AND event_date >= ");
-        qb.push_bind(start_date);
-    }
-
-    if let Some(end_date) = options.end_date.as_deref() {
-        qb.push(" AND event_date <= ");
-        qb.push_bind(end_date);
-    }
+    push_date_overlap_filter(
+        &mut qb,
+        options.start_date.as_deref(),
+        options.end_date.as_deref(),
+    );
 
     if !options.quality.is_empty() {
         push_quality_filter(&mut qb, &options.quality.criteria);
@@ -100,7 +96,9 @@ fn push_quality_filter(qb: &mut QueryBuilder<Postgres>, criteria: &[QualityCrite
     for criterion in criteria {
         match criterion {
             QualityCriterion::HasDate => {
-                qb.push(" AND event_date IS NOT NULL");
+                // Mirror compute_issues, which flags MissingDate on the raw
+                // string — a present-but-unparseable eventDate still counts.
+                qb.push(" AND event_date_raw IS NOT NULL");
             }
             QualityCriterion::HasLocation => {
                 qb.push(" AND location IS NOT NULL");
@@ -167,7 +165,7 @@ pub async fn get_profile_feed(
                 r#"
                 SELECT
                     uri, cid, did, scientific_name,
-                    event_date,
+                    event_date_raw as event_date,
                     ST_Y(location::geometry) as latitude,
                     ST_X(location::geometry) as longitude,
                     coordinate_uncertainty_meters,
@@ -194,7 +192,7 @@ pub async fn get_profile_feed(
                 r#"
                 SELECT
                     uri, cid, did, scientific_name,
-                    event_date,
+                    event_date_raw as event_date,
                     ST_Y(location::geometry) as latitude,
                     ST_X(location::geometry) as longitude,
                     coordinate_uncertainty_meters,
@@ -399,6 +397,44 @@ fn push_consensus_rank_filter(qb: &mut QueryBuilder<Postgres>, rank_lower: &str,
     qb.push(")");
 }
 
+/// Keep only occurrences whose eventDate interval overlaps the requested
+/// window. Both bounds arrive as `YYYY-MM-DD` dates; the window is the
+/// half-open range `[start 00:00, (end + 1 day) 00:00)`, so the end date is
+/// inclusive of the whole day. Either bound may be open. Undated rows have a
+/// NULL `event_date_range` and so never match (`&&` against NULL is NULL). A
+/// no-op when neither bound is given.
+fn push_date_overlap_filter(
+    qb: &mut QueryBuilder<Postgres>,
+    start_date: Option<&str>,
+    end_date: Option<&str>,
+) {
+    if start_date.is_none() && end_date.is_none() {
+        return;
+    }
+    qb.push(" AND event_date_range && tstzrange(");
+    match start_date {
+        Some(s) => {
+            qb.push_bind(s.to_string());
+            qb.push("::date::timestamptz");
+        }
+        None => {
+            qb.push("NULL");
+        }
+    }
+    qb.push(", ");
+    match end_date {
+        Some(e) => {
+            qb.push("(");
+            qb.push_bind(e.to_string());
+            qb.push("::date + 1)::timestamptz");
+        }
+        None => {
+            qb.push("NULL");
+        }
+    }
+    qb.push(", '[)')");
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -413,6 +449,40 @@ mod tests {
         // skip or duplicate rows at the page boundary.
         assert!(sql.contains("(created_at, uri) < ("), "got: {sql}");
         assert!(sql.contains("::timestamptz"));
+    }
+
+    #[test]
+    fn date_overlap_filter_uses_range_overlap_with_inclusive_end_day() {
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT 1 FROM occurrences WHERE TRUE");
+        push_date_overlap_filter(&mut qb, Some("2026-01-01"), Some("2026-04-30"));
+        let sql = qb.sql();
+        let sql = sql.as_str();
+        // Interval overlap against the materialized range, not a comparison on
+        // a single instant.
+        assert!(sql.contains("event_date_range && tstzrange("), "got: {sql}");
+        // End date is made inclusive of the whole day via `+ 1`.
+        assert!(sql.contains("::date + 1)::timestamptz"), "got: {sql}");
+    }
+
+    #[test]
+    fn date_overlap_filter_allows_open_bounds_and_no_op() {
+        // Open upper bound → NULL (unbounded) on that side.
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT 1 FROM occurrences WHERE TRUE");
+        push_date_overlap_filter(&mut qb, Some("2026-01-01"), None);
+        let sql = qb.sql();
+        let sql = sql.as_str();
+        assert!(sql.contains("tstzrange("), "got: {sql}");
+        assert!(sql.contains(", NULL, '[)')"), "got: {sql}");
+
+        // No bounds → no clause added at all.
+        let mut qb = QueryBuilder::<Postgres>::new("SELECT 1 FROM occurrences WHERE TRUE");
+        push_date_overlap_filter(&mut qb, None, None);
+        let sql = qb.sql();
+        assert!(
+            !sql.as_str().contains("event_date_range"),
+            "got: {}",
+            sql.as_str()
+        );
     }
 
     #[test]

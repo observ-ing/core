@@ -1,7 +1,19 @@
-import { Box, Stack, Typography, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
+import { useState } from "react";
+import {
+  Box,
+  Stack,
+  Typography,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Collapse,
+  IconButton,
+} from "@mui/material";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { QualityIssue } from "../../bindings/QualityIssue";
 
 interface DataQualitySectionProps {
@@ -61,45 +73,74 @@ const CRITERIA: Array<{
 export function DataQualitySection({ issues }: DataQualitySectionProps) {
   const issueSet = new Set(issues);
   const metCount = CRITERIA.filter((criterion) => criterion.met(issueSet)).length;
+  const allMet = metCount === CRITERIA.length;
+
+  // When every criterion passes there's nothing actionable to show, so the
+  // checklist starts collapsed and the header alone communicates the result.
+  // Anything outstanding stays expanded so it's visible without a click.
+  const [expanded, setExpanded] = useState(!allMet);
 
   return (
     <Box>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
+      <Stack
+        direction="row"
+        spacing={1}
+        onClick={() => setExpanded((prev) => !prev)}
+        sx={{
+          alignItems: "center",
+          mb: expanded ? 1 : 0,
+          cursor: "pointer",
+          userSelect: "none",
+        }}
+      >
         <VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />
         <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
           Data quality
         </Typography>
         <Typography variant="caption" sx={{ color: "text.secondary", ml: "auto" }}>
-          {metCount}/{CRITERIA.length}
+          {allMet ? "All criteria met" : `${metCount}/${CRITERIA.length}`}
         </Typography>
+        <IconButton
+          size="small"
+          aria-label={expanded ? "Collapse data quality" : "Expand data quality"}
+          sx={{
+            p: 0.25,
+            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+            transition: (theme) => theme.transitions.create("transform"),
+          }}
+        >
+          <ExpandMoreIcon fontSize="small" />
+        </IconButton>
       </Stack>
-      <List disablePadding>
-        {CRITERIA.map((criterion) => {
-          const met = criterion.met(issueSet);
-          return (
-            <ListItem key={criterion.id} disableGutters alignItems="flex-start" sx={{ py: 0.25 }}>
-              <ListItemIcon sx={{ minWidth: 32, mt: 0.25 }}>
-                {met ? (
-                  <CheckCircleIcon sx={{ fontSize: 18, color: "success.main" }} />
-                ) : (
-                  <CancelIcon sx={{ fontSize: 18, color: "warning.main" }} />
-                )}
-              </ListItemIcon>
-              <ListItemText
-                primary={criterion.label}
-                secondary={met ? undefined : criterion.unmetDetail}
-                slotProps={{
-                  primary: {
-                    variant: "body2",
-                    color: met ? "text.primary" : "text.secondary",
-                  },
-                  secondary: { variant: "caption" },
-                }}
-              />
-            </ListItem>
-          );
-        })}
-      </List>
+      <Collapse in={expanded} unmountOnExit>
+        <List disablePadding>
+          {CRITERIA.map((criterion) => {
+            const met = criterion.met(issueSet);
+            return (
+              <ListItem key={criterion.id} disableGutters alignItems="flex-start" sx={{ py: 0.25 }}>
+                <ListItemIcon sx={{ minWidth: 32, mt: 0.25 }}>
+                  {met ? (
+                    <CheckCircleIcon sx={{ fontSize: 18, color: "success.main" }} />
+                  ) : (
+                    <CancelIcon sx={{ fontSize: 18, color: "warning.main" }} />
+                  )}
+                </ListItemIcon>
+                <ListItemText
+                  primary={criterion.label}
+                  secondary={met ? undefined : criterion.unmetDetail}
+                  slotProps={{
+                    primary: {
+                      variant: "body2",
+                      color: met ? "text.primary" : "text.secondary",
+                    },
+                    secondary: { variant: "caption" },
+                  }}
+                />
+              </ListItem>
+            );
+          })}
+        </List>
+      </Collapse>
     </Box>
   );
 }

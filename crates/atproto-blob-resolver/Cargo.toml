@@ -13,7 +13,7 @@ reqwest = { workspace = true }
 atproto-identity = { path = "../atproto-identity" }
 
 # AT-URI parsing, for `fetch_record_by_aturi`
-at-uri-parser = { path = "../at-uri-parser" }
+jacquard-common = "0.12"
 
 # Serialization
 serde = { workspace = true }

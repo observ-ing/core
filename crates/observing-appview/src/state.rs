@@ -8,23 +8,80 @@ use crate::resolver::HickoryDnsTxtResolver;
 use crate::species_id_client::SpeciesIdClient;
 use crate::taxonomy_client::TaxonomyClient;
 
-use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig, DEFAULT_PLC_DIRECTORY_URL};
-use atrium_identity::handle::{AtprotoHandleResolver, AtprotoHandleResolverConfig};
+use atrium_api::types::string::{Did, Handle};
+use atrium_common::resolver::Resolver;
+use atrium_identity::did::{CommonDidResolver, CommonDidResolverConfig};
+use atrium_identity::handle::{
+    AppViewHandleResolver, AppViewHandleResolverConfig, AtprotoHandleResolver,
+    AtprotoHandleResolverConfig, HandleResolver,
+};
 use atrium_oauth::{DefaultHttpClient, OAuthClient};
+
+/// Handle→DID resolver chosen at startup.
+///
+/// Production uses the spec-default decentralized resolver (DNS TXT +
+/// `.well-known`). Setting `HANDLE_RESOLVER_URL` switches to an AppView-style
+/// `com.atproto.identity.resolveHandle` call against that URL — this is how the
+/// stack is pointed at a local `@atproto/dev-env` PDS for isolated e2e, where
+/// `.test` handles cannot resolve via DNS.
+pub enum AppHandleResolver {
+    // Boxed: the DNS resolver is ~10x larger than the AppView variant
+    // (clippy::large_enum_variant).
+    Dns(Box<AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>>),
+    AppView(AppViewHandleResolver<DefaultHttpClient>),
+}
+
+impl Resolver for AppHandleResolver {
+    type Input = Handle;
+    type Output = Did;
+    type Error = atrium_identity::Error;
+
+    async fn resolve(&self, handle: &Handle) -> Result<Did, atrium_identity::Error> {
+        match self {
+            Self::Dns(r) => r.resolve(handle).await,
+            Self::AppView(r) => r.resolve(handle).await,
+        }
+    }
+}
+
+impl HandleResolver for AppHandleResolver {}
+
+/// Build the handle resolver from `HANDLE_RESOLVER_URL` (AppView-style when set,
+/// decentralized DNS/well-known otherwise).
+fn build_handle_resolver(http_client: Arc<DefaultHttpClient>) -> AppHandleResolver {
+    match std::env::var("HANDLE_RESOLVER_URL")
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+    {
+        Some(service_url) => {
+            AppHandleResolver::AppView(AppViewHandleResolver::new(AppViewHandleResolverConfig {
+                service_url,
+                http_client,
+            }))
+        }
+        None => AppHandleResolver::Dns(Box::new(AtprotoHandleResolver::new(
+            AtprotoHandleResolverConfig {
+                dns_txt_resolver: HickoryDnsTxtResolver::default(),
+                http_client,
+            },
+        ))),
+    }
+}
 
 /// The concrete OAuthClient type with PostgreSQL stores and DNS resolution.
 pub type OAuthClientType = OAuthClient<
     PgStateStore,
     PgSessionStore,
     CommonDidResolver<DefaultHttpClient>,
-    AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>,
+    AppHandleResolver,
 >;
 
 /// The concrete OAuth session type returned by `OAuthClientType::restore()`.
 pub type OAuthSessionType = atrium_oauth::OAuthSession<
     DefaultHttpClient,
     CommonDidResolver<DefaultHttpClient>,
-    AtprotoHandleResolver<HickoryDnsTxtResolver, DefaultHttpClient>,
+    AppHandleResolver,
     PgSessionStore,
 >;
 
@@ -62,13 +119,10 @@ pub fn create_oauth_client(pool: PgPool, public_url: Option<&str>, port: u16) ->
 
     let resolver = atrium_oauth::OAuthResolverConfig {
         did_resolver: CommonDidResolver::new(CommonDidResolverConfig {
-            plc_directory_url: DEFAULT_PLC_DIRECTORY_URL.to_string(),
+            plc_directory_url: atproto_identity::plc_directory_url(),
             http_client: http_client.clone(),
         }),
-        handle_resolver: AtprotoHandleResolver::new(AtprotoHandleResolverConfig {
-            dns_txt_resolver: HickoryDnsTxtResolver::default(),
-            http_client: http_client.clone(),
-        }),
+        handle_resolver: build_handle_resolver(http_client.clone()),
         authorization_server_metadata: Default::default(),
         protected_resource_metadata: Default::default(),
     };

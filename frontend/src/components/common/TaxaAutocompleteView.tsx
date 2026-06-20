@@ -4,9 +4,10 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
+import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { nameToSlug } from "../../lib/taxonSlug";
 
-function taxonUrlFor(option: TaxaResult): string | null {
+export function taxonUrlFor(option: TaxaResult): string | null {
   if (option.rank?.toLowerCase() === "kingdom") {
     return `/taxon/${nameToSlug(option.scientificName)}`;
   }
@@ -133,6 +134,9 @@ export function TaxaAutocompleteView({
                   <Typography
                     sx={{
                       fontWeight: 600,
+                      fontStyle: shouldItalicizeTaxonName(option.scientificName, option.rank)
+                        ? "italic"
+                        : "normal",
                     }}
                   >
                     {option.scientificName}

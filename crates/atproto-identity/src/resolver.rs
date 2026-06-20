@@ -6,7 +6,9 @@ use moka::future::Cache;
 use reqwest::Client;
 use tracing::{debug, error, warn};
 
-use crate::did::{Did, DidMethod};
+use jacquard_common::types::string::Did;
+
+use crate::did::{DidExt, DidMethod};
 use crate::types::{
     DidDocument, Profile, ProfileResponse, ProfilesResponse, ResolveHandleResponse, ResolveResult,
 };
@@ -27,6 +29,22 @@ impl IdentityResolver {
     /// Create a new resolver with default settings
     pub fn new() -> Self {
         Self::with_service_url(DEFAULT_SERVICE_URL)
+    }
+
+    /// Create a resolver, honoring `HANDLE_RESOLVER_URL` as an override for the
+    /// service base used to resolve handles (point this at a local
+    /// `@atproto/dev-env` PDS for isolated e2e). Falls back to the public
+    /// Bluesky API. did:plc resolution is governed separately by
+    /// [`crate::plc_directory_url`].
+    pub fn from_env() -> Self {
+        match std::env::var("HANDLE_RESOLVER_URL")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+        {
+            Some(url) => Self::with_service_url(&url),
+            None => Self::new(),
+        }
     }
 
     /// Create a new resolver with a custom Bluesky API URL
@@ -70,7 +88,7 @@ impl IdentityResolver {
             Ok(response) if response.status().is_success() => {
                 match response.json::<ResolveHandleResponse>().await {
                     Ok(data) => {
-                        let did = match Did::parse(&data.did) {
+                        let did = match Did::new_owned(&data.did) {
                             Ok(d) => d,
                             Err(e) => {
                                 warn!(
@@ -275,10 +293,14 @@ impl Default for IdentityResolver {
 /// plc.directory; `did:web` via the host's `/.well-known/did.json`.
 async fn fetch_did_document(client: &Client, did: &Did) -> Option<DidDocument> {
     let url = match did.method() {
-        DidMethod::Plc(_) => format!("https://plc.directory/{}", did.as_str()),
-        DidMethod::Web(host) => {
+        Some(DidMethod::Plc(_)) => format!("{}/{}", crate::plc_directory_url(), did.as_str()),
+        Some(DidMethod::Web(host)) => {
             let domain = host.replace("%3A", ":");
             format!("https://{domain}/.well-known/did.json")
+        }
+        None => {
+            warn!(did = %did, "unsupported DID method; cannot resolve document");
+            return None;
         }
     };
 

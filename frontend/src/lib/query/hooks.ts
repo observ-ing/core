@@ -29,20 +29,38 @@ const nextCursor = (last: { cursor?: string }): Cursor => last.cursor ?? undefin
 
 /**
  * Home/explore feed. The active tab comes from the route (passed by the
- * caller); filters + auth are read from Redux. All three form the query key.
+ * caller); filters + auth are read from Redux. All form the query key.
+ *
+ * `isAuthenticated` drives the endpoint choice (signed-in home vs. explore
+ * fallback) AND is part of the query key, so the two responses never share a
+ * cache entry and an auth flip refetches. We also wait for the startup auth
+ * check (`isLoading`) to settle before fetching: otherwise the home tab would
+ * fire an explore request during the brief window where a logged-in user still
+ * reads as unauthenticated, cache it under the home key, and — since auth isn't
+ * a refetch trigger on its own — leave the wrong feed showing until the next
+ * stale refetch.
  */
 export function useFeed(tab: FeedTab) {
   const filters = useAppSelector((s) => s.feed.filters);
   const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
+  const authResolved = useAppSelector((s) => !s.auth.isLoading);
 
   return useInfiniteQuery({
-    queryKey: qk.feed(tab, filters),
+    queryKey: qk.feed(tab, filters, isAuthenticated),
     queryFn: ({ pageParam }: { pageParam: Cursor }) =>
       tab === "home" && isAuthenticated
         ? fetchHomeFeed(pageParam)
         : fetchExploreFeed(pageParam, filters),
     initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
+    enabled: authResolved,
+    // The feed is an infinite, newest-first list. A background refetch re-pulls
+    // every loaded page and can reorder/duplicate rows under the reader, so we
+    // don't auto-refresh it on tab focus and give it a longer staleTime so
+    // re-entering the feed mid-session doesn't swap content. A real reload (or a
+    // future pull-to-refresh) still fetches fresh.
+    refetchOnWindowFocus: false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -71,10 +89,14 @@ export function useTaxonOccurrences(kingdomOrId: string, name?: string) {
 // ── Single reads ─────────────────────────────────────────────────────────────
 
 export function useObservation(uri: string | undefined) {
+  // Once a delete for this observation starts, stop fetching it: the mutation
+  // removes the detail cache, and without this the still-mounted detail page
+  // would refetch the now-deleted row (a 404) before navigating away.
+  const isDeleting = useAppSelector((s) => s.ui.deletingObservationUri === uri);
   return useQuery({
     queryKey: qk.observation(uri ?? ""),
     queryFn: () => fetchObservation(uri ?? ""),
-    enabled: !!uri,
+    enabled: !!uri && !isDeleting,
   });
 }
 

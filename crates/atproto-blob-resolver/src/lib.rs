@@ -6,6 +6,6 @@
 pub mod error;
 pub mod resolver;
 
-pub use atproto_identity::{Did, DidParseError};
+pub use atproto_identity::Did;
 pub use error::{BlobResolverError, Result};
 pub use resolver::BlobResolver;

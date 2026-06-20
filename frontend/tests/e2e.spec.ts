@@ -158,6 +158,63 @@ authTest.describe("E2E CRUD flow", () => {
     });
   });
 
+  authTest(
+    "create an observation with a date range and see it rendered as a range",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+        timeout: 10000,
+      });
+
+      await mockTaxaSearchRoute(page);
+      await openUploadModal(page);
+
+      const speciesInput = page.getByLabel(/Taxon/i);
+      await speciesInput.click();
+      await Promise.all([
+        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
+        speciesInput.pressSequentially("Quercus agrifolia", { delay: 50 }),
+      ]);
+      const option = page.locator(".MuiAutocomplete-option").first();
+      await expect(option).toBeVisible();
+      await option.click();
+
+      await revealCoordinateInputs(page);
+      const latInput = page.getByLabel("Latitude");
+      await latInput.scrollIntoViewIfNeeded();
+      await latInput.fill("37.7749");
+      await page.getByLabel("Longitude").fill("-122.4194");
+
+      // Set a start date and an end date so the eventDate is written as a
+      // `YYYY-MM-DD/YYYY-MM-DD` interval. The start field is labelled
+      // "Observation date" until an end date is present.
+      await page.getByLabel("Observation date").fill("2024-05-21T08:00");
+      await page.getByLabel("End date (optional)").fill("2024-05-23");
+
+      const createResp = page.waitForResponse(
+        (resp) => resp.request().method() === "POST" && resp.url().includes("/api/occurrences"),
+        { timeout: 30_000 },
+      );
+      await page.getByRole("button", { name: /Submit/i }).click();
+      const resp = await createResp;
+      expect(resp.ok()).toBeTruthy();
+      occurrenceUri = (await resp.json()).uri as string;
+
+      const match = occurrenceUri.match(/^at:\/\/([^/]+)\/[^/]+\/([^/]+)$/);
+      expect(match).toBeTruthy();
+      const [, did, rkey] = match!;
+      await waitForOccurrenceIndexed(page, occurrenceUri);
+      await page.goto(`/observation/${did}/${rkey}`);
+
+      // The detail view renders the interval as "<start> – <end>" (en dash),
+      // not a single instant — proving the range survived create → ingest →
+      // display end to end.
+      await expect(page.getByText(/May 21, 2024\s*–\s*May 23, 2024/)).toBeVisible({
+        timeout: 10_000,
+      });
+    },
+  );
+
   authTest.afterEach(async ({ authenticatedPage: page }) => {
     // Clean up if the test failed before the delete step
     if (occurrenceUri) {

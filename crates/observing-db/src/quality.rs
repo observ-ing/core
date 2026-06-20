@@ -181,7 +181,7 @@ mod tests {
             cid: "cid".into(),
             did: "did:plc:test".into(),
             scientific_name: None,
-            event_date: Some(Utc::now()),
+            event_date: Some("2024-06-15".into()),
             latitude: Some(40.0),
             longitude: Some(-105.0),
             coordinate_uncertainty_meters: Some(10),

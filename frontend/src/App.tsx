@@ -64,6 +64,9 @@ const TransparencyPage = lazy(() =>
 const NotFound = lazy(() =>
   import("./components/common/NotFound").then((m) => ({ default: m.NotFound })),
 );
+const LiveIdView = lazy(() =>
+  import("./components/identification/LiveIdView").then((m) => ({ default: m.LiveIdView })),
+);
 
 function AppContent() {
   const dispatch = useAppDispatch();
@@ -158,6 +161,7 @@ function AppContent() {
               <Route path="/lexicons" element={<LexiconView />} />
               <Route path="/docs" element={<DocsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/identify" element={<LiveIdView />} />
               <Route path="/transparency" element={<TransparencyPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

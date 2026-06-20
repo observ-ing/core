@@ -1,9 +1,10 @@
 //! DID resolution and blob fetching from AT Protocol PDS servers
 
 use crate::error::{BlobResolverError, Result};
-use at_uri_parser::AtUri;
-use atproto_identity::{Did, DidMethod};
+use atproto_identity::{Did, DidExt, DidMethod};
+use jacquard_common::types::string::AtUri;
 use reqwest::Client;
+use std::str::FromStr;
 use tracing::{debug, warn};
 
 /// Resolves AT Protocol DIDs to PDS endpoints and fetches blobs
@@ -14,9 +15,7 @@ pub struct BlobResolver {
 impl BlobResolver {
     /// Create a new blob resolver
     pub fn new() -> Self {
-        Self {
-            client: Client::new(),
-        }
+        Self::with_client(Client::new())
     }
 
     /// Create a resolver using a caller-provided HTTP client — e.g. one
@@ -34,7 +33,7 @@ impl BlobResolver {
     /// `did:web` keeps the host-derived shortcut below.
     pub async fn resolve_pds_url(&self, did: &Did) -> Result<String> {
         match did.method() {
-            DidMethod::Plc(_) => atproto_identity::resolve_pds_endpoint(&self.client, did)
+            Some(DidMethod::Plc(_)) => atproto_identity::resolve_pds_endpoint(&self.client, did)
                 .await
                 .ok_or_else(|| {
                     BlobResolverError::DidResolution(format!(
@@ -42,7 +41,10 @@ impl BlobResolver {
                         did.as_str()
                     ))
                 }),
-            DidMethod::Web(host) => self.resolve_web_did(did, host),
+            Some(DidMethod::Web(host)) => self.resolve_web_did(did, host),
+            None => Err(BlobResolverError::DidResolution(format!(
+                "unsupported DID method: {did}"
+            ))),
         }
     }
 
@@ -147,15 +149,25 @@ impl BlobResolver {
     /// repeat. URI/DID parse failures surface as
     /// [`BlobResolverError::RecordFetch`] / [`BlobResolverError::DidResolution`].
     pub async fn fetch_record_by_aturi(&self, at_uri: &str) -> Result<serde_json::Value> {
-        let parsed = AtUri::parse(at_uri).ok_or_else(|| {
-            BlobResolverError::RecordFetch(format!("unparseable AT-URI: {at_uri}"))
-        })?;
-        let did = Did::parse(&parsed.did).map_err(|e| {
+        let parsed = AtUri::from_str(at_uri)
+            .map_err(|_| BlobResolverError::RecordFetch(format!("unparseable AT-URI: {at_uri}")))?;
+        let (Some(collection), Some(rkey)) = (parsed.collection(), parsed.rkey()) else {
+            return Err(BlobResolverError::RecordFetch(format!(
+                "AT-URI missing collection/rkey: {at_uri}"
+            )));
+        };
+        let authority = parsed.authority();
+        let did = Did::new_owned(authority.as_str()).map_err(|e| {
             BlobResolverError::DidResolution(format!("unparseable DID in {at_uri}: {e}"))
         })?;
         let pds_url = self.resolve_pds_url(&did).await?;
-        self.fetch_record(&pds_url, &parsed.did, &parsed.collection, &parsed.rkey)
-            .await
+        self.fetch_record(
+            &pds_url,
+            authority.as_str(),
+            collection.as_str(),
+            rkey.as_str(),
+        )
+        .await
     }
 }
 
@@ -170,14 +182,14 @@ mod tests {
     use super::*;
 
     fn web_did(s: &str) -> Did {
-        Did::parse(s).expect("test fixture must parse")
+        Did::new_owned(s).expect("test fixture must parse")
     }
 
     #[test]
     fn test_resolve_web_did_simple_domain() {
         let resolver = BlobResolver::new();
         let did = web_did("did:web:example.com");
-        let DidMethod::Web(host) = did.method() else {
+        let Some(DidMethod::Web(host)) = did.method() else {
             panic!("expected web method")
         };
 
@@ -189,7 +201,7 @@ mod tests {
     fn test_resolve_web_did_url_encoded_port() {
         let resolver = BlobResolver::new();
         let did = web_did("did:web:example.com%3A8080");
-        let DidMethod::Web(host) = did.method() else {
+        let Some(DidMethod::Web(host)) = did.method() else {
             panic!("expected web method")
         };
 
@@ -197,7 +209,13 @@ mod tests {
         assert_eq!(result, "https://example.com:8080");
     }
 
-    // Unsupported-method coverage now lives at the type boundary: Did::parse
-    // refuses anything other than did:plc:/did:web:, so resolve_pds_url cannot
-    // be reached with an unsupported method in the first place.
+    #[tokio::test]
+    async fn unsupported_method_is_rejected() {
+        // jacquard's Did accepts any syntactically valid method, so the
+        // unsupported-method guard now lives in resolve_pds_url itself.
+        let resolver = BlobResolver::new();
+        let did = Did::new_owned("did:key:z6MkExample").expect("valid did syntax");
+        let err = resolver.resolve_pds_url(&did).await.unwrap_err();
+        assert!(matches!(err, BlobResolverError::DidResolution(_)));
+    }
 }

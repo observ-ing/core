@@ -1,5 +1,7 @@
-import { useRef, useCallback } from "react";
-import { Box, Container } from "@mui/material";
+import { useRef, useCallback, useState } from "react";
+import { Box, Container, ToggleButton, ToggleButtonGroup, Tooltip } from "@mui/material";
+import GridViewIcon from "@mui/icons-material/GridView";
+import TableRowsIcon from "@mui/icons-material/TableRows";
 import { useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useFeed } from "../../lib/query/hooks";
@@ -10,6 +12,7 @@ import { FeedSkeletonList } from "./FeedItemSkeleton";
 import { ProfileObservationCardSkeleton } from "../profile/ProfileObservationCardSkeleton";
 import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
+import { ExploreTable } from "./ExploreTable";
 import { FeedEndIndicator } from "./FeedEndIndicator";
 import { observationGridSx } from "../common/observationGridLayout";
 import { CenteredSpinner } from "../common/CenteredSpinner";
@@ -23,6 +26,10 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
   usePageTitle(tab === "explore" ? "Explore" : "Home");
   const dispatch = useAppDispatch();
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Explore results layout: dense card grid (default) or a CSV-style table.
+  // Presentation-only state — no need to share it beyond this component.
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
 
   const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useFeed(tab);
   const observations = data?.pages.flatMap((page) => page.occurrences) ?? [];
@@ -58,7 +65,50 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
         <Box sx={{ flexShrink: 0 }}>
           <Container maxWidth="sm" disableGutters>
             <Box sx={{ px: 2, pt: 2 }}>
-              <ExploreFilterPanel />
+              {/* On narrow screens the layout toggle shares a line with the
+                  filter panel header to save vertical space; on wider screens
+                  it sits in its own right-aligned row above the panel. */}
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: { xs: "row", sm: "column" },
+                  alignItems: { xs: "flex-start", sm: "stretch" },
+                  gap: { xs: 1, sm: 0 },
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    mb: { xs: 0, sm: 1 },
+                    order: { xs: 2, sm: 0 },
+                  }}
+                >
+                  <ToggleButtonGroup
+                    size="small"
+                    exclusive
+                    value={viewMode}
+                    onChange={(_, value) => {
+                      if (value) setViewMode(value);
+                    }}
+                    aria-label="Results layout"
+                  >
+                    <ToggleButton value="grid" aria-label="Grid view">
+                      <Tooltip title="Grid">
+                        <GridViewIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                    <ToggleButton value="table" aria-label="Table view">
+                      <Tooltip title="Table">
+                        <TableRowsIcon fontSize="small" />
+                      </Tooltip>
+                    </ToggleButton>
+                  </ToggleButtonGroup>
+                </Box>
+                <Box sx={{ flex: { xs: 1, sm: "unset" }, minWidth: 0, order: { xs: 1, sm: 0 } }}>
+                  <ExploreFilterPanel />
+                </Box>
+              </Box>
             </Box>
           </Container>
         </Box>
@@ -74,22 +124,32 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
           "&::-webkit-scrollbar": { display: "none" },
         }}
       >
-        <Container maxWidth={tab === "explore" ? "md" : "sm"} disableGutters>
+        <Container
+          maxWidth={tab !== "explore" ? "sm" : viewMode === "table" ? false : "md"}
+          disableGutters
+        >
           {tab === "explore" ? (
             <>
-              <Box sx={observationGridSx(4)}>
-                {observations.map((obs) => (
-                  <ExploreGridCard key={obs.uri} observation={obs} />
-                ))}
+              {viewMode === "table" ? (
+                <>
+                  {observations.length > 0 && <ExploreTable observations={observations} />}
+                  {isLoading && observations.length === 0 && <CenteredSpinner color="primary" />}
+                </>
+              ) : (
+                <Box sx={observationGridSx(4)}>
+                  {observations.map((obs) => (
+                    <ExploreGridCard key={obs.uri} observation={obs} />
+                  ))}
 
-                {isLoading && observations.length === 0 && (
-                  <>
-                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                      <ProfileObservationCardSkeleton key={i} />
-                    ))}
-                  </>
-                )}
-              </Box>
+                  {isLoading && observations.length === 0 && (
+                    <>
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <ProfileObservationCardSkeleton key={i} />
+                      ))}
+                    </>
+                  )}
+                </Box>
+              )}
 
               {isFetchingNextPage && <CenteredSpinner color="primary" />}
 

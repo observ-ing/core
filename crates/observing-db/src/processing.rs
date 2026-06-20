@@ -8,9 +8,12 @@ use crate::types::{
     BlobEntry, CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams,
     UpsertInteractionParams, UpsertOccurrenceParams,
 };
-use chrono::{DateTime, NaiveDateTime, Utc};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
-use observing_lexicons::ing_observ::temp::{comment::Comment, interaction::Interaction};
+use observing_lexicons::ing_observ::temp::{
+    comment::Comment,
+    interaction::{Interaction, InteractionSubject},
+};
 use serde::Deserialize;
 use serde_json::Value;
 
@@ -46,6 +49,120 @@ pub fn parse_naive_datetime(s: &str) -> Option<NaiveDateTime> {
     DateTime::parse_from_rfc3339(s)
         .map(|dt| dt.naive_utc())
         .ok()
+}
+
+/// A Darwin Core `eventDate` value normalized to the half-open `[start, end)`
+/// UTC interval it denotes. A single value expands to the implicit interval of
+/// its stated precision (`1971` → `[1971-01-01, 1972-01-01)`); an explicit
+/// interval spans from the start of its first component to the end of its last.
+///
+/// `start` is what feeds sort by; `[start, end)` is what date filters overlap
+/// against (see PR #2). The raw string is kept separately for display fidelity.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EventDateBounds {
+    /// Earliest instant the value could refer to (inclusive).
+    pub start: DateTime<Utc>,
+    /// Latest instant the value could refer to (exclusive).
+    pub end: DateTime<Utc>,
+}
+
+/// Expand a Darwin Core `eventDate` string into a half-open `[start, end)` UTC
+/// interval, or `None` if it is not a recognized date / date-time / interval.
+///
+/// Parsing is delegated to the `edtf` crate, so the full EDTF (ISO 8601-2)
+/// value space is accepted: ISO 8601-1 single dates and date-times, reduced
+/// precision (`1971`, `1906-06`), unspecified digits (`196X` decade, `19XX`
+/// century), uncertainty/approximation flags (`1984?`, `1984~`), and intervals
+/// separated by a solidus (`1995-05-21/1995-05-23`). Every value is normalized
+/// to the implicit interval its precision denotes — `1971` → `[1971-01-01,
+/// 1972-01-01)`, `196X` → `[1960-01-01, 1970-01-01)`.
+///
+/// Returns `None` (raw string still preserved upstream for display) for inputs
+/// with no finite, sortable bounds: open/unknown-terminal intervals (`2019/..`,
+/// `/2019`), 5+ digit `Y`-years, and inverted intervals.
+pub fn expand_event_date(s: &str) -> Option<EventDateBounds> {
+    use edtf::level_1::Edtf;
+
+    let s = s.trim();
+
+    // Fast path for full RFC 3339 timestamps. The app writes `eventDate` via
+    // `Date#toISOString()`, which includes fractional seconds (`...:00.000Z`) —
+    // valid RFC 3339 but NOT valid EDTF, so the crate would reject it. Parse
+    // these directly (also covers any offset) before falling back to EDTF.
+    if let Ok(dt) = DateTime::parse_from_rfc3339(s) {
+        let start = dt.with_timezone(&Utc);
+        return Some(EventDateBounds {
+            start,
+            end: start + chrono::Duration::seconds(1),
+        });
+    }
+
+    match Edtf::parse(s).ok()? {
+        Edtf::DateTime(dt) => {
+            // A complete instant; treat second precision as a 1-second interval.
+            // `to_chrono` honors the value's offset (a naive time is read as UTC).
+            let start = dt.to_chrono(&Utc);
+            Some(EventDateBounds {
+                start,
+                end: start + chrono::Duration::seconds(1),
+            })
+        }
+        Edtf::Date(date) => {
+            let (start, end) = date_bounds(date)?;
+            Some(EventDateBounds { start, end })
+        }
+        Edtf::Interval(from, to) => {
+            // Span from the start of the first endpoint to the end of the last.
+            let (start, _) = date_bounds(from)?;
+            let (_, end) = date_bounds(to)?;
+            (start < end).then_some(EventDateBounds { start, end })
+        }
+        Edtf::IntervalFrom(..) | Edtf::IntervalTo(..) | Edtf::YYear(_) => None,
+    }
+}
+
+/// The half-open `[start, end)` UTC interval an EDTF date denotes, widened to
+/// its stated precision. Uncertainty/approximation flags don't affect bounds.
+fn date_bounds(date: edtf::level_1::Date) -> Option<(DateTime<Utc>, DateTime<Utc>)> {
+    use edtf::level_1::{Precision, Season};
+
+    match date.precision() {
+        Precision::Day(y, m, d) => {
+            let start = ymd(y, m, d)?;
+            Some((start, start + chrono::Duration::days(1)))
+        }
+        // A specific or unspecified day within a known month.
+        Precision::Month(y, m) | Precision::DayOfMonth(y, m) => {
+            Some((ymd(y, m, 1)?, first_of_next_month(y, m)?))
+        }
+        // A known year with an unknown or unspecified month/day.
+        Precision::Year(y) | Precision::MonthOfYear(y) | Precision::DayOfYear(y) => {
+            Some((ymd(y, 1, 1)?, ymd(y.checked_add(1)?, 1, 1)?))
+        }
+        Precision::Decade(y) => Some((ymd(y, 1, 1)?, ymd(y.checked_add(10)?, 1, 1)?)),
+        Precision::Century(y) => Some((ymd(y, 1, 1)?, ymd(y.checked_add(100)?, 1, 1)?)),
+        // Meteorological quarters; Winter spans into the following year.
+        Precision::Season(y, season) => match season {
+            Season::Spring => Some((ymd(y, 3, 1)?, ymd(y, 6, 1)?)),
+            Season::Summer => Some((ymd(y, 6, 1)?, ymd(y, 9, 1)?)),
+            Season::Autumn => Some((ymd(y, 9, 1)?, ymd(y, 12, 1)?)),
+            Season::Winter => Some((ymd(y, 12, 1)?, ymd(y.checked_add(1)?, 3, 1)?)),
+        },
+    }
+}
+
+/// Midnight UTC on the given calendar date, or `None` if it isn't a real date.
+fn ymd(year: i32, month: u32, day: u32) -> Option<DateTime<Utc>> {
+    Utc.with_ymd_and_hms(year, month, day, 0, 0, 0).single()
+}
+
+/// First instant of the month after `year-month`, in UTC.
+fn first_of_next_month(year: i32, month: u32) -> Option<DateTime<Utc>> {
+    if month >= 12 {
+        ymd(year.checked_add(1)?, 1, 1)
+    } else {
+        ymd(year, month + 1, 1)
+    }
 }
 
 /// A strong reference to a `bio.lexicons.temp.v0-1.media` record, as it appears
@@ -119,17 +236,29 @@ pub fn occurrence_from_json(
         _ => None,
     };
 
-    let event_date = record
+    // The raw eventDate string is the source of truth for display and for
+    // round-tripping ranges / reduced precision (e.g. "1971" or
+    // "1995-05-21/1995-05-23"); `event_date` below is a sortable instant
+    // derived from it. Fall back to the raw JSON key for legacy records.
+    let event_date_raw = record
         .event_date
         .as_ref()
-        .and_then(|d| parse_datetime(&d.to_string()))
+        .map(|d| d.to_string())
         .or_else(|| {
-            // Fallback: read eventDate from raw JSON (legacy records)
             record_json
                 .get("eventDate")
                 .and_then(|v| v.as_str())
-                .and_then(parse_datetime)
-        });
+                .map(|s| s.to_string())
+        })
+        .filter(|s| !s.trim().is_empty());
+
+    // Half-open [start, end) bounds of the interval the eventDate denotes:
+    // feeds sort by start, date filters overlap against both. NULL when the
+    // value is absent or not a recognized date/interval — the raw string is
+    // still preserved for display.
+    let event_date_bounds = event_date_raw.as_deref().and_then(expand_event_date);
+    let event_date_start = event_date_bounds.map(|b| b.start);
+    let event_date_end = event_date_bounds.map(|b| b.end);
 
     // Extension fields: read from raw JSON (not part of bio.lexicons.temp.v0-1.occurrence schema)
     let created_at = record_json
@@ -161,7 +290,9 @@ pub fn occurrence_from_json(
             cid,
             did,
             scientific_name: None,
-            event_date,
+            event_date_start,
+            event_date_end,
+            event_date_raw,
             longitude: coords.map(|(_, lng)| lng),
             latitude: coords.map(|(lat, _)| lat),
             coordinate_uncertainty_meters: record
@@ -302,6 +433,31 @@ pub fn comment_from_json(
     })
 }
 
+/// The occurrence/taxon fields extracted from one side of an interaction.
+/// Both `subject_a` and `subject_b` flatten into the same four columns, so
+/// the extraction lives in one place to keep the two sides from drifting.
+struct SubjectFields {
+    occurrence_uri: Option<String>,
+    occurrence_cid: Option<String>,
+    taxon_name: Option<String>,
+    kingdom: Option<String>,
+}
+
+fn extract_subject_fields(subject: &InteractionSubject) -> SubjectFields {
+    SubjectFields {
+        occurrence_uri: subject.occurrence.as_ref().map(|o| o.uri.to_string()),
+        occurrence_cid: subject.occurrence.as_ref().map(|o| o.cid.to_string()),
+        taxon_name: subject
+            .taxon
+            .as_ref()
+            .map(|t| t.scientific_name.to_string()),
+        kingdom: subject
+            .taxon
+            .as_ref()
+            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
+    }
+}
+
 /// Convert an interaction record JSON to database params.
 pub fn interaction_from_json(
     record_json: &Value,
@@ -316,50 +472,21 @@ pub fn interaction_from_json(
 
     let created_at = parse_datetime(&record.created_at.to_string()).unwrap_or(fallback_time);
 
+    let subject_a = extract_subject_fields(&record.subject_a);
+    let subject_b = extract_subject_fields(&record.subject_b);
+
     Ok(UpsertInteractionParams {
         uri,
         cid,
         did,
-        subject_a_occurrence_uri: record
-            .subject_a
-            .occurrence
-            .as_ref()
-            .map(|o| o.uri.to_string()),
-        subject_a_occurrence_cid: record
-            .subject_a
-            .occurrence
-            .as_ref()
-            .map(|o| o.cid.to_string()),
-        subject_a_taxon_name: record
-            .subject_a
-            .taxon
-            .as_ref()
-            .map(|t| t.scientific_name.to_string()),
-        subject_a_kingdom: record
-            .subject_a
-            .taxon
-            .as_ref()
-            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
-        subject_b_occurrence_uri: record
-            .subject_b
-            .occurrence
-            .as_ref()
-            .map(|o| o.uri.to_string()),
-        subject_b_occurrence_cid: record
-            .subject_b
-            .occurrence
-            .as_ref()
-            .map(|o| o.cid.to_string()),
-        subject_b_taxon_name: record
-            .subject_b
-            .taxon
-            .as_ref()
-            .map(|t| t.scientific_name.to_string()),
-        subject_b_kingdom: record
-            .subject_b
-            .taxon
-            .as_ref()
-            .and_then(|t| t.kingdom.as_ref().map(|s| s.to_string())),
+        subject_a_occurrence_uri: subject_a.occurrence_uri,
+        subject_a_occurrence_cid: subject_a.occurrence_cid,
+        subject_a_taxon_name: subject_a.taxon_name,
+        subject_a_kingdom: subject_a.kingdom,
+        subject_b_occurrence_uri: subject_b.occurrence_uri,
+        subject_b_occurrence_cid: subject_b.occurrence_cid,
+        subject_b_taxon_name: subject_b.taxon_name,
+        subject_b_kingdom: subject_b.kingdom,
         interaction_type: record.interaction_type.as_ref().to_string(),
         direction: record.direction.to_string(),
         comment: record.comment.map(|s| s.to_string()),
@@ -399,6 +526,93 @@ mod tests {
     use jacquard_lexicon::schema::LexiconSchema;
     use observing_lexicons::bio_lexicons::temp::v0_1::identification::Identification;
     use observing_lexicons::ing_observ::temp::like::Like;
+
+    fn ts(s: &str) -> DateTime<Utc> {
+        DateTime::parse_from_rfc3339(s).unwrap().with_timezone(&Utc)
+    }
+
+    #[test]
+    fn expand_event_date_covers_lexicon_examples() {
+        // Single date.
+        let b = expand_event_date("1963-03-08").unwrap();
+        assert_eq!(b.start, ts("1963-03-08T00:00:00Z"));
+        assert_eq!(b.end, ts("1963-03-09T00:00:00Z"));
+
+        // Year only.
+        let b = expand_event_date("1971").unwrap();
+        assert_eq!(b.start, ts("1971-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1972-01-01T00:00:00Z"));
+
+        // Year-month (December exercises the year rollover).
+        let b = expand_event_date("1906-06").unwrap();
+        assert_eq!(b.start, ts("1906-06-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1906-07-01T00:00:00Z"));
+        assert_eq!(
+            expand_event_date("1906-12").unwrap().end,
+            ts("1907-01-01T00:00:00Z")
+        );
+
+        // Full date-time with offset, normalized to UTC.
+        let b = expand_event_date("1963-03-08T14:07:00-06:00").unwrap();
+        assert_eq!(b.start, ts("1963-03-08T20:07:00Z"));
+        assert_eq!(b.end, ts("1963-03-08T20:07:01Z"));
+
+        // Interval: start of the first day through end of the last day.
+        let b = expand_event_date("1995-05-21/1995-05-23").unwrap();
+        assert_eq!(b.start, ts("1995-05-21T00:00:00Z"));
+        assert_eq!(b.end, ts("1995-05-24T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_accepts_fractional_second_rfc3339() {
+        // What the frontend actually sends: `Date#toISOString()` includes
+        // milliseconds, which is valid RFC 3339 but not valid EDTF.
+        let b = expand_event_date("2026-06-15T19:37:00.000Z").unwrap();
+        assert_eq!(b.start, ts("2026-06-15T19:37:00Z"));
+        assert_eq!(b.end, ts("2026-06-15T19:37:01Z"));
+    }
+
+    #[test]
+    fn expand_event_date_mixed_precision_interval() {
+        // Reduced-precision bounds expand to their own day/month/year extents.
+        let b = expand_event_date("1995-05/1996").unwrap();
+        assert_eq!(b.start, ts("1995-05-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1997-01-01T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_handles_edtf_unspecified_and_uncertain() {
+        // Unspecified digits widen to a decade / century.
+        let b = expand_event_date("196X").unwrap();
+        assert_eq!(b.start, ts("1960-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1970-01-01T00:00:00Z"));
+        let b = expand_event_date("19XX").unwrap();
+        assert_eq!(b.start, ts("1900-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("2000-01-01T00:00:00Z"));
+
+        // Uncertainty/approximation flags don't change the bounds.
+        let b = expand_event_date("1984?").unwrap();
+        assert_eq!(b.start, ts("1984-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1985-01-01T00:00:00Z"));
+
+        // An unspecified month/day still resolves to its containing extent.
+        let b = expand_event_date("1931-XX").unwrap();
+        assert_eq!(b.start, ts("1931-01-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1932-01-01T00:00:00Z"));
+        let b = expand_event_date("1931-08-XX").unwrap();
+        assert_eq!(b.start, ts("1931-08-01T00:00:00Z"));
+        assert_eq!(b.end, ts("1931-09-01T00:00:00Z"));
+    }
+
+    #[test]
+    fn expand_event_date_rejects_unsortable() {
+        assert!(expand_event_date("").is_none());
+        assert!(expand_event_date("not a date").is_none());
+        assert!(expand_event_date("1995-13").is_none()); // invalid month
+        assert!(expand_event_date("2000/1999").is_none()); // inverted interval
+        assert!(expand_event_date("2019/..").is_none()); // open-ended interval
+        assert!(expand_event_date("/2019").is_none()); // unknown start
+    }
 
     /// Asserts the JSON fixture is a structurally valid record under its
     /// declared lexicon: it deserializes into the typed lexicon struct *and*
@@ -1011,7 +1225,8 @@ mod tests {
 
         assert!(parsed.params.latitude.is_none());
         assert!(parsed.params.longitude.is_none());
-        assert!(parsed.params.event_date.is_none());
+        assert!(parsed.params.event_date_start.is_none());
+        assert!(parsed.params.event_date_end.is_none());
     }
 
     /// `organismQuantity` / `organismQuantityType` are surfaced from the

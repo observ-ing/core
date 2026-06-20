@@ -16,7 +16,7 @@ use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
-use jacquard_common::types::string::{AtUri, Cid, Datetime, UriValue};
+use jacquard_common::types::string::{AtUri, Cid, UriValue};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
@@ -50,9 +50,9 @@ pub struct Occurrence<S: BosStr = DefaultStr> {
     ///The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decimal_longitude: Option<S>,
-    ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
+    ///The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus ("/"). Include timezone information whenever a time of day is given. Examples: "1963-03-08", "1971", "1906-06", "1963-03-08T14:07:00-06:00", "1995-05-21/1995-05-23".
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub event_date: Option<Datetime>,
+    pub event_date: Option<S>,
     ///Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media: Option<Vec<StrongRef<S>>>,
@@ -259,7 +259,7 @@ pub struct OccurrenceBuilder<S: BosStr, St: occurrence_state::State> {
         Option<i64>,
         Option<S>,
         Option<S>,
-        Option<Datetime>,
+        Option<S>,
         Option<Vec<StrongRef<S>>>,
         Option<S>,
         Option<OccurrenceOrganismQuantityType<S>>,
@@ -340,12 +340,12 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
 
 impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     /// Set the `eventDate` field (optional)
-    pub fn event_date(mut self, value: impl Into<Option<Datetime>>) -> Self {
+    pub fn event_date(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `eventDate` field to an Option value (optional)
-    pub fn maybe_event_date(mut self, value: Option<Datetime>) -> Self {
+    pub fn maybe_event_date(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
@@ -509,10 +509,9 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).",
+                                            "The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus (\"/\"). Include timezone information whenever a time of day is given. Examples: \"1963-03-08\", \"1971\", \"1906-06\", \"1963-03-08T14:07:00-06:00\", \"1995-05-21/1995-05-23\".",
                                         ),
                                     ),
-                                    format: Some(LexStringFormat::Datetime),
                                     ..Default::default()
                                 }),
                             );

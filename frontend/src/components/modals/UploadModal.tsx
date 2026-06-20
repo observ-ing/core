@@ -30,6 +30,7 @@ import { trackSubmission } from "../../store/pendingSlice";
 import { useToast } from "../../hooks/useToast";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
+import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
@@ -37,7 +38,7 @@ import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
-import { getErrorMessage } from "../../lib/utils";
+import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { KINGDOMS } from "../../lib/kingdoms";
 import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
@@ -59,6 +60,66 @@ function toDatetimeLocal(date: Date): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+interface ImageThumbnailProps {
+  src: string;
+  alt: string;
+  onEnlarge: () => void;
+  onRemove: () => void;
+}
+
+// An 80x80 photo tile with a zoom-on-click image and a corner remove button.
+// Shared by the existing-images and newly-added-images rows in the form.
+function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) {
+  return (
+    <Box
+      sx={{
+        position: "relative",
+        width: 80,
+        height: 80,
+        borderRadius: 1,
+        overflow: "hidden",
+        border: 1,
+        borderColor: "divider",
+      }}
+    >
+      <ButtonBase
+        onClick={onEnlarge}
+        aria-label="Enlarge photo"
+        sx={{
+          display: "block",
+          width: "100%",
+          height: "100%",
+          cursor: "zoom-in",
+        }}
+      >
+        <Box
+          component="img"
+          src={src}
+          alt={alt}
+          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+        />
+      </ButtonBase>
+      <IconButton
+        size="small"
+        onClick={onRemove}
+        aria-label="Remove image"
+        sx={{
+          position: "absolute",
+          top: 2,
+          right: 2,
+          bgcolor: "rgba(0, 0, 0, 0.7)",
+          color: "white",
+          width: 20,
+          height: 20,
+          "&:hover": { bgcolor: "error.main" },
+        }}
+      >
+        <CloseIcon sx={{ fontSize: 14 }} />
+      </IconButton>
+    </Box>
+  );
+}
+
 // Darwin Core dwc:organismQuantityType values the backend lexicon recognizes.
 // "individuals" is the default for a plain count; the observation view renders
 // the chosen type next to the number (e.g. "12 (individuals)").
@@ -75,6 +136,7 @@ export function UploadModal() {
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const isEditMode = !!editingObservation;
 
@@ -92,6 +154,10 @@ export function UploadModal() {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
+  // Optional interval end (Darwin Core eventDate may be a range). Empty means a
+  // single date/time; when set, the observation spans `observationDate`'s day
+  // through this day inclusive, written as a `YYYY-MM-DD/YYYY-MM-DD` interval.
+  const [observationEndDate, setObservationEndDate] = useState("");
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   // Darwin Core organismQuantity (+ its type). Kept out of the default flow in a
   // collapsed "More details" section — most users identifying a single organism
@@ -119,8 +185,8 @@ export function UploadModal() {
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
-        setLat(currentLocation.lat.toFixed(6));
-        setLng(currentLocation.lng.toFixed(6));
+        setLat(formatCoordinate(currentLocation.lat));
+        setLng(formatCoordinate(currentLocation.lng));
       }
       const pending = consumePendingUploadFiles();
       if (pending.length > 0) {
@@ -136,11 +202,22 @@ export function UploadModal() {
     setMatchedTaxon(null);
     setRank("");
     if (editingObservation.eventDate) {
-      setObservationDate(toDatetimeLocal(new Date(editingObservation.eventDate)));
+      const parts = editingObservation.eventDate.split("/");
+      const start = parts[0] ?? editingObservation.eventDate;
+      const end = parts[1];
+      if (end) {
+        // Interval: ranges are recorded at day precision, so seed the start
+        // input at midnight of its day and populate the end-date field.
+        setObservationDate(`${start.slice(0, 10)}T00:00`);
+        setObservationEndDate(end.slice(0, 10));
+      } else {
+        setObservationDate(toDatetimeLocal(new Date(start)));
+        setObservationEndDate("");
+      }
     }
     if (editingObservation.location) {
-      setLat(editingObservation.location.latitude.toFixed(6));
-      setLng(editingObservation.location.longitude.toFixed(6));
+      setLat(formatCoordinate(editingObservation.location.latitude));
+      setLng(formatCoordinate(editingObservation.location.longitude));
       if (editingObservation.location.uncertaintyMeters) {
         setUncertaintyMeters(editingObservation.location.uncertaintyMeters);
       }
@@ -184,6 +261,7 @@ export function UploadModal() {
     setImages([]);
     setExistingImages([]);
     setObservationDate(toDatetimeLocal(new Date()));
+    setObservationEndDate("");
     setUncertaintyMeters(50);
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
@@ -244,7 +322,6 @@ export function UploadModal() {
       return;
     }
     const files = await pickPhotos({
-      source: "gallery",
       multiple: true,
       maxCount: remaining,
     });
@@ -287,8 +364,8 @@ export function UploadModal() {
           if (latRefValue === "S") latitude = -Math.abs(latitude);
           if (lngRefValue === "W") longitude = -Math.abs(longitude);
 
-          setLat(latitude.toFixed(6));
-          setLng(longitude.toFixed(6));
+          setLat(formatCoordinate(latitude));
+          setLng(formatCoordinate(longitude));
           toast.success("Location extracted from photo EXIF data");
         }
       }
@@ -335,6 +412,20 @@ export function UploadModal() {
       return;
     }
 
+    // eventDate is a single date-time, or a `YYYY-MM-DD/YYYY-MM-DD` interval
+    // (day precision) when an end date is given.
+    const startDay = observationDate.slice(0, 10);
+    let eventDate: string;
+    if (observationEndDate) {
+      if (observationEndDate < startDay) {
+        toast.error("End date can't be before the start date");
+        return;
+      }
+      eventDate = `${startDay}/${observationEndDate}`;
+    } else {
+      eventDate = new Date(observationDate).toISOString();
+    }
+
     const trimmedSpecies = species.trim();
     if (trimmedSpecies && !matchedTaxon && !kingdom) {
       toast.error("Please select a kingdom for the taxon name you entered");
@@ -352,16 +443,62 @@ export function UploadModal() {
 
     // The PDS write succeeded. Close the modal immediately so the submission
     // feels instant — the ingester poll, completion toast, and cache
-    // invalidation run in the background (surfaced by the TopBar pending
-    // indicator). The user stays on the current page; the new/updated row
-    // appears in place once the ingester catches up.
+    // reconciliation run in the background (surfaced by the TopBar pending
+    // indicator). For a create we also splice an optimistic "tombstone" row
+    // into the feeds so the new observation shows up right away (dimmed) instead
+    // of after the ingester catches up; trackSubmission swaps it for the real
+    // record once ingested.
     const onSuccess = (result: { uri: string; cid: string }) => {
       dispatch(closeUploadModal());
+      if (kind === "create" && currentUser) {
+        prependOccurrence(
+          makeTombstoneOccurrence({
+            uri: result.uri,
+            cid: result.cid,
+            observer: currentUser,
+            latitude: parseFloat(lat),
+            longitude: parseFloat(lng),
+            uncertaintyMeters: uncertaintyMeters,
+            eventDate,
+            scientificName: trimmedSpecies || undefined,
+            kingdom: kingdom || undefined,
+            rank: matchedTaxon?.rank ?? rank ?? undefined,
+            imageUrls: imageData.map((img) => `data:${img.mimeType};base64,${img.data}`),
+            license,
+            organismQuantity: organismQuantity.trim() || undefined,
+            organismQuantityType: organismQuantityType || undefined,
+            createdAt: new Date().toISOString(),
+          }),
+          currentUser.did,
+        );
+      }
       resetForm();
       void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
     };
     const onError = (error: Error) => {
       toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
+    };
+
+    // Fields shared by create and update; the update path adds `uri` and
+    // `retainedBlobCids` on top. Conditional spreads omit empty/unset values
+    // so we never send blank taxonomy or quantity fields.
+    const commonPayload = {
+      ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
+      ...(trimmedSpecies && kingdom ? { kingdom } : {}),
+      ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
+      ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
+      latitude: parseFloat(lat),
+      longitude: parseFloat(lng),
+      coordinateUncertaintyInMeters: uncertaintyMeters,
+      ...(organismQuantity.trim()
+        ? {
+            organismQuantity: organismQuantity.trim(),
+            ...(organismQuantityType ? { organismQuantityType } : {}),
+          }
+        : {}),
+      license,
+      eventDate,
+      ...(imageData.length > 0 ? { images: imageData } : {}),
     };
 
     if (isEditMode && editingObservation) {
@@ -371,76 +508,17 @@ export function UploadModal() {
       });
 
       updateObs.mutate(
-        {
-          uri: editingObservation.uri,
-          ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
-          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
-          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
-          ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-          coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(organismQuantity.trim()
-            ? {
-                organismQuantity: organismQuantity.trim(),
-                ...(organismQuantityType ? { organismQuantityType } : {}),
-              }
-            : {}),
-          license,
-          eventDate: new Date(observationDate).toISOString(),
-          ...(imageData.length > 0 ? { images: imageData } : {}),
-          retainedBlobCids,
-        },
+        { uri: editingObservation.uri, ...commonPayload, retainedBlobCids },
         { onSuccess, onError },
       );
     } else {
-      submitObs.mutate(
-        {
-          ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
-          ...(trimmedSpecies && kingdom ? { kingdom } : {}),
-          ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
-          ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
-          latitude: parseFloat(lat),
-          longitude: parseFloat(lng),
-          coordinateUncertaintyInMeters: uncertaintyMeters,
-          ...(organismQuantity.trim()
-            ? {
-                organismQuantity: organismQuantity.trim(),
-                ...(organismQuantityType ? { organismQuantityType } : {}),
-              }
-            : {}),
-          license,
-          eventDate: new Date(observationDate).toISOString(),
-          ...(imageData.length > 0 ? { images: imageData } : {}),
-        },
-        { onSuccess, onError },
-      );
+      submitObs.mutate(commonPayload, { onSuccess, onError });
     }
   };
 
-  const fileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== "string") {
-          reject(new Error("Expected string result"));
-          return;
-        }
-        const base64 = reader.result.split(",")[1];
-        if (!base64) {
-          reject(new Error("Invalid data URL format"));
-          return;
-        }
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  };
-
   const handleLocationChange = (newLat: number, newLng: number) => {
-    setLat(newLat.toFixed(6));
-    setLng(newLng.toFixed(6));
+    setLat(formatCoordinate(newLat));
+    setLng(formatCoordinate(newLng));
     setIsDirty(true);
   };
 
@@ -472,102 +550,22 @@ export function UploadModal() {
           {(existingImages.length > 0 || images.length > 0) && (
             <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
               {existingImages.map((url, index) => (
-                <Box
+                <ImageThumbnail
                   key={`existing-${index}`}
-                  sx={{
-                    position: "relative",
-                    width: 80,
-                    height: 80,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <ButtonBase
-                    onClick={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
-                    aria-label="Enlarge photo"
-                    sx={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      cursor: "zoom-in",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={url}
-                      alt={`Existing ${index + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  </ButtonBase>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveExistingImage(index)}
-                    aria-label="Remove image"
-                    sx={{
-                      position: "absolute",
-                      top: 2,
-                      right: 2,
-                      bgcolor: "rgba(0, 0, 0, 0.7)",
-                      color: "white",
-                      width: 20,
-                      height: 20,
-                      "&:hover": { bgcolor: "error.main" },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
+                  src={url}
+                  alt={`Existing ${index + 1}`}
+                  onEnlarge={() => setLightbox({ src: url, alt: `Existing ${index + 1}` })}
+                  onRemove={() => handleRemoveExistingImage(index)}
+                />
               ))}
               {images.map((img, index) => (
-                <Box
+                <ImageThumbnail
                   key={`new-${index}`}
-                  sx={{
-                    position: "relative",
-                    width: 80,
-                    height: 80,
-                    borderRadius: 1,
-                    overflow: "hidden",
-                    border: 1,
-                    borderColor: "divider",
-                  }}
-                >
-                  <ButtonBase
-                    onClick={() => setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })}
-                    aria-label="Enlarge photo"
-                    sx={{
-                      display: "block",
-                      width: "100%",
-                      height: "100%",
-                      cursor: "zoom-in",
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src={img.preview}
-                      alt={`Preview ${index + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                    />
-                  </ButtonBase>
-                  <IconButton
-                    size="small"
-                    onClick={() => handleRemoveImage(index)}
-                    aria-label="Remove image"
-                    sx={{
-                      position: "absolute",
-                      top: 2,
-                      right: 2,
-                      bgcolor: "rgba(0, 0, 0, 0.7)",
-                      color: "white",
-                      width: 20,
-                      height: 20,
-                      "&:hover": { bgcolor: "error.main" },
-                    }}
-                  >
-                    <CloseIcon sx={{ fontSize: 14 }} />
-                  </IconButton>
-                </Box>
+                  src={img.preview}
+                  alt={`Preview ${index + 1}`}
+                  onEnlarge={() => setLightbox({ src: img.preview, alt: `Preview ${index + 1}` })}
+                  onRemove={() => handleRemoveImage(index)}
+                />
               ))}
             </Stack>
           )}
@@ -773,7 +771,7 @@ export function UploadModal() {
 
           <TextField
             fullWidth
-            label="Observation date"
+            label={observationEndDate ? "Start date" : "Observation date"}
             type="datetime-local"
             value={observationDate}
             onChange={(e) => {
@@ -783,6 +781,28 @@ export function UploadModal() {
             margin="normal"
             slotProps={{
               inputLabel: { shrink: true },
+            }}
+          />
+
+          <TextField
+            fullWidth
+            label="End date (optional)"
+            type="date"
+            value={observationEndDate}
+            onChange={(e) => {
+              setObservationEndDate(e.target.value);
+              setIsDirty(true);
+            }}
+            margin="normal"
+            error={observationEndDate !== "" && observationEndDate < observationDate.slice(0, 10)}
+            helperText={
+              observationEndDate !== "" && observationEndDate < observationDate.slice(0, 10)
+                ? "End date can't be before the start date."
+                : "Set to record an observation spanning a date range."
+            }
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: observationDate.slice(0, 10) },
             }}
           />
 

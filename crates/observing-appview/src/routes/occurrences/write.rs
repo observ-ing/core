@@ -21,7 +21,8 @@ use crate::error::AppError;
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
-use at_uri_parser::AtUri;
+use jacquard_common::types::string::AtUri;
+use std::str::FromStr;
 
 use super::auto_id;
 
@@ -209,15 +210,17 @@ pub async fn delete_occurrence(
     user: AuthUser,
     Path(uri): Path<String>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    let at_uri = AtUri::parse(&uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
+    let at_uri =
+        AtUri::from_str(&uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
 
-    if at_uri.did != user.did {
+    if at_uri.authority().as_str() != user.did {
         return Err(AppError::Forbidden(
             "You can only delete your own records".into(),
         ));
     }
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
+    let (collection, rkey) = auth::parse_collection_and_rkey(&at_uri)?;
     agent
         .api
         .com
@@ -225,15 +228,9 @@ pub async fn delete_occurrence(
         .repo
         .delete_record(
             atrium_api::com::atproto::repo::delete_record::InputData {
-                collection: at_uri
-                    .collection
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?,
+                collection,
                 repo: atrium_api::types::string::AtIdentifier::Did(did_parsed),
-                rkey: at_uri
-                    .rkey
-                    .parse()
-                    .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?,
+                rkey,
                 swap_commit: None,
                 swap_record: None,
             }
@@ -271,26 +268,22 @@ pub async fn update_occurrence(
 
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
-        AtUri::parse(&body.uri).ok_or_else(|| AppError::BadRequest("Invalid AT URI".into()))?;
-    if at_uri.did != user.did {
+        AtUri::from_str(&body.uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
+    if at_uri.authority().as_str() != user.did {
         return Err(AppError::Forbidden(
             "You can only edit your own records".into(),
         ));
     }
-    if at_uri.collection != OccurrenceRecord::NSID {
+    if at_uri
+        .collection()
+        .is_none_or(|c| c.as_str() != OccurrenceRecord::NSID)
+    {
         return Err(AppError::BadRequest(
             "URI does not reference an occurrence record".into(),
         ));
     }
 
-    let collection_nsid: atrium_api::types::string::Nsid = at_uri
-        .collection
-        .parse()
-        .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?;
-    let rkey_parsed: atrium_api::types::string::RecordKey = at_uri
-        .rkey
-        .parse()
-        .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?;
+    let (collection_nsid, rkey_parsed) = auth::parse_collection_and_rkey(&at_uri)?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
 
@@ -561,9 +554,15 @@ fn build_occurrence_record_json(
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
     let event_date_str = event_date.unwrap_or(&now_rfc3339);
-    let event_date: Datetime = event_date_str
-        .parse()
-        .map_err(|_| AppError::BadRequest("Invalid eventDate format".into()))?;
+
+    // Accept any Darwin Core eventDate the lexicon allows — a single date,
+    // date-time, or interval (e.g. "1971", "1995-05-21/1995-05-23"). Validate
+    // by expanding to a [start, end) range and reject only values we can't
+    // recognize at all; the raw string is stored verbatim so ranges and
+    // reduced precision round-trip to the PDS.
+    if observing_db::processing::expand_event_date(event_date_str).is_none() {
+        return Err(AppError::BadRequest("Invalid eventDate format".into()));
+    }
 
     let media = if media_refs.is_empty() {
         None
@@ -578,7 +577,7 @@ fn build_occurrence_record_json(
             coordinate_uncertainty_in_meters.unwrap_or(constants::DEFAULT_COORDINATE_UNCERTAINTY)
                 as i64,
         )
-        .event_date(event_date)
+        .event_date(SmolStr::from(event_date_str))
         .maybe_organism_quantity(
             organism_quantity
                 .filter(|s| !s.is_empty())
