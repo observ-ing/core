@@ -378,7 +378,6 @@ export function UploadModal() {
         const date = new Date(parsed);
         if (!isNaN(date.getTime())) {
           setObservationDate(toDatetimeLocal(date));
-          toast.success("Date extracted from photo EXIF data");
         }
       }
     } catch (error) {
