@@ -1,6 +1,6 @@
 import { expect, type Page } from "@playwright/test";
 import { test as authTest } from "./fixtures/auth";
-import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 async function waitForOccurrenceIndexed(page: Page, uri: string, timeoutMs = 30_000) {
@@ -46,6 +46,7 @@ authTest.describe("E2E CRUD flow", () => {
     await authTest.step("create occurrence", async () => {
       await mockTaxaSearchRoute(page);
       await openUploadModal(page);
+      await gotoUploadStep(page, "Identify");
 
       const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
@@ -79,7 +80,7 @@ authTest.describe("E2E CRUD flow", () => {
       occurrenceUri = (await resp.json()).uri as string;
 
       // Modal closes immediately and we stay put (no redirect to /observation).
-      await expect(page.getByLabel(/Taxon/i)).not.toBeVisible({ timeout: 10_000 });
+      await expect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10_000 });
 
       const match = occurrenceUri.match(/^at:\/\/([^/]+)\/[^/]+\/([^/]+)$/);
       expect(match).toBeTruthy();
@@ -168,6 +169,7 @@ authTest.describe("E2E CRUD flow", () => {
 
       await mockTaxaSearchRoute(page);
       await openUploadModal(page);
+      await gotoUploadStep(page, "Identify");
 
       const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
@@ -187,7 +189,9 @@ authTest.describe("E2E CRUD flow", () => {
 
       // Set a start date and an end date so the eventDate is written as a
       // `YYYY-MM-DD/YYYY-MM-DD` interval. The start field is labelled
-      // "Observation date" until an end date is present.
+      // "Observation date" until an end date is present. The date inputs live
+      // in the Date & details step.
+      await gotoUploadStep(page, "Date & details");
       await page.getByLabel("Observation date").fill("2024-05-21T08:00");
       await page.getByLabel("End date (optional)").fill("2024-05-23");
 
