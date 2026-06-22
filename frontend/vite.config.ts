@@ -25,6 +25,11 @@ const resolvedNodeModules = path.resolve(
 // the console reconnecting to a stale 5173. See issue #659.
 const devPort = Number(process.env.VITE_PORT) || 5173;
 
+// The Rust appview that the dev server proxies /api, /oauth and /media calls
+// to. Follows APPVIEW_PORT so a randomized-port stack (scripts/dev.sh) still
+// reaches it; defaults to process-compose's usual 3000.
+const appviewPort = Number(process.env.APPVIEW_PORT) || 3000;
+
 export default defineConfig({
   plugins: [
     react(),
@@ -114,9 +119,9 @@ export default defineConfig({
       clientPort: devPort,
     },
     proxy: {
-      "/api": "http://localhost:3000",
-      "/oauth": "http://localhost:3000",
-      "/media": "http://localhost:3000",
+      "/api": `http://localhost:${appviewPort}`,
+      "/oauth": `http://localhost:${appviewPort}`,
+      "/media": `http://localhost:${appviewPort}`,
     },
   },
 });

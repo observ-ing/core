@@ -234,6 +234,35 @@ process-compose down
 Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
 `frontend` (in startup order).
 
+#### Running several checkouts at once (randomized ports)
+
+The four services default to fixed ports (`appview` 3000, `species-id`
+3005, `frontend`/Vite 5173, `tap-ingester` 8080), so two checkouts that
+both run `process-compose up` collide. To run them in parallel, start the
+stack through the wrapper instead:
+
+```bash
+npm run dev:stack        # or: ./scripts/dev.sh
+```
+
+It picks one random offset, applies it uniformly to every service, exports
+the derived ports, and prints where each one landed (including the
+`http://127.0.0.1:<appview>` front door to open). Cross-service URLs — the
+Vite `/api` proxy, the appview→Vite dev proxy, `SPECIES_ID_SERVICE_URL` —
+all follow the offset automatically. Postgres is left on `5432`; it lives
+outside process-compose and is meant to be shared.
+
+Pin the offset when you want stable, reproducible ports for a checkout:
+
+```bash
+DEV_PORT_OFFSET=2000 npm run dev:stack   # appview 5000, vite 7173, ...
+DEV_PORT_OFFSET=0 npm run dev:stack      # stock ports, no randomization
+```
+
+Plain `process-compose up` still works and keeps the stock ports — the
+ports are all `${VAR:-default}` overrides, and the wrapper just sets those
+vars.
+
 ### Individual Services
 
 ```bash

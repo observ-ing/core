@@ -23,13 +23,13 @@ processes:
   species-id:
     command: cargo run -p observing-species-id
     environment:
-      - PORT=3005
+      - PORT=${SPECIES_ID_PORT:-3005}
       - MODEL_DIR=./models/bioclip
       - ORT_DYLIB_PATH=/opt/homebrew/lib/libonnxruntime.dylib
     readiness_probe:
       http_get:
         host: localhost
-        port: 3005
+        port: ${SPECIES_ID_PORT:-3005}
         path: /health
       initial_delay_seconds: 10
       period_seconds: 5
@@ -38,9 +38,10 @@ processes:
     command: cargo run -p observing-appview
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
-      - PORT=3000
+      - PORT=${APPVIEW_PORT:-3000}
       - CACHE_DIR=./cache/media
-      - SPECIES_ID_SERVICE_URL=http://localhost:3005
+      - SPECIES_ID_SERVICE_URL=http://localhost:${SPECIES_ID_PORT:-3005}
+      - VITE_DEV_SERVER_URL=http://localhost:${VITE_PORT:-5173}
       - PUBLIC_URL=${PUBLIC_URL:-}
     depends_on:
       migrate:
@@ -50,7 +51,7 @@ processes:
     readiness_probe:
       http_get:
         host: localhost
-        port: 3000
+        port: ${APPVIEW_PORT:-3000}
         path: /health
       initial_delay_seconds: 120
       period_seconds: 5
@@ -63,20 +64,26 @@ processes:
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
       - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap.db}
-      - PORT=8080
+      - PORT=${TAP_INGESTER_PORT:-8080}
     depends_on:
       migrate:
         condition: process_completed_successfully
     readiness_probe:
       http_get:
         host: localhost
-        port: 8080
+        port: ${TAP_INGESTER_PORT:-8080}
         path: /health
       initial_delay_seconds: 30
       period_seconds: 5
 
   frontend:
     command: npm run dev
+    environment:
+      # Vite reads VITE_PORT for its own listen port and APPVIEW_PORT for the
+      # /api proxy target (see frontend/vite.config.ts). Kept in sync with the
+      # appview service above so a randomized-port stack stays coherent.
+      - VITE_PORT=${VITE_PORT:-5173}
+      - APPVIEW_PORT=${APPVIEW_PORT:-3000}
     depends_on:
       appview:
         condition: process_healthy
