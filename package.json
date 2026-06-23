@@ -13,6 +13,7 @@
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "setup": "./scripts/setup.sh",
     "dev": "vite -c frontend/vite.config.ts",
+    "dev:stack": "./scripts/dev.sh",
     "fmt": "oxfmt frontend/src frontend/tests scripts",
     "fmt:check": "oxfmt --check frontend/src frontend/tests scripts",
     "lint": "oxlint frontend/src",
