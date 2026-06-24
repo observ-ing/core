@@ -477,6 +477,12 @@ export async function identifySpecies(data: {
   latitude?: number;
   longitude?: number;
   limit?: number;
+  /**
+   * Route to the faster live-loop model (ViT-L). The continuous camera preview
+   * sets this; the upload/capture re-ID leaves it unset so it gets the
+   * full-accuracy model.
+   */
+  live?: boolean;
 }): Promise<IdentifyResponse> {
   return fetchApi(`${API_BASE}/api/species-id`, "Species identification failed", {
     method: "POST",

@@ -69,6 +69,11 @@ async fn main() {
         .as_deref()
         .map(|url| Arc::new(SpeciesIdClient::new(url)));
 
+    let species_id_live = config
+        .species_id_live_service_url
+        .as_deref()
+        .map(|url| Arc::new(SpeciesIdClient::new(url)));
+
     let media = media::MediaCache::from_env().await;
 
     let state = AppState {
@@ -76,6 +81,7 @@ async fn main() {
         resolver: Arc::new(atproto_identity::IdentityResolver::from_env()),
         taxonomy: Arc::new(TaxonomyClient::new()),
         species_id,
+        species_id_live,
         oauth_client: Arc::new(oauth_client),
         media,
         public_url: config.public_url.clone(),

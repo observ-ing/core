@@ -95,6 +95,9 @@ pub struct AppState {
     pub resolver: Arc<IdentityResolver>,
     pub taxonomy: Arc<TaxonomyClient>,
     pub species_id: Option<Arc<SpeciesIdClient>>,
+    /// Faster ViT-L service for the live camera loop. `None` falls back to
+    /// `species_id` so single-service deployments (e.g. local dev) still work.
+    pub species_id_live: Option<Arc<SpeciesIdClient>>,
     pub oauth_client: Arc<OAuthClientType>,
     /// In-process AT Protocol blob cache + PDS fetcher (formerly the
     /// `observing-media-proxy` service).
