@@ -58,7 +58,20 @@ export function LiveIdView() {
     let cancelled = false;
 
     navigator.mediaDevices
-      .getUserMedia({ video: { facingMode: "environment" }, audio: false })
+      // Request a high-res stream so the full-screen preview stays sharp (a
+      // default ~640x480 stream upscaled to fill a phone screen looks blurry,
+      // which is easily mistaken for the camera failing to focus). `ideal` so
+      // it degrades gracefully on devices that can't deliver 1080p. Note this
+      // only affects the preview and the shutter-captured photo — each live
+      // inference frame is downscaled to 384px before upload regardless.
+      .getUserMedia({
+        video: {
+          facingMode: "environment",
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
+        audio: false,
+      })
       .then((s) => {
         if (cancelled) {
           s.getTracks().forEach((t) => t.stop());
@@ -66,6 +79,10 @@ export function LiveIdView() {
         }
         stream = s;
         streamRef.current = s;
+        // Surface the resolution we actually negotiated — handy for diagnosing
+        // a soft preview (the browser may hand back less than requested).
+        const settings = s.getVideoTracks()[0]?.getSettings();
+        console.info(`[LiveId] camera resolution: ${settings?.width}x${settings?.height}`);
         const video = videoRef.current;
         if (video) {
           video.srcObject = s;
