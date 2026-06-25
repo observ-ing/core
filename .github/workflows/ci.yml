@@ -465,12 +465,21 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
     strategy:
       matrix:
-        service:
-          - observing-appview
-          - observing-species-id
-          - observing-migrate
-          - tap-ingester
-          - observing-task-runner
+        include:
+          - { service: observing-appview, image: observing-appview }
+          - { service: observing-species-id, image: observing-species-id }
+          # Same binary as observing-species-id, but the faster ViT-L model
+          # bundle is baked in via build-args (different SPECIES_MODEL_URL +
+          # MODEL_VERSION). Serves the live camera loop; the appview routes to
+          # it via SPECIES_ID_LIVE_SERVICE_URL.
+          - service: observing-species-id
+            image: observing-species-id-live
+            extra_build_args: |
+              SPECIES_MODEL_URL=https://github.com/observ-ing/bioclip-models/releases/download/vit-l-v1.0.0/bioclip-2-vit-l-models.tar.gz
+              MODEL_VERSION=bioclip-2-vit-l-14
+          - { service: observing-migrate, image: observing-migrate }
+          - { service: tap-ingester, image: tap-ingester }
+          - { service: observing-task-runner, image: observing-task-runner }
     steps:
       - uses: actions/checkout@v4
 
@@ -488,7 +497,7 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
-      - name: Build and push ${{ matrix.service }}
+      - name: Build and push ${{ matrix.image }}
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -496,17 +505,20 @@ jobs:
           # VITE_MAPTILER_KEY is consumed only by the appview frontend build
           # (other services prune that stage). Must be a key allowed for
           # https://observ.ing. Unset → map falls back to keyless CARTO tiles.
+          # extra_build_args is empty for all but observing-species-id-live,
+          # which appends SPECIES_MODEL_URL + MODEL_VERSION.
           build-args: |
             SERVICE=${{ matrix.service }}
             VITE_MAPTILER_KEY=${{ secrets.VITE_MAPTILER_KEY }}
+            ${{ matrix.extra_build_args }}
           push: true
-          tags: ${{ env.REGISTRY }}/${{ matrix.service }}:latest
+          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:latest
           cache-from: |
-            type=gha,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.service }}:buildcache
+            type=gha,scope=${{ matrix.image }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
           cache-to: |
-            type=gha,mode=max,scope=${{ matrix.service }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.service }}:buildcache,mode=max
+            type=gha,mode=max,scope=${{ matrix.image }}
+            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
@@ -542,10 +554,28 @@ jobs:
             --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
+      # Faster ViT-L service for the live camera loop. Same flags as
+      # observing-species-id but only 4 GiB — the ViT-L bundle's resident
+      # footprint is ~3 GB (vs ViT-H's ~4.4 GB), so half the memory of the full
+      # service is enough. MODEL_VERSION is already baked into the image.
+      - name: Deploy species-id-live
+        run: |
+          gcloud run deploy observing-species-id-live \
+            --image=$REGISTRY/observing-species-id-live:latest \
+            --region=$REGION \
+            --allow-unauthenticated \
+            --cpu=2 \
+            --memory=4Gi \
+            --cpu-boost \
+            --min-instances=1 \
+            --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
+            --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
+
       - name: Get service URLs
         id: urls
         run: |
           echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
+          echo "species_id_live=$(gcloud run services describe observing-species-id-live --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
       # Apply pending DB migrations as a one-shot Cloud Run Job *before* any
       # runtime service comes up with the new schema. The job connects as
@@ -618,7 +648,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|INGESTER_URL=$INGESTER_URL|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT
