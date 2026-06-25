@@ -8,6 +8,10 @@ pub struct Config {
     pub cors_origins: Vec<String>,
     /// URL for the species identification service (optional)
     pub species_id_service_url: Option<String>,
+    /// URL for the faster, lower-latency species-id service used by the live
+    /// camera loop (ViT-L). Optional — when unset, live requests fall back to
+    /// the full-accuracy `species_id_service_url`.
+    pub species_id_live_service_url: Option<String>,
     /// Base URL for the tap-ingester service (optional). When set, its
     /// runtime interface is exposed as `ingester/*` tables in the admin
     /// browser; when unset, those tables are simply not registered.
@@ -48,6 +52,9 @@ impl Config {
             });
 
         let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
+        let species_id_live_service_url = env::var("SPECIES_ID_LIVE_SERVICE_URL")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
 
         let ingester_url = env::var("INGESTER_URL")
             .ok()
@@ -72,6 +79,7 @@ impl Config {
             database_url,
             cors_origins,
             species_id_service_url,
+            species_id_live_service_url,
             ingester_url,
             public_url,
             hidden_dids,

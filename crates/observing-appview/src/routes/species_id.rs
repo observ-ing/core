@@ -18,6 +18,12 @@ pub struct IdentifyRequest {
     longitude: Option<f64>,
     #[serde(default)]
     limit: Option<usize>,
+    /// Route to the faster live-loop model (ViT-L). The continuous camera
+    /// preview sets this; the upload/capture re-ID leaves it false so it gets
+    /// the full-accuracy model. Falls back to the full model when no live
+    /// service is configured.
+    #[serde(default)]
+    live: bool,
 }
 
 #[derive(Serialize)]
@@ -62,9 +68,13 @@ pub async fn identify(
     _user: AuthUser,
     Json(body): Json<IdentifyRequest>,
 ) -> impl IntoResponse {
-    let client = match &state.species_id {
-        Some(c) => c,
-        None => {
+    // Live requests prefer the faster ViT-L service, falling back to the full
+    // model when no live service is configured (e.g. local dev). Non-live
+    // requests (upload/capture re-ID) always use the full-accuracy model.
+    let client = match (body.live, &state.species_id_live, &state.species_id) {
+        (true, Some(live), _) => live,
+        (_, _, Some(full)) => full,
+        (_, _, None) => {
             return (
                 StatusCode::SERVICE_UNAVAILABLE,
                 Json(ErrorResponse {

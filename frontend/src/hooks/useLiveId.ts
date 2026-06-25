@@ -135,6 +135,9 @@ export function useLiveId({ videoRef, active, latitude, longitude }: UseLiveIdOp
             const params: Parameters<typeof identifySpecies>[0] = {
               image: base64,
               limit: LIVE_LIMIT,
+              // Use the faster ViT-L service for the continuous loop; the
+              // upload/capture re-ID (useVisualId) keeps the full-accuracy model.
+              live: true,
             };
             if (latitude != null && Number.isFinite(latitude)) params.latitude = latitude;
             if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
