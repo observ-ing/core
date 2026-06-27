@@ -4375,6 +4375,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "sparql-client"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.13.4",
+ "serde",
+]
+
+[[package]]
 name = "species-range-index"
 version = "0.5.0"
 source = "git+https://github.com/observ-ing/species-range-index?tag=v0.5.0#c63b07308cf7f036ce53fa38466b9423dc2e258b"
@@ -5522,8 +5530,7 @@ checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
 name = "wikidata-client"
 version = "0.1.0"
 dependencies = [
- "reqwest 0.13.4",
- "serde",
+ "sparql-client",
  "tracing",
 ]
 

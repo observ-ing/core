@@ -1,0 +1,13 @@
+[package]
+name = "sparql-client"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal async SPARQL-over-HTTP client"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# HTTP client
+reqwest = { workspace = true }
+
+# Serialization
+serde = { workspace = true }
