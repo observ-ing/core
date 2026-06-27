@@ -12,8 +12,5 @@ reqwest = { workspace = true }
 # Serialization
 serde = { workspace = true }
 
-# URL encoding
-urlencoding = { workspace = true }
-
 # Logging
 tracing = { workspace = true }
