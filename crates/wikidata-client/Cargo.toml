@@ -6,11 +6,8 @@ description = "Rust client for the Wikidata SPARQL API"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-# HTTP client
-reqwest = { workspace = true }
-
-# Serialization
-serde = { workspace = true }
+# Generic SPARQL-over-HTTP client
+sparql-client = { path = "../sparql-client" }
 
 # Logging
 tracing = { workspace = true }

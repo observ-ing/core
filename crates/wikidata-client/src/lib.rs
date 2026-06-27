@@ -1,7 +1,9 @@
-//! Wikidata SPARQL client for querying Wikidata's public query service.
+//! Wikidata client for biodiversity lookups: taxon images and entity URLs via
+//! external identifiers (e.g. GBIF taxon ids).
 //!
-//! Provides a general-purpose SPARQL query executor and convenience methods
-//! for common Wikidata lookups like fetching images by external identifiers.
+//! A thin domain layer over [`sparql_client`], pinned to Wikidata's public
+//! query service. For raw SPARQL against arbitrary endpoints, use
+//! [`sparql_client::SparqlClient`] directly.
 //!
 //! # Example
 //!
@@ -11,65 +13,25 @@
 //! # async fn example() {
 //! let client = WikidataClient::new();
 //!
-//! // Execute a raw SPARQL query
-//! let bindings = client.sparql_query(
-//!     r#"SELECT ?item ?itemLabel WHERE {
-//!         ?item wdt:P31 wd:Q5 .
-//!         SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
-//!     } LIMIT 5"#,
-//! ).await.unwrap();
-//!
-//! // Fetch images for GBIF taxon IDs
+//! // Fetch images for GBIF taxon IDs (property P846).
 //! let images = client.get_images_by_property("P846", &["2480528", "5219243"], 100).await;
 //! # }
 //! ```
 
-use reqwest::header::{ACCEPT, CONTENT_TYPE};
-use reqwest::{Client, StatusCode};
-use serde::Deserialize;
+use sparql_client::{escape_literal, SparqlClient};
 use std::collections::HashMap;
-use std::time::Duration;
 use tracing::warn;
 
-const SPARQL_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+// Re-export the shared SPARQL types so callers don't need a direct dependency
+// on `sparql-client` for the values these methods return.
+pub use sparql_client::{Error, SparqlBinding, SparqlValue};
+
+const WIKIDATA_ENDPOINT: &str = "https://query.wikidata.org/sparql";
 const DEFAULT_USER_AGENT: &str = "wikidata-client/0.1 (Rust; https://github.com/observ-ing/core)";
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// A single value (RDF term) returned in a SPARQL result binding.
-#[derive(Debug, Clone, Deserialize)]
-pub struct SparqlValue {
-    /// `"uri"`, `"literal"`, `"bnode"`, or `"typed-literal"`.
-    #[serde(rename = "type")]
-    pub value_type: Option<String>,
-    pub value: String,
-    /// Datatype IRI for typed literals, e.g. `http://www.w3.org/2001/XMLSchema#integer`.
-    pub datatype: Option<String>,
-    #[serde(rename = "xml:lang")]
-    pub lang: Option<String>,
-}
-
-/// A row of results from a SPARQL query, mapping variable names to values.
-pub type SparqlBinding = HashMap<String, SparqlValue>;
-
-/// Full SPARQL JSON results — handles SELECT (`results.bindings`) and ASK (`boolean`).
-#[derive(Debug, Default, Deserialize)]
-struct SparqlResponse {
-    #[serde(default)]
-    results: SparqlResults,
-    /// Present only for ASK queries.
-    boolean: Option<bool>,
-}
-
-#[derive(Debug, Default, Deserialize)]
-struct SparqlResults {
-    #[serde(default)]
-    bindings: Vec<SparqlBinding>,
-}
-
-/// Client for querying Wikidata's SPARQL endpoint.
+/// Client for querying Wikidata's SPARQL endpoint for biodiversity data.
 pub struct WikidataClient {
-    client: Client,
-    endpoint: String,
+    client: SparqlClient,
 }
 
 impl WikidataClient {
@@ -82,69 +44,15 @@ impl WikidataClient {
     ///
     /// Wikidata's query service requires a meaningful user agent — requests
     /// with generic agents may be throttled or blocked.
-    ///
-    /// Panics if the underlying HTTP client cannot be built; use
-    /// [`try_with_user_agent`](Self::try_with_user_agent) to handle that case.
     pub fn with_user_agent(user_agent: &str) -> Self {
-        Self::try_with_user_agent(user_agent).expect("reqwest client should build")
-    }
-
-    /// Fallible constructor that surfaces HTTP-client build errors instead of
-    /// silently falling back to a default client.
-    pub fn try_with_user_agent(user_agent: &str) -> Result<Self, reqwest::Error> {
-        Ok(Self {
-            client: Client::builder()
-                .user_agent(user_agent)
-                .timeout(DEFAULT_TIMEOUT)
-                .build()?,
-            endpoint: SPARQL_ENDPOINT.to_string(),
-        })
-    }
-
-    /// Point the client at a different SPARQL endpoint — e.g. the WDQS scholarly
-    /// split endpoint, or another Wikibase instance.
-    pub fn with_endpoint(mut self, endpoint: impl Into<String>) -> Self {
-        self.endpoint = endpoint.into();
-        self
-    }
-
-    /// Execute a SELECT-style SPARQL query and return the result bindings.
-    pub async fn sparql_query(&self, query: &str) -> Result<Vec<SparqlBinding>, Error> {
-        Ok(self.run(query).await?.results.bindings)
-    }
-
-    /// Execute an `ASK { … }` query.
-    pub async fn sparql_ask(&self, query: &str) -> Result<bool, Error> {
-        self.run(query).await?.boolean.ok_or(Error::UnexpectedShape)
-    }
-
-    /// Send a query to the endpoint and parse the SPARQL JSON response.
-    async fn run(&self, query: &str) -> Result<SparqlResponse, Error> {
-        let response = self
-            .client
-            .post(&self.endpoint)
-            // Send the query in the body so long queries don't hit URL-length limits.
-            .header(CONTENT_TYPE, "application/sparql-query")
-            .header(ACCEPT, "application/sparql-results+json")
-            .body(query.to_string())
-            .send()
-            .await
-            .map_err(Error::Transport)?;
-
-        let status = response.status();
-        if !status.is_success() {
-            // WDQS reports query-timeout / syntax errors in the body — keep a snippet.
-            let body = response.text().await.unwrap_or_default();
-            return Err(Error::Status {
-                status,
-                body: truncate(&body, 512),
-            });
+        Self {
+            client: SparqlClient::with_user_agent(WIKIDATA_ENDPOINT, user_agent),
         }
+    }
 
-        response
-            .json::<SparqlResponse>()
-            .await
-            .map_err(Error::Decode)
+    /// Execute a raw SELECT-style SPARQL query against Wikidata.
+    pub async fn sparql_query(&self, query: &str) -> Result<Vec<SparqlBinding>, Error> {
+        self.client.sparql_query(query).await
     }
 
     /// Fetch Wikidata entity URLs for items matching external IDs on a given property.
@@ -180,7 +88,7 @@ impl WikidataClient {
 }}",
         );
 
-        let bindings = match self.sparql_query(&query).await {
+        let bindings = match self.client.sparql_query(&query).await {
             Ok(b) => b,
             Err(e) => {
                 warn!(error = ?e, "Wikidata entity lookup failed");
@@ -244,7 +152,7 @@ impl WikidataClient {
     /// Run a SPARQL query whose first binding exposes a `?gbif` literal and
     /// parse it as a GBIF usage key.
     async fn first_gbif_key(&self, query: &str) -> Option<i64> {
-        let bindings = match self.sparql_query(query).await {
+        let bindings = match self.client.sparql_query(query).await {
             Ok(b) => b,
             Err(e) => {
                 warn!(error = ?e, "Wikidata GBIF cross-walk failed");
@@ -295,7 +203,7 @@ impl WikidataClient {
 }} GROUP BY ?external_id",
         );
 
-        let bindings = match self.sparql_query(&query).await {
+        let bindings = match self.client.sparql_query(&query).await {
             Ok(b) => b,
             Err(e) => {
                 warn!(error = ?e, "Wikidata image lookup failed");
@@ -321,49 +229,12 @@ impl Default for WikidataClient {
     }
 }
 
-/// Escape a string for use inside a SPARQL double-quoted literal.
-///
-/// Without this, a value containing `"`, `\`, or a newline breaks the query
-/// (or allows injection). See the SPARQL 1.1 `STRING_LITERAL` grammar.
-///
-/// ```
-/// use wikidata_client::escape_literal;
-///
-/// assert_eq!(escape_literal(r#"a "b" \ c"#), r#"a \"b\" \\ c"#);
-/// ```
-pub fn escape_literal(s: &str) -> String {
-    let mut out = String::with_capacity(s.len());
-    for c in s.chars() {
-        match c {
-            '\\' => out.push_str(r"\\"),
-            '"' => out.push_str("\\\""),
-            '\n' => out.push_str(r"\n"),
-            '\r' => out.push_str(r"\r"),
-            '\t' => out.push_str(r"\t"),
-            _ => out.push(c),
-        }
-    }
-    out
-}
-
 /// Whether `p` is a bare Wikidata property id (`P` followed by digits).
 ///
 /// Property ids are interpolated unquoted as `wdt:{p}`, so they must be
 /// validated rather than escaped.
 fn is_property_id(p: &str) -> bool {
     matches!(p.strip_prefix('P'), Some(d) if !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()))
-}
-
-/// Truncate a string to at most `max` bytes, appending `…` if it was cut.
-fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
-        return s.to_string();
-    }
-    let mut end = max;
-    while !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    format!("{}…", &s[..end])
 }
 
 /// Convert a Wikimedia Commons `Special:FilePath` URL to a thumbnail URL.
@@ -382,58 +253,6 @@ pub fn to_thumbnail_url(file_url: &str, width: u32) -> String {
         format!("{file_url}?width={width}")
     } else {
         file_url.to_string()
-    }
-}
-
-/// Errors that can occur when querying Wikidata.
-#[derive(Debug)]
-pub enum Error {
-    /// The request never completed (DNS, TLS, connect, or timeout).
-    Transport(reqwest::Error),
-    /// The endpoint returned a non-success status. `body` is a truncated
-    /// snippet of the response — WDQS reports query timeouts and syntax
-    /// errors there.
-    Status { status: StatusCode, body: String },
-    /// The response could not be decoded as SPARQL JSON.
-    Decode(reqwest::Error),
-    /// The response was valid JSON but not the expected shape (e.g. an ASK
-    /// query returned no `boolean`).
-    UnexpectedShape,
-}
-
-impl Error {
-    /// HTTP 429 / 503 — the caller may retry with backoff.
-    pub fn is_throttled(&self) -> bool {
-        matches!(self, Error::Status { status, .. }
-            if *status == StatusCode::TOO_MANY_REQUESTS
-                || *status == StatusCode::SERVICE_UNAVAILABLE)
-    }
-
-    /// The request timed out.
-    pub fn is_timeout(&self) -> bool {
-        matches!(self, Error::Transport(e) if e.is_timeout())
-    }
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Transport(e) => write!(f, "Wikidata request error: {e}"),
-            Error::Status { status, body } => {
-                write!(f, "Wikidata HTTP error: {status}: {body}")
-            }
-            Error::Decode(e) => write!(f, "Wikidata response decode error: {e}"),
-            Error::UnexpectedShape => write!(f, "Wikidata response had an unexpected shape"),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::Transport(e) | Error::Decode(e) => Some(e),
-            Error::Status { .. } | Error::UnexpectedShape => None,
-        }
     }
 }
 
@@ -466,14 +285,6 @@ mod tests {
     }
 
     #[test]
-    fn test_escape_literal() {
-        assert_eq!(escape_literal("plain"), "plain");
-        assert_eq!(escape_literal(r#"say "hi""#), r#"say \"hi\""#);
-        assert_eq!(escape_literal(r"back\slash"), r"back\\slash");
-        assert_eq!(escape_literal("line\nbreak"), r"line\nbreak");
-    }
-
-    #[test]
     fn test_is_property_id() {
         assert!(is_property_id("P846"));
         assert!(is_property_id("P1"));
@@ -482,13 +293,5 @@ mod tests {
         assert!(!is_property_id("Q846"));
         assert!(!is_property_id("P846; DROP"));
         assert!(!is_property_id(""));
-    }
-
-    #[test]
-    fn test_truncate() {
-        assert_eq!(truncate("short", 10), "short");
-        assert_eq!(truncate("abcdef", 3), "abc…");
-        // Does not split a multi-byte char.
-        assert_eq!(truncate("aé", 2), "a…");
     }
 }
