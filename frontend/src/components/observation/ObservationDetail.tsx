@@ -1,8 +1,9 @@
 import { lazy, Suspense, useState } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
+  Divider,
   Typography,
   Button,
   Stack,
@@ -20,7 +21,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
-import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NumbersIcon from "@mui/icons-material/Numbers";
 import { getImageUrl } from "../../services/api";
@@ -39,6 +40,7 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
+import { Section, SectionHeader } from "../common/Section";
 import {
   formatEventDate,
   getPdslsUrl,
@@ -227,8 +229,10 @@ export function ObservationDetail() {
           </Box>
         </Box>
 
-        {/* Species Header */}
-        <Box sx={{ px: 3, pt: 2, pb: 1 }}>
+        {/* Identity header: species, then observer + date with the like
+            control — so what / who / when read as a single block. A divider
+            keeps the taxa title visually distinct from the attribution row. */}
+        <Box sx={{ px: 3, pt: 2, pb: 1.5 }}>
           {species ? (
             <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank={taxonomy?.rank} />
           ) : (
@@ -251,48 +255,52 @@ export function ObservationDetail() {
           )}
         </Box>
 
-        {/* Like button */}
-        <Stack
-          direction="row"
-          sx={{
-            alignItems: "center",
-            px: 3,
-            pb: 1,
-          }}
-        >
+        <Divider sx={{ mx: 3 }} />
+
+        <Stack direction="row" spacing={1} sx={{ alignItems: "center", px: 3, pt: 1.5, pb: 1.5 }}>
+          <UserCard
+            actor={observation.observer}
+            avatarSize={44}
+            spacing={1.5}
+            link
+            showHandle
+            sx={{ flex: 1, minWidth: 0 }}
+            belowName={
+              <Typography variant="caption" sx={{ color: "text.secondary" }}>
+                {observation.eventDate
+                  ? `Observed ${formatEventDate(observation.eventDate)}`
+                  : "Date not recorded"}
+              </Typography>
+            }
+          />
           <Tooltip title={!user ? "Log in to like" : ""}>
             <span>
-              <IconButton
-                size="small"
-                onClick={() =>
-                  like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-                }
-                disabled={!user}
-                aria-label={liked ? "Unlike" : "Like"}
-                sx={{
-                  color: liked ? "error.main" : "text.disabled",
-                  ml: -0.5,
-                }}
-              >
-                {liked ? (
-                  <FavoriteIcon fontSize="small" />
-                ) : (
-                  <FavoriteBorderIcon fontSize="small" />
+              <Stack direction="row" sx={{ alignItems: "center" }}>
+                <IconButton
+                  size="small"
+                  onClick={() =>
+                    like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+                  }
+                  disabled={!user}
+                  aria-label={liked ? "Unlike" : "Like"}
+                  sx={{
+                    color: liked ? "error.main" : "text.disabled",
+                  }}
+                >
+                  {liked ? (
+                    <FavoriteIcon fontSize="small" />
+                  ) : (
+                    <FavoriteBorderIcon fontSize="small" />
+                  )}
+                </IconButton>
+                {likeCount > 0 && (
+                  <Typography variant="body2" sx={{ color: "text.secondary", ml: -0.25 }}>
+                    {likeCount}
+                  </Typography>
                 )}
-              </IconButton>
+              </Stack>
             </span>
           </Tooltip>
-          {likeCount > 0 && (
-            <Typography
-              variant="body2"
-              sx={{
-                color: "text.secondary",
-                ml: -0.25,
-              }}
-            >
-              {likeCount}
-            </Typography>
-          )}
         </Stack>
 
         {/* Images */}
@@ -364,195 +372,167 @@ export function ObservationDetail() {
           </Box>
         )}
 
-        {/* Content */}
-        <Box sx={{ p: 3 }}>
-          {/* Observer */}
-          <ListItem
-            component={Link}
-            to={`/profile/${encodeURIComponent(observation.observer.did)}`}
-            sx={{
-              textDecoration: "none",
-              color: "inherit",
-              "&:hover": { bgcolor: "action.hover" },
-              mx: -2,
-              borderRadius: 1,
-            }}
-          >
-            <UserCard actor={observation.observer} avatarSize={40} spacing={2} showHandle />
-          </ListItem>
-
-          {/* Observation Details */}
-          <List disablePadding sx={{ mt: 1 }}>
-            <ListItem disableGutters alignItems="flex-start">
-              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                <CalendarTodayIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-              </ListItemIcon>
-              <ListItemText
-                primary="Observed"
-                secondary={observation.eventDate ? formatEventDate(observation.eventDate) : "—"}
-                slotProps={{
-                  primary: { variant: "caption", color: "text.secondary" },
-                  secondary: { variant: "body1", color: "text.primary" },
-                }}
+        {/* Content: a uniform vertical stack of peer sections. */}
+        <Box sx={{ p: { xs: 2, sm: 3 } }}>
+          <Stack spacing={2.5}>
+            {/* Details */}
+            <Section>
+              <SectionHeader
+                icon={<InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+                title="Details"
+                sx={{ mb: 1.5 }}
               />
-            </ListItem>
-
-            {observation.organismQuantity && (
-              <ListItem disableGutters alignItems="flex-start">
-                <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                  <NumbersIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                </ListItemIcon>
-                <ListItemText
-                  primary="Quantity"
-                  secondary={
-                    <>
-                      {observation.organismQuantity}
-                      {observation.organismQuantityType && (
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{ color: "text.disabled" }}
-                        >
-                          {" "}
-                          ({observation.organismQuantityType.replace(/-/g, " ")})
-                        </Typography>
-                      )}
-                    </>
-                  }
-                  slotProps={{
-                    primary: { variant: "caption", color: "text.secondary" },
-                    secondary: {
-                      variant: "body1",
-                      color: "text.primary",
-                      component: "div",
-                    },
-                  }}
-                />
-              </ListItem>
-            )}
-
-            <ListItem disableGutters alignItems="flex-start">
-              <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-              </ListItemIcon>
-              <ListItemText
-                primary="Coordinates"
-                secondary={
-                  observation.location ? (
-                    <>
-                      {observation.location.latitude.toFixed(5)},{" "}
-                      {observation.location.longitude.toFixed(5)}
-                      {observation.location.uncertaintyMeters && (
-                        <Typography
-                          component="span"
-                          variant="body2"
-                          sx={{
-                            color: "text.disabled",
-                          }}
-                        >
-                          {" "}
-                          (±{observation.location.uncertaintyMeters}m)
-                        </Typography>
-                      )}
-                    </>
-                  ) : (
-                    "—"
-                  )
-                }
-                slotProps={{
-                  primary: { variant: "caption", color: "text.secondary" },
-                  secondary: {
-                    variant: "body1",
-                    color: "text.primary",
-                    component: "div",
-                  },
-                }}
-              />
-            </ListItem>
-            {observation.location && (
-              <Box sx={{ ml: 4.5, mb: 1 }}>
-                <Suspense fallback={<Box sx={{ height: 180 }} />}>
-                  <LocationMap
-                    latitude={observation.location.latitude}
-                    longitude={observation.location.longitude}
-                    uncertaintyMeters={observation.location.uncertaintyMeters}
-                  />
-                </Suspense>
-              </Box>
-            )}
-          </List>
-
-          {/* Data Quality */}
-          <Box sx={{ mt: 3 }}>
-            <DataQualitySection issues={observation.qualityIssues} />
-          </Box>
-
-          <Box sx={{ mt: 3 }}>
-            {/* Identification History */}
-            <Box sx={{ mt: 2 }}>
-              <IdentificationHistory
-                identifications={identifications}
-                kingdom={taxonomy?.kingdom}
-                currentUserDid={user?.did}
-                onDeleteIdentification={async (uri) => {
-                  if (!atUri) return;
-                  try {
-                    await deleteId.mutateAsync({ uri, occurrenceUri: atUri });
-                    toast.success("Identification deleted");
-                  } catch (error) {
-                    const message = getErrorMessage(error, "Failed to delete identification");
-                    toast.error(message);
-                    if (message.includes("Session expired")) {
-                      dispatch(checkAuth());
-                    }
-                    throw error;
-                  }
-                }}
-                observerDid={observation.observer.did}
-                footer={
-                  user ? (
-                    <IdentificationPanel
-                      observation={{
-                        uri: observation.uri,
-                        cid: observation.cid,
-                        scientificName: taxonomy?.scientificName,
-                        communityId: observation.communityId,
-                        kingdom: taxonomy?.kingdom,
-                        rank: taxonomy?.rank,
-                      }}
-                      imageUrl={
-                        observation.images[0] != null
-                          ? getImageUrl(observation.images[0].url)
-                          : undefined
+              <List disablePadding>
+                {observation.organismQuantity && (
+                  <ListItem disableGutters alignItems="flex-start">
+                    <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                      <NumbersIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary="Quantity"
+                      secondary={
+                        <>
+                          {observation.organismQuantity}
+                          {observation.organismQuantityType && (
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              sx={{ color: "text.disabled" }}
+                            >
+                              {" "}
+                              ({observation.organismQuantityType.replace(/-/g, " ")})
+                            </Typography>
+                          )}
+                        </>
                       }
-                      latitude={observation.location?.latitude}
-                      longitude={observation.location?.longitude}
-                    />
-                  ) : (
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        color: "text.secondary",
-                        mt: 2,
-                        textAlign: "center",
+                      slotProps={{
+                        primary: { variant: "caption", color: "text.secondary" },
+                        secondary: {
+                          variant: "body1",
+                          color: "text.primary",
+                          component: "div",
+                        },
                       }}
-                    >
-                      Log in to add an identification
-                    </Typography>
-                  )
-                }
-              />
-            </Box>
-          </Box>
+                    />
+                  </ListItem>
+                )}
 
-          {/* Discussion / Comments */}
-          <Box sx={{ mt: 3 }}>
+                <ListItem disableGutters alignItems="flex-start">
+                  <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
+                    <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
+                  </ListItemIcon>
+                  <ListItemText
+                    primary="Coordinates"
+                    secondary={
+                      observation.location ? (
+                        <>
+                          {observation.location.latitude.toFixed(5)},{" "}
+                          {observation.location.longitude.toFixed(5)}
+                          {observation.location.uncertaintyMeters && (
+                            <Typography
+                              component="span"
+                              variant="body2"
+                              sx={{
+                                color: "text.disabled",
+                              }}
+                            >
+                              {" "}
+                              (±{observation.location.uncertaintyMeters}m)
+                            </Typography>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )
+                    }
+                    slotProps={{
+                      primary: { variant: "caption", color: "text.secondary" },
+                      secondary: {
+                        variant: "body1",
+                        color: "text.primary",
+                        component: "div",
+                      },
+                    }}
+                  />
+                </ListItem>
+                {observation.location && (
+                  <Box sx={{ mt: 1 }}>
+                    <Suspense fallback={<Box sx={{ height: 180 }} />}>
+                      <LocationMap
+                        latitude={observation.location.latitude}
+                        longitude={observation.location.longitude}
+                        uncertaintyMeters={observation.location.uncertaintyMeters}
+                      />
+                    </Suspense>
+                  </Box>
+                )}
+              </List>
+            </Section>
+
+            {/* Data Quality */}
+            <DataQualitySection issues={observation.qualityIssues} />
+
+            {/* Identification History */}
+            <IdentificationHistory
+              identifications={identifications}
+              kingdom={taxonomy?.kingdom}
+              currentUserDid={user?.did}
+              onDeleteIdentification={async (uri) => {
+                if (!atUri) return;
+                try {
+                  await deleteId.mutateAsync({ uri, occurrenceUri: atUri });
+                  toast.success("Identification deleted");
+                } catch (error) {
+                  const message = getErrorMessage(error, "Failed to delete identification");
+                  toast.error(message);
+                  if (message.includes("Session expired")) {
+                    dispatch(checkAuth());
+                  }
+                  throw error;
+                }
+              }}
+              observerDid={observation.observer.did}
+              footer={
+                user ? (
+                  <IdentificationPanel
+                    observation={{
+                      uri: observation.uri,
+                      cid: observation.cid,
+                      scientificName: taxonomy?.scientificName,
+                      communityId: observation.communityId,
+                      kingdom: taxonomy?.kingdom,
+                      rank: taxonomy?.rank,
+                    }}
+                    imageUrl={
+                      observation.images[0] != null
+                        ? getImageUrl(observation.images[0].url)
+                        : undefined
+                    }
+                    latitude={observation.location?.latitude}
+                    longitude={observation.location?.longitude}
+                  />
+                ) : (
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: "text.secondary",
+                      mt: 2,
+                      textAlign: "center",
+                    }}
+                  >
+                    Log in to add an identification
+                  </Typography>
+                )
+              }
+            />
+
+            {/* Discussion / Comments */}
             <CommentSection
               observationUri={observation.uri}
               observationCid={observation.cid}
               comments={comments}
             />
-          </Box>
+          </Stack>
         </Box>
       </Container>
 
