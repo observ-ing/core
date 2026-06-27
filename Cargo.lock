@@ -4377,6 +4377,7 @@ dependencies = [
 [[package]]
 name = "sparql-client"
 version = "0.1.0"
+source = "git+https://github.com/observ-ing/sparql-client?rev=2d2e9818e7ac84b886aac0464f92cd9e968d9fa0#2d2e9818e7ac84b886aac0464f92cd9e968d9fa0"
 dependencies = [
  "reqwest 0.13.4",
  "serde",
