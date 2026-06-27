@@ -3,7 +3,6 @@ import {
   Box,
   Typography,
   Stack,
-  Paper,
   TextField,
   Button,
   IconButton,
@@ -21,6 +20,7 @@ import type { Comment } from "../../services/types";
 import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
+import { Section, SectionHeader } from "../common/Section";
 
 interface CommentSectionProps {
   observationUri: string;
@@ -76,47 +76,28 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-        border: 1,
-        borderColor: "divider",
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 600,
-          }}
-        >
-          Discussion
-        </Typography>
-        {comments.length > 0 && (
-          <Chip label={comments.length} size="small" sx={{ height: 20, fontSize: "0.75rem" }} />
-        )}
-        {user && !showForm && (
-          <Button
-            size="small"
-            startIcon={<ChatBubbleOutlineIcon />}
-            onClick={() => setShowForm(true)}
-            sx={{ ml: "auto" }}
-          >
-            Add
-          </Button>
-        )}
-      </Stack>
+    <Section>
+      <SectionHeader
+        icon={<ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        title="Discussion"
+        sx={{ mb: 2 }}
+        trailing={
+          <>
+            {comments.length > 0 && (
+              <Chip label={comments.length} size="small" sx={{ height: 20, fontSize: "0.75rem" }} />
+            )}
+            {user && !showForm && (
+              <Button
+                size="small"
+                startIcon={<ChatBubbleOutlineIcon />}
+                onClick={() => setShowForm(true)}
+              >
+                Add
+              </Button>
+            )}
+          </>
+        }
+      />
       {comments.length === 0 && !showForm && (
         <Typography
           variant="body2"
@@ -256,6 +237,6 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
           Log in to add a comment
         </Typography>
       )}
-    </Paper>
+    </Section>
   );
 }

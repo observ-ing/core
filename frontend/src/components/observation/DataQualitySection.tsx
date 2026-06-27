@@ -1,7 +1,5 @@
 import { useState } from "react";
 import {
-  Box,
-  Stack,
   Typography,
   List,
   ListItem,
@@ -15,6 +13,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import type { QualityIssue } from "../../bindings/QualityIssue";
+import { Section, SectionHeader } from "../common/Section";
 
 interface DataQualitySectionProps {
   issues: QualityIssue[];
@@ -81,37 +80,31 @@ export function DataQualitySection({ issues }: DataQualitySectionProps) {
   const [expanded, setExpanded] = useState(!allMet);
 
   return (
-    <Box>
-      <Stack
-        direction="row"
-        spacing={1}
+    <Section>
+      <SectionHeader
         onClick={() => setExpanded((prev) => !prev)}
-        sx={{
-          alignItems: "center",
-          mb: expanded ? 1 : 0,
-          cursor: "pointer",
-          userSelect: "none",
-        }}
-      >
-        <VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          Data quality
-        </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary", ml: "auto" }}>
-          {allMet ? "All criteria met" : `${metCount}/${CRITERIA.length}`}
-        </Typography>
-        <IconButton
-          size="small"
-          aria-label={expanded ? "Collapse data quality" : "Expand data quality"}
-          sx={{
-            p: 0.25,
-            transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-            transition: (theme) => theme.transitions.create("transform"),
-          }}
-        >
-          <ExpandMoreIcon fontSize="small" />
-        </IconButton>
-      </Stack>
+        icon={<VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        title="Data quality"
+        sx={{ mb: expanded ? 1.5 : 0 }}
+        trailing={
+          <>
+            <Typography variant="caption" sx={{ color: "text.secondary" }}>
+              {allMet ? "All criteria met" : `${metCount}/${CRITERIA.length}`}
+            </Typography>
+            <IconButton
+              size="small"
+              aria-label={expanded ? "Collapse data quality" : "Expand data quality"}
+              sx={{
+                p: 0.25,
+                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
+                transition: (theme) => theme.transitions.create("transform"),
+              }}
+            >
+              <ExpandMoreIcon fontSize="small" />
+            </IconButton>
+          </>
+        }
+      />
       <Collapse in={expanded} unmountOnExit>
         <List disablePadding>
           {CRITERIA.map((criterion) => {
@@ -141,6 +134,6 @@ export function DataQualitySection({ issues }: DataQualitySectionProps) {
           })}
         </List>
       </Collapse>
-    </Box>
+    </Section>
   );
 }
