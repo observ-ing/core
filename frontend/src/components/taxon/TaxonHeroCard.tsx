@@ -29,12 +29,15 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
       {heroUrl && (
         <Box
           sx={{
-            width: 240,
-            height: 240,
+            width: 248,
+            height: 248,
             maxWidth: "100%",
             flexShrink: 0,
-            borderRadius: 1,
+            borderRadius: "14px",
             overflow: "hidden",
+            border: 1,
+            borderColor: "divider",
+            boxShadow: "0 2px 10px rgba(60,50,30,0.08)",
             backgroundColor: "action.hover",
             display: "flex",
             alignItems: "center",
@@ -59,12 +62,16 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
         {/* Scientific Name */}
         <Typography
           variant="h5"
+          component="h1"
           sx={{
             fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
               ? "italic"
               : "normal",
             color: "primary.main",
             fontWeight: 600,
+            fontSize: "1.875rem",
+            lineHeight: 1.1,
+            letterSpacing: "-0.01em",
           }}
         >
           {taxon.scientificName}
@@ -77,20 +84,22 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
             component="p"
             sx={{
               color: "text.secondary",
-              mt: 0.5,
+              mt: 0.75,
+              fontSize: "1.2rem",
+              fontWeight: 500,
             }}
           >
             {taxon.commonName}
           </Typography>
         )}
 
-        {/* Stats + External Links */}
+        {/* Conservation status + stats */}
         <Stack
           direction="row"
-          spacing={1}
+          spacing={1.5}
           sx={{
             alignItems: "center",
-            mt: 2,
+            mt: 2.5,
             flexWrap: "wrap",
           }}
         >
@@ -110,37 +119,39 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
               <> &middot; {taxon.numDescendants.toLocaleString()} descendant taxa</>
             )}
           </Typography>
-          {(gbifUrl || wikidataUrl) && (
-            <>
-              {gbifUrl && (
-                <Chip
-                  component="a"
-                  href={gbifUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  label="GBIF"
-                  size="small"
-                  variant="outlined"
-                  clickable
-                  icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                />
-              )}
-              {wikidataUrl && (
-                <Chip
-                  component="a"
-                  href={wikidataUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  label="Wikidata"
-                  size="small"
-                  variant="outlined"
-                  clickable
-                  icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-                />
-              )}
-            </>
-          )}
         </Stack>
+
+        {/* External Links */}
+        {(gbifUrl || wikidataUrl) && (
+          <Stack direction="row" spacing={1.25} sx={{ mt: 2, flexWrap: "wrap" }}>
+            {gbifUrl && (
+              <Chip
+                component="a"
+                href={gbifUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                label="GBIF"
+                size="small"
+                variant="outlined"
+                clickable
+                icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+              />
+            )}
+            {wikidataUrl && (
+              <Chip
+                component="a"
+                href={wikidataUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                label="Wikidata"
+                size="small"
+                variant="outlined"
+                clickable
+                icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
+              />
+            )}
+          </Stack>
+        )}
       </Box>
     </Stack>
   );

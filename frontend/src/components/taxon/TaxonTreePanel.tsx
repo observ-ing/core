@@ -1,9 +1,25 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+
+/**
+ * A deterministic two-stop gradient for a taxon's avatar swatch, used as a
+ * placeholder when no Wikidata thumbnail is available. Hashing the name keeps
+ * each taxon's color stable across renders while giving the tree the design's
+ * colored-square rhythm. Earthy mid-tones keep it in the field-guide palette.
+ */
+function swatchGradient(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
+  }
+  const hue = hash % 360;
+  return `linear-gradient(135deg, hsl(${hue} 42% 50%), hsl(${(hue + 26) % 360} 46% 30%))`;
+}
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -27,6 +43,7 @@ function renderTreeItems(
 ) {
   return items.map((item) => {
     const thumb = thumbnails.get(String(item.label));
+    const isSelected = item.id === selectedId;
     return (
       <TreeItem
         key={item.id}
@@ -38,19 +55,23 @@ function renderTreeItems(
         slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.5 }}>
-            {/* Only reserve the thumbnail slot when there's actually an image —
-                most taxa have none, and a column of empty placeholders is just
-                noise that steals width the name needs at depth. */}
-            {thumb && (
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  flexShrink: 0,
-                  borderRadius: 0.5,
-                  overflow: "hidden",
-                }}
-              >
+            {/* Avatar swatch: the real Wikidata thumbnail when we have one, else
+                a deterministic colored square so every row carries the design's
+                visual anchor. The selected row gets a subtle accent ring. */}
+            <Box
+              sx={{
+                width: 22,
+                height: 22,
+                flexShrink: 0,
+                borderRadius: 0.625,
+                overflow: "hidden",
+                background: thumb ? undefined : swatchGradient(String(item.label)),
+                boxShadow: isSelected
+                  ? (theme) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.35)}`
+                  : undefined,
+              }}
+            >
+              {thumb && (
                 <Box
                   component="img"
                   src={thumb}
@@ -58,8 +79,8 @@ function renderTreeItems(
                   loading="lazy"
                   sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
-              </Box>
-            )}
+              )}
+            </Box>
             <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
               <Typography
                 variant="body2"
@@ -152,9 +173,13 @@ export function TaxonTreePanel({
         }}
       >
         <Typography
-          variant="subtitle2"
+          variant="caption"
+          component="div"
           sx={{
-            color: "text.secondary",
+            color: "text.disabled",
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
             px: 1,
             py: 1,
           }}
@@ -170,6 +195,16 @@ export function TaxonTreePanel({
             if (id) onSelectedItemsChange(id);
           }}
           onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
+          sx={(theme) => ({
+            "& .MuiTreeItem-content": {
+              borderRadius: 1.25,
+              "&:hover": { backgroundColor: "action.hover" },
+              "&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focused": {
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                boxShadow: `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+              },
+            },
+          })}
         >
           {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
         </SimpleTreeView>
