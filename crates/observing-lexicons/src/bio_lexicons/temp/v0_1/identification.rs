@@ -314,7 +314,7 @@ pub mod identification_state {
 }
 
 /// Builder for constructing an instance of this type.
-pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
+pub struct IdentificationBuilder<St: identification_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<S>,
@@ -327,15 +327,22 @@ pub struct IdentificationBuilder<S: BosStr, St: identification_state::State> {
     _type: PhantomData<fn() -> S>,
 }
 
-impl<S: BosStr> Identification<S> {
-    /// Create a new builder for this type.
-    pub fn new() -> IdentificationBuilder<S, identification_state::Empty> {
+impl Identification<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> IdentificationBuilder<identification_state::Empty, DefaultStr> {
         IdentificationBuilder::new()
     }
 }
 
-impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
-    /// Create a new builder with all fields unset.
+impl<S: BosStr> Identification<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> IdentificationBuilder<identification_state::Empty, S> {
+        IdentificationBuilder::builder()
+    }
+}
+
+impl IdentificationBuilder<identification_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
@@ -345,7 +352,18 @@ impl<S: BosStr> IdentificationBuilder<S, identification_state::Empty> {
     }
 }
 
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
+impl<S: BosStr> IdentificationBuilder<identification_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        IdentificationBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `identificationRemarks` field (optional)
     pub fn identification_remarks(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
@@ -358,7 +376,7 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
+impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `kingdom` field (optional)
     pub fn kingdom(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.1 = value.into();
@@ -371,7 +389,7 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> IdentificationBuilder<S, St>
+impl<St, S: BosStr> IdentificationBuilder<St, S>
 where
     St: identification_state::State,
     St::Occurrence: identification_state::IsUnset,
@@ -380,7 +398,7 @@ where
     pub fn occurrence(
         mut self,
         value: impl Into<StrongRef<S>>,
-    ) -> IdentificationBuilder<S, identification_state::SetOccurrence<St>> {
+    ) -> IdentificationBuilder<identification_state::SetOccurrence<St>, S> {
         self._fields.2 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
@@ -390,7 +408,7 @@ where
     }
 }
 
-impl<S: BosStr, St> IdentificationBuilder<S, St>
+impl<St, S: BosStr> IdentificationBuilder<St, S>
 where
     St: identification_state::State,
     St::ScientificName: identification_state::IsUnset,
@@ -399,7 +417,7 @@ where
     pub fn scientific_name(
         mut self,
         value: impl Into<S>,
-    ) -> IdentificationBuilder<S, identification_state::SetScientificName<St>> {
+    ) -> IdentificationBuilder<identification_state::SetScientificName<St>, S> {
         self._fields.3 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
@@ -409,7 +427,7 @@ where
     }
 }
 
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
+impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `taxonID` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
         self._fields.4 = value.into();
@@ -422,7 +440,7 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
+impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `taxonRank` field (optional)
     pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
         self._fields.5 = value.into();
@@ -435,7 +453,7 @@ impl<S: BosStr, St: identification_state::State> IdentificationBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> IdentificationBuilder<S, St>
+impl<St, S: BosStr> IdentificationBuilder<St, S>
 where
     St: identification_state::State,
     St::Occurrence: identification_state::IsSet,

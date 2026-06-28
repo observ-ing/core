@@ -358,21 +358,28 @@ pub mod aspect_ratio_state {
 }
 
 /// Builder for constructing an instance of this type.
-pub struct AspectRatioBuilder<S: BosStr, St: aspect_ratio_state::State> {
+pub struct AspectRatioBuilder<St: aspect_ratio_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
     _fields: (Option<i64>, Option<i64>),
     _type: PhantomData<fn() -> S>,
 }
 
-impl<S: BosStr> AspectRatio<S> {
-    /// Create a new builder for this type.
-    pub fn new() -> AspectRatioBuilder<S, aspect_ratio_state::Empty> {
+impl AspectRatio<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> AspectRatioBuilder<aspect_ratio_state::Empty, DefaultStr> {
         AspectRatioBuilder::new()
     }
 }
 
-impl<S: BosStr> AspectRatioBuilder<S, aspect_ratio_state::Empty> {
-    /// Create a new builder with all fields unset.
+impl<S: BosStr> AspectRatio<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> AspectRatioBuilder<aspect_ratio_state::Empty, S> {
+        AspectRatioBuilder::builder()
+    }
+}
+
+impl AspectRatioBuilder<aspect_ratio_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         AspectRatioBuilder {
             _state: PhantomData,
@@ -382,7 +389,18 @@ impl<S: BosStr> AspectRatioBuilder<S, aspect_ratio_state::Empty> {
     }
 }
 
-impl<S: BosStr, St> AspectRatioBuilder<S, St>
+impl<S: BosStr> AspectRatioBuilder<aspect_ratio_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        AspectRatioBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> AspectRatioBuilder<St, S>
 where
     St: aspect_ratio_state::State,
     St::Height: aspect_ratio_state::IsUnset,
@@ -391,7 +409,7 @@ where
     pub fn height(
         mut self,
         value: impl Into<i64>,
-    ) -> AspectRatioBuilder<S, aspect_ratio_state::SetHeight<St>> {
+    ) -> AspectRatioBuilder<aspect_ratio_state::SetHeight<St>, S> {
         self._fields.0 = Option::Some(value.into());
         AspectRatioBuilder {
             _state: PhantomData,
@@ -401,7 +419,7 @@ where
     }
 }
 
-impl<S: BosStr, St> AspectRatioBuilder<S, St>
+impl<St, S: BosStr> AspectRatioBuilder<St, S>
 where
     St: aspect_ratio_state::State,
     St::Width: aspect_ratio_state::IsUnset,
@@ -410,7 +428,7 @@ where
     pub fn width(
         mut self,
         value: impl Into<i64>,
-    ) -> AspectRatioBuilder<S, aspect_ratio_state::SetWidth<St>> {
+    ) -> AspectRatioBuilder<aspect_ratio_state::SetWidth<St>, S> {
         self._fields.1 = Option::Some(value.into());
         AspectRatioBuilder {
             _state: PhantomData,
@@ -420,7 +438,7 @@ where
     }
 }
 
-impl<S: BosStr, St> AspectRatioBuilder<S, St>
+impl<St, S: BosStr> AspectRatioBuilder<St, S>
 where
     St: aspect_ratio_state::State,
     St::Height: aspect_ratio_state::IsSet,
@@ -581,7 +599,7 @@ pub mod media_state {
 }
 
 /// Builder for constructing an instance of this type.
-pub struct MediaBuilder<S: BosStr, St: media_state::State> {
+pub struct MediaBuilder<St: media_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<S>,
@@ -592,15 +610,22 @@ pub struct MediaBuilder<S: BosStr, St: media_state::State> {
     _type: PhantomData<fn() -> S>,
 }
 
-impl<S: BosStr> Media<S> {
-    /// Create a new builder for this type.
-    pub fn new() -> MediaBuilder<S, media_state::Empty> {
+impl Media<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> MediaBuilder<media_state::Empty, DefaultStr> {
         MediaBuilder::new()
     }
 }
 
-impl<S: BosStr> MediaBuilder<S, media_state::Empty> {
-    /// Create a new builder with all fields unset.
+impl<S: BosStr> Media<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> MediaBuilder<media_state::Empty, S> {
+        MediaBuilder::builder()
+    }
+}
+
+impl MediaBuilder<media_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         MediaBuilder {
             _state: PhantomData,
@@ -610,7 +635,18 @@ impl<S: BosStr> MediaBuilder<S, media_state::Empty> {
     }
 }
 
-impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
+impl<S: BosStr> MediaBuilder<media_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        MediaBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: media_state::State, S: BosStr> MediaBuilder<St, S> {
     /// Set the `alt` field (optional)
     pub fn alt(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
@@ -623,7 +659,7 @@ impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
+impl<St: media_state::State, S: BosStr> MediaBuilder<St, S> {
     /// Set the `aspectRatio` field (optional)
     pub fn aspect_ratio(mut self, value: impl Into<Option<media::AspectRatio<S>>>) -> Self {
         self._fields.1 = value.into();
@@ -636,7 +672,7 @@ impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> MediaBuilder<S, St>
+impl<St, S: BosStr> MediaBuilder<St, S>
 where
     St: media_state::State,
     St::Image: media_state::IsUnset,
@@ -645,7 +681,7 @@ where
     pub fn image(
         mut self,
         value: impl Into<BlobRef<S>>,
-    ) -> MediaBuilder<S, media_state::SetImage<St>> {
+    ) -> MediaBuilder<media_state::SetImage<St>, S> {
         self._fields.2 = Option::Some(value.into());
         MediaBuilder {
             _state: PhantomData,
@@ -655,7 +691,7 @@ where
     }
 }
 
-impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
+impl<St: media_state::State, S: BosStr> MediaBuilder<St, S> {
     /// Set the `license` field (optional)
     pub fn license(mut self, value: impl Into<Option<MediaLicense<S>>>) -> Self {
         self._fields.3 = value.into();
@@ -668,7 +704,7 @@ impl<S: BosStr, St: media_state::State> MediaBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> MediaBuilder<S, St>
+impl<St, S: BosStr> MediaBuilder<St, S>
 where
     St: media_state::State,
     St::Image: media_state::IsSet,
