@@ -2,10 +2,11 @@ import { useState } from "react";
 import DOMPurify from "dompurify";
 import { Box, Typography, Button } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
+import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import type { TaxonDescription } from "../../bindings/TaxonDescription";
-import { TaxonAccordion } from "./TaxonAccordion";
+import { CollapsibleSection } from "../common/CollapsibleSection";
 
-interface TaxonDescriptionAccordionProps {
+interface TaxonDescriptionSectionProps {
   descriptions: TaxonDescription[];
   sx?: SxProps<Theme>;
 }
@@ -15,11 +16,16 @@ interface TaxonDescriptionAccordionProps {
  * (clamped to six lines until "Read more" is clicked), each with its source.
  * Description HTML is sanitized with DOMPurify before rendering.
  */
-export function TaxonDescriptionAccordion({ descriptions, sx }: TaxonDescriptionAccordionProps) {
+export function TaxonDescriptionSection({ descriptions, sx }: TaxonDescriptionSectionProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
-    <TaxonAccordion title="Description" defaultExpanded sx={sx}>
+    <CollapsibleSection
+      title="Description"
+      icon={<NotesOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      defaultExpanded
+      sx={sx}
+    >
       {descriptions.slice(0, 2).map((d, idx) => (
         <Box key={idx} sx={{ mb: idx < descriptions.length - 1 ? 2 : 0 }}>
           <Typography
@@ -64,6 +70,6 @@ export function TaxonDescriptionAccordion({ descriptions, sx }: TaxonDescription
       >
         {expanded ? "Show less" : "Read more"}
       </Button>
-    </TaxonAccordion>
+    </CollapsibleSection>
   );
 }

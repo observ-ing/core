@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { TaxonReferencesAccordion } from "./TaxonReferencesAccordion";
+import { TaxonReferencesSection } from "./TaxonReferencesSection";
 
 const meta = {
-  title: "Taxon/TaxonReferencesAccordion",
-  component: TaxonReferencesAccordion,
+  title: "Taxon/TaxonReferencesSection",
+  component: TaxonReferencesSection,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
-} satisfies Meta<typeof TaxonReferencesAccordion>;
+} satisfies Meta<typeof TaxonReferencesSection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

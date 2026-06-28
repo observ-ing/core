@@ -1,9 +1,10 @@
 import { useState } from "react";
 import type { SxProps, Theme } from "@mui/material/styles";
-import { TaxonAccordion } from "./TaxonAccordion";
+import CollectionsOutlinedIcon from "@mui/icons-material/CollectionsOutlined";
+import { CollapsibleSection } from "../common/CollapsibleSection";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 
-interface TaxonMediaAccordionProps {
+interface TaxonMediaSectionProps {
   /** Scientific name used to query Wikimedia Commons for images. */
   scientificName: string;
   sx?: SxProps<Theme>;
@@ -13,18 +14,17 @@ interface TaxonMediaAccordionProps {
  * Collapsible "Media" section. The (network-heavy) Wikimedia Commons gallery is
  * mounted lazily the first time the section is expanded.
  */
-export function TaxonMediaAccordion({ scientificName, sx }: TaxonMediaAccordionProps) {
+export function TaxonMediaSection({ scientificName, sx }: TaxonMediaSectionProps) {
   const [mounted, setMounted] = useState(false);
 
   return (
-    <TaxonAccordion
+    <CollapsibleSection
       title="Media"
+      icon={<CollectionsOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      onFirstExpand={() => setMounted(true)}
       sx={sx}
-      onChange={(expanded) => {
-        if (expanded) setMounted(true);
-      }}
     >
       {mounted ? <WikiCommonsGallery taxonName={scientificName} /> : null}
-    </TaxonAccordion>
+    </CollapsibleSection>
   );
 }

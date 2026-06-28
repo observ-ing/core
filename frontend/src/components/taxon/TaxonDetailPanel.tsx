@@ -3,9 +3,9 @@ import type { TaxonDetail as TaxonDetailType, Occurrence } from "../../services/
 import { TaxonHeroCard } from "./TaxonHeroCard";
 import { TaxonDetailHeader } from "./TaxonDetailHeader";
 import { TaxonBreadcrumb } from "./TaxonBreadcrumb";
-import { TaxonMediaAccordion } from "./TaxonMediaAccordion";
-import { TaxonDescriptionAccordion } from "./TaxonDescriptionAccordion";
-import { TaxonReferencesAccordion } from "./TaxonReferencesAccordion";
+import { TaxonMediaSection } from "./TaxonMediaSection";
+import { TaxonDescriptionSection } from "./TaxonDescriptionSection";
+import { TaxonReferencesSection } from "./TaxonReferencesSection";
 import { TaxonObservations } from "./TaxonObservations";
 
 interface TaxonDetailPanelProps {
@@ -58,14 +58,14 @@ export function TaxonDetailPanel({
 
           <TaxonHeroCard taxon={taxon} heroUrl={heroUrl} />
 
-          <TaxonMediaAccordion scientificName={taxon.scientificName} sx={{ mt: 3.25 }} />
+          <TaxonMediaSection scientificName={taxon.scientificName} sx={{ mt: 3.25 }} />
 
           {taxon.descriptions && taxon.descriptions.length > 0 && (
-            <TaxonDescriptionAccordion descriptions={taxon.descriptions} sx={{ mt: 2 }} />
+            <TaxonDescriptionSection descriptions={taxon.descriptions} sx={{ mt: 2 }} />
           )}
 
           {taxon.references && taxon.references.length > 0 && (
-            <TaxonReferencesAccordion references={taxon.references} sx={{ mt: 2 }} />
+            <TaxonReferencesSection references={taxon.references} sx={{ mt: 2 }} />
           )}
 
           <TaxonObservations

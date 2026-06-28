@@ -1,15 +1,15 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { TaxonMediaAccordion } from "./TaxonMediaAccordion";
+import { TaxonMediaSection } from "./TaxonMediaSection";
 import { OAK_TAXON_DETAIL } from "../../../.storybook/fixtures";
 
 const meta = {
-  title: "Taxon/TaxonMediaAccordion",
-  component: TaxonMediaAccordion,
+  title: "Taxon/TaxonMediaSection",
+  component: TaxonMediaSection,
   parameters: {
     layout: "padded",
   },
   tags: ["autodocs"],
-} satisfies Meta<typeof TaxonMediaAccordion>;
+} satisfies Meta<typeof TaxonMediaSection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

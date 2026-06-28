@@ -5,7 +5,7 @@ import type { SxProps, Theme } from "@mui/material";
 export interface SectionProps {
   children: ReactNode;
   /** Extra `sx` merged onto the card wrapper. */
-  sx?: SxProps<Theme>;
+  sx?: SxProps<Theme> | undefined;
 }
 
 /**
@@ -32,8 +32,8 @@ export function Section({ children, sx }: SectionProps) {
 }
 
 export interface SectionHeaderProps {
-  /** Leading icon (caller sets its own color, typically `primary.main`). */
-  icon: ReactNode;
+  /** Leading icon (caller sets its own color, typically `primary.main`). Optional. */
+  icon?: ReactNode;
   title: ReactNode;
   /** Trailing content (count chip, add button, expand toggle), right-aligned. */
   trailing?: ReactNode;
