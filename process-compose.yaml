@@ -44,10 +44,17 @@ processes:
       - VITE_DEV_SERVER_URL=http://localhost:${VITE_PORT:-5173}
       - PUBLIC_URL=${PUBLIC_URL:-}
     depends_on:
+      # migrate must finish first so the schema exists before appview reads it.
       migrate:
         condition: process_completed_successfully
+      # appview only calls species-id lazily (the image-ID feature), so it does
+      # not need a *healthy* species-id at boot. species-id loads a ~2.4 GB
+      # BioCLIP ONNX model and is slow to become healthy; gating on
+      # process_started (not process_healthy) lets appview — and the frontend
+      # that depends on it — come up immediately instead of waiting on the
+      # heavy ML service.
       species-id:
-        condition: process_healthy
+        condition: process_started
     readiness_probe:
       http_get:
         host: localhost

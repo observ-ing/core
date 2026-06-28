@@ -11,13 +11,29 @@
 # Usage:
 #   ./scripts/dev.sh                 # random offset, then `process-compose up`
 #   ./scripts/dev.sh -D              # extra args are forwarded to process-compose
+#   ./scripts/dev.sh --headless      # TUI off + detached (no TTY needed; for CI / headless shells)
+#   DEV_HEADLESS=1 ./scripts/dev.sh  # same, via env var
 #   DEV_PORT_OFFSET=0 ./scripts/dev.sh   # pin the stock ports (no randomization)
 #   DEV_PORT_OFFSET=2000 ./scripts/dev.sh  # pin a specific offset
+#
+# Headless mode disables the process-compose TUI (which needs a TTY and fails
+# with "open /dev/tty: device not configured" in non-interactive contexts) and
+# runs the stack as a detached daemon. Check on it with
+# `process-compose process list` and stop it with `process-compose down`.
 #
 # The derived ports are exported, so `process-compose.yaml` (and Vite, via the
 # inherited environment) pick them up through their `${VAR:-default}` fallbacks.
 
 set -euo pipefail
+
+# Headless mode: TUI off (-t=false) + detached (-D) so the stack comes up in
+# non-interactive / headless shells that have no TTY. Triggered by DEV_HEADLESS=1
+# or a leading `--headless` arg (which is consumed here, not forwarded).
+HEADLESS="${DEV_HEADLESS:-}"
+if [[ "${1:-}" == "--headless" ]]; then
+  HEADLESS=1
+  shift
+fi
 
 # Base ports, matching the defaults baked into process-compose.yaml.
 BASE_APPVIEW_PORT=3000
@@ -51,5 +67,15 @@ Starting dev stack with port offset ${DEV_PORT_OFFSET}:
 
 Open the app at http://127.0.0.1:${APPVIEW_PORT}
 EOF
+
+if [[ -n "${HEADLESS}" ]]; then
+  cat <<'EOF'
+
+Headless mode: TUI disabled, running detached.
+  process-compose process list   # check status
+  process-compose down           # stop the stack
+EOF
+  exec process-compose up -t=false -D "$@"
+fi
 
 exec process-compose up "$@"
