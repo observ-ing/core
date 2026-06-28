@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Avatar, Box, Stack, Typography } from "@mui/material";
 import type { SxProps, Theme, TypographyProps } from "@mui/material";
 import { getDisplayName } from "../../lib/utils";
+import { GradientSwatch } from "./GradientSwatch";
 
 /** The minimal actor shape rendered by UserCard (matches Profile / NotificationActor). */
 export interface UserCardActor {
@@ -87,14 +88,27 @@ export function UserCard({
 
   const stop = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined;
 
-  const avatar = (
-    <Avatar
-      {...(src ? { src } : {})}
-      alt={displayName}
-      sx={{ width: avatarSize, height: avatarSize }}
+  const avatar = src ? (
+    <Avatar src={src} alt={displayName} sx={{ width: avatarSize, height: avatarSize }} />
+  ) : (
+    // Image-less fallback: a deterministic gradient (stable per user) with the
+    // display-name initial overlaid, instead of MUI's flat grey Avatar.
+    <GradientSwatch
+      seed={did ?? actor.handle ?? displayName}
+      size={avatarSize}
+      sx={{
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "#fff",
+        fontWeight: 600,
+        fontSize: avatarSize * 0.45,
+        lineHeight: 1,
+      }}
     >
       {displayName[0]}
-    </Avatar>
+    </GradientSwatch>
   );
 
   const name = (
