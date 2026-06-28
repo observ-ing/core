@@ -40,9 +40,10 @@ export function TaxonSearchBox({ onNavigate }: TaxonSearchBoxProps) {
       onChange={setValue}
       onMatchChange={handleMatch}
       label="Search taxa"
-      placeholder="Search by common or scientific name..."
+      placeholder="Search taxa"
       size="small"
       margin="none"
+      search
       options={options}
       loading={loading}
       onSearch={handleSearch}
