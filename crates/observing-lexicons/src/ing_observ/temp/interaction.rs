@@ -752,7 +752,7 @@ pub mod interaction_state {
 }
 
 /// Builder for constructing an instance of this type.
-pub struct InteractionBuilder<S: BosStr, St: interaction_state::State> {
+pub struct InteractionBuilder<St: interaction_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<S>,
@@ -765,15 +765,22 @@ pub struct InteractionBuilder<S: BosStr, St: interaction_state::State> {
     _type: PhantomData<fn() -> S>,
 }
 
-impl<S: BosStr> Interaction<S> {
-    /// Create a new builder for this type.
-    pub fn new() -> InteractionBuilder<S, interaction_state::Empty> {
+impl Interaction<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> InteractionBuilder<interaction_state::Empty, DefaultStr> {
         InteractionBuilder::new()
     }
 }
 
-impl<S: BosStr> InteractionBuilder<S, interaction_state::Empty> {
-    /// Create a new builder with all fields unset.
+impl<S: BosStr> Interaction<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> InteractionBuilder<interaction_state::Empty, S> {
+        InteractionBuilder::builder()
+    }
+}
+
+impl InteractionBuilder<interaction_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         InteractionBuilder {
             _state: PhantomData,
@@ -783,7 +790,18 @@ impl<S: BosStr> InteractionBuilder<S, interaction_state::Empty> {
     }
 }
 
-impl<S: BosStr, St: interaction_state::State> InteractionBuilder<S, St> {
+impl<S: BosStr> InteractionBuilder<interaction_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        InteractionBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: interaction_state::State, S: BosStr> InteractionBuilder<St, S> {
     /// Set the `comment` field (optional)
     pub fn comment(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.0 = value.into();
@@ -796,7 +814,7 @@ impl<S: BosStr, St: interaction_state::State> InteractionBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::CreatedAt: interaction_state::IsUnset,
@@ -805,7 +823,7 @@ where
     pub fn created_at(
         mut self,
         value: impl Into<Datetime>,
-    ) -> InteractionBuilder<S, interaction_state::SetCreatedAt<St>> {
+    ) -> InteractionBuilder<interaction_state::SetCreatedAt<St>, S> {
         self._fields.1 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
@@ -815,7 +833,7 @@ where
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::Direction: interaction_state::IsUnset,
@@ -824,7 +842,7 @@ where
     pub fn direction(
         mut self,
         value: impl Into<S>,
-    ) -> InteractionBuilder<S, interaction_state::SetDirection<St>> {
+    ) -> InteractionBuilder<interaction_state::SetDirection<St>, S> {
         self._fields.2 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
@@ -834,7 +852,7 @@ where
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::InteractionType: interaction_state::IsUnset,
@@ -843,7 +861,7 @@ where
     pub fn interaction_type(
         mut self,
         value: impl Into<InteractionInteractionType<S>>,
-    ) -> InteractionBuilder<S, interaction_state::SetInteractionType<St>> {
+    ) -> InteractionBuilder<interaction_state::SetInteractionType<St>, S> {
         self._fields.3 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
@@ -853,7 +871,7 @@ where
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::SubjectA: interaction_state::IsUnset,
@@ -862,7 +880,7 @@ where
     pub fn subject_a(
         mut self,
         value: impl Into<interaction::InteractionSubject<S>>,
-    ) -> InteractionBuilder<S, interaction_state::SetSubjectA<St>> {
+    ) -> InteractionBuilder<interaction_state::SetSubjectA<St>, S> {
         self._fields.4 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
@@ -872,7 +890,7 @@ where
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::SubjectB: interaction_state::IsUnset,
@@ -881,7 +899,7 @@ where
     pub fn subject_b(
         mut self,
         value: impl Into<interaction::InteractionSubject<S>>,
-    ) -> InteractionBuilder<S, interaction_state::SetSubjectB<St>> {
+    ) -> InteractionBuilder<interaction_state::SetSubjectB<St>, S> {
         self._fields.5 = Option::Some(value.into());
         InteractionBuilder {
             _state: PhantomData,
@@ -891,7 +909,7 @@ where
     }
 }
 
-impl<S: BosStr, St> InteractionBuilder<S, St>
+impl<St, S: BosStr> InteractionBuilder<St, S>
 where
     St: interaction_state::State,
     St::CreatedAt: interaction_state::IsSet,

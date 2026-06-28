@@ -3,6 +3,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `bio.lexicons.temp.v0.1` Lexicon namespace/module.
 pub mod identification;
 pub mod media;
 pub mod occurrence;
