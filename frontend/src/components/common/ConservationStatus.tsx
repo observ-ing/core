@@ -70,8 +70,8 @@ export function ConservationStatus({
         size={size === "sm" ? "small" : "medium"}
         sx={{
           backgroundColor: info.color,
-          color: needsDarkText ? "#1a1a1a" : "#ffffff",
-          borderColor: status.category === "NE" ? "#d1d1c6" : info.color,
+          color: needsDarkText ? "common.black" : "common.white",
+          borderColor: status.category === "NE" ? CATEGORY_INFO["DD"]!.color : info.color,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.025em",
