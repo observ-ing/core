@@ -38,7 +38,6 @@ export function TaxonDetailHeader({ rank, onBack, onToggleTree }: TaxonDetailHea
       </IconButton>
       <Typography
         variant="h6"
-        component="h2"
         sx={{
           fontWeight: 600,
           fontSize: "1.1875rem",

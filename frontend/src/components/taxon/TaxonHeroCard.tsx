@@ -62,7 +62,6 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
         {/* Scientific Name */}
         <Typography
           variant="h5"
-          component="h1"
           sx={{
             fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
               ? "italic"
