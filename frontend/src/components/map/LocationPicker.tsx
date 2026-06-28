@@ -5,13 +5,11 @@ import {
   TextField,
   Autocomplete,
   Stack,
-  InputAdornment,
   Slider,
   Button,
   Collapse,
   useTheme,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import maplibregl from "maplibre-gl";
@@ -26,6 +24,7 @@ import {
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
 import { BasemapSelector } from "./BasemapSelector";
+import { SearchAdornment, searchFieldSx } from "../common/SearchField";
 import { formatCoordinate } from "../../lib/utils";
 
 interface LocationPickerProps {
@@ -333,14 +332,10 @@ export function LocationPicker({
                 ...params.slotProps,
                 input: {
                   ...params.slotProps.input,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
-                    </InputAdornment>
-                  ),
+                  startAdornment: <SearchAdornment />,
                 },
               }}
-              sx={{ mb: 1 }}
+              sx={[searchFieldSx, { mb: 1 }]}
             />
           );
         }}

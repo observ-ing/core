@@ -40,6 +40,8 @@ interface TaxaAutocompleteViewProps {
   onClear: () => void;
   /** Force the popup open state. Uncontrolled when omitted. */
   open?: boolean;
+  /** Render the input as a rounded, icon-led search box (see SearchField). */
+  search?: boolean;
 }
 
 export function TaxaAutocompleteView({
@@ -56,6 +58,7 @@ export function TaxaAutocompleteView({
   onSearch,
   onClear,
   open,
+  search,
 }: TaxaAutocompleteViewProps) {
   return (
     <Box>
@@ -90,7 +93,14 @@ export function TaxaAutocompleteView({
         filterOptions={(x) => x}
         {...(size ? { size } : {})}
         renderInput={(params) =>
-          renderAutocompleteInput({ params, loading, label, placeholder, margin })
+          renderAutocompleteInput({
+            params,
+            loading,
+            label,
+            placeholder,
+            margin,
+            ...(search ? { search } : {}),
+          })
         }
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
