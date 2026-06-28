@@ -11,6 +11,7 @@ import {
   Chip,
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
+import { countChipSx } from "../common/chipSx";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useAppSelector } from "../../store";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
@@ -83,9 +84,7 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
         sx={{ mb: 2 }}
         trailing={
           <>
-            {comments.length > 0 && (
-              <Chip label={comments.length} size="small" sx={{ height: 20, fontSize: "0.75rem" }} />
-            )}
+            {comments.length > 0 && <Chip label={comments.length} size="small" sx={countChipSx} />}
             {user && !showForm && (
               <Button
                 size="small"

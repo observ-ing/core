@@ -12,6 +12,7 @@ import {
   MenuItem,
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
+import { countChipSx } from "../common/chipSx";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
@@ -85,13 +86,7 @@ export function IdentificationHistory({
         sx={{ mb: 2 }}
         {...(sortedIds.length > 0
           ? {
-              trailing: (
-                <Chip
-                  label={sortedIds.length}
-                  size="small"
-                  sx={{ height: 20, fontSize: "0.75rem" }}
-                />
-              ),
+              trailing: <Chip label={sortedIds.length} size="small" sx={countChipSx} />,
             }
           : {})}
       />

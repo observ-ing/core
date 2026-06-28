@@ -27,6 +27,7 @@ import NumbersIcon from "@mui/icons-material/Numbers";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { detailHeaderSx } from "../common/layoutSx";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
@@ -175,15 +176,7 @@ export function ObservationDetail() {
         }}
       >
         {/* Header */}
-        <Box
-          sx={{
-            p: 1.5,
-            borderBottom: 1,
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
+        <Box sx={detailHeaderSx}>
           <IconButton onClick={handleBack} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>

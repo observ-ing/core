@@ -17,6 +17,7 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
+import { labelChipSx } from "../common/chipSx";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
@@ -143,7 +144,7 @@ function PropertyTable({
                       size="small"
                       color="primary"
                       variant="outlined"
-                      sx={{ height: 20, fontSize: "0.65rem" }}
+                      sx={labelChipSx}
                     />
                   )}
                 </Box>
@@ -241,15 +242,13 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         <Typography variant="subtitle2" component="code" sx={{ fontFamily: "monospace" }}>
           #{name}
         </Typography>
-        {def.type && (
-          <Chip label={def.type} size="small" sx={{ ml: 1, height: 20, fontSize: "0.65rem" }} />
-        )}
+        {def.type && <Chip label={def.type} size="small" sx={{ ml: 1, ...labelChipSx }} />}
         {def.key && (
           <Chip
             label={`key: ${def.key}`}
             size="small"
             variant="outlined"
-            sx={{ ml: 1, height: 20, fontSize: "0.65rem" }}
+            sx={{ ml: 1, ...labelChipSx }}
           />
         )}
       </Box>
