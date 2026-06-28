@@ -6,11 +6,27 @@ import { createTheme, type Theme, type PaletteMode } from "@mui/material/styles"
 declare module "@mui/material/styles" {
   interface Palette {
     placeholder: string;
+    iucn: Record<string, string>;
   }
   interface PaletteOptions {
     placeholder?: string;
+    iucn?: Record<string, string>;
   }
 }
+
+// Official IUCN Red List category colors — standardized by the IUCN,
+// so they are mode-invariant and shared across light and dark themes.
+const iucnColors: Record<string, string> = {
+  EX: "#000000",
+  EW: "#542344",
+  CR: "#d81e05",
+  EN: "#fc7f3f",
+  VU: "#f9e814",
+  NT: "#cce226",
+  LC: "#60c659",
+  DD: "#d1d1c6",
+  NE: "#ffffff",
+};
 
 // Brand type stack: DM Sans for UI (geometric, friendly, reads well at every
 // size), JetBrains Mono for data/numerals. System fonts remain as fallbacks.
@@ -64,6 +80,7 @@ const darkPalette = {
   },
   divider: "#333",
   placeholder: "#211f1b",
+  iucn: iucnColors,
 };
 
 const lightPalette = {
@@ -95,6 +112,7 @@ const lightPalette = {
   },
   divider: "#e2dbca",
   placeholder: "#efe7d4",
+  iucn: iucnColors,
 };
 
 const createAppTheme = (mode: PaletteMode): Theme => {
