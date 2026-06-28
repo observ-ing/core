@@ -9,5 +9,8 @@ license = "MIT OR Apache-2.0"
 # Generic SPARQL-over-HTTP client (published crate; imported as `sparql_client`)
 sparqling = "0.1"
 
+# Deserializing SPARQL result rows into typed structs
+serde = { workspace = true }
+
 # Logging
 tracing = { workspace = true }
