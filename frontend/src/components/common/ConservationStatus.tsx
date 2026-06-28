@@ -1,4 +1,5 @@
 import { Box, Chip, Tooltip, Typography } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 import type {
   IUCNCategory,
   ConservationStatus as ConservationStatusType,
@@ -12,16 +13,16 @@ interface ConservationStatusProps {
   size?: "sm" | "md";
 }
 
-const CATEGORY_INFO: Record<string, { label: string; color: string }> = {
-  EX: { label: "Extinct", color: "#000000" },
-  EW: { label: "Extinct in the Wild", color: "#542344" },
-  CR: { label: "Critically Endangered", color: "#d81e05" },
-  EN: { label: "Endangered", color: "#fc7f3f" },
-  VU: { label: "Vulnerable", color: "#f9e814" },
-  NT: { label: "Near Threatened", color: "#cce226" },
-  LC: { label: "Least Concern", color: "#60c659" },
-  DD: { label: "Data Deficient", color: "#d1d1c6" },
-  NE: { label: "Not Evaluated", color: "#ffffff" },
+const CATEGORY_INFO: Record<string, { label: string }> = {
+  EX: { label: "Extinct" },
+  EW: { label: "Extinct in the Wild" },
+  CR: { label: "Critically Endangered" },
+  EN: { label: "Endangered" },
+  VU: { label: "Vulnerable" },
+  NT: { label: "Near Threatened" },
+  LC: { label: "Least Concern" },
+  DD: { label: "Data Deficient" },
+  NE: { label: "Not Evaluated" },
 };
 
 const DARK_TEXT_CATEGORIES: ReadonlySet<string> = new Set(["VU", "NT", "LC", "DD", "NE"]);
@@ -41,9 +42,11 @@ export function ConservationStatus({
   showLabel = false,
   size = "md",
 }: ConservationStatusProps) {
+  const theme = useTheme();
   const info = CATEGORY_INFO[status.category];
   if (!info) return null;
 
+  const iucnColor = theme.palette.iucn[status.category];
   const needsDarkText = DARK_TEXT_CATEGORIES.has(status.category);
   const source = SOURCE_INFO[status.source];
 
@@ -69,9 +72,9 @@ export function ConservationStatus({
         label={showLabel ? info.label : status.category}
         size={size === "sm" ? "small" : "medium"}
         sx={{
-          backgroundColor: info.color,
+          backgroundColor: iucnColor,
           color: needsDarkText ? "common.black" : "common.white",
-          borderColor: status.category === "NE" ? CATEGORY_INFO["DD"]?.color : info.color,
+          borderColor: status.category === "NE" ? theme.palette.iucn["DD"] : iucnColor,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.025em",
