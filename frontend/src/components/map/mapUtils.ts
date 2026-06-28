@@ -93,9 +93,6 @@ export function setBasemapStyle(map: maplibregl.Map, basemap: BasemapId, mode: B
   });
 }
 
-/** Color used for uncertainty circles and map markers */
-export const MAP_MARKER_COLOR = "#22c55e";
-
 /** Calculate lat/lng bounding box for a given radius in meters */
 export function getRadiusBounds(
   lat: number,
@@ -111,13 +108,13 @@ export function getRadiusBounds(
 }
 
 /** Add uncertainty circle layers to a map instance */
-export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
+export function addUncertaintyLayers(mapInstance: maplibregl.Map, color: string): void {
   mapInstance.addLayer({
     id: "uncertainty-fill",
     type: "fill",
     source: "uncertainty",
     paint: {
-      "fill-color": MAP_MARKER_COLOR,
+      "fill-color": color,
       "fill-opacity": 0.15,
     },
   });
@@ -127,7 +124,7 @@ export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
     type: "line",
     source: "uncertainty",
     paint: {
-      "line-color": MAP_MARKER_COLOR,
+      "line-color": color,
       "line-width": 2,
       "line-opacity": 0.5,
     },

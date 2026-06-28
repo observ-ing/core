@@ -18,7 +18,6 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
-  MAP_MARKER_COLOR,
   addUncertaintyLayers,
   createCircleGeoJSON,
   createMap,
@@ -83,6 +82,7 @@ export function LocationPicker({
   const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
   const mode = theme.palette.mode;
+  const markerColor = theme.palette.mapMarker;
   const [basemap] = useBasemap();
   // Latest mode/basemap for the init effect (which runs once); theme/basemap
   // changes are handled by swapping the style, not rebuilding the map.
@@ -96,25 +96,28 @@ export function LocationPicker({
   const uncertaintyMetersRef = useRef(uncertaintyMeters);
   uncertaintyMetersRef.current = uncertaintyMeters;
 
-  const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
-    if (!map.current) return;
+  const updateMarker = useCallback(
+    (lng: number, lat: number, radius?: number) => {
+      if (!map.current) return;
 
-    if (marker.current) {
-      marker.current.setLngLat([lng, lat]);
-    } else {
-      marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-    }
+      if (marker.current) {
+        marker.current.setLngLat([lng, lat]);
+      } else {
+        marker.current = new maplibregl.Marker({ color: markerColor })
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
 
-    // Update uncertainty circle
-    const effectiveRadius = radius ?? uncertaintyMetersRef.current;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
-    const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
-    }
-  }, []);
+      // Update uncertainty circle
+      const effectiveRadius = radius ?? uncertaintyMetersRef.current;
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
+      const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
+      }
+    },
+    [markerColor],
+  );
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
@@ -203,7 +206,7 @@ export function LocationPicker({
             : { type: "FeatureCollection", features: [] },
       });
 
-      addUncertaintyLayers(mapInstance);
+      addUncertaintyLayers(mapInstance, markerColor);
 
       if (latitude && longitude) {
         updateMarker(longitude, latitude);

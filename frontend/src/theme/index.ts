@@ -1,18 +1,23 @@
 import { createTheme, type Theme, type PaletteMode } from "@mui/material/styles";
 
-// Custom palette token for the warm neutral used by empty/loading placeholder
-// surfaces (the "No image" tile and the loading skeleton), so the color lives
-// in one place instead of being duplicated as raw hex in components.
+// Custom palette tokens so semantic colors live in one place instead of being
+// duplicated as raw hex values in components.
 declare module "@mui/material/styles" {
   interface Palette {
     placeholder: string;
     iucn: Record<string, string>;
+    mapMarker: string;
   }
   interface PaletteOptions {
     placeholder?: string;
     iucn?: Record<string, string>;
+    mapMarker?: string;
   }
 }
+
+// Map marker / uncertainty-circle color — same in both themes (it's a
+// functional indicator, not a brand color, so it doesn't invert with the mode).
+const mapMarkerColor = "#22c55e";
 
 // Official IUCN Red List category colors — standardized by the IUCN,
 // so they are mode-invariant and shared across light and dark themes.
@@ -81,6 +86,7 @@ const darkPalette = {
   divider: "#333",
   placeholder: "#211f1b",
   iucn: iucnColors,
+  mapMarker: mapMarkerColor,
 };
 
 const lightPalette = {
@@ -113,6 +119,7 @@ const lightPalette = {
   divider: "#e2dbca",
   placeholder: "#efe7d4",
   iucn: iucnColors,
+  mapMarker: mapMarkerColor,
 };
 
 const createAppTheme = (mode: PaletteMode): Theme => {
