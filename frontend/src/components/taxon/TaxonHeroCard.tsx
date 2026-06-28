@@ -37,7 +37,7 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
             border: 1,
             borderColor: "divider",
             boxShadow: "0 2px 10px rgba(60,50,30,0.08)",
-            backgroundColor: "action.hover",
+            backgroundColor: "grey.900",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
