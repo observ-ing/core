@@ -108,9 +108,12 @@ test.describe("Taxon detail page", () => {
 
   test("renders the species name as an h5 heading", async ({ page }) => {
     // The species name must be an <h5> — this contract regressed and broke CI.
-    await expect(page.getByRole("heading", { name: "Quercus agrifolia", level: 5 })).toBeVisible();
-    // Common name appears alongside it.
-    await expect(page.getByText("Coast Live Oak")).toBeVisible();
+    const heading = page.getByRole("heading", { name: "Quercus agrifolia", level: 5 });
+    await expect(heading).toBeVisible();
+    // Common name appears alongside it in the hero. Scope to the hero (the
+    // name's parent) so we don't match the same common name shown for the
+    // selected node in the classification tree.
+    await expect(heading.locator("..").getByText("Coast Live Oak")).toBeVisible();
   });
 
   test("renders the ancestor breadcrumb as clickable links", async ({ page }) => {
