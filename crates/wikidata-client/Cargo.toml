@@ -6,8 +6,8 @@ description = "Rust client for the Wikidata SPARQL API"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-# Generic SPARQL-over-HTTP client
-sparql-client = { git = "https://github.com/observ-ing/sparql-client", rev = "2d2e9818e7ac84b886aac0464f92cd9e968d9fa0" }
+# Generic SPARQL-over-HTTP client (published crate; imported as `sparql_client`)
+sparqling = "0.1"
 
 # Logging
 tracing = { workspace = true }

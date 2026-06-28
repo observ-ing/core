@@ -4375,12 +4375,15 @@ dependencies = [
 ]
 
 [[package]]
-name = "sparql-client"
+name = "sparqling"
 version = "0.1.0"
-source = "git+https://github.com/observ-ing/sparql-client?rev=2d2e9818e7ac84b886aac0464f92cd9e968d9fa0#2d2e9818e7ac84b886aac0464f92cd9e968d9fa0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1f2c634fbb030e7e5ede42e3332cb06b47f064f1baff51c8d7968a2a7476adcb"
 dependencies = [
  "reqwest 0.13.4",
  "serde",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]
@@ -5531,7 +5534,7 @@ checksum = "72069c3113ab32ab29e5584db3c6ec55d416895e60715417b5b883a357c3e471"
 name = "wikidata-client"
 version = "0.1.0"
 dependencies = [
- "sparql-client",
+ "sparqling",
  "tracing",
 ]
 
