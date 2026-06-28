@@ -1,5 +1,5 @@
 import { Box, Divider, Skeleton } from "@mui/material";
-import { detailHeaderSx } from "../common/skeletonSx";
+import { detailHeaderSx } from "../common/layoutSx";
 
 /**
  * Skeleton loader matching observation detail page layout

@@ -71,7 +71,7 @@ export function ConservationStatus({
         sx={{
           backgroundColor: info.color,
           color: needsDarkText ? "common.black" : "common.white",
-          borderColor: status.category === "NE" ? CATEGORY_INFO["DD"]!.color : info.color,
+          borderColor: status.category === "NE" ? CATEGORY_INFO["DD"]?.color : info.color,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.025em",

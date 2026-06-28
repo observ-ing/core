@@ -21,6 +21,7 @@ import { LoadMoreButton } from "../common/LoadMoreButton";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 import { FeedItem } from "../feed/FeedItem";
 import { TaxonHeroCard } from "./TaxonHeroCard";
+import { detailHeaderSx } from "../common/layoutSx";
 
 interface TaxonDetailPanelProps {
   taxon: TaxonDetailType;
@@ -52,15 +53,7 @@ export function TaxonDetailPanel({
   return (
     <Box sx={{ flex: 1, overflow: "auto", minHeight: 0 }}>
       {/* Header */}
-      <Box
-        sx={{
-          p: 1.5,
-          borderBottom: 1,
-          borderColor: "divider",
-          display: "flex",
-          alignItems: "center",
-        }}
-      >
+      <Box sx={detailHeaderSx}>
         <IconButton onClick={onBack} sx={{ mr: 1 }}>
           <ArrowBackIcon />
         </IconButton>

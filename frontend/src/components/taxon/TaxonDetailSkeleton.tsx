@@ -1,6 +1,6 @@
 import { Box, Divider, Skeleton, Stack } from "@mui/material";
 import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
-import { detailHeaderSx } from "../common/skeletonSx";
+import { detailHeaderSx } from "../common/layoutSx";
 
 /**
  * Skeleton loader matching taxon detail page layout
