@@ -12,7 +12,7 @@ import { TaxonDetailPanel } from "./TaxonDetailPanel";
 import { TaxonTreePanel } from "./TaxonTreePanel";
 import { TaxonDetailSkeleton } from "./TaxonDetailSkeleton";
 
-const TREE_WIDTH = 300;
+const TREE_WIDTH = 312;
 
 interface TreeNode {
   id: string;

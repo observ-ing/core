@@ -1,9 +1,11 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { GradientSwatch } from "../common/GradientSwatch";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -27,6 +29,7 @@ function renderTreeItems(
 ) {
   return items.map((item) => {
     const thumb = thumbnails.get(String(item.label));
+    const isSelected = item.id === selectedId;
     return (
       <TreeItem
         key={item.id}
@@ -38,19 +41,19 @@ function renderTreeItems(
         slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
           <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.5 }}>
-            {/* Only reserve the thumbnail slot when there's actually an image —
-                most taxa have none, and a column of empty placeholders is just
-                noise that steals width the name needs at depth. */}
-            {thumb && (
-              <Box
-                sx={{
-                  width: 20,
-                  height: 20,
-                  flexShrink: 0,
-                  borderRadius: 0.5,
-                  overflow: "hidden",
-                }}
-              >
+            {/* Avatar swatch: the real Wikidata thumbnail when we have one, else
+                a deterministic colored square (GradientSwatch) so every row
+                carries a visual anchor. The selected row gets a subtle ring. */}
+            <GradientSwatch
+              seed={String(item.label)}
+              size={22}
+              sx={
+                isSelected
+                  ? { boxShadow: (theme) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.35)}` }
+                  : undefined
+              }
+            >
+              {thumb && (
                 <Box
                   component="img"
                   src={thumb}
@@ -58,8 +61,8 @@ function renderTreeItems(
                   loading="lazy"
                   sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
-              </Box>
-            )}
+              )}
+            </GradientSwatch>
             <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
               <Typography
                 variant="body2"
@@ -152,9 +155,13 @@ export function TaxonTreePanel({
         }}
       >
         <Typography
-          variant="subtitle2"
+          variant="caption"
+          component="div"
           sx={{
-            color: "text.secondary",
+            color: "text.disabled",
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
             px: 1,
             py: 1,
           }}
@@ -170,6 +177,16 @@ export function TaxonTreePanel({
             if (id) onSelectedItemsChange(id);
           }}
           onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
+          sx={(theme) => ({
+            "& .MuiTreeItem-content": {
+              borderRadius: 1.25,
+              "&:hover": { backgroundColor: "action.hover" },
+              "&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focused": {
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                boxShadow: `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+              },
+            },
+          })}
         >
           {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
         </SimpleTreeView>
