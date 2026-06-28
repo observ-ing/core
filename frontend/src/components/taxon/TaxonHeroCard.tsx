@@ -1,7 +1,7 @@
 import { Box, Typography, Chip, Stack } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import type { TaxonDetail } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
+import { ExternalLinkChip } from "../common/ExternalLinkChip";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 
 export interface TaxonHeroCardProps {
@@ -13,8 +13,7 @@ export interface TaxonHeroCardProps {
 /**
  * The taxon hero block: an optional 240×240 image card alongside the scientific
  * name, common name, conservation/extinct chips, observation count, and
- * GBIF/Wikidata links. Shared by the full-page `TaxonDetail` and the
- * `TaxonDetailPanel` side panel.
+ * GBIF/Wikidata links. Rendered by the `TaxonDetailPanel` side panel.
  */
 export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
   const gbifUrl = taxon.gbifUrl;
@@ -33,7 +32,7 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
             height: 248,
             maxWidth: "100%",
             flexShrink: 0,
-            borderRadius: "14px",
+            borderRadius: 1.75,
             overflow: "hidden",
             border: 1,
             borderColor: "divider",
@@ -123,32 +122,8 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
         {/* External Links */}
         {(gbifUrl || wikidataUrl) && (
           <Stack direction="row" spacing={1.25} sx={{ mt: 2, flexWrap: "wrap" }}>
-            {gbifUrl && (
-              <Chip
-                component="a"
-                href={gbifUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                label="GBIF"
-                size="small"
-                variant="outlined"
-                clickable
-                icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-              />
-            )}
-            {wikidataUrl && (
-              <Chip
-                component="a"
-                href={wikidataUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                label="Wikidata"
-                size="small"
-                variant="outlined"
-                clickable
-                icon={<OpenInNewIcon sx={{ fontSize: 14 }} />}
-              />
-            )}
+            {gbifUrl && <ExternalLinkChip label="GBIF" href={gbifUrl} />}
+            {wikidataUrl && <ExternalLinkChip label="Wikidata" href={wikidataUrl} />}
           </Stack>
         )}
       </Box>
