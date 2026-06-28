@@ -3,6 +3,13 @@ import type {
   IUCNCategory,
   ConservationStatus as ConservationStatusType,
 } from "../../services/types";
+import {
+  IUCN_CATEGORY_COLORS,
+  IUCN_CHIP_TEXT_DARK,
+  IUCN_CHIP_TEXT_LIGHT,
+  IUCN_DARK_TEXT_CATEGORIES,
+  IUCN_NE_BORDER_COLOR,
+} from "../../theme/iucnColors";
 
 interface ConservationStatusProps {
   status: ConservationStatusType;
@@ -13,18 +20,16 @@ interface ConservationStatusProps {
 }
 
 const CATEGORY_INFO: Record<string, { label: string; color: string }> = {
-  EX: { label: "Extinct", color: "#000000" },
-  EW: { label: "Extinct in the Wild", color: "#542344" },
-  CR: { label: "Critically Endangered", color: "#d81e05" },
-  EN: { label: "Endangered", color: "#fc7f3f" },
-  VU: { label: "Vulnerable", color: "#f9e814" },
-  NT: { label: "Near Threatened", color: "#cce226" },
-  LC: { label: "Least Concern", color: "#60c659" },
-  DD: { label: "Data Deficient", color: "#d1d1c6" },
-  NE: { label: "Not Evaluated", color: "#ffffff" },
+  EX: { label: "Extinct", color: IUCN_CATEGORY_COLORS.EX },
+  EW: { label: "Extinct in the Wild", color: IUCN_CATEGORY_COLORS.EW },
+  CR: { label: "Critically Endangered", color: IUCN_CATEGORY_COLORS.CR },
+  EN: { label: "Endangered", color: IUCN_CATEGORY_COLORS.EN },
+  VU: { label: "Vulnerable", color: IUCN_CATEGORY_COLORS.VU },
+  NT: { label: "Near Threatened", color: IUCN_CATEGORY_COLORS.NT },
+  LC: { label: "Least Concern", color: IUCN_CATEGORY_COLORS.LC },
+  DD: { label: "Data Deficient", color: IUCN_CATEGORY_COLORS.DD },
+  NE: { label: "Not Evaluated", color: IUCN_CATEGORY_COLORS.NE },
 };
-
-const DARK_TEXT_CATEGORIES: ReadonlySet<string> = new Set(["VU", "NT", "LC", "DD", "NE"]);
 
 const SOURCE_INFO: Record<string, { name: string; fullName: string }> = {
   IUCN: {
@@ -44,7 +49,7 @@ export function ConservationStatus({
   const info = CATEGORY_INFO[status.category];
   if (!info) return null;
 
-  const needsDarkText = DARK_TEXT_CATEGORIES.has(status.category);
+  const needsDarkText = IUCN_DARK_TEXT_CATEGORIES.has(status.category);
   const source = SOURCE_INFO[status.source];
 
   const tooltipContent = (
@@ -70,8 +75,8 @@ export function ConservationStatus({
         size={size === "sm" ? "small" : "medium"}
         sx={{
           backgroundColor: info.color,
-          color: needsDarkText ? "#1a1a1a" : "#ffffff",
-          borderColor: status.category === "NE" ? "#d1d1c6" : info.color,
+          color: needsDarkText ? IUCN_CHIP_TEXT_DARK : IUCN_CHIP_TEXT_LIGHT,
+          borderColor: status.category === "NE" ? IUCN_NE_BORDER_COLOR : info.color,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.025em",
