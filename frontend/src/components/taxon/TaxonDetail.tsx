@@ -27,6 +27,7 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { WikiTaxonThumbnail } from "../common/WikiTaxonThumbnail";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
+import { detailHeaderSx } from "../common/layoutSx";
 import { FeedItem } from "../feed/FeedItem";
 import { TaxonDetailSkeleton } from "./TaxonDetailSkeleton";
 
@@ -130,15 +131,7 @@ export function TaxonDetail() {
         }}
       >
         {/* Header */}
-        <Box
-          sx={{
-            p: 1.5,
-            borderBottom: 1,
-            borderColor: "divider",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
+        <Box sx={detailHeaderSx}>
           <IconButton onClick={handleBack} sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
