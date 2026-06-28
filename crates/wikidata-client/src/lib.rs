@@ -18,6 +18,7 @@
 //! # }
 //! ```
 
+use serde::Deserialize;
 use sparql_client::{escape_literal, SparqlClient};
 use std::collections::HashMap;
 use tracing::warn;
@@ -88,26 +89,30 @@ impl WikidataClient {
 }}",
         );
 
-        let bindings = match self.client.sparql_query(&query).await {
-            Ok(b) => b,
+        /// One `(external_id, item)` row; both are always bound by the query.
+        #[derive(Deserialize)]
+        struct Row {
+            external_id: String,
+            item: String,
+        }
+
+        let rows: Vec<Row> = match self.client.query_into(&query).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(error = ?e, "Wikidata entity lookup failed");
                 return HashMap::new();
             }
         };
 
-        let mut result = HashMap::new();
-        for binding in bindings {
-            if let (Some(id), Some(item)) = (binding.get("external_id"), binding.get("item")) {
-                let url = item.value.replace(
+        rows.into_iter()
+            .map(|row| {
+                let url = row.item.replace(
                     "http://www.wikidata.org/entity/",
                     "https://www.wikidata.org/wiki/",
                 );
-                result.insert(id.value.clone(), url);
-            }
-        }
-
-        result
+                (row.external_id, url)
+            })
+            .collect()
     }
 
     /// Cross-walk an external taxon identifier to a GBIF backbone usage key.
@@ -162,7 +167,7 @@ impl WikidataClient {
         bindings
             .first()
             .and_then(|b| b.get("gbif"))
-            .and_then(|v| v.value.parse::<i64>().ok())
+            .and_then(|v| v.as_i64())
     }
 
     /// Fetch images (Wikidata property P18) for items matching external IDs.
@@ -203,23 +208,28 @@ impl WikidataClient {
 }} GROUP BY ?external_id",
         );
 
-        let bindings = match self.client.sparql_query(&query).await {
-            Ok(b) => b,
+        /// One result row. `image` is `OPTIONAL` in the query, so it may be
+        /// unbound — `Option` maps an absent variable to `None`.
+        #[derive(Deserialize)]
+        struct Row {
+            external_id: String,
+            image: Option<String>,
+        }
+
+        let rows: Vec<Row> = match self.client.query_into(&query).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(error = ?e, "Wikidata image lookup failed");
                 return HashMap::new();
             }
         };
 
-        let mut result = HashMap::new();
-        for binding in bindings {
-            if let (Some(id), Some(image)) = (binding.get("external_id"), binding.get("image")) {
-                let thumb_url = to_thumbnail_url(&image.value, thumbnail_width);
-                result.insert(id.value.clone(), thumb_url);
-            }
-        }
-
-        result
+        rows.into_iter()
+            .filter_map(|row| {
+                let image = row.image?;
+                Some((row.external_id, to_thumbnail_url(&image, thumbnail_width)))
+            })
+            .collect()
     }
 }
 
