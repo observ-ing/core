@@ -18,7 +18,6 @@ import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
-  MAP_MARKER_COLOR,
   addUncertaintyLayers,
   createCircleGeoJSON,
   createMap,
@@ -83,6 +82,7 @@ export function LocationPicker({
   const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
   const mode = theme.palette.mode;
+  const markerColor = theme.palette.mapMarker;
   const [basemap] = useBasemap();
   // Latest mode/basemap for the init effect (which runs once); theme/basemap
   // changes are handled by swapping the style, not rebuilding the map.
@@ -102,7 +102,7 @@ export function LocationPicker({
     if (marker.current) {
       marker.current.setLngLat([lng, lat]);
     } else {
-      marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
+      marker.current = new maplibregl.Marker({ color: markerColor })
         .setLngLat([lng, lat])
         .addTo(map.current);
     }
@@ -114,7 +114,7 @@ export function LocationPicker({
     if (source) {
       source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
     }
-  }, []);
+  }, [markerColor]);
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
@@ -203,7 +203,7 @@ export function LocationPicker({
             : { type: "FeatureCollection", features: [] },
       });
 
-      addUncertaintyLayers(mapInstance);
+      addUncertaintyLayers(mapInstance, markerColor);
 
       if (latitude && longitude) {
         updateMarker(longitude, latitude);

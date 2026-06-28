@@ -6,7 +6,6 @@ import {
   createCircleGeoJSON,
   createMap,
   getRadiusBounds,
-  MAP_MARKER_COLOR,
   addUncertaintyLayers,
   setBasemapStyle,
 } from "./mapUtils";
@@ -25,6 +24,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
   const map = useRef<maplibregl.Map | null>(null);
   const theme = useTheme();
   const mode = theme.palette.mode;
+  const markerColor = theme.palette.mapMarker;
   const [basemap] = useBasemap();
   // Read the latest mode/basemap inside the create effect without making them
   // dependencies (theme/basemap changes swap the style in a separate effect
@@ -58,7 +58,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
 
     mapInstance.on("load", () => {
       // Add marker
-      new maplibregl.Marker({ color: MAP_MARKER_COLOR })
+      new maplibregl.Marker({ color: markerColor })
         .setLngLat([longitude, latitude])
         .addTo(mapInstance);
 
@@ -69,7 +69,7 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
           data: createCircleGeoJSON(longitude, latitude, uncertaintyMeters),
         });
 
-        addUncertaintyLayers(mapInstance);
+        addUncertaintyLayers(mapInstance, markerColor);
 
         // Fit map to uncertainty circle bounds
         mapInstance.fitBounds(getRadiusBounds(latitude, longitude, uncertaintyMeters), {
