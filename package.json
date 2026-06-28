@@ -14,6 +14,7 @@
     "setup": "./scripts/setup.sh",
     "dev": "vite -c frontend/vite.config.ts",
     "dev:stack": "./scripts/dev.sh",
+    "dev:stack:headless": "./scripts/dev.sh --headless",
     "fmt": "oxfmt frontend/src frontend/tests scripts",
     "fmt:check": "oxfmt --check frontend/src frontend/tests scripts",
     "lint": "oxlint frontend/src",
