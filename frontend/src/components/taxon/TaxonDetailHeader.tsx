@@ -1,6 +1,7 @@
 import { Box, Typography, IconButton } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
+import { stickyHeaderSx } from "../common/layoutSx";
 
 interface TaxonDetailHeaderProps {
   /** Taxon rank, shown (capitalized) as the panel title — e.g. "Species". */
@@ -17,22 +18,7 @@ interface TaxonDetailHeaderProps {
  */
 export function TaxonDetailHeader({ rank, onBack, onToggleTree }: TaxonDetailHeaderProps) {
   return (
-    <Box
-      sx={{
-        position: "sticky",
-        top: 0,
-        zIndex: 3,
-        px: { xs: 2, sm: 4 },
-        py: 1.25,
-        borderBottom: 1,
-        borderColor: "divider",
-        display: "flex",
-        alignItems: "center",
-        backgroundColor: (theme) =>
-          theme.palette.mode === "dark" ? "rgba(26,26,26,0.86)" : "rgba(250,246,236,0.86)",
-        backdropFilter: "blur(8px)",
-      }}
-    >
+    <Box sx={stickyHeaderSx}>
       <IconButton onClick={onBack} sx={{ mr: 1 }}>
         <ArrowBackIcon />
       </IconButton>

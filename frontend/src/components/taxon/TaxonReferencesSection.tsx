@@ -1,9 +1,11 @@
-import { Stack, Typography, Link as MuiLink } from "@mui/material";
+import { Chip, Stack, Typography, Link as MuiLink } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
+import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import type { TaxonReference } from "../../bindings/TaxonReference";
-import { TaxonAccordion } from "./TaxonAccordion";
+import { CollapsibleSection } from "../common/CollapsibleSection";
+import { countChipSx } from "../common/chipSx";
 
-interface TaxonReferencesAccordionProps {
+interface TaxonReferencesSectionProps {
   references: TaxonReference[];
   sx?: SxProps<Theme>;
 }
@@ -12,9 +14,14 @@ interface TaxonReferencesAccordionProps {
  * Collapsible "References" section. Shows up to five citations, linking to the
  * reference's URL (or its DOI) when one is available.
  */
-export function TaxonReferencesAccordion({ references, sx }: TaxonReferencesAccordionProps) {
+export function TaxonReferencesSection({ references, sx }: TaxonReferencesSectionProps) {
   return (
-    <TaxonAccordion title={`References (${references.length})`} sx={sx}>
+    <CollapsibleSection
+      title="References"
+      icon={<MenuBookOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      trailing={<Chip label={references.length} size="small" sx={countChipSx} />}
+      sx={sx}
+    >
       <Stack spacing={0.5}>
         {references.slice(0, 5).map((r, idx) => (
           <Typography
@@ -39,6 +46,6 @@ export function TaxonReferencesAccordion({ references, sx }: TaxonReferencesAcco
           </Typography>
         ))}
       </Stack>
-    </TaxonAccordion>
+    </CollapsibleSection>
   );
 }

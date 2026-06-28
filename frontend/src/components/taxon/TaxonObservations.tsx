@@ -1,5 +1,6 @@
 import { Box, Typography } from "@mui/material";
 import type { Occurrence } from "../../services/types";
+import { EmptyState } from "../common/EmptyState";
 import { LoadMoreButton } from "../common/LoadMoreButton";
 import { FeedItem } from "../feed/FeedItem";
 
@@ -36,24 +37,15 @@ export function TaxonObservations({
         </Typography>
       </Box>
       {observations.length === 0 ? (
-        <Box sx={{ py: 5, textAlign: "center" }}>
-          <Typography
-            sx={{
-              color: "text.secondary",
-              mb: 0.5,
-            }}
-          >
-            No observations yet
-          </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.disabled",
-            }}
-          >
-            Be the first to observe <em>{emptyName}</em> on Observ.ing!
-          </Typography>
-        </Box>
+        <EmptyState
+          p={5}
+          message="No observations yet"
+          secondary={
+            <>
+              Be the first to observe <em>{emptyName}</em> on Observ.ing!
+            </>
+          }
+        />
       ) : (
         <Box>
           {observations.map((obs) => (
