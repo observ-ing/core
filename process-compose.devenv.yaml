@@ -49,7 +49,10 @@ processes:
       - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap-devenv.db}
       - PORT=8080
       - PLC_DIRECTORY_URL=${PLC_DIRECTORY_URL}
+      # http:// for Tap (it upgrades to ws itself); ws:// for the lag-probe
+      # heartbeat (tokio_tungstenite). Both point at the dev-env PDS firehose.
       - TAP_RELAY_URL=${TAP_RELAY_URL}
+      - LAG_PROBE_RELAY_URL=${LAG_PROBE_RELAY_URL}
       - TAP_INHERIT_STDIO=1
     depends_on:
       migrate:

@@ -95,9 +95,17 @@ async function ensureDevEnv(): Promise<DevEnvModule> {
 export interface DevEnvEndpoints {
   /** PLC directory base URL — set as `PLC_DIRECTORY_URL` for the Rust stack. */
   plcUrl: string;
-  /** PDS base URL — set as `HANDLE_RESOLVER_URL` (serves `resolveHandle`). */
+  /**
+   * PDS base URL. Set as `HANDLE_RESOLVER_URL` (serves `resolveHandle`) and as
+   * `TAP_RELAY_URL` — a PDS serves `subscribeRepos` like a relay, and indigo's
+   * Tap requires an `http(s)://` relay URL (it upgrades to a websocket itself).
+   */
   pdsUrl: string;
-  /** PDS firehose host (no xrpc path) — set as `TAP_RELAY_URL` for Tap. */
+  /**
+   * PDS firehose host as a `ws://` URL. Set as `LAG_PROBE_RELAY_URL`: the
+   * tap-ingester heartbeat connects with `tokio_tungstenite`, which needs a
+   * `ws(s)://` scheme (Tap itself takes the `http://` form above).
+   */
   pdsWsUrl: string;
   /** Full `subscribeRepos` websocket URL, for reference/lag probing. */
   firehoseUrl: string;
@@ -162,7 +170,13 @@ export function devEnvVars(dev: DevEnv): Record<string, string> {
   return {
     PLC_DIRECTORY_URL: dev.endpoints.plcUrl,
     HANDLE_RESOLVER_URL: dev.endpoints.pdsUrl,
-    TAP_RELAY_URL: dev.endpoints.pdsWsUrl,
+    // Tap consumes the PDS firehose as a relay; indigo requires an http(s)://
+    // relay URL (it does the ws upgrade itself) — a ws:// value makes Tap exit
+    // with "relay-url must start with http:// or https://".
+    TAP_RELAY_URL: dev.endpoints.pdsUrl,
+    // The heartbeat's lag probe connects via tokio_tungstenite, which needs a
+    // ws:// scheme — point it at the same firehose, ws-form.
+    LAG_PROBE_RELAY_URL: dev.endpoints.pdsWsUrl,
     // Account creds for the Playwright auth setup.
     DEVENV_DID: dev.account.did,
     DEVENV_HANDLE: dev.account.handle,
