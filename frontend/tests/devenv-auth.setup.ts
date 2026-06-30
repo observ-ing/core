@@ -41,10 +41,13 @@ setup("authenticate via dev-env PDS OAuth", async ({ page }) => {
   await page.getByLabel("Your handle").fill(handle);
   await page.getByRole("button", { name: "Continue" }).click();
 
-  // 3. App redirects to the dev-env PDS authorization server. Wait for the
-  //    navigation off our origin (predicate form — a negative-lookahead regex
-  //    would match immediately; see auth.setup.ts).
-  await page.waitForURL((url) => url.hostname !== "127.0.0.1" && url.hostname !== "localhost", {
+  // 3. App redirects to the dev-env PDS authorization server. The PDS binds to
+  //    `localhost:<random-port>` (e.g. http://localhost:56868) while the app is
+  //    served at 127.0.0.1:3000 — so wait for the navigation to leave the app's
+  //    own origin, not for a non-localhost host (the PDS *is* on localhost).
+  //    Predicate form — a negative-lookahead regex would match immediately; see
+  //    auth.setup.ts.
+  await page.waitForURL((url) => !(url.hostname === "127.0.0.1" && url.port === "3000"), {
     timeout: 15000,
   });
   await page.waitForLoadState("domcontentloaded");
