@@ -470,7 +470,15 @@ impl GbifClient {
         // Wikidata's primary image (P18) in parallel.
         let key_u64 = key as u64;
         let key_slice = [key_u64];
-        let (children, descriptions, references, media, vernacular_names, wikidata_url, wikidata_images) = tokio::join!(
+        let (
+            children,
+            descriptions,
+            references,
+            media,
+            vernacular_names,
+            wikidata_url,
+            wikidata_images,
+        ) = tokio::join!(
             self.get_children(taxon_id, 20),
             async {
                 match self
