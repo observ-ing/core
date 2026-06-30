@@ -18,6 +18,7 @@ import {
 } from "@mui/material";
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
 import { labelChipSx } from "../common/chipSx";
+import { monoStack } from "../../theme";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
@@ -129,7 +130,7 @@ function PropertyTable({
                     variant="body2"
                     component="code"
                     sx={{
-                      fontFamily: "monospace",
+                      fontFamily: monoStack,
                       fontSize: "0.8rem",
                       color: prop.description?.includes("[DEPRECATED")
                         ? "text.disabled"
@@ -153,7 +154,7 @@ function PropertyTable({
                 <Typography
                   variant="body2"
                   component="code"
-                  sx={{ fontFamily: "monospace", fontSize: "0.8rem" }}
+                  sx={{ fontFamily: monoStack, fontSize: "0.8rem" }}
                 >
                   {formatType(prop)}
                 </Typography>
@@ -239,7 +240,7 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         onClick={() => setOpen(!open)}
       >
         <IconButton size="small">{open ? <ExpandLess /> : <ExpandMore />}</IconButton>
-        <Typography variant="subtitle2" component="code" sx={{ fontFamily: "monospace" }}>
+        <Typography variant="subtitle2" component="code" sx={{ fontFamily: monoStack }}>
           #{name}
         </Typography>
         {def.type && <Chip label={def.type} size="small" sx={{ ml: 1, ...labelChipSx }} />}
@@ -280,7 +281,7 @@ function LexiconCard({ schema }: { schema: LexiconSchema }) {
   return (
     <Card variant="outlined" sx={{ mb: 3, overflow: "hidden" }}>
       <CardContent>
-        <Typography variant="h6" component="code" sx={{ fontFamily: "monospace", fontWeight: 700 }}>
+        <Typography variant="h6" component="code" sx={{ fontFamily: monoStack, fontWeight: 700 }}>
           {schema.id}
         </Typography>
 
