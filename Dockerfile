@@ -195,10 +195,21 @@ RUN apt-get update && apt-get install -y curl && \
     cp onnxruntime-linux-x64-1.24.4/lib/libonnxruntime*.so* /usr/lib/ && \
     rm -rf onnxruntime-* /tmp/ort.tgz
 
+# Model bundle to bake in. Defaults to the full-accuracy ViT-H build used by
+# the upload/capture path. The faster live-loop service (ViT-L) is the same
+# binary built with a different bundle + version, e.g.:
+#   docker build --build-arg SERVICE=observing-species-id \
+#     --build-arg SPECIES_MODEL_URL=<vit-l bundle .tar.gz> \
+#     --build-arg MODEL_VERSION=bioclip-2-vit-l-14 -t observing-species-id-live .
+# TODO: publish the ViT-L bundle in observ-ing/bioclip-models and set its URL
+# when standing up the live service.
+ARG SPECIES_MODEL_URL=https://github.com/observ-ing/bioclip-models/releases/download/v2.1.0/bioclip-2.5-models.tar.gz
+ARG MODEL_VERSION=bioclip-2.5-vit-h-14
+
 # Download model artifacts (separate layer for better caching)
 RUN mkdir -p /app/models/bioclip && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/models.tar.gz \
-      https://github.com/observ-ing/bioclip-models/releases/download/v2.1.0/bioclip-2.5-models.tar.gz && \
+      "${SPECIES_MODEL_URL}" && \
     tar xzf /tmp/models.tar.gz -C /app/models/bioclip && \
     rm /tmp/models.tar.gz
 
@@ -211,6 +222,7 @@ COPY --from=builder /app/target/release/observing-species-id /app/observing-spec
 ENV RUST_LOG=observing_species_id=info
 ENV PORT=3005
 ENV MODEL_DIR=/app/models/bioclip
+ENV MODEL_VERSION=${MODEL_VERSION}
 ENV ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
 EXPOSE 3005
 CMD ["/app/observing-species-id"]

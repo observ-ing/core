@@ -22,6 +22,7 @@ import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ClearIcon from "@mui/icons-material/Clear";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import { countChipSx } from "../common/chipSx";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -117,12 +118,7 @@ export function ExploreFilterPanel() {
           <FilterListIcon color="action" />
           <Typography variant="subtitle2">Filters</Typography>
           {activeFilterCount > 0 && (
-            <Chip
-              size="small"
-              label={activeFilterCount}
-              color="primary"
-              sx={{ height: 20, fontSize: "0.75rem" }}
-            />
+            <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
           )}
         </Stack>
         <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>

@@ -1,12 +1,13 @@
 import { Box, CircularProgress, Tooltip } from "@mui/material";
 import { useAppSelector } from "../../store";
+import { selectPendingCount } from "../../store/pendingSlice";
 
 // Small TopBar spinner that surfaces background observation submissions. The
 // upload modal closes immediately on a successful PDS write and hands the
 // ingester poll off to the `pending` slice; this is the only visible trace of
 // that in-flight work until the completion toast fires.
 export function PendingIndicator() {
-  const count = useAppSelector((state) => state.pending.submissions.length);
+  const count = useAppSelector(selectPendingCount);
 
   if (count === 0) return null;
 

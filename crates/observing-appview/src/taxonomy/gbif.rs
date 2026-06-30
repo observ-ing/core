@@ -57,60 +57,63 @@ impl From<GbifClientError<()>> for GbifError {
     }
 }
 
-/// IUCN Red List conservation status categories.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum IucnCategory {
-    /// Extinct
-    Ex,
-    /// Extinct in the Wild
-    Ew,
-    /// Critically Endangered
-    Cr,
-    /// Endangered
-    En,
-    /// Vulnerable
-    Vu,
-    /// Near Threatened
-    Nt,
-    /// Least Concern
-    Lc,
-    /// Data Deficient
-    Dd,
-    /// Not Evaluated
-    Ne,
-}
-
-impl std::str::FromStr for IucnCategory {
-    type Err = ();
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "EX" => Ok(Self::Ex),
-            "EW" => Ok(Self::Ew),
-            "CR" => Ok(Self::Cr),
-            "EN" => Ok(Self::En),
-            "VU" => Ok(Self::Vu),
-            "NT" => Ok(Self::Nt),
-            "LC" => Ok(Self::Lc),
-            "DD" => Ok(Self::Dd),
-            "NE" => Ok(Self::Ne),
-            _ => Err(()),
+/// Defines [`IucnCategory`] and its IUCN Red List code mapping from a single
+/// source of truth, so the variant list, `FromStr` parser, and `Display`
+/// formatter can never drift out of sync.
+macro_rules! iucn_categories {
+    ($( $(#[doc = $doc:literal])* $variant:ident => $code:literal ),+ $(,)?) => {
+        /// IUCN Red List conservation status categories.
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        pub enum IucnCategory {
+            $( $(#[doc = $doc])* $variant, )+
         }
-    }
+
+        impl IucnCategory {
+            /// This category's IUCN Red List code (e.g. `"EX"`).
+            pub fn as_code(self) -> &'static str {
+                match self {
+                    $( Self::$variant => $code, )+
+                }
+            }
+        }
+
+        impl std::str::FromStr for IucnCategory {
+            type Err = ();
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                match s {
+                    $( $code => Ok(Self::$variant), )+
+                    _ => Err(()),
+                }
+            }
+        }
+
+        impl std::fmt::Display for IucnCategory {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_code())
+            }
+        }
+    };
 }
 
-fn iucn_to_string(c: IucnCategory) -> String {
-    match c {
-        IucnCategory::Ex => "EX",
-        IucnCategory::Ew => "EW",
-        IucnCategory::Cr => "CR",
-        IucnCategory::En => "EN",
-        IucnCategory::Vu => "VU",
-        IucnCategory::Nt => "NT",
-        IucnCategory::Lc => "LC",
-        IucnCategory::Dd => "DD",
-        IucnCategory::Ne => "NE",
-    }
-    .to_string()
+iucn_categories! {
+    /// Extinct
+    Ex => "EX",
+    /// Extinct in the Wild
+    Ew => "EW",
+    /// Critically Endangered
+    Cr => "CR",
+    /// Endangered
+    En => "EN",
+    /// Vulnerable
+    Vu => "VU",
+    /// Near Threatened
+    Nt => "NT",
+    /// Least Concern
+    Lc => "LC",
+    /// Data Deficient
+    Dd => "DD",
+    /// Not Evaluated
+    Ne => "NE",
 }
 
 /// Walk a v2 match's additional_status entries, find one tagged with the
@@ -467,7 +470,15 @@ impl GbifClient {
         // Wikidata's primary image (P18) in parallel.
         let key_u64 = key as u64;
         let key_slice = [key_u64];
-        let (children, descriptions, references, media, wikidata_url, wikidata_images) = tokio::join!(
+        let (
+            children,
+            descriptions,
+            references,
+            media,
+            vernacular_names,
+            wikidata_url,
+            wikidata_images,
+        ) = tokio::join!(
             self.get_children(taxon_id, 20),
             async {
                 match self
@@ -493,6 +504,21 @@ impl GbifClient {
             },
             async {
                 match self.api.get_name_usage_media(key, Some(10), None).await {
+                    Ok(rv) => Ok(rv.into_inner().results),
+                    Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+                    Err(e) => Err(GbifError::from(e)),
+                }
+            },
+            async {
+                // The v1 `/species/{key}` scalar `vernacularName` is unreliable
+                // (it can surface a non-preferred name, e.g. "Red Maple" for
+                // Acer saccharinum). Fetch the full vernacular list so we can
+                // apply the same preference logic as the search path.
+                match self
+                    .api
+                    .get_name_usage_vernacular_names(key, Some(100), None)
+                    .await
+                {
                     Ok(rv) => Ok(rv.into_inner().results),
                     Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
                     Err(e) => Err(GbifError::from(e)),
@@ -565,10 +591,15 @@ impl GbifClient {
             .cloned()
             .or_else(|| media.first().map(|m| m.url.clone()));
 
+        // Prefer the best entry from the full vernacular list; fall back to the
+        // v1 scalar when the list is empty or the request failed.
+        let common_name =
+            pick_vernacular(&vernacular_names.unwrap_or_default()).or(data.vernacular_name);
+
         let taxon_detail = TaxonDetail {
             id: build_taxon_path(resolved_name, &resolved_rank, data.kingdom.as_deref()),
             scientific_name: resolved_name.to_string(),
-            common_name: data.vernacular_name,
+            common_name,
             photo_url,
             rank: resolved_rank,
             kingdom: data.kingdom,
@@ -701,7 +732,7 @@ impl GbifClient {
         let gbif_match = self.match_name_raw(name, None).await.ok()??;
         let category = extract_iucn_status(&gbif_match)?;
         Some(ConservationStatus {
-            category: iucn_to_string(category),
+            category: category.as_code().to_owned(),
             source: "IUCN".to_string(),
         })
     }
@@ -871,7 +902,7 @@ impl GbifClient {
                     .as_deref()
                     .and_then(|code| code.parse::<IucnCategory>().ok())
                     .map(|category| ConservationStatus {
-                        category: iucn_to_string(category),
+                        category: category.as_code().to_owned(),
                         source: "IUCN".to_string(),
                     })
             } else {
@@ -935,25 +966,43 @@ impl Default for GbifClient {
 
 /// Pick the best vernacular name for a search result.
 fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
+    pick_vernacular(&item.vernacular_names)
+}
+
+/// Pick the best vernacular name from a list of GBIF vernacular entries.
+///
+/// Preference order: English + `preferred`, then any English-tagged, then an
+/// untagged entry (GBIF often omits the language tag for English), then any
+/// `preferred` entry, then the first available. The English-and-preferred tier
+/// comes first because GBIF's lists routinely include several conflicting
+/// English names (e.g. *Acer saccharinum* lists "Red Maple" ahead of "Silver
+/// Maple"); only the authoritative `preferred` flag disambiguates them.
+fn pick_vernacular(names: &[gbif::checklistbank::types::VernacularName]) -> Option<String> {
     // The serialized form of `VernacularNameLanguage::Eng` is "eng"; we
     // compare via a serde round-trip so we don't depend on the enum's
     // identifier munging.
-    fn lang_str(v: &gbif::checklistbank::types::VernacularName) -> Option<String> {
-        v.language.as_ref().and_then(rank_to_string)
+    fn is_english(v: &gbif::checklistbank::types::VernacularName) -> bool {
+        v.language.as_ref().and_then(rank_to_string).as_deref() == Some("eng")
     }
 
-    // English-tagged.
-    if let Some(name) = item
-        .vernacular_names
+    // English + preferred.
+    if let Some(name) = names
         .iter()
-        .find(|v| lang_str(v).as_deref() == Some("eng"))
+        .find(|v| is_english(v) && v.preferred == Some(true))
+        .map(|v| v.vernacular_name.clone())
+    {
+        return Some(name);
+    }
+    // English-tagged.
+    if let Some(name) = names
+        .iter()
+        .find(|v| is_english(v))
         .map(|v| v.vernacular_name.clone())
     {
         return Some(name);
     }
     // Untagged (GBIF often omits the language tag for English).
-    if let Some(name) = item
-        .vernacular_names
+    if let Some(name) = names
         .iter()
         .find(|v| v.language.is_none())
         .map(|v| v.vernacular_name.clone())
@@ -961,8 +1010,7 @@ fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
         return Some(name);
     }
     // Preferred.
-    if let Some(name) = item
-        .vernacular_names
+    if let Some(name) = names
         .iter()
         .find(|v| v.preferred == Some(true))
         .map(|v| v.vernacular_name.clone())
@@ -970,9 +1018,7 @@ fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
         return Some(name);
     }
     // First available.
-    item.vernacular_names
-        .first()
-        .map(|v| v.vernacular_name.clone())
+    names.first().map(|v| v.vernacular_name.clone())
 }
 
 /// Cache hit/miss/entry-count snapshot.
@@ -1144,6 +1190,25 @@ mod tests {
         );
         let result = client.search_result_to_taxon(&item);
         assert_eq!(result.common_name.as_deref(), Some("Powdery Mildew Fungi"));
+    }
+
+    #[test]
+    fn test_vernacular_preferred_english_beats_earlier_english() {
+        // Reproduces the Acer saccharinum case: GBIF lists a non-preferred
+        // "Red Maple" ahead of the authoritative `preferred` "Silver Maple".
+        // The preferred English entry must win despite appearing later.
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Acer saccharinum",
+            "SPECIES",
+            None,
+            vec![
+                vn("Red Maple", Some("eng"), None),
+                vn("Silver Maple", Some("eng"), Some(true)),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(result.common_name.as_deref(), Some("Silver Maple"));
     }
 
     #[test]

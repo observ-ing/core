@@ -1,5 +1,5 @@
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
-import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import {
   mockOwnObservationFeed,
@@ -61,6 +61,7 @@ authTest.describe("Auto-Identification on Upload", () => {
 
       await page.goto("/");
       await openUploadModal(page);
+      await gotoUploadStep(page, "Identify");
 
       const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
@@ -84,7 +85,7 @@ authTest.describe("Auto-Identification on Upload", () => {
       // ingester poll runs in the background behind the TopBar indicator. Wait
       // for the modal to close, then go to the (mocked) detail page directly to
       // assert the auto-created identification rendered.
-      await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible({ timeout: 10_000 });
+      await authExpect(page.getByRole("dialog")).not.toBeVisible({ timeout: 10_000 });
       await page.goto(`/observation/${MOCK_OBS_DID}/${AUTO_ID_RKEY}`);
 
       await authExpect(page.getByText("Identification History")).toBeVisible({ timeout: 10000 });

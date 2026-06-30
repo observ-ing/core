@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date,\n                    ST_Y(location::geometry) as latitude,\n                    ST_X(location::geometry) as longitude,\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    organism_quantity, organism_quantity_type,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1 AND created_at < ($3::text)::timestamptz\n                ORDER BY created_at DESC, uri DESC\n                LIMIT $2\n                ",
+  "query": "\n                SELECT\n                    uri, cid, did, scientific_name,\n                    event_date_raw as event_date,\n                    ST_Y(location::geometry) as latitude,\n                    ST_X(location::geometry) as longitude,\n                    coordinate_uncertainty_meters,\n                    associated_media, recorded_by,\n                    taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                    organism_quantity, organism_quantity_type,\n                    created_at,\n                    NULL::float8 as distance_meters,\n                    NULL::text as source\n                FROM occurrences\n                WHERE did = $1\n                ORDER BY created_at DESC, uri DESC\n                LIMIT $2\n                ",
   "describe": {
     "columns": [
       {
@@ -50,11 +50,11 @@
       {
         "ordinal": 4,
         "name": "event_date",
-        "type_info": "Timestamptz",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "occurrences",
-            "name": "event_date"
+            "name": "event_date_raw"
           }
         }
       },
@@ -240,8 +240,7 @@
     "parameters": {
       "Left": [
         "Text",
-        "Int8",
-        "Text"
+        "Int8"
       ]
     },
     "nullable": [
@@ -270,5 +269,5 @@
       null
     ]
   },
-  "hash": "880a34ae7525d0ab28bb38987dd326f5d1a11cf76176a02a5a5fc06b469e5f4f"
+  "hash": "b7529b475962d14219f422fbbc99a6cf65f7f4018af56f3c65972425ba79d44f"
 }

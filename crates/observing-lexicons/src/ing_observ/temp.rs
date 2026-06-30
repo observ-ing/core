@@ -3,6 +3,7 @@
 // This file was automatically generated from Lexicon schemas.
 // Any manual changes will be overwritten on the next regeneration.
 
+//! Generated bindings for the `ing.observ.temp` Lexicon namespace/module.
 pub mod comment;
 pub mod interaction;
 pub mod like;

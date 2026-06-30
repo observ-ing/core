@@ -71,6 +71,33 @@ pub fn build_strong_ref(uri: &str, cid: &str) -> Result<StrongRef, AppError> {
         .build())
 }
 
+/// Parse the `collection` and `rkey` segments of a parsed [`AtUri`] into the
+/// strongly-typed atproto values needed for repo `deleteRecord` / `putRecord`
+/// calls, wrapping parse failures in a consistent `AppError`.
+pub fn parse_collection_and_rkey(
+    at_uri: &AtUri,
+) -> Result<
+    (
+        atrium_api::types::string::Nsid,
+        atrium_api::types::string::RecordKey,
+    ),
+    AppError,
+> {
+    let collection = at_uri
+        .collection()
+        .ok_or_else(|| AppError::Internal("AT URI missing collection".into()))?
+        .as_str()
+        .parse()
+        .map_err(|e| AppError::Internal(format!("Invalid collection: {e}")))?;
+    let rkey = at_uri
+        .rkey()
+        .ok_or_else(|| AppError::Internal("AT URI missing rkey".into()))?
+        .as_str()
+        .parse()
+        .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))?;
+    Ok((collection, rkey))
+}
+
 /// Restore an OAuth session and return an AT Protocol agent for the given DID.
 pub async fn require_agent(
     oauth_client: &OAuthClientType,

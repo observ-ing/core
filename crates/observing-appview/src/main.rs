@@ -69,6 +69,11 @@ async fn main() {
         .as_deref()
         .map(|url| Arc::new(SpeciesIdClient::new(url)));
 
+    let species_id_live = config
+        .species_id_live_service_url
+        .as_deref()
+        .map(|url| Arc::new(SpeciesIdClient::new(url)));
+
     let media = media::MediaCache::from_env().await;
 
     let state = AppState {
@@ -76,6 +81,7 @@ async fn main() {
         resolver: Arc::new(atproto_identity::IdentityResolver::from_env()),
         taxonomy: Arc::new(TaxonomyClient::new()),
         species_id,
+        species_id_live,
         oauth_client: Arc::new(oauth_client),
         media,
         public_url: config.public_url.clone(),
@@ -246,15 +252,20 @@ async fn main() {
                 .layer(axum_middleware::from_fn(middleware::static_cache_control))
         }
         None => {
-            let vite_url = "http://localhost:5173";
+            // Where the Vite dev server is listening. Defaults to Vite's usual
+            // 5173, but a randomized-port dev stack (scripts/dev.sh) relocates
+            // it and sets VITE_DEV_SERVER_URL so this proxy still finds it.
+            let vite_url = std::env::var("VITE_DEV_SERVER_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".to_string());
             info!(
-                vite_url,
+                vite_url = %vite_url,
                 "No pre-built frontend found, proxying to Vite dev server"
             );
             let client = reqwest::Client::new();
             app.fallback(move |req: axum::extract::Request| {
                 let client = client.clone();
-                async move { vite_proxy(req, vite_url, &client).await }
+                let vite_url = vite_url.clone();
+                async move { vite_proxy(req, &vite_url, &client).await }
             })
         }
     };

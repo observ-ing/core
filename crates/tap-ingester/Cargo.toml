@@ -22,7 +22,7 @@ observing-collections = { path = "../observing-collections" }
 pg-url-env = { path = "../pg-url-env" }
 
 # Media resolver: AT URI parsing + DID → PDS resolution + HTTP fetch.
-at-uri-parser = { path = "../at-uri-parser" }
+jacquard-common = "0.12"
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
 atproto-identity = { path = "../atproto-identity" }
 

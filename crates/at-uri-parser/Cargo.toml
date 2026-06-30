@@ -1,9 +1,0 @@
-[package]
-name = "at-uri-parser"
-version = "0.1.0"
-edition = "2021"
-description = "Parser for AT Protocol URIs (at://did/collection/rkey)"
-license = "MIT OR Apache-2.0"
-
-[dependencies]
-regex = "1"

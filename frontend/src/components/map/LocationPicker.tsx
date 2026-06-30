@@ -5,20 +5,17 @@ import {
   TextField,
   Autocomplete,
   Stack,
-  InputAdornment,
   Slider,
   Button,
   Collapse,
   useTheme,
 } from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
-  MAP_MARKER_COLOR,
   addUncertaintyLayers,
   createCircleGeoJSON,
   createMap,
@@ -27,6 +24,8 @@ import {
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
 import { BasemapSelector } from "./BasemapSelector";
+import { SearchAdornment, searchFieldSx } from "../common/SearchField";
+import { formatCoordinate } from "../../lib/utils";
 
 interface LocationPickerProps {
   latitude: number | null;
@@ -55,6 +54,8 @@ function sliderToValue(slider: number): number {
 const SLIDER_MIN = valueToSlider(1);
 const SLIDER_MAX = valueToSlider(500000);
 const SLIDER_MARKS = [
+  { value: valueToSlider(1), label: "1m" },
+  { value: valueToSlider(10), label: "10m" },
   { value: valueToSlider(100), label: "100m" },
   { value: valueToSlider(1000), label: "1km" },
   { value: valueToSlider(10000), label: "10km" },
@@ -75,11 +76,12 @@ export function LocationPicker({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<NominatimResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [latInput, setLatInput] = useState(latitude?.toFixed(6) ?? "");
-  const [lngInput, setLngInput] = useState(longitude?.toFixed(6) ?? "");
+  const [latInput, setLatInput] = useState(latitude != null ? formatCoordinate(latitude) : "");
+  const [lngInput, setLngInput] = useState(longitude != null ? formatCoordinate(longitude) : "");
   const [showCoordinates, setShowCoordinates] = useState(false);
   const theme = useTheme();
   const mode = theme.palette.mode;
+  const markerColor = theme.palette.mapMarker;
   const [basemap] = useBasemap();
   // Latest mode/basemap for the init effect (which runs once); theme/basemap
   // changes are handled by swapping the style, not rebuilding the map.
@@ -93,25 +95,28 @@ export function LocationPicker({
   const uncertaintyMetersRef = useRef(uncertaintyMeters);
   uncertaintyMetersRef.current = uncertaintyMeters;
 
-  const updateMarker = useCallback((lng: number, lat: number, radius?: number) => {
-    if (!map.current) return;
+  const updateMarker = useCallback(
+    (lng: number, lat: number, radius?: number) => {
+      if (!map.current) return;
 
-    if (marker.current) {
-      marker.current.setLngLat([lng, lat]);
-    } else {
-      marker.current = new maplibregl.Marker({ color: MAP_MARKER_COLOR })
-        .setLngLat([lng, lat])
-        .addTo(map.current);
-    }
+      if (marker.current) {
+        marker.current.setLngLat([lng, lat]);
+      } else {
+        marker.current = new maplibregl.Marker({ color: markerColor })
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      }
 
-    // Update uncertainty circle
-    const effectiveRadius = radius ?? uncertaintyMetersRef.current;
-    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
-    const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
-    if (source) {
-      source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
-    }
-  }, []);
+      // Update uncertainty circle
+      const effectiveRadius = radius ?? uncertaintyMetersRef.current;
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- maplibre getSource has no generic overload
+      const source = map.current.getSource("uncertainty") as maplibregl.GeoJSONSource | undefined;
+      if (source) {
+        source.setData(createCircleGeoJSON(lng, lat, effectiveRadius));
+      }
+    },
+    [markerColor],
+  );
 
   const flyToLocation = useCallback(
     (lat: number, lng: number) => {
@@ -120,8 +125,8 @@ export function LocationPicker({
       }
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     },
     [onChange, updateMarker],
   );
@@ -186,8 +191,8 @@ export function LocationPicker({
       const { latitude: lat, longitude: lng } = e.coords;
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     });
 
     mapInstance.on("load", () => {
@@ -200,7 +205,7 @@ export function LocationPicker({
             : { type: "FeatureCollection", features: [] },
       });
 
-      addUncertaintyLayers(mapInstance);
+      addUncertaintyLayers(mapInstance, markerColor);
 
       if (latitude && longitude) {
         updateMarker(longitude, latitude);
@@ -218,8 +223,8 @@ export function LocationPicker({
       const { lng, lat } = e.lngLat;
       updateMarker(lng, lat);
       onChange(lat, lng);
-      setLatInput(lat.toFixed(6));
-      setLngInput(lng.toFixed(6));
+      setLatInput(formatCoordinate(lat));
+      setLngInput(formatCoordinate(lng));
     });
 
     map.current = mapInstance;
@@ -257,8 +262,8 @@ export function LocationPicker({
     ) {
       updateMarker(longitude, latitude);
       map.current.setCenter([longitude, latitude]);
-      setLatInput(latitude.toFixed(6));
-      setLngInput(longitude.toFixed(6));
+      setLatInput(formatCoordinate(latitude));
+      setLngInput(formatCoordinate(longitude));
     }
   }, [latitude, longitude, updateMarker]);
 
@@ -327,14 +332,10 @@ export function LocationPicker({
                 ...params.slotProps,
                 input: {
                   ...params.slotProps.input,
-                  startAdornment: (
-                    <InputAdornment position="start">
-                      <SearchIcon fontSize="small" sx={{ color: "text.disabled" }} />
-                    </InputAdornment>
-                  ),
+                  startAdornment: <SearchAdornment />,
                 },
               }}
-              sx={{ mb: 1 }}
+              sx={[searchFieldSx, { mb: 1 }]}
             />
           );
         }}

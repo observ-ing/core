@@ -1,8 +1,11 @@
 import { Box, CircularProgress, Typography } from "@mui/material";
+import { alpha } from "@mui/material/styles";
 import { SimpleTreeView } from "@mui/x-tree-view/SimpleTreeView";
 import { TreeItem } from "@mui/x-tree-view/TreeItem";
 import type { TaxonTreeItem } from "./TaxonExplorer";
+import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { GradientSwatch } from "../common/GradientSwatch";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -14,6 +17,8 @@ interface TaxonTreePanelProps {
   onExpandedItemsChange: (ids: string[]) => void;
   onSelectedItemsChange: (id: string) => void;
   onItemExpansionToggle: (id: string, isExpanded: boolean) => void;
+  /** Called after the search box navigates (e.g. to close the mobile drawer). */
+  onSearchNavigate?: (() => void) | undefined;
 }
 
 function renderTreeItems(
@@ -24,21 +29,29 @@ function renderTreeItems(
 ) {
   return items.map((item) => {
     const thumb = thumbnails.get(String(item.label));
+    const isSelected = item.id === selectedId;
     return (
       <TreeItem
         key={item.id}
         itemId={item.id}
+        // The expand/collapse arrow lives inside the selectable content, so a
+        // click on it bubbles up and selects (navigates to) the item. Stop the
+        // arrow click from reaching the content handler; MUI runs this before
+        // its own expansion logic, so collapsing/expanding still works.
+        slotProps={{ iconContainer: { onClick: (event) => event.stopPropagation() } }}
         label={
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.25 }}>
-            <Box
-              sx={{
-                width: 20,
-                height: 20,
-                flexShrink: 0,
-                borderRadius: 0.5,
-                overflow: "hidden",
-                bgcolor: "action.hover",
-              }}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, py: 0.5 }}>
+            {/* Avatar swatch: the real Wikidata thumbnail when we have one, else
+                a deterministic colored square (GradientSwatch) so every row
+                carries a visual anchor. The selected row gets a subtle ring. */}
+            <GradientSwatch
+              seed={String(item.label)}
+              size={22}
+              sx={
+                isSelected
+                  ? { boxShadow: (theme) => `0 0 0 2px ${alpha(theme.palette.primary.main, 0.35)}` }
+                  : undefined
+              }
             >
               {thumb && (
                 <Box
@@ -49,25 +62,53 @@ function renderTreeItems(
                   sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                 />
               )}
+            </GradientSwatch>
+            <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
+              <Typography
+                variant="body2"
+                component="span"
+                noWrap
+                title={String(item.label)}
+                sx={{
+                  fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
+                    ? "italic"
+                    : "normal",
+                  fontWeight: item.id === selectedId ? 700 : 400,
+                }}
+              >
+                {item.label}
+              </Typography>
+              {item.commonName && (
+                <Typography
+                  variant="caption"
+                  component="span"
+                  noWrap
+                  title={item.commonName}
+                  sx={{
+                    color: "text.secondary",
+                    lineHeight: 1.2,
+                  }}
+                >
+                  {item.commonName}
+                </Typography>
+              )}
             </Box>
-            <Typography
-              variant="body2"
-              component="span"
-              sx={{
-                fontStyle: shouldItalicizeTaxonName(String(item.label), item.rank)
-                  ? "italic"
-                  : "normal",
-                fontWeight: item.id === selectedId ? 700 : 400,
-              }}
-            >
-              {item.label}
-            </Typography>
+            {/* Rank yields to the name: with a large flex-shrink it collapses
+                before the (more important) name truncates, so short names show
+                the rank and long names reclaim the full row. */}
             <Typography
               variant="caption"
               component="span"
               sx={{
+                ml: 0.75,
+                flexShrink: 100,
+                minWidth: 0,
+                overflow: "hidden",
+                whiteSpace: "nowrap",
                 color: "text.disabled",
-                flexShrink: 0,
+                fontSize: "0.65rem",
+                letterSpacing: "0.04em",
+                textTransform: "uppercase",
               }}
             >
               {item.rank}
@@ -92,6 +133,7 @@ export function TaxonTreePanel({
   onExpandedItemsChange,
   onSelectedItemsChange,
   onItemExpansionToggle,
+  onSearchNavigate,
 }: TaxonTreePanelProps) {
   return (
     <Box
@@ -99,33 +141,56 @@ export function TaxonTreePanel({
         p: 1,
         height: "100%",
         overflow: "auto",
-        pointerEvents: disabled ? "none" : "auto",
-        opacity: disabled ? 0.5 : 1,
         transition: "opacity 0.15s",
       }}
     >
-      <Typography
-        variant="subtitle2"
+      <Box sx={{ px: 1, pt: 1, pb: 0.5 }}>
+        <TaxonSearchBox onNavigate={onSearchNavigate} />
+      </Box>
+      <Box
         sx={{
-          color: "text.secondary",
-          px: 1,
-          py: 1,
+          pointerEvents: disabled ? "none" : "auto",
+          opacity: disabled ? 0.5 : 1,
+          transition: "opacity 0.15s",
         }}
       >
-        Classification
-      </Typography>
-      <SimpleTreeView
-        expansionTrigger="iconContainer"
-        expandedItems={expandedItems}
-        selectedItems={selectedItems}
-        onExpandedItemsChange={(_e, ids) => onExpandedItemsChange(ids)}
-        onSelectedItemsChange={(_e, id) => {
-          if (id) onSelectedItemsChange(id);
-        }}
-        onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
-      >
-        {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
-      </SimpleTreeView>
+        <Typography
+          variant="caption"
+          component="div"
+          sx={{
+            color: "text.disabled",
+            fontWeight: 600,
+            letterSpacing: "0.06em",
+            textTransform: "uppercase",
+            px: 1,
+            py: 1,
+          }}
+        >
+          Classification
+        </Typography>
+        <SimpleTreeView
+          expansionTrigger="iconContainer"
+          expandedItems={expandedItems}
+          selectedItems={selectedItems}
+          onExpandedItemsChange={(_e, ids) => onExpandedItemsChange(ids)}
+          onSelectedItemsChange={(_e, id) => {
+            if (id) onSelectedItemsChange(id);
+          }}
+          onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
+          sx={(theme) => ({
+            "& .MuiTreeItem-content": {
+              borderRadius: 1.25,
+              "&:hover": { backgroundColor: "action.hover" },
+              "&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focused": {
+                backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                boxShadow: `inset 3px 0 0 0 ${theme.palette.primary.main}`,
+              },
+            },
+          })}
+        >
+          {renderTreeItems(items, selectedItems, loadingNodeId, thumbnails)}
+        </SimpleTreeView>
+      </Box>
     </Box>
   );
 }

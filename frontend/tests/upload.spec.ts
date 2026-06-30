@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
-import { openUploadModal, revealCoordinateInputs } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
@@ -37,8 +37,25 @@ authTest.describe("Upload Modal - Logged In", () => {
     await page.goto("/");
     await openUploadModal(page);
     await page.getByRole("button", { name: "Cancel" }).click();
-    await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
+    await authExpect(page.getByRole("dialog")).not.toBeVisible();
   });
+
+  // Regression: the create speed-dial must stay closed after an action opens
+  // and then closes the upload modal. The SpeedDial used to re-open when focus
+  // returned to the FAB on modal close (MUI opens the dial on focus).
+  authTest(
+    "create FAB menu stays closed after the modal closes",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await openUploadModal(page); // opens the dial, picks New Observation, opens modal
+      await page.getByRole("button", { name: "Cancel" }).click();
+      await authExpect(page.getByRole("dialog")).not.toBeVisible();
+
+      // Focus has returned to the FAB; the dial must not have re-opened.
+      await authExpect(page.getByRole("menuitem", { name: "New Observation" })).not.toBeVisible();
+      await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
+    },
+  );
 
   // TC-UPLOAD-003: Authenticated mode banner
   authTest("upload modal shows posting as handle", async ({ authenticatedPage: page }) => {
@@ -51,6 +68,7 @@ authTest.describe("Upload Modal - Logged In", () => {
   authTest("quick species chips populate species input", async ({ authenticatedPage: page }) => {
     await page.goto("/");
     await openUploadModal(page);
+    await gotoUploadStep(page, "Identify");
     const poppyChip = page.getByRole("button", {
       name: /California Poppy/i,
     });
@@ -67,6 +85,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     async ({ authenticatedPage: page }) => {
       await page.goto("/");
       await openUploadModal(page);
+      await gotoUploadStep(page, "Identify");
       const speciesInput = page.getByLabel(/Taxon/i);
       await speciesInput.click();
       await Promise.all([
@@ -83,6 +102,7 @@ authTest.describe("Upload Modal - Logged In", () => {
     async ({ authenticatedPage: page }) => {
       await page.goto("/");
       await openUploadModal(page);
+      await gotoUploadStep(page, "Date & details");
       const dateInput = page.getByLabel("Observation date");
       await authExpect(dateInput).toBeVisible();
       const value = await dateInput.inputValue();
@@ -120,6 +140,7 @@ authTest.describe("Upload Modal - Logged In", () => {
 
     await page.goto("/");
     await openUploadModal(page);
+    await gotoUploadStep(page, "Identify");
 
     const speciesInput = page.getByLabel(/Taxon/i);
     await speciesInput.fill("Quercus alba");

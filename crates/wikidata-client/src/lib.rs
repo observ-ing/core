@@ -1,7 +1,9 @@
-//! Wikidata SPARQL client for querying Wikidata's public query service.
+//! Wikidata client for biodiversity lookups: taxon images and entity URLs via
+//! external identifiers (e.g. GBIF taxon ids).
 //!
-//! Provides a general-purpose SPARQL query executor and convenience methods
-//! for common Wikidata lookups like fetching images by external identifiers.
+//! A thin domain layer over [`sparql_client`], pinned to Wikidata's public
+//! query service. For raw SPARQL against arbitrary endpoints, use
+//! [`sparql_client::SparqlClient`] directly.
 //!
 //! # Example
 //!
@@ -11,58 +13,32 @@
 //! # async fn example() {
 //! let client = WikidataClient::new();
 //!
-//! // Execute a raw SPARQL query
-//! let bindings = client.sparql_query(
-//!     r#"SELECT ?item ?itemLabel WHERE {
-//!         ?item wdt:P31 wd:Q5 .
-//!         SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
-//!     } LIMIT 5"#,
-//! ).await.unwrap();
-//!
-//! // Fetch images for GBIF taxon IDs
+//! // Fetch images for GBIF taxon IDs (property P846).
 //! let images = client.get_images_by_property("P846", &["2480528", "5219243"], 100).await;
 //! # }
 //! ```
 
-use reqwest::Client;
 use serde::Deserialize;
+use sparql_client::{escape_literal, SparqlClient};
 use std::collections::HashMap;
 use tracing::warn;
 
-const SPARQL_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+// Re-export the shared SPARQL types so callers don't need a direct dependency
+// on `sparql-client` for the values these methods return.
+pub use sparql_client::{Error, SparqlBinding, SparqlValue};
 
-/// A single value returned in a SPARQL result binding.
-#[derive(Debug, Clone, Deserialize)]
-pub struct SparqlValue {
-    pub value: String,
-    #[serde(rename = "type")]
-    pub value_type: Option<String>,
-    #[serde(rename = "xml:lang")]
-    pub lang: Option<String>,
-}
+const WIKIDATA_ENDPOINT: &str = "https://query.wikidata.org/sparql";
+const DEFAULT_USER_AGENT: &str = "wikidata-client/0.1 (Rust; https://github.com/observ-ing/core)";
 
-/// A row of results from a SPARQL query, mapping variable names to values.
-pub type SparqlBinding = HashMap<String, SparqlValue>;
-
-#[derive(Debug, Deserialize)]
-struct SparqlResults {
-    bindings: Vec<SparqlBinding>,
-}
-
-#[derive(Debug, Deserialize)]
-struct SparqlResponse {
-    results: SparqlResults,
-}
-
-/// Client for querying Wikidata's SPARQL endpoint.
+/// Client for querying Wikidata's SPARQL endpoint for biodiversity data.
 pub struct WikidataClient {
-    client: Client,
+    client: SparqlClient,
 }
 
 impl WikidataClient {
     /// Create a new client with a default user agent.
     pub fn new() -> Self {
-        Self::with_user_agent("wikidata-client/0.1 (Rust; https://github.com/observ-ing/core)")
+        Self::with_user_agent(DEFAULT_USER_AGENT)
     }
 
     /// Create a new client with a custom user agent.
@@ -71,32 +47,13 @@ impl WikidataClient {
     /// with generic agents may be throttled or blocked.
     pub fn with_user_agent(user_agent: &str) -> Self {
         Self {
-            client: Client::builder()
-                .user_agent(user_agent)
-                .build()
-                .unwrap_or_else(|_| Client::new()),
+            client: SparqlClient::with_user_agent(WIKIDATA_ENDPOINT, user_agent),
         }
     }
 
-    /// Execute a SPARQL query and return the result bindings.
+    /// Execute a raw SELECT-style SPARQL query against Wikidata.
     pub async fn sparql_query(&self, query: &str) -> Result<Vec<SparqlBinding>, Error> {
-        let url = format!(
-            "{}?query={}&format=json",
-            SPARQL_ENDPOINT,
-            urlencoding::encode(query)
-        );
-
-        let response = self.client.get(&url).send().await?;
-
-        if !response.status().is_success() {
-            return Err(Error::Http(format!(
-                "SPARQL endpoint returned {}",
-                response.status()
-            )));
-        }
-
-        let data: SparqlResponse = response.json().await?;
-        Ok(data.results.bindings)
+        self.client.sparql_query(query).await
     }
 
     /// Fetch Wikidata entity URLs for items matching external IDs on a given property.
@@ -115,13 +72,13 @@ impl WikidataClient {
         property: &str,
         ids: &[&str],
     ) -> HashMap<String, String> {
-        if ids.is_empty() {
+        if ids.is_empty() || !is_property_id(property) {
             return HashMap::new();
         }
 
         let values: String = ids
             .iter()
-            .map(|id| format!("\"{id}\""))
+            .map(|id| format!("\"{}\"", escape_literal(id)))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -132,26 +89,30 @@ impl WikidataClient {
 }}",
         );
 
-        let bindings = match self.sparql_query(&query).await {
-            Ok(b) => b,
+        /// One `(external_id, item)` row; both are always bound by the query.
+        #[derive(Deserialize)]
+        struct Row {
+            external_id: String,
+            item: String,
+        }
+
+        let rows: Vec<Row> = match self.client.query_into(&query).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(error = ?e, "Wikidata entity lookup failed");
                 return HashMap::new();
             }
         };
 
-        let mut result = HashMap::new();
-        for binding in bindings {
-            if let (Some(id), Some(item)) = (binding.get("external_id"), binding.get("item")) {
-                let url = item.value.replace(
+        rows.into_iter()
+            .map(|row| {
+                let url = row.item.replace(
                     "http://www.wikidata.org/entity/",
                     "https://www.wikidata.org/wiki/",
                 );
-                result.insert(id.value.clone(), url);
-            }
-        }
-
-        result
+                (row.external_id, url)
+            })
+            .collect()
     }
 
     /// Cross-walk an external taxon identifier to a GBIF backbone usage key.
@@ -161,11 +122,15 @@ impl WikidataClient {
     /// (`P846`). Returns `None` if no item matches, the item has no GBIF ID,
     /// the GBIF ID isn't an integer, or the query fails.
     pub async fn gbif_key_for(&self, source_property: &str, external_id: &str) -> Option<i64> {
+        if !is_property_id(source_property) {
+            return None;
+        }
         let query = format!(
             r#"SELECT ?gbif WHERE {{
-    ?item wdt:{source_property} "{external_id}" .
+    ?item wdt:{source_property} "{}" .
     ?item wdt:P846 ?gbif .
 }} LIMIT 1"#,
+            escape_literal(external_id),
         );
         self.first_gbif_key(&query).await
     }
@@ -192,7 +157,7 @@ impl WikidataClient {
     /// Run a SPARQL query whose first binding exposes a `?gbif` literal and
     /// parse it as a GBIF usage key.
     async fn first_gbif_key(&self, query: &str) -> Option<i64> {
-        let bindings = match self.sparql_query(query).await {
+        let bindings = match self.client.sparql_query(query).await {
             Ok(b) => b,
             Err(e) => {
                 warn!(error = ?e, "Wikidata GBIF cross-walk failed");
@@ -202,7 +167,7 @@ impl WikidataClient {
         bindings
             .first()
             .and_then(|b| b.get("gbif"))
-            .and_then(|v| v.value.parse::<i64>().ok())
+            .and_then(|v| v.as_i64())
     }
 
     /// Fetch images (Wikidata property P18) for items matching external IDs.
@@ -225,13 +190,13 @@ impl WikidataClient {
         ids: &[&str],
         thumbnail_width: u32,
     ) -> HashMap<String, String> {
-        if ids.is_empty() {
+        if ids.is_empty() || !is_property_id(property) {
             return HashMap::new();
         }
 
         let values: String = ids
             .iter()
-            .map(|id| format!("\"{id}\""))
+            .map(|id| format!("\"{}\"", escape_literal(id)))
             .collect::<Vec<_>>()
             .join(" ");
 
@@ -243,23 +208,28 @@ impl WikidataClient {
 }} GROUP BY ?external_id",
         );
 
-        let bindings = match self.sparql_query(&query).await {
-            Ok(b) => b,
+        /// One result row. `image` is `OPTIONAL` in the query, so it may be
+        /// unbound — `Option` maps an absent variable to `None`.
+        #[derive(Deserialize)]
+        struct Row {
+            external_id: String,
+            image: Option<String>,
+        }
+
+        let rows: Vec<Row> = match self.client.query_into(&query).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(error = ?e, "Wikidata image lookup failed");
                 return HashMap::new();
             }
         };
 
-        let mut result = HashMap::new();
-        for binding in bindings {
-            if let (Some(id), Some(image)) = (binding.get("external_id"), binding.get("image")) {
-                let thumb_url = to_thumbnail_url(&image.value, thumbnail_width);
-                result.insert(id.value.clone(), thumb_url);
-            }
-        }
-
-        result
+        rows.into_iter()
+            .filter_map(|row| {
+                let image = row.image?;
+                Some((row.external_id, to_thumbnail_url(&image, thumbnail_width)))
+            })
+            .collect()
     }
 }
 
@@ -267,6 +237,14 @@ impl Default for WikidataClient {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Whether `p` is a bare Wikidata property id (`P` followed by digits).
+///
+/// Property ids are interpolated unquoted as `wdt:{p}`, so they must be
+/// validated rather than escaped.
+fn is_property_id(p: &str) -> bool {
+    matches!(p.strip_prefix('P'), Some(d) if !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit()))
 }
 
 /// Convert a Wikimedia Commons `Special:FilePath` URL to a thumbnail URL.
@@ -285,39 +263,6 @@ pub fn to_thumbnail_url(file_url: &str, width: u32) -> String {
         format!("{file_url}?width={width}")
     } else {
         file_url.to_string()
-    }
-}
-
-/// Errors that can occur when querying Wikidata.
-#[derive(Debug)]
-pub enum Error {
-    /// HTTP request failed.
-    Request(reqwest::Error),
-    /// SPARQL endpoint returned a non-success status.
-    Http(String),
-}
-
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Error::Request(e) => write!(f, "Wikidata request error: {}", e),
-            Error::Http(msg) => write!(f, "Wikidata HTTP error: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            Error::Request(e) => Some(e),
-            Error::Http(_) => None,
-        }
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        Error::Request(e)
     }
 }
 
@@ -347,5 +292,16 @@ mod tests {
             to_thumbnail_url(url, 300),
             "http://commons.wikimedia.org/wiki/Special:FilePath/Example.png?width=300"
         );
+    }
+
+    #[test]
+    fn test_is_property_id() {
+        assert!(is_property_id("P846"));
+        assert!(is_property_id("P1"));
+        assert!(!is_property_id("P"));
+        assert!(!is_property_id("846"));
+        assert!(!is_property_id("Q846"));
+        assert!(!is_property_id("P846; DROP"));
+        assert!(!is_property_id(""));
     }
 }

@@ -217,7 +217,7 @@ pub async fn me(
             // The session_did cookie has already been validated as a Did above
             // (atrium's validator), so re-parsing through our newtype should
             // succeed; if it doesn't, just fall back to the raw string.
-            let handle = match atproto_identity::Did::parse(&did) {
+            let handle = match atproto_identity::Did::new_owned(&did) {
                 Ok(parsed) => state
                     .resolver
                     .resolve_did(&parsed)

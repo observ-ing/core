@@ -5,6 +5,14 @@
 /** Maximum number of results shown in autocomplete dropdowns. */
 export const MAX_AUTOCOMPLETE_RESULTS = 5;
 
+/** Decimal places used when formatting latitude/longitude for display and inputs. */
+export const COORDINATE_PRECISION = 6;
+
+/** Format a latitude or longitude to the standard coordinate precision. */
+export function formatCoordinate(value: number): string {
+  return value.toFixed(COORDINATE_PRECISION);
+}
+
 /**
  * Format a Date as a compact relative time string (e.g., "now", "5m", "2h", "3d")
  * For dates older than a week, returns a formatted date string.
@@ -49,6 +57,59 @@ export function formatDate(dateString: string): string {
     month: "long",
     day: "numeric",
   });
+}
+
+const YEAR_RE = /^\d{4}$/;
+const YEAR_MONTH_RE = /^\d{4}-\d{2}$/;
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Format one endpoint of a Darwin Core eventDate at its own precision. Reduced
+ * precision is shown as-is ("1971", "June 1906"); date-only values are
+ * formatted in UTC so they don't shift a day across timezones. Unparseable
+ * input is returned verbatim.
+ */
+function formatEventDatePart(part: string): string {
+  const p = part.trim();
+  if (YEAR_RE.test(p)) return p;
+  if (YEAR_MONTH_RE.test(p)) {
+    const [y = "", m = ""] = p.split("-");
+    return new Date(Date.UTC(Number(y), Number(m) - 1, 1)).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      timeZone: "UTC",
+    });
+  }
+  if (DATE_ONLY_RE.test(p)) {
+    const [y = "", m = "", d = ""] = p.split("-");
+    return new Date(Date.UTC(Number(y), Number(m) - 1, Number(d))).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  const date = new Date(p);
+  if (Number.isNaN(date.getTime())) return p;
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+}
+
+/**
+ * Format a Darwin Core eventDate, which may be a single date, a date-time, a
+ * reduced-precision value ("1971", "1906-06"), or an interval whose endpoints
+ * are separated by a solidus ("1995-05-21/1995-05-23"). Intervals render as
+ * "<start> – <end>".
+ */
+export function formatEventDate(value: string): string {
+  const slash = value.indexOf("/");
+  if (slash === -1) return formatEventDatePart(value);
+  return `${formatEventDatePart(value.slice(0, slash))} – ${formatEventDatePart(
+    value.slice(slash + 1),
+  )}`;
 }
 
 /**
@@ -103,4 +164,29 @@ export function getDisplayName(
  */
 export function getErrorMessage(error: unknown, fallback = "Unknown error"): string {
   return error instanceof Error ? error.message : fallback;
+}
+
+/**
+ * Read a file/blob and return just the base64 payload (the part after the
+ * `data:...;base64,` prefix of a data URL). Rejects if the result isn't a
+ * usable data URL.
+ */
+export function fileToBase64(file: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        reject(new Error("Expected string result"));
+        return;
+      }
+      const base64 = reader.result.split(",")[1];
+      if (!base64) {
+        reject(new Error("Invalid data URL format"));
+        return;
+      }
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 }

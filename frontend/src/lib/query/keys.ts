@@ -6,7 +6,15 @@ import type { FeedFilters, FeedTab } from "../../services/types";
 // The first element of each key is a stable string tag we match on.
 export const qk = {
   // Occurrence-bearing caches (the ones likes must patch) -------------------
-  feed: (tab: FeedTab, filters: FeedFilters) => ["feed", tab, filters] as const,
+  // `isAuthenticated` is part of the key because `useFeed` fetches a different
+  // endpoint for the signed-in home tab (`/feeds/home`, quality-filtered) vs.
+  // the signed-out / explore fallback (`/feeds/explore`, unfiltered). Leaving
+  // it out let an explore response fetched during the startup auth-check window
+  // get cached under the home key and never refetch once auth resolved, so the
+  // home feed nondeterministically showed explore posts. Keying on it makes the
+  // two states distinct caches and forces a refetch when auth flips.
+  feed: (tab: FeedTab, filters: FeedFilters, isAuthenticated: boolean) =>
+    ["feed", tab, filters, isAuthenticated] as const,
   profileFeed: (did: string, type: "observations" | "identifications") =>
     ["profileFeed", did, type] as const,
   taxonOccurrences: (kingdomOrId: string, name?: string) =>

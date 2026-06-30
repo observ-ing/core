@@ -1,4 +1,5 @@
 import maplibregl from "maplibre-gl";
+import type { FeatureCollection, Polygon } from "geojson";
 import { basemapStyleUrl, DEFAULT_BASEMAP, type BasemapId, type BasemapMode } from "./mapStyle";
 
 /** Approximate meters per degree of latitude at the equator */
@@ -25,6 +26,8 @@ export function createMap(
     style: basemapStyleUrl(basemap, mode),
   });
 
+  suppressMissingImages(map);
+
   map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
 
   let geolocateControl: maplibregl.GeolocateControl | undefined;
@@ -36,6 +39,35 @@ export function createMap(
   }
 
   return { map, geolocateControl };
+}
+
+/**
+ * Silence MapLibre's `styleimagemissing` warnings. The MapTiler outdoor style
+ * references sprite icons for many OSM POI subclasses (artwork, gallery,
+ * arts_centre, tenrikyo, ...) that aren't in our sprite sheet; without a handler
+ * MapLibre logs a warning per missing id. We register a tiny transparent
+ * placeholder for any missing id so the warning stops. The handler persists
+ * across `setStyle` (basemap/theme swaps), so it only needs to be wired once.
+ */
+export function suppressMissingImages(map: StyleImageMissingMap): void {
+  map.on("styleimagemissing", (e) => {
+    const id = e.id;
+    // Guard against double-add: the event can fire repeatedly for the same id.
+    if (map.hasImage(id)) return;
+    map.addImage(id, { width: 1, height: 1, data: new Uint8Array(4) });
+  });
+}
+
+/**
+ * The minimal slice of a maplibre map that {@link suppressMissingImages}
+ * touches. A real `maplibregl.Map` satisfies it; declaring it as a structural
+ * type lets the handler be unit-tested with a lightweight fake instead of a
+ * real WebGL map.
+ */
+export interface StyleImageMissingMap {
+  on(type: "styleimagemissing", listener: (e: { id: string }) => void): unknown;
+  hasImage(id: string): boolean | undefined;
+  addImage(id: string, image: { width: number; height: number; data: Uint8Array }): void;
 }
 
 /**
@@ -61,9 +93,6 @@ export function setBasemapStyle(map: maplibregl.Map, basemap: BasemapId, mode: B
   });
 }
 
-/** Color used for uncertainty circles and map markers */
-export const MAP_MARKER_COLOR = "#22c55e";
-
 /** Calculate lat/lng bounding box for a given radius in meters */
 export function getRadiusBounds(
   lat: number,
@@ -79,13 +108,13 @@ export function getRadiusBounds(
 }
 
 /** Add uncertainty circle layers to a map instance */
-export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
+export function addUncertaintyLayers(mapInstance: maplibregl.Map, color: string): void {
   mapInstance.addLayer({
     id: "uncertainty-fill",
     type: "fill",
     source: "uncertainty",
     paint: {
-      "fill-color": MAP_MARKER_COLOR,
+      "fill-color": color,
       "fill-opacity": 0.15,
     },
   });
@@ -95,7 +124,7 @@ export function addUncertaintyLayers(mapInstance: maplibregl.Map): void {
     type: "line",
     source: "uncertainty",
     paint: {
-      "line-color": MAP_MARKER_COLOR,
+      "line-color": color,
       "line-width": 2,
       "line-opacity": 0.5,
     },
@@ -107,7 +136,7 @@ export function createCircleGeoJSON(
   lng: number,
   lat: number,
   radiusMeters: number,
-): GeoJSON.FeatureCollection {
+): FeatureCollection<Polygon> {
   const points = 64;
   const coords: [number, number][] = [];
 

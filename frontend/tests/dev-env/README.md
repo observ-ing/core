@@ -88,6 +88,12 @@ PATH (`scripts/install-tap.sh`). The orchestrator preflights both. Services run
 via `process-compose.devenv.yaml` (species-id dropped — the create/view flow
 doesn't need it). Playwright runs `playwright.devenv.config.ts`.
 
+`@atproto/dev-env` is **not** a committed dependency. The first run installs it
+on demand (`npm install --no-save`) into a gitignored `.deps/` dir and imports
+it from there (see `ensureDevEnv` in `network.ts`); subsequent runs reuse it.
+This keeps its ~1260 transitive packages out of the root lockfile so normal
+`npm ci` for devs and CI stays unaffected.
+
 ## File map
 
 | File                                   | Role                                                          |
@@ -118,6 +124,8 @@ clean.
 ## Caveats
 
 - `@atproto/dev-env` pulls ~1260 transitive packages (incl. `@atproto/pds`,
-  `@did-plc/server`). Heavy devDependency; keep it dev-only.
+  `@did-plc/server`). It is fetched on demand into `.deps/` rather than vendored
+  in the root tree (see "Running it"); bump `DEV_ENV_VERSION` in `network.ts` to
+  change the pinned version.
 - ATProto's data model forbids floats, so coordinates must be strings / scaled
   ints (the spike learned this the hard way — see `bootstrap.ts`).

@@ -5,18 +5,20 @@ import {
   Typography,
   Avatar,
   Stack,
-  Paper,
   Chip,
   IconButton,
+  Link as MuiLink,
   Menu,
   MenuItem,
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
+import { countChipSx } from "../common/chipSx";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
+import { Section, SectionHeader } from "../common/Section";
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
@@ -76,18 +78,19 @@ export function IdentificationHistory({
     ? sortedIds.find((id) => id.did === observerDid)?.uri
     : undefined;
 
-  if (sortedIds.length === 0) {
-    return (
-      <Paper
-        elevation={0}
-        sx={{
-          p: 2.5,
-          bgcolor: "background.paper",
-          borderRadius: 2,
-          border: 1,
-          borderColor: "divider",
-        }}
-      >
+  return (
+    <Section>
+      <SectionHeader
+        icon={<HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        title="Identification History"
+        sx={{ mb: 2 }}
+        {...(sortedIds.length > 0
+          ? {
+              trailing: <Chip label={sortedIds.length} size="small" sx={countChipSx} />,
+            }
+          : {})}
+      />
+      {sortedIds.length === 0 ? (
         <Typography
           variant="body2"
           sx={{
@@ -96,171 +99,136 @@ export function IdentificationHistory({
         >
           No identifications yet. Be the first to suggest an ID!
         </Typography>
-        {footer}
-      </Paper>
-    );
-  }
-
-  return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2.5,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-        border: 1,
-        borderColor: "divider",
-      }}
-    >
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{
-          alignItems: "center",
-          mb: 2,
-        }}
-      >
-        <HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography
-          variant="subtitle2"
-          sx={{
-            fontWeight: 600,
-          }}
-        >
-          Identification History
-        </Typography>
-        <Chip
-          label={sortedIds.length}
-          size="small"
-          sx={{ ml: "auto", height: 20, fontSize: "0.75rem" }}
-        />
-      </Stack>
-      <Stack spacing={2}>
-        {sortedIds.map((id) => {
-          const isSuperseded = supersededUris.has(id.uri);
-          return (
-            <Box
-              key={id.uri}
-              sx={{
-                pl: 2,
-                borderLeft: 3,
-                borderColor: isSuperseded ? "text.disabled" : "primary.main",
-                transition: "background-color 0.2s ease",
-                borderRadius: "0 4px 4px 0",
-                py: 1,
-                opacity: isSuperseded ? 0.5 : 1,
-                "&:hover": { bgcolor: "action.hover" },
-              }}
-            >
-              <Stack
-                direction="row"
-                spacing={1.5}
+      ) : (
+        <Stack spacing={2}>
+          {sortedIds.map((id) => {
+            const isSuperseded = supersededUris.has(id.uri);
+            return (
+              <Box
+                key={id.uri}
                 sx={{
-                  alignItems: "flex-start",
+                  pl: 2,
+                  borderLeft: 3,
+                  borderColor: isSuperseded ? "text.disabled" : "primary.main",
+                  transition: "background-color 0.2s ease",
+                  borderRadius: "0 4px 4px 0",
+                  py: 1,
+                  opacity: isSuperseded ? 0.5 : 1,
+                  "&:hover": { bgcolor: "action.hover" },
                 }}
               >
-                <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
-                  <Avatar
-                    {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
-                    sx={{ width: 32, height: 32 }}
-                  >
-                    {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
-                  </Avatar>
-                </RouterLink>
-                <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Stack
-                    direction="row"
-                    spacing={1}
-                    sx={{
-                      alignItems: "center",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <RouterLink
-                      to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
-                      style={{ textDecoration: "none" }}
+                <Stack
+                  direction="row"
+                  spacing={1.5}
+                  sx={{
+                    alignItems: "flex-start",
+                  }}
+                >
+                  <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
+                    <Avatar
+                      {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
+                      sx={{ width: 32, height: 32 }}
                     >
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontWeight: "medium",
-                          color: "text.primary",
-                        }}
-                      >
-                        {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
-                      </Typography>
-                    </RouterLink>
-                    <Typography
-                      variant="caption"
+                      {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
+                    </Avatar>
+                  </RouterLink>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Stack
+                      direction="row"
+                      spacing={1}
                       sx={{
-                        color: "text.secondary",
+                        alignItems: "center",
+                        flexWrap: "wrap",
                       }}
                     >
-                      <RelativeTime date={new Date(id.date_identified)} withAgo />
-                    </Typography>
-                    {id.uri === observerFirstIdUri && (
-                      <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
-                    )}
-                    {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
-                  </Stack>
-                  <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
-                    <TaxonLink
-                      name={id.scientific_name}
-                      kingdom={id.kingdom || kingdom}
-                      rank={id.taxon_rank}
-                    />
-                  </Box>
-                </Box>
-                <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
-                  <IconButton
-                    size="small"
-                    onClick={(e) => handleMenuOpen(id.uri, e)}
-                    aria-label="More options"
-                    sx={{ color: "text.disabled", p: 0.5 }}
-                  >
-                    <MoreVertIcon fontSize="small" />
-                  </IconButton>
-                  <Menu
-                    anchorEl={menuAnchorEl[id.uri]}
-                    open={Boolean(menuAnchorEl[id.uri])}
-                    onClose={() => handleMenuClose(id.uri)}
-                    anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                    transformOrigin={{ vertical: "top", horizontal: "right" }}
-                  >
-                    <MenuItem
-                      component="a"
-                      href={getPdslsUrl(id.uri)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={() => handleMenuClose(id.uri)}
-                    >
-                      View on AT Protocol
-                    </MenuItem>
-                    {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
-                      <MenuItem
-                        onClick={async () => {
-                          handleMenuClose(id.uri);
-                          setDeletingUri(id.uri);
-                          try {
-                            await onDeleteIdentification(id.uri);
-                          } finally {
-                            setDeletingUri(null);
-                          }
-                        }}
-                        disabled={deletingUri === id.uri}
-                        sx={{ color: "error.main" }}
+                      <MuiLink
+                        component={RouterLink}
+                        to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
+                        underline="none"
+                        color="inherit"
                       >
-                        Delete
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            fontWeight: "medium",
+                            color: "text.primary",
+                          }}
+                        >
+                          {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
+                        </Typography>
+                      </MuiLink>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color: "text.secondary",
+                        }}
+                      >
+                        <RelativeTime date={new Date(id.date_identified)} withAgo />
+                      </Typography>
+                      {id.uri === observerFirstIdUri && (
+                        <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
+                      )}
+                      {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
+                    </Stack>
+                    <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
+                      <TaxonLink
+                        name={id.scientific_name}
+                        kingdom={id.kingdom || kingdom}
+                        rank={id.taxon_rank}
+                      />
+                    </Box>
+                  </Box>
+                  <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
+                    <IconButton
+                      size="small"
+                      onClick={(e) => handleMenuOpen(id.uri, e)}
+                      aria-label="More options"
+                      sx={{ color: "text.disabled", p: 0.5 }}
+                    >
+                      <MoreVertIcon fontSize="small" />
+                    </IconButton>
+                    <Menu
+                      anchorEl={menuAnchorEl[id.uri]}
+                      open={Boolean(menuAnchorEl[id.uri])}
+                      onClose={() => handleMenuClose(id.uri)}
+                      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                      transformOrigin={{ vertical: "top", horizontal: "right" }}
+                    >
+                      <MenuItem
+                        component="a"
+                        href={getPdslsUrl(id.uri)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => handleMenuClose(id.uri)}
+                      >
+                        View on AT Protocol
                       </MenuItem>
-                    )}
-                  </Menu>
-                </Box>
-              </Stack>
-            </Box>
-          );
-        })}
-      </Stack>
+                      {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
+                        <MenuItem
+                          onClick={async () => {
+                            handleMenuClose(id.uri);
+                            setDeletingUri(id.uri);
+                            try {
+                              await onDeleteIdentification(id.uri);
+                            } finally {
+                              setDeletingUri(null);
+                            }
+                          }}
+                          disabled={deletingUri === id.uri}
+                          sx={{ color: "error.main" }}
+                        >
+                          Delete
+                        </MenuItem>
+                      )}
+                    </Menu>
+                  </Box>
+                </Stack>
+              </Box>
+            );
+          })}
+        </Stack>
+      )}
       {footer}
-    </Paper>
+    </Section>
   );
 }

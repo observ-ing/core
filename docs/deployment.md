@@ -10,7 +10,8 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 |---------|-----------|--------|-----------|---------|-------|
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
 | tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. Runs with `--no-cpu-throttling` (always-allocated CPU) + 2 vCPU because the firehose consumer is a background loop, not request-driven — under Cloud Run's default request-scoped CPU it gets starved and falls behind the relay's ~72h retention window. |
-| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification (2 CPU, 8 GiB, cpu-boost, min-instances=1) |
+| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=1) |
+| observing-species-id-live | `SERVICE=observing-species-id` + `SPECIES_MODEL_URL=<ViT-L bundle>` + `MODEL_VERSION=bioclip-2-vit-l-14` | Yes | No | — | Same binary as `observing-species-id`, built with the smaller/faster ViT-L model bundle ([`bioclip-models` release `vit-l-v1.0.0`](https://github.com/observ-ing/bioclip-models/releases/tag/vit-l-v1.0.0)). Serves the live camera loop (frontend sends `live: true`; appview routes here via `SPECIES_ID_LIVE_SERVICE_URL`). Built + deployed by CI as its own image alongside `observing-species-id`. Same sizing as above but **4 GiB** (the ViT-L bundle's resident footprint is ~3 GB, vs ViT-H's ~4.4 GB). |
 
 ### Jobs
 
@@ -54,6 +55,9 @@ Database passwords and secrets come from Google Secret Manager; non-secret confi
 PORT=3000
 PUBLIC_URL=https://your-domain.run.app
 SPECIES_ID_SERVICE_URL=https://observing-species-id-xxx.run.app
+# Optional: faster ViT-L service for the live camera loop. When unset, live
+# requests fall back to SPECIES_ID_SERVICE_URL (the full ViT-H model).
+SPECIES_ID_LIVE_SERVICE_URL=https://observing-species-id-live-xxx.run.app
 
 # Cloud SQL (Unix socket in prod)
 DB_HOST=/cloudsql/<project>:<region>:observing-db
@@ -111,9 +115,12 @@ lands after backfill completes.
 PORT=3005
 MODEL_DIR=/app/models/bioclip
 ORT_DYLIB_PATH=/usr/lib/libonnxruntime.so
+# Reported in /identify + /health responses. Defaults to the ViT-H build's
+# string; the live ViT-L image bakes this in via the MODEL_VERSION build-arg.
+MODEL_VERSION=bioclip-2.5-vit-h-14
 ```
 
-No database access.
+No database access. Both `observing-species-id` and `observing-species-id-live` use this same config; they differ only in the baked model bundle and `MODEL_VERSION`.
 
 ### Migrate Job (`postgres`)
 

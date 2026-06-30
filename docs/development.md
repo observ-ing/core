@@ -76,6 +76,20 @@ docker run --name observing-postgres \
 docker start observing-postgres
 ```
 
+**Apple Silicon (arm64):** the official `postgis/postgis` image is amd64-only
+(no arm64 manifest), so it runs under slow QEMU emulation. Either pass
+`--platform linux/amd64` explicitly to silence the warning and force emulation,
+or use a native multi-arch image like `imresamu/postgis` (drop-in replacement,
+same env vars) for better performance:
+
+```bash
+docker run --name observing-postgres \
+  -e POSTGRES_PASSWORD=mysecretpassword \
+  -e POSTGRES_DB=observing \
+  -p 5432:5432 \
+  -d imresamu/postgis        # native arm64 + amd64; or add --platform linux/amd64 to postgis/postgis
+```
+
 Native installs (Postgres.app, Homebrew `postgresql@N` + `postgis`,
 etc.) work too — anything that exposes PostgreSQL with PostGIS on
 `localhost:5432` is fine.
@@ -233,6 +247,51 @@ process-compose down
 
 Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
 `frontend` (in startup order).
+
+#### Running several checkouts at once (randomized ports)
+
+The four services default to fixed ports (`appview` 3000, `species-id`
+3005, `frontend`/Vite 5173, `tap-ingester` 8080), so two checkouts that
+both run `process-compose up` collide. To run them in parallel, start the
+stack through the wrapper instead:
+
+```bash
+npm run dev:stack        # or: ./scripts/dev.sh
+```
+
+It picks one random offset, applies it uniformly to every service, exports
+the derived ports, and prints where each one landed (including the
+`http://127.0.0.1:<appview>` front door to open). Cross-service URLs — the
+Vite `/api` proxy, the appview→Vite dev proxy, `SPECIES_ID_SERVICE_URL` —
+all follow the offset automatically. Postgres is left on `5432`; it lives
+outside process-compose and is meant to be shared.
+
+Pin the offset when you want stable, reproducible ports for a checkout:
+
+```bash
+DEV_PORT_OFFSET=2000 npm run dev:stack   # appview 5000, vite 7173, ...
+DEV_PORT_OFFSET=0 npm run dev:stack      # stock ports, no randomization
+```
+
+#### Headless / non-interactive (no TTY)
+
+`process-compose up` launches a TUI that needs a TTY and fails with
+`open /dev/tty: device not configured` in CI, SSH-without-pty, or other
+headless shells. Use the headless wrapper, which disables the TUI
+(`-t=false`) and runs the stack as a detached daemon (`-D`) while keeping the
+same port-offset logic:
+
+```bash
+npm run dev:stack:headless        # or: ./scripts/dev.sh --headless
+DEV_HEADLESS=1 npm run dev:stack  # equivalent, via env var
+
+process-compose process list      # check status
+process-compose down              # stop the stack
+```
+
+Plain `process-compose up` still works and keeps the stock ports — the
+ports are all `${VAR:-default}` overrides, and the wrapper just sets those
+vars.
 
 ### Individual Services
 

@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
-import { openUploadModal } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
@@ -40,6 +40,7 @@ authTest.describe("Accessibility - Authenticated", () => {
   authTest("pressing Escape closes upload modal", async ({ authenticatedPage: page }) => {
     await page.goto("/");
     await openUploadModal(page);
+    await gotoUploadStep(page, "Identify");
     await authExpect(page.getByLabel(/Taxon/i)).toBeVisible();
     await page.keyboard.press("Escape");
     await authExpect(page.getByLabel(/Taxon/i)).not.toBeVisible();
@@ -50,6 +51,7 @@ authTest.describe("Accessibility - Authenticated", () => {
     await mockTaxaSearchRoute(page);
     await page.goto("/");
     await openUploadModal(page);
+    await gotoUploadStep(page, "Identify");
 
     const speciesInput = page.getByLabel(/Taxon/i);
     await speciesInput.click();

@@ -1,8 +1,9 @@
-import { Box, Stack, Typography, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
+import { Typography, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import type { QualityIssue } from "../../bindings/QualityIssue";
+import { CollapsibleSection } from "../common/CollapsibleSection";
 
 interface DataQualitySectionProps {
   issues: QualityIssue[];
@@ -61,18 +62,22 @@ const CRITERIA: Array<{
 export function DataQualitySection({ issues }: DataQualitySectionProps) {
   const issueSet = new Set(issues);
   const metCount = CRITERIA.filter((criterion) => criterion.met(issueSet)).length;
+  const allMet = metCount === CRITERIA.length;
 
+  // When every criterion passes there's nothing actionable to show, so the
+  // checklist starts collapsed and the header alone communicates the result.
+  // Anything outstanding stays expanded so it's visible without a click.
   return (
-    <Box>
-      <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-        <VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />
-        <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-          Data quality
+    <CollapsibleSection
+      icon={<VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      title="Data quality"
+      defaultExpanded={!allMet}
+      trailing={
+        <Typography variant="caption" sx={{ color: "text.secondary" }}>
+          {allMet ? "All criteria met" : `${metCount}/${CRITERIA.length}`}
         </Typography>
-        <Typography variant="caption" sx={{ color: "text.secondary", ml: "auto" }}>
-          {metCount}/{CRITERIA.length}
-        </Typography>
-      </Stack>
+      }
+    >
       <List disablePadding>
         {CRITERIA.map((criterion) => {
           const met = criterion.met(issueSet);
@@ -100,6 +105,6 @@ export function DataQualitySection({ issues }: DataQualitySectionProps) {
           );
         })}
       </List>
-    </Box>
+    </CollapsibleSection>
   );
 }

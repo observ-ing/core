@@ -16,7 +16,7 @@ use jacquard_common::{BosStr, CowStr, DefaultStr, FromStaticStr};
 use jacquard_common::deps::codegen::unicode_segmentation::UnicodeSegmentation;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::{Collection, RecordError};
-use jacquard_common::types::string::{AtUri, Cid, Datetime, UriValue};
+use jacquard_common::types::string::{AtUri, Cid, UriValue};
 use jacquard_common::types::uri::{RecordUri, UriError};
 use jacquard_common::types::value::Data;
 use jacquard_common::xrpc::XrpcResp;
@@ -50,9 +50,9 @@ pub struct Occurrence<S: BosStr = DefaultStr> {
     ///The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub decimal_longitude: Option<S>,
-    ///The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).
+    ///The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus ("/"). Include timezone information whenever a time of day is given. Examples: "1963-03-08", "1971", "1906-06", "1963-03-08T14:07:00-06:00", "1995-05-21/1995-05-23".
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub event_date: Option<Datetime>,
+    pub event_date: Option<S>,
     ///Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media: Option<Vec<StrongRef<S>>>,
@@ -252,14 +252,14 @@ pub mod occurrence_state {
 }
 
 /// Builder for constructing an instance of this type.
-pub struct OccurrenceBuilder<S: BosStr, St: occurrence_state::State> {
+pub struct OccurrenceBuilder<St: occurrence_state::State, S: BosStr = DefaultStr> {
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<StrongRef<S>>,
         Option<i64>,
         Option<S>,
         Option<S>,
-        Option<Datetime>,
+        Option<S>,
         Option<Vec<StrongRef<S>>>,
         Option<S>,
         Option<OccurrenceOrganismQuantityType<S>>,
@@ -268,15 +268,22 @@ pub struct OccurrenceBuilder<S: BosStr, St: occurrence_state::State> {
     _type: PhantomData<fn() -> S>,
 }
 
-impl<S: BosStr> Occurrence<S> {
-    /// Create a new builder for this type.
-    pub fn new() -> OccurrenceBuilder<S, occurrence_state::Empty> {
+impl Occurrence<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> OccurrenceBuilder<occurrence_state::Empty, DefaultStr> {
         OccurrenceBuilder::new()
     }
 }
 
-impl<S: BosStr> OccurrenceBuilder<S, occurrence_state::Empty> {
-    /// Create a new builder with all fields unset.
+impl<S: BosStr> Occurrence<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> OccurrenceBuilder<occurrence_state::Empty, S> {
+        OccurrenceBuilder::builder()
+    }
+}
+
+impl OccurrenceBuilder<occurrence_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
     pub fn new() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
@@ -286,7 +293,18 @@ impl<S: BosStr> OccurrenceBuilder<S, occurrence_state::Empty> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<S: BosStr> OccurrenceBuilder<occurrence_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        OccurrenceBuilder {
+            _state: PhantomData,
+            _fields: (None, None, None, None, None, None, None, None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `acceptedIdentificationID` field (optional)
     pub fn accepted_identification_id(mut self, value: impl Into<Option<StrongRef<S>>>) -> Self {
         self._fields.0 = value.into();
@@ -299,7 +317,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `coordinateUncertaintyInMeters` field (optional)
     pub fn coordinate_uncertainty_in_meters(mut self, value: impl Into<Option<i64>>) -> Self {
         self._fields.1 = value.into();
@@ -312,7 +330,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `decimalLatitude` field (optional)
     pub fn decimal_latitude(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.2 = value.into();
@@ -325,7 +343,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `decimalLongitude` field (optional)
     pub fn decimal_longitude(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.3 = value.into();
@@ -338,20 +356,20 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `eventDate` field (optional)
-    pub fn event_date(mut self, value: impl Into<Option<Datetime>>) -> Self {
+    pub fn event_date(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.4 = value.into();
         self
     }
     /// Set the `eventDate` field to an Option value (optional)
-    pub fn maybe_event_date(mut self, value: Option<Datetime>) -> Self {
+    pub fn maybe_event_date(mut self, value: Option<S>) -> Self {
         self._fields.4 = value;
         self
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `media` field (optional)
     pub fn media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
         self._fields.5 = value.into();
@@ -364,7 +382,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `organismQuantity` field (optional)
     pub fn organism_quantity(mut self, value: impl Into<Option<S>>) -> Self {
         self._fields.6 = value.into();
@@ -377,7 +395,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `organismQuantityType` field (optional)
     pub fn organism_quantity_type(
         mut self,
@@ -396,7 +414,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `taxonID` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
         self._fields.8 = value.into();
@@ -409,7 +427,7 @@ impl<S: BosStr, St: occurrence_state::State> OccurrenceBuilder<S, St> {
     }
 }
 
-impl<S: BosStr, St> OccurrenceBuilder<S, St>
+impl<St, S: BosStr> OccurrenceBuilder<St, S>
 where
     St: occurrence_state::State,
 {
@@ -509,10 +527,9 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "The date-time when the observation occurred, in ISO 8601 format (Darwin Core dwc:eventDate).",
+                                            "The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus (\"/\"). Include timezone information whenever a time of day is given. Examples: \"1963-03-08\", \"1971\", \"1906-06\", \"1963-03-08T14:07:00-06:00\", \"1995-05-21/1995-05-23\".",
                                         ),
                                     ),
-                                    format: Some(LexStringFormat::Datetime),
                                     ..Default::default()
                                 }),
                             );

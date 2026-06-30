@@ -3,6 +3,7 @@ import {
   formatTimeAgo,
   formatRelativeTime,
   formatDate,
+  formatEventDate,
   getPdslsUrl,
   parseAtUri,
   getObservationUrl,
@@ -95,6 +96,35 @@ describe("formatDate", () => {
     // Locale varies by host, but the year should always appear.
     expect(out).toContain("2024");
     expect(out.length).toBeGreaterThan("2024".length);
+  });
+});
+
+describe("formatEventDate", () => {
+  it("shows reduced precision verbatim", () => {
+    expect(formatEventDate("1971")).toBe("1971");
+  });
+
+  it("formats year-month without a day", () => {
+    const out = formatEventDate("1906-06");
+    expect(out).toContain("1906");
+    expect(out).not.toContain("31");
+  });
+
+  it("formats a date-only value in UTC (no day shift)", () => {
+    // Regardless of host timezone, the 8th must not slip to the 7th.
+    expect(formatEventDate("1963-03-08")).toContain("8");
+    expect(formatEventDate("1963-03-08")).toContain("1963");
+  });
+
+  it("renders an interval as start – end", () => {
+    const out = formatEventDate("1995-05-21/1995-05-23");
+    expect(out).toContain(" – ");
+    expect(out).toContain("21");
+    expect(out).toContain("23");
+  });
+
+  it("returns unparseable input verbatim", () => {
+    expect(formatEventDate("not a date")).toBe("not a date");
   });
 });
 

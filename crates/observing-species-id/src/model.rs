@@ -85,12 +85,18 @@ impl BioclipModel {
             info!(geo_boost, "Geo-prior reranking enabled");
         }
 
+        // Reported in the `/identify` response and `/health`. Defaults to the
+        // full ViT-H build; the live ViT-L deployment overrides it via
+        // `MODEL_VERSION` so clients and logs can tell the two services apart.
+        let version =
+            std::env::var("MODEL_VERSION").unwrap_or_else(|_| "bioclip-2.5-vit-h-14".to_string());
+
         Ok(Self {
             session: Mutex::new(session),
             species,
             geo_index,
             geo_boost,
-            version: "bioclip-2.5-vit-h-14".to_string(),
+            version,
         })
     }
 
