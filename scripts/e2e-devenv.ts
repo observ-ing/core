@@ -22,6 +22,12 @@ import { bootDevEnv, type DevEnv, devEnvVars } from "../frontend/tests/dev-env/n
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 const COMPOSE_FILE = "process-compose.devenv.yaml";
 const APPVIEW_HEALTH = "http://127.0.0.1:3000/health";
+// tap-ingester's /health (process-compose.devenv.yaml maps it to 8080). Its
+// `connected` flag flips true once Tap's firehose channel is up.
+const TAP_HEALTH = "http://127.0.0.1:8080/health";
+// Embedded Tap's admin endpoint (its built-in default port; see
+// docs/deployment.md TAP_URL). `/repos/add` registers a DID for tracking.
+const TAP_REPOS_ADD = "http://127.0.0.1:2480/repos/add";
 // Keep process-compose's own API off 8080 (tap-ingester uses it).
 const PC_PORT = "8099";
 
@@ -58,6 +64,44 @@ async function waitForHealth(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`timed out waiting for ${url}`);
 }
 
+/** Wait until tap-ingester reports its Tap firehose channel is connected. */
+async function waitForTapConnected(timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  /* eslint-disable no-await-in-loop */
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(TAP_HEALTH);
+      if (res.ok && (await res.json())?.connected === true) return;
+    } catch {
+      // not up yet
+    }
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+  /* eslint-enable no-await-in-loop */
+  throw new Error("tap-ingester never became channel-connected");
+}
+
+/**
+ * Register the test DID with Tap so it tracks + forwards that repo's commits.
+ *
+ * Tap only forwards commits for repos it tracks. tap-ingester's cross-repo
+ * resolver auto-adds DIDs that appear as a record's *subject*, but an occurrence
+ * record has no subject — so the creating DID would never be tracked and the
+ * create→firehose→ingester→DB round-trip never completes. Add it explicitly,
+ * mirroring the real-network CI's pre-warm. The dev-env account is freshly
+ * created each run, so the backfill this triggers is trivially small.
+ */
+async function prewarmTap(did: string): Promise<void> {
+  const res = await fetch(TAP_REPOS_ADD, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ dids: [did] }),
+  });
+  if (!res.ok) {
+    throw new Error(`Tap /repos/add failed: ${res.status} ${await res.text()}`);
+  }
+}
+
 function run(cmd: string, args: string[], env: NodeJS.ProcessEnv): ChildProcess {
   return spawn(cmd, args, { cwd: ROOT, env, stdio: "inherit" });
 }
@@ -83,6 +127,11 @@ async function main() {
 
     console.log("[e2e-devenv] waiting for appview health...");
     await waitForHealth(APPVIEW_HEALTH, 180_000);
+
+    console.log("[e2e-devenv] waiting for tap-ingester firehose channel...");
+    await waitForTapConnected(120_000);
+    console.log(`[e2e-devenv] registering test DID with Tap (${dev.account.did})...`);
+    await prewarmTap(dev.account.did);
 
     console.log("[e2e-devenv] running Playwright...");
     const pw = run(
