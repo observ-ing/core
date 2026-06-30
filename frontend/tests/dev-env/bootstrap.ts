@@ -12,7 +12,7 @@
  */
 
 import { AtpAgent } from "@atproto/api";
-import { bootDevEnv } from "./network.ts";
+import { bootDevEnv } from "./network";
 
 // Mirrors crates/observing-collections OCCURRENCE_COLLECTION.
 const OCCURRENCE_COLLECTION = "bio.lexicons.temp.v0-1.occurrence";

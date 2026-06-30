@@ -17,7 +17,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { bootDevEnv, type DevEnv, devEnvVars } from "../frontend/tests/dev-env/network.ts";
+import { bootDevEnv, type DevEnv, devEnvVars } from "../frontend/tests/dev-env/network";
 
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 const COMPOSE_FILE = "process-compose.devenv.yaml";
