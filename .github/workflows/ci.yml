@@ -348,6 +348,14 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
+      # Build the frontend so appview serves the static bundle from dist/public
+      # instead of proxying to the Vite dev server. Under CI load a cold Vite
+      # compile on the first navigation races the auth-setup's 30s timeout (the
+      # `devenv` e2e then can't run); serving prebuilt assets removes that race.
+      # process-compose still starts Vite for local runs, which appview ignores
+      # once dist/public exists.
+      - name: Build frontend
+        run: npm run build
       # Pre-build the binaries process-compose.devenv.yaml launches via
       # `cargo run` (migrate, appview, tap-ingester) so the stack comes up well
       # within its readiness probes. Migrations run inside the stack (the
