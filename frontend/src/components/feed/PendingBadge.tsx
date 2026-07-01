@@ -16,7 +16,7 @@ export function PendingBadge() {
         left: 8,
         zIndex: 1,
         bgcolor: "rgba(0, 0, 0, 0.65)",
-        color: "white",
+        color: "common.white",
       }}
     />
   );

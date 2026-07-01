@@ -104,7 +104,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
           top: 2,
           right: 2,
           bgcolor: "rgba(0, 0, 0, 0.7)",
-          color: "white",
+          color: "common.white",
           width: 20,
           height: 20,
           "&:hover": { bgcolor: "error.main" },

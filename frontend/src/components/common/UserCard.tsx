@@ -101,7 +101,7 @@ export function UserCard({
         width: avatarSize,
         height: avatarSize,
         background: gradientFromString(did ?? actor.handle ?? displayName),
-        color: "#fff",
+        color: "common.white",
         fontWeight: 600,
         fontSize: avatarSize * 0.45,
       }}
