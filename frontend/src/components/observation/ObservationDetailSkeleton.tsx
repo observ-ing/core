@@ -32,7 +32,7 @@ export function ObservationDetailSkeleton() {
       </Box>
 
       {/* Image */}
-      <Skeleton variant="rectangular" height={400} sx={{ width: "100%", bgcolor: "grey.800" }} />
+      <Skeleton variant="rectangular" height={400} sx={{ width: "100%" }} />
 
       {/* Content: uniform section cards */}
       <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
