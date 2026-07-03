@@ -5,9 +5,8 @@
 //! its own Cloud Run Job so that migrations happen as an explicit deploy step
 //! instead of a side effect of a service container's startup.
 
-use sqlx::postgres::PgPoolOptions;
+use observing_bootstrap::db::PoolConfig;
 use std::process::ExitCode;
-use std::time::Duration;
 use tracing::{error, info};
 use tracing_subscriber::{prelude::*, EnvFilter};
 
@@ -30,12 +29,7 @@ async fn main() -> ExitCode {
     };
 
     info!("Connecting with admin credentials to run migrations");
-    let pool = match PgPoolOptions::new()
-        .max_connections(1)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&database_url)
-        .await
-    {
+    let pool = match PoolConfig::migration().connect(&database_url).await {
         Ok(p) => p,
         Err(e) => {
             error!(error = %e, "Failed to connect to database");
