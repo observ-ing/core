@@ -137,7 +137,7 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1.5 } }}>
             {!isMobile && (
               <Tooltip title="Docs">
-                <IconButton component={Link} to="/docs" color="inherit">
+                <IconButton component={Link} to="/docs" color="inherit" aria-label="Docs">
                   <MenuBook />
                 </IconButton>
               </Tooltip>
@@ -145,14 +145,19 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
 
             {notificationItem && (
               <Tooltip title="Notifications">
-                <IconButton component={Link} to={notificationItem.path} color="inherit">
+                <IconButton
+                  component={Link}
+                  to={notificationItem.path}
+                  color="inherit"
+                  aria-label="Notifications"
+                >
                   {notificationItem.icon}
                 </IconButton>
               </Tooltip>
             )}
 
             <Tooltip title="Settings">
-              <IconButton component={Link} to="/settings" color="inherit">
+              <IconButton component={Link} to="/settings" color="inherit" aria-label="Settings">
                 <Settings />
               </IconButton>
             </Tooltip>
