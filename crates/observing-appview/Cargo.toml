@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 # Internal crates
-observing-bootstrap = { path = "../observing-bootstrap" }
+observing-bootstrap = { path = "../observing-bootstrap", features = ["db"] }
 axum-admin = { path = "../axum-admin" }
 observing-db = { path = "../observing-db", features = ["processing"] }
 atproto-identity = { path = "../atproto-identity" }

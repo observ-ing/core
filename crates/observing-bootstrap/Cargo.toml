@@ -9,9 +9,12 @@ license = "MIT OR Apache-2.0"
 default = ["http"]
 # HTTP service scaffolding (`serve`). Pulls axum.
 http = ["dep:axum", "dep:tokio"]
+# Postgres pool construction (`db` module): per-workload `PoolConfig` presets.
+# Pulls sqlx + pg-url-env.
+db = ["dep:sqlx", "dep:pg-url-env"]
 # One-shot batch-job scaffolding (`job` module): shared CLI flags, a
-# bounded-concurrency drive loop, and pool setup. Pulls sqlx/clap/futures.
-job = ["dep:sqlx", "dep:clap", "dep:futures", "dep:pg-url-env"]
+# bounded-concurrency drive loop, and pool setup. Builds on `db`, adds clap/futures.
+job = ["db", "dep:clap", "dep:futures"]
 
 [dependencies]
 tracing = { workspace = true }

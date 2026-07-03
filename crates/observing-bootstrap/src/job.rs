@@ -13,10 +13,11 @@
 
 use std::collections::BTreeMap;
 use std::future::Future;
-use std::time::Duration;
 
 use futures::stream::{self, StreamExt};
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPool;
+
+use crate::db::PoolConfig;
 
 /// CLI flags shared by every batch job. Flatten into a binary's own `Args`
 /// with `#[command(flatten)]`, then add job-specific flags alongside.
@@ -73,14 +74,9 @@ impl Summary {
 /// Returns a human-readable error string suitable for logging immediately
 /// before a non-zero exit.
 pub async fn connect_pool(concurrency: usize) -> Result<PgPool, String> {
-    let url = pg_url_env::database_url_from_env("observing")
-        .ok_or_else(|| "set DATABASE_URL, or DB_HOST/DB_NAME/DB_USER/DB_PASSWORD".to_string())?;
-    PgPoolOptions::new()
-        .max_connections(concurrency.max(1) as u32 + 1)
-        .acquire_timeout(Duration::from_secs(30))
-        .connect(&url)
+    PoolConfig::job(concurrency)
+        .connect_from_env("observing")
         .await
-        .map_err(|e| format!("failed to connect: {e}"))
 }
 
 /// Run `process` over `rows` with up to `concurrency` items in flight,

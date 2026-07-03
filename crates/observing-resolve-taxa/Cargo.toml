@@ -6,6 +6,7 @@ description = "Background worker that fills accepted_taxon_key on identification
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = ["db"] }
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
 wikidata-client = { path = "../wikidata-client" }

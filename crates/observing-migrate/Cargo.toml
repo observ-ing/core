@@ -6,6 +6,7 @@ description = "One-shot binary that runs Observ.ing database migrations and exit
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = ["db"] }
 observing-db = { path = "../observing-db" }
 sqlx = { workspace = true }
 tokio = { workspace = true }

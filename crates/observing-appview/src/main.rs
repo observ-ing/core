@@ -17,7 +17,6 @@ mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::Duration;
 
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
@@ -25,7 +24,7 @@ use axum::middleware as axum_middleware;
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
 use axum::Router;
-use sqlx::postgres::PgPoolOptions;
+use observing_bootstrap::db::PoolConfig;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
@@ -51,11 +50,7 @@ async fn main() {
     info!(port = config.port, "Starting observing-appview");
 
     // Connect to database
-    let pool = PgPoolOptions::new()
-        .max_connections(50)
-        .acquire_timeout(Duration::from_secs(5))
-        .idle_timeout(Some(Duration::from_secs(300)))
-        .max_lifetime(Some(Duration::from_secs(1800)))
+    let pool = PoolConfig::service()
         .connect(&config.database_url)
         .await
         .expect("Failed to connect to database");

@@ -8,10 +8,11 @@
 use crate::error::{IngesterError, Result};
 use crate::media_resolver::MediaResolver;
 use chrono::{DateTime, Utc};
+use observing_bootstrap::db::PoolConfig;
 use observing_db::identifications::CommunityIdsRefresher;
 use observing_db::processing;
 use serde_json::Value;
-use sqlx::postgres::{PgPool, PgPoolOptions};
+use sqlx::postgres::PgPool;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
@@ -79,12 +80,7 @@ pub struct Database {
 impl Database {
     pub async fn connect(database_url: &str) -> Result<Self> {
         info!("Connecting to database...");
-        let pool = PgPoolOptions::new()
-            .max_connections(10)
-            .acquire_timeout(std::time::Duration::from_secs(5))
-            .idle_timeout(Some(std::time::Duration::from_secs(300)))
-            .connect(database_url)
-            .await?;
+        let pool = PoolConfig::ingester().connect(database_url).await?;
         info!("Database connection established");
         let community_ids_refresher =
             CommunityIdsRefresher::spawn(pool.clone(), COMMUNITY_IDS_REFRESH_DEBOUNCE);
