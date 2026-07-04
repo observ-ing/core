@@ -554,10 +554,13 @@ jobs:
             --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
-      # Faster ViT-L service for the live camera loop. Same flags as
-      # observing-species-id but only 4 GiB — the ViT-L bundle's resident
-      # footprint is ~3 GB (vs ViT-H's ~4.4 GB), so half the memory of the full
-      # service is enough. MODEL_VERSION is already baked into the image.
+      # Faster ViT-L service for the live camera loop. Like observing-species-id
+      # but only 4 GiB — the ViT-L bundle's resident footprint is ~3 GB (vs
+      # ViT-H's ~4.4 GB), so half the memory of the full service is enough.
+      # MODEL_VERSION is already baked into the image.
+      # min-instances=0: the live feature is experimental and sees ~no traffic,
+      # so scale to zero rather than pay to keep a 4 GiB instance warm 24/7.
+      # Flip back to 1 if/when it launches and cold starts hurt UX.
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -567,7 +570,7 @@ jobs:
             --cpu=2 \
             --memory=4Gi \
             --cpu-boost \
-            --min-instances=1 \
+            --min-instances=0 \
             --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
