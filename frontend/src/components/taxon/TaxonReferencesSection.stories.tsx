@@ -30,3 +30,20 @@ export const Default: Story = {
     ],
   },
 };
+
+export const Empty: Story = {
+  args: {
+    references: [],
+  },
+};
+
+// The section only renders the first 5 references; the trailing count chip
+// still reflects the full list, so it reads higher than the visible rows.
+export const ManyReferences: Story = {
+  args: {
+    references: Array.from({ length: 8 }, (_, i) => ({
+      citation: `Author ${i + 1}, A. (20${10 + i}). Reference title ${i + 1}.`,
+      link: `https://example.org/ref/${i + 1}`,
+    })),
+  },
+};
