@@ -23,6 +23,7 @@ import {
   Step,
   StepLabel,
   StepContent,
+  useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
@@ -71,6 +72,7 @@ interface ImageThumbnailProps {
 }
 
 function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) {
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -103,7 +105,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
           position: "absolute",
           top: 2,
           right: 2,
-          bgcolor: "rgba(0, 0, 0, 0.7)",
+          bgcolor: theme.palette.overlay["modalChip"],
           color: "common.white",
           width: 20,
           height: 20,
