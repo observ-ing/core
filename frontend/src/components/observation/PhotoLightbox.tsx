@@ -1,4 +1,4 @@
-import { Box, IconButton, Modal, Fade, Typography } from "@mui/material";
+import { Box, IconButton, Modal, Fade, Typography, useTheme } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import { getLicenseLabel } from "../../lib/licenses";
 
@@ -11,6 +11,7 @@ interface PhotoLightboxProps {
 }
 
 export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightboxProps) {
+  const theme = useTheme();
   return (
     <Modal
       open={open}
@@ -20,7 +21,7 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        bgcolor: "rgba(0, 0, 0, 0.9)",
+        bgcolor: theme.palette.overlay["scrim"],
       }}
     >
       <Fade in={open}>
@@ -49,8 +50,8 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
               top: 16,
               right: 16,
               color: "common.white",
-              bgcolor: "rgba(0, 0, 0, 0.4)",
-              "&:hover": { bgcolor: "rgba(0, 0, 0, 0.6)" },
+              bgcolor: theme.palette.overlay["chip"],
+              "&:hover": { bgcolor: theme.palette.overlay["chipHover"] },
             }}
           >
             <CloseIcon />

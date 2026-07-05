@@ -7,17 +7,30 @@ declare module "@mui/material/styles" {
     placeholder: string;
     iucn: Record<string, string>;
     mapMarker: string;
+    overlay: Record<string, string>;
   }
   interface PaletteOptions {
     placeholder?: string;
     iucn?: Record<string, string>;
     mapMarker?: string;
+    overlay?: Record<string, string>;
   }
 }
 
 // Map marker / uncertainty-circle color — same in both themes (it's a
 // functional indicator, not a brand color, so it doesn't invert with the mode).
 const mapMarkerColor = "#22c55e";
+
+// Dark scrims/chips placed over photos (lightbox backdrop, icon-button chips,
+// status badges). Black-alpha rather than a mode-aware color since these sit
+// on top of photo content, not app background — mode-invariant like iucn/mapMarker.
+const overlayColors: Record<string, string> = {
+  scrim: "rgba(0, 0, 0, 0.9)",
+  chip: "rgba(0, 0, 0, 0.4)",
+  chipHover: "rgba(0, 0, 0, 0.6)",
+  badge: "rgba(0, 0, 0, 0.65)",
+  modalChip: "rgba(0, 0, 0, 0.7)",
+};
 
 // Official IUCN Red List category colors — standardized by the IUCN,
 // so they are mode-invariant and shared across light and dark themes.
@@ -87,6 +100,7 @@ const darkPalette = {
   placeholder: "#211f1b",
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
+  overlay: overlayColors,
 };
 
 const lightPalette = {
@@ -120,6 +134,7 @@ const lightPalette = {
   placeholder: "#efe7d4",
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
+  overlay: overlayColors,
 };
 
 const createAppTheme = (mode: PaletteMode): Theme => {
