@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { countChipSx } from "../common/chipSx";
+import { accentListItemSx } from "../common/layoutSx";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
@@ -107,12 +108,9 @@ export function IdentificationHistory({
               <Box
                 key={id.uri}
                 sx={{
-                  pl: 2,
-                  borderLeft: 3,
+                  ...accentListItemSx,
                   borderColor: isSuperseded ? "text.disabled" : "primary.main",
                   transition: "background-color 0.2s ease",
-                  borderRadius: "0 4px 4px 0",
-                  py: 1,
                   opacity: isSuperseded ? 0.5 : 1,
                   "&:hover": { bgcolor: "action.hover" },
                 }}
