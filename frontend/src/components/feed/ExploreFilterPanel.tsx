@@ -121,7 +121,9 @@ export function ExploreFilterPanel() {
             <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
           )}
         </Stack>
-        <IconButton size="small">{isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}</IconButton>
+        <IconButton size="small" aria-label={isExpanded ? "Collapse section" : "Expand section"}>
+          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        </IconButton>
       </Box>
       {/* Collapsible filter content */}
       <Collapse in={isExpanded}>
