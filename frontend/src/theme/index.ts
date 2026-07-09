@@ -21,8 +21,8 @@ declare module "@mui/material/styles" {
 // functional indicator, not a brand color, so it doesn't invert with the mode).
 const mapMarkerColor = "#22c55e";
 
-// Dark scrims/chips placed over photos (lightbox backdrop, icon-button chips,
-// status badges). Black-alpha rather than a mode-aware color since these sit
+// Overlay chrome placed over photo/camera content (scrims, gradients, chips,
+// badges). Black/white-alpha rather than a mode-aware color since these sit
 // on top of photo content, not app background — mode-invariant like iucn/mapMarker.
 const overlayColors: Record<string, string> = {
   scrim: "rgba(0, 0, 0, 0.9)",
@@ -30,6 +30,9 @@ const overlayColors: Record<string, string> = {
   chipHover: "rgba(0, 0, 0, 0.6)",
   badge: "rgba(0, 0, 0, 0.65)",
   modalChip: "rgba(0, 0, 0, 0.7)",
+  gradientTop: "linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent)",
+  gradientBottom: "linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)",
+  captureRing: "rgba(255, 255, 255, 0.5)",
 };
 
 // Official IUCN Red List category colors — standardized by the IUCN,
