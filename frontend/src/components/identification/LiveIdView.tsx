@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Button, CircularProgress, IconButton, Stack, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  CircularProgress,
+  IconButton,
+  Stack,
+  Typography,
+  useTheme,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import PlaceIcon from "@mui/icons-material/Place";
@@ -17,6 +25,7 @@ import { openUploadModal, setPendingUploadFiles, addToast } from "../../store/ui
 export function LiveIdView() {
   const navigate = useNavigate();
   const dispatch = useAppDispatch();
+  const theme = useTheme();
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -148,8 +157,8 @@ export function LiveIdView() {
           position: "fixed",
           inset: 0,
           zIndex: 1300,
-          bgcolor: "black",
-          color: "white",
+          bgcolor: "common.black",
+          color: "common.white",
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
@@ -162,7 +171,7 @@ export function LiveIdView() {
         <IconButton
           onClick={handleClose}
           aria-label="Close"
-          sx={{ position: "absolute", top: 8, left: 8, color: "white" }}
+          sx={{ position: "absolute", top: 8, left: 8, color: "common.white" }}
         >
           <CloseIcon />
         </IconButton>
@@ -174,7 +183,7 @@ export function LiveIdView() {
               Live identification uses your location to narrow suggestions to species found near
               you. Allow location access to continue.
             </Typography>
-            <CircularProgress size={20} sx={{ color: "white", mt: 1 }} />
+            <CircularProgress size={20} sx={{ color: "common.white", mt: 1 }} />
           </>
         ) : (
           <>
@@ -193,7 +202,7 @@ export function LiveIdView() {
   }
 
   return (
-    <Box sx={{ position: "fixed", inset: 0, zIndex: 1300, bgcolor: "black" }}>
+    <Box sx={{ position: "fixed", inset: 0, zIndex: 1300, bgcolor: "common.black" }}>
       <Box
         component="video"
         ref={videoRef}
@@ -215,13 +224,13 @@ export function LiveIdView() {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          background: "linear-gradient(to bottom, rgba(0,0,0,0.5), transparent)",
+          background: theme.palette.overlay["gradientTop"],
         }}
       >
-        <IconButton onClick={handleClose} sx={{ color: "white" }} aria-label="Close">
+        <IconButton onClick={handleClose} sx={{ color: "common.white" }} aria-label="Close">
           <CloseIcon />
         </IconButton>
-        {isInferring && <CircularProgress size={18} sx={{ color: "white", mr: 1 }} />}
+        {isInferring && <CircularProgress size={18} sx={{ color: "common.white", mr: 1 }} />}
       </Box>
 
       {error && (
@@ -236,7 +245,7 @@ export function LiveIdView() {
             textAlign: "center",
           }}
         >
-          <Typography sx={{ color: "white" }}>{error}</Typography>
+          <Typography sx={{ color: "common.white" }}>{error}</Typography>
         </Box>
       )}
 
@@ -250,14 +259,14 @@ export function LiveIdView() {
           pt: 6,
           pb: 3,
           px: 2,
-          background: "linear-gradient(to top, rgba(0,0,0,0.7), transparent)",
+          background: theme.palette.overlay["gradientBottom"],
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
           gap: 2,
         }}
       >
-        <Box sx={{ minHeight: 56, textAlign: "center", color: "white" }}>
+        <Box sx={{ minHeight: 56, textAlign: "center", color: "common.white" }}>
           {top ? (
             <>
               <Stack
@@ -299,10 +308,10 @@ export function LiveIdView() {
           sx={{
             width: 68,
             height: 68,
-            bgcolor: "white",
-            color: "black",
-            border: "4px solid rgba(255,255,255,0.5)",
-            "&:hover": { bgcolor: "white" },
+            bgcolor: "common.white",
+            color: "common.black",
+            border: `4px solid ${theme.palette.overlay["captureRing"]}`,
+            "&:hover": { bgcolor: "common.white" },
           }}
         >
           <CameraAltIcon />
