@@ -12,6 +12,7 @@ import {
 } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import { countChipSx } from "../common/chipSx";
+import { accentListItemSx } from "../common/layoutSx";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useAppSelector } from "../../store";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
@@ -114,12 +115,9 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
             <Box
               key={comment.uri}
               sx={{
-                pl: 2,
-                borderLeft: 3,
+                ...accentListItemSx,
                 borderColor: "divider",
                 transition: "all 0.2s ease",
-                borderRadius: "0 4px 4px 0",
-                py: 1,
                 "&:hover": {
                   bgcolor: "action.hover",
                   borderColor: "primary.main",

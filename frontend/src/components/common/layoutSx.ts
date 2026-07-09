@@ -27,3 +27,15 @@ export const stickyHeaderSx: SxProps<Theme> = {
   backgroundColor: (theme) => alpha(theme.palette.background.default, 0.86),
   backdropFilter: "blur(8px)",
 };
+
+/**
+ * Left-accent row shell shared by feed-style lists (identification history,
+ * comments): a colored border-left with rounded outer corners. Callers add
+ * their own `borderColor`, `transition`, and hover behavior on top.
+ */
+export const accentListItemSx = {
+  pl: 2,
+  borderLeft: 3,
+  borderRadius: "0 4px 4px 0",
+  py: 1,
+} as const;
