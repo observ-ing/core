@@ -239,7 +239,9 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
         onClick={() => setOpen(!open)}
       >
-        <IconButton size="small">{open ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        <IconButton size="small" aria-label={open ? "Collapse section" : "Expand section"}>
+          {open ? <ExpandLess /> : <ExpandMore />}
+        </IconButton>
         <Typography variant="subtitle2" component="code" sx={{ fontFamily: monoStack }}>
           #{name}
         </Typography>
