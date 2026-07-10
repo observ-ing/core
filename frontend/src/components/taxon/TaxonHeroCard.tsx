@@ -36,7 +36,7 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
             overflow: "hidden",
             border: 1,
             borderColor: "divider",
-            boxShadow: "0 2px 10px rgba(60,50,30,0.08)",
+            boxShadow: (theme) => theme.palette.cardShadow["hero"],
             backgroundColor: "grey.900",
             display: "flex",
             alignItems: "center",

@@ -319,7 +319,7 @@ export function ObservationDetail() {
                   maxHeight: 400,
                   objectFit: "contain",
                   display: "block",
-                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                  boxShadow: (theme) => ({ xs: "none", sm: theme.palette.cardShadow["photo"] }),
                 }}
               />
             </ButtonBase>

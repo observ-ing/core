@@ -8,12 +8,14 @@ declare module "@mui/material/styles" {
     iucn: Record<string, string>;
     mapMarker: string;
     overlay: Record<string, string>;
+    cardShadow: Record<string, string>;
   }
   interface PaletteOptions {
     placeholder?: string;
     iucn?: Record<string, string>;
     mapMarker?: string;
     overlay?: Record<string, string>;
+    cardShadow?: Record<string, string>;
   }
 }
 
@@ -33,6 +35,13 @@ const overlayColors: Record<string, string> = {
   gradientTop: "linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent)",
   gradientBottom: "linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)",
   captureRing: "rgba(255, 255, 255, 0.5)",
+};
+
+// Elevated photo/image card shadows — mode-invariant like overlay/iucn/mapMarker
+// since these sit around photo content rather than app chrome.
+const cardShadowColors: Record<string, string> = {
+  hero: "0 2px 10px rgba(60, 50, 30, 0.08)",
+  photo: "0 4px 12px rgba(0, 0, 0, 0.15)",
 };
 
 // Official IUCN Red List category colors — standardized by the IUCN,
@@ -104,6 +113,7 @@ const darkPalette = {
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
   overlay: overlayColors,
+  cardShadow: cardShadowColors,
 };
 
 const lightPalette = {
@@ -138,6 +148,7 @@ const lightPalette = {
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
   overlay: overlayColors,
+  cardShadow: cardShadowColors,
 };
 
 const createAppTheme = (mode: PaletteMode): Theme => {
