@@ -177,7 +177,7 @@ export function ObservationDetail() {
       >
         {/* Header */}
         <Box sx={detailHeaderSx}>
-          <IconButton onClick={handleBack} sx={{ mr: 1 }}>
+          <IconButton onClick={handleBack} aria-label="Back" sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
           <Typography
