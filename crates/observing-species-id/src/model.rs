@@ -6,7 +6,7 @@
 use crate::embeddings::SpeciesEmbeddings;
 use crate::error::{Result, SpeciesIdError};
 use crate::preprocessing;
-use crate::types::SpeciesSuggestion;
+use crate::types::{SpeciesRef, SpeciesSuggestion};
 use ndarray::{Array1, Array4};
 use ort::session::{builder::GraphOptimizationLevel, Session};
 use ort::value::Value;
@@ -125,6 +125,23 @@ impl BioclipModel {
         let in_range = self.in_range_at(lat_lon);
         self.apply_geo_prior(&mut scores, lat_lon, in_range);
         Ok(self.species.top_k_from_scores(&scores, limit, in_range))
+    }
+
+    /// Species whose iNat range covers `(lat, lon)`, resolved from the geo
+    /// range index to name-only [`SpeciesRef`]s.
+    ///
+    /// `None` carries the same meaning as [`in_range_at`](Self::in_range_at):
+    /// we couldn't form an opinion (no geo index loaded, or the H3 cell at
+    /// that point is unknown to the index). `Some` is always non-empty — a
+    /// known cell with no expected species collapses to `None` upstream. This
+    /// is the data source for "what species could you find near here".
+    pub fn species_in_range(&self, lat: f64, lon: f64) -> Option<Vec<SpeciesRef>> {
+        let ids = self.in_range_at(Some((lat, lon)))?;
+        Some(
+            ids.iter()
+                .map(|&idx| self.species.species_ref(idx as usize))
+                .collect(),
+        )
     }
 
     /// Sorted-ascending slice of species indices whose iNat range covers
