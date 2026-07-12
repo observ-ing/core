@@ -35,6 +35,8 @@ const overlayColors: Record<string, string> = {
   gradientTop: "linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent)",
   gradientBottom: "linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)",
   captureRing: "rgba(255, 255, 255, 0.5)",
+  backdrop: "#212121",
+  caption: "#bdbdbd",
 };
 
 // Elevated photo/image card shadows — mode-invariant like overlay/iucn/mapMarker

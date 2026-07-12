@@ -74,7 +74,7 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
               onClick={(e) => e.stopPropagation()}
               sx={{
                 mt: 1,
-                color: "grey.400",
+                color: theme.palette.overlay["caption"],
                 textAlign: "center",
                 cursor: "default",
               }}

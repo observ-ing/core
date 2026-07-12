@@ -298,7 +298,7 @@ export function ObservationDetail() {
 
         {/* Images */}
         {activeImage && (
-          <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
+          <Box sx={{ bgcolor: (theme) => theme.palette.overlay["backdrop"], p: { xs: 0, sm: 2 } }}>
             <ButtonBase
               onClick={() => setLightboxOpen(true)}
               aria-label="Enlarge photo"
@@ -329,7 +329,7 @@ export function ObservationDetail() {
                 sx={{
                   display: "block",
                   textAlign: "center",
-                  color: "grey.400",
+                  color: (theme) => theme.palette.overlay["caption"],
                   px: 1,
                   pt: { xs: 1, sm: 0.5 },
                 }}
