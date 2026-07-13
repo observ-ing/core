@@ -16,13 +16,12 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
-import { getImageUrl } from "../../services/api";
 import { useProfileFeed } from "../../lib/query/hooks";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
-import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
+import { ObservationGridCard } from "../common/ObservationGridCard";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
@@ -231,48 +230,7 @@ export function ProfileView() {
       {activeTab === "observations" && (
         <Box sx={observationGridSx()}>
           {occurrences.map((occ) => (
-            <Card key={occ.uri} sx={{ display: "flex", flexDirection: "column" }}>
-              <CardActionArea
-                component={Link}
-                to={getObservationUrl(occ.uri)}
-                sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
-              >
-                <ImageWithSkeleton
-                  src={occ.images[0] ? getImageUrl(occ.images[0].url) : undefined}
-                  alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
-                  sx={{ aspectRatio: "1" }}
-                />
-                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontStyle: shouldItalicizeTaxonName(
-                        occ.communityId || occ.effectiveTaxonomy?.scientificName || "",
-                        occ.effectiveTaxonomy?.rank,
-                      )
-                        ? "italic"
-                        : "normal",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {occ.communityId || occ.effectiveTaxonomy?.scientificName || "Unknown species"}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    noWrap
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
-                    <RelativeTime date={new Date(occ.createdAt)} />
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+            <ObservationGridCard key={occ.uri} observation={occ} />
           ))}
 
           {isLoading && occurrences.length === 0 && (
