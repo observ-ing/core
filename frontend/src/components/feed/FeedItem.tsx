@@ -1,17 +1,14 @@
-import { memo, useState } from "react";
+import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Box,
   Typography,
   IconButton,
-  Menu,
-  MenuItem,
   Card,
   CardContent,
   CardActionArea,
   Tooltip,
 } from "@mui/material";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import type { Occurrence } from "../../services/types";
@@ -21,7 +18,8 @@ import { getImageUrl } from "../../services/api";
 import { useLike } from "../../lib/query/mutations";
 import { TaxonLink } from "../common/TaxonLink";
 import { UserCard } from "../common/UserCard";
-import { getPdslsUrl, getObservationUrl } from "../../lib/utils";
+import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { PendingBadge } from "./PendingBadge";
@@ -34,13 +32,11 @@ interface FeedItemProps {
 }
 
 export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   // Like state lives in the query cache: the optimistic mutation patches the
   // occurrence in every cache that holds it, so reading the prop is reactive.
   const liked = observation.viewerHasLiked ?? false;
   const likeCount = observation.likeCount ?? 0;
   const like = useLike();
-  const menuOpen = Boolean(anchorEl);
   const navigate = useNavigate();
   const currentUser = useAppSelector((state) => state.auth.user);
   const isOwnPost = currentUser?.did === observation.observer.did;
@@ -57,31 +53,6 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const imageUrl = observation.images[0] ? getImageUrl(observation.images[0].url) : "";
 
   const observationUrl = getObservationUrl(observation.uri);
-  const pdslsUrl = getPdslsUrl(observation.uri);
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleEditClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleMenuClose();
-    onEdit?.(observation);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    handleMenuClose();
-    onDelete?.(observation);
-  };
 
   const handleCardClick = (e: React.MouseEvent) => {
     // Don't navigate if clicking on interactive elements (links, buttons)
@@ -126,38 +97,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             }
           />
           <Box sx={{ ml: "auto" }}>
-            <IconButton
-              size="small"
-              onClick={handleMenuOpen}
-              aria-label="More options"
-              sx={{ color: "text.disabled" }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={menuOpen}
-              onClose={handleMenuClose}
-              onClick={(e) => e.stopPropagation()}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-            >
-              {isOwnPost && onEdit && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
-              {isOwnPost && onDelete && (
-                <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-                  Delete
-                </MenuItem>
-              )}
-              <MenuItem
-                component="a"
-                href={pdslsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={(e) => e.stopPropagation()}
-              >
-                View on AT Protocol
-              </MenuItem>
-            </Menu>
+            <RecordOverflowMenu
+              atUri={observation.uri}
+              stopPropagation
+              {...(isOwnPost && onEdit ? { onEdit: () => onEdit(observation) } : {})}
+              {...(isOwnPost && onDelete ? { onDelete: () => onDelete(observation) } : {})}
+            />
           </Box>
         </Box>
 

@@ -1,25 +1,13 @@
-import { useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  Avatar,
-  Stack,
-  Chip,
-  IconButton,
-  Link as MuiLink,
-  Menu,
-  MenuItem,
-} from "@mui/material";
+import { Box, Typography, Avatar, Stack, Chip, Link as MuiLink } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { countChipSx } from "../common/chipSx";
 import { accentListItemSx } from "../common/layoutSx";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
-import { getPdslsUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { Section, SectionHeader } from "../common/Section";
+import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
@@ -43,16 +31,6 @@ export function IdentificationHistory({
   currentUserDid,
   onDeleteIdentification,
 }: IdentificationHistoryProps) {
-  const [deletingUri, setDeletingUri] = useState<string | null>(null);
-  const [menuAnchorEl, setMenuAnchorEl] = useState<Record<string, HTMLElement | null>>({});
-
-  const handleMenuOpen = (uri: string, event: React.MouseEvent<HTMLElement>) => {
-    setMenuAnchorEl((prev) => ({ ...prev, [uri]: event.currentTarget }));
-  };
-
-  const handleMenuClose = (uri: string) => {
-    setMenuAnchorEl((prev) => ({ ...prev, [uri]: null }));
-  };
   // Sort oldest first
   const sortedIds = [...identifications].sort(
     (a, b) => new Date(a.date_identified).getTime() - new Date(b.date_identified).getTime(),
@@ -177,48 +155,13 @@ export function IdentificationHistory({
                     </Box>
                   </Box>
                   <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
-                    <IconButton
-                      size="small"
-                      onClick={(e) => handleMenuOpen(id.uri, e)}
-                      aria-label="More options"
-                      sx={{ color: "text.disabled", p: 0.5 }}
-                    >
-                      <MoreVertIcon fontSize="small" />
-                    </IconButton>
-                    <Menu
-                      anchorEl={menuAnchorEl[id.uri]}
-                      open={Boolean(menuAnchorEl[id.uri])}
-                      onClose={() => handleMenuClose(id.uri)}
-                      anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                      transformOrigin={{ vertical: "top", horizontal: "right" }}
-                    >
-                      <MenuItem
-                        component="a"
-                        href={getPdslsUrl(id.uri)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={() => handleMenuClose(id.uri)}
-                      >
-                        View on AT Protocol
-                      </MenuItem>
-                      {currentUserDid && id.did === currentUserDid && onDeleteIdentification && (
-                        <MenuItem
-                          onClick={async () => {
-                            handleMenuClose(id.uri);
-                            setDeletingUri(id.uri);
-                            try {
-                              await onDeleteIdentification(id.uri);
-                            } finally {
-                              setDeletingUri(null);
-                            }
-                          }}
-                          disabled={deletingUri === id.uri}
-                          sx={{ color: "error.main" }}
-                        >
-                          Delete
-                        </MenuItem>
-                      )}
-                    </Menu>
+                    <RecordOverflowMenu
+                      atUri={id.uri}
+                      sx={{ p: 0.5 }}
+                      {...(currentUserDid && id.did === currentUserDid && onDeleteIdentification
+                        ? { onDelete: () => onDeleteIdentification(id.uri) }
+                        : {})}
+                    />
                   </Box>
                 </Stack>
               </Box>

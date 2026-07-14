@@ -9,8 +9,6 @@ import {
   Stack,
   IconButton,
   ButtonBase,
-  Menu,
-  MenuItem,
   List,
   ListItem,
   ListItemIcon,
@@ -18,7 +16,6 @@ import {
   Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
 import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
 import FavoriteIcon from "@mui/icons-material/Favorite";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -42,12 +39,8 @@ import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
-import {
-  formatEventDate,
-  getPdslsUrl,
-  buildOccurrenceAtUri,
-  getErrorMessage,
-} from "../../lib/utils";
+import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { formatEventDate, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
 // Lazy so maplibre-gl is split into its own chunk, loaded only when an
@@ -65,8 +58,6 @@ export function ObservationDetail() {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(anchorEl);
 
   // Reconstruct AT URI from route params
   const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
@@ -95,28 +86,6 @@ export function ObservationDetail() {
       navigate(-1);
     } else {
       navigate("/");
-    }
-  };
-
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleEditClick = () => {
-    handleMenuClose();
-    if (observation) {
-      dispatch(openEditModal(observation));
-    }
-  };
-
-  const handleDeleteClick = () => {
-    handleMenuClose();
-    if (observation) {
-      dispatch(openDeleteConfirm(observation));
     }
   };
 
@@ -189,36 +158,19 @@ export function ObservationDetail() {
             Observation
           </Typography>
           <Box sx={{ ml: "auto" }}>
-            <IconButton
-              size="small"
-              onClick={handleMenuOpen}
-              aria-label="More options"
-              sx={{ color: "text.disabled" }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={menuOpen}
-              onClose={handleMenuClose}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-            >
-              {isOwner && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
-              {isOwner && (
-                <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-                  Delete
-                </MenuItem>
-              )}
-              <MenuItem
-                component="a"
-                href={getPdslsUrl(observation.uri)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on AT Protocol
-              </MenuItem>
-            </Menu>
+            <RecordOverflowMenu
+              atUri={observation.uri}
+              {...(isOwner
+                ? {
+                    onEdit: () => {
+                      dispatch(openEditModal(observation));
+                    },
+                    onDelete: () => {
+                      dispatch(openDeleteConfirm(observation));
+                    },
+                  }
+                : {})}
+            />
           </Box>
         </Box>
 
