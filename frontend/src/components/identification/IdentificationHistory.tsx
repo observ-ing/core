@@ -1,5 +1,4 @@
-import { Link as RouterLink } from "react-router-dom";
-import { Box, Typography, Avatar, Stack, Chip, Link as MuiLink } from "@mui/material";
+import { Box, Typography, Stack, Chip } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { countChipSx } from "../common/chipSx";
 import { accentListItemSx } from "../common/layoutSx";
@@ -8,6 +7,7 @@ import { TaxonLink } from "../common/TaxonLink";
 import { RelativeTime } from "../common/RelativeTime";
 import { Section, SectionHeader } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { UserCard } from "../common/UserCard";
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
@@ -93,46 +93,16 @@ export function IdentificationHistory({
                   "&:hover": { bgcolor: "action.hover" },
                 }}
               >
-                <Stack
-                  direction="row"
-                  spacing={1.5}
-                  sx={{
-                    alignItems: "flex-start",
-                  }}
-                >
-                  <RouterLink to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}>
-                    <Avatar
-                      {...(id.identifier?.avatar ? { src: id.identifier.avatar } : {})}
-                      sx={{ width: 32, height: 32 }}
-                    >
-                      {(id.identifier?.displayName || id.identifier?.handle || "?")[0]}
-                    </Avatar>
-                  </RouterLink>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      sx={{
-                        alignItems: "center",
-                        flexWrap: "wrap",
-                      }}
-                    >
-                      <MuiLink
-                        component={RouterLink}
-                        to={`/profile/${encodeURIComponent(id.identifier?.did || id.did)}`}
-                        underline="none"
-                        color="inherit"
-                      >
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            fontWeight: "medium",
-                            color: "text.primary",
-                          }}
-                        >
-                          {id.identifier?.displayName || id.identifier?.handle || "Unknown"}
-                        </Typography>
-                      </MuiLink>
+                <UserCard
+                  actor={id.identifier ?? {}}
+                  linkDid={id.identifier?.did || id.did}
+                  avatarSize={32}
+                  alignItems="flex-start"
+                  link
+                  nameVariant="body2"
+                  nameSx={{ fontWeight: "medium" }}
+                  trailing={
+                    <>
                       <Typography
                         variant="caption"
                         sx={{
@@ -145,7 +115,18 @@ export function IdentificationHistory({
                         <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
                       )}
                       {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
-                    </Stack>
+                      <Box sx={{ ml: "auto" }}>
+                        <RecordOverflowMenu
+                          atUri={id.uri}
+                          sx={{ p: 0.5 }}
+                          {...(currentUserDid && id.did === currentUserDid && onDeleteIdentification
+                            ? { onDelete: () => onDeleteIdentification(id.uri) }
+                            : {})}
+                        />
+                      </Box>
+                    </>
+                  }
+                  belowName={
                     <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
                       <TaxonLink
                         name={id.scientific_name}
@@ -153,17 +134,8 @@ export function IdentificationHistory({
                         rank={id.taxon_rank}
                       />
                     </Box>
-                  </Box>
-                  <Box sx={{ alignSelf: "flex-start", mt: 0.5 }}>
-                    <RecordOverflowMenu
-                      atUri={id.uri}
-                      sx={{ p: 0.5 }}
-                      {...(currentUserDid && id.did === currentUserDid && onDeleteIdentification
-                        ? { onDelete: () => onDeleteIdentification(id.uri) }
-                        : {})}
-                    />
-                  </Box>
-                </Stack>
+                  }
+                />
               </Box>
             );
           })}
