@@ -1,16 +1,6 @@
 import { memo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  Box,
-  Typography,
-  IconButton,
-  Card,
-  CardContent,
-  CardActionArea,
-  Tooltip,
-} from "@mui/material";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
+import { Box, Typography, Card, CardContent, CardActionArea } from "@mui/material";
 import type { Occurrence } from "../../services/types";
 import { useAppSelector } from "../../store";
 import { useIsPending } from "../../store/pendingSlice";
@@ -19,6 +9,7 @@ import { useLike } from "../../lib/query/mutations";
 import { TaxonLink } from "../common/TaxonLink";
 import { UserCard } from "../common/UserCard";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { LikeButton } from "../common/LikeButton";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
@@ -136,34 +127,15 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
               </Typography>
             )}
           </Box>
-          <Box sx={{ display: "flex", alignItems: "center", flexShrink: 0 }}>
-            <Tooltip title={!currentUser ? "Log in to like" : ""}>
-              <span>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-                  }
-                  disabled={!currentUser || isPending}
-                  aria-label={liked ? "Unlike" : "Like"}
-                  sx={{
-                    color: liked ? "error.main" : "text.disabled",
-                  }}
-                >
-                  {liked ? (
-                    <FavoriteIcon fontSize="small" />
-                  ) : (
-                    <FavoriteBorderIcon fontSize="small" />
-                  )}
-                </IconButton>
-              </span>
-            </Tooltip>
-            {likeCount > 0 && (
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                {likeCount}
-              </Typography>
-            )}
-          </Box>
+          <LikeButton
+            liked={liked}
+            count={likeCount}
+            disabled={isPending}
+            loggedOut={!currentUser}
+            onToggle={() =>
+              like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+            }
+          />
         </Box>
       </CardContent>
     </Card>

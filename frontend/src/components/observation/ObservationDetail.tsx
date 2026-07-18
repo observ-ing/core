@@ -13,11 +13,8 @@ import {
   ListItem,
   ListItemIcon,
   ListItemText,
-  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NumbersIcon from "@mui/icons-material/Numbers";
@@ -30,6 +27,7 @@ import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
 import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
+import { LikeButton } from "../common/LikeButton";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
@@ -218,34 +216,14 @@ export function ObservationDetail() {
               </Typography>
             }
           />
-          <Tooltip title={!user ? "Log in to like" : ""}>
-            <span>
-              <Stack direction="row" sx={{ alignItems: "center" }}>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-                  }
-                  disabled={!user}
-                  aria-label={liked ? "Unlike" : "Like"}
-                  sx={{
-                    color: liked ? "error.main" : "text.disabled",
-                  }}
-                >
-                  {liked ? (
-                    <FavoriteIcon fontSize="small" />
-                  ) : (
-                    <FavoriteBorderIcon fontSize="small" />
-                  )}
-                </IconButton>
-                {likeCount > 0 && (
-                  <Typography variant="body2" sx={{ color: "text.secondary", ml: -0.25 }}>
-                    {likeCount}
-                  </Typography>
-                )}
-              </Stack>
-            </span>
-          </Tooltip>
+          <LikeButton
+            liked={liked}
+            count={likeCount}
+            loggedOut={!user}
+            onToggle={() =>
+              like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+            }
+          />
         </Stack>
 
         {/* Images */}
