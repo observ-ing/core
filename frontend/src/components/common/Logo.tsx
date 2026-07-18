@@ -1,3 +1,5 @@
+import { useTheme } from "@mui/material";
+
 interface LogoProps {
   size?: number;
 }
@@ -8,6 +10,8 @@ interface LogoProps {
 // pupil use `currentColor`, so the mark inherits the accent green from its
 // parent — forest green in light mode, the brighter accent in dark mode.
 export function Logo({ size = 32 }: LogoProps) {
+  const theme = useTheme();
+  const white = theme.palette.common.white;
   return (
     <svg
       width={size}
@@ -18,9 +22,9 @@ export function Logo({ size = 32 }: LogoProps) {
     >
       <g transform="translate(100,100) rotate(-45)">
         <path d="M-60,0 Q0,-70 60,0 Q0,70 -60,0Z" fill="currentColor" />
-        <circle cx="0" cy="0" r="18" fill="#ffffff" />
+        <circle cx="0" cy="0" r="18" fill={white} />
         <circle cx="0" cy="0" r="9" fill="currentColor" />
-        <circle cx="3.5" cy="-3.5" r="2.5" fill="#ffffff" opacity="0.65" />
+        <circle cx="3.5" cy="-3.5" r="2.5" fill={white} opacity="0.65" />
       </g>
     </svg>
   );
