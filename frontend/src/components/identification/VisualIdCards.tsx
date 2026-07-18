@@ -73,7 +73,7 @@ function buildTaxonUrl(
   return null;
 }
 
-function TaxonLinkButton({ url }: { url: string }) {
+function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string }) {
   return (
     <IconButton
       size="small"
@@ -84,6 +84,7 @@ function TaxonLinkButton({ url }: { url: string }) {
       onClick={(e: React.MouseEvent) => e.stopPropagation()}
       sx={{ p: 0.5, ml: 0.5, flexShrink: 0 }}
       title="Open taxon in new tab"
+      aria-label={`Open ${taxonName} in new tab`}
     >
       <OpenInNewIcon sx={{ fontSize: 14 }} />
     </IconButton>
@@ -283,7 +284,7 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
           {RANK_LABEL[ancestor.rank]} · {Math.round(ancestor.confidence * 100)}% match
         </Typography>
       </Box>
-      {url && <TaxonLinkButton url={url} />}
+      {url && <TaxonLinkButton url={url} taxonName={ancestor.name} />}
     </ButtonBase>
   );
 }
@@ -399,7 +400,7 @@ function SpeciesCard({
       <Typography variant="caption" sx={{ color: "text.secondary", flexShrink: 0 }}>
         {Math.round(suggestion.confidence * 100)}%
       </Typography>
-      {url && <TaxonLinkButton url={url} />}
+      {url && <TaxonLinkButton url={url} taxonName={suggestion.scientificName} />}
     </ButtonBase>
   );
 }
