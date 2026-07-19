@@ -1,5 +1,5 @@
 import { Box, Divider, Skeleton } from "@mui/material";
-import { detailHeaderSx } from "../common/layoutSx";
+import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 
 /**
  * Skeleton loader matching observation detail page layout
@@ -7,11 +7,7 @@ import { detailHeaderSx } from "../common/layoutSx";
 export function ObservationDetailSkeleton() {
   return (
     <Box>
-      {/* Header */}
-      <Box sx={detailHeaderSx}>
-        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1 }} />
-        <Skeleton variant="text" width={100} height={24} />
-      </Box>
+      <DetailHeaderSkeleton titleWidth={100} />
 
       {/* Species header */}
       <Box sx={{ px: 3, pt: 2, pb: 1.5 }}>
