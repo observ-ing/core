@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
-import { Box, Typography, Button, Stack } from "@mui/material";
+import { Button } from "@mui/material";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
+import { FullPageStatus } from "./FullPageStatus";
 
 interface Props {
   children: ReactNode;
@@ -53,58 +54,35 @@ export class ErrorBoundary extends Component<Props, State> {
     );
 
     return (
-      <Box
-        sx={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          flex: 1,
-          p: 4,
-          textAlign: "center",
-        }}
-      >
-        <Box
-          sx={{
-            width: 120,
-            height: 120,
-            borderRadius: "50%",
-            bgcolor: "action.hover",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            mb: 3,
-          }}
-        >
-          <ErrorOutlineIcon sx={{ fontSize: 60, color: "text.disabled" }} />
-        </Box>
-        <Typography variant="h6" component="h2" sx={{ color: "text.secondary", mb: 1 }}>
-          {isChunkError ? "Update available" : "Something went wrong"}
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.disabled", mb: 4, maxWidth: 360 }}>
-          {isChunkError
+      <FullPageStatus
+        icon={<ErrorOutlineIcon sx={{ fontSize: 60, color: "text.disabled" }} />}
+        title={isChunkError ? "Update available" : "Something went wrong"}
+        description={
+          isChunkError
             ? "This page couldn't load, likely because a new version was just released. Reload to get the latest."
-            : "An unexpected error occurred while loading this page."}
-        </Typography>
-        <Stack direction="row" spacing={2}>
-          <Button
-            onClick={() => window.location.reload()}
-            variant="contained"
-            color="primary"
-            sx={{ px: 4, py: 1, fontWeight: 600 }}
-          >
-            Reload
-          </Button>
-          <Button
-            onClick={() => window.location.assign("/")}
-            variant="outlined"
-            color="inherit"
-            sx={{ px: 3 }}
-          >
-            Go home
-          </Button>
-        </Stack>
-      </Box>
+            : "An unexpected error occurred while loading this page."
+        }
+        actions={
+          <>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="contained"
+              color="primary"
+              sx={{ px: 4, py: 1, fontWeight: 600 }}
+            >
+              Reload
+            </Button>
+            <Button
+              onClick={() => window.location.assign("/")}
+              variant="outlined"
+              color="inherit"
+              sx={{ px: 3 }}
+            >
+              Go home
+            </Button>
+          </>
+        }
+      />
     );
   }
 }
