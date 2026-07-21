@@ -1,6 +1,6 @@
 import { Box, Divider, Skeleton, Stack } from "@mui/material";
 import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
-import { detailHeaderSx } from "../common/layoutSx";
+import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 
 /**
  * Skeleton loader matching taxon detail page layout
@@ -8,11 +8,7 @@ import { detailHeaderSx } from "../common/layoutSx";
 export function TaxonDetailSkeleton() {
   return (
     <Box>
-      {/* Header */}
-      <Box sx={detailHeaderSx}>
-        <Skeleton variant="circular" width={40} height={40} sx={{ mr: 1 }} />
-        <Skeleton variant="text" width={60} height={24} />
-      </Box>
+      <DetailHeaderSkeleton titleWidth={60} />
 
       {/* Main content */}
       <Box sx={{ p: 3 }}>
