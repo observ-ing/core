@@ -334,6 +334,10 @@ export function LocationPicker({
                   ...params.slotProps.input,
                   startAdornment: <SearchAdornment />,
                 },
+                htmlInput: {
+                  ...params.slotProps.htmlInput,
+                  "aria-label": "Search for a place",
+                },
               }}
               sx={[searchFieldSx, { mb: 1 }]}
             />
