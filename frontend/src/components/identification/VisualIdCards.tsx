@@ -3,7 +3,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -61,16 +61,6 @@ function determineMode(sortedByConfidence: SpeciesSuggestion[]): Mode {
   return top.confidence >= DOMINANT_FLOOR && top.confidence >= DOMINANT_GAP * runnerUp.confidence
     ? "dominant"
     : "ambiguous";
-}
-
-function buildTaxonUrl(
-  name: string,
-  kingdom: string | undefined,
-  rank?: AncestorRank,
-): string | null {
-  if (rank === "kingdom") return `/taxon/${nameToSlug(name)}`;
-  if (kingdom) return `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
-  return null;
 }
 
 function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string }) {

@@ -5,16 +5,10 @@ import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
-  if (option.rank?.toLowerCase() === "kingdom") {
-    return `/taxon/${nameToSlug(option.scientificName)}`;
-  }
-  if (option.kingdom) {
-    return `/taxon/${nameToSlug(option.kingdom)}/${nameToSlug(option.scientificName)}`;
-  }
-  return null;
+  return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
 }
 
 interface TaxaAutocompleteViewProps {
