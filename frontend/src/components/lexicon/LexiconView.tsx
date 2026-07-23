@@ -17,7 +17,7 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 import { ExpandMore, ExpandLess } from "@mui/icons-material";
-import { labelChipSx } from "../common/chipSx";
+import { labelChipSx, valueChipSx } from "../common/chipSx";
 import { monoStack } from "../../theme";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
@@ -102,6 +102,16 @@ function formatType(prop: LexiconProperty): string {
   return t;
 }
 
+function ValueChipList({ values }: { values: string[] }) {
+  return (
+    <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+      {values.map((v) => (
+        <Chip key={v} label={v} size="small" variant="outlined" sx={valueChipSx} />
+      ))}
+    </Box>
+  );
+}
+
 function PropertyTable({
   properties,
   required,
@@ -158,32 +168,8 @@ function PropertyTable({
                 >
                   {formatType(prop)}
                 </Typography>
-                {prop.enum && (
-                  <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {prop.enum.map((v) => (
-                      <Chip
-                        key={v}
-                        label={v}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: "0.6rem" }}
-                      />
-                    ))}
-                  </Box>
-                )}
-                {prop.knownValues && (
-                  <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {prop.knownValues.map((v) => (
-                      <Chip
-                        key={v}
-                        label={v}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: "0.6rem" }}
-                      />
-                    ))}
-                  </Box>
-                )}
+                {prop.enum && <ValueChipList values={prop.enum} />}
+                {prop.knownValues && <ValueChipList values={prop.knownValues} />}
               </TableCell>
               <TableCell>
                 <Typography
