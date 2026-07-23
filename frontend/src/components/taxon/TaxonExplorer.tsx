@@ -4,7 +4,7 @@ import { Box, Container, Typography, Button, Drawer } from "@mui/material";
 import type { TreeViewDefaultItemModelProperties } from "@mui/x-tree-view";
 import { fetchTaxonChildren } from "../../services/api";
 import type { TaxonDetail, TaxaResult } from "../../services/types";
-import { slugToName, nameToSlug } from "../../lib/taxonSlug";
+import { slugToName, buildTaxonUrl } from "../../lib/taxonSlug";
 import { useTaxon, useTaxonOccurrences } from "../../lib/query/hooks";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
@@ -358,11 +358,8 @@ export function TaxonExplorer() {
     const node = nodesRef.current.get(id);
     if (!node) return;
     setMobileTreeOpen(false);
-    if (node.rank === "kingdom") {
-      navigate(`/taxon/${nameToSlug(node.name)}`);
-    } else {
-      navigate(`/taxon/${nameToSlug(node.kingdom)}/${nameToSlug(node.name)}`);
-    }
+    const url = buildTaxonUrl(node.name, node.kingdom, node.rank);
+    if (url) navigate(url);
   };
 
   const handleTreeExpansionToggle = async (id: string, isExpanded: boolean) => {
