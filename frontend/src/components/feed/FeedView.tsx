@@ -9,7 +9,7 @@ import { openEditModal, openDeleteConfirm } from "../../store/uiSlice";
 import type { FeedTab, Occurrence } from "../../services/types";
 import { FeedItem } from "./FeedItem";
 import { FeedSkeletonList } from "./FeedItemSkeleton";
-import { ProfileObservationCardSkeleton } from "../profile/ProfileObservationCardSkeleton";
+import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { ExploreFilterPanel } from "./ExploreFilterPanel";
 import { ExploreGridCard } from "./ExploreGridCard";
 import { ExploreTable } from "./ExploreTable";
@@ -144,7 +144,7 @@ export function FeedView({ tab = "home" }: FeedViewProps) {
                   {isLoading && observations.length === 0 && (
                     <>
                       {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                        <ProfileObservationCardSkeleton key={i} />
+                        <ObservationGridCardSkeleton key={i} />
                       ))}
                     </>
                   )}
