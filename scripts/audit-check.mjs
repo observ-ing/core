@@ -50,7 +50,7 @@ rl.on("close", () => {
     if (directAdvisories.length === 0) continue;
 
     const unacknowledged = directAdvisories.filter((a) => {
-      const ghsa = a.url?.match(/GHSA-[a-z0-9-]+$/)?.[0];
+      const ghsa = a.url?.match(/GHSA-[a-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/)?.[0];
       return !ACKNOWLEDGED.has(ghsa);
     });
 
