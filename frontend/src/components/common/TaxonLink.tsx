@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Chip, Typography } from "@mui/material";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
 
 const ITALICIZED_RANKS = new Set(["species", "genus", "subspecies", "variety"]);
 
@@ -46,17 +46,7 @@ export function TaxonLink({
   // Default italic behavior: italicize species/genus/subspecies/variety ranks
   const shouldItalicize = italic !== undefined ? italic : shouldItalicizeTaxonName(name, rank);
 
-  // Build the URL using kingdom/name pattern with hyphenated slugs
-  // All non-kingdom taxa require a kingdom prefix
-  let taxonUrl: string | null;
-  if (rank === "kingdom") {
-    taxonUrl = `/taxon/${nameToSlug(name)}`;
-  } else if (kingdom) {
-    taxonUrl = `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
-  } else {
-    // No valid URL without kingdom - render as plain text
-    taxonUrl = null;
-  }
+  const taxonUrl = buildTaxonUrl(name, kingdom, rank);
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation if handler provided (e.g., to prevent parent link activation)
