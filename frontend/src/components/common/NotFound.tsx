@@ -1,92 +1,57 @@
 import { Link } from "react-router-dom";
-import { Box, Typography, Button, Stack } from "@mui/material";
+import { Typography, Button } from "@mui/material";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
+import { FullPageStatus } from "./FullPageStatus";
 
 export function NotFound() {
   return (
-    <Box
-      sx={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        flex: 1,
-        p: 4,
-        textAlign: "center",
-      }}
-    >
-      <Box
-        sx={{
-          width: 120,
-          height: 120,
-          borderRadius: "50%",
-          bgcolor: "action.hover",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          mb: 3,
-        }}
-      >
-        <SearchOffIcon sx={{ fontSize: 60, color: "text.disabled" }} />
-      </Box>
-      <Typography
-        variant="h1"
-        sx={{
-          fontSize: "4rem",
-          fontWeight: 700,
-          background: (theme) =>
-            `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
-          backgroundClip: "text",
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          mb: 1,
-        }}
-      >
-        404
-      </Typography>
-      <Typography
-        variant="h6"
-        component="h2"
-        sx={{
-          color: "text.secondary",
-          mb: 1,
-        }}
-      >
-        Page not found
-      </Typography>
-      <Typography
-        variant="body2"
-        sx={{
-          color: "text.disabled",
-          mb: 4,
-          maxWidth: 300,
-        }}
-      >
-        The page you're looking for doesn't exist or has been moved.
-      </Typography>
-      <Stack direction="row" spacing={2}>
-        <Button
-          component={Link}
-          to="/"
-          variant="contained"
-          color="primary"
+    <FullPageStatus
+      icon={<SearchOffIcon sx={{ fontSize: 60, color: "text.disabled" }} />}
+      eyebrow={
+        <Typography
+          variant="h1"
           sx={{
-            px: 4,
-            py: 1,
-            fontWeight: 600,
+            fontSize: "4rem",
+            fontWeight: 700,
+            background: (theme) =>
+              `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
+            backgroundClip: "text",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            mb: 1,
           }}
         >
-          Go home
-        </Button>
-        <Button
-          onClick={() => window.history.back()}
-          variant="outlined"
-          color="inherit"
-          sx={{ px: 3 }}
-        >
-          Go back
-        </Button>
-      </Stack>
-    </Box>
+          404
+        </Typography>
+      }
+      title="Page not found"
+      description="The page you're looking for doesn't exist or has been moved."
+      descriptionMaxWidth={300}
+      actions={
+        <>
+          <Button
+            component={Link}
+            to="/"
+            variant="contained"
+            color="primary"
+            sx={{
+              px: 4,
+              py: 1,
+              fontWeight: 600,
+            }}
+          >
+            Go home
+          </Button>
+          <Button
+            onClick={() => window.history.back()}
+            variant="outlined"
+            color="inherit"
+            sx={{ px: 3 }}
+          >
+            Go back
+          </Button>
+        </>
+      }
+    />
   );
 }
