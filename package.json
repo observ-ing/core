@@ -46,7 +46,7 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-redux": "^9.2.0",
-    "react-router-dom": "^7.15.0"
+    "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
     "@atproto/api": "^0.19.18",
@@ -78,7 +78,8 @@
       "vite": "$vite"
     },
     "esbuild": "^0.28.1",
-    "serialize-javascript": "^7.0.5"
+    "serialize-javascript": "^7.0.5",
+    "ejs": "^5.0.0"
   },
   "engines": {
     "node": ">=24.0.0"
