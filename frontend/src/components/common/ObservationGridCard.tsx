@@ -9,6 +9,9 @@ import { RelativeTime } from "./RelativeTime";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
 
+// Shared with ObservationGridCardSkeleton so the loading placeholder can't drift from the real layout.
+export const observationGridCardContentSx = { p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 };
+
 interface ObservationGridCardProps {
   observation: Occurrence;
   isPending?: boolean;
@@ -44,7 +47,7 @@ export const ObservationGridCard = memo(function ObservationGridCard({
           alt={species || "Observation"}
           sx={{ aspectRatio: "1" }}
         />
-        <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
+        <CardContent sx={observationGridCardContentSx}>
           <Typography
             variant="body2"
             sx={{

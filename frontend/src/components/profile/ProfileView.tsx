@@ -22,10 +22,10 @@ import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { ObservationGridCard } from "../common/ObservationGridCard";
+import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
-import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
 import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
 import { observationGridSx } from "../common/observationGridLayout";
@@ -236,7 +236,7 @@ export function ProfileView() {
           {isLoading && occurrences.length === 0 && (
             <>
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <ProfileObservationCardSkeleton key={i} />
+                <ObservationGridCardSkeleton key={i} />
               ))}
             </>
           )}
