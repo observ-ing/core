@@ -44,9 +44,7 @@ rl.on("close", () => {
     // Entries whose `via` array contains only strings are purely transitive —
     // they are already represented by the parent package that has the direct
     // advisory, so we skip them to avoid double-counting.
-    const directAdvisories = (info.via ?? []).filter(
-      (v) => typeof v === "object",
-    );
+    const directAdvisories = (info.via ?? []).filter((v) => typeof v === "object");
     if (directAdvisories.length === 0) continue;
 
     const unacknowledged = directAdvisories.filter((a) => {
@@ -56,17 +54,13 @@ rl.on("close", () => {
 
     if (unacknowledged.length > 0) {
       failures++;
-      const details = unacknowledged
-        .map((a) => `${a.title} (${a.url})`)
-        .join("; ");
+      const details = unacknowledged.map((a) => `${a.title} (${a.url})`).join("; ");
       console.error(`Unacknowledged ${info.severity}: ${pkg} — ${details}`);
     }
   }
 
   if (failures > 0) {
-    console.error(
-      `\n${failures} unacknowledged high/critical vulnerability(ies) found.`,
-    );
+    console.error(`\n${failures} unacknowledged high/critical vulnerability(ies) found.`);
     process.exit(1);
   }
 
