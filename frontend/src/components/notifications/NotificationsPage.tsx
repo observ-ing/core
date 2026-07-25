@@ -1,6 +1,6 @@
 import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Container, Typography, Button, List, ListItem, ListItemButton } from "@mui/material";
+import { Box, Typography, Button, List, ListItem, ListItemButton } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
@@ -9,6 +9,7 @@ import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { PageContainer } from "../common/PageContainer";
 import { useNotifications } from "../../lib/query/hooks";
 import { useMarkNotificationRead } from "../../lib/query/mutations";
 
@@ -56,76 +57,70 @@ export function NotificationsPage() {
   const hasUnread = notifications.some((n) => !n.read);
 
   return (
-    <Box
-      ref={contentRef}
-      onScroll={handleScroll}
-      sx={{ flex: 1, overflow: "auto", height: "100%" }}
-    >
-      <Container maxWidth="sm" sx={{ py: 3 }}>
-        <Box
+    <PageContainer scrollRef={contentRef} onScroll={handleScroll} maxWidth="sm">
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: 2,
+        }}
+      >
+        <Typography
+          variant="h5"
           sx={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            mb: 2,
+            fontWeight: 700,
           }}
         >
-          <Typography
-            variant="h5"
+          Notifications
+        </Typography>
+        {hasUnread && (
+          <Button size="small" onClick={handleMarkAllRead}>
+            Mark all read
+          </Button>
+        )}
+      </Box>
+
+      {!isLoading && notifications.length === 0 && (
+        <EmptyState message="No notifications yet" p={0} sx={{ mt: 4 }} />
+      )}
+
+      <List disablePadding>
+        {notifications.map((n) => (
+          <ListItem
+            key={n.id}
+            disablePadding
             sx={{
-              fontWeight: 700,
+              bgcolor: n.read ? "transparent" : "action.hover",
+              borderRadius: 2,
+              mb: 0.5,
             }}
           >
-            Notifications
-          </Typography>
-          {hasUnread && (
-            <Button size="small" onClick={handleMarkAllRead}>
-              Mark all read
-            </Button>
-          )}
-        </Box>
+            <ListItemButton onClick={() => handleClick(n)} sx={{ borderRadius: 2, py: 1.5 }}>
+              <UserCard
+                actor={n.actor ?? {}}
+                linkDid={n.actorDid}
+                avatarSize={40}
+                {...(n.actor?.avatar ? { avatarSrc: getImageUrl(n.actor.avatar) } : {})}
+                nameVariant="body2"
+                showHandle
+                trailing={
+                  <Typography component="span" variant="body2">
+                    {getKindText(n.kind)}
+                  </Typography>
+                }
+                belowName={
+                  <Typography variant="body2" sx={{ color: "text.secondary" }}>
+                    <RelativeTime date={new Date(n.createdAt)} />
+                  </Typography>
+                }
+              />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
 
-        {!isLoading && notifications.length === 0 && (
-          <EmptyState message="No notifications yet" p={0} sx={{ mt: 4 }} />
-        )}
-
-        <List disablePadding>
-          {notifications.map((n) => (
-            <ListItem
-              key={n.id}
-              disablePadding
-              sx={{
-                bgcolor: n.read ? "transparent" : "action.hover",
-                borderRadius: 2,
-                mb: 0.5,
-              }}
-            >
-              <ListItemButton onClick={() => handleClick(n)} sx={{ borderRadius: 2, py: 1.5 }}>
-                <UserCard
-                  actor={n.actor ?? {}}
-                  linkDid={n.actorDid}
-                  avatarSize={40}
-                  {...(n.actor?.avatar ? { avatarSrc: getImageUrl(n.actor.avatar) } : {})}
-                  nameVariant="body2"
-                  showHandle
-                  trailing={
-                    <Typography component="span" variant="body2">
-                      {getKindText(n.kind)}
-                    </Typography>
-                  }
-                  belowName={
-                    <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                      <RelativeTime date={new Date(n.createdAt)} />
-                    </Typography>
-                  }
-                />
-              </ListItemButton>
-            </ListItem>
-          ))}
-        </List>
-
-        {(isLoading || isFetchingNextPage) && <CenteredSpinner p={0} sx={{ py: 3 }} />}
-      </Container>
-    </Box>
+      {(isLoading || isFetchingNextPage) && <CenteredSpinner p={0} sx={{ py: 3 }} />}
+    </PageContainer>
   );
 }

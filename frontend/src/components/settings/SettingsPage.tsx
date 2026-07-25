@@ -1,6 +1,4 @@
 import {
-  Box,
-  Container,
   Typography,
   ToggleButtonGroup,
   ToggleButton,
@@ -19,6 +17,7 @@ import { setThemeMode, type ThemeMode } from "../../store/uiSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useUpdatePreferences } from "../../lib/query/mutations";
 import { LICENSE_OPTIONS } from "../../lib/licenses";
+import { PageContainer } from "../common/PageContainer";
 
 const NO_DEFAULT = "__none__";
 
@@ -50,96 +49,93 @@ export function SettingsPage() {
   };
 
   return (
-    <Box sx={{ flex: 1, overflow: "auto", height: "100%" }}>
-      <Container maxWidth="sm" sx={{ py: 3 }}>
+    <PageContainer maxWidth="sm">
+      <Typography
+        variant="h5"
+        sx={{
+          fontWeight: 700,
+          mb: 3,
+        }}
+      >
+        Settings
+      </Typography>
+
+      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 3 }}>
         <Typography
-          variant="h5"
+          variant="subtitle1"
           sx={{
-            fontWeight: 700,
-            mb: 3,
+            fontWeight: 600,
+            mb: 0.5,
           }}
         >
-          Settings
+          Appearance
         </Typography>
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 2,
+          }}
+        >
+          Choose how Observ.ing looks to you. Select a single theme, or sync with your system
+          settings.
+        </Typography>
+        <ToggleButtonGroup
+          value={themeMode}
+          exclusive
+          onChange={handleThemeChange}
+          aria-label="Theme mode"
+          sx={{
+            "& .MuiToggleButton-root": {
+              px: 3,
+              py: 1,
+              gap: 1,
+              textTransform: "none",
+              fontWeight: 500,
+            },
+          }}
+        >
+          <ToggleButton value="light" aria-label="Light mode">
+            <LightMode fontSize="small" />
+            Light
+          </ToggleButton>
+          <ToggleButton value="dark" aria-label="Dark mode">
+            <DarkMode fontSize="small" />
+            Dark
+          </ToggleButton>
+          <ToggleButton value="system" aria-label="System theme">
+            <SettingsBrightness fontSize="small" />
+            System
+          </ToggleButton>
+        </ToggleButtonGroup>
+      </Paper>
 
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 3 }}>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 600,
-              mb: 0.5,
-            }}
-          >
-            Appearance
+      {user && (
+        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
+          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+            Upload defaults
           </Typography>
-          <Typography
-            variant="body2"
-            sx={{
-              color: "text.secondary",
-              mb: 2,
-            }}
-          >
-            Choose how Observ.ing looks to you. Select a single theme, or sync with your system
-            settings.
+          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+            Pre-fill the license for new observation photos. You can still change it on each upload.
           </Typography>
-          <ToggleButtonGroup
-            value={themeMode}
-            exclusive
-            onChange={handleThemeChange}
-            aria-label="Theme mode"
-            sx={{
-              "& .MuiToggleButton-root": {
-                px: 3,
-                py: 1,
-                gap: 1,
-                textTransform: "none",
-                fontWeight: 500,
-              },
-            }}
-          >
-            <ToggleButton value="light" aria-label="Light mode">
-              <LightMode fontSize="small" />
-              Light
-            </ToggleButton>
-            <ToggleButton value="dark" aria-label="Dark mode">
-              <DarkMode fontSize="small" />
-              Dark
-            </ToggleButton>
-            <ToggleButton value="system" aria-label="System theme">
-              <SettingsBrightness fontSize="small" />
-              System
-            </ToggleButton>
-          </ToggleButtonGroup>
+          <FormControl fullWidth size="small" disabled={updatePrefs.isPending}>
+            <InputLabel id="default-license-label">Default license</InputLabel>
+            <Select
+              labelId="default-license-label"
+              value={defaultLicense ?? NO_DEFAULT}
+              label="Default license"
+              onChange={handleLicenseChange}
+            >
+              <MenuItem value={NO_DEFAULT}>No default (use CC BY)</MenuItem>
+              {LICENSE_OPTIONS.map((opt) => (
+                <MenuItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Paper>
-
-        {user && (
-          <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-              Upload defaults
-            </Typography>
-            <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-              Pre-fill the license for new observation photos. You can still change it on each
-              upload.
-            </Typography>
-            <FormControl fullWidth size="small" disabled={updatePrefs.isPending}>
-              <InputLabel id="default-license-label">Default license</InputLabel>
-              <Select
-                labelId="default-license-label"
-                value={defaultLicense ?? NO_DEFAULT}
-                label="Default license"
-                onChange={handleLicenseChange}
-              >
-                <MenuItem value={NO_DEFAULT}>No default (use CC BY)</MenuItem>
-                {LICENSE_OPTIONS.map((opt) => (
-                  <MenuItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Paper>
-        )}
-      </Container>
-    </Box>
+      )}
+    </PageContainer>
   );
 }

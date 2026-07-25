@@ -1,6 +1,5 @@
 import {
   Box,
-  Container,
   Paper,
   Table,
   TableBody,
@@ -13,6 +12,7 @@ import {
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import transparencyData from "../../data/transparency.json";
+import { PageContainer } from "../common/PageContainer";
 
 interface ServiceCost {
   name: string;
@@ -83,69 +83,67 @@ export function TransparencyPage() {
   const grandTotal = sortedMonths.reduce((sum, m) => sum + monthTotal(m), 0);
 
   return (
-    <Box sx={{ flex: 1, overflow: "auto", height: "100%" }}>
-      <Container maxWidth="md" sx={{ py: 3 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-          Transparency
-        </Typography>
-        <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-          {data.notes}
-        </Typography>
+    <PageContainer maxWidth="md">
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+        Transparency
+      </Typography>
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
+        {data.notes}
+      </Typography>
 
-        <Paper variant="outlined" sx={{ borderRadius: 2 }}>
-          {sortedMonths.length === 0 ? (
-            <Box sx={{ p: 3 }}>
-              <Typography variant="body2" sx={{ color: "text.secondary" }}>
-                No cost data has been recorded yet.
-              </Typography>
-            </Box>
-          ) : (
-            <TableContainer>
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Month</TableCell>
+      <Paper variant="outlined" sx={{ borderRadius: 2 }}>
+        {sortedMonths.length === 0 ? (
+          <Box sx={{ p: 3 }}>
+            <Typography variant="body2" sx={{ color: "text.secondary" }}>
+              No cost data has been recorded yet.
+            </Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Month</TableCell>
+                  {services.map((s) => (
+                    <TableCell key={s} align="right">
+                      {s}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right">Total</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {sortedMonths.map((m) => (
+                  <TableRow key={m.month}>
+                    <TableCell>{formatMonth(m.month)}</TableCell>
                     {services.map((s) => (
                       <TableCell key={s} align="right">
-                        {s}
-                      </TableCell>
-                    ))}
-                    <TableCell align="right">Total</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {sortedMonths.map((m) => (
-                    <TableRow key={m.month}>
-                      <TableCell>{formatMonth(m.month)}</TableCell>
-                      {services.map((s) => (
-                        <TableCell key={s} align="right">
-                          {formatCurrency(costFor(m, s))}
-                        </TableCell>
-                      ))}
-                      <TableCell align="right" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(monthTotal(m))}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-                <TableFooter>
-                  <TableRow>
-                    <TableCell sx={{ fontWeight: 600 }}>Total</TableCell>
-                    {services.map((s) => (
-                      <TableCell key={s} align="right" sx={{ fontWeight: 600 }}>
-                        {formatCurrency(serviceTotals.get(s) ?? 0)}
+                        {formatCurrency(costFor(m, s))}
                       </TableCell>
                     ))}
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
-                      {formatCurrency(grandTotal)}
+                      {formatCurrency(monthTotal(m))}
                     </TableCell>
                   </TableRow>
-                </TableFooter>
-              </Table>
-            </TableContainer>
-          )}
-        </Paper>
-      </Container>
-    </Box>
+                ))}
+              </TableBody>
+              <TableFooter>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 600 }}>Total</TableCell>
+                  {services.map((s) => (
+                    <TableCell key={s} align="right" sx={{ fontWeight: 600 }}>
+                      {formatCurrency(serviceTotals.get(s) ?? 0)}
+                    </TableCell>
+                  ))}
+                  <TableCell align="right" sx={{ fontWeight: 600 }}>
+                    {formatCurrency(grandTotal)}
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </PageContainer>
   );
 }
