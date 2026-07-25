@@ -18,7 +18,7 @@ jobs:
           node-version: '24'
           cache: 'npm'
       - run: npm ci
-      - run: npm audit --audit-level=high
+      - run: npm audit --json | node scripts/audit-check.mjs
 
   ts-bindings-check:
     runs-on: ubuntu-latest
