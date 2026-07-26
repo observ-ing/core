@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   Typography,
   ToggleButtonGroup,
@@ -8,6 +9,8 @@ import {
   Select,
   MenuItem,
   type SelectChangeEvent,
+  type SxProps,
+  type Theme,
 } from "@mui/material";
 import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -20,6 +23,28 @@ import { LICENSE_OPTIONS } from "../../lib/licenses";
 import { PageContainer } from "../common/PageContainer";
 
 const NO_DEFAULT = "__none__";
+
+interface SettingsSectionProps {
+  title: ReactNode;
+  description: ReactNode;
+  sx?: SxProps<Theme>;
+  children: ReactNode;
+}
+
+/** Titled, outlined card wrapper shared by the settings page sections. */
+function SettingsSection({ title, description, sx, children }: SettingsSectionProps) {
+  return (
+    <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, ...sx }}>
+      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+        {title}
+      </Typography>
+      <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
+        {description}
+      </Typography>
+      {children}
+    </Paper>
+  );
+}
 
 export function SettingsPage() {
   usePageTitle("Settings");
@@ -60,26 +85,11 @@ export function SettingsPage() {
         Settings
       </Typography>
 
-      <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, mb: 3 }}>
-        <Typography
-          variant="subtitle1"
-          sx={{
-            fontWeight: 600,
-            mb: 0.5,
-          }}
-        >
-          Appearance
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            mb: 2,
-          }}
-        >
-          Choose how Observ.ing looks to you. Select a single theme, or sync with your system
-          settings.
-        </Typography>
+      <SettingsSection
+        title="Appearance"
+        description="Choose how Observ.ing looks to you. Select a single theme, or sync with your system settings."
+        sx={{ mb: 3 }}
+      >
         <ToggleButtonGroup
           value={themeMode}
           exclusive
@@ -108,16 +118,13 @@ export function SettingsPage() {
             System
           </ToggleButton>
         </ToggleButtonGroup>
-      </Paper>
+      </SettingsSection>
 
       {user && (
-        <Paper variant="outlined" sx={{ p: 3, borderRadius: 2 }}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-            Upload defaults
-          </Typography>
-          <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-            Pre-fill the license for new observation photos. You can still change it on each upload.
-          </Typography>
+        <SettingsSection
+          title="Upload defaults"
+          description="Pre-fill the license for new observation photos. You can still change it on each upload."
+        >
           <FormControl fullWidth size="small" disabled={updatePrefs.isPending}>
             <InputLabel id="default-license-label">Default license</InputLabel>
             <Select
@@ -134,7 +141,7 @@ export function SettingsPage() {
               ))}
             </Select>
           </FormControl>
-        </Paper>
+        </SettingsSection>
       )}
     </PageContainer>
   );
