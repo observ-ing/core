@@ -13,7 +13,7 @@ export function Wordmark({ sx }: WordmarkProps) {
     <Typography
       component="span"
       sx={{
-        fontFamily: '"DM Sans", sans-serif',
+        // fontFamily inherits the theme's brand sans stack (DM Sans + fallbacks).
         fontWeight: 600,
         fontSize: "1.125rem",
         lineHeight: 1,
