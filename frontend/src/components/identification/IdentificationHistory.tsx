@@ -8,6 +8,7 @@ import { RelativeTime } from "../common/RelativeTime";
 import { Section, SectionHeader } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { UserCard } from "../common/UserCard";
+import { EmptyState } from "../common/EmptyState";
 
 export interface IdentificationHistoryProps {
   identifications: Identification[];
@@ -70,14 +71,11 @@ export function IdentificationHistory({
           : {})}
       />
       {sortedIds.length === 0 ? (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          No identifications yet. Be the first to suggest an ID!
-        </Typography>
+        <EmptyState
+          message="No identifications yet. Be the first to suggest an ID!"
+          p={0}
+          sx={{ textAlign: "left" }}
+        />
       ) : (
         <Stack spacing={2}>
           {sortedIds.map((id) => {
