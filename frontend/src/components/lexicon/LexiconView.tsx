@@ -13,12 +13,11 @@ import {
   TableHead,
   TableRow,
   Collapse,
-  IconButton,
   Link as MuiLink,
 } from "@mui/material";
-import { ExpandMore, ExpandLess } from "@mui/icons-material";
 import { labelChipSx, valueChipSx } from "../common/chipSx";
 import { monoStack } from "../../theme";
+import { ExpandToggleButton } from "../common/ExpandToggleButton";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
@@ -225,9 +224,7 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
         sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
         onClick={() => setOpen(!open)}
       >
-        <IconButton size="small" aria-label={open ? "Collapse section" : "Expand section"}>
-          {open ? <ExpandLess /> : <ExpandMore />}
-        </IconButton>
+        <ExpandToggleButton expanded={open} />
         <Typography variant="subtitle2" component="code" sx={{ fontFamily: monoStack }}>
           #{name}
         </Typography>
