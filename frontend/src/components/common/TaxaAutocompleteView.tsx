@@ -1,11 +1,11 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Box, IconButton, Stack, Typography } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Autocomplete, Box, Stack, Typography } from "@mui/material";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
+import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
   return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
@@ -185,12 +185,10 @@ export function TaxaAutocompleteView({
                 )}
               </Box>
               {taxonUrl && (
-                <IconButton
-                  size="small"
-                  component="a"
+                <ExternalLinkIconButton
                   href={taxonUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  label={option.scientificName}
+                  fontSize={16}
                   // MUI Autocomplete picks the row on mousedown, not click —
                   // stop propagation so the row doesn't select. Also
                   // preventDefault: without it the input loses focus on
@@ -200,13 +198,7 @@ export function TaxaAutocompleteView({
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                  title="Open taxon in new tab"
-                  aria-label={`Open ${option.scientificName} in new tab`}
-                  sx={{ p: 0.5, flexShrink: 0 }}
-                >
-                  <OpenInNewIcon sx={{ fontSize: 16 }} />
-                </IconButton>
+                />
               )}
             </Box>
           );
