@@ -3,19 +3,19 @@ import { Dialog, DialogContent, IconButton, useMediaQuery, useTheme } from "@mui
 import CloseIcon from "@mui/icons-material/Close";
 
 interface ModalOverlayProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
   children: ReactNode;
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl" | false;
 }
 
-export function ModalOverlay({ isOpen, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
+export function ModalOverlay({ open, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
   const theme = useTheme();
   const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
     <Dialog
-      open={isOpen}
+      open={open}
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth
