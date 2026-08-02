@@ -31,21 +31,21 @@ const sampleContent = (
 
 export const Closed: Story = {
   args: {
-    isOpen: false,
+    open: false,
     children: sampleContent,
   },
 };
 
 export const Open: Story = {
   args: {
-    isOpen: true,
+    open: true,
     children: sampleContent,
   },
 };
 
 export const WideModal: Story = {
   args: {
-    isOpen: true,
+    open: true,
     maxWidth: "md",
     children: sampleContent,
   },
