@@ -27,7 +27,8 @@ import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
-import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
+import { ProfileStat } from "./ProfileStat";
+import { PROFILE_HEADER_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
 import { observationGridSx } from "../common/observationGridLayout";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
@@ -102,99 +103,24 @@ export function ProfileView() {
           {/* Stats */}
           {counts && (
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "primary.main",
-                  }}
-                >
-                  {counts.observations.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    Observations
-                  </Typography>
-                </Stack>
-              </Box>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "secondary.main",
-                  }}
-                >
-                  {counts.identifications.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    IDs
-                  </Typography>
-                </Stack>
-              </Box>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "success.main",
-                  }}
-                >
-                  {counts.species.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    Species
-                  </Typography>
-                </Stack>
-              </Box>
+              <ProfileStat
+                count={counts.observations}
+                color="primary.main"
+                icon={<CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                label="Observations"
+              />
+              <ProfileStat
+                count={counts.identifications}
+                color="secondary.main"
+                icon={<FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                label="IDs"
+              />
+              <ProfileStat
+                count={counts.species}
+                color="success.main"
+                icon={<GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                label="Species"
+              />
             </Stack>
           )}
 
