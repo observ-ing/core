@@ -63,6 +63,18 @@ function determineMode(sortedByConfidence: SpeciesSuggestion[]): Mode {
     : "ambiguous";
 }
 
+// Shared shape for the suggestion-row ButtonBase in AncestorCard and
+// SpeciesCard — layout stays identical; only sizing/color varies by row.
+const SUGGESTION_ROW_BASE_SX = {
+  width: "100%",
+  textAlign: "left" as const,
+  borderRadius: 1,
+  border: "1px solid",
+  display: "flex",
+  alignItems: "center",
+  gap: 1.25,
+};
+
 function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string }) {
   return (
     <IconButton
@@ -251,16 +263,10 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
     <ButtonBase
       onClick={onSelect}
       sx={{
-        width: "100%",
-        textAlign: "left",
-        borderRadius: 1,
-        border: "1px solid",
+        ...SUGGESTION_ROW_BASE_SX,
         borderColor: "primary.main",
         bgcolor: "action.hover",
         p: 1.25,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
         minHeight: 64,
         "&:hover": { bgcolor: "action.selected" },
       }}
@@ -326,16 +332,10 @@ function SpeciesCard({
     <ButtonBase
       onClick={onSelect}
       sx={{
-        width: "100%",
-        textAlign: "left",
-        borderRadius: 1,
-        border: "1px solid",
+        ...SUGGESTION_ROW_BASE_SX,
         borderColor: primary ? "primary.main" : "divider",
         bgcolor: primary ? "action.hover" : "transparent",
         p: primary ? 1.25 : 1,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
         minHeight: primary ? 56 : 48,
         "&:hover": { bgcolor: "action.hover" },
       }}
