@@ -1,8 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Collapse, IconButton } from "@mui/material";
+import { Collapse } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import { Section, SectionHeader } from "./Section";
+import { ExpandToggleButton } from "./ExpandToggleButton";
 
 interface CollapsibleSectionProps {
   title: ReactNode;
@@ -56,17 +56,7 @@ export function CollapsibleSection({
         trailing={
           <>
             {trailing}
-            <IconButton
-              size="small"
-              aria-label={expanded ? "Collapse section" : "Expand section"}
-              sx={{
-                p: 0.25,
-                transform: expanded ? "rotate(180deg)" : "rotate(0deg)",
-                transition: (theme) => theme.transitions.create("transform"),
-              }}
-            >
-              <ExpandMoreIcon fontSize="small" />
-            </IconButton>
+            <ExpandToggleButton expanded={expanded} />
           </>
         }
       />

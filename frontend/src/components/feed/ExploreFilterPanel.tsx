@@ -3,7 +3,6 @@ import {
   Box,
   Paper,
   Collapse,
-  IconButton,
   Typography,
   TextField,
   Autocomplete,
@@ -17,12 +16,11 @@ import {
   Divider,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
-import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
-import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import ClearIcon from "@mui/icons-material/Clear";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { countChipSx } from "../common/chipSx";
+import { ExpandToggleButton } from "../common/ExpandToggleButton";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -121,9 +119,7 @@ export function ExploreFilterPanel() {
             <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
           )}
         </Stack>
-        <IconButton size="small" aria-label={isExpanded ? "Collapse section" : "Expand section"}>
-          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        </IconButton>
+        <ExpandToggleButton expanded={isExpanded} />
       </Box>
       {/* Collapsible filter content */}
       <Collapse in={isExpanded}>
