@@ -18,7 +18,7 @@ export const ExploreGridCard = memo(function ExploreGridCard({
   return (
     <ObservationGridCard
       observation={observation}
-      isPending={isPending}
+      pending={isPending}
       badge={isPending ? <PendingBadge /> : undefined}
     />
   );

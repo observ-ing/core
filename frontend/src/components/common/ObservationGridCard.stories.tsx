@@ -38,7 +38,7 @@ export const Fern: Story = {
 export const Pending: Story = {
   args: {
     observation: OAK_OBSERVATION,
-    isPending: true,
+    pending: true,
     badge: <PendingBadge />,
   },
   parameters: {

@@ -14,7 +14,7 @@ export const observationGridCardContentSx = { p: 1.5, "&:last-child": { pb: 1.5 
 
 interface ObservationGridCardProps {
   observation: Occurrence;
-  isPending?: boolean;
+  pending?: boolean;
   // Overlay rendered inside the Card, above the CardActionArea (e.g. a
   // PendingBadge) — needs the Card's `position: relative` to anchor to.
   badge?: ReactNode;
@@ -22,7 +22,7 @@ interface ObservationGridCardProps {
 
 export const ObservationGridCard = memo(function ObservationGridCard({
   observation,
-  isPending = false,
+  pending = false,
   badge,
 }: ObservationGridCardProps) {
   const species = observation.communityId || observation.effectiveTaxonomy?.scientificName;
@@ -33,13 +33,13 @@ export const ObservationGridCard = memo(function ObservationGridCard({
       <CardActionArea
         component={Link}
         to={getObservationUrl(observation.uri)}
-        onClick={isPending ? (e) => e.preventDefault() : undefined}
+        onClick={pending ? (e) => e.preventDefault() : undefined}
         sx={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
-          ...(isPending && { opacity: 0.7, pointerEvents: "none" }),
+          ...(pending && { opacity: 0.7, pointerEvents: "none" }),
         }}
       >
         <ImageWithSkeleton
