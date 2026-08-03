@@ -1,9 +1,9 @@
-import { Box, ButtonBase, IconButton, Stack, Typography } from "@mui/material";
+import { Box, ButtonBase, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
+import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -76,21 +76,7 @@ const SUGGESTION_ROW_BASE_SX = {
 };
 
 function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string }) {
-  return (
-    <IconButton
-      size="small"
-      component="a"
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      sx={{ p: 0.5, ml: 0.5, flexShrink: 0 }}
-      title="Open taxon in new tab"
-      aria-label={`Open ${taxonName} in new tab`}
-    >
-      <OpenInNewIcon sx={{ fontSize: 14 }} />
-    </IconButton>
-  );
+  return <ExternalLinkIconButton href={url} label={taxonName} sx={{ ml: 0.5 }} />;
 }
 
 function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | null {
