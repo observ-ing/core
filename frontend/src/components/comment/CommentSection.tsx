@@ -12,6 +12,7 @@ import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { EmptyState } from "../common/EmptyState";
 
 interface CommentSectionProps {
   observationUri: string;
@@ -79,15 +80,11 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
         }
       />
       {comments.length === 0 && !showForm && (
-        <Typography
-          variant="body2"
-          sx={{
-            color: "text.secondary",
-            mb: 2,
-          }}
-        >
-          No comments yet. Start a discussion!
-        </Typography>
+        <EmptyState
+          message="No comments yet. Start a discussion!"
+          p={0}
+          sx={{ mb: 2, textAlign: "left" }}
+        />
       )}
       {comments.length > 0 && (
         <Stack spacing={2} sx={{ mb: 2 }}>

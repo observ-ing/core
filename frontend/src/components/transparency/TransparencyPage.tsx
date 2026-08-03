@@ -1,5 +1,4 @@
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -13,6 +12,7 @@ import {
 import { usePageTitle } from "../../hooks/usePageTitle";
 import transparencyData from "../../data/transparency.json";
 import { PageContainer } from "../common/PageContainer";
+import { EmptyState } from "../common/EmptyState";
 
 interface ServiceCost {
   name: string;
@@ -93,11 +93,7 @@ export function TransparencyPage() {
 
       <Paper variant="outlined" sx={{ borderRadius: 2 }}>
         {sortedMonths.length === 0 ? (
-          <Box sx={{ p: 3 }}>
-            <Typography variant="body2" sx={{ color: "text.secondary" }}>
-              No cost data has been recorded yet.
-            </Typography>
-          </Box>
+          <EmptyState message="No cost data has been recorded yet." p={3} />
         ) : (
           <TableContainer>
             <Table size="small">
