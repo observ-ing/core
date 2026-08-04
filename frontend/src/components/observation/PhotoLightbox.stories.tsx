@@ -30,6 +30,11 @@ export const Open: Story = {
 };
 
 export const OpenWithLicense: Story = {
+  args: { open: true, license: "https://creativecommons.org/licenses/by/4.0/" },
+};
+
+/** A media record written before the lexicon moved to license URIs. */
+export const OpenWithLegacyLicense: Story = {
   args: { open: true, license: "CC-BY-4.0" },
 };
 

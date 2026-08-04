@@ -112,7 +112,7 @@ mod tests {
                 "size": 12345,
             },
             "alt": "A ruby-throated hummingbird at a feeder.",
-            "license": "CC-BY-4.0",
+            "license": "https://creativecommons.org/licenses/by/4.0/",
         });
 
         let entry = media_record_to_blob_entry(&record).expect("should parse");
@@ -125,6 +125,25 @@ mod tests {
             entry.alt.as_deref(),
             Some("A ruby-throated hummingbird at a feeder.")
         );
+        assert_eq!(
+            entry.license.as_deref(),
+            Some("https://creativecommons.org/licenses/by/4.0/")
+        );
+    }
+
+    #[test]
+    fn legacy_spdx_license_is_stored_verbatim() {
+        // Records predating lexicons.bio#35 keep their SPDX identifier in the
+        // author's PDS. The ingester mirrors what it finds; the appview does
+        // the upgrade on read, so this column can hold either form.
+        let record = json!({
+            "image": {
+                "ref": { "$link": "bafyreiabc" },
+                "mimeType": "image/jpeg",
+            },
+            "license": "CC-BY-4.0",
+        });
+        let entry = media_record_to_blob_entry(&record).expect("should parse");
         assert_eq!(entry.license.as_deref(), Some("CC-BY-4.0"));
     }
 

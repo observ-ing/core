@@ -18,9 +18,11 @@ export type CreateOccurrenceRequest = {
   eventDate?: string;
   images?: Array<ImageUpload>;
   /**
-   * SPDX license identifier applied to each uploaded media record (e.g.
-   * `CC-BY-4.0`). Validated against `validation::ALLOWED_LICENSES`. When
-   * omitted, the PDS media record stores no license.
+   * License URI applied to each uploaded media record (e.g.
+   * `https://creativecommons.org/licenses/by/4.0/`). Validated against
+   * `validation::ALLOWED_LICENSES`; a retired SPDX identifier is upgraded to
+   * its URI rather than rejected. When omitted, the PDS media record stores
+   * no license.
    */
   license?: string;
   scientificName?: string;
