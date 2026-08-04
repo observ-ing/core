@@ -50,9 +50,10 @@ pub async fn update_preferences(
     user: AuthUser,
     Json(body): Json<UpdatePreferencesRequest>,
 ) -> Result<Json<SuccessResponse>, AppError> {
-    if let Some(ref license) = body.default_license {
-        validate_license(license)?;
-    }
+    let default_license = match body.default_license {
+        Some(ref license) => Some(validate_license(license)?),
+        None => None,
+    };
     if let Some(ref basemap) = body.basemap {
         validate_basemap(basemap)?;
     }
@@ -60,7 +61,7 @@ pub async fn update_preferences(
     observing_db::user_preferences::upsert(
         &state.pool,
         &user.did,
-        body.default_license.as_deref(),
+        default_license,
         body.basemap.as_deref(),
     )
     .await?;

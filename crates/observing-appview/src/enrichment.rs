@@ -9,6 +9,7 @@ use sqlx::PgPool;
 use ts_rs::TS;
 
 use crate::taxonomy_client::TaxonomyClient;
+use crate::validation::normalize_license;
 
 /// Enriched occurrence ready for API response
 #[derive(Debug, Clone, Serialize, TS)]
@@ -67,8 +68,8 @@ impl OccurrenceResponse {
     }
 }
 
-/// A single image attached to an occurrence, with the SPDX license the
-/// uploader chose (when one is recorded on the underlying media record).
+/// A single image attached to an occurrence, with the license URI the uploader
+/// chose (when one is recorded on the underlying media record).
 #[derive(Debug, Clone, Serialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
@@ -186,12 +187,23 @@ fn profile_summary(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Profi
     }
 }
 
+/// The sole producer of `OccurrenceImage`, and therefore the one place every
+/// license value passes through on its way to a client. Media records written
+/// before the lexicon moved to license URIs still hold SPDX identifiers in their
+/// author's PDS — and `associated_media` is re-derived from those records on
+/// every re-ingest — so the upgrade happens here rather than in the database.
+/// Values we don't recognize pass through untouched: a third-party client may
+/// have written something outside our list, and showing it beats dropping it.
 fn extract_images(row: &OccurrenceRow) -> Vec<OccurrenceImage> {
     row.blob_entries()
         .iter()
         .map(|blob| OccurrenceImage {
             url: format!("/media/blob/{}/{}", row.did, blob.image.ref_.cid()),
-            license: blob.license.clone(),
+            license: blob.license.as_deref().map(|license| {
+                normalize_license(license)
+                    .map(str::to_string)
+                    .unwrap_or_else(|| license.to_string())
+            }),
         })
         .collect()
 }
@@ -577,11 +589,43 @@ mod tests {
             "cidlic",
             "image/jpeg",
             "link",
-            Some("CC-BY-4.0"),
+            Some("https://creativecommons.org/licenses/by/4.0/"),
         )])));
         let images = extract_images(&row);
         assert_eq!(images.len(), 1);
-        assert_eq!(images[0].license.as_deref(), Some("CC-BY-4.0"));
+        assert_eq!(
+            images[0].license.as_deref(),
+            Some("https://creativecommons.org/licenses/by/4.0/")
+        );
+    }
+
+    #[test]
+    fn test_extract_images_upgrades_legacy_spdx_license() {
+        // Media records written before lexicons.bio#35 still hold SPDX
+        // identifiers in their author's PDS; clients only ever see the URI.
+        let row = make_row(Some(blobs_to_json(vec![blob_entry_with_license(
+            "cidlic",
+            "image/jpeg",
+            "link",
+            Some("CC-BY-NC-SA-4.0"),
+        )])));
+        let images = extract_images(&row);
+        assert_eq!(
+            images[0].license.as_deref(),
+            Some("https://creativecommons.org/licenses/by-nc-sa/4.0/")
+        );
+    }
+
+    #[test]
+    fn test_extract_images_passes_through_unrecognized_license() {
+        let row = make_row(Some(blobs_to_json(vec![blob_entry_with_license(
+            "cidlic",
+            "image/jpeg",
+            "link",
+            Some("All rights reserved"),
+        )])));
+        let images = extract_images(&row);
+        assert_eq!(images[0].license.as_deref(), Some("All rights reserved"));
     }
 
     #[test]
