@@ -6,7 +6,9 @@
 - Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
 - PostgreSQL (14+) with the PostGIS extension — production runs 16, but any modern version works locally
 - [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
-- ONNX Runtime, for the `species-id` service:
+- ONNX Runtime 1.27+, for the `species-id` service (older builds make it panic
+  on startup with `BadVersion`; the required minor version is asserted in
+  `crates/observing-species-id/src/model.rs`):
   - macOS: `brew install onnxruntime`
   - Linux: install via your distro (`libonnxruntime` / `onnxruntime-dev`)
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
