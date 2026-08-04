@@ -39,3 +39,15 @@ export const accentListItemSx = {
   borderRadius: "0 4px 4px 0",
   py: 1,
 } as const;
+
+/**
+ * Full-bleed absolute overlay for a `Skeleton` layered over an image's
+ * `position: relative` container, shared by `ImageWithSkeleton` and its
+ * static loading-state counterpart so the two can't drift apart.
+ */
+export const imageSkeletonOverlaySx = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+} as const;

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, CardMedia, Skeleton, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
+import { imageSkeletonOverlaySx } from "./layoutSx";
 
 interface ImageWithSkeletonProps {
   src?: string | undefined;
@@ -41,13 +42,7 @@ export function ImageWithSkeleton({
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden", ...sx }}>
-      {!loaded && (
-        <Skeleton
-          variant="rectangular"
-          animation="wave"
-          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        />
-      )}
+      {!loaded && <Skeleton variant="rectangular" animation="wave" sx={imageSkeletonOverlaySx} />}
       <CardMedia
         component="img"
         image={src}
