@@ -41,7 +41,7 @@ export const LargerSize: Story = {
 
 export const Sizes: Story = {
   render: (args) => (
-    <Stack direction="row" spacing={2} alignItems="center">
+    <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
       <UserAvatar {...args} src={undefined} size={32} />
       <UserAvatar {...args} src={undefined} size={40} />
       <UserAvatar {...args} src={undefined} size={80} />
