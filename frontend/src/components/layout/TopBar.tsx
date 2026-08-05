@@ -8,7 +8,6 @@ import {
   Button,
   IconButton,
   Tooltip,
-  Avatar,
   Typography,
   Skeleton,
   useTheme,
@@ -24,6 +23,7 @@ import { Person, Login, Logout, MenuBook, Settings, Menu as MenuIcon } from "@mu
 import { getDisplayName } from "../../lib/utils";
 import { Logo } from "../common/Logo";
 import { Wordmark } from "../common/Wordmark";
+import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { PendingIndicator } from "./PendingIndicator";
@@ -173,9 +173,13 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                   sx={{ p: 0.5 }}
                   aria-label="Account menu"
                 >
-                  <Avatar
-                    {...(user.avatar ? { src: user.avatar } : {})}
-                    sx={{ width: 40, height: 40, border: 2, borderColor: "divider" }}
+                  <UserAvatar
+                    did={user.did}
+                    handle={user.handle}
+                    displayName={getDisplayName(user, "User")}
+                    src={user.avatar}
+                    size={40}
+                    sx={{ border: 2, borderColor: "divider" }}
                   />
                 </IconButton>
                 <Menu
