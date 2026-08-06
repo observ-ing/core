@@ -4,6 +4,7 @@ import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
+import { TaxonThumbnail } from "../common/TaxonThumbnail";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -326,31 +327,12 @@ function SpeciesCard({
         "&:hover": { bgcolor: "action.hover" },
       }}
     >
-      {suggestion.taxonMatch?.photoUrl ? (
-        <Box
-          component="img"
-          src={suggestion.taxonMatch.photoUrl}
-          alt=""
-          loading="lazy"
-          sx={{
-            width: thumbnailSize,
-            height: thumbnailSize,
-            borderRadius: 1,
-            objectFit: "cover",
-            flexShrink: 0,
-          }}
-        />
-      ) : (
-        <Box
-          sx={{
-            width: thumbnailSize,
-            height: thumbnailSize,
-            borderRadius: 1,
-            bgcolor: "action.disabledBackground",
-            flexShrink: 0,
-          }}
-        />
-      )}
+      <TaxonThumbnail
+        src={suggestion.taxonMatch?.photoUrl}
+        size={thumbnailSize}
+        emptyBgcolor="action.disabledBackground"
+        sx={{ flexShrink: 0 }}
+      />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={0.75} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
           <Typography sx={{ fontStyle: "italic", fontWeight: primary ? 600 : 500 }}>

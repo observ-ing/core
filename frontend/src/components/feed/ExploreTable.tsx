@@ -1,7 +1,6 @@
 import { memo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -16,6 +15,7 @@ import type { QualityIssue } from "../../bindings/QualityIssue";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl, getDisplayName } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { TaxonThumbnail } from "../common/TaxonThumbnail";
 
 interface ExploreTableProps {
   observations: Occurrence[];
@@ -117,19 +117,12 @@ const ExploreTableRow = memo(function ExploreTableRow({
       sx={{ cursor: "pointer", "& td": { whiteSpace: "nowrap" } }}
     >
       <TableCell sx={{ p: 0.5 }}>
-        <Box
-          component="img"
+        <TaxonThumbnail
           src={obs.images[0] ? getImageUrl(obs.images[0].url) : undefined}
-          alt=""
-          loading="lazy"
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 0.5,
-            objectFit: "cover",
-            display: "block",
-            bgcolor: "action.hover",
-          }}
+          size={36}
+          borderRadius={0.5}
+          emptyBgcolor="action.hover"
+          sx={{ display: "block" }}
         />
       </TableCell>
       <TableCell sx={{ fontStyle: italic ? "italic" : "normal", fontWeight: 500 }}>
