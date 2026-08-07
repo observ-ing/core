@@ -1,10 +1,8 @@
 import { useState, useCallback, type FormEvent } from "react";
 import {
-  Avatar,
   Box,
   Typography,
   Button,
-  Chip,
   Stack,
   Divider,
   CircularProgress,
@@ -16,11 +14,10 @@ import {
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import type { TaxaResult } from "../../services/types";
 import { useSubmitIdentification } from "../../lib/query/mutations";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
+import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
 import { TaxonLink } from "../common/TaxonLink";
@@ -216,29 +213,7 @@ export function IdentificationPanel({
                 margin="none"
                 bottomContent={
                   taxonName.trim() ? (
-                    matchedTaxon ? (
-                      <Chip
-                        {...(matchedTaxon.photoUrl
-                          ? { avatar: <Avatar src={matchedTaxon.photoUrl} alt="" /> }
-                          : { icon: <CheckCircleOutlinedIcon /> })}
-                        label={["Existing taxon", matchedTaxon.commonName, matchedTaxon.rank]
-                          .filter((p): p is string => Boolean(p))
-                          .join(" · ")}
-                        color="success"
-                        size="small"
-                        variant="outlined"
-                        sx={{ mt: 0.5 }}
-                      />
-                    ) : (
-                      <Chip
-                        icon={<AddCircleOutlinedIcon />}
-                        label="New taxon"
-                        color="info"
-                        size="small"
-                        variant="outlined"
-                        sx={{ mt: 0.5 }}
-                      />
-                    )
+                    <TaxonMatchChip matchedTaxon={matchedTaxon} />
                   ) : (
                     <VisualIdCards
                       suggestions={visualId.suggestions}
