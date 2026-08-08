@@ -10,6 +10,7 @@ const meta = {
   tags: ["autodocs"],
   argTypes: {
     titleWidth: { control: { type: "number" } },
+    sticky: { control: { type: "boolean" } },
   },
 } satisfies Meta<typeof DetailHeaderSkeleton>;
 
@@ -25,5 +26,12 @@ export const Default: Story = {
 export const ShortTitle: Story = {
   args: {
     titleWidth: 60,
+  },
+};
+
+export const Sticky: Story = {
+  args: {
+    titleWidth: 60,
+    sticky: true,
   },
 };
