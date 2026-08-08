@@ -8,7 +8,7 @@ import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 export function TaxonDetailSkeleton() {
   return (
     <Box>
-      <DetailHeaderSkeleton titleWidth={60} />
+      <DetailHeaderSkeleton titleWidth={60} sticky />
 
       {/* Main content */}
       <Box sx={{ p: 3 }}>
