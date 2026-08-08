@@ -21,6 +21,7 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { countChipSx } from "../common/chipSx";
 import { ExpandToggleButton } from "../common/ExpandToggleButton";
+import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { useAppDispatch, useAppSelector } from "../../store";
@@ -159,20 +160,7 @@ export function ExploreFilterPanel() {
                   {...otherProps}
                   sx={{ display: "flex", alignItems: "center", gap: 1 }}
                 >
-                  {option.photoUrl && (
-                    <Box
-                      component="img"
-                      src={option.photoUrl}
-                      alt=""
-                      loading="lazy"
-                      sx={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 1,
-                        objectFit: "cover",
-                      }}
-                    />
-                  )}
+                  <TaxonThumbnail src={option.photoUrl} size={32} />
                   <Box>
                     <Typography
                       variant="body2"

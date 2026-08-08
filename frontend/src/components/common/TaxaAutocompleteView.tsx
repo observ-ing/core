@@ -6,6 +6,7 @@ import { renderAutocompleteInput } from "./autocompleteInput";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
+import { TaxonThumbnail } from "./TaxonThumbnail";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
   return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
@@ -111,21 +112,7 @@ export function TaxaAutocompleteView({
                 p: 1.5,
               }}
             >
-              {option.photoUrl && (
-                <Box
-                  component="img"
-                  src={option.photoUrl}
-                  alt=""
-                  loading="lazy"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 1,
-                    objectFit: "cover",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
+              <TaxonThumbnail src={option.photoUrl} size={40} sx={{ flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack
                   direction="row"
