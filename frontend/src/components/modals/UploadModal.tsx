@@ -5,13 +5,11 @@
 // `uploadModalOpen` flag.
 import { lazy, Suspense, useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
-  Avatar,
   Box,
   ButtonBase,
   Typography,
   TextField,
   Button,
-  Chip,
   Stack,
   IconButton,
   CircularProgress,
@@ -27,8 +25,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice";
@@ -42,6 +38,7 @@ import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
+import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
@@ -679,29 +676,7 @@ export function UploadModal() {
                   placeholder="e.g. Eschscholzia californica - leave blank if unknown"
                   bottomContent={
                     species.trim() ? (
-                      matchedTaxon ? (
-                        <Chip
-                          {...(matchedTaxon.photoUrl
-                            ? { avatar: <Avatar src={matchedTaxon.photoUrl} alt="" /> }
-                            : { icon: <CheckCircleOutlinedIcon /> })}
-                          label={["Existing taxon", matchedTaxon.commonName, matchedTaxon.rank]
-                            .filter((p): p is string => Boolean(p))
-                            .join(" · ")}
-                          color="success"
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 0.5 }}
-                        />
-                      ) : (
-                        <Chip
-                          icon={<AddCircleOutlinedIcon />}
-                          label="New taxon"
-                          color="info"
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 0.5 }}
-                        />
-                      )
+                      <TaxonMatchChip matchedTaxon={matchedTaxon} />
                     ) : visualIdImageUrl ? (
                       <VisualId
                         imageUrl={visualIdImageUrl}
