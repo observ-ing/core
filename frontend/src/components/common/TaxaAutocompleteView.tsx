@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Box, Stack, Typography } from "@mui/material";
+import { Autocomplete, Box, Chip, Stack, Typography } from "@mui/material";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
@@ -7,6 +7,7 @@ import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
 import { TaxonThumbnail } from "./TaxonThumbnail";
+import { labelChipSx } from "./chipSx";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
   return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
@@ -133,18 +134,7 @@ export function TaxaAutocompleteView({
                     {option.scientificName}
                   </Typography>
                   {option.isSynonym && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        bgcolor: "action.selected",
-                        px: 0.75,
-                        py: 0.25,
-                        borderRadius: 0.5,
-                        fontSize: "0.65rem",
-                      }}
-                    >
-                      synonym
-                    </Typography>
+                    <Chip label="synonym" size="small" variant="outlined" sx={labelChipSx} />
                   )}
                   {option.conservationStatus && (
                     <ConservationStatus status={option.conservationStatus} size="sm" />
