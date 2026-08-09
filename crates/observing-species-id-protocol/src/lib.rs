@@ -61,3 +61,31 @@ pub struct IdentifyResponse {
     pub model_version: String,
     pub inference_time_ms: u64,
 }
+
+/// A species in the model's label set, identified by name only (no
+/// confidence — this isn't a ranked prediction). Returned by the
+/// `/species-in-range` endpoint.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeciesRef {
+    pub scientific_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub common_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kingdom: Option<String>,
+}
+
+/// Response shape for the species-id `/species-in-range` endpoint: the set of
+/// label-set species whose iNat range covers the requested point.
+///
+/// `area_has_data` distinguishes "we looked and nothing is expected here" from
+/// "we couldn't form an opinion" (no geo index loaded, or the H3 cell at that
+/// point is unknown to the index — typically open ocean / Antarctica). When
+/// it's `false`, `species` is always empty; callers should treat that as
+/// "no range data for this location" rather than "no species live here".
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SpeciesInRangeResponse {
+    pub area_has_data: bool,
+    pub species: Vec<SpeciesRef>,
+}

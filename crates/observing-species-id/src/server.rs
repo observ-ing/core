@@ -1,16 +1,16 @@
 //! HTTP server for species identification service
 
 use crate::model::BioclipModel;
-use crate::types::{HealthResponse, IdentifyRequest, IdentifyResponse};
+use crate::types::{HealthResponse, IdentifyRequest, IdentifyResponse, SpeciesInRangeResponse};
 use axum::{
-    extract::{DefaultBodyLimit, State},
+    extract::{DefaultBodyLimit, Query, State},
     http::StatusCode,
     response::{IntoResponse, Json, Response},
     routing::{get, post},
     Router,
 };
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tracing::{error, info};
@@ -33,6 +33,7 @@ pub fn create_router(state: SharedState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/identify", post(identify))
+        .route("/species-in-range", get(species_in_range))
         .layer(DefaultBodyLimit::max(20 * 1024 * 1024)) // 20MB for base64-encoded images
         .layer(CorsLayer::permissive())
         .with_state(state)
@@ -53,6 +54,52 @@ async fn health(State(state): State<SharedState>) -> Json<HealthResponse> {
         model_version: state.model.version.clone(),
         species_count: state.model.species_count(),
     })
+}
+
+/// Query parameters for `/species-in-range`. Missing or non-numeric `lat`/`lon`
+/// are rejected by axum as `400 Bad Request` before the handler runs.
+#[derive(Debug, Deserialize)]
+struct InRangeQuery {
+    lat: f64,
+    lon: f64,
+}
+
+/// `GET /species-in-range?lat=..&lon=..`
+///
+/// Returns the label-set species whose iNat range covers the point — the data
+/// behind "what could you find near here". This is a pure in-memory geo-index
+/// lookup (no model inference), so it's sub-millisecond and needs no
+/// `spawn_blocking`. See [`SpeciesInRangeResponse`] for the `area_has_data`
+/// semantics (no range data at this point vs. nothing expected here).
+async fn species_in_range(
+    State(state): State<SharedState>,
+    Query(q): Query<InRangeQuery>,
+) -> Json<SpeciesInRangeResponse> {
+    match state.model.species_in_range(q.lat, q.lon) {
+        Some(species) => {
+            info!(
+                lat = q.lat,
+                lon = q.lon,
+                count = species.len(),
+                "species-in-range lookup"
+            );
+            Json(SpeciesInRangeResponse {
+                area_has_data: true,
+                species,
+            })
+        }
+        None => {
+            info!(
+                lat = q.lat,
+                lon = q.lon,
+                "species-in-range: no range data at point"
+            );
+            Json(SpeciesInRangeResponse {
+                area_has_data: false,
+                species: Vec::new(),
+            })
+        }
+    }
 }
 
 /// Species identification endpoint
