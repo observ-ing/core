@@ -94,11 +94,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
         <Divider sx={{ mb: 1 }} />
         <List dense>
           <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              to="/docs"
-              onClick={onMobileClose}
-            >
+            <ListItemButton component={Link} to="/docs" onClick={onMobileClose}>
               <ListItemIcon sx={{ minWidth: 40 }}>
                 <MenuBook fontSize="small" />
               </ListItemIcon>
