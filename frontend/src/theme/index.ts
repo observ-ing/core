@@ -208,7 +208,7 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       MuiListItemButton: {
         styleOverrides: {
           root: ({ theme }) => ({
-            borderRadius: theme.shape.borderRadius * 2,
+            borderRadius: (theme.shape.borderRadius as number) * 2,
           }),
         },
       },
