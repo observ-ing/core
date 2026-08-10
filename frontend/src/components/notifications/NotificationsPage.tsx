@@ -96,7 +96,7 @@ export function NotificationsPage() {
               mb: 0.5,
             }}
           >
-            <ListItemButton onClick={() => handleClick(n)} sx={{ borderRadius: 2, py: 1.5 }}>
+            <ListItemButton onClick={() => handleClick(n)} sx={{ py: 1.5 }}>
               <UserCard
                 actor={n.actor ?? {}}
                 linkDid={n.actorDid}
