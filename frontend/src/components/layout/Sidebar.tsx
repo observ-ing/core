@@ -71,7 +71,6 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
               selected={isActive(item.path)}
               onClick={onMobileClose}
               sx={{
-                borderRadius: 2,
                 "&.Mui-selected": {
                   bgcolor: "primary.main",
                   color: "primary.contrastText",
@@ -95,12 +94,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
         <Divider sx={{ mb: 1 }} />
         <List dense>
           <ListItem disablePadding>
-            <ListItemButton
-              component={Link}
-              to="/docs"
-              onClick={onMobileClose}
-              sx={{ borderRadius: 2 }}
-            >
+            <ListItemButton component={Link} to="/docs" onClick={onMobileClose}>
               <ListItemIcon sx={{ minWidth: 40 }}>
                 <MenuBook fontSize="small" />
               </ListItemIcon>
@@ -112,7 +106,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
         <Divider sx={{ my: 1 }} />
 
         {user ? (
-          <ListItemButton onClick={onLogout} sx={{ borderRadius: 2 }}>
+          <ListItemButton onClick={onLogout}>
             <ListItemIcon sx={{ minWidth: 40 }}>
               <Logout fontSize="small" />
             </ListItemIcon>
@@ -122,7 +116,6 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
           <ListItemButton
             onClick={onLogin}
             sx={{
-              borderRadius: 2,
               bgcolor: "primary.main",
               color: "primary.contrastText",
               "&:hover": { bgcolor: "primary.dark" },
