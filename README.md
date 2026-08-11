@@ -20,7 +20,7 @@ for building the `tap` binary. Details in
 ```bash
 cp .env.example .env                  # tweak DATABASE_URL etc. as needed
 npm run setup                         # one-time: prereqs, deps, tap, models
-# ensure Postgres is running (see docs/development.md#database-setup)
+npm run db:up                         # start Postgres + PostGIS (or adopt a running one)
 process-compose up -D                 # runs migrations, then starts services
 open http://localhost:3000
 ```

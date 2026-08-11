@@ -25,7 +25,7 @@ the project's `Brewfile`. asdf/mise users get Node and Go from
 ```bash
 cp .env.example .env       # tweak DATABASE_URL / DB_PASSWORD to match your Postgres
 npm run setup              # bootstraps everything below in one shot
-# ensure Postgres is running (see Database Setup below)
+npm run db:up              # start Postgres + PostGIS (or adopt a running one)
 process-compose up -D      # runs migrations, then starts services
 ```
 
@@ -37,8 +37,9 @@ that's already done. It runs:
 3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
 4. `./scripts/download-models.sh` — BioCLIP models, if not present
 
-Postgres lifecycle is left to you (it's stateful and often shared
-with other projects). Migrations are run automatically by
+Postgres stays a separate step (it's stateful and often shared with
+other projects), but `npm run db:up` handles it — see
+[Database Setup](#database-setup). Migrations are run automatically by
 `process-compose up` as the first process — see
 [Running services](#running-services).
 
@@ -64,7 +65,37 @@ Run PostgreSQL with PostGIS locally. All app services connect over
 production Cloud SQL is a separate concern handled by CI (see
 `docs/deployment.md`).
 
-Docker is the path of least resistance:
+### Scripted (recommended)
+
+```bash
+npm run db:up
+```
+
+Idempotent, and safe whatever your setup already looks like. It:
+
+1. Reads `DATABASE_URL` from `.env` for the user, password, database,
+   and port — so it can't drift from what the services connect to.
+2. Exits early if something already answers on that port, so an existing
+   native or containerized Postgres is adopted, never clobbered.
+3. Starts a `postgis` container otherwise, choosing a native image for
+   your architecture (see the Apple Silicon note below).
+4. Blocks until Postgres actually accepts connections — `docker run -d`
+   returns well before that, and starting `process-compose` too early
+   makes the `migrate` process fail.
+
+Data lives in a named Docker volume (`observing-pgdata`), so the
+container can be recreated without losing the database.
+
+```bash
+npm run db:up -- --stop       # stop the container, keep the data
+npm run db:up -- --destroy    # remove the container AND wipe the volume
+```
+
+It does not create the PostGIS extension: the first migration already
+runs `CREATE EXTENSION IF NOT EXISTS postgis`, and `process-compose`
+applies migrations before anything reads the database.
+
+### By hand
 
 ```bash
 # One-time: create the container
@@ -72,6 +103,7 @@ docker run --name observing-postgres \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -e POSTGRES_DB=observing \
   -p 5432:5432 \
+  -v observing-pgdata:/var/lib/postgresql/data \
   -d postgis/postgis
 
 # After reboot / on subsequent sessions
@@ -82,19 +114,13 @@ docker start observing-postgres
 (no arm64 manifest), so it runs under slow QEMU emulation. Either pass
 `--platform linux/amd64` explicitly to silence the warning and force emulation,
 or use a native multi-arch image like `imresamu/postgis` (drop-in replacement,
-same env vars) for better performance:
-
-```bash
-docker run --name observing-postgres \
-  -e POSTGRES_PASSWORD=mysecretpassword \
-  -e POSTGRES_DB=observing \
-  -p 5432:5432 \
-  -d imresamu/postgis        # native arm64 + amd64; or add --platform linux/amd64 to postgis/postgis
-```
+same env vars) for better performance. `npm run db:up` picks this automatically
+on arm64; override it for either path with `POSTGIS_IMAGE=…`.
 
 Native installs (Postgres.app, Homebrew `postgresql@N` + `postgis`,
 etc.) work too — anything that exposes PostgreSQL with PostGIS on
-`localhost:5432` is fine.
+`localhost:5432` is fine. `npm run db:up` detects these and leaves them
+alone.
 
 ## Configuration
 
