@@ -1,5 +1,6 @@
 import { Box, Typography, Stack } from "@mui/material";
-import type { ReactNode } from "react";
+import type { SxProps, Theme } from "@mui/material/styles";
+import { cloneElement, isValidElement, type ReactNode } from "react";
 
 export interface FullPageStatusProps {
   /** Icon rendered inside the circular badge, e.g. an MUI icon element. */
@@ -53,7 +54,11 @@ export function FullPageStatus({
           mb: 3,
         }}
       >
-        {icon}
+        {isValidElement<{ sx?: SxProps<Theme> }>(icon)
+          ? cloneElement(icon, {
+              sx: { fontSize: 60, color: "text.disabled", ...icon.props.sx },
+            })
+          : icon}
       </Box>
       {eyebrow}
       <Typography variant="h6" component="h2" sx={{ color: "text.secondary", mb: 1 }}>
