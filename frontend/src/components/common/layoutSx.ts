@@ -51,3 +51,15 @@ export const imageSkeletonOverlaySx = {
   width: "100%",
   height: "100%",
 } as const;
+
+/** Primary CTA button in a `FullPageStatus` action row (NotFound, ErrorBoundary). */
+export const fullPageStatusPrimaryActionSx = {
+  px: 4,
+  py: 1,
+  fontWeight: 600,
+} as const;
+
+/** Secondary CTA button in a `FullPageStatus` action row (NotFound, ErrorBoundary). */
+export const fullPageStatusSecondaryActionSx = {
+  px: 3,
+} as const;

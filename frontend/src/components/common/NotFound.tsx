@@ -2,11 +2,12 @@ import { Link } from "react-router-dom";
 import { Typography, Button } from "@mui/material";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { FullPageStatus } from "./FullPageStatus";
+import { fullPageStatusPrimaryActionSx, fullPageStatusSecondaryActionSx } from "./layoutSx";
 
 export function NotFound() {
   return (
     <FullPageStatus
-      icon={<SearchOffIcon sx={{ fontSize: 60, color: "text.disabled" }} />}
+      icon={<SearchOffIcon />}
       eyebrow={
         <Typography
           variant="h1"
@@ -34,11 +35,7 @@ export function NotFound() {
             to="/"
             variant="contained"
             color="primary"
-            sx={{
-              px: 4,
-              py: 1,
-              fontWeight: 600,
-            }}
+            sx={fullPageStatusPrimaryActionSx}
           >
             Go home
           </Button>
@@ -46,7 +43,7 @@ export function NotFound() {
             onClick={() => window.history.back()}
             variant="outlined"
             color="inherit"
-            sx={{ px: 3 }}
+            sx={fullPageStatusSecondaryActionSx}
           >
             Go back
           </Button>

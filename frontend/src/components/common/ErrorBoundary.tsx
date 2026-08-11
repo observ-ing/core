@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 import { Button } from "@mui/material";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlined";
 import { FullPageStatus } from "./FullPageStatus";
+import { fullPageStatusPrimaryActionSx, fullPageStatusSecondaryActionSx } from "./layoutSx";
 
 interface Props {
   children: ReactNode;
@@ -55,7 +56,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
     return (
       <FullPageStatus
-        icon={<ErrorOutlineIcon sx={{ fontSize: 60, color: "text.disabled" }} />}
+        icon={<ErrorOutlineIcon />}
         title={isChunkError ? "Update available" : "Something went wrong"}
         description={
           isChunkError
@@ -68,7 +69,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() => window.location.reload()}
               variant="contained"
               color="primary"
-              sx={{ px: 4, py: 1, fontWeight: 600 }}
+              sx={fullPageStatusPrimaryActionSx}
             >
               Reload
             </Button>
@@ -76,7 +77,7 @@ export class ErrorBoundary extends Component<Props, State> {
               onClick={() => window.location.assign("/")}
               variant="outlined"
               color="inherit"
-              sx={{ px: 3 }}
+              sx={fullPageStatusSecondaryActionSx}
             >
               Go home
             </Button>

@@ -17,7 +17,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    icon: <ErrorOutlineIcon sx={{ fontSize: 60, color: "text.disabled" }} />,
+    icon: <ErrorOutlineIcon />,
     title: "Something went wrong",
     description: "An unexpected error occurred while loading this page.",
     actions: (
@@ -30,7 +30,7 @@ export const Default: Story = {
 
 export const WithEyebrow: Story = {
   args: {
-    icon: <ErrorOutlineIcon sx={{ fontSize: 60, color: "text.disabled" }} />,
+    icon: <ErrorOutlineIcon />,
     eyebrow: <div style={{ fontSize: "4rem", fontWeight: 700, marginBottom: 8 }}>404</div>,
     title: "Page not found",
     description: "The page you're looking for doesn't exist or has been moved.",
