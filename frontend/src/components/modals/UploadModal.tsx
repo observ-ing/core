@@ -39,11 +39,11 @@ import { ModalOverlay } from "./ModalOverlay";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
+import { KingdomSelect } from "../common/KingdomSelect";
+import { RankSelect } from "../common/RankSelect";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
-import { KINGDOMS } from "../../lib/kingdoms";
-import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
 import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
 
@@ -707,51 +707,25 @@ export function UploadModal() {
                 />
 
                 {!!species.trim() && !matchedTaxon && (
-                  <FormControl fullWidth margin="normal" required>
-                    <InputLabel id="kingdom-label">Kingdom</InputLabel>
-                    <Select
-                      labelId="kingdom-label"
-                      value={kingdom}
-                      label="Kingdom"
-                      onChange={(e) => {
-                        setKingdom(e.target.value);
-                        setIsDirty(true);
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {KINGDOMS.map((k) => (
-                        <MenuItem key={k.value} value={k.value}>
-                          {k.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <KingdomSelect
+                    idPrefix="kingdom"
+                    value={kingdom}
+                    onChange={(value) => {
+                      setKingdom(value);
+                      setIsDirty(true);
+                    }}
+                  />
                 )}
 
                 {!!species.trim() && !matchedTaxon && (
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel id="rank-label">Rank (optional)</InputLabel>
-                    <Select
-                      labelId="rank-label"
-                      value={rank}
-                      label="Rank (optional)"
-                      onChange={(e) => {
-                        setRank(e.target.value);
-                        setIsDirty(true);
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {TAXON_RANKS.map((r) => (
-                        <MenuItem key={r} value={r}>
-                          {r}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <RankSelect
+                    idPrefix="rank"
+                    value={rank}
+                    onChange={(value) => {
+                      setRank(value);
+                      setIsDirty(true);
+                    }}
+                  />
                 )}
 
                 <StepNav step={STEP_IDENTIFY} />
