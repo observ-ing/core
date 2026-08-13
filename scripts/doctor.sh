@@ -137,14 +137,14 @@ if command -v pg_isready >/dev/null 2>&1; then
     pass "Postgres reachable on localhost:5432"
     pg_running=1
   else
-    fail "Postgres not reachable on localhost:5432 — start it (see docs/development.md)"
+    fail "Postgres not reachable on localhost:5432 — run: npm run db:up"
   fi
 elif command -v nc >/dev/null 2>&1; then
   if nc -z localhost 5432 2>/dev/null; then
     pass "Something is listening on localhost:5432 (install postgresql-client for a deeper check)"
     pg_running=1
   else
-    fail "Nothing listening on localhost:5432 — start Postgres (see docs/development.md)"
+    fail "Nothing listening on localhost:5432 — run: npm run db:up"
   fi
 else
   warn "Can't probe Postgres (neither pg_isready nor nc available)"

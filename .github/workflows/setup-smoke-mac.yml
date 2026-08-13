@@ -12,6 +12,7 @@ on:
     paths:
       - 'scripts/setup.sh'
       - 'scripts/doctor.sh'
+      - 'scripts/db-up.sh'
       - 'scripts/install-tap.sh'
       - 'scripts/download-models.sh'
       - 'Brewfile'
@@ -26,6 +27,7 @@ on:
     paths:
       - 'scripts/setup.sh'
       - 'scripts/doctor.sh'
+      - 'scripts/db-up.sh'
       - 'scripts/install-tap.sh'
       - 'scripts/download-models.sh'
       - 'Brewfile'
@@ -108,6 +110,12 @@ jobs:
 
       - name: Run npm run setup
         run: npm run setup
+
+      # Postgres is already running via brew above, so this exercises
+      # db-up.sh's adopt path: it must detect the existing server and exit
+      # 0 without starting a container or fighting over port 5432.
+      - name: Run npm run db:up (adopts the existing Postgres)
+        run: npm run db:up
 
       - name: Run npm run doctor
         run: npm run doctor

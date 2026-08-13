@@ -9,6 +9,7 @@
     "build": "vite build -c frontend/vite.config.ts",
     "build-storybook": "storybook build -c frontend/.storybook",
     "check:stories": "node scripts/check-stories.mjs",
+    "db:up": "./scripts/db-up.sh",
     "doctor": "./scripts/doctor.sh",
     "generate-rust-types": "./scripts/generate-rust-types.sh",
     "setup": "./scripts/setup.sh",

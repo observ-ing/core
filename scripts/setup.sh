@@ -8,9 +8,10 @@
 #   4. Install the upstream `tap` Go binary (./scripts/install-tap.sh)
 #   5. Download BioCLIP models (./scripts/download-models.sh)
 #
-# Postgres and migrations are intentionally out of scope: `process-compose
-# up -D` brings up a managed postgis container and runs migrations
-# automatically before the app services start.
+# Postgres is intentionally out of scope: it is stateful and usually shared
+# across checkouts, so starting it stays an explicit step
+# (`./scripts/db-up.sh`). Migrations are handled for you — `process-compose
+# up -D` runs them as a one-shot process before the app services start.
 
 set -euo pipefail
 
@@ -109,8 +110,7 @@ step "Setup complete"
 cat <<EOF
 
 Next steps:
-  - Make sure Postgres is running on localhost:5432
-    (see docs/development.md#database-setup)
+  - npm run db:up               # start Postgres + PostGIS (skips if already running)
   - process-compose up -D       # runs migrations, then starts services
   - open http://localhost:3000
   - Run ./scripts/doctor.sh anytime to diagnose problems

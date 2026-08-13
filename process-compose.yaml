@@ -25,7 +25,9 @@ processes:
     environment:
       - PORT=${SPECIES_ID_PORT:-3005}
       - MODEL_DIR=./models/bioclip
-      - ORT_DYLIB_PATH=/opt/homebrew/lib/libonnxruntime.dylib
+      # Overridable so Linux and Intel-macOS checkouts can point at their own
+      # ONNX Runtime; the default is the Apple Silicon Homebrew location.
+      - ORT_DYLIB_PATH=${ORT_DYLIB_PATH:-/opt/homebrew/lib/libonnxruntime.dylib}
     readiness_probe:
       http_get:
         host: localhost
