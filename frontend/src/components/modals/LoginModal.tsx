@@ -11,6 +11,8 @@ import {
   Link,
   Alert,
   CircularProgress,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
@@ -18,6 +20,8 @@ import { initiateLogin } from "../../services/api";
 
 export function LoginModal() {
   const dispatch = useAppDispatch();
+  const theme = useTheme();
+  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const isOpen = useAppSelector((state) => state.ui.loginModalOpen);
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +51,7 @@ export function LoginModal() {
   };
 
   return (
-    <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth fullScreen={fullScreen}>
       <form onSubmit={handleSubmit}>
         <DialogTitle>Log in</DialogTitle>
         <DialogContent>
