@@ -10,7 +10,7 @@ interface ConservationStatusProps {
   /** Show full label instead of abbreviation */
   showLabel?: boolean;
   /** Size variant */
-  size?: "sm" | "md";
+  size?: "small" | "medium";
 }
 
 const CATEGORY_INFO: Record<string, { label: string }> = {
@@ -40,7 +40,7 @@ const SOURCE_INFO: Record<string, { name: string; fullName: string }> = {
 export function ConservationStatus({
   status,
   showLabel = false,
-  size = "md",
+  size = "medium",
 }: ConservationStatusProps) {
   const theme = useTheme();
   const info = CATEGORY_INFO[status.category];
@@ -70,7 +70,7 @@ export function ConservationStatus({
     <Tooltip title={tooltipContent} arrow enterTouchDelay={0} leaveTouchDelay={4000}>
       <Chip
         label={showLabel ? info.label : status.category}
-        size={size === "sm" ? "small" : "medium"}
+        size={size}
         sx={{
           backgroundColor: iucnColor,
           color: needsDarkText ? "common.black" : "common.white",
@@ -78,7 +78,7 @@ export function ConservationStatus({
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.025em",
-          fontSize: size === "sm" ? "0.625rem" : "0.75rem",
+          fontSize: size === "small" ? "0.625rem" : "0.75rem",
           cursor: "help",
         }}
       />
