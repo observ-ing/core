@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { Box, ImageList, ImageListItem, ImageListItemBar, Typography, Link as MuiLink } from "@mui/material";
+import {
+  Box,
+  ImageList,
+  ImageListItem,
+  ImageListItemBar,
+  Typography,
+  Link as MuiLink,
+} from "@mui/material";
 import { CenteredSpinner } from "./CenteredSpinner";
 
 interface CommonsImage {
