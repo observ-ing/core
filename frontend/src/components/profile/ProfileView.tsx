@@ -21,7 +21,7 @@ import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
-import { ObservationGridCard } from "../common/ObservationGridCard";
+import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
@@ -204,7 +204,7 @@ export function ProfileView() {
                     {id.scientific_name}
                   </Typography>
                 </Box>
-                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
+                <CardContent sx={observationGridCardContentSx}>
                   <Typography
                     variant="caption"
                     noWrap
