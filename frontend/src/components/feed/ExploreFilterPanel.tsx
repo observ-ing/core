@@ -1,8 +1,6 @@
 import { useState } from "react";
 import {
   Box,
-  Paper,
-  Collapse,
   Typography,
   TextField,
   Autocomplete,
@@ -13,14 +11,13 @@ import {
   Button,
   Stack,
   Chip,
-  Divider,
 } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { countChipSx } from "../common/chipSx";
-import { ExpandToggleButton } from "../common/ExpandToggleButton";
+import { CollapsibleSection } from "../common/CollapsibleSection";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -36,8 +33,6 @@ const KINGDOMS = [{ value: "", label: "All Kingdoms" }, ...KINGDOM_OPTIONS];
 export function ExploreFilterPanel() {
   const dispatch = useAppDispatch();
   const filters = useAppSelector((state) => state.feed.filters);
-
-  const [isExpanded, setIsExpanded] = useState(false);
 
   // Local state for form fields
   const [taxonQuery, setTaxonQuery] = useState(filters.taxon || "");
@@ -94,179 +89,153 @@ export function ExploreFilterPanel() {
   };
 
   return (
-    <Paper sx={{ mb: 2, overflow: "hidden" }}>
-      {/* Header - always visible */}
-      <Box
-        onClick={() => setIsExpanded(!isExpanded)}
+    <CollapsibleSection
+      icon={<FilterListIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      title="Filters"
+      sx={{ mb: 2 }}
+      trailing={
+        activeFilterCount > 0 ? (
+          <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
+        ) : undefined
+      }
+    >
+      {/* Taxon Autocomplete */}
+      <Autocomplete
+        freeSolo
+        options={taxonSuggestions}
+        getOptionLabel={(option) => (typeof option === "string" ? option : option.scientificName)}
+        inputValue={taxonQuery}
+        onInputChange={(_, value) => {
+          setTaxonQuery(value);
+          searchTaxon(value);
+        }}
+        onChange={(_, value) => {
+          if (value) {
+            const name = typeof value === "string" ? value : value.scientificName;
+            setSelectedTaxon(name);
+            setTaxonQuery(name);
+          } else {
+            setSelectedTaxon(null);
+          }
+        }}
+        filterOptions={(x) => x}
+        renderInput={(params) => (
+          <TextField {...params} size="small" label="Taxon" placeholder="Search species..." />
+        )}
+        renderOption={(props, option) => {
+          const { key, ...otherProps } = props;
+          return (
+            <Box
+              component="li"
+              key={key}
+              {...otherProps}
+              sx={{ display: "flex", alignItems: "center", gap: 1 }}
+            >
+              <TaxonThumbnail src={option.photoUrl} size={32} />
+              <Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 500,
+                  }}
+                >
+                  {option.scientificName}
+                </Typography>
+                {option.commonName && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "text.secondary",
+                    }}
+                  >
+                    {option.commonName}
+                  </Typography>
+                )}
+              </Box>
+            </Box>
+          );
+        }}
+        sx={{ mb: 2 }}
+      />
+
+      {/* Kingdom Dropdown */}
+      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+        <InputLabel>Kingdom</InputLabel>
+        <Select value={kingdom} label="Kingdom" onChange={(e) => setKingdom(e.target.value)}>
+          {KINGDOMS.map((k) => (
+            <MenuItem key={k.value} value={k.value}>
+              {k.label}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {/* Date Range */}
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
+          <DatePicker
+            label="Start Date"
+            value={startDate}
+            onChange={setStartDate}
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
+          />
+          <DatePicker
+            label="End Date"
+            value={endDate}
+            onChange={setEndDate}
+            slotProps={{ textField: { size: "small", fullWidth: true } }}
+          />
+        </Stack>
+      </LocalizationProvider>
+
+      {/* Data quality — require one or more criteria (matches the
+          checklist shown on each observation) */}
+      <Box sx={{ mb: 2 }}>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mb: 1 }}>
+          <VerifiedOutlinedIcon fontSize="small" color="action" />
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            Data quality
+          </Typography>
+        </Stack>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+          {QUALITY_CRITERIA.map((criterion) => {
+            const selected = quality.includes(criterion.id);
+            return (
+              <Chip
+                key={criterion.id}
+                size="small"
+                label={criterion.label}
+                color={selected ? "primary" : "default"}
+                variant={selected ? "filled" : "outlined"}
+                onClick={() => toggleQuality(criterion.id)}
+                aria-pressed={selected}
+              />
+            );
+          })}
+        </Box>
+      </Box>
+
+      {/* Action Buttons */}
+      <Stack
+        direction="row"
+        spacing={1}
         sx={{
-          p: 1.5,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          cursor: "pointer",
-          "&:hover": { bgcolor: "action.hover" },
+          justifyContent: "flex-end",
         }}
       >
-        <Stack
-          direction="row"
-          spacing={1}
-          sx={{
-            alignItems: "center",
-          }}
+        <Button
+          variant="text"
+          color="inherit"
+          startIcon={<ClearIcon />}
+          onClick={handleClearFilters}
+          disabled={activeFilterCount === 0}
         >
-          <FilterListIcon color="action" />
-          <Typography variant="subtitle2">Filters</Typography>
-          {activeFilterCount > 0 && (
-            <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
-          )}
-        </Stack>
-        <ExpandToggleButton expanded={isExpanded} />
-      </Box>
-      {/* Collapsible filter content */}
-      <Collapse in={isExpanded}>
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          {/* Taxon Autocomplete */}
-          <Autocomplete
-            freeSolo
-            options={taxonSuggestions}
-            getOptionLabel={(option) =>
-              typeof option === "string" ? option : option.scientificName
-            }
-            inputValue={taxonQuery}
-            onInputChange={(_, value) => {
-              setTaxonQuery(value);
-              searchTaxon(value);
-            }}
-            onChange={(_, value) => {
-              if (value) {
-                const name = typeof value === "string" ? value : value.scientificName;
-                setSelectedTaxon(name);
-                setTaxonQuery(name);
-              } else {
-                setSelectedTaxon(null);
-              }
-            }}
-            filterOptions={(x) => x}
-            renderInput={(params) => (
-              <TextField {...params} size="small" label="Taxon" placeholder="Search species..." />
-            )}
-            renderOption={(props, option) => {
-              const { key, ...otherProps } = props;
-              return (
-                <Box
-                  component="li"
-                  key={key}
-                  {...otherProps}
-                  sx={{ display: "flex", alignItems: "center", gap: 1 }}
-                >
-                  <TaxonThumbnail src={option.photoUrl} size={32} />
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: 500,
-                      }}
-                    >
-                      {option.scientificName}
-                    </Typography>
-                    {option.commonName && (
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        {option.commonName}
-                      </Typography>
-                    )}
-                  </Box>
-                </Box>
-              );
-            }}
-            sx={{ mb: 2 }}
-          />
-
-          {/* Kingdom Dropdown */}
-          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Kingdom</InputLabel>
-            <Select value={kingdom} label="Kingdom" onChange={(e) => setKingdom(e.target.value)}>
-              {KINGDOMS.map((k) => (
-                <MenuItem key={k.value} value={k.value}>
-                  {k.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Date Range */}
-          <LocalizationProvider dateAdapter={AdapterDateFns}>
-            <Stack direction={{ xs: "column", sm: "row" }} spacing={1} sx={{ mb: 2 }}>
-              <DatePicker
-                label="Start Date"
-                value={startDate}
-                onChange={setStartDate}
-                slotProps={{ textField: { size: "small", fullWidth: true } }}
-              />
-              <DatePicker
-                label="End Date"
-                value={endDate}
-                onChange={setEndDate}
-                slotProps={{ textField: { size: "small", fullWidth: true } }}
-              />
-            </Stack>
-          </LocalizationProvider>
-
-          {/* Data quality — require one or more criteria (matches the
-              checklist shown on each observation) */}
-          <Box sx={{ mb: 2 }}>
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: "center", mb: 1 }}>
-              <VerifiedOutlinedIcon fontSize="small" color="action" />
-              <Typography variant="caption" sx={{ color: "text.secondary" }}>
-                Data quality
-              </Typography>
-            </Stack>
-            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-              {QUALITY_CRITERIA.map((criterion) => {
-                const selected = quality.includes(criterion.id);
-                return (
-                  <Chip
-                    key={criterion.id}
-                    size="small"
-                    label={criterion.label}
-                    color={selected ? "primary" : "default"}
-                    variant={selected ? "filled" : "outlined"}
-                    onClick={() => toggleQuality(criterion.id)}
-                    aria-pressed={selected}
-                  />
-                );
-              })}
-            </Box>
-          </Box>
-
-          {/* Action Buttons */}
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              justifyContent: "flex-end",
-            }}
-          >
-            <Button
-              variant="text"
-              color="inherit"
-              startIcon={<ClearIcon />}
-              onClick={handleClearFilters}
-              disabled={activeFilterCount === 0}
-            >
-              Clear
-            </Button>
-            <Button variant="contained" onClick={handleApplyFilters}>
-              Apply Filters
-            </Button>
-          </Stack>
-        </Box>
-      </Collapse>
-    </Paper>
+          Clear
+        </Button>
+        <Button variant="contained" onClick={handleApplyFilters}>
+          Apply Filters
+        </Button>
+      </Stack>
+    </CollapsibleSection>
   );
 }
