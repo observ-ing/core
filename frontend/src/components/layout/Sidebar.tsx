@@ -10,8 +10,7 @@ import {
   Divider,
 } from "@mui/material";
 import { Login, Logout, MenuBook } from "@mui/icons-material";
-import { Logo } from "../common/Logo";
-import { Wordmark } from "../common/Wordmark";
+import { BrandLockup } from "../common/BrandLockup";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 
@@ -40,24 +39,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
 
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
-      {/* Logo */}
-      <Box
-        component={Link}
-        to="/"
-        onClick={onMobileClose}
-        sx={{
-          p: 2.5,
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          textDecoration: "none",
-        }}
-      >
-        <Box sx={{ color: "primary.main", display: "inline-flex" }}>
-          <Logo size={28} />
-        </Box>
-        <Wordmark />
-      </Box>
+      <BrandLockup logoSize={28} onClick={onMobileClose} sx={{ p: 2.5 }} />
 
       <Divider />
 

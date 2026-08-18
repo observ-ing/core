@@ -21,8 +21,7 @@ import {
 } from "@mui/material";
 import { Person, Login, Logout, MenuBook, Settings, Menu as MenuIcon } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
-import { Logo } from "../common/Logo";
-import { Wordmark } from "../common/Wordmark";
+import { BrandLockup } from "../common/BrandLockup";
 import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
@@ -87,24 +86,10 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
               </IconButton>
             )}
 
-            {/* Logo */}
-            <Box
-              component={Link}
-              to="/"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                textDecoration: "none",
-                mr: 2,
-                "&:hover": { opacity: 0.8 },
-              }}
-            >
-              <Box sx={{ color: "primary.main", display: "inline-flex" }}>
-                <Logo size={32} />
-              </Box>
-              <Wordmark sx={{ display: { xs: "none", sm: "block" } }} />
-            </Box>
+            <BrandLockup
+              sx={{ mr: 2, "&:hover": { opacity: 0.8 } }}
+              wordmarkSx={{ display: { xs: "none", sm: "block" } }}
+            />
 
             {/* Desktop Nav */}
             {!isMobile && (
