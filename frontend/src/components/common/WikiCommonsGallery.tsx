@@ -6,8 +6,8 @@ import {
   ImageListItemBar,
   Typography,
   Link as MuiLink,
-  CircularProgress,
 } from "@mui/material";
+import { CenteredSpinner } from "./CenteredSpinner";
 
 interface CommonsImage {
   thumbUrl: string;
@@ -115,11 +115,7 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
   }, [taxonName, limit]);
 
   if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", py: 2 }}>
-        <CircularProgress size={24} />
-      </Box>
-    );
+    return <CenteredSpinner p={0} sx={{ py: 2 }} />;
   }
 
   if (images.length === 0) {
