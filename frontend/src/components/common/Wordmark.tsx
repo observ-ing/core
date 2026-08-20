@@ -2,7 +2,7 @@ import { Box, Typography, type SxProps, type Theme } from "@mui/material";
 
 interface WordmarkProps {
   /** Hide the wordmark text below this breakpoint (icon-only). */
-  sx?: SxProps<Theme>;
+  sx?: SxProps<Theme> | undefined;
 }
 
 // The "Observ.ing" wordmark. Set in DM Sans, weight 600. The dot is the brand

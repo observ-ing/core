@@ -45,6 +45,7 @@ import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { pickPhotos } from "../../lib/photoPicker";
+import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
 
 const LocationPicker = lazy(() =>
@@ -166,10 +167,6 @@ export function UploadModal() {
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
-  const MAX_IMAGES = 10;
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  const VALID_TYPES = ["image/jpeg", "image/png", "image/webp"];
-
   const hasLocation = !!lat && !!lng;
 
   useEffect(() => {
@@ -272,42 +269,41 @@ export function UploadModal() {
   };
 
   const addFiles = (files: File[]) => {
-    for (const file of files) {
-      if (!VALID_TYPES.includes(file.type)) {
-        toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
-        continue;
-      }
+    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, images.length);
 
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File too large: ${file.name}. Max size is 10MB.`);
-        continue;
-      }
+    for (const file of invalidType) {
+      toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
+    }
+    for (const file of tooLarge) {
+      toast.error(`File too large: ${file.name}. Max size is 10MB.`);
+    }
+    if (exceededCap) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
+    }
+    if (accepted.length === 0) return;
 
-      if (images.length >= MAX_IMAGES) {
-        toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
-        break;
-      }
+    const isFirstPhoto = images.length === 0;
+    const additions = accepted.map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    setImages((prev) => [...prev, ...additions]);
+    setIsDirty(true);
 
-      const preview = URL.createObjectURL(file);
-      setImages((prev) => [...prev, { file, preview }]);
-      setIsDirty(true);
-
-      if (images.length === 0) {
-        extractExifData(file);
-        if (!species && !isEditMode) {
-          setVisualIdImageUrl(preview);
-        }
+    // Only the observation's very first photo seeds the date/location and the
+    // visual ID; the rest of the batch is just attached.
+    const first = additions[0];
+    if (isFirstPhoto && first) {
+      extractExifData(first.file);
+      if (!species && !isEditMode) {
+        setVisualIdImageUrl(first.preview);
       }
     }
   };
 
   const handlePickImages = async () => {
-    const remaining = MAX_IMAGES - images.length;
-    if (remaining <= 0) {
+    if (images.length >= MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
       return;
     }
-    const files = await pickPhotos({ multiple: true, maxCount: remaining });
+    const files = await pickPhotos({ multiple: true });
     if (files.length > 0) addFiles(files);
   };
 
