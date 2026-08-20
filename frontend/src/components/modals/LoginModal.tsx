@@ -10,13 +10,13 @@ import {
   Box,
   Link,
   Alert,
-  CircularProgress,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
 import { initiateLogin } from "../../services/api";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 
 export function LoginModal() {
   const dispatch = useAppDispatch();
@@ -106,7 +106,7 @@ export function LoginModal() {
             variant="contained"
             color="primary"
             disabled={!handle.trim() || isLoading}
-            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : null}
+            startIcon={isLoading ? <ButtonSpinner /> : null}
           >
             {isLoading ? "Connecting..." : "Continue"}
           </Button>

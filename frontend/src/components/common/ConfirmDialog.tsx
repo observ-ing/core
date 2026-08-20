@@ -6,10 +6,10 @@ import {
   DialogActions,
   Typography,
   Button,
-  CircularProgress,
   useMediaQuery,
   useTheme,
 } from "@mui/material";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 type ConfirmColor = "primary" | "error" | "warning" | "info" | "success" | "inherit";
 
@@ -71,7 +71,7 @@ export function ConfirmDialog({
           color={resolvedConfirmColor}
           variant="contained"
           disabled={pending}
-          startIcon={pending ? <CircularProgress size={16} color="inherit" /> : undefined}
+          startIcon={pending ? <ButtonSpinner /> : undefined}
         >
           {pending ? (pendingLabel ?? confirmLabel) : confirmLabel}
         </Button>

@@ -37,6 +37,7 @@ import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
@@ -835,9 +836,7 @@ export function UploadModal() {
                     variant="contained"
                     color="primary"
                     disabled={isSubmitting}
-                    startIcon={
-                      isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined
-                    }
+                    startIcon={isSubmitting ? <ButtonSpinner /> : undefined}
                   >
                     {isSubmitting
                       ? isEditMode

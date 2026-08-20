@@ -1,5 +1,5 @@
 import { useState, useCallback, type FormEvent } from "react";
-import { Box, Typography, Button, Stack, Divider, CircularProgress } from "@mui/material";
+import { Box, Typography, Button, Stack, Divider } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
@@ -14,6 +14,7 @@ import { useVisualId } from "../../hooks/useVisualId";
 import { TaxonLink } from "../common/TaxonLink";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 
 interface IdentificationPanelProps {
   observation: {
@@ -235,11 +236,7 @@ export function IdentificationPanel({
                 onClick={visualId.handleFetch}
                 disabled={isSubmitting || visualId.isLoading}
                 startIcon={
-                  visualId.isLoading ? (
-                    <CircularProgress size={16} color="inherit" />
-                  ) : (
-                    <AutoFixHighIcon fontSize="small" />
-                  )
+                  visualId.isLoading ? <ButtonSpinner /> : <AutoFixHighIcon fontSize="small" />
                 }
                 sx={{ whiteSpace: "nowrap", height: 40 }}
               >
