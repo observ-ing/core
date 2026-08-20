@@ -137,7 +137,7 @@ export function TaxaAutocompleteView({
                     <Chip label="synonym" size="small" variant="outlined" sx={labelChipSx} />
                   )}
                   {option.conservationStatus && (
-                    <ConservationStatus status={option.conservationStatus} size="sm" />
+                    <ConservationStatus status={option.conservationStatus} size="small" />
                   )}
                 </Stack>
                 {option.isSynonym && option.acceptedName && (
