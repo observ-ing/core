@@ -47,3 +47,14 @@ export const Small: Story = {
     size: "small",
   },
 };
+
+export const OptionalFilter: Story = {
+  args: {
+    value: "",
+    onChange: () => undefined,
+    size: "small",
+    required: false,
+    emptyOption: { value: "", label: "All Kingdoms" },
+    emptyOptionItalic: false,
+  },
+};
