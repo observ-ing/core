@@ -104,11 +104,19 @@ docker run --name observing-postgres \
   -e POSTGRES_DB=observing \
   -p 5432:5432 \
   -v observing-pgdata:/var/lib/postgresql/data \
-  -d postgis/postgis
+  -d postgis/postgis:16-3.4
 
 # After reboot / on subsequent sessions
 docker start observing-postgres
 ```
+
+Pinned to `16-3.4` to match `.github/workflows/ci.yml`. Don't run this
+untagged (`:latest`): Postgres 18+ images fatally refuse to start against
+the `/var/lib/postgresql/data` mount above (18+ expects a single mount at
+`/var/lib/postgresql` instead, see
+[docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259)),
+and both `postgis/postgis:latest` and `imresamu/postgis:latest` now point
+at Postgres 18.
 
 **Apple Silicon (arm64):** the official `postgis/postgis` image is amd64-only
 (no arm64 manifest), so it runs under slow QEMU emulation. Either pass

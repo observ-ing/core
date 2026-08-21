@@ -197,11 +197,16 @@ ok "Docker daemon is running"
 # The official postgis/postgis image publishes no arm64 manifest, so on Apple
 # Silicon it runs under QEMU emulation and is markedly slower. imresamu/postgis
 # is a drop-in multi-arch replacement with the same env vars.
-# Untagged to match docs/development.md; pin via POSTGIS_IMAGE if you want a
-# fixed major version.
+#
+# Pinned to 16-3.4 to match .github/workflows/ci.yml. Postgres 18+ images
+# fatally refuse to start against the `-v $VOLUME:/var/lib/postgresql/data`
+# mount below (docker-entrypoint.sh treats that path being its own mount
+# point as leftover pre-18 data, regardless of what's actually in it), so
+# an untagged/`:latest` pull breaks the moment either image's `latest` tag
+# moves to 18. Override via POSTGIS_IMAGE if you want a different version.
 case "$(uname -m)" in
-  arm64|aarch64) IMAGE="${POSTGIS_IMAGE:-imresamu/postgis}" ;;
-  *)             IMAGE="${POSTGIS_IMAGE:-postgis/postgis}" ;;
+  arm64|aarch64) IMAGE="${POSTGIS_IMAGE:-imresamu/postgis:16-3.4}" ;;
+  *)             IMAGE="${POSTGIS_IMAGE:-postgis/postgis:16-3.4}" ;;
 esac
 ok "Image for $(uname -m): $IMAGE"
 
