@@ -1,23 +1,12 @@
 import { useState } from "react";
-import {
-  Box,
-  Typography,
-  TextField,
-  Autocomplete,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Button,
-  Stack,
-  Chip,
-} from "@mui/material";
+import { Box, Typography, TextField, Autocomplete, Button, Stack, Chip } from "@mui/material";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { countChipSx } from "../common/chipSx";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { KingdomSelect } from "../common/KingdomSelect";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
@@ -25,10 +14,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { setFilters } from "../../store/feedSlice";
 import type { FeedFilters } from "../../services/types";
 import { useDebouncedTaxaSearch } from "../../hooks/useDebouncedTaxaSearch";
-import { KINGDOMS as KINGDOM_OPTIONS } from "../../lib/kingdoms";
 import { QUALITY_CRITERIA, type QualityCriterion } from "../../lib/qualityCriteria";
-
-const KINGDOMS = [{ value: "", label: "All Kingdoms" }, ...KINGDOM_OPTIONS];
 
 export function ExploreFilterPanel() {
   const dispatch = useAppDispatch();
@@ -159,16 +145,18 @@ export function ExploreFilterPanel() {
       />
 
       {/* Kingdom Dropdown */}
-      <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-        <InputLabel>Kingdom</InputLabel>
-        <Select value={kingdom} label="Kingdom" onChange={(e) => setKingdom(e.target.value)}>
-          {KINGDOMS.map((k) => (
-            <MenuItem key={k.value} value={k.value}>
-              {k.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+      <Box sx={{ mb: 2 }}>
+        <KingdomSelect
+          idPrefix="explore-kingdom"
+          value={kingdom}
+          onChange={setKingdom}
+          size="small"
+          margin="none"
+          required={false}
+          emptyOption={{ value: "", label: "All Kingdoms" }}
+          emptyOptionItalic={false}
+        />
+      </Box>
 
       {/* Date Range */}
       <LocalizationProvider dateAdapter={AdapterDateFns}>
