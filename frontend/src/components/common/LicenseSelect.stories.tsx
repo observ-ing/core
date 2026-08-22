@@ -1,60 +1,60 @@
 import { useState } from "react";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mui/material";
-import { KingdomSelect } from "./KingdomSelect";
+import { LicenseSelect } from "./LicenseSelect";
+import { DEFAULT_LICENSE } from "../../lib/licenses";
 
 const meta = {
-  title: "Common/KingdomSelect",
-  component: KingdomSelect,
+  title: "Common/LicenseSelect",
+  component: LicenseSelect,
   parameters: {
     layout: "padded",
   },
   decorators: [
     (Story) => (
-      <Box sx={{ width: 280 }}>
+      <Box sx={{ width: 320 }}>
         <Story />
       </Box>
     ),
   ],
   render: (args) => {
     const [value, setValue] = useState(args.value);
-    return <KingdomSelect {...args} value={value} onChange={setValue} />;
+    return <LicenseSelect {...args} value={value} onChange={setValue} />;
   },
   tags: ["autodocs"],
-} satisfies Meta<typeof KingdomSelect>;
+} satisfies Meta<typeof LicenseSelect>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    value: "",
+    value: DEFAULT_LICENSE,
     onChange: () => undefined,
   },
 };
 
-export const Selected: Story = {
+export const WithNoneOption: Story = {
   args: {
-    value: "Plantae",
+    value: "__none__",
     onChange: () => undefined,
+    label: "Default license",
+    noneOption: { value: "__none__", label: "No default (use CC BY)" },
   },
 };
 
 export const Small: Story = {
   args: {
-    value: "",
+    value: DEFAULT_LICENSE,
     onChange: () => undefined,
     size: "small",
   },
 };
 
-export const OptionalFilter: Story = {
+export const Disabled: Story = {
   args: {
-    value: "",
+    value: DEFAULT_LICENSE,
     onChange: () => undefined,
-    size: "small",
-    required: false,
-    emptyOption: { value: "", label: "All Kingdoms" },
-    emptyOptionItalic: false,
+    disabled: true,
   },
 };

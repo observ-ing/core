@@ -42,12 +42,13 @@ import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
+import { LicenseSelect } from "../common/LicenseSelect";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { pickPhotos } from "../../lib/photoPicker";
 import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
-import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
+import { DEFAULT_LICENSE } from "../../lib/licenses";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -739,24 +740,13 @@ export function UploadModal() {
                 Date &amp; details
               </StepLabel>
               <StepContent>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel id="license-label">License</InputLabel>
-                  <Select
-                    labelId="license-label"
-                    value={license}
-                    label="License"
-                    onChange={(e) => {
-                      setLicense(e.target.value);
-                      setIsDirty(true);
-                    }}
-                  >
-                    {LICENSE_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <LicenseSelect
+                  value={license}
+                  onChange={(value) => {
+                    setLicense(value);
+                    setIsDirty(true);
+                  }}
+                />
 
                 <TextField
                   fullWidth

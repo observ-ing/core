@@ -4,11 +4,6 @@ import {
   ToggleButtonGroup,
   ToggleButton,
   Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  type SelectChangeEvent,
   type SxProps,
   type Theme,
 } from "@mui/material";
@@ -19,8 +14,8 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { setThemeMode, type ThemeMode } from "../../store/uiSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useUpdatePreferences } from "../../lib/query/mutations";
-import { LICENSE_OPTIONS } from "../../lib/licenses";
 import { PageContainer } from "../common/PageContainer";
+import { LicenseSelect } from "../common/LicenseSelect";
 
 const NO_DEFAULT = "__none__";
 
@@ -60,8 +55,7 @@ export function SettingsPage() {
     if (value) dispatch(setThemeMode(value));
   };
 
-  const handleLicenseChange = (e: SelectChangeEvent<string>) => {
-    const raw = e.target.value;
+  const handleLicenseChange = (raw: string) => {
     const next = raw === NO_DEFAULT ? null : raw;
     // The hook applies the change optimistically and rolls back on error.
     updatePrefs.mutate(
@@ -125,22 +119,16 @@ export function SettingsPage() {
           title="Upload defaults"
           description="Pre-fill the license for new observation photos. You can still change it on each upload."
         >
-          <FormControl fullWidth size="small" disabled={updatePrefs.isPending}>
-            <InputLabel id="default-license-label">Default license</InputLabel>
-            <Select
-              labelId="default-license-label"
-              value={defaultLicense ?? NO_DEFAULT}
-              label="Default license"
-              onChange={handleLicenseChange}
-            >
-              <MenuItem value={NO_DEFAULT}>No default (use CC BY)</MenuItem>
-              {LICENSE_OPTIONS.map((opt) => (
-                <MenuItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <LicenseSelect
+            value={defaultLicense ?? NO_DEFAULT}
+            onChange={handleLicenseChange}
+            label="Default license"
+            idPrefix="default-license"
+            size="small"
+            margin="none"
+            disabled={updatePrefs.isPending}
+            noneOption={{ value: NO_DEFAULT, label: "No default (use CC BY)" }}
+          />
         </SettingsSection>
       )}
     </PageContainer>
