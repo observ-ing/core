@@ -10,6 +10,19 @@ export const detailHeaderSx = {
 } as const;
 
 /**
+ * Frosted "glass" backdrop shared by sticky/translucent surfaces (the app's
+ * `TopBar` and detail-page `stickyHeaderSx`): a blurred pane with a
+ * bottom divider. Callers add their own `backgroundColor`/`bgcolor` (each
+ * surface derives its translucency from a different palette source) and
+ * positioning/`zIndex`.
+ */
+export const glassBlurSx = {
+  backdropFilter: "blur(8px)",
+  borderBottom: 1,
+  borderColor: "divider",
+} as const;
+
+/**
  * Sticky, blurred "glass" header for detail pages: pins to the top of a
  * scrolling pane with a translucent backdrop derived from the page background,
  * so content scrolls under it. Mode-aware via the theme palette.
@@ -20,12 +33,10 @@ export const stickyHeaderSx: SxProps<Theme> = {
   zIndex: 3,
   px: { xs: 2, sm: 4 },
   py: 1.25,
-  borderBottom: 1,
-  borderColor: "divider",
+  ...glassBlurSx,
   display: "flex",
   alignItems: "center",
   backgroundColor: (theme) => alpha(theme.palette.background.default, 0.86),
-  backdropFilter: "blur(8px)",
 };
 
 /**

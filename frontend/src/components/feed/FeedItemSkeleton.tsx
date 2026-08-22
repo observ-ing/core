@@ -1,4 +1,5 @@
-import { Box, Card, Skeleton, Stack } from "@mui/material";
+import { Box, Card, Skeleton } from "@mui/material";
+import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
 /**
@@ -8,22 +9,14 @@ export function FeedItemSkeleton() {
   return (
     <Card sx={FEED_CARD_SX}>
       {/* CardHeader: avatar, name/handle, timestamp */}
-      <Box sx={{ display: "flex", gap: 1, p: 2 }}>
-        <Skeleton variant="circular" width={40} height={40} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{
-              alignItems: "baseline",
-              flexWrap: "wrap",
-            }}
-          >
-            <Skeleton variant="text" width="30%" height={20} />
-            <Skeleton variant="text" width="20%" height={16} />
-          </Stack>
-          <Skeleton variant="text" width="15%" height={16} />
-        </Box>
+      <Box sx={{ p: 2 }}>
+        <UserCardSkeleton
+          avatarSize={40}
+          spacing={1}
+          nameWidth="30%"
+          trailingWidth="20%"
+          subtitleWidth="15%"
+        />
       </Box>
       {/* Image */}
       <Skeleton variant="rectangular" height={FEED_IMAGE_MAX_HEIGHT} />

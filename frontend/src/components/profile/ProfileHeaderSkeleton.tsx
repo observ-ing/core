@@ -1,4 +1,5 @@
 import { Box, Skeleton, Stack } from "@mui/material";
+import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
 
 /**
@@ -7,19 +8,14 @@ import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./p
 export function ProfileHeaderSkeleton() {
   return (
     <Box sx={PROFILE_HEADER_SX}>
-      <Stack
-        direction="row"
+      <UserCardSkeleton
+        avatarSize={PROFILE_AVATAR_SIZE}
         spacing={2}
-        sx={{
-          alignItems: "center",
-        }}
-      >
-        <Skeleton variant="circular" width={PROFILE_AVATAR_SIZE} height={PROFILE_AVATAR_SIZE} />
-        <Box>
-          <Skeleton variant="text" width={180} height={32} />
-          <Skeleton variant="text" width={120} height={20} />
-        </Box>
-      </Stack>
+        nameWidth={180}
+        nameHeight={32}
+        subtitleWidth={120}
+        subtitleHeight={20}
+      />
       <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
         {[1, 2, 3].map((i) => (
           <Box key={i} sx={PROFILE_STAT_BOX_SX}>

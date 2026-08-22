@@ -26,6 +26,7 @@ import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { PendingIndicator } from "./PendingIndicator";
+import { glassBlurSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -64,10 +65,8 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
       elevation={0}
       sx={{
         bgcolor: (theme) => alpha(theme.palette.background.paper, 0.8),
-        backdropFilter: "blur(8px)",
+        ...glassBlurSx,
         color: "text.primary",
-        borderBottom: 1,
-        borderColor: "divider",
         zIndex: theme.zIndex.drawer + 1,
       }}
     >
