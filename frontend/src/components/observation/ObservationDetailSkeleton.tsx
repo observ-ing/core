@@ -1,5 +1,6 @@
 import { Box, Divider, Skeleton } from "@mui/material";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
+import { UserCardSkeleton } from "../common/UserCardSkeleton";
 
 /**
  * Skeleton loader matching observation detail page layout
@@ -18,13 +19,13 @@ export function ObservationDetailSkeleton() {
       <Divider sx={{ mx: 3 }} />
 
       {/* Observer + date with like control */}
-      <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, px: 3, pt: 1.5, pb: 1.5 }}>
-        <Skeleton variant="circular" width={44} height={44} />
-        <Box sx={{ flex: 1 }}>
-          <Skeleton variant="text" width={120} height={20} />
-          <Skeleton variant="text" width={140} height={16} />
-        </Box>
-        <Skeleton variant="circular" width={28} height={28} />
+      <Box sx={{ px: 3, pt: 1.5, pb: 1.5 }}>
+        <UserCardSkeleton
+          avatarSize={44}
+          nameWidth={120}
+          subtitleWidth={140}
+          endAdornment={<Skeleton variant="circular" width={28} height={28} />}
+        />
       </Box>
 
       {/* Image */}
