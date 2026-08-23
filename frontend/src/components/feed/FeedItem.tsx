@@ -13,7 +13,7 @@ import { LikeButton } from "../common/LikeButton";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
-import { PendingBadge } from "./PendingBadge";
+import { PendingBadge, pendingCardSx } from "../common/PendingBadge";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
 interface FeedItemProps {
@@ -56,15 +56,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   };
 
   return (
-    <Card sx={{ ...FEED_CARD_SX, position: "relative", ...(isPending && { opacity: 0.7 }) }}>
+    <Card sx={{ ...FEED_CARD_SX, position: "relative" }}>
       {isPending && <PendingBadge />}
-      {/* While pending the row isn't ingested: navigation 404s and the menu's
-          edit/delete act on a record that doesn't exist yet, so we freeze all
-          interaction inside the action area until reconciliation. */}
       <CardActionArea
         onClick={isPending ? undefined : handleCardClick}
         component="div"
-        sx={isPending ? { pointerEvents: "none" } : undefined}
+        sx={pendingCardSx(isPending)}
       >
         <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
           <UserCard
