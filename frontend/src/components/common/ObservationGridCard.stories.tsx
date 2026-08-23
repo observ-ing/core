@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Box } from "@mui/material";
 import { ObservationGridCard } from "./ObservationGridCard";
-import { PendingBadge } from "../feed/PendingBadge";
+import { PendingBadge } from "./PendingBadge";
 import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {

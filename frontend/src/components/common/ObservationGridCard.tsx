@@ -8,6 +8,7 @@ import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "./RelativeTime";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { ImageWithSkeleton } from "./ImageWithSkeleton";
+import { pendingCardSx } from "./PendingBadge";
 
 // Shared with ObservationGridCardSkeleton so the loading placeholder can't drift from the real layout.
 export const observationGridCardContentSx = { p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 };
@@ -33,13 +34,12 @@ export const ObservationGridCard = memo(function ObservationGridCard({
       <CardActionArea
         component={Link}
         to={getObservationUrl(observation.uri)}
-        onClick={pending ? (e) => e.preventDefault() : undefined}
         sx={{
           flex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "stretch",
-          ...(pending && { opacity: 0.7, pointerEvents: "none" }),
+          ...pendingCardSx(pending),
         }}
       >
         <ImageWithSkeleton

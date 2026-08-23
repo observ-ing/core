@@ -3,13 +3,13 @@ import { Box } from "@mui/material";
 import { PendingBadge } from "./PendingBadge";
 
 const meta = {
-  title: "Feed/PendingBadge",
+  title: "Common/PendingBadge",
   component: PendingBadge,
   parameters: {
     layout: "padded",
   },
   // The badge is absolutely positioned, so anchor it to a relative box sized
-  // like the corner of a feed card it overlays.
+  // like the corner of a card it overlays.
   decorators: [
     (Story) => (
       <Box

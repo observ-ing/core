@@ -2,7 +2,7 @@ import { memo } from "react";
 import type { Occurrence } from "../../services/types";
 import { useIsPending } from "../../store/pendingSlice";
 import { ObservationGridCard } from "../common/ObservationGridCard";
-import { PendingBadge } from "./PendingBadge";
+import { PendingBadge } from "../common/PendingBadge";
 
 interface ExploreGridCardProps {
   observation: Occurrence;
