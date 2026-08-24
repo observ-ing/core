@@ -38,6 +38,7 @@ import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { CenteredSpinner } from "../common/CenteredSpinner";
 import { formatEventDate, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
@@ -380,7 +381,11 @@ export function ObservationDetail() {
                 </ListItem>
                 {observation.location && (
                   <Box sx={{ mt: 1 }}>
-                    <Suspense fallback={<Box sx={{ height: 180 }} />}>
+                    <Suspense
+                      fallback={
+                        <CenteredSpinner size={24} sx={{ height: 180, alignItems: "center" }} />
+                      }
+                    >
                       <LocationMap
                         latitude={observation.location.latitude}
                         longitude={observation.location.longitude}

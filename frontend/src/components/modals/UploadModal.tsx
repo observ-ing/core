@@ -12,7 +12,6 @@ import {
   Button,
   Stack,
   IconButton,
-  CircularProgress,
   FormControl,
   InputLabel,
   Select,
@@ -36,6 +35,7 @@ import { useSubmitObservation, useUpdateObservation } from "../../lib/query/muta
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
+import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ButtonSpinner } from "../common/ButtonSpinner";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
@@ -613,16 +613,7 @@ export function UploadModal() {
               <StepContent>
                 <Suspense
                   fallback={
-                    <Box
-                      sx={{
-                        height: 260,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <CircularProgress size={24} />
-                    </Box>
+                    <CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />
                   }
                 >
                   <LocationPicker
