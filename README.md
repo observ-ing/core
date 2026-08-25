@@ -38,6 +38,7 @@ stack needs and prints what's missing.
 - [Architecture](docs/architecture.md) — system design and components
 - [Deployment](docs/deployment.md) — Cloud Run deployment
 - [Darwin Core](docs/darwin-core.md) — lexicon schemas
+- [HappyView Evaluation](docs/happyview-evaluation.md) — why we're not swapping the backend
 
 ## License
 
