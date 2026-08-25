@@ -16,6 +16,7 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { useProfileFeed } from "../../lib/query/hooks";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
@@ -25,6 +26,8 @@ import { ObservationGridCard, observationGridCardContentSx } from "../common/Obs
 import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { FullPageStatus } from "../common/FullPageStatus";
+import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
 import { ProfileStat } from "./ProfileStat";
@@ -53,25 +56,39 @@ export function ProfileView() {
 
   if (!did) {
     return (
-      <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          Profile not found
-        </Typography>
-      </Container>
+      <FullPageStatus
+        icon={<SearchOffIcon />}
+        title="Profile not found"
+        description="No profile identifier was provided."
+        actions={
+          <Button
+            variant="outlined"
+            onClick={() => window.history.back()}
+            sx={fullPageStatusSecondaryActionSx}
+          >
+            Go Back
+          </Button>
+        }
+      />
     );
   }
 
   if (error) {
     return (
-      <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography color="error">
-          {error instanceof Error ? error.message : "Failed to load profile"}
-        </Typography>
-      </Container>
+      <FullPageStatus
+        icon={<SearchOffIcon />}
+        title="Unable to load profile"
+        description={error instanceof Error ? error.message : "Failed to load profile."}
+        actions={
+          <Button
+            variant="outlined"
+            onClick={() => window.history.back()}
+            sx={fullPageStatusSecondaryActionSx}
+          >
+            Go Back
+          </Button>
+        }
+      />
     );
   }
 
