@@ -18,6 +18,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NumbersIcon from "@mui/icons-material/Numbers";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -39,6 +40,8 @@ import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { CenteredSpinner } from "../common/CenteredSpinner";
+import { FullPageStatus } from "../common/FullPageStatus";
+import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { formatEventDate, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
@@ -110,14 +113,16 @@ export function ObservationDetail() {
   if (!observation) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
-        <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
-          <Typography color="error" sx={{ mb: 2 }}>
-            {!atUri ? "No observation URI provided" : "Observation not found"}
-          </Typography>
-          <Button variant="outlined" onClick={handleBack}>
-            Go Back
-          </Button>
-        </Container>
+        <FullPageStatus
+          icon={<SearchOffIcon />}
+          title={atUri ? "Observation not found" : "No observation URI provided"}
+          description="It may have been deleted, or the link you followed is incorrect."
+          actions={
+            <Button variant="outlined" onClick={handleBack} sx={fullPageStatusSecondaryActionSx}>
+              Go Back
+            </Button>
+          }
+        />
       </Box>
     );
   }
