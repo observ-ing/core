@@ -202,6 +202,13 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           },
         },
       },
+      MuiToggleButton: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+          },
+        },
+      },
       // Every ListItemButton in the app (nav rows, notification rows) rounds
       // its corners the same way — centralized here instead of repeating
       // `borderRadius: 2` at each call site.

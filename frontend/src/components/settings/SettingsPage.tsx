@@ -94,7 +94,6 @@ export function SettingsPage() {
               px: 3,
               py: 1,
               gap: 1,
-              textTransform: "none",
               fontWeight: 500,
             },
           }}
