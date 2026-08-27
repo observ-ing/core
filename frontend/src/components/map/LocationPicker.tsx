@@ -364,7 +364,7 @@ export function LocationPicker({
         size="small"
         onClick={() => setShowCoordinates((v) => !v)}
         endIcon={showCoordinates ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        sx={{ mt: 1, textTransform: "none", color: "text.secondary" }}
+        sx={{ mt: 1, color: "text.secondary" }}
       >
         {showCoordinates ? "Hide coordinates" : "Enter coordinates manually"}
       </Button>

@@ -63,11 +63,7 @@ export function TaxonDescriptionSection({ descriptions, sx }: TaxonDescriptionSe
           )}
         </Box>
       ))}
-      <Button
-        size="small"
-        onClick={() => setExpanded((v) => !v)}
-        sx={{ mt: 1, textTransform: "none" }}
-      >
+      <Button size="small" onClick={() => setExpanded((v) => !v)} sx={{ mt: 1 }}>
         {expanded ? "Show less" : "Read more"}
       </Button>
     </CollapsibleSection>
