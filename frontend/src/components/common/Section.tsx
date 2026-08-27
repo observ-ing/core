@@ -9,6 +9,13 @@ export interface SectionProps {
 }
 
 /**
+ * Padding (in theme spacing units) applied inside every {@link Section} card.
+ * Exported so a collapsible header can bleed its click target out to the card
+ * edges with a matching negative margin.
+ */
+export const SECTION_PADDING = 2.5;
+
+/**
  * Bordered card wrapper shared by the observation detail sections (Details,
  * Data quality, Identification history, Discussion) so they read as peers
  * instead of each defining its own Paper styling.
@@ -18,7 +25,7 @@ export function Section({ children, sx }: SectionProps) {
     <Paper
       elevation={0}
       sx={{
-        p: 2.5,
+        p: SECTION_PADDING,
         bgcolor: "background.paper",
         borderRadius: 2,
         border: 1,
@@ -52,6 +59,10 @@ export function SectionHeader({ icon, title, trailing, onClick, sx }: SectionHea
     <Stack
       direction="row"
       spacing={1}
+      // Space children with `gap` rather than sibling margins so the trailing
+      // slot's `ml: "auto"` can push it to the right edge instead of being
+      // overridden by the spacing rule.
+      useFlexGap
       {...(onClick ? { onClick } : {})}
       sx={{
         alignItems: "center",
