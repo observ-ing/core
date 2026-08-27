@@ -153,9 +153,13 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
             ) : user ? (
               <>
                 <IconButton
+                  id="account-menu-button"
                   onClick={handleProfileMenuOpen}
                   sx={{ p: 0.5 }}
                   aria-label="Account menu"
+                  aria-haspopup="true"
+                  aria-controls={anchorEl ? "account-menu" : undefined}
+                  aria-expanded={anchorEl ? "true" : undefined}
                 >
                   <UserAvatar
                     did={user.did}
@@ -167,11 +171,13 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                   />
                 </IconButton>
                 <Menu
+                  id="account-menu"
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
                   onClose={handleProfileMenuClose}
                   onClick={handleProfileMenuClose}
                   slotProps={{
+                    list: { "aria-labelledby": "account-menu-button" },
                     paper: {
                       elevation: 4,
                       sx: {

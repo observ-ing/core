@@ -57,20 +57,26 @@ export function RecordOverflowMenu({
   return (
     <>
       <IconButton
+        id="record-overflow-menu-button"
         size="small"
         onClick={handleOpen}
         aria-label="More options"
+        aria-haspopup="true"
+        aria-controls={open ? "record-overflow-menu" : undefined}
+        aria-expanded={open ? "true" : undefined}
         sx={{ color: "text.disabled", ...sx }}
       >
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu
+        id="record-overflow-menu"
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
         onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
+        slotProps={{ list: { "aria-labelledby": "record-overflow-menu-button" } }}
       >
         {onEdit && (
           <MenuItem

@@ -12,13 +12,18 @@ import { useBasemap } from "./useBasemap";
 export function BasemapSelector() {
   const [basemap, setBasemap] = useBasemap();
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const open = Boolean(anchorEl);
 
   return (
     <>
       <Tooltip title="Basemap">
         <IconButton
+          id="basemap-selector-button"
           size="small"
           aria-label="Choose basemap"
+          aria-haspopup="true"
+          aria-controls={open ? "basemap-selector-menu" : undefined}
+          aria-expanded={open ? "true" : undefined}
           onClick={(e) => setAnchorEl(e.currentTarget)}
           sx={{
             position: "absolute",
@@ -34,7 +39,13 @@ export function BasemapSelector() {
           <LayersIcon fontSize="small" />
         </IconButton>
       </Tooltip>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
+      <Menu
+        id="basemap-selector-menu"
+        anchorEl={anchorEl}
+        open={open}
+        onClose={() => setAnchorEl(null)}
+        slotProps={{ list: { "aria-labelledby": "basemap-selector-button" } }}
+      >
         {BASEMAPS.map((b) => (
           <MenuItem
             key={b.id}
