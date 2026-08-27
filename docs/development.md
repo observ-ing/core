@@ -287,7 +287,8 @@ Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
 #### Running several checkouts at once (randomized ports)
 
 The four services default to fixed ports (`appview` 3000, `species-id`
-3005, `frontend`/Vite 5173, `tap-ingester` 8080), so two checkouts that
+3005, `frontend`/Vite 5173, `tap-ingester` 8090 — not 8080, which
+process-compose itself uses for its REST API), so two checkouts that
 both run `process-compose up` collide. To run them in parallel, start the
 stack through the wrapper instead:
 
@@ -347,8 +348,10 @@ npm run dev
 
 The frontend runs in **one of two modes**, and which one you're in is
 determined entirely by whether `dist/public/` has files in it. Both modes
-serve the app at `http://localhost:3000` (not `:5173`) — appview is
-always the front door.
+serve the app at `http://127.0.0.1:3000` (not `:5173`) — appview is
+always the front door. Use `127.0.0.1`, not `localhost`: the local OAuth
+client registers its callback on `127.0.0.1`, so a session started via
+`localhost` lands on a different cookie origin and looks logged-out.
 
 | Mode | When | Behavior |
 |---|---|---|
