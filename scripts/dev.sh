@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Bring up the full local dev stack with a randomized port offset so several
 # checkouts / git worktrees can run side by side without colliding on the
-# usual 3000 / 3005 / 5173 / 8080 ports.
+# usual 3000 / 3005 / 5173 / 8090 ports.
 #
 # A single random base offset is picked once and applied uniformly to every
 # service, so their relative gaps (and therefore every cross-service URL the
@@ -39,7 +39,8 @@ fi
 BASE_APPVIEW_PORT=3000
 BASE_SPECIES_ID_PORT=3005
 BASE_VITE_PORT=5173
-BASE_TAP_INGESTER_PORT=8080
+# 8080 is process-compose's own REST API port, so tap-ingester sits at 8090.
+BASE_TAP_INGESTER_PORT=8090
 
 # One random offset for the whole stack. Stepped by 10 and capped at 5000 so
 # every derived port stays in a sane, unprivileged, in-range band and the

@@ -72,15 +72,22 @@ processes:
     command: cargo run -p tap-ingester
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
-      - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite:./.tap-ingester/tap.db}
-      - PORT=${TAP_INGESTER_PORT:-8080}
+      - TAP_DATABASE_URL=${TAP_DATABASE_URL:-sqlite://./.tap-ingester/tap.db}
+      - PORT=${TAP_INGESTER_PORT:-8090}
+      # Connect to the firehose head instead of replaying from a saved cursor.
+      # After the stack sits idle for a day+, the saved cursor is far behind
+      # the live tip and Tap spends hours catching up — during which freshly
+      # created records never reach the DB and e2e tests time out. Local dev
+      # only cares about records created now, so skipping replay is correct
+      # here. Inherited by the spawned `tap` binary via $TAP_NO_REPLAY.
+      - TAP_NO_REPLAY=${TAP_NO_REPLAY:-true}
     depends_on:
       migrate:
         condition: process_completed_successfully
     readiness_probe:
       http_get:
         host: localhost
-        port: ${TAP_INGESTER_PORT:-8080}
+        port: ${TAP_INGESTER_PORT:-8090}
         path: /health
       initial_delay_seconds: 30
       period_seconds: 5
@@ -94,5 +101,9 @@ processes:
       - VITE_PORT=${VITE_PORT:-5173}
       - APPVIEW_PORT=${APPVIEW_PORT:-3000}
     depends_on:
+      # process_started, not process_healthy: Vite has no startup dependency on
+      # appview (its /api, /oauth, /media proxy entries connect lazily and
+      # recover once appview is up), so gating on appview's slow readiness probe
+      # only delayed the dev server for no benefit.
       appview:
-        condition: process_healthy
+        condition: process_started

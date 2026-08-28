@@ -179,7 +179,7 @@ check_port() {
 check_port 3000 appview
 check_port 3005 species-id
 check_port 5173 vite
-check_port 8080 tap-ingester
+check_port 8090 tap-ingester
 
 # ---- Summary --------------------------------------------------------------
 
