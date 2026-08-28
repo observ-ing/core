@@ -50,6 +50,7 @@ export function CollapsibleSection({
     <Section sx={sx}>
       <SectionHeader
         onClick={toggle}
+        expanded={expanded}
         {...(icon != null ? { icon } : {})}
         title={title}
         sx={{ mb: expanded ? 1.5 : 0 }}

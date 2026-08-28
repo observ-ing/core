@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
 
@@ -39,6 +39,8 @@ export interface SectionHeaderProps {
   trailing?: ReactNode;
   /** When set the whole header row becomes clickable (used by collapsibles). */
   onClick?: () => void;
+  /** Whether the section this header controls is currently expanded (for `aria-expanded`). */
+  expanded?: boolean;
   /** Extra `sx` merged onto the header row (e.g. bottom spacing). */
   sx?: SxProps<Theme>;
 }
@@ -47,12 +49,34 @@ export interface SectionHeaderProps {
  * Icon + title (+ optional right-aligned trailing slot) row used as the header
  * of each {@link Section}.
  */
-export function SectionHeader({ icon, title, trailing, onClick, sx }: SectionHeaderProps) {
+export function SectionHeader({
+  icon,
+  title,
+  trailing,
+  onClick,
+  expanded,
+  sx,
+}: SectionHeaderProps) {
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onClick?.();
+    }
+  };
+
   return (
     <Stack
       direction="row"
       spacing={1}
-      {...(onClick ? { onClick } : {})}
+      {...(onClick
+        ? {
+            onClick,
+            role: "button",
+            tabIndex: 0,
+            "aria-expanded": expanded,
+            onKeyDown: handleKeyDown,
+          }
+        : {})}
       sx={{
         alignItems: "center",
         ...(onClick ? { cursor: "pointer", userSelect: "none" } : {}),
