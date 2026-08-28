@@ -41,6 +41,12 @@ export interface SectionHeaderProps {
   onClick?: () => void;
   /** Whether the section this header controls is currently expanded (for `aria-expanded`). */
   expanded?: boolean;
+  /**
+   * Explicit accessible name for the header button. When provided it overrides
+   * the name that would otherwise be computed from the button's content
+   * (including any nested `aria-label` on the expand-toggle chevron).
+   */
+  "aria-label"?: string;
   /** Extra `sx` merged onto the header row (e.g. bottom spacing). */
   sx?: SxProps<Theme>;
 }
@@ -55,6 +61,7 @@ export function SectionHeader({
   trailing,
   onClick,
   expanded,
+  "aria-label": ariaLabel,
   sx,
 }: SectionHeaderProps) {
   const handleKeyDown = (event: KeyboardEvent) => {
@@ -74,6 +81,7 @@ export function SectionHeader({
             role: "button",
             tabIndex: 0,
             "aria-expanded": expanded,
+            ...(ariaLabel != null ? { "aria-label": ariaLabel } : {}),
             onKeyDown: handleKeyDown,
           }
         : {})}
