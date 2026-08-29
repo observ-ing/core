@@ -50,6 +50,8 @@ export function CollapsibleSection({
     <Section sx={sx}>
       <SectionHeader
         onClick={toggle}
+        expanded={expanded}
+        {...(typeof title === "string" ? { "aria-label": title } : {})}
         {...(icon != null ? { icon } : {})}
         title={title}
         sx={{ mb: expanded ? 1.5 : 0 }}
