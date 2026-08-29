@@ -333,6 +333,12 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
+      # tap-ingester writes Tap's cursor DB here (three-slash = absolute path,
+      # which Tap's sqlite parser expects).
+      TAP_DATABASE_URL: sqlite:///tmp/tap.db
+      # Surface Tap's stdout/stderr (via tap-ingester) so dev-env startup
+      # failures are debuggable; tapped defaults this to /dev/null.
+      TAP_INHERIT_STDIO: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -342,22 +348,20 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      - uses: taiki-e/cache-cargo-install-action@v3
-        with:
-          # See rust-sqlx job above for rationale on the version pin.
-          tool: sqlx-cli@0.9.0
-          no-default-features: true
-          features: postgres
-      - name: Run database migrations and seed
-        run: |
-          sqlx migrate run --source crates/observing-db/migrations
-          psql $DATABASE_URL -f frontend/tests/seed.sql
+      # Build the frontend so appview serves the static bundle from dist/public
+      # instead of proxying to the Vite dev server. Under CI load a cold Vite
+      # compile on the first navigation races the auth-setup's 30s timeout (the
+      # `devenv` e2e then can't run); serving prebuilt assets removes that race.
+      # process-compose still starts Vite for local runs, which appview ignores
+      # once dist/public exists.
       - name: Build frontend
         run: npm run build
-      - name: Build appview
-        run: cargo build -p observing-appview
-      - name: Build tap-ingester
-        run: cargo build -p tap-ingester --bin tap-ingester
+      # Pre-build the binaries process-compose.devenv.yaml launches via
+      # `cargo run` (migrate, appview, tap-ingester) so the stack comes up well
+      # within its readiness probes. Migrations run inside the stack (the
+      # `migrate` process), so no separate sqlx step is needed.
+      - name: Build appview, tap-ingester, migrate
+        run: cargo build -p observing-appview -p tap-ingester -p observing-migrate
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26'
@@ -372,83 +376,28 @@ jobs:
           git fetch --depth 1 origin "$INDIGO_REV"
           git checkout FETCH_HEAD
           GODEBUG=netdns=go go build -tags timetzdata -o /usr/local/bin/tap ./cmd/tap
+      - name: Install process-compose
+        # The dev-env orchestrator (scripts/e2e-devenv.ts) brings the Rust stack
+        # up via process-compose.devenv.yaml.
+        env:
+          PC_VERSION: v1.116.0
+        run: |
+          curl -fsSL "https://github.com/F1bonacc1/process-compose/releases/download/${PC_VERSION}/process-compose_linux_amd64.tar.gz" \
+            | tar -xz -C /tmp process-compose
+          sudo install /tmp/process-compose /usr/local/bin/process-compose
+          process-compose version
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
-      - name: Start services
-        env:
-          # tap-ingester's default is sqlite:///data/tap.db (a Cloud Run
-          # container path); point at a local file in CI instead. Note
-          # the three-slash form is what Tap's pg/sqlite parser expects
-          # for an absolute filesystem path.
-          TAP_DATABASE_URL: sqlite:///tmp/tap.db
-          # Surface Tap's stdout/stderr alongside tap-ingester's so
-          # startup failures are debuggable; tapped defaults this to
-          # /dev/null.
-          TAP_INHERIT_STDIO: '1'
-        run: |
-          PORT=3000 ./target/debug/observing-appview > /tmp/appview.log 2>&1 &
-          PORT=8090 ./target/debug/tap-ingester > /tmp/tap-ingester.log 2>&1 &
-      - name: Wait for appview
-        run: |
-          for i in $(seq 1 60); do
-            curl -sf http://127.0.0.1:3000/health 2>/dev/null && exit 0
-            sleep 2
-          done
-          echo "appview failed to start"
-          exit 1
-      - name: Wait for tap-ingester (Tap channel connected)
-        # tap-ingester's /health reports `connected: true` only after
-        # spawn_default + tap.channel().await have succeeded. Generous
-        # budget — Tap's first-run sqlite migration + relay subscribe
-        # can take a while on a cold runner.
-        run: |
-          for i in $(seq 1 120); do
-            if curl -sf http://127.0.0.1:8090/health 2>/dev/null | grep -q '"connected":true'; then
-              exit 0
-            fi
-            sleep 1
-          done
-          echo "tap-ingester never became channel-connected"
-          curl -s http://127.0.0.1:8090/health || true
-          exit 1
-      - name: Reset test user PDS
-        # Delete every record the e2e suite would have created in
-        # prior runs. Bounds the backfill that `/repos/add` triggers
-        # below — without this the test user's history grows
-        # unboundedly and saturates tap-ingester's channel ahead of
-        # the live commit (#473).
-        env:
-          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
-          BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
-        run: npx tsx scripts/cleanup-test-user.ts "$BLUESKY_TEST_HANDLE" "$BLUESKY_TEST_PASSWORD"
-      - name: Pre-warm Tap with the test DID
-        # Tap discovers DIDs from the firehose signal-collection but the
-        # round-trip is too slow for a cold CI run. Add the test DID
-        # directly so Tap immediately backfills + forwards the user's
-        # records. /repos/add talks to the embedded Tap on its localhost
-        # admin port.
-        env:
-          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
-        run: |
-          DID=$(curl -sf "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?actor=$BLUESKY_TEST_HANDLE" | python3 -c "import json,sys; print(json.load(sys.stdin)['did'])")
-          echo "Test DID: $DID"
-          curl -sf -X POST -H 'Content-Type: application/json' \
-            -d "{\"dids\":[\"$DID\"]}" \
-            http://127.0.0.1:2480/repos/add
-      - name: Run integration & e2e tests
-        run: npm run test
-        env:
-          BLUESKY_TEST_EMAIL: ${{ secrets.BLUESKY_TEST_EMAIL }}
-          BLUESKY_TEST_PASSWORD: ${{ secrets.BLUESKY_TEST_PASSWORD }}
-          BLUESKY_TEST_HANDLE: ${{ secrets.BLUESKY_TEST_HANDLE }}
-      - name: Dump service logs on failure
-        if: failure()
-        run: |
-          echo "===== appview log ====="
-          tail -200 /tmp/appview.log || true
-          echo
-          echo "===== tap-ingester log ====="
-          tail -200 /tmp/tap-ingester.log || true
+      - name: Run isolated dev-env e2e + integration tests
+        # Boots a local @atproto/dev-env network (PLC + PDS + firehose), points
+        # the Rust stack at it via process-compose.devenv.yaml, then runs the
+        # mocked integration suite plus the dev-env CRUD e2e (playwright.devenv.
+        # config.ts). No test data ever reaches the public network, so no
+        # BLUESKY_* credentials are needed. @atproto/dev-env is fetched on demand
+        # rather than vendored — see frontend/tests/dev-env/network.ts. The
+        # orchestrator inherits stdio, so service logs stream to this job's
+        # output on failure.
+        run: npm run test:e2e:devenv
       - uses: actions/upload-artifact@v4
         if: always()
         with:

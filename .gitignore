@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
 
+# On-demand @atproto/dev-env install for isolated e2e (not vendored in the root tree)
+frontend/tests/dev-env/.deps/
+
 # Build output
 dist/
 storybook-static/

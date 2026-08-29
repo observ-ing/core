@@ -146,8 +146,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             // public firehose. Both no-op in production (vars unset); Tap then
             // uses its built-in plc.directory + public relay defaults.
             if let Some(url) = parse_url_env("PLC_DIRECTORY_URL") {
-                info!(plc_url = %url, "overriding Tap PLC directory");
-                builder = builder.plc_url(url);
+                // Set Tap's native TAP_PLC_URL directly rather than via
+                // `builder.plc_url()`: tapped serializes that through
+                // `Url::to_string()`, which appends a trailing slash, and
+                // indigo's PLC client then builds `{url}/{did}` → `…//{did}`,
+                // which the dev-env PLC 404s on (Tap can't resolve the DID, so
+                // it never backfills the repo or forwards its commits). Trim the
+                // slash; Tap inherits our process env, and because we leave
+                // `config.plc_url` unset, tapped won't re-add the slashed value.
+                let plc = url.as_str().trim_end_matches('/').to_string();
+                info!(plc_url = %plc, "overriding Tap PLC directory");
+                std::env::set_var("TAP_PLC_URL", plc);
             }
             if let Some(url) = parse_url_env("TAP_RELAY_URL") {
                 info!(relay_url = %url, "overriding Tap relay/firehose source");
