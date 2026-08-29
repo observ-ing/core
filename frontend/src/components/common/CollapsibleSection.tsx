@@ -69,6 +69,8 @@ export function CollapsibleSection({
     <Section sx={{ overflow: "hidden", pb: 0, ...sx }}>
       <SectionHeader
         onClick={toggle}
+        expanded={expanded}
+        {...(typeof title === "string" ? { "aria-label": title } : {})}
         {...(icon != null ? { icon } : {})}
         title={title}
         sx={headerSx}

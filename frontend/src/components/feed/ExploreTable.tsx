@@ -1,4 +1,4 @@
-import { memo } from "react";
+import { memo, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Paper,
@@ -110,10 +110,25 @@ const ExploreTableRow = memo(function ExploreTableRow({
       ? [obs.organismQuantity, obs.organismQuantityType].filter(Boolean).join(" ")
       : "—";
 
+  const url = getObservationUrl(obs.uri);
+  const open = () => navigate(url);
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+    // Rows are <tr>s, not native links/buttons, so Enter/Space activation
+    // has to be wired up by hand to match the `role="link"` below.
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open();
+    }
+  };
+
   return (
     <TableRow
       hover
-      onClick={() => navigate(getObservationUrl(obs.uri))}
+      onClick={open}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="link"
+      aria-label={`View observation of ${sciName}`}
       sx={{ cursor: "pointer", "& td": { whiteSpace: "nowrap" } }}
     >
       <TableCell sx={{ p: 0.5 }}>
