@@ -129,8 +129,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(_) => {
             info!("spawning embedded tap process");
+            let tap_database_url = resolve_tap_database_url();
+            // SQLite creates the db file but not its parent directory, so a
+            // fresh checkout or new git worktree (no `./.tap-ingester/`) makes
+            // the spawned `tap` exit instantly with "unable to open database
+            // file", which surfaces here 30s later as a startup timeout.
+            ensure_sqlite_parent_dir(&tap_database_url);
             let mut builder = TapConfig::builder()
-                .database_url(resolve_tap_database_url())
+                .database_url(tap_database_url)
                 .signal_collection(OCCURRENCE_COLLECTION)
                 .collection_filter(OCCURRENCE_COLLECTION)
                 .collection_filter(IDENTIFICATION_COLLECTION)
@@ -361,6 +367,37 @@ fn resolve_tap_database_url() -> String {
         .unwrap_or_else(|| "sqlite:///data/tap.db".to_string())
 }
 
+/// Create the parent directory of a `sqlite:` database file if it's missing.
+///
+/// SQLite opens (and creates) the db file itself but never its containing
+/// directory, and neither does the `tap` binary — so a `TAP_DATABASE_URL` like
+/// `sqlite://./.tap-ingester/tap.db` in a checkout where that dir doesn't exist
+/// yet (a fresh clone, a new git worktree) makes `tap` die on startup. Postgres
+/// URLs and in-memory sqlite have no directory to create and are left alone; a
+/// failure to create the dir is only warned about, since `tap` will then report
+/// the underlying problem itself.
+fn ensure_sqlite_parent_dir(database_url: &str) {
+    let Some(rest) = database_url.strip_prefix("sqlite:") else {
+        return;
+    };
+    // `sqlite://<path>`, `sqlite:///abs/path` and `sqlite:<path>` all reduce to
+    // a filesystem path once the `//` authority marker and any `?mode=rwc`-style
+    // query string are removed.
+    let path = rest.strip_prefix("//").unwrap_or(rest);
+    let path = path.split('?').next().unwrap_or(path);
+    if path.is_empty() || path == ":memory:" {
+        return;
+    }
+    match std::path::Path::new(path).parent() {
+        Some(parent) if !parent.as_os_str().is_empty() => {
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                warn!(dir = %parent.display(), error = %e, "could not create sqlite parent dir");
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Relay the heartbeat's lag probe connects to. Must match the firehose Tap
 /// consumes from (sequence numbers are source-specific). Resolution order:
 /// `LAG_PROBE_RELAY_URL` (explicit; set empty to disable the probe), else
@@ -522,5 +559,44 @@ fn action_to_str(action: RecordAction) -> &'static str {
         RecordAction::Delete => "delete",
         // RecordAction is #[non_exhaustive]; future variants treated as no-op upserts.
         _ => "unknown",
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ensure_sqlite_parent_dir;
+
+    #[test]
+    fn creates_missing_sqlite_parent_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join(".tap-ingester").join("tap.db");
+        assert!(!db.parent().unwrap().exists());
+
+        ensure_sqlite_parent_dir(&format!("sqlite://{}", db.display()));
+
+        assert!(db.parent().unwrap().is_dir());
+        assert!(
+            !db.exists(),
+            "only the directory is created, not the db file"
+        );
+    }
+
+    #[test]
+    fn handles_nested_missing_dirs_and_query_string() {
+        let tmp = tempfile::tempdir().unwrap();
+        let db = tmp.path().join("a").join("b").join("tap.db");
+
+        ensure_sqlite_parent_dir(&format!("sqlite://{}?mode=rwc", db.display()));
+
+        assert!(db.parent().unwrap().is_dir());
+    }
+
+    #[test]
+    fn ignores_non_sqlite_and_memory_urls() {
+        // Must not panic or touch the filesystem for these.
+        ensure_sqlite_parent_dir("postgresql://postgres@localhost/observing");
+        ensure_sqlite_parent_dir("sqlite::memory:");
+        ensure_sqlite_parent_dir("sqlite://:memory:");
+        ensure_sqlite_parent_dir("sqlite:tap.db"); // bare filename, no parent
     }
 }

@@ -68,6 +68,9 @@ clap = { version = "4", features = ["derive", "env"] }
 # URL utilities
 url = { workspace = true }
 
+[dev-dependencies]
+tempfile = { workspace = true }
+
 [[bin]]
 name = "tap-ingester"
 path = "src/main.rs"
