@@ -12,7 +12,7 @@
 //! species embeddings is computed via a single matrix multiply.
 
 use crate::error::{Result, SpeciesIdError};
-use crate::types::SpeciesSuggestion;
+use crate::types::{SpeciesRef, SpeciesSuggestion};
 use ndarray::{Array1, Array2};
 use serde::Deserialize;
 use std::path::Path;
@@ -113,6 +113,19 @@ impl SpeciesEmbeddings {
     /// Number of species in the label set
     pub fn len(&self) -> usize {
         self.labels.len()
+    }
+
+    /// Resolve a species index (e.g. one returned by the geo range index) to
+    /// a name-only [`SpeciesRef`]. Indices originate from the same label set,
+    /// validated against `labels.len()` at index load time, so this indexes
+    /// directly like [`top_k_from_scores`](Self::top_k_from_scores).
+    pub fn species_ref(&self, idx: usize) -> SpeciesRef {
+        let label = &self.labels[idx];
+        SpeciesRef {
+            scientific_name: label.scientific_name.clone(),
+            common_name: label.common_name.clone(),
+            kingdom: label.kingdom.clone(),
+        }
     }
 
     /// Embedding dimension (inferred from the loaded model data)
@@ -223,5 +236,14 @@ mod tests {
             "in_range should not appear in JSON when None: {}",
             json
         );
+    }
+
+    #[test]
+    fn species_ref_resolves_index_to_label() {
+        let species = make_embeddings(5, 4);
+        let r = species.species_ref(3);
+        assert_eq!(r.scientific_name, "Species 3");
+        assert_eq!(r.common_name, None);
+        assert_eq!(r.kingdom, None);
     }
 }
