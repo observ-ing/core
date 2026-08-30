@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import {
   Box,
@@ -216,13 +216,26 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
   const properties = def.record?.properties ?? def.properties;
   const required = def.record?.required ?? def.required;
 
+  const toggle = () => setOpen((prev) => !prev);
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  };
+
   if (!properties) return null;
 
   return (
     <Box sx={{ mt: 2 }}>
       <Box
-        sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-        onClick={() => setOpen(!open)}
+        sx={{ display: "flex", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+        onClick={toggle}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`#${name}`}
+        onKeyDown={handleKeyDown}
       >
         <ExpandToggleButton expanded={open} />
         <Typography variant="subtitle2" component="code" sx={{ fontFamily: monoStack }}>
