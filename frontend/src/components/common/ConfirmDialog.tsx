@@ -6,10 +6,9 @@ import {
   DialogActions,
   Typography,
   Button,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { ButtonSpinner } from "./ButtonSpinner";
+import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 
 type ConfirmColor = "primary" | "error" | "warning" | "info" | "success" | "inherit";
 
@@ -47,8 +46,7 @@ export function ConfirmDialog({
   pending = false,
   pendingLabel,
 }: ConfirmDialogProps) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const fullScreen = useMobileFullScreen();
 
   const resolvedConfirmColor: ConfirmColor = confirmColor ?? (destructive ? "error" : "primary");
 

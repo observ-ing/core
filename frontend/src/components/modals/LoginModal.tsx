@@ -10,18 +10,16 @@ import {
   Box,
   Link,
   Alert,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
 import { initiateLogin } from "../../services/api";
 import { ButtonSpinner } from "../common/ButtonSpinner";
+import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 
 export function LoginModal() {
   const dispatch = useAppDispatch();
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const fullScreen = useMobileFullScreen();
   const isOpen = useAppSelector((state) => state.ui.loginModalOpen);
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);

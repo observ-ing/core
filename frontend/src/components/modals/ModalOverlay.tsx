@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
-import { Dialog, DialogContent, IconButton, useMediaQuery, useTheme } from "@mui/material";
+import { Dialog, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 
 interface ModalOverlayProps {
   open: boolean;
@@ -10,8 +11,7 @@ interface ModalOverlayProps {
 }
 
 export function ModalOverlay({ open, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const fullScreen = useMobileFullScreen();
 
   return (
     <Dialog
