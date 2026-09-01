@@ -18,7 +18,7 @@ import {
   MenuItem,
   Stepper,
   Step,
-  StepLabel,
+  StepButton,
   StepContent,
   useTheme,
 } from "@mui/material";
@@ -540,13 +540,12 @@ export function UploadModal() {
           <Stepper activeStep={activeStep} orientation="vertical" nonLinear>
             {/* Step 1 — Photos (optional) */}
             <Step completed={photoCount > 0}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_PHOTOS]}</Typography>}
                 onClick={() => setActiveStep(STEP_PHOTOS)}
-                sx={{ cursor: "pointer" }}
               >
                 Photos
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 {photoCount > 0 && (
                   <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
@@ -602,14 +601,20 @@ export function UploadModal() {
 
             {/* Step 2 — Location (required) */}
             <Step completed={hasLocation}>
-              <StepLabel
-                error={activeStep > STEP_LOCATION && !hasLocation}
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_LOCATION]}</Typography>}
                 onClick={() => setActiveStep(STEP_LOCATION)}
-                sx={{ cursor: "pointer" }}
+                sx={
+                  activeStep > STEP_LOCATION && !hasLocation
+                    ? {
+                        "& .MuiStepLabel-label": { color: "error.main" },
+                        "& .MuiStepIcon-root": { color: "error.main" },
+                      }
+                    : undefined
+                }
               >
                 Location
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 <Suspense
                   fallback={
@@ -633,13 +638,12 @@ export function UploadModal() {
 
             {/* Step 3 — Identify (optional) */}
             <Step completed={!!species.trim()}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_IDENTIFY]}</Typography>}
                 onClick={() => setActiveStep(STEP_IDENTIFY)}
-                sx={{ cursor: "pointer" }}
               >
                 Identify
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 <TaxaAutocomplete
                   value={species}
@@ -723,13 +727,12 @@ export function UploadModal() {
 
             {/* Step 4 — Details + submit */}
             <Step completed={false}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_DETAILS]}</Typography>}
                 onClick={() => setActiveStep(STEP_DETAILS)}
-                sx={{ cursor: "pointer" }}
               >
                 Date &amp; details
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 <LicenseSelect
                   value={license}
