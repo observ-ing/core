@@ -17,5 +17,11 @@ export const PROFILE_STAT_BOX_SX: SxProps<Theme> = {
   px: 1,
 };
 
+/** Small secondary-colored icon styling used by ProfileStat */
+export const PROFILE_STAT_ICON_SX: SxProps<Theme> = {
+  fontSize: 14,
+  color: "text.secondary",
+};
+
 /** Profile avatar size */
 export const PROFILE_AVATAR_SIZE = 80;
