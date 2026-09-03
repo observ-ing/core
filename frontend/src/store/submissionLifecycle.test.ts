@@ -1,26 +1,17 @@
 /**
  * Model-based property tests for the submit → visible lifecycle.
  *
- * A freshly-created observation is durable on the PDS the moment
- * `createRecord` returns, but it is NOT readable from our API until the
- * commit has travelled PDS → relay → Tap → tap-ingester → `ingester.occurrences`.
- * The appview is read-only on that schema (see docs/architecture.md and
- * routes/occurrences/write.rs: "there is a single writer"), so there is no
- * read-your-writes path server-side. The gap is papered over client-side by a
- * "tombstone" row spliced into the query caches (occurrenceCache.ts) plus a
- * localStorage-backed poll (pendingSlice.ts).
+ * A new observation is durable on the PDS as soon as `createRecord` returns but
+ * unreadable from our API until the commit reaches `ingester.occurrences`, and
+ * the appview is read-only on that schema. The gap is bridged entirely client
+ * side by a tombstone row in the query caches (occurrenceCache.ts) plus a
+ * localStorage-backed poll (pendingSlice.ts) — together, the whole state
+ * machine between pressing submit and seeing the observation.
  *
- * Those two pieces are the entire state machine standing between a user
- * pressing submit and seeing their observation, and neither had a test. This
- * file drives the REAL reducers, thunks and cache patchers through randomly
- * interleaved lifecycle events — submit, ingester arrival, poll timeout, feed
- * refetch, reload, clock advance — and asserts invariants after every step.
- * Only the API boundary (`fetchObservation` / `pollObservation`) and `Date.now`
- * are controlled; everything else is production code.
- *
- * Invariants that DON'T hold today are pinned at the bottom with `it.fails`,
- * so CI stays green while the violation stays documented — and the moment
- * someone fixes one, its test goes red asking to be promoted to `it`.
+ * fast-check interleaves the commands below in random orders, running
+ * `checkInvariants` after every step. Only `fetchObservation`,
+ * `pollObservation` and `Date.now` are stubbed; everything else is production
+ * code. Properties that don't hold today are pinned with `it.fails` below.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
@@ -30,9 +21,8 @@ import type * as ApiModule from "../services/api";
 import type { Occurrence, OccurrenceDetailResponse, Profile } from "../services/types";
 
 // ── Controlled boundary ──────────────────────────────────────────────────────
-// The ingester's view of the world. `ingested` flips when a commit has made it
-// all the way to `ingester.occurrences`; until then the API returns null, which
-// is exactly what the appview does for a record it has just written to the PDS.
+// Stands in for `ingester.occurrences`. While `ingested` is false the API
+// returns null, exactly as it does for a record just written to the PDS.
 interface WorldRecord {
   uri: string;
   cid: string;
@@ -56,9 +46,7 @@ vi.mock("../services/api", async (importOriginal) => ({
     const rec = world.records.get(uri);
     return rec?.ingested ? { occurrence: canonical(rec), identifications: [], comments: [] } : null;
   },
-  // The real implementation loops for ~30s; the commands below decide when (and
-  // whether) it resolves, which is the only part of its behaviour the lifecycle
-  // depends on.
+  // The real one loops for ~30s; here the commands decide when it resolves.
   pollObservation: (uri: string): Promise<boolean> =>
     new Promise<boolean>((resolve) => {
       world.polls.set(uri, resolve);
@@ -82,11 +70,7 @@ const PROFILE_KEY = qk.profileFeed(AUTHOR.did, "observations");
 const uriOf = (n: number) => `at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/obs${n}`;
 const cidOf = (n: number) => `bafycid${n}`;
 
-/**
- * The record as the API returns it once ingested. Deliberately distinguishable
- * from a tombstone: real blob URL, resolved taxonomy, a real identification
- * count — the fields `reconcileOccurrence` exists to swap in.
- */
+/** The record as the API returns it once ingested — never mistakable for a tombstone. */
 function canonical(rec: WorldRecord): Occurrence {
   return {
     uri: rec.uri,
@@ -136,9 +120,9 @@ function makeStore() {
 }
 type TestStore = ReturnType<typeof makeStore>;
 
-/** Let every already-resolved promise chain in the thunk run to completion. */
+/** Let the thunk's already-resolved promise chain run to completion. */
 async function settle() {
-  // Sequential by design: each tick lets one more `await` in the thunk chain run.
+  // Sequential by design: each tick advances one `await` in the chain.
   // eslint-disable-next-line no-await-in-loop
   for (let i = 0; i < 8; i++) await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -154,11 +138,9 @@ function persistedUris(): string[] {
 // ── Model / real ─────────────────────────────────────────────────────────────
 interface Model {
   /**
-   * Submitted observations by index, and how far each has got.
-   * `polled` = the poll settled either way; `reconciled` = it settled
-   * *successfully*, so `reconcileOccurrence` ran. A timed-out poll is
-   * documented to leave the tombstone alone (occurrenceCache.ts), so the two
-   * must not be conflated.
+   * How far each submission has got. `polled` = the poll settled either way;
+   * `reconciled` = it settled successfully. A timed-out poll deliberately
+   * leaves the tombstone alone, so the two must not be conflated.
    */
   submitted: Map<number, { ingested: boolean; polled: boolean; reconciled: boolean }>;
   /** Uris the author has actually seen in one of their own lists. */
@@ -169,11 +151,7 @@ interface Real {
   store: TestStore;
 }
 
-/**
- * Properties that must hold after every single lifecycle event, whatever the
- * interleaving. Violations found here are real bugs in the shipped state
- * machine, not artefacts of the harness.
- */
+/** Must hold after every lifecycle event, whatever the interleaving. */
 function checkInvariants(model: Model, real: Real) {
   const feed = rowsIn(FEED_KEY);
   const profile = rowsIn(PROFILE_KEY);
@@ -187,19 +165,16 @@ function checkInvariants(model: Model, real: Real) {
     for (const uri of uris) expect(world.records.has(uri)).toBe(true);
   }
 
-  // Once a poll has reported success, any row still showing that record must
-  // be the canonical one — swapping the tombstone out is the whole job of
-  // `reconcileOccurrence`.
+  // Once a poll reports success, any row still showing that record must be the
+  // canonical one — swapping the tombstone out is `reconcileOccurrence`'s job.
   for (const [n, state] of model.submitted) {
     if (!state.reconciled) continue;
     const row = feed.find((r) => r.uri === uriOf(n));
     if (row) expect(isTombstone(row)).toBe(false);
   }
 
-  // NB: the redux-pending ↔ localStorage mirror is deliberately NOT asserted
-  // here — it is violated today, and the interleaving property would fail on
-  // every run before reaching anything else. See `checkStorageMirror` and the
-  // pinned test at the bottom of this file.
+  // The pending ↔ localStorage mirror is checked separately: it is violated
+  // today and would fail every run before reaching anything else.
 
   // A submission whose poll has settled is no longer in flight — no stale spinner.
   const inFlight = real.store.getState().pending.submissions.map((s) => s.uri);
@@ -208,11 +183,7 @@ function checkInvariants(model: Model, real: Real) {
   }
 }
 
-/**
- * The pending set drives the TopBar indicator; localStorage is its durable
- * mirror across reloads. They must agree, or a reload resurrects (or loses)
- * in-flight submissions.
- */
+/** The pending set drives the TopBar indicator; localStorage mirrors it across reloads. */
 function checkStorageMirror(real: Real) {
   const inFlight = real.store.getState().pending.submissions.map((s) => s.uri);
   expect([...persistedUris()].sort()).toEqual([...inFlight].sort());
@@ -322,9 +293,8 @@ class PollTimesOut implements Cmd {
 }
 
 /**
- * A background refetch of the lists — what `invalidateOccurrenceLists()` does
- * after any delete (mutations.ts:208), and what a pull-to-refresh would do.
- * Pages are replaced wholesale by the server's answer.
+ * What `invalidateOccurrenceLists()` does after any delete (mutations.ts:208):
+ * the cached pages are replaced wholesale by the server's answer.
  */
 class RefetchLists implements Cmd {
   check() {
@@ -341,10 +311,7 @@ class RefetchLists implements Cmd {
   }
 }
 
-/**
- * Browser reload: the in-memory query cache and the redux store are gone,
- * localStorage survives, and App.tsx re-arms the outstanding polls.
- */
+/** Reload: query cache and store gone, localStorage survives, App.tsx re-arms the polls. */
 class Reload implements Cmd {
   check() {
     return true;
@@ -363,7 +330,7 @@ class Reload implements Cmd {
   }
 }
 
-/** Wall-clock advance — exercises the 2-minute `MAX_AGE_MS` cutoff on resume. */
+/** Exercises the 2-minute `MAX_AGE_MS` cutoff on resume. */
 class AdvanceClock implements Cmd {
   constructor(readonly ms: number) {}
   check() {
@@ -428,14 +395,11 @@ describe("submission lifecycle (model-based)", () => {
 });
 
 // ── Pinned violations ────────────────────────────────────────────────────────
-// The session guarantees below are the ones a user actually feels, and none of
-// them hold today. Each is written as the property we WANT, marked `it.fails`
-// so CI stays green while the gap stays visible. When one is fixed its test
-// goes red — promote it to `it` and, where it applies, fold the invariant back
-// into `checkInvariants` above so the interleaving property enforces it too.
-//
-// The first two scenarios are the minimal counterexamples fast-check shrank to
-// before these invariants were lifted out of the property.
+// Session guarantees that don't hold today, written as the property we WANT and
+// marked `it.fails` so CI stays green while the gap stays visible. When one is
+// fixed its test goes red: promote it to `it` and, where it applies, fold the
+// invariant into `checkInvariants`. The first two scenarios are the minimal
+// counterexamples fast-check shrank to.
 
 describe("session guarantees (known violations)", () => {
   async function scenario(...cmds: Cmd[]): Promise<[Model, Real]> {
@@ -446,32 +410,26 @@ describe("session guarantees (known violations)", () => {
     return [model, real];
   }
 
-  // Read-your-writes. The PDS has acked the write, so the record is durable and
-  // the author's own uri/cid survive in localStorage — but the only thing that
-  // ever put it on screen was an in-memory tombstone, and a reload wipes the
-  // query cache (queryClient.ts: "in-memory only"). `resumePendingSubmissions`
-  // re-arms the poll but carries no content to rebuild the row from, and
-  // `reconcileOccurrence` only patches rows that already exist.
+  // Read-your-writes. The only thing that ever put the row on screen was an
+  // in-memory tombstone, and a reload wipes the query cache. The poll is
+  // re-armed, but carries no content to rebuild the row from.
   it.fails("shows the author their own submission after a reload", async () => {
     const [, real] = await scenario(new Submit(0), new Reload());
     expect(real.store.getState().pending.submissions).toHaveLength(1); // still tracked…
     expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0)); // …but not shown
   });
 
-  // Monotonic reads. Deleting any *other* observation calls
-  // `invalidateOccurrenceLists()` (mutations.ts:208), refetching the feed from a
-  // server that does not have the new record yet — so a row the author was
-  // already looking at disappears from under them.
+  // Monotonic reads. Deleting any *other* observation refetches the feed from a
+  // server that doesn't have this record yet, so the row vanishes mid-read.
   it.fails("never removes a row the author has already seen", async () => {
     const [model] = await scenario(new Submit(0), new RefetchLists());
     expect(model.everSeen).toContain(uriOf(0));
     expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
   });
 
-  // Storage mirror. `loadPersisted` filters entries past MAX_AGE_MS but never
-  // writes the filtered list back, and when *every* entry is stale no
-  // `trackSubmission` is dispatched — so nothing calls `persist()` and the dead
-  // key outlives the submissions it describes.
+  // `loadPersisted` filters entries past MAX_AGE_MS but never writes the
+  // filtered list back, and an all-stale key dispatches nothing — so nothing
+  // calls `persist()` and the dead key survives.
   it.fails("clears expired submissions out of localStorage on resume", async () => {
     const [, real] = await scenario(new Submit(0), new AdvanceClock(120_000), new Reload());
     expect(real.store.getState().pending.submissions).toHaveLength(0);
