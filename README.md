@@ -36,6 +36,7 @@ stack needs and prints what's missing.
 - [Development](docs/development.md) — local setup, commands, services
 - [Contributing](CONTRIBUTING.md) — PR flow, formatting, CI gates
 - [Architecture](docs/architecture.md) — system design and components
+- [State model](docs/state-model.md) — observation lifecycle and its consistency guarantees
 - [Deployment](docs/deployment.md) — Cloud Run deployment
 - [Darwin Core](docs/darwin-core.md) — lexicon schemas
 

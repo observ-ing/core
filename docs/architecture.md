@@ -209,6 +209,12 @@ Tap (`indigo cmd/tap`) creates and manages its own tables here on first connect;
 7. Data now queryable via API
 ```
 
+Steps 3 and 7 are separated by an unbounded amount of wall-clock time, and the
+AppView cannot bridge it: it is read-only on the `ingester` schema, so it cannot
+serve a record it just wrote to the PDS. What the author sees in the meantime —
+and what is guaranteed rather than merely likely — is in
+[state-model.md](state-model.md).
+
 ### Adding an Identification
 
 ```

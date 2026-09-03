@@ -27,14 +27,14 @@ Query, and DB rolls failed writes back rather than pausing/resuming them.
 
 ## Files
 
-| File                 | Role                                                                                                                    |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `queryClient.ts`     | The single in-memory `QueryClient` and its default refetch policy.                                                      |
-| `QueryProvider.tsx`  | `QueryClientProvider`. Mount inside the Redux `<Provider>`.                                                             |
-| `keys.ts`            | Central query-key registry.                                                                                             |
-| `hooks.ts`           | One read hook per endpoint (`useFeed`, `useTaxon`, `useObservation`, …).                                                |
-| `mutations.ts`       | Write hooks. `useLike` is registered as a mutation _default_ (optimistic, in one place); others invalidate on success.  |
-| `occurrenceCache.ts` | Patches an occurrence's like state across every cache that holds it (feed/profile/taxon/detail) from a single mutation. |
+| File                 | Role                                                                                                                                     |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `queryClient.ts`     | The single in-memory `QueryClient` and its default refetch policy.                                                                       |
+| `QueryProvider.tsx`  | `QueryClientProvider`. Mount inside the Redux `<Provider>`.                                                                              |
+| `keys.ts`            | Central query-key registry.                                                                                                              |
+| `hooks.ts`           | One read hook per endpoint (`useFeed`, `useTaxon`, `useObservation`, …).                                                                 |
+| `mutations.ts`       | Write hooks. `useLike` is registered as a mutation _default_ (optimistic, in one place); others invalidate on success.                   |
+| `occurrenceCache.ts` | Patches one occurrence across every cache that holds it (feed/profile/taxon/detail), and merges pending rows into a feed at select time. |
 
 ## Optimistic-write design (likes)
 
@@ -46,6 +46,26 @@ Query, and DB rolls failed writes back rather than pausing/resuming them.
 3. A genuine server/network error (while online) triggers `onError`, which
    reverts the optimistic patch.
 
+## Optimistic rows for not-yet-ingested writes
+
+A just-submitted observation is durable on the PDS but unreadable from our API
+until the tap-ingester replays the commit, and the appview is read-only on the
+ingester schema — so there is no server-side read-your-writes path to lean on.
+
+The stand-in row is deliberately **not** written into this cache. Cached pages
+are replaced wholesale by any refetch (deleting _any_ observation calls
+`invalidateOccurrenceLists`) and dropped entirely by a reload, so a row spliced
+into them cannot survive either. It lives in `store/pendingSlice.ts`, is
+persisted to localStorage, and is merged into the feeds in `useFeed` /
+`useProfileFeed`'s `select` via `mergePendingOccurrences` — on top of whatever
+the cache currently holds, rather than inside it.
+
+What does land in this cache is the canonical record, once `trackSubmission`'s
+poll confirms ingestion: `reconcileOccurrence` replaces any copy already cached
+and `prependOccurrence` inserts one where there was none, before the optimistic
+row is retired. See [docs/state-model.md](../../../../docs/state-model.md) for
+the full lifecycle and which of its properties are actually guaranteed.
+
 ## Server-vs-client boundary
 
 **Moved to Query:** all occurrence feeds (home/explore/profile/taxon),
@@ -54,8 +74,10 @@ count, likes, comments, identifications.
 
 **Stays in Redux (UI/client state):** `uiSlice` (modals, toasts, theme,
 geolocation), `feedSlice` (explore filters — a query _input_ shared with the
-filter panel; the active tab is the route, read from the `tab` prop), and the
-auth _session_.
+filter panel; the active tab is the route, read from the `tab` prop),
+`pendingSlice` (in-flight submissions and their optimistic rows — client state
+about writes the server can't answer for yet, not server state), and the auth
+_session_.
 
 ## Deliberate exceptions / follow-ups
 
