@@ -163,6 +163,20 @@ export async function fetchObservation(uri: string): Promise<OccurrenceDetailRes
   }
 }
 
+const POLL_MAX_ATTEMPTS = 30;
+const POLL_INTERVAL_MS = 1000;
+
+/**
+ * How long {@link pollObservation} waits before giving up, in ms.
+ *
+ * Nothing derives this from measured ingest lag — PDS → relay → Tap →
+ * tap-ingester has no SLA and no bound, so this is a patience budget, not a
+ * deadline the pipeline promises to meet. Exported so the pieces that outlive a
+ * single poll (`pendingSlice`'s `MAX_AGE_MS`) are expressed as multiples of it
+ * instead of drifting into a second, unrelated guess.
+ */
+export const INGEST_POLL_WINDOW_MS = POLL_MAX_ATTEMPTS * POLL_INTERVAL_MS;
+
 // Poll fetchObservation until the predicate is satisfied. Used to wait for the
 // ingester to catch up after a PDS write before the UI refetches or navigates
 // — without this, callers would see stale data (pre-update row, ghost of a
@@ -170,7 +184,10 @@ export async function fetchObservation(uri: string): Promise<OccurrenceDetailRes
 export async function pollObservation(
   uri: string,
   predicate: (result: OccurrenceDetailResponse | null) => boolean,
-  { maxAttempts = 30, intervalMs = 1000 }: { maxAttempts?: number; intervalMs?: number } = {},
+  {
+    maxAttempts = POLL_MAX_ATTEMPTS,
+    intervalMs = POLL_INTERVAL_MS,
+  }: { maxAttempts?: number; intervalMs?: number } = {},
 ): Promise<boolean> {
   // Sequential polling by design
   for (let attempt = 0; attempt < maxAttempts; attempt++) {

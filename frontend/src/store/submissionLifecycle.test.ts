@@ -4,14 +4,19 @@
  * A new observation is durable on the PDS as soon as `createRecord` returns but
  * unreadable from our API until the commit reaches `ingester.occurrences`, and
  * the appview is read-only on that schema. The gap is bridged entirely client
- * side by a tombstone row in the query caches (occurrenceCache.ts) plus a
- * localStorage-backed poll (pendingSlice.ts) — together, the whole state
+ * side by a tombstone row held in the pending slice and merged into the feeds at
+ * select time (pendingSlice.ts + occurrenceCache.ts), plus a localStorage-backed
+ * poll that retires it (pendingSlice.ts) — together, the whole state
  * machine between pressing submit and seeing the observation.
  *
  * fast-check interleaves the commands below in random orders, running
  * `checkInvariants` after every step. Only `fetchObservation`,
  * `pollObservation` and `Date.now` are stubbed; everything else is production
- * code. Properties that don't hold today are pinned with `it.fails` below.
+ * code.
+ *
+ * What the author sees is the cached pages *plus* the pending overlay
+ * (`mergePendingOccurrences`), which is where a not-yet-ingested row lives —
+ * so `visibleRows` reads through both, exactly as `useFeed` does.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
@@ -54,16 +59,22 @@ vi.mock("../services/api", async (importOriginal) => ({
 }));
 
 // Imported after the mock is registered so the thunks close over the stubs.
-import authReducer from "./authSlice";
+import authReducer, { logout } from "./authSlice";
 import feedReducer from "./feedSlice";
 import uiReducer from "./uiSlice";
-import pendingReducer, { trackSubmission, resumePendingSubmissions } from "./pendingSlice";
-import { makeTombstoneOccurrence, prependOccurrence } from "../lib/query/occurrenceCache";
+import pendingReducer, {
+  trackSubmission,
+  resumePendingSubmissions,
+  selectPendingOccurrences,
+  MAX_AGE_MS,
+} from "./pendingSlice";
+import { makeTombstoneOccurrence, mergePendingOccurrences } from "../lib/query/occurrenceCache";
 import { queryClient } from "../lib/query/queryClient";
 import { qk } from "../lib/query/keys";
 
 const AUTHOR: Profile = { did: "did:plc:author", handle: "author.example" };
 const STORAGE_KEY = "observing-pending-submissions";
+const TOMBSTONE_STORAGE_KEY = "observing-pending-tombstones";
 const FEED_KEY = qk.feed("home", {}, true);
 const PROFILE_KEY = qk.profileFeed(AUTHOR.did, "observations");
 
@@ -87,8 +98,13 @@ function canonical(rec: WorldRecord): Occurrence {
   };
 }
 
-/** Tombstones carry the uploader's own inline preview; canonical rows never do. */
-const isTombstone = (o: Occurrence) => o.images.some((i) => i.url.startsWith("data:"));
+/**
+ * A tombstone carries only what the submit form knew; the canonical record
+ * carries the server-resolved taxonomy. Deliberately not keyed on the inline
+ * `data:` preview — that is stripped on the way to localStorage, so a resumed
+ * row would read as canonical.
+ */
+const isTombstone = (o: Occurrence) => o.effectiveTaxonomy?.scientificName === "Quercus";
 
 type OccurrencePage = { occurrences: Occurrence[]; cursor?: string };
 
@@ -108,17 +124,22 @@ function seedListCaches() {
   queryClient.setQueryData(PROFILE_KEY, { pages: [{ ...page }], pageParams: [undefined] });
 }
 
-function rowsIn(key: readonly unknown[]): Occurrence[] {
-  const data = queryClient.getQueryData<InfiniteData<OccurrencePage>>(key);
-  return data?.pages.flatMap((p) => p.occurrences) ?? [];
-}
-
 function makeStore() {
   return configureStore({
     reducer: { auth: authReducer, feed: feedReducer, ui: uiReducer, pending: pendingReducer },
   });
 }
 type TestStore = ReturnType<typeof makeStore>;
+
+/**
+ * What a feed hook renders for this store: the cached pages with the author's
+ * pending rows merged on top, mirroring `useFeed`/`useProfileFeed`'s `select`.
+ */
+function visibleRows(store: TestStore, key: readonly unknown[]): Occurrence[] {
+  const data = queryClient.getQueryData<InfiniteData<OccurrencePage>>(key);
+  const merged = mergePendingOccurrences(data, selectPendingOccurrences(store.getState()));
+  return merged?.pages.flatMap((p) => p.occurrences) ?? [];
+}
 
 /** Let the thunk's already-resolved promise chain run to completion. */
 async function settle() {
@@ -128,8 +149,8 @@ async function settle() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function persistedUris(): string[] {
-  const raw = localStorage.getItem(STORAGE_KEY);
+function persistedUris(key: string): string[] {
+  const raw = localStorage.getItem(key);
   if (!raw) return [];
   const parsed: { uri: string }[] = JSON.parse(raw);
   return parsed.map((s) => s.uri);
@@ -142,7 +163,10 @@ interface Model {
    * `reconciled` = it settled successfully. A timed-out poll deliberately
    * leaves the tombstone alone, so the two must not be conflated.
    */
-  submitted: Map<number, { ingested: boolean; polled: boolean; reconciled: boolean }>;
+  submitted: Map<
+    number,
+    { ingested: boolean; polled: boolean; reconciled: boolean; submittedAt: number }
+  >;
   /** Uris the author has actually seen in one of their own lists. */
   everSeen: Set<string>;
 }
@@ -153,8 +177,8 @@ interface Real {
 
 /** Must hold after every lifecycle event, whatever the interleaving. */
 function checkInvariants(model: Model, real: Real) {
-  const feed = rowsIn(FEED_KEY);
-  const profile = rowsIn(PROFILE_KEY);
+  const feed = visibleRows(real.store, FEED_KEY);
+  const profile = visibleRows(real.store, PROFILE_KEY);
 
   for (const rows of [feed, profile]) {
     // No duplicates: a tombstone and its canonical twin must never coexist.
@@ -173,30 +197,48 @@ function checkInvariants(model: Model, real: Real) {
     if (row) expect(isTombstone(row)).toBe(false);
   }
 
-  // The pending ↔ localStorage mirror is checked separately: it is violated
-  // today and would fail every run before reaching anything else.
+  // Monotonic reads, for as long as the client vouches for the row: a row the
+  // author has already seen never disappears within MAX_AGE_MS of its
+  // submission, whatever refetches or reloads happen in between. The guarantee
+  // is deliberately time-bounded — past that the optimistic row is dropped on
+  // load (see `loadPersisted`) and only the server's answer stands, which is
+  // the honest limit of a client-side bridge.
+  const feedUris = feed.map((r) => r.uri);
+  for (const [n, state] of model.submitted) {
+    const uri = uriOf(n);
+    if (!model.everSeen.has(uri)) continue;
+    if (now - state.submittedAt >= MAX_AGE_MS) continue;
+    expect(feedUris).toContain(uri);
+  }
 
   // A submission whose poll has settled is no longer in flight — no stale spinner.
   const inFlight = real.store.getState().pending.submissions.map((s) => s.uri);
   for (const [n, state] of model.submitted) {
     if (state.polled) expect(inFlight).not.toContain(uriOf(n));
   }
+
+  checkStorageMirror(real);
 }
 
-/** The pending set drives the TopBar indicator; localStorage mirrors it across reloads. */
+/**
+ * Both persisted lists mirror the store exactly: the in-flight set (which drives
+ * the TopBar indicator and is re-armed on resume) and the optimistic rows (which
+ * are what makes the observation visible after a reload).
+ */
 function checkStorageMirror(real: Real) {
-  const inFlight = real.store.getState().pending.submissions.map((s) => s.uri);
-  expect([...persistedUris()].sort()).toEqual([...inFlight].sort());
+  const { submissions, tombstones } = real.store.getState().pending;
+  expect(persistedUris(STORAGE_KEY).sort()).toEqual(submissions.map((s) => s.uri).sort());
+  expect(persistedUris(TOMBSTONE_STORAGE_KEY).sort()).toEqual(tombstones.map((t) => t.uri).sort());
 }
 
-function observe(model: Model) {
-  for (const row of rowsIn(FEED_KEY)) model.everSeen.add(row.uri);
+function observe(model: Model, real: Real) {
+  for (const row of visibleRows(real.store, FEED_KEY)) model.everSeen.add(row.uri);
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 type Cmd = fc.AsyncCommand<Model, Real, false>;
 
-/** The UploadModal `onSuccess` path: splice a tombstone, then start polling. */
+/** The UploadModal `onSuccess` path: hand the thunk a tombstone, then poll. */
 class Submit implements Cmd {
   constructor(readonly n: number) {}
   check(m: Model) {
@@ -211,25 +253,33 @@ class Submit implements Cmd {
     };
     world.records.set(rec.uri, rec);
 
-    prependOccurrence(
-      makeTombstoneOccurrence({
+    void r.store.dispatch(
+      trackSubmission({
         uri: rec.uri,
         cid: rec.cid,
-        observer: AUTHOR,
-        latitude: 1,
-        longitude: 2,
-        scientificName: "Quercus",
-        kingdom: "Plantae",
-        imageUrls: [`data:image/jpeg;base64,preview${this.n}`],
-        createdAt: new Date(now).toISOString(),
+        kind: "create",
+        occurrence: makeTombstoneOccurrence({
+          uri: rec.uri,
+          cid: rec.cid,
+          observer: AUTHOR,
+          latitude: 1,
+          longitude: 2,
+          scientificName: "Quercus",
+          kingdom: "Plantae",
+          imageUrls: [`data:image/jpeg;base64,preview${this.n}`],
+          createdAt: new Date(now).toISOString(),
+        }),
       }),
-      AUTHOR.did,
     );
-    void r.store.dispatch(trackSubmission({ uri: rec.uri, cid: rec.cid, kind: "create" }));
 
-    m.submitted.set(this.n, { ingested: false, polled: false, reconciled: false });
+    m.submitted.set(this.n, {
+      ingested: false,
+      polled: false,
+      reconciled: false,
+      submittedAt: now,
+    });
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -261,7 +311,7 @@ class IngesterDelivers implements Cmd {
     }
 
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -284,7 +334,7 @@ class PollTimesOut implements Cmd {
     if (state) state.polled = true;
 
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -303,7 +353,7 @@ class RefetchLists implements Cmd {
   async run(m: Model, r: Real) {
     seedListCaches();
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -317,12 +367,17 @@ class Reload implements Cmd {
     return true;
   }
   async run(m: Model, r: Real) {
+    // A reload tears down the whole JS context: every in-flight poll goes with
+    // it, and only what `resumePendingSubmissions` re-arms below survives.
+    // Without dropping them, a thunk from the previous page could still settle
+    // and write the dead store's state over localStorage.
+    world.polls.clear();
     queryClient.clear();
     r.store = makeStore();
     seedListCaches();
     await r.store.dispatch(resumePendingSubmissions());
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -339,7 +394,7 @@ class AdvanceClock implements Cmd {
   async run(m: Model, r: Real) {
     now += this.ms;
     await settle();
-    observe(m);
+    observe(m, r);
     checkInvariants(m, r);
   }
   toString() {
@@ -394,14 +449,13 @@ describe("submission lifecycle (model-based)", () => {
   }, 60_000);
 });
 
-// ── Pinned violations ────────────────────────────────────────────────────────
-// Session guarantees that don't hold today, written as the property we WANT and
-// marked `it.fails` so CI stays green while the gap stays visible. When one is
-// fixed its test goes red: promote it to `it` and, where it applies, fold the
-// invariant into `checkInvariants`. The first two scenarios are the minimal
-// counterexamples fast-check shrank to.
+// ── Session guarantees ───────────────────────────────────────────────────────
+// The three scenarios that used to be pinned with `it.fails`. Each is the
+// minimal counterexample fast-check shrank to; they stay as named regression
+// tests because the shapes are specific and worth naming, while the general
+// property above enforces the same properties under every interleaving.
 
-describe("session guarantees (known violations)", () => {
+describe("session guarantees", () => {
   async function scenario(...cmds: Cmd[]): Promise<[Model, Real]> {
     const model: Model = { submitted: new Map(), everSeen: new Set() };
     const real: Real = { store: makeStore() };
@@ -410,29 +464,64 @@ describe("session guarantees (known violations)", () => {
     return [model, real];
   }
 
-  // Read-your-writes. The only thing that ever put the row on screen was an
-  // in-memory tombstone, and a reload wipes the query cache. The poll is
-  // re-armed, but carries no content to rebuild the row from.
-  it.fails("shows the author their own submission after a reload", async () => {
+  // Read-your-writes. A reload wipes the query cache, so the row cannot live
+  // there: it is persisted with the pending entry and merged back in at select
+  // time. `Reload` re-arms the poll and re-hydrates the row from localStorage.
+  it("shows the author their own submission after a reload", async () => {
     const [, real] = await scenario(new Submit(0), new Reload());
     expect(real.store.getState().pending.submissions).toHaveLength(1); // still tracked…
-    expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0)); // …but not shown
+    expect(visibleRows(real.store, FEED_KEY).map((r) => r.uri)).toContain(uriOf(0)); // …and shown
   });
 
   // Monotonic reads. Deleting any *other* observation refetches the feed from a
-  // server that doesn't have this record yet, so the row vanishes mid-read.
-  it.fails("never removes a row the author has already seen", async () => {
-    const [model] = await scenario(new Submit(0), new RefetchLists());
+  // server that doesn't have this record yet. The overlay isn't part of what the
+  // refetch replaces, so the row survives it.
+  it("never removes a row the author has already seen", async () => {
+    const [model, real] = await scenario(new Submit(0), new RefetchLists());
     expect(model.everSeen).toContain(uriOf(0));
-    expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
+    expect(visibleRows(real.store, FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
   });
 
-  // `loadPersisted` filters entries past MAX_AGE_MS but never writes the
-  // filtered list back, and an all-stale key dispatches nothing — so nothing
-  // calls `persist()` and the dead key survives.
-  it.fails("clears expired submissions out of localStorage on resume", async () => {
-    const [, real] = await scenario(new Submit(0), new AdvanceClock(120_000), new Reload());
+  // `loadPersisted` writes the age-filtered list back, so an entirely-stale key
+  // is cleared even though nothing downstream dispatches.
+  it("clears expired submissions out of localStorage on resume", async () => {
+    const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
     expect(real.store.getState().pending.submissions).toHaveLength(0);
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(TOMBSTONE_STORAGE_KEY)).toBeNull();
     checkStorageMirror(real);
+  });
+
+  // The canonical record must be in the caches *before* the tombstone retires,
+  // or the row blinks out between the two.
+  it("swaps the tombstone for the canonical record without a gap", async () => {
+    const [, real] = await scenario(new Submit(0), new IngesterDelivers(0));
+    const mine = visibleRows(real.store, FEED_KEY).filter((r) => r.uri === uriOf(0));
+    expect(mine).toHaveLength(1);
+    expect(mine.map(isTombstone)).toEqual([false]);
+    expect(real.store.getState().pending.tombstones).toHaveLength(0);
+  });
+
+  // A poll that gives up is not a failed write: the record is still coming, so
+  // the row stands (and the spinner stops).
+  it("keeps the optimistic row after the poll gives up", async () => {
+    const [, real] = await scenario(new Submit(0), new PollTimesOut(0));
+    expect(real.store.getState().pending.submissions).toHaveLength(0);
+    expect(visibleRows(real.store, FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
+  });
+
+  // Optimistic rows outlive the page, so unlike the query cache they are not
+  // dropped for free on logout — the next viewer on a shared device must not
+  // inherit the previous one's in-flight writes.
+  it("drops everything pending on logout", async () => {
+    const [, real] = await scenario(new Submit(0));
+    expect(visibleRows(real.store, FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
+
+    real.store.dispatch(logout.fulfilled(undefined, "req"));
+
+    expect(real.store.getState().pending.tombstones).toHaveLength(0);
+    expect(visibleRows(real.store, FEED_KEY).map((r) => r.uri)).not.toContain(uriOf(0));
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+    expect(localStorage.getItem(TOMBSTONE_STORAGE_KEY)).toBeNull();
   });
 });

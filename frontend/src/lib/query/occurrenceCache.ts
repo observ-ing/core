@@ -79,10 +79,21 @@ export function removeObservation(uri: string): void {
 // ── Optimistic "tombstone" rows ──────────────────────────────────────────────
 // A freshly-submitted observation only lands in the app DB after the async
 // tap-ingester replays the PDS commit (seconds later). To make the submission
-// feel instant we splice a client-built placeholder — a "tombstone" — into the
-// feeds right away, then swap it for the canonical record once the ingester has
-// it (`reconcileOccurrence`). Until then the row renders dimmed (the pending
-// slice tracks its uri) with the uploader's own inline image preview.
+// feel instant we build a client-side placeholder — a "tombstone" — from the
+// form's own state and show it until the ingester has the real record.
+//
+// The tombstone does NOT live in this cache. It is held in `pendingSlice` and
+// merged into the feeds at select time (`mergePendingOccurrences`), because a
+// row spliced into a cached page is destroyed by the two things most likely to
+// happen next: any list refetch replaces the pages wholesale (deleting *any*
+// observation calls `invalidateOccurrenceLists`), and a reload drops the cache
+// entirely — this client is in-memory only. A row that isn't part of what a
+// refetch replaces survives both.
+//
+// What lands here instead is the canonical record, once the poll in
+// `trackSubmission` confirms ingestion: `reconcileOccurrence` replaces any copy
+// already cached and `prependOccurrence` inserts one where there was none,
+// before the tombstone is retired.
 
 // Optional fields accept an explicit `undefined` (not just absence) so the call
 // site can pass `value || undefined` directly under exactOptionalPropertyTypes.
@@ -147,12 +158,15 @@ export function makeTombstoneOccurrence(input: TombstoneInput): Occurrence {
 }
 
 /**
- * Insert a tombstone at the top of the caches the author is most likely looking
- * at right after submitting: the home/explore feed and their own profile feed.
- * We deliberately skip taxonOccurrences — we can't reliably tell which taxon
- * page a row belongs to client-side, and those reconcile on their next refresh.
- * `setQueriesData` only touches caches that already exist, so an unmounted feed
- * is simply left alone (it fetches fresh when next opened).
+ * Insert an occurrence at the top of the caches the author is most likely
+ * looking at right after submitting: the home/explore feed and their own
+ * profile feed. We deliberately skip taxonOccurrences — we can't reliably tell
+ * which taxon page a row belongs to client-side, and those reconcile on their
+ * next refresh. `setQueriesData` only touches caches that already exist, so an
+ * unmounted feed is simply left alone (it fetches fresh when next opened).
+ *
+ * A no-op wherever the uri is already present, so it is safe to call after
+ * {@link reconcileOccurrence} to cover the caches that had no row to replace.
  */
 export function prependOccurrence(occ: Occurrence, authorDid: string): void {
   queryClient.setQueriesData<InfiniteData<OccurrencePage>>(
@@ -168,7 +182,8 @@ export function prependOccurrence(occ: Occurrence, authorDid: string): void {
       if (!data?.pages.length) return data;
       const [first, ...rest] = data.pages;
       if (!first) return data;
-      // Guard against a double insert (e.g. React strict-mode re-invocation).
+      // Guard against a double insert (a strict-mode re-invocation, or a page
+      // that already carries the row because a refetch beat us to it).
       if (data.pages.some((p) => p.occurrences.some((o) => o.uri === occ.uri))) return data;
       return {
         ...data,
@@ -203,4 +218,31 @@ export function reconcileOccurrence(detail: OccurrenceDetailResponse): void {
   );
 
   queryClient.setQueryData<OccurrenceDetailResponse>(["observation", occurrence.uri], detail);
+}
+
+/**
+ * Merge the author's not-yet-ingested rows into a list they're reading.
+ *
+ * Called from the feed hooks' `select`, so the rows are layered on top of
+ * whatever the cache currently holds rather than written into it — a refetch
+ * replaces the pages underneath and the overlay is re-applied to the new ones.
+ * Rows the server has already returned are dropped, so the canonical record
+ * always wins once it exists and the two can never both be on screen.
+ */
+export function mergePendingOccurrences<TPage extends OccurrencePage>(
+  data: InfiniteData<TPage> | undefined,
+  pending: Occurrence[],
+): InfiniteData<TPage> | undefined {
+  if (!data || pending.length === 0) return data;
+
+  const known = new Set(data.pages.flatMap((page) => page.occurrences.map((o) => o.uri)));
+  const extra = pending.filter((o) => !known.has(o.uri));
+  if (extra.length === 0) return data;
+
+  const [first, ...rest] = data.pages;
+  if (!first) return data;
+  return {
+    ...data,
+    pages: [{ ...first, occurrences: [...extra, ...first.occurrences] }, ...rest],
+  };
 }

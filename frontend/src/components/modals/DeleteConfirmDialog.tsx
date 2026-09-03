@@ -8,6 +8,7 @@ import {
   clearDeletingObservation,
 } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
+import { dropTombstone } from "../../store/pendingSlice";
 import { useDeleteObservation } from "../../lib/query/mutations";
 import { getErrorMessage } from "../../lib/utils";
 import { useToast } from "../../hooks/useToast";
@@ -44,6 +45,10 @@ export function DeleteConfirmDialog() {
       onSuccess: () => {
         toast.success("Observation deleted successfully");
         dispatch(closeDeleteConfirm());
+        // If this was still an optimistic row, retire it here: nothing will ever
+        // reconcile it now, and the feed overlay would otherwise keep showing a
+        // record that no longer exists.
+        dispatch(dropTombstone(uri));
 
         // If we were on the deleted observation's detail page, leave it.
         if (location.pathname.includes("/observation/")) {

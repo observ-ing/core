@@ -1,8 +1,12 @@
 // Read hooks — one per server endpoint. Components call these instead of
 // fetching into useState/Redux; caching, dedup, offline persistence, and
 // refetch-on-focus come from the shared QueryClient.
+import { useCallback, useMemo } from "react";
 import { useInfiniteQuery, useQuery, keepPreviousData } from "@tanstack/react-query";
+import type { InfiniteData } from "@tanstack/react-query";
 import { useAppSelector } from "../../store";
+import { selectPendingOccurrences } from "../../store/pendingSlice";
+import { mergePendingOccurrences } from "./occurrenceCache";
 import { qk } from "./keys";
 import {
   fetchHomeFeed,
@@ -19,13 +23,29 @@ import {
   fetchUnreadCount,
   fetchUserPreferences,
 } from "../../services/api";
-import type { FeedFilters, FeedTab } from "../../services/types";
+import type {
+  FeedFilters,
+  FeedResponse,
+  FeedTab,
+  Occurrence,
+  ProfileFeedResponse,
+} from "../../services/types";
 
 type Cursor = string | undefined;
 const initialCursor: Cursor = undefined;
 const nextCursor = (last: { cursor?: string }): Cursor => last.cursor ?? undefined;
 
 // ── Occurrence feeds (infinite) ──────────────────────────────────────────────
+
+// The author's own not-yet-ingested rows are layered onto the feeds here, in
+// `select`, rather than written into the cached pages. An observation is durable
+// on the PDS the moment `createRecord` returns but unreadable from our API until
+// the tap-ingester replays the commit, and the appview is read-only on the
+// ingester schema — so there is no server-side read-your-writes path and the gap
+// is ours to bridge. Bridging it inside the cache doesn't work: the pages are
+// replaced wholesale by any refetch and dropped entirely by a reload. Applied at
+// select time, the row rides on top of whatever the cache currently holds and
+// outlives both. See `store/pendingSlice.ts` and `docs/state-model.md`.
 
 /**
  * Home/explore feed. The active tab comes from the route (passed by the
@@ -45,6 +65,19 @@ export function useFeed(tab: FeedTab) {
   const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
   const authResolved = useAppSelector((s) => !s.auth.isLoading);
 
+  // Scoped to the signed-in viewer: an optimistic row is only ever the author's
+  // own, and only they should see one.
+  const viewerDid = useAppSelector((s) => s.auth.user?.did);
+  const pending = useAppSelector(selectPendingOccurrences);
+  const mine: Occurrence[] = useMemo(
+    () => (viewerDid ? pending.filter((o) => o.observer.did === viewerDid) : []),
+    [pending, viewerDid],
+  );
+  const select = useCallback(
+    (data: InfiniteData<FeedResponse>) => mergePendingOccurrences(data, mine) ?? data,
+    [mine],
+  );
+
   return useInfiniteQuery({
     queryKey: qk.feed(tab, filters, isAuthenticated),
     queryFn: ({ pageParam }: { pageParam: Cursor }) =>
@@ -54,6 +87,7 @@ export function useFeed(tab: FeedTab) {
     initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
     enabled: authResolved,
+    select,
     // The feed is an infinite, newest-first list. A background refetch re-pulls
     // every loaded page and can reorder/duplicate rows under the reader, so we
     // don't auto-refresh it on tab focus and give it a longer staleTime so
@@ -65,12 +99,25 @@ export function useFeed(tab: FeedTab) {
 }
 
 export function useProfileFeed(did: string, type: "observations" | "identifications") {
+  // Only this profile's own observations tab: a pending row belongs to whoever
+  // wrote it, and it is an occurrence, not an identification.
+  const pending = useAppSelector(selectPendingOccurrences);
+  const mine: Occurrence[] = useMemo(
+    () => (type === "observations" ? pending.filter((o) => o.observer.did === did) : []),
+    [pending, did, type],
+  );
+  const select = useCallback(
+    (data: InfiniteData<ProfileFeedResponse>) => mergePendingOccurrences(data, mine) ?? data,
+    [mine],
+  );
+
   return useInfiniteQuery({
     queryKey: qk.profileFeed(did, type),
     queryFn: ({ pageParam }: { pageParam: Cursor }) => fetchProfileFeed(did, pageParam, type),
     initialPageParam: initialCursor,
     getNextPageParam: nextCursor,
     enabled: !!did,
+    select,
   });
 }
 

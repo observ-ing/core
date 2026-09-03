@@ -28,7 +28,7 @@ import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice";
 import { trackSubmission } from "../../store/pendingSlice";
-import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
+import { makeTombstoneOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
@@ -419,36 +419,42 @@ export function UploadModal() {
     // The PDS write succeeded. Close the modal immediately so the submission
     // feels instant — the ingester poll, completion toast, and cache
     // reconciliation run in the background (surfaced by the TopBar pending
-    // indicator). For a create we also splice an optimistic "tombstone" row
-    // into the feeds so the new observation shows up right away (dimmed) instead
-    // of after the ingester catches up; trackSubmission swaps it for the real
-    // record once ingested.
+    // indicator). For a create we hand `trackSubmission` an optimistic
+    // "tombstone" row built from this form's own state, so the new observation
+    // shows up right away (dimmed) instead of after the ingester catches up. The
+    // thunk owns it from here: it survives reloads and refetches, and retires
+    // once the canonical record lands.
     const onSuccess = (result: { uri: string; cid: string }) => {
       dispatch(closeUploadModal());
-      if (kind === "create" && currentUser) {
-        prependOccurrence(
-          makeTombstoneOccurrence({
-            uri: result.uri,
-            cid: result.cid,
-            observer: currentUser,
-            latitude: parseFloat(lat),
-            longitude: parseFloat(lng),
-            uncertaintyMeters: uncertaintyMeters,
-            eventDate,
-            scientificName: trimmedSpecies || undefined,
-            kingdom: kingdom || undefined,
-            rank: matchedTaxon?.rank ?? rank ?? undefined,
-            imageUrls: imageData.map((img) => `data:${img.mimeType};base64,${img.data}`),
-            license,
-            organismQuantity: organismQuantity.trim() || undefined,
-            organismQuantityType: organismQuantityType || undefined,
-            createdAt: new Date().toISOString(),
-          }),
-          currentUser.did,
-        );
-      }
+      const occurrence =
+        kind === "create" && currentUser
+          ? makeTombstoneOccurrence({
+              uri: result.uri,
+              cid: result.cid,
+              observer: currentUser,
+              latitude: parseFloat(lat),
+              longitude: parseFloat(lng),
+              uncertaintyMeters: uncertaintyMeters,
+              eventDate,
+              scientificName: trimmedSpecies || undefined,
+              kingdom: kingdom || undefined,
+              rank: matchedTaxon?.rank ?? rank ?? undefined,
+              imageUrls: imageData.map((img) => `data:${img.mimeType};base64,${img.data}`),
+              license,
+              organismQuantity: organismQuantity.trim() || undefined,
+              organismQuantityType: organismQuantityType || undefined,
+              createdAt: new Date().toISOString(),
+            })
+          : undefined;
       resetForm();
-      void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
+      void dispatch(
+        trackSubmission({
+          uri: result.uri,
+          cid: result.cid,
+          kind,
+          ...(occurrence ? { occurrence } : {}),
+        }),
+      );
     };
     const onError = (error: Error) => {
       toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);

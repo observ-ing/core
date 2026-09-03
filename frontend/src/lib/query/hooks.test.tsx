@@ -6,14 +6,25 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { renderHook, waitFor, act } from "@testing-library/react";
 import authReducer, { checkAuth } from "../../store/authSlice";
 import feedReducer from "../../store/feedSlice";
-import type { User } from "../../services/types";
+import pendingReducer from "../../store/pendingSlice";
+import type { Occurrence, Profile, User } from "../../services/types";
 import type * as ApiModule from "../../services/api";
 
 // `useFeed` picks its endpoint from auth state, so the api layer is mocked to
 // observe which one it calls under each auth condition. `importOriginal` keeps
 // every other export intact (hooks.ts pulls many names from this module).
-const fetchHomeFeed = vi.fn(async () => ({ occurrences: [], cursor: undefined }));
-const fetchExploreFeed = vi.fn(async () => ({ occurrences: [], cursor: undefined }));
+const SERVER_URI = "at://did:plc:tester/bio.lexicons.temp.v0-1.occurrence/ingested";
+const serverRow = (): Occurrence => ({
+  uri: SERVER_URI,
+  cid: "bafyserver",
+  observer: { did: "did:plc:tester", handle: "tester.example" },
+  identificationCount: 0,
+  images: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  qualityIssues: [],
+});
+const fetchHomeFeed = vi.fn(async () => ({ occurrences: [serverRow()], cursor: undefined }));
+const fetchExploreFeed = vi.fn(async () => ({ occurrences: [serverRow()], cursor: undefined }));
 const fetchObservation = vi.fn(async () => null);
 vi.mock("../../services/api", async (importOriginal) => ({
   ...(await importOriginal<typeof ApiModule>()),
@@ -24,15 +35,20 @@ vi.mock("../../services/api", async (importOriginal) => ({
 
 // Imported after the mock is registered so the hook closes over the stubs.
 import { useFeed, useObservation } from "./hooks";
+import { makeTombstoneOccurrence } from "./occurrenceCache";
+import { trackSubmission } from "../../store/pendingSlice";
 import { qk } from "./keys";
 import uiReducer, { startDeletingObservation } from "../../store/uiSlice";
 
 const TEST_USER: User = { did: "did:plc:tester", handle: "tester.example" };
 
 // A fresh store starts at { user: null, isLoading: true } — exactly the
-// startup state before the `checkAuth` round-trip resolves.
+// startup state before the `checkAuth` round-trip resolves. `pending` is here
+// because `useFeed` reads the optimistic-row overlay out of it.
 function makeStore() {
-  return configureStore({ reducer: { auth: authReducer, feed: feedReducer } });
+  return configureStore({
+    reducer: { auth: authReducer, feed: feedReducer, pending: pendingReducer },
+  });
 }
 
 type Store = ReturnType<typeof makeStore>;
@@ -116,6 +132,89 @@ describe("useFeed", () => {
     await waitFor(() => expect(fetchHomeFeed).toHaveBeenCalledTimes(1));
     // The explore response is NOT reused for the signed-in home view.
     expect(fetchExploreFeed).toHaveBeenCalledTimes(1);
+  });
+
+  // The read-your-writes bridge, at the layer that renders it. A row the author
+  // just submitted is not in the server's answer (the appview is read-only on
+  // the ingester schema), so it is layered on in `select` — and stays layered on
+  // whatever happens to the cached pages underneath.
+  describe("pending overlay", () => {
+    const PENDING_URI = "at://did:plc:tester/bio.lexicons.temp.v0-1.occurrence/new";
+
+    function pendingRow(observer: Profile): Occurrence {
+      return makeTombstoneOccurrence({
+        uri: PENDING_URI,
+        cid: "bafypending",
+        observer,
+        latitude: 1,
+        longitude: 2,
+        imageUrls: [],
+        createdAt: new Date().toISOString(),
+      });
+    }
+
+    /** Put a row in the pending slice the way a fresh submission does. */
+    function submit(store: Store, observer: Profile) {
+      act(() => {
+        store.dispatch(
+          trackSubmission.pending("req", {
+            uri: PENDING_URI,
+            cid: "bafypending",
+            kind: "create",
+            occurrence: pendingRow(observer),
+          }),
+        );
+      });
+    }
+
+    it("shows the viewer their own not-yet-ingested row above the server's", async () => {
+      const store = makeStore();
+      resolveAuth(store, TEST_USER);
+      submit(store, TEST_USER);
+
+      const { result } = renderHook(() => useFeed("home"), {
+        wrapper: wrapper(store, makeClient()),
+      });
+
+      await waitFor(() => expect(result.current.data).toBeDefined());
+      const uris = result.current.data?.pages.flatMap((p) => p.occurrences.map((o) => o.uri));
+      expect(uris).toEqual([PENDING_URI, SERVER_URI]);
+    });
+
+    it("does not show one author's pending row to another viewer", async () => {
+      const store = makeStore();
+      resolveAuth(store, TEST_USER);
+      submit(store, { did: "did:plc:someone-else", handle: "else.example" });
+
+      const { result } = renderHook(() => useFeed("home"), {
+        wrapper: wrapper(store, makeClient()),
+      });
+
+      await waitFor(() => expect(result.current.data).toBeDefined());
+      const uris = result.current.data?.pages.flatMap((p) => p.occurrences.map((o) => o.uri));
+      expect(uris).toEqual([SERVER_URI]);
+    });
+
+    // The server's copy wins the moment it exists: the two must never both
+    // render, or the author sees their observation twice.
+    it("drops the pending row once the server returns that uri", async () => {
+      const store = makeStore();
+      resolveAuth(store, TEST_USER);
+      submit(store, TEST_USER);
+      fetchHomeFeed.mockResolvedValueOnce({
+        occurrences: [{ ...pendingRow(TEST_USER), cid: "bafyingested" }],
+        cursor: undefined,
+      });
+
+      const { result } = renderHook(() => useFeed("home"), {
+        wrapper: wrapper(store, makeClient()),
+      });
+
+      await waitFor(() => expect(result.current.data).toBeDefined());
+      const rows = result.current.data?.pages.flatMap((p) => p.occurrences) ?? [];
+      expect(rows.map((o) => o.uri)).toEqual([PENDING_URI]);
+      expect(rows[0]?.cid).toBe("bafyingested");
+    });
   });
 
   it("keys home feeds separately by auth state", () => {
