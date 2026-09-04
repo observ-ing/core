@@ -123,19 +123,19 @@ export function ProfileView() {
               <ProfileStat
                 count={counts.observations}
                 color="primary.main"
-                icon={<CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                icon={CameraAltIcon}
                 label="Observations"
               />
               <ProfileStat
                 count={counts.identifications}
                 color="secondary.main"
-                icon={<FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                icon={FingerprintIcon}
                 label="IDs"
               />
               <ProfileStat
                 count={counts.species}
                 color="success.main"
-                icon={<GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
+                icon={GrassIcon}
                 label="Species"
               />
             </Stack>

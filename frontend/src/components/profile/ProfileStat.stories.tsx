@@ -18,7 +18,7 @@ export const Observations: Story = {
   args: {
     count: 24,
     color: "primary.main",
-    icon: <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />,
+    icon: CameraAltIcon,
     label: "Observations",
   },
 };
@@ -27,7 +27,7 @@ export const Identifications: Story = {
   args: {
     count: 51,
     color: "secondary.main",
-    icon: <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />,
+    icon: FingerprintIcon,
     label: "IDs",
   },
 };
@@ -36,7 +36,7 @@ export const Species: Story = {
   args: {
     count: 18,
     color: "success.main",
-    icon: <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />,
+    icon: GrassIcon,
     label: "Species",
   },
 };
@@ -45,29 +45,14 @@ export const Row: Story = {
   args: {
     count: 24,
     color: "primary.main",
-    icon: <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />,
+    icon: CameraAltIcon,
     label: "Observations",
   },
   render: () => (
     <Stack direction="row" spacing={2}>
-      <ProfileStat
-        count={24}
-        color="primary.main"
-        icon={<CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
-        label="Observations"
-      />
-      <ProfileStat
-        count={51}
-        color="secondary.main"
-        icon={<FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
-        label="IDs"
-      />
-      <ProfileStat
-        count={18}
-        color="success.main"
-        icon={<GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />}
-        label="Species"
-      />
+      <ProfileStat count={24} color="primary.main" icon={CameraAltIcon} label="Observations" />
+      <ProfileStat count={51} color="secondary.main" icon={FingerprintIcon} label="IDs" />
+      <ProfileStat count={18} color="success.main" icon={GrassIcon} label="Species" />
     </Stack>
   ),
 };
