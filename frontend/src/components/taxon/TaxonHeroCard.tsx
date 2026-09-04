@@ -2,6 +2,7 @@ import { Box, Typography, Chip, Stack } from "@mui/material";
 import type { TaxonDetail } from "../../services/types";
 import { ConservationStatus } from "../common/ConservationStatus";
 import { ExternalLinkChip } from "../common/ExternalLinkChip";
+import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 
 export interface TaxonHeroCardProps {
@@ -26,36 +27,23 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
       sx={{ alignItems: { xs: "stretch", sm: "flex-start" } }}
     >
       {heroUrl && (
-        <Box
+        <ImageWithSkeleton
+          src={heroUrl}
+          alt={taxon.scientificName}
+          objectFit="contain"
           sx={{
             width: 248,
             height: 248,
             maxWidth: "100%",
             flexShrink: 0,
             borderRadius: 1.75,
-            overflow: "hidden",
             border: 1,
             borderColor: "divider",
             boxShadow: (theme) => theme.palette.cardShadow["hero"],
             backgroundColor: (theme) => theme.palette.overlay["backdrop"],
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             mx: { xs: "auto", sm: 0 },
           }}
-        >
-          <Box
-            component="img"
-            src={heroUrl}
-            alt={taxon.scientificName}
-            sx={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-              display: "block",
-            }}
-          />
-        </Box>
+        />
       )}
       <Box sx={{ flex: 1, minWidth: 0 }}>
         {/* Scientific Name */}

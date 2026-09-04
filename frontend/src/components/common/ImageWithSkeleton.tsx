@@ -9,6 +9,7 @@ interface ImageWithSkeletonProps {
   sx?: SxProps<Theme>;
   loading?: "lazy" | "eager";
   emptyText?: string;
+  objectFit?: "cover" | "contain";
 }
 
 export function ImageWithSkeleton({
@@ -17,6 +18,7 @@ export function ImageWithSkeleton({
   sx,
   loading = "lazy",
   emptyText = "No image",
+  objectFit = "cover",
 }: ImageWithSkeletonProps) {
   const [loaded, setLoaded] = useState(false);
 
@@ -52,7 +54,7 @@ export function ImageWithSkeleton({
         sx={{
           width: "100%",
           height: "100%",
-          objectFit: "cover",
+          objectFit,
           opacity: loaded ? 1 : 0,
           transition: "opacity 0.3s ease",
         }}

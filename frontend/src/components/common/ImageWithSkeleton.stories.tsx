@@ -20,6 +20,7 @@ const meta = {
     src: { control: { type: "text" } },
     alt: { control: { type: "text" } },
     emptyText: { control: { type: "text" } },
+    objectFit: { control: { type: "radio" }, options: ["cover", "contain"] },
   },
 } satisfies Meta<typeof ImageWithSkeleton>;
 
@@ -30,6 +31,22 @@ export const Loaded: Story = {
   args: {
     src: "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=320",
     alt: "Quercus robur leaves",
+  },
+};
+
+export const ContainFit: Story = {
+  args: {
+    src: "https://commons.wikimedia.org/wiki/Special:FilePath/Quercus_robur.jpg?width=320",
+    alt: "Quercus robur leaves",
+    objectFit: "contain",
+  },
+  parameters: {
+    docs: {
+      description: {
+        story:
+          '`objectFit="contain"` letterboxes the image instead of cropping it — used by `TaxonHeroCard` so the full specimen photo stays visible.',
+      },
+    },
   },
 };
 
