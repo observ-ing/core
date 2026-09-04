@@ -16,7 +16,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { configureStore } from "@reduxjs/toolkit";
 import fc from "fast-check";
-import type { InfiniteData } from "@tanstack/react-query";
+import { InfiniteQueryObserver, type InfiniteData } from "@tanstack/react-query";
 import type * as ApiModule from "../services/api";
 import type { Occurrence, OccurrenceDetailResponse, Profile } from "../services/types";
 
@@ -58,12 +58,18 @@ import authReducer from "./authSlice";
 import feedReducer from "./feedSlice";
 import uiReducer from "./uiSlice";
 import pendingReducer, { trackSubmission, resumePendingSubmissions } from "./pendingSlice";
-import { makeTombstoneOccurrence, prependOccurrence } from "../lib/query/occurrenceCache";
+import {
+  invalidateOccurrenceLists,
+  makeTombstoneOccurrence,
+  prependOccurrence,
+} from "../lib/query/occurrenceCache";
 import { queryClient } from "../lib/query/queryClient";
 import { qk } from "../lib/query/keys";
 
 const AUTHOR: Profile = { did: "did:plc:author", handle: "author.example" };
 const STORAGE_KEY = "observing-pending-submissions";
+// Mirrors `MAX_AGE_MS` in pendingSlice.ts, which does not export it.
+const MAX_AGE_MS = 2 * 60 * 1000;
 const FEED_KEY = qk.feed("home", {}, true);
 const PROFILE_KEY = qk.profileFeed(AUTHOR.did, "observations");
 
@@ -101,11 +107,50 @@ function serverPage(): OccurrencePage {
   return { occurrences: rows };
 }
 
+const LIST_KEYS = [FEED_KEY, PROFILE_KEY] as const;
+
 function seedListCaches() {
-  const page = serverPage();
-  const data: InfiniteData<OccurrencePage> = { pages: [page], pageParams: [undefined] };
-  queryClient.setQueryData(FEED_KEY, data);
-  queryClient.setQueryData(PROFILE_KEY, { pages: [{ ...page }], pageParams: [undefined] });
+  for (const key of LIST_KEYS) {
+    const data: InfiniteData<OccurrencePage> = { pages: [serverPage()], pageParams: [undefined] };
+    queryClient.setQueryData(key, data);
+  }
+}
+
+/**
+ * Keep the author's two lists *observed*. `invalidateQueries` only refetches
+ * queries something is subscribed to, and no component is mounted here — without
+ * this, `invalidateOccurrenceLists()` would be a silent no-op and `RefetchLists`
+ * would have to reimplement it. `staleTime: Infinity` keeps the seeded data from
+ * triggering a fetch on subscribe, so only an explicit invalidate refetches.
+ */
+let listSubscriptions: (() => void)[] = [];
+
+function unmountListCaches() {
+  for (const unsubscribe of listSubscriptions) unsubscribe();
+  listSubscriptions = [];
+}
+
+function mountListCaches() {
+  unmountListCaches();
+  for (const queryKey of LIST_KEYS) {
+    const observer = new InfiniteQueryObserver<OccurrencePage>(queryClient, {
+      queryKey,
+      queryFn: () => serverPage(),
+      initialPageParam: undefined,
+      getNextPageParam: () => undefined,
+      staleTime: Infinity,
+      refetchOnMount: false,
+      refetchOnWindowFocus: false,
+      retry: false,
+    });
+    listSubscriptions.push(observer.subscribe(() => {}));
+  }
+}
+
+/** Seed the caches from the current world and start observing them. */
+function openLists() {
+  seedListCaches();
+  mountListCaches();
 }
 
 function rowsIn(key: readonly unknown[]): Occurrence[] {
@@ -120,20 +165,28 @@ function makeStore() {
 }
 type TestStore = ReturnType<typeof makeStore>;
 
-/** Let the thunk's already-resolved promise chain run to completion. */
+/**
+ * Let the thunk's already-resolved promise chain run to completion. Yielding to
+ * the macrotask queue drains every microtask queued behind it, so one turn is
+ * enough however deep the promise chain gets.
+ */
 async function settle() {
-  // Sequential by design: each tick advances one `await` in the chain.
-  // eslint-disable-next-line no-await-in-loop
-  for (let i = 0; i < 8; i++) await Promise.resolve();
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-function persistedUris(): string[] {
+interface PersistedEntry {
+  uri: string;
+  createdAt: number;
+}
+
+function persistedEntries(): PersistedEntry[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
-  const parsed: { uri: string }[] = JSON.parse(raw);
-  return parsed.map((s) => s.uri);
+  const parsed: PersistedEntry[] = JSON.parse(raw);
+  return parsed;
 }
+
+const persistedUris = (): string[] => persistedEntries().map((s) => s.uri);
 
 // ── Model / real ─────────────────────────────────────────────────────────────
 interface Model {
@@ -173,13 +226,24 @@ function checkInvariants(model: Model, real: Real) {
     if (row) expect(isTombstone(row)).toBe(false);
   }
 
-  // The pending ↔ localStorage mirror is checked separately: it is violated
-  // today and would fail every run before reaching anything else.
-
   // A submission whose poll has settled is no longer in flight — no stale spinner.
   const inFlight = real.store.getState().pending.submissions.map((s) => s.uri);
   for (const [n, state] of model.submitted) {
     if (state.polled) expect(inFlight).not.toContain(uriOf(n));
+  }
+
+  // The pending set is mirrored into localStorage so a reload can re-arm the
+  // polls. Strict equality doesn't hold today — `loadPersisted` drops expired
+  // entries without writing the filtered list back (pinned below) — so state the
+  // two directions that do: nothing in flight is ever missing from storage, and
+  // anything left in storage that isn't in flight has aged past the cutoff.
+  // Without this, a `persist()` that stopped writing would go unnoticed.
+  const persisted = persistedEntries();
+  const persistedUriSet = new Set(persisted.map((s) => s.uri));
+  for (const uri of inFlight) expect(persistedUriSet).toContain(uri);
+  for (const entry of persisted) {
+    if (inFlight.includes(entry.uri)) continue;
+    expect(now - entry.createdAt).toBeGreaterThanOrEqual(MAX_AGE_MS);
   }
 }
 
@@ -189,12 +253,30 @@ function checkStorageMirror(real: Real) {
   expect([...persistedUris()].sort()).toEqual([...inFlight].sort());
 }
 
+/** Both of the author's own lists are on screen; either one counts as "seen". */
 function observe(model: Model) {
-  for (const row of rowsIn(FEED_KEY)) model.everSeen.add(row.uri);
+  for (const key of LIST_KEYS) {
+    for (const row of rowsIn(key)) model.everSeen.add(row.uri);
+  }
 }
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 type Cmd = fc.AsyncCommand<Model, Real, false>;
+
+/** The exact row the UploadModal splices in on a successful PDS write. */
+function tombstoneFor(n: number): Occurrence {
+  return makeTombstoneOccurrence({
+    uri: uriOf(n),
+    cid: cidOf(n),
+    observer: AUTHOR,
+    latitude: 1,
+    longitude: 2,
+    scientificName: "Quercus",
+    kingdom: "Plantae",
+    imageUrls: [`data:image/jpeg;base64,preview${n}`],
+    createdAt: new Date(now).toISOString(),
+  });
+}
 
 /** The UploadModal `onSuccess` path: splice a tombstone, then start polling. */
 class Submit implements Cmd {
@@ -211,20 +293,7 @@ class Submit implements Cmd {
     };
     world.records.set(rec.uri, rec);
 
-    prependOccurrence(
-      makeTombstoneOccurrence({
-        uri: rec.uri,
-        cid: rec.cid,
-        observer: AUTHOR,
-        latitude: 1,
-        longitude: 2,
-        scientificName: "Quercus",
-        kingdom: "Plantae",
-        imageUrls: [`data:image/jpeg;base64,preview${this.n}`],
-        createdAt: new Date(now).toISOString(),
-      }),
-      AUTHOR.did,
-    );
+    prependOccurrence(tombstoneFor(this.n), AUTHOR.did);
     void r.store.dispatch(trackSubmission({ uri: rec.uri, cid: rec.cid, kind: "create" }));
 
     m.submitted.set(this.n, { ingested: false, polled: false, reconciled: false });
@@ -234,6 +303,31 @@ class Submit implements Cmd {
   }
   toString() {
     return `Submit(${this.n})`;
+  }
+}
+
+/**
+ * `onSuccess` running twice for one write — React strict-mode re-invocation, or
+ * a resumed poll racing the modal. `prependOccurrence` guards against it by uri;
+ * without that guard the row would appear twice, which is what the no-duplicates
+ * invariant is there to catch.
+ */
+class ResubmitSameRow implements Cmd {
+  constructor(readonly n: number) {}
+  check(m: Model) {
+    // Only while the submission is still in flight: both real causes of a
+    // double `onSuccess` happen before the poll settles.
+    const s = m.submitted.get(this.n);
+    return !!s && !s.polled;
+  }
+  async run(m: Model, r: Real) {
+    prependOccurrence(tombstoneFor(this.n), AUTHOR.did);
+    await settle();
+    observe(m);
+    checkInvariants(m, r);
+  }
+  toString() {
+    return `ResubmitSameRow(${this.n})`;
   }
 }
 
@@ -293,15 +387,16 @@ class PollTimesOut implements Cmd {
 }
 
 /**
- * What `invalidateOccurrenceLists()` does after any delete (mutations.ts:208):
- * the cached pages are replaced wholesale by the server's answer.
+ * Any delete calls `invalidateOccurrenceLists()` (mutations.ts:208). We call the
+ * real one — the lists are observed (see `mountListCaches`), so its tag predicate
+ * has to actually match them for the refetch to happen.
  */
 class RefetchLists implements Cmd {
   check() {
     return true;
   }
   async run(m: Model, r: Real) {
-    seedListCaches();
+    await invalidateOccurrenceLists();
     await settle();
     observe(m);
     checkInvariants(m, r);
@@ -317,9 +412,14 @@ class Reload implements Cmd {
     return true;
   }
   async run(m: Model, r: Real) {
+    unmountListCaches();
     queryClient.clear();
+    // The previous page's polls die with it; `resumePendingSubmissions` arms new
+    // ones. Without this the old resolvers linger and `PollTimesOut` can't tell
+    // a re-armed poll from a leaked one.
+    world.polls.clear();
     r.store = makeStore();
-    seedListCaches();
+    openLists();
     await r.store.dispatch(resumePendingSubmissions());
     await settle();
     observe(m);
@@ -357,6 +457,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  unmountListCaches();
   vi.restoreAllMocks();
   queryClient.clear();
   localStorage.clear();
@@ -368,6 +469,7 @@ const commandArbs = [
   fc.integer({ min: 0, max: OBS - 1 }).map((n) => new Submit(n)),
   fc.integer({ min: 0, max: OBS - 1 }).map((n) => new IngesterDelivers(n)),
   fc.integer({ min: 0, max: OBS - 1 }).map((n) => new PollTimesOut(n)),
+  fc.integer({ min: 0, max: OBS - 1 }).map((n) => new ResubmitSameRow(n)),
   fc.constant(new RefetchLists()),
   fc.constant(new Reload()),
   fc.integer({ min: 0, max: 200_000 }).map((ms) => new AdvanceClock(ms)),
@@ -377,6 +479,7 @@ describe("submission lifecycle (model-based)", () => {
   it("holds its cache/pending invariants under arbitrary interleavings", async () => {
     await fc.assert(
       fc.asyncProperty(fc.commands(commandArbs, { maxCommands: 20 }), async (cmds) => {
+        unmountListCaches();
         world = { records: new Map(), polls: new Map() };
         now = Date.UTC(2026, 0, 1);
         localStorage.clear();
@@ -385,7 +488,7 @@ describe("submission lifecycle (model-based)", () => {
         await fc.asyncModelRun(() => {
           const model: Model = { submitted: new Map(), everSeen: new Set() };
           const real: Real = { store: makeStore() };
-          seedListCaches();
+          openLists();
           return { model, real };
         }, cmds);
       }),
@@ -405,25 +508,46 @@ describe("session guarantees (known violations)", () => {
   async function scenario(...cmds: Cmd[]): Promise<[Model, Real]> {
     const model: Model = { submitted: new Map(), everSeen: new Set() };
     const real: Real = { store: makeStore() };
-    seedListCaches();
+    openLists();
     for (const cmd of cmds) if (cmd.check(model)) await cmd.run(model, real);
     return [model, real];
   }
 
+  // Each `it.fails` below carries exactly ONE assertion, because `it.fails`
+  // passes on *any* error: fold a precondition in and a regression that breaks
+  // the precondition instead keeps the test green while it silently stops
+  // testing what it names. The preconditions hold today, so they are asserted
+  // here as ordinary tests that go red on their own.
+  describe("preconditions", () => {
+    it("keeps polling a submission a reload interrupted", async () => {
+      const [, real] = await scenario(new Submit(0), new Reload());
+      expect(real.store.getState().pending.submissions).toHaveLength(1);
+    });
+
+    it("puts a just-submitted row in front of the author", async () => {
+      const [model] = await scenario(new Submit(0));
+      expect(model.everSeen).toContain(uriOf(0));
+    });
+
+    it("drops submissions past MAX_AGE_MS from the resumed set", async () => {
+      const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
+      expect(real.store.getState().pending.submissions).toHaveLength(0);
+    });
+  });
+
   // Read-your-writes. The only thing that ever put the row on screen was an
   // in-memory tombstone, and a reload wipes the query cache. The poll is
-  // re-armed, but carries no content to rebuild the row from.
+  // re-armed (see the precondition above), but carries no content to rebuild
+  // the row from.
   it.fails("shows the author their own submission after a reload", async () => {
-    const [, real] = await scenario(new Submit(0), new Reload());
-    expect(real.store.getState().pending.submissions).toHaveLength(1); // still tracked…
-    expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0)); // …but not shown
+    await scenario(new Submit(0), new Reload());
+    expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
   });
 
   // Monotonic reads. Deleting any *other* observation refetches the feed from a
   // server that doesn't have this record yet, so the row vanishes mid-read.
   it.fails("never removes a row the author has already seen", async () => {
-    const [model] = await scenario(new Submit(0), new RefetchLists());
-    expect(model.everSeen).toContain(uriOf(0));
+    await scenario(new Submit(0), new RefetchLists());
     expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
   });
 
@@ -431,8 +555,7 @@ describe("session guarantees (known violations)", () => {
   // filtered list back, and an all-stale key dispatches nothing — so nothing
   // calls `persist()` and the dead key survives.
   it.fails("clears expired submissions out of localStorage on resume", async () => {
-    const [, real] = await scenario(new Submit(0), new AdvanceClock(120_000), new Reload());
-    expect(real.store.getState().pending.submissions).toHaveLength(0);
+    const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
     checkStorageMirror(real);
   });
 });
