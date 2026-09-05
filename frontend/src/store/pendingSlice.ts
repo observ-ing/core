@@ -109,7 +109,13 @@ export const resumePendingSubmissions = createAsyncThunk<
   void,
   { state: RootState; dispatch: AppDispatch }
 >("pending/resume", async (_, { dispatch }) => {
-  for (const entry of loadPersisted()) {
+  const entries = loadPersisted();
+  // `loadPersisted` drops entries past MAX_AGE_MS but returns a filtered copy;
+  // write it back so the expired ones actually leave storage. An all-stale key
+  // dispatches nothing, so without this nothing would ever call `persist()` and
+  // the dead key would outlive every reload.
+  persist(entries);
+  for (const entry of entries) {
     void dispatch(trackSubmission(entry));
   }
 });
