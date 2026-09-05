@@ -23,5 +23,12 @@ export const PROFILE_STAT_ICON_SX: SxProps<Theme> = {
   color: "text.secondary",
 };
 
+/** Icon + label row inside a stat box, shared between ProfileStat and ProfileHeaderSkeleton */
+export const PROFILE_STAT_ROW_SX: SxProps<Theme> = {
+  alignItems: "center",
+  justifyContent: "center",
+  mt: 0.5,
+};
+
 /** Profile avatar size */
 export const PROFILE_AVATAR_SIZE = 80;
