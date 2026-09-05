@@ -174,19 +174,12 @@ async function settle() {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
 
-interface PersistedEntry {
-  uri: string;
-  createdAt: number;
-}
-
-function persistedEntries(): PersistedEntry[] {
+function persistedUris(): string[] {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
-  const parsed: PersistedEntry[] = JSON.parse(raw);
-  return parsed;
+  const parsed: { uri: string }[] = JSON.parse(raw);
+  return parsed.map((s) => s.uri);
 }
-
-const persistedUris = (): string[] => persistedEntries().map((s) => s.uri);
 
 // ── Model / real ─────────────────────────────────────────────────────────────
 interface Model {
@@ -233,18 +226,9 @@ function checkInvariants(model: Model, real: Real) {
   }
 
   // The pending set is mirrored into localStorage so a reload can re-arm the
-  // polls. Strict equality doesn't hold today — `loadPersisted` drops expired
-  // entries without writing the filtered list back (pinned below) — so state the
-  // two directions that do: nothing in flight is ever missing from storage, and
-  // anything left in storage that isn't in flight has aged past the cutoff.
-  // Without this, a `persist()` that stopped writing would go unnoticed.
-  const persisted = persistedEntries();
-  const persistedUriSet = new Set(persisted.map((s) => s.uri));
-  for (const uri of inFlight) expect(persistedUriSet).toContain(uri);
-  for (const entry of persisted) {
-    if (inFlight.includes(entry.uri)) continue;
-    expect(now - entry.createdAt).toBeGreaterThanOrEqual(MAX_AGE_MS);
-  }
+  // polls, exactly — `resumePendingSubmissions` writes the aged-out entries back
+  // out on resume, so no stale key survives to weaken this.
+  checkStorageMirror(real);
 }
 
 /** The pending set drives the TopBar indicator; localStorage mirrors it across reloads. */
@@ -504,7 +488,7 @@ describe("submission lifecycle (model-based)", () => {
 // invariant into `checkInvariants`. The first two scenarios are the minimal
 // counterexamples fast-check shrank to.
 
-describe("session guarantees (known violations)", () => {
+describe("session guarantees", () => {
   async function scenario(...cmds: Cmd[]): Promise<[Model, Real]> {
     const model: Model = { submitted: new Map(), everSeen: new Set() };
     const real: Real = { store: makeStore() };
@@ -513,12 +497,12 @@ describe("session guarantees (known violations)", () => {
     return [model, real];
   }
 
-  // Each `it.fails` below carries exactly ONE assertion, because `it.fails`
-  // passes on *any* error: fold a precondition in and a regression that breaks
-  // the precondition instead keeps the test green while it silently stops
-  // testing what it names. The preconditions hold today, so they are asserted
-  // here as ordinary tests that go red on their own.
-  describe("preconditions", () => {
+  // The `it.fails` cases further down each carry exactly ONE assertion, because
+  // `it.fails` passes on *any* error: fold a precondition in and a regression
+  // that breaks the precondition instead keeps the test green while it silently
+  // stops testing what it names. Everything those two depend on is asserted here
+  // as an ordinary test that goes red on its own.
+  describe("hold today", () => {
     it("keeps polling a submission a reload interrupted", async () => {
       const [, real] = await scenario(new Submit(0), new Reload());
       expect(real.store.getState().pending.submissions).toHaveLength(1);
@@ -532,6 +516,11 @@ describe("session guarantees (known violations)", () => {
     it("drops submissions past MAX_AGE_MS from the resumed set", async () => {
       const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
       expect(real.store.getState().pending.submissions).toHaveLength(0);
+    });
+
+    it("clears expired submissions out of localStorage on resume", async () => {
+      const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
+      checkStorageMirror(real);
     });
   });
 
@@ -549,13 +538,5 @@ describe("session guarantees (known violations)", () => {
   it.fails("never removes a row the author has already seen", async () => {
     await scenario(new Submit(0), new RefetchLists());
     expect(rowsIn(FEED_KEY).map((r) => r.uri)).toContain(uriOf(0));
-  });
-
-  // `loadPersisted` filters entries past MAX_AGE_MS but never writes the
-  // filtered list back, and an all-stale key dispatches nothing — so nothing
-  // calls `persist()` and the dead key survives.
-  it.fails("clears expired submissions out of localStorage on resume", async () => {
-    const [, real] = await scenario(new Submit(0), new AdvanceClock(MAX_AGE_MS), new Reload());
-    checkStorageMirror(real);
   });
 });
