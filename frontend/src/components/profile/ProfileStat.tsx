@@ -1,6 +1,6 @@
 import type SvgIcon from "@mui/material/SvgIcon";
 import { Box, Stack, Typography } from "@mui/material";
-import { PROFILE_STAT_BOX_SX, PROFILE_STAT_ICON_SX } from "./profileLayout";
+import { PROFILE_STAT_BOX_SX, PROFILE_STAT_ICON_SX, PROFILE_STAT_ROW_SX } from "./profileLayout";
 
 interface ProfileStatProps {
   count: number;
@@ -18,15 +18,7 @@ export function ProfileStat({ count, color, icon: Icon, label }: ProfileStatProp
       <Typography variant="h6" component="span" sx={{ fontWeight: 700, color }}>
         {count.toLocaleString()}
       </Typography>
-      <Stack
-        direction="row"
-        spacing={0.5}
-        sx={{
-          alignItems: "center",
-          justifyContent: "center",
-          mt: 0.5,
-        }}
-      >
+      <Stack direction="row" spacing={0.5} sx={PROFILE_STAT_ROW_SX}>
         <Icon sx={PROFILE_STAT_ICON_SX} />
         <Typography variant="caption" sx={{ color: "text.secondary" }}>
           {label}
