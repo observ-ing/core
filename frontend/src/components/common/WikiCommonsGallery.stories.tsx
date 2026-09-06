@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { http, HttpResponse } from "msw";
+import { delay, http, HttpResponse } from "msw";
 import { WikiCommonsGallery } from "./WikiCommonsGallery";
 
 const COMMONS_API = "https://commons.wikimedia.org/w/api.php";
@@ -85,6 +85,19 @@ export const Empty: Story = {
     msw: {
       handlers: [
         http.get(COMMONS_API, () => HttpResponse.json({ query: { categorymembers: [] } })),
+      ],
+    },
+  },
+};
+
+export const Loading: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get(COMMONS_API, async () => {
+          await delay("infinite");
+          return HttpResponse.json({ query: { categorymembers: [] } });
+        }),
       ],
     },
   },
