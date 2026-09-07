@@ -16,6 +16,7 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 import { labelChipSx, valueChipSx } from "../common/chipSx";
+import { denseTableCellSx } from "../common/layoutSx";
 import { monoStack } from "../../theme";
 import { ExpandToggleButton } from "../common/ExpandToggleButton";
 
@@ -140,7 +141,7 @@ function PropertyTable({
                     component="code"
                     sx={{
                       fontFamily: monoStack,
-                      fontSize: "0.8rem",
+                      ...denseTableCellSx,
                       color: prop.description?.includes("[DEPRECATED")
                         ? "text.disabled"
                         : "text.primary",
@@ -163,7 +164,7 @@ function PropertyTable({
                 <Typography
                   variant="body2"
                   component="code"
-                  sx={{ fontFamily: monoStack, fontSize: "0.8rem" }}
+                  sx={{ fontFamily: monoStack, ...denseTableCellSx }}
                 >
                   {formatType(prop)}
                 </Typography>
@@ -175,7 +176,7 @@ function PropertyTable({
                   variant="body2"
                   sx={{
                     color: "text.secondary",
-                    fontSize: "0.8rem",
+                    ...denseTableCellSx,
                   }}
                 >
                   {prop.description}

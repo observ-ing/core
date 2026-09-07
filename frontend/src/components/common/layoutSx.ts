@@ -74,3 +74,10 @@ export const fullPageStatusPrimaryActionSx = {
 export const fullPageStatusSecondaryActionSx = {
   px: 3,
 } as const;
+
+/**
+ * Dense text size for data-table/code cells (below `body2`'s default 0.875rem),
+ * shared by `LexiconView`'s schema table and `ExploreTable` so the two don't
+ * each hand-roll their own tuning of the same shrink.
+ */
+export const denseTableCellSx = { fontSize: "0.8rem" } as const;
