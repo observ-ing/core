@@ -10,9 +10,6 @@ import {
   IconButton,
   ButtonBase,
   List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
@@ -38,6 +35,7 @@ import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
+import { DetailListItem, detailIconSx } from "../common/DetailListItem";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { FullPageStatus } from "../common/FullPageStatus";
@@ -313,77 +311,53 @@ export function ObservationDetail() {
               />
               <List disablePadding>
                 {observation.organismQuantity && (
-                  <ListItem disableGutters alignItems="flex-start">
-                    <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                      <NumbersIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="Quantity"
-                      secondary={
-                        <>
-                          {observation.organismQuantity}
-                          {observation.organismQuantityType && (
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              sx={{ color: "text.disabled" }}
-                            >
-                              {" "}
-                              ({observation.organismQuantityType.replace(/-/g, " ")})
-                            </Typography>
-                          )}
-                        </>
-                      }
-                      slotProps={{
-                        primary: { variant: "caption", color: "text.secondary" },
-                        secondary: {
-                          variant: "body1",
-                          color: "text.primary",
-                          component: "div",
-                        },
-                      }}
-                    />
-                  </ListItem>
+                  <DetailListItem
+                    icon={<NumbersIcon sx={detailIconSx} />}
+                    primary="Quantity"
+                    secondary={
+                      <>
+                        {observation.organismQuantity}
+                        {observation.organismQuantityType && (
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{ color: "text.disabled" }}
+                          >
+                            {" "}
+                            ({observation.organismQuantityType.replace(/-/g, " ")})
+                          </Typography>
+                        )}
+                      </>
+                    }
+                  />
                 )}
 
-                <ListItem disableGutters alignItems="flex-start">
-                  <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                    <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Coordinates"
-                    secondary={
-                      observation.location ? (
-                        <>
-                          {observation.location.latitude.toFixed(5)},{" "}
-                          {observation.location.longitude.toFixed(5)}
-                          {observation.location.uncertaintyMeters && (
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              sx={{
-                                color: "text.disabled",
-                              }}
-                            >
-                              {" "}
-                              (±{observation.location.uncertaintyMeters}m)
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )
-                    }
-                    slotProps={{
-                      primary: { variant: "caption", color: "text.secondary" },
-                      secondary: {
-                        variant: "body1",
-                        color: "text.primary",
-                        component: "div",
-                      },
-                    }}
-                  />
-                </ListItem>
+                <DetailListItem
+                  icon={<MyLocationIcon sx={detailIconSx} />}
+                  primary="Coordinates"
+                  secondary={
+                    observation.location ? (
+                      <>
+                        {observation.location.latitude.toFixed(5)},{" "}
+                        {observation.location.longitude.toFixed(5)}
+                        {observation.location.uncertaintyMeters && (
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{
+                              color: "text.disabled",
+                            }}
+                          >
+                            {" "}
+                            (±{observation.location.uncertaintyMeters}m)
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
                 {observation.location && (
                   <Box sx={{ mt: 1 }}>
                     <Suspense
