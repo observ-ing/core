@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import type { FeatureCollection, Polygon } from "geojson";
 import { basemapStyleUrl, DEFAULT_BASEMAP, type BasemapId, type BasemapMode } from "./mapStyle";
 
