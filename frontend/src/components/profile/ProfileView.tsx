@@ -31,7 +31,7 @@ import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
 import { ProfileStat } from "./ProfileStat";
-import { PROFILE_HEADER_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
+import { PROFILE_HEADER_SX, PROFILE_AVATAR_SIZE, PROFILE_ID_CARD_HEADER_SX } from "./profileLayout";
 import { observationGridSx } from "../common/observationGridLayout";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
@@ -195,18 +195,7 @@ export function ProfileView() {
                 to={getObservationUrl(id.subject_uri)}
                 sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
               >
-                <Box
-                  sx={{
-                    py: 3,
-                    px: 1.5,
-                    bgcolor: "action.hover",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                  }}
-                >
+                <Box sx={PROFILE_ID_CARD_HEADER_SX}>
                   <FingerprintIcon sx={{ fontSize: 28, color: "secondary.main", mb: 1 }} />
                   <Typography
                     variant="body2"
