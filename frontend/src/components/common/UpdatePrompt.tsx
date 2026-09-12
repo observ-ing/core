@@ -1,6 +1,7 @@
-import { Snackbar, Button, CircularProgress } from "@mui/material";
+import { Snackbar, Button } from "@mui/material";
 import { useRef, useState } from "react";
 import { useRegisterSW } from "virtual:pwa-register/react";
+import { ButtonSpinner } from "./ButtonSpinner";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -78,7 +79,7 @@ export function UpdatePrompt() {
             size="small"
             onClick={reload}
             disabled={reloading}
-            startIcon={reloading ? <CircularProgress size={14} color="inherit" /> : undefined}
+            startIcon={reloading ? <ButtonSpinner size={14} /> : undefined}
           >
             {reloading ? "Reloading…" : "Reload"}
           </Button>
