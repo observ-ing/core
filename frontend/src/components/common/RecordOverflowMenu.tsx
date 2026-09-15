@@ -1,4 +1,4 @@
-import { useState, type MouseEvent } from "react";
+import { useId, useState, type MouseEvent } from "react";
 import { IconButton, Menu, MenuItem, type SxProps, type Theme } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { getPdslsUrl } from "../../lib/utils";
@@ -32,6 +32,8 @@ export function RecordOverflowMenu({
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const open = Boolean(anchorEl);
+  const menuId = useId();
+  const buttonId = `${menuId}-button`;
 
   const handleOpen = (event: MouseEvent<HTMLElement>) => {
     if (stopPropagation) {
@@ -57,26 +59,26 @@ export function RecordOverflowMenu({
   return (
     <>
       <IconButton
-        id="record-overflow-menu-button"
+        id={buttonId}
         size="small"
         onClick={handleOpen}
         aria-label="More options"
         aria-haspopup="true"
-        aria-controls={open ? "record-overflow-menu" : undefined}
+        aria-controls={open ? menuId : undefined}
         aria-expanded={open ? "true" : undefined}
         sx={{ color: "text.disabled", ...sx }}
       >
         <MoreVertIcon fontSize="small" />
       </IconButton>
       <Menu
-        id="record-overflow-menu"
+        id={menuId}
         anchorEl={anchorEl}
         open={open}
         onClose={handleClose}
         onClick={stopPropagation ? (e) => e.stopPropagation() : undefined}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{ list: { "aria-labelledby": "record-overflow-menu-button" } }}
+        slotProps={{ list: { "aria-labelledby": buttonId } }}
       >
         {onEdit && (
           <MenuItem
