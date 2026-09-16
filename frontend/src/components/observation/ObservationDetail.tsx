@@ -20,6 +20,7 @@ import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { detailHeaderSx } from "../common/layoutSx";
+import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
@@ -151,14 +152,7 @@ export function ObservationDetail() {
           <IconButton onClick={handleBack} aria-label="Back" sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
-          <Typography
-            variant="subtitle1"
-            sx={{
-              fontWeight: 500,
-            }}
-          >
-            Observation
-          </Typography>
+          <DetailHeaderTitle>Observation</DetailHeaderTitle>
           <Box sx={{ ml: "auto" }}>
             <RecordOverflowMenu
               atUri={observation.uri}
