@@ -10,7 +10,7 @@ import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
-import { Section, SectionHeader } from "../common/Section";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { EmptyState } from "../common/EmptyState";
 
@@ -61,7 +61,7 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
   return (
     <Section>
       <SectionHeader
-        icon={<ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<ChatBubbleOutlineIcon sx={sectionIconSx} />}
         title="Discussion"
         sx={{ mb: 2 }}
         trailing={

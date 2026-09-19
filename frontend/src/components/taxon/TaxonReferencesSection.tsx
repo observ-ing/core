@@ -3,6 +3,7 @@ import type { SxProps, Theme } from "@mui/material/styles";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import type { TaxonReference } from "../../bindings/TaxonReference";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { sectionIconSx } from "../common/Section";
 import { countChipSx } from "../common/chipSx";
 
 interface TaxonReferencesSectionProps {
@@ -18,7 +19,7 @@ export function TaxonReferencesSection({ references, sx }: TaxonReferencesSectio
   return (
     <CollapsibleSection
       title="References"
-      icon={<MenuBookOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      icon={<MenuBookOutlinedIcon sx={sectionIconSx} />}
       trailing={<Chip label={references.length} size="small" sx={countChipSx} />}
       sx={sx}
     >

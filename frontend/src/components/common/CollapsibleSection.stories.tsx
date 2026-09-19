@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Chip, Typography } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import { CollapsibleSection } from "./CollapsibleSection";
+import { sectionIconSx } from "./Section";
 import { countChipSx } from "./chipSx";
 
 const meta = {
@@ -29,7 +30,7 @@ export const Expanded: Story = {
 export const WithIconAndCount: Story = {
   args: {
     defaultExpanded: true,
-    icon: <InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />,
+    icon: <InfoOutlinedIcon sx={sectionIconSx} />,
     trailing: <Chip label={3} size="small" sx={countChipSx} />,
   },
 };

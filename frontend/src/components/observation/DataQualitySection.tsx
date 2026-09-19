@@ -4,6 +4,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import type { QualityIssue } from "../../bindings/QualityIssue";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { sectionIconSx } from "../common/Section";
 
 interface DataQualitySectionProps {
   issues: QualityIssue[];
@@ -69,7 +70,7 @@ export function DataQualitySection({ issues }: DataQualitySectionProps) {
   // Anything outstanding stays expanded so it's visible without a click.
   return (
     <CollapsibleSection
-      icon={<VerifiedOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      icon={<VerifiedOutlinedIcon sx={sectionIconSx} />}
       title="Data quality"
       defaultExpanded={!allMet}
       trailing={

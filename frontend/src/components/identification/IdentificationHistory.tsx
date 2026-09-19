@@ -5,7 +5,7 @@ import { accentListItemSx } from "../common/layoutSx";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 import { RelativeTime } from "../common/RelativeTime";
-import { Section, SectionHeader } from "../common/Section";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { UserCard } from "../common/UserCard";
 import { EmptyState } from "../common/EmptyState";
@@ -61,7 +61,7 @@ export function IdentificationHistory({
   return (
     <Section>
       <SectionHeader
-        icon={<HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<HistoryIcon sx={sectionIconSx} />}
         title="Identification History"
         sx={{ mb: 2 }}
         {...(sortedIds.length > 0
