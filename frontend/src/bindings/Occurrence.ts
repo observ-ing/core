@@ -8,37 +8,25 @@ import type { QualityIssue } from "./QualityIssue";
 /**
  * Enriched occurrence ready for API response
  */
-export type Occurrence = {
-  uri: string;
-  cid: string;
-  observer: Profile;
-  communityId?: string;
-  effectiveTaxonomy?: EffectiveTaxonomy;
-  identificationCount: number;
-  /**
-   * NULL on survey-based occurrences whose `eventDate` lives on the
-   * referenced survey record we don't yet ingest. The explore page
-   * renders a placeholder rather than dropping the observation.
-   */
-  eventDate?: string;
-  location?: Location;
-  /**
-   * Darwin Core dwc:organismQuantity — free text (an int/float, or
-   * categorical like "many"/"10-100").
-   */
-  organismQuantity?: string;
-  /**
-   * Darwin Core dwc:organismQuantityType — open vocabulary
-   * ("individuals", "percent-cover", ...).
-   */
-  organismQuantityType?: string;
-  images: Array<OccurrenceImage>;
-  createdAt: string;
-  likeCount?: number;
-  viewerHasLiked?: boolean;
-  /**
-   * Empty means the observation is "verifiable" — pass `?quality=verifiable`
-   * on feed requests to filter to just those rows.
-   */
-  qualityIssues: Array<QualityIssue>;
-};
+export type Occurrence = { uri: string, cid: string, observer: Profile, communityId?: string, effectiveTaxonomy?: EffectiveTaxonomy, identificationCount: number, 
+/**
+ * NULL on survey-based occurrences whose `eventDate` lives on the
+ * referenced survey record we don't yet ingest. The explore page
+ * renders a placeholder rather than dropping the observation.
+ */
+eventDate?: string, location?: Location, 
+/**
+ * Darwin Core dwc:organismQuantity — free text (an int/float, or
+ * categorical like "many"/"10-100").
+ */
+organismQuantity?: string, 
+/**
+ * Darwin Core dwc:organismQuantityType — open vocabulary
+ * ("individuals", "percent-cover", ...).
+ */
+organismQuantityType?: string, images: Array<OccurrenceImage>, createdAt: string, likeCount?: number, viewerHasLiked?: boolean, 
+/**
+ * Empty means the observation is "verifiable" — pass `?quality=verifiable`
+ * on feed requests to filter to just those rows.
+ */
+qualityIssues: Array<QualityIssue>, };

@@ -4,24 +4,4 @@ import type { Profile } from "./Profile";
 /**
  * Enriched identification with profile info
  */
-export type Identification = {
-  identifier: Profile;
-  uri: string;
-  cid: string;
-  did: string;
-  subject_uri: string;
-  subject_cid: string;
-  scientific_name: string;
-  taxon_rank?: string;
-  identification_qualifier?: string;
-  taxon_id?: string;
-  identification_verification_status?: string;
-  type_status?: string;
-  date_identified: string;
-  kingdom?: string;
-  phylum?: string;
-  class?: string;
-  order?: string;
-  family?: string;
-  genus?: string;
-};
+export type Identification = { identifier: Profile, uri: string, cid: string, did: string, subject_uri: string, subject_cid: string, scientific_name: string, taxon_rank?: string, identification_qualifier?: string, taxon_id?: string, identification_verification_status?: string, type_status?: string, date_identified: string, kingdom?: string, phylum?: string, class?: string, order?: string, family?: string, genus?: string, };
