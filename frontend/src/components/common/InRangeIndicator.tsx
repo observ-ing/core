@@ -18,6 +18,7 @@ export function InRangeIndicator({ size = 14, color = "success.main" }: InRangeI
   return (
     <Box
       component="span"
+      role="img"
       sx={{ display: "inline-flex", alignItems: "center", color }}
       title="Found in your area"
       aria-label="Found in your area"
