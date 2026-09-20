@@ -3,4 +3,4 @@
 /**
  * Simple success/failure response with no additional payload.
  */
-export type SuccessResponse = { success: boolean, };
+export type SuccessResponse = { success: boolean };

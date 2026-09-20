@@ -4,4 +4,15 @@ import type { Profile } from "./Profile";
 /**
  * Enriched comment with profile info
  */
-export type Comment = { commenter: Profile, uri: string, cid: string, did: string, subject_uri: string, subject_cid: string, body: string, reply_to_uri?: string, reply_to_cid?: string, created_at: string, };
+export type Comment = {
+  commenter: Profile;
+  uri: string;
+  cid: string;
+  did: string;
+  subject_uri: string;
+  subject_cid: string;
+  body: string;
+  reply_to_uri?: string;
+  reply_to_cid?: string;
+  created_at: string;
+};
