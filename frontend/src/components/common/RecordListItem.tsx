@@ -52,7 +52,7 @@ export function RecordListItem({
         ...accentListItemSx,
         borderColor,
         opacity,
-        transition: "all 0.2s ease",
+        transition: "background-color 0.2s ease, border-color 0.2s ease",
         "&:hover": {
           bgcolor: "action.hover",
           ...(hoverBorderColor ? { borderColor: hoverBorderColor } : {}),

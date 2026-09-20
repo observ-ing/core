@@ -23,7 +23,7 @@ export function InRangeIndicator({ size = 14, color = "success.main" }: InRangeI
       title="Found in your area"
       aria-label="Found in your area"
     >
-      <PlaceIcon sx={{ fontSize: size }} />
+      <PlaceIcon aria-hidden sx={{ fontSize: size }} />
     </Box>
   );
 }
