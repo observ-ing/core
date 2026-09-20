@@ -2,16 +2,13 @@ import { useState, useCallback, type FormEvent } from "react";
 import { Box, Typography, Stack, TextField, Button, Chip } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
 import { countChipSx } from "../common/chipSx";
-import { accentListItemSx } from "../common/layoutSx";
 import { useAppSelector } from "../../store";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
 import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
-import { RelativeTime } from "../common/RelativeTime";
-import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
-import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { RecordListItem } from "../common/RecordListItem";
 import { EmptyState } from "../common/EmptyState";
 
 interface CommentSectionProps {
@@ -89,48 +86,20 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
       {comments.length > 0 && (
         <Stack spacing={2} sx={{ mb: 2 }}>
           {comments.map((comment) => (
-            <Box
+            <RecordListItem
               key={comment.uri}
-              sx={{
-                ...accentListItemSx,
-                borderColor: "divider",
-                transition: "all 0.2s ease",
-                "&:hover": {
-                  bgcolor: "action.hover",
-                  borderColor: "primary.main",
-                },
-              }}
-            >
-              <UserCard
-                actor={comment.commenter ?? {}}
-                linkDid={comment.commenter?.did || comment.did}
-                avatarSize={32}
-                alignItems="flex-start"
-                link
-                nameVariant="body2"
-                nameSx={{ fontWeight: "medium" }}
-                trailing={
-                  <>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: "text.secondary",
-                      }}
-                    >
-                      <RelativeTime date={new Date(comment.created_at)} withAgo />
-                    </Typography>
-                    <Box sx={{ ml: "auto" }}>
-                      <RecordOverflowMenu atUri={comment.uri} sx={{ p: 0.5 }} />
-                    </Box>
-                  </>
-                }
-                belowName={
-                  <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
-                    {comment.body}
-                  </Typography>
-                }
-              />
-            </Box>
+              actor={comment.commenter ?? {}}
+              linkDid={comment.commenter?.did || comment.did}
+              date={new Date(comment.created_at)}
+              atUri={comment.uri}
+              borderColor="divider"
+              hoverBorderColor="primary.main"
+              belowName={
+                <Typography variant="body2" sx={{ mt: 0.5, whiteSpace: "pre-wrap" }}>
+                  {comment.body}
+                </Typography>
+              }
+            />
           ))}
         </Stack>
       )}
