@@ -71,3 +71,15 @@ export const Loading: Story = {
     },
   },
 };
+
+export const Error: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/profiles/:did/feed", () =>
+          HttpResponse.json({ error: "Profile feed is temporarily unavailable" }, { status: 500 }),
+        ),
+      ],
+    },
+  },
+};
