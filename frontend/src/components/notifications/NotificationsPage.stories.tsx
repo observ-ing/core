@@ -77,3 +77,15 @@ export const Loading: Story = {
     },
   },
 };
+
+export const Error: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/notifications", () =>
+          HttpResponse.json({ error: "Server error" }, { status: 500 }),
+        ),
+      ],
+    },
+  },
+};
