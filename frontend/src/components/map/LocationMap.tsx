@@ -11,7 +11,7 @@ import {
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
 import { BasemapSelector } from "./BasemapSelector";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 
 export interface LocationMapProps {
   latitude: number;

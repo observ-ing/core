@@ -32,3 +32,18 @@ export const PROFILE_STAT_ROW_SX: SxProps<Theme> = {
 
 /** Profile avatar size */
 export const PROFILE_AVATAR_SIZE = 80;
+
+/**
+ * Identification card header block (icon/species over a tinted panel), shared
+ * between ProfileView's real identification cards and their skeleton loader.
+ */
+export const PROFILE_ID_CARD_HEADER_SX: SxProps<Theme> = {
+  py: 3,
+  px: 1.5,
+  bgcolor: "action.hover",
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+};

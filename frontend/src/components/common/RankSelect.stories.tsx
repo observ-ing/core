@@ -47,3 +47,13 @@ export const Small: Story = {
     size: "small",
   },
 };
+
+export const CustomEmptyOption: Story = {
+  args: {
+    value: "",
+    onChange: () => undefined,
+    size: "small",
+    emptyOption: { value: "", label: "Any rank" },
+    emptyOptionItalic: false,
+  },
+};

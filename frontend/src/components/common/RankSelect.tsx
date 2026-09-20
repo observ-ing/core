@@ -7,16 +7,29 @@ export interface RankSelectProps {
   size?: SelectProps["size"];
   /** Distinguishes this select's `labelId` when more than one instance mounts at once. */
   idPrefix?: string;
+  /** Placeholder option's value/label. Defaults to the "None" placeholder. */
+  emptyOption?: { value: string; label: string };
+  /** Italicize the empty option, as for a true placeholder rather than a selectable "all" option. Defaults to true. */
+  emptyOptionItalic?: boolean;
+  margin?: "none" | "dense" | "normal";
 }
 
 /**
  * Optional "Rank" dropdown shown alongside a free-typed taxon name that
  * didn't match a known taxon (upload form, visual-ID suggestion panel).
  */
-export function RankSelect({ value, onChange, size, idPrefix = "rank" }: RankSelectProps) {
+export function RankSelect({
+  value,
+  onChange,
+  size,
+  idPrefix = "rank",
+  emptyOption = { value: "", label: "None" },
+  emptyOptionItalic = true,
+  margin = "normal",
+}: RankSelectProps) {
   const labelId = `${idPrefix}-label`;
   return (
-    <FormControl fullWidth margin="normal" size={size}>
+    <FormControl fullWidth margin={margin} size={size}>
       <InputLabel id={labelId}>Rank (optional)</InputLabel>
       <Select
         labelId={labelId}
@@ -24,8 +37,8 @@ export function RankSelect({ value, onChange, size, idPrefix = "rank" }: RankSel
         label="Rank (optional)"
         onChange={(e) => onChange(e.target.value)}
       >
-        <MenuItem value="">
-          <em>None</em>
+        <MenuItem value={emptyOption.value}>
+          {emptyOptionItalic ? <em>{emptyOption.label}</em> : emptyOption.label}
         </MenuItem>
         {TAXON_RANKS.map((r) => (
           <MenuItem key={r} value={r}>
