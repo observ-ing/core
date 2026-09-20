@@ -42,13 +42,18 @@ export const stickyHeaderSx: SxProps<Theme> = {
 /**
  * Left-accent row shell shared by feed-style lists (identification history,
  * comments): a colored border-left with rounded outer corners. Callers add
- * their own `borderColor`, `transition`, and hover behavior on top.
+ * their own `borderColor` and hover behavior on top.
  */
 export const accentListItemSx = {
   pl: 2,
   borderLeft: 3,
   borderRadius: "0 4px 4px 0",
   py: 1,
+} as const;
+
+/** Shared hover-transition timing for left-accent feed rows. */
+export const accentListItemTransitionSx = {
+  transition: "background-color 0.2s ease, border-color 0.2s ease",
 } as const;
 
 /**

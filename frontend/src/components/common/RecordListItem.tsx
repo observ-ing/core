@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
-import { accentListItemSx } from "./layoutSx";
+import { accentListItemSx, accentListItemTransitionSx } from "./layoutSx";
 import { RelativeTime } from "./RelativeTime";
 import { RecordOverflowMenu } from "./RecordOverflowMenu";
 import { UserCard, type UserCardActor } from "./UserCard";
@@ -50,9 +50,9 @@ export function RecordListItem({
     <Box
       sx={{
         ...accentListItemSx,
+        ...accentListItemTransitionSx,
         borderColor,
         opacity,
-        transition: "background-color 0.2s ease, border-color 0.2s ease",
         "&:hover": {
           bgcolor: "action.hover",
           ...(hoverBorderColor ? { borderColor: hoverBorderColor } : {}),
