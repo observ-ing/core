@@ -1,9 +1,9 @@
 import { Box, ButtonBase, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
+import { InRangeIndicator } from "../common/InRangeIndicator";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 
 /**
@@ -343,16 +343,7 @@ function SpeciesCard({
               {suggestion.commonName}
             </Typography>
           )}
-          {suggestion.inRange === true && (
-            <Box
-              component="span"
-              sx={{ display: "inline-flex", alignItems: "center", color: "success.main" }}
-              title="Found in your area"
-              aria-label="Found in your area"
-            >
-              <PlaceIcon sx={{ fontSize: 14 }} />
-            </Box>
-          )}
+          {suggestion.inRange === true && <InRangeIndicator />}
         </Stack>
       </Box>
       <Typography variant="caption" sx={{ color: "text.secondary", flexShrink: 0 }}>
