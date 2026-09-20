@@ -34,12 +34,12 @@ export const Default: Story = {
   },
 };
 
-export const WithNoneOption: Story = {
+export const WithEmptyOption: Story = {
   args: {
     value: "__none__",
     onChange: () => undefined,
     label: "Default license",
-    noneOption: { value: "__none__", label: "No default (use CC BY)" },
+    emptyOption: { value: "__none__", label: "No default (use CC BY)" },
   },
 };
 

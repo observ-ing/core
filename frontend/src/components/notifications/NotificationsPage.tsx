@@ -1,6 +1,7 @@
 import { useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Box, Typography, Button, List, ListItem, ListItemButton } from "@mui/material";
+import ErrorOutlineIcon from "@mui/icons-material/ErrorOutlineOutlined";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { getImageUrl } from "../../services/api";
 import type { Notification } from "../../services/types";
@@ -18,7 +19,8 @@ export function NotificationsPage() {
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } = useNotifications();
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
+    useNotifications();
   const notifications = data?.pages.flatMap((page) => page.notifications) ?? [];
   const markRead = useMarkNotificationRead();
 
@@ -81,7 +83,17 @@ export function NotificationsPage() {
         )}
       </Box>
 
-      {!isLoading && notifications.length === 0 && (
+      {error && (
+        <EmptyState
+          icon={<ErrorOutlineIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />}
+          message="Unable to load notifications"
+          secondary={error instanceof Error ? error.message : "Please try again later."}
+          p={0}
+          sx={{ mt: 4 }}
+        />
+      )}
+
+      {!error && !isLoading && notifications.length === 0 && (
         <EmptyState message="No notifications yet" p={0} sx={{ mt: 4 }} />
       )}
 

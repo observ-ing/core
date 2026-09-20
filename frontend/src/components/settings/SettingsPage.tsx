@@ -126,7 +126,7 @@ export function SettingsPage() {
             size="small"
             margin="none"
             disabled={updatePrefs.isPending}
-            noneOption={{ value: NO_DEFAULT, label: "No default (use CC BY)" }}
+            emptyOption={{ value: NO_DEFAULT, label: "No default (use CC BY)" }}
           />
         </SettingsSection>
       )}
