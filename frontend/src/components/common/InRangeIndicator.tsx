@@ -21,6 +21,7 @@ export function InRangeIndicator({ size = 14, color = "success.main" }: InRangeI
       component="span"
       sx={{ display: "inline-flex", alignItems: "center", color }}
       title="Found in your area"
+      aria-label="Found in your area"
     >
       <Box component="span" sx={visuallyHidden}>
         Found in your area
