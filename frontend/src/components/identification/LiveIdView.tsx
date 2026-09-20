@@ -15,6 +15,7 @@ import PlaceIcon from "@mui/icons-material/Place";
 import { useLiveId } from "../../hooks/useLiveId";
 import { useAppDispatch } from "../../store";
 import { openUploadModal, setPendingUploadFiles, addToast } from "../../store/uiSlice";
+import { InRangeIndicator } from "../common/InRangeIndicator";
 
 /**
  * Full-screen live camera identifier — point the camera at something and the
@@ -277,9 +278,7 @@ export function LiveIdView() {
                 <Typography sx={{ fontStyle: "italic", fontWeight: 600 }}>
                   {top.scientificName}
                 </Typography>
-                {top.inRange === true && (
-                  <PlaceIcon sx={{ fontSize: 16, color: "success.light" }} aria-label="In range" />
-                )}
+                {top.inRange === true && <InRangeIndicator size={16} color="success.light" />}
                 <Typography variant="body2" sx={{ opacity: 0.8 }}>
                   {Math.round(top.confidence * 100)}%
                 </Typography>
