@@ -19,7 +19,7 @@ import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { detailHeaderSx } from "../common/layoutSx";
+import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
@@ -290,7 +290,7 @@ export function ObservationDetail() {
                       component="img"
                       src={getImageUrl(img.url)}
                       alt={`Photo ${idx + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      sx={coverImageSx}
                     />
                   </ButtonBase>
                 ))}
