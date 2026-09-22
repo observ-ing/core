@@ -1,6 +1,19 @@
 import * as maplibregl from "maplibre-gl";
 import type { FeatureCollection, Polygon } from "geojson";
 import { basemapStyleUrl, DEFAULT_BASEMAP, type BasemapId, type BasemapMode } from "./mapStyle";
+// maplibre-gl 6 is ESM-only and runs its tile/GeoJSON parsing in a separate
+// worker chunk, whose URL it builds at runtime:
+//   new URL(`./${isDev ? "maplibre-gl-worker-dev" : "maplibre-gl-worker"}.mjs`, import.meta.url)
+// The interpolated filename defeats Vite's static analysis, so the chunk is
+// never emitted and the request 404s next to the bundle. Without a worker
+// nothing parses: `map.on("load")` never fires, so the marker and the
+// uncertainty circle never get added and the map renders blank. Importing the
+// worker with `?worker&url` makes Vite bundle it (it has its own import of
+// `maplibre-gl-shared.mjs`, so a plain `?url` would 404 in turn) and hand back
+// a real emitted URL. Regression from the 5.24 → 6.x bump in #823.
+import maplibreWorkerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
+
+maplibregl.setWorkerUrl(maplibreWorkerUrl);
 
 /** Approximate meters per degree of latitude at the equator */
 export const METERS_PER_DEGREE = 111320;
