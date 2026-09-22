@@ -9,6 +9,14 @@ export const detailHeaderSx = {
   alignItems: "center",
 } as const;
 
+/** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
+export const coverImageSx = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+} as const;
+
 /**
  * Frosted "glass" backdrop shared by sticky/translucent surfaces (the app's
  * `TopBar` and detail-page `stickyHeaderSx`): a blurred pane with a
