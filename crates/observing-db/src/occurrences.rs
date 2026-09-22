@@ -14,7 +14,7 @@ macro_rules! occurrence_columns {
     ST_Y(location::geometry) as latitude,
     ST_X(location::geometry) as longitude,
     coordinate_uncertainty_meters,
-    associated_media, recorded_by,
+    associated_media, external_records, recorded_by,
     taxon_id, taxon_rank, kingdom, phylum, class, "order", family, genus,
     organism_quantity, organism_quantity_type,
     created_at,
@@ -37,14 +37,16 @@ pub async fn upsert(
             associated_media, recorded_by,
             taxon_id, taxon_rank, kingdom,
             organism_quantity, organism_quantity_type,
-            created_at, event_date_raw, event_date_end
+            created_at, event_date_raw, event_date_end,
+            external_records
         ) VALUES (
             $1, $2, $3, $4, $5,
             ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
             $8, $9, $10,
             $11, $12, $13,
             $14, $15,
-            $16, $17, $18
+            $16, $17, $18,
+            $19
         )
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
@@ -61,6 +63,7 @@ pub async fn upsert(
             kingdom = COALESCE($13, occurrences.kingdom),
             organism_quantity = COALESCE($14, occurrences.organism_quantity),
             organism_quantity_type = COALESCE($15, occurrences.organism_quantity_type),
+            external_records = COALESCE($19, occurrences.external_records),
             indexed_at = NOW()
         "#,
         p.uri,
@@ -84,6 +87,7 @@ pub async fn upsert(
         p.created_at,
         p.event_date_raw as _,
         p.event_date_end as _,
+        p.external_records as _,
     )
     .execute(executor)
     .await?;
@@ -112,7 +116,7 @@ pub async fn get(
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
-            associated_media, recorded_by,
+            associated_media, external_records, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             organism_quantity, organism_quantity_type,
             created_at,
@@ -146,7 +150,7 @@ pub async fn get_nearby(
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
-            associated_media, recorded_by,
+            associated_media, external_records, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             organism_quantity, organism_quantity_type,
             created_at,
@@ -192,7 +196,7 @@ pub async fn get_by_bounding_box(
             ST_Y(location::geometry) as latitude,
             ST_X(location::geometry) as longitude,
             coordinate_uncertainty_meters,
-            associated_media, recorded_by,
+            associated_media, external_records, recorded_by,
             taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
             organism_quantity, organism_quantity_type,
             created_at,
@@ -231,7 +235,7 @@ pub async fn get_feed(
                 ST_Y(location::geometry) as latitude,
                 ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,
-                associated_media, recorded_by,
+                associated_media, external_records, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
                 organism_quantity, organism_quantity_type,
                 created_at,
@@ -259,7 +263,7 @@ pub async fn get_feed(
                 ST_Y(location::geometry) as latitude,
                 ST_X(location::geometry) as longitude,
                 coordinate_uncertainty_meters,
-                associated_media, recorded_by,
+                associated_media, external_records, recorded_by,
                 taxon_id, taxon_rank, kingdom, phylum, class, "order" as order_, family, genus,
                 organism_quantity, organism_quantity_type,
                 created_at,

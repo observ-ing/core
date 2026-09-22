@@ -34,6 +34,7 @@ import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
+import { ExternalRecordsItem } from "./ExternalRecordsItem";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
@@ -325,6 +326,12 @@ export function ObservationDetail() {
                     }
                   />
                 )}
+
+                {/* Defaulted: an occurrence served by an appview older than
+                    this field — or replayed from a cache written before it —
+                    has no `externalRecords` at all, and a missing array must
+                    not take the whole page down. */}
+                <ExternalRecordsItem records={observation.externalRecords ?? []} />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}

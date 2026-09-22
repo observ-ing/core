@@ -139,6 +139,10 @@ export function makeTombstoneOccurrence(input: TombstoneInput): Occurrence {
       url,
       ...(input.license ? { license: input.license } : {}),
     })),
+    // The submit form doesn't collect external records, so a fresh row never
+    // has any; a cross-posted record written by another client arrives with
+    // `reconcileOccurrence`.
+    externalRecords: [],
     createdAt: input.createdAt,
     likeCount: 0,
     viewerHasLiked: false,

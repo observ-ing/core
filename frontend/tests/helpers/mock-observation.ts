@@ -33,6 +33,8 @@ export function buildMockObservation(overrides: Partial<Occurrence> = {}): Occur
     },
     identificationCount: 1,
     images: [],
+    externalRecords: [],
+
     eventDate: "2024-06-15",
     location: { latitude: 37.7749, longitude: -122.4194 },
     createdAt: new Date().toISOString(),
