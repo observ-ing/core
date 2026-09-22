@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Avatar, Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography } from "@mui/material";
 import type { SxProps, Theme, TypographyProps } from "@mui/material";
 import { getDisplayName } from "../../lib/utils";
-import { gradientFromString } from "../../lib/gradientFromString";
+import { UserAvatar } from "./UserAvatar";
 
 /** The minimal actor shape rendered by UserCard (matches Profile / NotificationActor). */
 export interface UserCardActor {
@@ -88,26 +88,14 @@ export function UserCard({
 
   const stop = stopPropagation ? (e: React.MouseEvent) => e.stopPropagation() : undefined;
 
-  const avatar = src ? (
-    <Avatar src={src} alt={displayName} sx={{ width: avatarSize, height: avatarSize }} />
-  ) : (
-    // Image-less fallback: a deterministic gradient (stable per user) with the
-    // display-name initial, instead of MUI's flat grey default. Still a real
-    // MUI Avatar so it stays a `.MuiAvatar-root` (consistent shape + asserted
-    // by avatar tests).
-    <Avatar
-      alt={displayName}
-      sx={{
-        width: avatarSize,
-        height: avatarSize,
-        background: gradientFromString(did ?? actor.handle ?? displayName),
-        color: "common.white",
-        fontWeight: 600,
-        fontSize: avatarSize * 0.45,
-      }}
-    >
-      {displayName[0]}
-    </Avatar>
+  const avatar = (
+    <UserAvatar
+      did={did}
+      handle={actor.handle}
+      displayName={displayName}
+      src={src}
+      size={avatarSize}
+    />
   );
 
   const name = (

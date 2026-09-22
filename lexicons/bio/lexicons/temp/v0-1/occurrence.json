@@ -53,7 +53,35 @@
             "type": "ref",
             "ref": "com.atproto.repo.strongRef",
             "description": "Identification accepted by the occurrence user as the source of taxonID. Must be accompanied by taxonID. Indirectly maps to Darwin Core dwc:isAcceptedIdentification."
+          },
+          "externalRecords": {
+            "type": "array",
+            "description": "Records of this same occurrence held outside this lexicon, whether in another AT Protocol lexicon (such as an app.gainforest.dwc.occurrence record) or on a service outside the network entirely (such as an iNaturalist observation). Intended for consumers cross-linking between platforms and for deduplicating observations across them. Has no DwC-DP equivalent; on Darwin Core export the entry URIs concatenate into dwc:otherCatalogNumbers.",
+            "items": {
+              "type": "ref",
+              "ref": "#externalRecord"
+            },
+            "maxLength": 10
           }
+        }
+      }
+    },
+    "externalRecord": {
+      "type": "object",
+      "description": "A reference to a record of this occurrence kept outside this lexicon, which may still be within the AT Protocol network. The target is an occurrence record, not a photo or other media item depicting the organism; media belong on the occurrence's media field. For a record held in another AT Protocol lexicon, reference it by its at-uri, which is canonical and does not tie the reference to any one appview. For anything else, use the canonical web URL of the occurrence record on the holding service.",
+      "required": ["uri"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "description": "Stable URI of the record, preferably its canonical permalink. Any URI scheme is permitted, including at:// for records held in another AT Protocol lexicon. Examples: \"https://www.inaturalist.org/observations/123456789\", \"at://did:plc:jt6xegjm6ba2lt34aztyi2mn/app.gainforest.dwc.occurrence/3mu252kzh4y2h\".",
+          "maxLength": 512
+        },
+        "service": {
+          "type": "string",
+          "description": "Short identifier for the service holding the record. For an AT Protocol-based app, use the app name (e.g. \"gainforest\"). Lets consumers group records by platform without parsing hostnames or at-uri collections, which is unreliable across localised network nodes (e.g. inaturalist.nz) and self-hosted instances. Known values are not exhaustive. No Darwin Core equivalent.",
+          "knownValues": ["inaturalist", "bugguide"],
+          "maxLength": 64
         }
       }
     }

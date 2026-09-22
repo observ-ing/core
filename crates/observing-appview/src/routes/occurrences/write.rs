@@ -46,9 +46,11 @@ pub struct CreateOccurrenceRequest {
     event_date: Option<String>,
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
-    /// SPDX license identifier applied to each uploaded media record (e.g.
-    /// `CC-BY-4.0`). Validated against `validation::ALLOWED_LICENSES`. When
-    /// omitted, the PDS media record stores no license.
+    /// License URI applied to each uploaded media record (e.g.
+    /// `https://creativecommons.org/licenses/by/4.0/`). Validated against
+    /// `validation::ALLOWED_LICENSES`; a retired SPDX identifier is upgraded to
+    /// its URI rather than rejected. When omitted, the PDS media record stores
+    /// no license.
     #[ts(optional)]
     license: Option<String>,
     #[ts(optional)]
@@ -101,7 +103,7 @@ pub struct UpdateOccurrenceRequest {
     /// Media whose CID is not in this list is dropped from the record.
     #[ts(optional)]
     retained_blob_cids: Option<Vec<String>>,
-    /// SPDX license to apply to *newly-uploaded* media records on this edit.
+    /// License URI to apply to *newly-uploaded* media records on this edit.
     /// Retained media keep whatever license they were originally written with —
     /// silently rewriting historical metadata when a default changes would lose
     /// the user's intent at upload time.
@@ -129,9 +131,10 @@ pub async fn create_occurrence(
         return Err(AppError::BadRequest("Invalid coordinates".into()));
     }
 
-    if let Some(ref license) = body.license {
-        validate_license(license)?;
-    }
+    let license = match body.license {
+        Some(ref license) => Some(validate_license(license)?),
+        None => None,
+    };
 
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
@@ -144,7 +147,7 @@ pub async fn create_occurrence(
         &agent,
         &user.did,
         body.images.as_deref().unwrap_or(&[]),
-        body.license.as_deref(),
+        license,
     )
     .await?;
 
@@ -262,9 +265,10 @@ pub async fn update_occurrence(
         return Err(AppError::BadRequest("Invalid coordinates".into()));
     }
 
-    if let Some(ref license) = body.license {
-        validate_license(license)?;
-    }
+    let license = match body.license {
+        Some(ref license) => Some(validate_license(license)?),
+        None => None,
+    };
 
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
@@ -358,7 +362,7 @@ pub async fn update_occurrence(
         &agent,
         &user.did,
         body.images.as_deref().unwrap_or(&[]),
-        body.license.as_deref(),
+        license,
     )
     .await?;
     media_refs.extend(new_media_refs);

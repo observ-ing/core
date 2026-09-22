@@ -7,17 +7,44 @@ declare module "@mui/material/styles" {
     placeholder: string;
     iucn: Record<string, string>;
     mapMarker: string;
+    overlay: Record<string, string>;
+    cardShadow: Record<string, string>;
   }
   interface PaletteOptions {
     placeholder?: string;
     iucn?: Record<string, string>;
     mapMarker?: string;
+    overlay?: Record<string, string>;
+    cardShadow?: Record<string, string>;
   }
 }
 
 // Map marker / uncertainty-circle color — same in both themes (it's a
 // functional indicator, not a brand color, so it doesn't invert with the mode).
 const mapMarkerColor = "#22c55e";
+
+// Overlay chrome placed over photo/camera content (scrims, gradients, chips,
+// badges). Black/white-alpha rather than a mode-aware color since these sit
+// on top of photo content, not app background — mode-invariant like iucn/mapMarker.
+const overlayColors: Record<string, string> = {
+  scrim: "rgba(0, 0, 0, 0.9)",
+  chip: "rgba(0, 0, 0, 0.4)",
+  chipHover: "rgba(0, 0, 0, 0.6)",
+  badge: "rgba(0, 0, 0, 0.65)",
+  modalChip: "rgba(0, 0, 0, 0.7)",
+  gradientTop: "linear-gradient(to bottom, rgba(0, 0, 0, 0.5), transparent)",
+  gradientBottom: "linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent)",
+  captureRing: "rgba(255, 255, 255, 0.5)",
+  backdrop: "#212121",
+  caption: "#bdbdbd",
+};
+
+// Elevated photo/image card shadows — mode-invariant like overlay/iucn/mapMarker
+// since these sit around photo content rather than app chrome.
+const cardShadowColors: Record<string, string> = {
+  hero: "0 2px 10px rgba(60, 50, 30, 0.08)",
+  photo: "0 4px 12px rgba(0, 0, 0, 0.15)",
+};
 
 // Official IUCN Red List category colors — standardized by the IUCN,
 // so they are mode-invariant and shared across light and dark themes.
@@ -87,6 +114,8 @@ const darkPalette = {
   placeholder: "#211f1b",
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
+  overlay: overlayColors,
+  cardShadow: cardShadowColors,
 };
 
 const lightPalette = {
@@ -120,6 +149,8 @@ const lightPalette = {
   placeholder: "#efe7d4",
   iucn: iucnColors,
   mapMarker: mapMarkerColor,
+  overlay: overlayColors,
+  cardShadow: cardShadowColors,
 };
 
 const createAppTheme = (mode: PaletteMode): Theme => {
@@ -169,6 +200,23 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           root: {
             textTransform: "none",
           },
+        },
+      },
+      MuiToggleButton: {
+        styleOverrides: {
+          root: {
+            textTransform: "none",
+          },
+        },
+      },
+      // Every ListItemButton in the app (nav rows, notification rows) rounds
+      // its corners the same way — centralized here instead of repeating
+      // `borderRadius: 2` at each call site.
+      MuiListItemButton: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            borderRadius: Number(theme.shape.borderRadius) * 2,
+          }),
         },
       },
     },

@@ -1,5 +1,5 @@
 import type { TaxonAncestor } from "../../bindings/TaxonAncestor";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { Breadcrumbs, type BreadcrumbItem } from "../common/Breadcrumbs";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 
@@ -17,12 +17,7 @@ interface TaxonBreadcrumbProps {
  */
 export function TaxonBreadcrumb({ ancestors, kingdom }: TaxonBreadcrumbProps) {
   const items: BreadcrumbItem[] = ancestors.map((a) => {
-    const url =
-      a.rank === "kingdom"
-        ? `/taxon/${nameToSlug(a.name)}`
-        : kingdom
-          ? `/taxon/${nameToSlug(kingdom)}/${nameToSlug(a.name)}`
-          : undefined;
+    const url = buildTaxonUrl(a.name, kingdom, a.rank) ?? undefined;
     return {
       label: a.name,
       italic: shouldItalicizeTaxonName(a.name, a.rank),

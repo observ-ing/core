@@ -1,4 +1,6 @@
-import { Box, Card, Skeleton } from "@mui/material";
+import { Box, Card, CardContent, Skeleton } from "@mui/material";
+import { observationGridCardContentSx } from "../common/ObservationGridCard";
+import { PROFILE_ID_CARD_HEADER_SX } from "./profileLayout";
 
 /**
  * Skeleton for profile identification card grid items
@@ -6,23 +8,13 @@ import { Box, Card, Skeleton } from "@mui/material";
 export function ProfileIdentificationCardSkeleton() {
   return (
     <Card>
-      <Box
-        sx={{
-          py: 3,
-          px: 1.5,
-          bgcolor: "action.hover",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-        }}
-      >
+      <Box sx={PROFILE_ID_CARD_HEADER_SX}>
         <Skeleton variant="circular" width={28} height={28} sx={{ mb: 1 }} />
         <Skeleton variant="text" width="60%" height={20} />
-        <Skeleton variant="text" width="40%" height={16} />
       </Box>
-      <Box sx={{ p: 1.5 }}>
+      <CardContent sx={observationGridCardContentSx}>
         <Skeleton variant="text" width="50%" height={16} />
-      </Box>
+      </CardContent>
     </Card>
   );
 }

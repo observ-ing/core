@@ -34,6 +34,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `decimalLongitude` | dwc:decimalLongitude | Longitude in decimal degrees (stored as string; range -180..180) |
 | `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
 | `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.v0-1.media` records (max 10) |
+| `externalRecords` | dwc:otherCatalogNumbers (on export) | Array of `{ uri, service }` entries (max 10) pointing at the same occurrence held elsewhere — another AT Protocol lexicon (`at://…`) or an off-network service such as iNaturalist. `uri` required (≤512 chars); `service` is a short platform identifier with known values `inaturalist`, `bugguide` (≤64 chars). Not written by the appview today. |
 | (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.v0-1.occurrence/...` — derived, not stored |
 | (DID) | dwc:recordedBy | Derived from AT Protocol identity |
 
@@ -50,7 +51,7 @@ An image record referenced from occurrences. Media records are created by users 
   "image": { "$type": "blob", "ref": { "$link": "bafkrei..." }, "mimeType": "image/jpeg", "size": 842103 },
   "alt": "Orange California Poppy flower along a trail",
   "aspectRatio": { "width": 4032, "height": 3024 },
-  "license": "CC-BY-4.0"
+  "license": "https://creativecommons.org/licenses/by/4.0/"
 }
 ```
 
@@ -61,7 +62,12 @@ An image record referenced from occurrences. Media records are created by users 
 | `image` | — | Image blob ref (jpeg/png/webp, ≤10 MB). Required. |
 | `alt` | — | Alt text for accessibility (≤1000 chars) |
 | `aspectRatio` | — | `{ width, height }` in pixels, used for layout before load |
-| `license` | dcterms:license | SPDX identifier: `CC0-1.0`, `CC-BY-4.0`, `CC-BY-NC-4.0`, `CC-BY-SA-4.0`, `CC-BY-NC-SA-4.0` |
+| `license` | dcterms:license | License URI (≤128 chars). Recommended values are the CC 4.0 family plus CC0: `https://creativecommons.org/licenses/{by,by-nc,by-sa,by-nc-sa}/4.0/` and `https://creativecommons.org/publicdomain/zero/1.0/` |
+
+> **Legacy values.** Media records written before the lexicon moved to license URIs carry SPDX
+> identifiers (`CC-BY-4.0`, …) instead. Those records are user-owned and are not rewritten — the
+> appview maps them to the equivalent URI when serving occurrence images, so API consumers only
+> ever see the URI form.
 
 ## bio.lexicons.temp.v0-1.identification
 

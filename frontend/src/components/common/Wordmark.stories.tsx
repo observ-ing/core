@@ -1,7 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Box } from "@mui/material";
 import { Wordmark } from "./Wordmark";
-import { Logo } from "./Logo";
 
 const meta = {
   title: "Common/Wordmark",
@@ -26,20 +24,5 @@ export const Default: Story = {
   },
 };
 
-export const Lockup: Story = {
-  render: () => (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-      <Box sx={{ color: "primary.main", display: "inline-flex" }}>
-        <Logo size={32} />
-      </Box>
-      <Wordmark />
-    </Box>
-  ),
-  parameters: {
-    docs: {
-      description: {
-        story: "The full brand lockup as used in the top bar: leaf-eye mark + wordmark.",
-      },
-    },
-  },
-};
+// The full brand lockup (leaf-eye mark + wordmark) now lives in
+// `BrandLockup`, shared by TopBar and Sidebar — see Common/BrandLockup.

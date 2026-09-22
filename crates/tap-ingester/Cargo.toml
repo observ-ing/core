@@ -9,8 +9,9 @@ license = "MIT OR Apache-2.0"
 # Tap client wrapper — handles WebSocket + ack handshake + reconnection.
 tapped = { workspace = true }
 
-# Shared HTTP server bootstrap (bind + serve for the dashboard).
-observing-bootstrap = { path = "../observing-bootstrap" }
+# Shared HTTP server bootstrap (bind + serve for the dashboard) and Postgres
+# pool construction (`PoolConfig`).
+observing-bootstrap = { path = "../observing-bootstrap", features = ["db"] }
 
 # Database write path (shared processing module).
 observing-db = { path = "../observing-db", features = ["processing"] }
@@ -66,6 +67,9 @@ clap = { version = "4", features = ["derive", "env"] }
 
 # URL utilities
 url = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }
 
 [[bin]]
 name = "tap-ingester"

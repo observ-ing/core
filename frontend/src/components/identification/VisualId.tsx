@@ -3,6 +3,7 @@ import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import type { SpeciesSuggestion } from "../../services/api";
 import { useVisualId } from "../../hooks/useVisualId";
 import { VisualIdCards, type AncestorSelection } from "./VisualIdCards";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 
 interface VisualIdProps {
   imageUrl: string;
@@ -42,9 +43,7 @@ export function VisualId({
           variant="outlined"
           color="secondary"
           size="small"
-          startIcon={
-            isLoading ? <CircularProgress size={16} color="inherit" /> : <AutoFixHighIcon />
-          }
+          startIcon={isLoading ? <ButtonSpinner /> : <AutoFixHighIcon />}
           onClick={handleFetch}
           disabled={disabled || isLoading}
           fullWidth

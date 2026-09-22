@@ -16,19 +16,22 @@ import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import FingerprintIcon from "@mui/icons-material/Fingerprint";
 import GrassIcon from "@mui/icons-material/Grass";
-import { getImageUrl } from "../../services/api";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { useProfileFeed } from "../../lib/query/hooks";
 import { getObservationUrl } from "../../lib/utils";
 import { RelativeTime } from "../common/RelativeTime";
 import { UserCard } from "../common/UserCard";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
-import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
+import { ObservationGridCard, observationGridCardContentSx } from "../common/ObservationGridCard";
+import { ObservationGridCardSkeleton } from "../common/ObservationGridCardSkeleton";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
+import { FullPageStatus } from "../common/FullPageStatus";
+import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 import { ProfileHeaderSkeleton } from "./ProfileHeaderSkeleton";
-import { ProfileObservationCardSkeleton } from "./ProfileObservationCardSkeleton";
 import { ProfileIdentificationCardSkeleton } from "./ProfileIdentificationCardSkeleton";
-import { PROFILE_HEADER_SX, PROFILE_STAT_BOX_SX, PROFILE_AVATAR_SIZE } from "./profileLayout";
+import { ProfileStat } from "./ProfileStat";
+import { PROFILE_HEADER_SX, PROFILE_AVATAR_SIZE, PROFILE_ID_CARD_HEADER_SX } from "./profileLayout";
 import { observationGridSx } from "../common/observationGridLayout";
 import { usePageTitle } from "../../hooks/usePageTitle";
 
@@ -53,25 +56,39 @@ export function ProfileView() {
 
   if (!did) {
     return (
-      <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography
-          sx={{
-            color: "text.secondary",
-          }}
-        >
-          Profile not found
-        </Typography>
-      </Container>
+      <FullPageStatus
+        icon={<SearchOffIcon />}
+        title="Profile not found"
+        description="No profile identifier was provided."
+        actions={
+          <Button
+            variant="outlined"
+            onClick={() => window.history.back()}
+            sx={fullPageStatusSecondaryActionSx}
+          >
+            Go Back
+          </Button>
+        }
+      />
     );
   }
 
   if (error) {
     return (
-      <Container maxWidth="md" sx={{ p: 4 }}>
-        <Typography color="error">
-          {error instanceof Error ? error.message : "Failed to load profile"}
-        </Typography>
-      </Container>
+      <FullPageStatus
+        icon={<SearchOffIcon />}
+        title="Unable to load profile"
+        description={error instanceof Error ? error.message : "Failed to load profile."}
+        actions={
+          <Button
+            variant="outlined"
+            onClick={() => window.history.back()}
+            sx={fullPageStatusSecondaryActionSx}
+          >
+            Go Back
+          </Button>
+        }
+      />
     );
   }
 
@@ -103,99 +120,24 @@ export function ProfileView() {
           {/* Stats */}
           {counts && (
             <Stack direction="row" spacing={2} sx={{ mt: 2 }}>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "primary.main",
-                  }}
-                >
-                  {counts.observations.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <CameraAltIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    Observations
-                  </Typography>
-                </Stack>
-              </Box>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "secondary.main",
-                  }}
-                >
-                  {counts.identifications.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <FingerprintIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    IDs
-                  </Typography>
-                </Stack>
-              </Box>
-              <Box sx={PROFILE_STAT_BOX_SX}>
-                <Typography
-                  variant="h6"
-                  component="span"
-                  sx={{
-                    fontWeight: 700,
-                    color: "success.main",
-                  }}
-                >
-                  {counts.species.toLocaleString()}
-                </Typography>
-                <Stack
-                  direction="row"
-                  spacing={0.5}
-                  sx={{
-                    alignItems: "center",
-                    justifyContent: "center",
-                    mt: 0.5,
-                  }}
-                >
-                  <GrassIcon sx={{ fontSize: 14, color: "text.secondary" }} />
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color: "text.secondary",
-                    }}
-                  >
-                    Species
-                  </Typography>
-                </Stack>
-              </Box>
+              <ProfileStat
+                count={counts.observations}
+                color="primary.main"
+                icon={CameraAltIcon}
+                label="Observations"
+              />
+              <ProfileStat
+                count={counts.identifications}
+                color="secondary.main"
+                icon={FingerprintIcon}
+                label="IDs"
+              />
+              <ProfileStat
+                count={counts.species}
+                color="success.main"
+                icon={GrassIcon}
+                label="Species"
+              />
             </Stack>
           )}
 
@@ -231,54 +173,13 @@ export function ProfileView() {
       {activeTab === "observations" && (
         <Box sx={observationGridSx()}>
           {occurrences.map((occ) => (
-            <Card key={occ.uri} sx={{ display: "flex", flexDirection: "column" }}>
-              <CardActionArea
-                component={Link}
-                to={getObservationUrl(occ.uri)}
-                sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
-              >
-                <ImageWithSkeleton
-                  src={occ.images[0] ? getImageUrl(occ.images[0].url) : undefined}
-                  alt={occ.communityId || occ.effectiveTaxonomy?.scientificName || "Observation"}
-                  sx={{ aspectRatio: "1" }}
-                />
-                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontStyle: shouldItalicizeTaxonName(
-                        occ.communityId || occ.effectiveTaxonomy?.scientificName || "",
-                        occ.effectiveTaxonomy?.rank,
-                      )
-                        ? "italic"
-                        : "normal",
-                      color: "primary.main",
-                      fontWeight: 500,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {occ.communityId || occ.effectiveTaxonomy?.scientificName || "Unknown species"}
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    noWrap
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
-                    <RelativeTime date={new Date(occ.createdAt)} />
-                  </Typography>
-                </CardContent>
-              </CardActionArea>
-            </Card>
+            <ObservationGridCard key={occ.uri} observation={occ} />
           ))}
 
           {isLoading && occurrences.length === 0 && (
             <>
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <ProfileObservationCardSkeleton key={i} />
+                <ObservationGridCardSkeleton key={i} />
               ))}
             </>
           )}
@@ -294,18 +195,7 @@ export function ProfileView() {
                 to={getObservationUrl(id.subject_uri)}
                 sx={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "stretch" }}
               >
-                <Box
-                  sx={{
-                    py: 3,
-                    px: 1.5,
-                    bgcolor: "action.hover",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textAlign: "center",
-                  }}
-                >
+                <Box sx={PROFILE_ID_CARD_HEADER_SX}>
                   <FingerprintIcon sx={{ fontSize: 28, color: "secondary.main", mb: 1 }} />
                   <Typography
                     variant="body2"
@@ -320,7 +210,7 @@ export function ProfileView() {
                     {id.scientific_name}
                   </Typography>
                 </Box>
-                <CardContent sx={{ p: 1.5, "&:last-child": { pb: 1.5 }, flex: 1 }}>
+                <CardContent sx={observationGridCardContentSx}>
                   <Typography
                     variant="caption"
                     noWrap

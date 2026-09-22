@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
-import { ThemeProvider, CssBaseline, Box, Alert, CircularProgress } from "@mui/material";
+import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 import { getTheme } from "./theme";
 import { store, useAppDispatch, useAppSelector } from "./store";
 import { checkAuth } from "./store/authSlice";
@@ -18,6 +18,7 @@ import { DeleteConfirmDialog } from "./components/modals/DeleteConfirmDialog";
 import { FAB } from "./components/common/FAB";
 import { ToastContainer } from "./components/common/Toast";
 import { ErrorBoundary } from "./components/common/ErrorBoundary";
+import { CenteredSpinner } from "./components/common/CenteredSpinner";
 import { OfflineBanner } from "./components/common/OfflineBanner";
 import { UpdatePrompt } from "./components/common/UpdatePrompt";
 import { QueryProvider } from "./lib/query/QueryProvider";
@@ -141,15 +142,7 @@ function AppContent() {
         }}
       >
         <ErrorBoundary resetKey={location.pathname}>
-          <Suspense
-            fallback={
-              <Box
-                sx={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
-              >
-                <CircularProgress />
-              </Box>
-            }
-          >
+          <Suspense fallback={<CenteredSpinner sx={{ flex: 1, alignItems: "center" }} />}>
             <Routes>
               <Route path="/" element={showLanding ? <LandingPage /> : <FeedView tab="home" />} />
               <Route path="/explore" element={<FeedView tab="explore" />} />

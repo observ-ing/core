@@ -9,30 +9,23 @@ import {
   Stack,
   IconButton,
   ButtonBase,
-  Menu,
-  MenuItem,
   List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import MoreVertIcon from "@mui/icons-material/MoreVert";
-import FavoriteBorderIcon from "@mui/icons-material/FavoriteBorder";
-import FavoriteIcon from "@mui/icons-material/Favorite";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
 import NumbersIcon from "@mui/icons-material/Numbers";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { detailHeaderSx } from "../common/layoutSx";
+import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
 import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
 import { checkAuth } from "../../store/authSlice";
+import { LikeButton } from "../common/LikeButton";
 import { IdentificationPanel } from "../identification/IdentificationPanel";
 import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
@@ -42,12 +35,12 @@ import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader } from "../common/Section";
-import {
-  formatEventDate,
-  getPdslsUrl,
-  buildOccurrenceAtUri,
-  getErrorMessage,
-} from "../../lib/utils";
+import { DetailListItem, detailIconSx } from "../common/DetailListItem";
+import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
+import { CenteredSpinner } from "../common/CenteredSpinner";
+import { FullPageStatus } from "../common/FullPageStatus";
+import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
+import { formatEventDate, buildOccurrenceAtUri, getErrorMessage } from "../../lib/utils";
 import { getLicenseLabel } from "../../lib/licenses";
 
 // Lazy so maplibre-gl is split into its own chunk, loaded only when an
@@ -65,8 +58,6 @@ export function ObservationDetail() {
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const menuOpen = Boolean(anchorEl);
 
   // Reconstruct AT URI from route params
   const atUri = did && rkey ? buildOccurrenceAtUri(did, rkey) : null;
@@ -98,28 +89,6 @@ export function ObservationDetail() {
     }
   };
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleEditClick = () => {
-    handleMenuClose();
-    if (observation) {
-      dispatch(openEditModal(observation));
-    }
-  };
-
-  const handleDeleteClick = () => {
-    handleMenuClose();
-    if (observation) {
-      dispatch(openDeleteConfirm(observation));
-    }
-  };
-
   if (loading) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
@@ -142,14 +111,16 @@ export function ObservationDetail() {
   if (!observation) {
     return (
       <Box sx={{ flex: 1, overflow: "auto" }}>
-        <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
-          <Typography color="error" sx={{ mb: 2 }}>
-            {!atUri ? "No observation URI provided" : "Observation not found"}
-          </Typography>
-          <Button variant="outlined" onClick={handleBack}>
-            Go Back
-          </Button>
-        </Container>
+        <FullPageStatus
+          icon={<SearchOffIcon />}
+          title={atUri ? "Observation not found" : "No observation URI provided"}
+          description="It may have been deleted, or the link you followed is incorrect."
+          actions={
+            <Button variant="outlined" onClick={handleBack} sx={fullPageStatusSecondaryActionSx}>
+              Go Back
+            </Button>
+          }
+        />
       </Box>
     );
   }
@@ -177,7 +148,7 @@ export function ObservationDetail() {
       >
         {/* Header */}
         <Box sx={detailHeaderSx}>
-          <IconButton onClick={handleBack} sx={{ mr: 1 }}>
+          <IconButton onClick={handleBack} aria-label="Back" sx={{ mr: 1 }}>
             <ArrowBackIcon />
           </IconButton>
           <Typography
@@ -189,36 +160,19 @@ export function ObservationDetail() {
             Observation
           </Typography>
           <Box sx={{ ml: "auto" }}>
-            <IconButton
-              size="small"
-              onClick={handleMenuOpen}
-              aria-label="More options"
-              sx={{ color: "text.disabled" }}
-            >
-              <MoreVertIcon fontSize="small" />
-            </IconButton>
-            <Menu
-              anchorEl={anchorEl}
-              open={menuOpen}
-              onClose={handleMenuClose}
-              anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-              transformOrigin={{ vertical: "top", horizontal: "right" }}
-            >
-              {isOwner && <MenuItem onClick={handleEditClick}>Edit</MenuItem>}
-              {isOwner && (
-                <MenuItem onClick={handleDeleteClick} sx={{ color: "error.main" }}>
-                  Delete
-                </MenuItem>
-              )}
-              <MenuItem
-                component="a"
-                href={getPdslsUrl(observation.uri)}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View on AT Protocol
-              </MenuItem>
-            </Menu>
+            <RecordOverflowMenu
+              atUri={observation.uri}
+              {...(isOwner
+                ? {
+                    onEdit: () => {
+                      dispatch(openEditModal(observation));
+                    },
+                    onDelete: () => {
+                      dispatch(openDeleteConfirm(observation));
+                    },
+                  }
+                : {})}
+            />
           </Box>
         </Box>
 
@@ -266,39 +220,19 @@ export function ObservationDetail() {
               </Typography>
             }
           />
-          <Tooltip title={!user ? "Log in to like" : ""}>
-            <span>
-              <Stack direction="row" sx={{ alignItems: "center" }}>
-                <IconButton
-                  size="small"
-                  onClick={() =>
-                    like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
-                  }
-                  disabled={!user}
-                  aria-label={liked ? "Unlike" : "Like"}
-                  sx={{
-                    color: liked ? "error.main" : "text.disabled",
-                  }}
-                >
-                  {liked ? (
-                    <FavoriteIcon fontSize="small" />
-                  ) : (
-                    <FavoriteBorderIcon fontSize="small" />
-                  )}
-                </IconButton>
-                {likeCount > 0 && (
-                  <Typography variant="body2" sx={{ color: "text.secondary", ml: -0.25 }}>
-                    {likeCount}
-                  </Typography>
-                )}
-              </Stack>
-            </span>
-          </Tooltip>
+          <LikeButton
+            liked={liked}
+            count={likeCount}
+            loggedOut={!user}
+            onToggle={() =>
+              like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+            }
+          />
         </Stack>
 
         {/* Images */}
         {activeImage && (
-          <Box sx={{ bgcolor: "grey.900", p: { xs: 0, sm: 2 } }}>
+          <Box sx={{ bgcolor: (theme) => theme.palette.overlay["backdrop"], p: { xs: 0, sm: 2 } }}>
             <ButtonBase
               onClick={() => setLightboxOpen(true)}
               aria-label="Enlarge photo"
@@ -319,7 +253,7 @@ export function ObservationDetail() {
                   maxHeight: 400,
                   objectFit: "contain",
                   display: "block",
-                  boxShadow: { xs: "none", sm: "0 4px 12px rgba(0, 0, 0, 0.15)" },
+                  boxShadow: (theme) => ({ xs: "none", sm: theme.palette.cardShadow["photo"] }),
                 }}
               />
             </ButtonBase>
@@ -329,7 +263,7 @@ export function ObservationDetail() {
                 sx={{
                   display: "block",
                   textAlign: "center",
-                  color: "grey.400",
+                  color: (theme) => theme.palette.overlay["caption"],
                   px: 1,
                   pt: { xs: 1, sm: 0.5 },
                 }}
@@ -356,7 +290,7 @@ export function ObservationDetail() {
                       component="img"
                       src={getImageUrl(img.url)}
                       alt={`Photo ${idx + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      sx={coverImageSx}
                     />
                   </ButtonBase>
                 ))}
@@ -377,80 +311,60 @@ export function ObservationDetail() {
               />
               <List disablePadding>
                 {observation.organismQuantity && (
-                  <ListItem disableGutters alignItems="flex-start">
-                    <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                      <NumbersIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                    </ListItemIcon>
-                    <ListItemText
-                      primary="Quantity"
-                      secondary={
-                        <>
-                          {observation.organismQuantity}
-                          {observation.organismQuantityType && (
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              sx={{ color: "text.disabled" }}
-                            >
-                              {" "}
-                              ({observation.organismQuantityType.replace(/-/g, " ")})
-                            </Typography>
-                          )}
-                        </>
-                      }
-                      slotProps={{
-                        primary: { variant: "caption", color: "text.secondary" },
-                        secondary: {
-                          variant: "body1",
-                          color: "text.primary",
-                          component: "div",
-                        },
-                      }}
-                    />
-                  </ListItem>
+                  <DetailListItem
+                    icon={<NumbersIcon sx={detailIconSx} />}
+                    primary="Quantity"
+                    secondary={
+                      <>
+                        {observation.organismQuantity}
+                        {observation.organismQuantityType && (
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{ color: "text.disabled" }}
+                          >
+                            {" "}
+                            ({observation.organismQuantityType.replace(/-/g, " ")})
+                          </Typography>
+                        )}
+                      </>
+                    }
+                  />
                 )}
 
-                <ListItem disableGutters alignItems="flex-start">
-                  <ListItemIcon sx={{ minWidth: 36, mt: 0.5 }}>
-                    <MyLocationIcon sx={{ fontSize: 18, color: "text.secondary" }} />
-                  </ListItemIcon>
-                  <ListItemText
-                    primary="Coordinates"
-                    secondary={
-                      observation.location ? (
-                        <>
-                          {observation.location.latitude.toFixed(5)},{" "}
-                          {observation.location.longitude.toFixed(5)}
-                          {observation.location.uncertaintyMeters && (
-                            <Typography
-                              component="span"
-                              variant="body2"
-                              sx={{
-                                color: "text.disabled",
-                              }}
-                            >
-                              {" "}
-                              (±{observation.location.uncertaintyMeters}m)
-                            </Typography>
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )
-                    }
-                    slotProps={{
-                      primary: { variant: "caption", color: "text.secondary" },
-                      secondary: {
-                        variant: "body1",
-                        color: "text.primary",
-                        component: "div",
-                      },
-                    }}
-                  />
-                </ListItem>
+                <DetailListItem
+                  icon={<MyLocationIcon sx={detailIconSx} />}
+                  primary="Coordinates"
+                  secondary={
+                    observation.location ? (
+                      <>
+                        {observation.location.latitude.toFixed(5)},{" "}
+                        {observation.location.longitude.toFixed(5)}
+                        {observation.location.uncertaintyMeters && (
+                          <Typography
+                            component="span"
+                            variant="body2"
+                            sx={{
+                              color: "text.disabled",
+                            }}
+                          >
+                            {" "}
+                            (±{observation.location.uncertaintyMeters}m)
+                          </Typography>
+                        )}
+                      </>
+                    ) : (
+                      "—"
+                    )
+                  }
+                />
                 {observation.location && (
                   <Box sx={{ mt: 1 }}>
-                    <Suspense fallback={<Box sx={{ height: 180 }} />}>
+                    <Suspense
+                      fallback={
+                        <CenteredSpinner size={24} sx={{ height: 180, alignItems: "center" }} />
+                      }
+                    >
                       <LocationMap
                         latitude={observation.location.latitude}
                         longitude={observation.location.longitude}

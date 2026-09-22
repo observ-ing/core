@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Box, CardMedia, Skeleton, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
+import { imageSkeletonOverlaySx } from "./layoutSx";
 
 interface ImageWithSkeletonProps {
   src?: string | undefined;
@@ -8,6 +9,7 @@ interface ImageWithSkeletonProps {
   sx?: SxProps<Theme>;
   loading?: "lazy" | "eager";
   emptyText?: string;
+  objectFit?: "cover" | "contain";
 }
 
 export function ImageWithSkeleton({
@@ -16,6 +18,7 @@ export function ImageWithSkeleton({
   sx,
   loading = "lazy",
   emptyText = "No image",
+  objectFit = "cover",
 }: ImageWithSkeletonProps) {
   const [loaded, setLoaded] = useState(false);
 
@@ -41,13 +44,7 @@ export function ImageWithSkeleton({
 
   return (
     <Box sx={{ position: "relative", overflow: "hidden", ...sx }}>
-      {!loaded && (
-        <Skeleton
-          variant="rectangular"
-          animation="wave"
-          sx={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
-        />
-      )}
+      {!loaded && <Skeleton variant="rectangular" animation="wave" sx={imageSkeletonOverlaySx} />}
       <CardMedia
         component="img"
         image={src}
@@ -57,7 +54,7 @@ export function ImageWithSkeleton({
         sx={{
           width: "100%",
           height: "100%",
-          objectFit: "cover",
+          objectFit,
           opacity: loaded ? 1 : 0,
           transition: "opacity 0.3s ease",
         }}

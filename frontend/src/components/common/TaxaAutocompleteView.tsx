@@ -1,20 +1,16 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Box, IconButton, Stack, Typography } from "@mui/material";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { Autocomplete, Box, Chip, Stack, Typography } from "@mui/material";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
 import { shouldItalicizeTaxonName } from "./TaxonLink";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
+import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
+import { TaxonThumbnail } from "./TaxonThumbnail";
+import { labelChipSx } from "./chipSx";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
-  if (option.rank?.toLowerCase() === "kingdom") {
-    return `/taxon/${nameToSlug(option.scientificName)}`;
-  }
-  if (option.kingdom) {
-    return `/taxon/${nameToSlug(option.kingdom)}/${nameToSlug(option.scientificName)}`;
-  }
-  return null;
+  return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
 }
 
 interface TaxaAutocompleteViewProps {
@@ -117,21 +113,7 @@ export function TaxaAutocompleteView({
                 p: 1.5,
               }}
             >
-              {option.photoUrl && (
-                <Box
-                  component="img"
-                  src={option.photoUrl}
-                  alt=""
-                  loading="lazy"
-                  sx={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 1,
-                    objectFit: "cover",
-                    flexShrink: 0,
-                  }}
-                />
-              )}
+              <TaxonThumbnail src={option.photoUrl} size={40} sx={{ flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack
                   direction="row"
@@ -152,21 +134,10 @@ export function TaxaAutocompleteView({
                     {option.scientificName}
                   </Typography>
                   {option.isSynonym && (
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        bgcolor: "action.selected",
-                        px: 0.75,
-                        py: 0.25,
-                        borderRadius: 0.5,
-                        fontSize: "0.65rem",
-                      }}
-                    >
-                      synonym
-                    </Typography>
+                    <Chip label="synonym" size="small" variant="outlined" sx={labelChipSx} />
                   )}
                   {option.conservationStatus && (
-                    <ConservationStatus status={option.conservationStatus} size="sm" />
+                    <ConservationStatus status={option.conservationStatus} size="small" />
                   )}
                 </Stack>
                 {option.isSynonym && option.acceptedName && (
@@ -191,12 +162,10 @@ export function TaxaAutocompleteView({
                 )}
               </Box>
               {taxonUrl && (
-                <IconButton
-                  size="small"
-                  component="a"
+                <ExternalLinkIconButton
                   href={taxonUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  label={option.scientificName}
+                  fontSize={16}
                   // MUI Autocomplete picks the row on mousedown, not click —
                   // stop propagation so the row doesn't select. Also
                   // preventDefault: without it the input loses focus on
@@ -206,13 +175,7 @@ export function TaxaAutocompleteView({
                     e.preventDefault();
                     e.stopPropagation();
                   }}
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                  title="Open taxon in new tab"
-                  aria-label={`Open ${option.scientificName} in new tab`}
-                  sx={{ p: 0.5, flexShrink: 0 }}
-                >
-                  <OpenInNewIcon sx={{ fontSize: 16 }} />
-                </IconButton>
+                />
               )}
             </Box>
           );

@@ -1,33 +1,20 @@
 import { useState, useCallback, type FormEvent } from "react";
-import {
-  Avatar,
-  Box,
-  Typography,
-  Button,
-  Chip,
-  Stack,
-  Divider,
-  CircularProgress,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-} from "@mui/material";
+import { Box, Typography, Button, Stack, Divider } from "@mui/material";
 import CheckIcon from "@mui/icons-material/Check";
 import EditIcon from "@mui/icons-material/Edit";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import type { TaxaResult } from "../../services/types";
 import { useSubmitIdentification } from "../../lib/query/mutations";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
+import { TaxonMatchChip } from "../common/TaxonMatchChip";
+import { KingdomSelect } from "../common/KingdomSelect";
+import { RankSelect } from "../common/RankSelect";
 import { VisualIdCards } from "./VisualIdCards";
 import { useVisualId } from "../../hooks/useVisualId";
 import { TaxonLink } from "../common/TaxonLink";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
-import { KINGDOMS } from "../../lib/kingdoms";
-import { TAXON_RANKS } from "../../lib/taxonRanks";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 
 interface IdentificationPanelProps {
   observation: {
@@ -216,29 +203,7 @@ export function IdentificationPanel({
                 margin="none"
                 bottomContent={
                   taxonName.trim() ? (
-                    matchedTaxon ? (
-                      <Chip
-                        {...(matchedTaxon.photoUrl
-                          ? { avatar: <Avatar src={matchedTaxon.photoUrl} alt="" /> }
-                          : { icon: <CheckCircleOutlinedIcon /> })}
-                        label={["Existing taxon", matchedTaxon.commonName, matchedTaxon.rank]
-                          .filter((p): p is string => Boolean(p))
-                          .join(" · ")}
-                        color="success"
-                        size="small"
-                        variant="outlined"
-                        sx={{ mt: 0.5 }}
-                      />
-                    ) : (
-                      <Chip
-                        icon={<AddCircleOutlinedIcon />}
-                        label="New taxon"
-                        color="info"
-                        size="small"
-                        variant="outlined"
-                        sx={{ mt: 0.5 }}
-                      />
-                    )
+                    <TaxonMatchChip matchedTaxon={matchedTaxon} />
                   ) : (
                     <VisualIdCards
                       suggestions={visualId.suggestions}
@@ -271,11 +236,7 @@ export function IdentificationPanel({
                 onClick={visualId.handleFetch}
                 disabled={isSubmitting || visualId.isLoading}
                 startIcon={
-                  visualId.isLoading ? (
-                    <CircularProgress size={16} color="inherit" />
-                  ) : (
-                    <AutoFixHighIcon fontSize="small" />
-                  )
+                  visualId.isLoading ? <ButtonSpinner /> : <AutoFixHighIcon fontSize="small" />
                 }
                 sx={{ whiteSpace: "nowrap", height: 40 }}
               >
@@ -285,45 +246,16 @@ export function IdentificationPanel({
           </Stack>
 
           {!!taxonName.trim() && !matchedTaxon && (
-            <FormControl fullWidth margin="normal" required size="small">
-              <InputLabel id="suggest-kingdom-label">Kingdom</InputLabel>
-              <Select
-                labelId="suggest-kingdom-label"
-                value={kingdom}
-                label="Kingdom"
-                onChange={(e) => setKingdom(e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {KINGDOMS.map((k) => (
-                  <MenuItem key={k.value} value={k.value}>
-                    {k.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <KingdomSelect
+              idPrefix="suggest-kingdom"
+              value={kingdom}
+              onChange={setKingdom}
+              size="small"
+            />
           )}
 
           {!!taxonName.trim() && !matchedTaxon && (
-            <FormControl fullWidth margin="normal" size="small">
-              <InputLabel id="suggest-rank-label">Rank (optional)</InputLabel>
-              <Select
-                labelId="suggest-rank-label"
-                value={rank}
-                label="Rank (optional)"
-                onChange={(e) => setRank(e.target.value)}
-              >
-                <MenuItem value="">
-                  <em>None</em>
-                </MenuItem>
-                {TAXON_RANKS.map((r) => (
-                  <MenuItem key={r} value={r}>
-                    {r}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <RankSelect idPrefix="suggest-rank" value={rank} onChange={setRank} size="small" />
           )}
 
           <Stack

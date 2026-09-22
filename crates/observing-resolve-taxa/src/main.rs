@@ -30,9 +30,9 @@ mod taxon_uri;
 use std::time::Duration;
 
 use clap::Parser;
+use observing_bootstrap::db::PoolConfig;
 use observing_db::taxonomy_resolver::Resolver;
 use observing_taxonomy_gbif::GbifUpstream;
-use sqlx::postgres::PgPoolOptions;
 use sqlx::{PgPool, Row};
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
@@ -84,12 +84,7 @@ async fn main() -> std::process::ExitCode {
         }
     };
 
-    let pool = match PgPoolOptions::new()
-        .max_connections(2)
-        .acquire_timeout(Duration::from_secs(10))
-        .connect(&database_url)
-        .await
-    {
+    let pool = match PoolConfig::worker().connect(&database_url).await {
         Ok(p) => p,
         Err(e) => {
             error!(error = %e, "Failed to connect to database");

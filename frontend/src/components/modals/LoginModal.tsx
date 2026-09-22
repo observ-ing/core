@@ -10,14 +10,16 @@ import {
   Box,
   Link,
   Alert,
-  CircularProgress,
 } from "@mui/material";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeLoginModal } from "../../store/uiSlice";
 import { initiateLogin } from "../../services/api";
+import { ButtonSpinner } from "../common/ButtonSpinner";
+import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 
 export function LoginModal() {
   const dispatch = useAppDispatch();
+  const fullScreen = useMobileFullScreen();
   const isOpen = useAppSelector((state) => state.ui.loginModalOpen);
   const [handle, setHandle] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +49,7 @@ export function LoginModal() {
   };
 
   return (
-    <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth>
+    <Dialog open={isOpen} onClose={handleClose} maxWidth="xs" fullWidth fullScreen={fullScreen}>
       <form onSubmit={handleSubmit}>
         <DialogTitle>Log in</DialogTitle>
         <DialogContent>
@@ -102,7 +104,7 @@ export function LoginModal() {
             variant="contained"
             color="primary"
             disabled={!handle.trim() || isLoading}
-            startIcon={isLoading ? <CircularProgress size={16} color="inherit" /> : null}
+            startIcon={isLoading ? <ButtonSpinner /> : null}
           >
             {isLoading ? "Connecting..." : "Continue"}
           </Button>

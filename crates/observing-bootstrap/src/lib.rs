@@ -1,7 +1,8 @@
 //! Shared bootstrap helpers for observ.ing binaries.
 //!
-//! Two independent, feature-gated halves:
+//! Independent, feature-gated pieces:
 //! - [`serve`] (feature `http`) — bind + serve an axum app, for HTTP services.
+//! - [`db`] (feature `db`) — Postgres pool construction sized per workload.
 //! - [`job`] (feature `job`) — scaffolding for one-shot batch jobs (data
 //!   backfills, replays).
 //!
@@ -13,6 +14,9 @@
 mod http;
 #[cfg(feature = "http")]
 pub use http::serve;
+
+#[cfg(feature = "db")]
+pub mod db;
 
 #[cfg(feature = "job")]
 pub mod job;

@@ -1,7 +1,6 @@
-import { memo } from "react";
+import { memo, type KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Box,
   Paper,
   Table,
   TableBody,
@@ -16,6 +15,8 @@ import type { QualityIssue } from "../../bindings/QualityIssue";
 import { getImageUrl } from "../../services/api";
 import { getObservationUrl, getDisplayName } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { TaxonThumbnail } from "../common/TaxonThumbnail";
+import { denseTableCellSx } from "../common/layoutSx";
 
 interface ExploreTableProps {
   observations: Occurrence[];
@@ -110,26 +111,34 @@ const ExploreTableRow = memo(function ExploreTableRow({
       ? [obs.organismQuantity, obs.organismQuantityType].filter(Boolean).join(" ")
       : "—";
 
+  const url = getObservationUrl(obs.uri);
+  const open = () => navigate(url);
+  const handleKeyDown = (e: KeyboardEvent<HTMLTableRowElement>) => {
+    // Rows are <tr>s, not native links/buttons, so Enter/Space activation
+    // has to be wired up by hand to match the `role="link"` below.
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open();
+    }
+  };
+
   return (
     <TableRow
       hover
-      onClick={() => navigate(getObservationUrl(obs.uri))}
+      onClick={open}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+      role="link"
+      aria-label={`View observation of ${sciName}`}
       sx={{ cursor: "pointer", "& td": { whiteSpace: "nowrap" } }}
     >
       <TableCell sx={{ p: 0.5 }}>
-        <Box
-          component="img"
+        <TaxonThumbnail
           src={obs.images[0] ? getImageUrl(obs.images[0].url) : undefined}
-          alt=""
-          loading="lazy"
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 0.5,
-            objectFit: "cover",
-            display: "block",
-            bgcolor: "action.hover",
-          }}
+          size={36}
+          borderRadius={0.5}
+          emptyBgcolor="action.hover"
+          sx={{ display: "block" }}
         />
       </TableCell>
       <TableCell sx={{ fontStyle: italic ? "italic" : "normal", fontWeight: 500 }}>
@@ -198,7 +207,7 @@ export const ExploreTable = memo(function ExploreTable({ observations }: Explore
         stickyHeader
         size="small"
         sx={{
-          "& th, & td": { fontSize: "0.8rem", py: 0.75, px: 1 },
+          "& th, & td": { ...denseTableCellSx, py: 0.75, px: 1 },
         }}
       >
         <TableHead>

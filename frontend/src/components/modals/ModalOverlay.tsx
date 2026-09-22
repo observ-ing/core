@@ -1,21 +1,21 @@
 import type { ReactNode } from "react";
-import { Dialog, DialogContent, IconButton, useMediaQuery, useTheme } from "@mui/material";
+import { Dialog, DialogContent, IconButton } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
+import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 
 interface ModalOverlayProps {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
   children: ReactNode;
   maxWidth?: "xs" | "sm" | "md" | "lg" | "xl" | false;
 }
 
-export function ModalOverlay({ isOpen, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down("sm"));
+export function ModalOverlay({ open, onClose, children, maxWidth = "sm" }: ModalOverlayProps) {
+  const fullScreen = useMobileFullScreen();
 
   return (
     <Dialog
-      open={isOpen}
+      open={open}
       onClose={onClose}
       maxWidth={maxWidth}
       fullWidth

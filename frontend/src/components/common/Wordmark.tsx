@@ -2,7 +2,7 @@ import { Box, Typography, type SxProps, type Theme } from "@mui/material";
 
 interface WordmarkProps {
   /** Hide the wordmark text below this breakpoint (icon-only). */
-  sx?: SxProps<Theme>;
+  sx?: SxProps<Theme> | undefined;
 }
 
 // The "Observ.ing" wordmark. Set in DM Sans, weight 600. The dot is the brand
@@ -13,7 +13,7 @@ export function Wordmark({ sx }: WordmarkProps) {
     <Typography
       component="span"
       sx={{
-        fontFamily: '"DM Sans", sans-serif',
+        // fontFamily inherits the theme's brand sans stack (DM Sans + fallbacks).
         fontWeight: 600,
         fontSize: "1.125rem",
         lineHeight: 1,

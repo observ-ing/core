@@ -9,6 +9,27 @@ export const detailHeaderSx = {
   alignItems: "center",
 } as const;
 
+/** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
+export const coverImageSx = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+} as const;
+
+/**
+ * Frosted "glass" backdrop shared by sticky/translucent surfaces (the app's
+ * `TopBar` and detail-page `stickyHeaderSx`): a blurred pane with a
+ * bottom divider. Callers add their own `backgroundColor`/`bgcolor` (each
+ * surface derives its translucency from a different palette source) and
+ * positioning/`zIndex`.
+ */
+export const glassBlurSx = {
+  backdropFilter: "blur(8px)",
+  borderBottom: 1,
+  borderColor: "divider",
+} as const;
+
 /**
  * Sticky, blurred "glass" header for detail pages: pins to the top of a
  * scrolling pane with a translucent backdrop derived from the page background,
@@ -20,10 +41,51 @@ export const stickyHeaderSx: SxProps<Theme> = {
   zIndex: 3,
   px: { xs: 2, sm: 4 },
   py: 1.25,
-  borderBottom: 1,
-  borderColor: "divider",
+  ...glassBlurSx,
   display: "flex",
   alignItems: "center",
   backgroundColor: (theme) => alpha(theme.palette.background.default, 0.86),
-  backdropFilter: "blur(8px)",
 };
+
+/**
+ * Left-accent row shell shared by feed-style lists (identification history,
+ * comments): a colored border-left with rounded outer corners. Callers add
+ * their own `borderColor`, `transition`, and hover behavior on top.
+ */
+export const accentListItemSx = {
+  pl: 2,
+  borderLeft: 3,
+  borderRadius: "0 4px 4px 0",
+  py: 1,
+} as const;
+
+/**
+ * Full-bleed absolute overlay for a `Skeleton` layered over an image's
+ * `position: relative` container, shared by `ImageWithSkeleton` and its
+ * static loading-state counterpart so the two can't drift apart.
+ */
+export const imageSkeletonOverlaySx = {
+  position: "absolute",
+  inset: 0,
+  width: "100%",
+  height: "100%",
+} as const;
+
+/** Primary CTA button in a `FullPageStatus` action row (NotFound, ErrorBoundary). */
+export const fullPageStatusPrimaryActionSx = {
+  px: 4,
+  py: 1,
+  fontWeight: 600,
+} as const;
+
+/** Secondary CTA button in a `FullPageStatus` action row (NotFound, ErrorBoundary). */
+export const fullPageStatusSecondaryActionSx = {
+  px: 3,
+} as const;
+
+/**
+ * Dense text size for data-table/code cells (below `body2`'s default 0.875rem),
+ * shared by `LexiconView`'s schema table and `ExploreTable` so the two don't
+ * each hand-roll their own tuning of the same shrink.
+ */
+export const denseTableCellSx = { fontSize: "0.8rem" } as const;

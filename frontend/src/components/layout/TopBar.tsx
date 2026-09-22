@@ -8,7 +8,6 @@ import {
   Button,
   IconButton,
   Tooltip,
-  Avatar,
   Typography,
   Skeleton,
   useTheme,
@@ -22,11 +21,12 @@ import {
 } from "@mui/material";
 import { Person, Login, Logout, MenuBook, Settings, Menu as MenuIcon } from "@mui/icons-material";
 import { getDisplayName } from "../../lib/utils";
-import { Logo } from "../common/Logo";
-import { Wordmark } from "../common/Wordmark";
+import { BrandLockup } from "../common/BrandLockup";
+import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { PendingIndicator } from "./PendingIndicator";
+import { glassBlurSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -65,10 +65,8 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
       elevation={0}
       sx={{
         bgcolor: (theme) => alpha(theme.palette.background.paper, 0.8),
-        backdropFilter: "blur(8px)",
+        ...glassBlurSx,
         color: "text.primary",
-        borderBottom: 1,
-        borderColor: "divider",
         zIndex: theme.zIndex.drawer + 1,
       }}
     >
@@ -87,24 +85,10 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
               </IconButton>
             )}
 
-            {/* Logo */}
-            <Box
-              component={Link}
-              to="/"
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gap: 1.5,
-                textDecoration: "none",
-                mr: 2,
-                "&:hover": { opacity: 0.8 },
-              }}
-            >
-              <Box sx={{ color: "primary.main", display: "inline-flex" }}>
-                <Logo size={32} />
-              </Box>
-              <Wordmark sx={{ display: { xs: "none", sm: "block" } }} />
-            </Box>
+            <BrandLockup
+              sx={{ mr: 2, "&:hover": { opacity: 0.8 } }}
+              wordmarkSx={{ display: { xs: "none", sm: "block" } }}
+            />
 
             {/* Desktop Nav */}
             {!isMobile && (
@@ -169,21 +153,31 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
             ) : user ? (
               <>
                 <IconButton
+                  id="account-menu-button"
                   onClick={handleProfileMenuOpen}
                   sx={{ p: 0.5 }}
                   aria-label="Account menu"
+                  aria-haspopup="true"
+                  aria-controls={anchorEl ? "account-menu" : undefined}
+                  aria-expanded={anchorEl ? "true" : undefined}
                 >
-                  <Avatar
-                    {...(user.avatar ? { src: user.avatar } : {})}
-                    sx={{ width: 40, height: 40, border: 2, borderColor: "divider" }}
+                  <UserAvatar
+                    did={user.did}
+                    handle={user.handle}
+                    displayName={getDisplayName(user, "User")}
+                    src={user.avatar}
+                    size={40}
+                    sx={{ border: 2, borderColor: "divider" }}
                   />
                 </IconButton>
                 <Menu
+                  id="account-menu"
                   anchorEl={anchorEl}
                   open={Boolean(anchorEl)}
                   onClose={handleProfileMenuClose}
                   onClick={handleProfileMenuClose}
                   slotProps={{
+                    list: { "aria-labelledby": "account-menu-button" },
                     paper: {
                       elevation: 4,
                       sx: {

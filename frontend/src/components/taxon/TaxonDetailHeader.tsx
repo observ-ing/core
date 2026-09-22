@@ -19,7 +19,7 @@ interface TaxonDetailHeaderProps {
 export function TaxonDetailHeader({ rank, onBack, onToggleTree }: TaxonDetailHeaderProps) {
   return (
     <Box sx={stickyHeaderSx}>
-      <IconButton onClick={onBack} sx={{ mr: 1 }}>
+      <IconButton onClick={onBack} sx={{ mr: 1 }} aria-label="Back">
         <ArrowBackIcon />
       </IconButton>
       <Typography
@@ -33,7 +33,11 @@ export function TaxonDetailHeader({ rank, onBack, onToggleTree }: TaxonDetailHea
         {rank.charAt(0).toUpperCase() + rank.slice(1)}
       </Typography>
       {onToggleTree && (
-        <IconButton onClick={onToggleTree} sx={{ display: { xs: "inline-flex", md: "none" } }}>
+        <IconButton
+          onClick={onToggleTree}
+          sx={{ display: { xs: "inline-flex", md: "none" } }}
+          aria-label="Classification tree"
+        >
           <AccountTreeIcon />
         </IconButton>
       )}

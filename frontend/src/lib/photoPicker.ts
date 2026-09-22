@@ -3,7 +3,6 @@ import { OriginalPhotoPicker } from "capacitor-original-photo-picker";
 
 interface PickPhotosOptions {
   multiple?: boolean;
-  maxCount?: number;
 }
 
 export async function pickPhotos(options: PickPhotosOptions = {}): Promise<File[]> {

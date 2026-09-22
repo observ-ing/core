@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type KeyboardEvent } from "react";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import {
   Box,
@@ -13,12 +13,12 @@ import {
   TableHead,
   TableRow,
   Collapse,
-  IconButton,
   Link as MuiLink,
 } from "@mui/material";
-import { ExpandMore, ExpandLess } from "@mui/icons-material";
-import { labelChipSx } from "../common/chipSx";
+import { labelChipSx, valueChipSx } from "../common/chipSx";
+import { denseTableCellSx } from "../common/layoutSx";
 import { monoStack } from "../../theme";
+import { ExpandToggleButton } from "../common/ExpandToggleButton";
 
 // Eagerly import all lexicons at build time via the @lexicons alias.
 // This avoids duplicating the schema files — the source of truth remains in /lexicons/.
@@ -102,6 +102,16 @@ function formatType(prop: LexiconProperty): string {
   return t;
 }
 
+function ValueChipList({ values }: { values: string[] }) {
+  return (
+    <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
+      {values.map((v) => (
+        <Chip key={v} label={v} size="small" variant="outlined" sx={valueChipSx} />
+      ))}
+    </Box>
+  );
+}
+
 function PropertyTable({
   properties,
   required,
@@ -131,7 +141,7 @@ function PropertyTable({
                     component="code"
                     sx={{
                       fontFamily: monoStack,
-                      fontSize: "0.8rem",
+                      ...denseTableCellSx,
                       color: prop.description?.includes("[DEPRECATED")
                         ? "text.disabled"
                         : "text.primary",
@@ -154,43 +164,19 @@ function PropertyTable({
                 <Typography
                   variant="body2"
                   component="code"
-                  sx={{ fontFamily: monoStack, fontSize: "0.8rem" }}
+                  sx={{ fontFamily: monoStack, ...denseTableCellSx }}
                 >
                   {formatType(prop)}
                 </Typography>
-                {prop.enum && (
-                  <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {prop.enum.map((v) => (
-                      <Chip
-                        key={v}
-                        label={v}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: "0.6rem" }}
-                      />
-                    ))}
-                  </Box>
-                )}
-                {prop.knownValues && (
-                  <Box sx={{ mt: 0.5, display: "flex", flexWrap: "wrap", gap: 0.5 }}>
-                    {prop.knownValues.map((v) => (
-                      <Chip
-                        key={v}
-                        label={v}
-                        size="small"
-                        variant="outlined"
-                        sx={{ height: 18, fontSize: "0.6rem" }}
-                      />
-                    ))}
-                  </Box>
-                )}
+                {prop.enum && <ValueChipList values={prop.enum} />}
+                {prop.knownValues && <ValueChipList values={prop.knownValues} />}
               </TableCell>
               <TableCell>
                 <Typography
                   variant="body2"
                   sx={{
                     color: "text.secondary",
-                    fontSize: "0.8rem",
+                    ...denseTableCellSx,
                   }}
                 >
                   {prop.description}
@@ -231,15 +217,28 @@ function DefSection({ name, def }: { name: string; def: LexiconDef }) {
   const properties = def.record?.properties ?? def.properties;
   const required = def.record?.required ?? def.required;
 
+  const toggle = () => setOpen((prev) => !prev);
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      toggle();
+    }
+  };
+
   if (!properties) return null;
 
   return (
     <Box sx={{ mt: 2 }}>
       <Box
-        sx={{ display: "flex", alignItems: "center", cursor: "pointer" }}
-        onClick={() => setOpen(!open)}
+        sx={{ display: "flex", alignItems: "center", cursor: "pointer", userSelect: "none" }}
+        onClick={toggle}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-label={`#${name}`}
+        onKeyDown={handleKeyDown}
       >
-        <IconButton size="small">{open ? <ExpandLess /> : <ExpandMore />}</IconButton>
+        <ExpandToggleButton expanded={open} />
         <Typography variant="subtitle2" component="code" sx={{ fontFamily: monoStack }}>
           #{name}
         </Typography>

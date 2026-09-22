@@ -3,8 +3,8 @@ import { suppressMissingImages, type StyleImageMissingMap } from "./mapUtils";
 
 // maplibre-gl is a heavy WebGL module and `suppressMissingImages` only needs
 // the `on`/`hasImage`/`addImage` surface of the map it's handed, so stub the
-// package to keep this a pure unit test (mapUtils default-imports it).
-vi.mock("maplibre-gl", () => ({ default: {} }));
+// package to keep this a pure unit test (mapUtils namespace-imports it).
+vi.mock("maplibre-gl", () => ({}));
 
 describe("suppressMissingImages", () => {
   function makeFakeMap(hasImage = false) {

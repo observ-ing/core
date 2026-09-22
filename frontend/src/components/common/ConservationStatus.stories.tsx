@@ -19,7 +19,7 @@ const meta = {
     },
     size: {
       control: { type: "radio" },
-      options: ["sm", "md"],
+      options: ["small", "medium"],
     },
   },
 } satisfies Meta<typeof ConservationStatus>;
@@ -52,7 +52,7 @@ export const SmallSize: Story = {
   args: {
     status: { category: "VU", source: "IUCN" },
     showLabel: true,
-    size: "sm",
+    size: "small",
   },
 };
 

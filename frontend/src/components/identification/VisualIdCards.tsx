@@ -1,9 +1,10 @@
-import { Box, ButtonBase, IconButton, Stack, Typography } from "@mui/material";
+import { Box, ButtonBase, Stack, Typography } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import PlaceIcon from "@mui/icons-material/Place";
 import type { SpeciesSuggestion } from "../../services/api";
-import { nameToSlug } from "../../lib/taxonSlug";
+import { buildTaxonUrl } from "../../lib/taxonSlug";
+import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
+import { InRangeIndicator } from "../common/InRangeIndicator";
+import { TaxonThumbnail } from "../common/TaxonThumbnail";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -63,31 +64,20 @@ function determineMode(sortedByConfidence: SpeciesSuggestion[]): Mode {
     : "ambiguous";
 }
 
-function buildTaxonUrl(
-  name: string,
-  kingdom: string | undefined,
-  rank?: AncestorRank,
-): string | null {
-  if (rank === "kingdom") return `/taxon/${nameToSlug(name)}`;
-  if (kingdom) return `/taxon/${nameToSlug(kingdom)}/${nameToSlug(name)}`;
-  return null;
-}
+// Shared shape for the suggestion-row ButtonBase in AncestorCard and
+// SpeciesCard — layout stays identical; only sizing/color varies by row.
+const SUGGESTION_ROW_BASE_SX = {
+  width: "100%",
+  textAlign: "left" as const,
+  borderRadius: 1,
+  border: "1px solid",
+  display: "flex",
+  alignItems: "center",
+  gap: 1.25,
+};
 
-function TaxonLinkButton({ url }: { url: string }) {
-  return (
-    <IconButton
-      size="small"
-      component="a"
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-      sx={{ p: 0.5, ml: 0.5, flexShrink: 0 }}
-      title="Open taxon in new tab"
-    >
-      <OpenInNewIcon sx={{ fontSize: 14 }} />
-    </IconButton>
-  );
+function TaxonLinkButton({ url, taxonName }: { url: string; taxonName: string }) {
+  return <ExternalLinkIconButton href={url} label={taxonName} sx={{ ml: 0.5 }} />;
 }
 
 function findCommonAncestor(suggestions: SpeciesSuggestion[]): AncestorMatch | null {
@@ -260,16 +250,10 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
     <ButtonBase
       onClick={onSelect}
       sx={{
-        width: "100%",
-        textAlign: "left",
-        borderRadius: 1,
-        border: "1px solid",
+        ...SUGGESTION_ROW_BASE_SX,
         borderColor: "primary.main",
         bgcolor: "action.hover",
         p: 1.25,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
         minHeight: 64,
         "&:hover": { bgcolor: "action.selected" },
       }}
@@ -283,7 +267,7 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
           {RANK_LABEL[ancestor.rank]} · {Math.round(ancestor.confidence * 100)}% match
         </Typography>
       </Box>
-      {url && <TaxonLinkButton url={url} />}
+      {url && <TaxonLinkButton url={url} taxonName={ancestor.name} />}
     </ButtonBase>
   );
 }
@@ -335,45 +319,20 @@ function SpeciesCard({
     <ButtonBase
       onClick={onSelect}
       sx={{
-        width: "100%",
-        textAlign: "left",
-        borderRadius: 1,
-        border: "1px solid",
+        ...SUGGESTION_ROW_BASE_SX,
         borderColor: primary ? "primary.main" : "divider",
         bgcolor: primary ? "action.hover" : "transparent",
         p: primary ? 1.25 : 1,
-        display: "flex",
-        alignItems: "center",
-        gap: 1.25,
         minHeight: primary ? 56 : 48,
         "&:hover": { bgcolor: "action.hover" },
       }}
     >
-      {suggestion.taxonMatch?.photoUrl ? (
-        <Box
-          component="img"
-          src={suggestion.taxonMatch.photoUrl}
-          alt=""
-          loading="lazy"
-          sx={{
-            width: thumbnailSize,
-            height: thumbnailSize,
-            borderRadius: 1,
-            objectFit: "cover",
-            flexShrink: 0,
-          }}
-        />
-      ) : (
-        <Box
-          sx={{
-            width: thumbnailSize,
-            height: thumbnailSize,
-            borderRadius: 1,
-            bgcolor: "action.disabledBackground",
-            flexShrink: 0,
-          }}
-        />
-      )}
+      <TaxonThumbnail
+        src={suggestion.taxonMatch?.photoUrl}
+        size={thumbnailSize}
+        emptyBgcolor="action.disabledBackground"
+        sx={{ flexShrink: 0 }}
+      />
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={0.75} sx={{ alignItems: "baseline", flexWrap: "wrap" }}>
           <Typography sx={{ fontStyle: "italic", fontWeight: primary ? 600 : 500 }}>
@@ -384,22 +343,13 @@ function SpeciesCard({
               {suggestion.commonName}
             </Typography>
           )}
-          {suggestion.inRange === true && (
-            <Box
-              component="span"
-              sx={{ display: "inline-flex", alignItems: "center", color: "success.main" }}
-              title="Found in your area"
-              aria-label="Found in your area"
-            >
-              <PlaceIcon sx={{ fontSize: 14 }} />
-            </Box>
-          )}
+          {suggestion.inRange === true && <InRangeIndicator />}
         </Stack>
       </Box>
       <Typography variant="caption" sx={{ color: "text.secondary", flexShrink: 0 }}>
         {Math.round(suggestion.confidence * 100)}%
       </Typography>
-      {url && <TaxonLinkButton url={url} />}
+      {url && <TaxonLinkButton url={url} taxonName={suggestion.scientificName} />}
     </ButtonBase>
   );
 }

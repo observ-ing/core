@@ -60,44 +60,64 @@ pub struct Media<S: BosStr = DefaultStr> {
     pub aspect_ratio: Option<media::AspectRatio<S>>,
     ///The image blob reference.
     pub image: BlobRef<S>,
-    ///SPDX license identifier for this media (maps to Dublin Core dcterms:license).
+    ///URI of the license under which this media is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub license: Option<MediaLicense<S>>,
     #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
     pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
 }
 
-/// SPDX license identifier for this media (maps to Dublin Core dcterms:license).
+/// URI of the license under which this media is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum MediaLicense<S: BosStr = DefaultStr> {
-    Cc010,
-    CcBy40,
-    CcByNc40,
-    CcBySa40,
-    CcByNcSa40,
+    HttpsCreativecommonsOrgPublicdomainZero10,
+    HttpsCreativecommonsOrgLicensesBy40,
+    HttpsCreativecommonsOrgLicensesByNc40,
+    HttpsCreativecommonsOrgLicensesBySa40,
+    HttpsCreativecommonsOrgLicensesByNcSa40,
     Other(S),
 }
 
 impl<S: BosStr> MediaLicense<S> {
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Cc010 => "CC0-1.0",
-            Self::CcBy40 => "CC-BY-4.0",
-            Self::CcByNc40 => "CC-BY-NC-4.0",
-            Self::CcBySa40 => "CC-BY-SA-4.0",
-            Self::CcByNcSa40 => "CC-BY-NC-SA-4.0",
+            Self::HttpsCreativecommonsOrgPublicdomainZero10 => {
+                "https://creativecommons.org/publicdomain/zero/1.0/"
+            }
+            Self::HttpsCreativecommonsOrgLicensesBy40 => {
+                "https://creativecommons.org/licenses/by/4.0/"
+            }
+            Self::HttpsCreativecommonsOrgLicensesByNc40 => {
+                "https://creativecommons.org/licenses/by-nc/4.0/"
+            }
+            Self::HttpsCreativecommonsOrgLicensesBySa40 => {
+                "https://creativecommons.org/licenses/by-sa/4.0/"
+            }
+            Self::HttpsCreativecommonsOrgLicensesByNcSa40 => {
+                "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+            }
             Self::Other(s) => s.as_ref(),
         }
     }
     /// Construct from a string-like value, matching known values.
     pub fn from_value(s: S) -> Self {
         match s.as_ref() {
-            "CC0-1.0" => Self::Cc010,
-            "CC-BY-4.0" => Self::CcBy40,
-            "CC-BY-NC-4.0" => Self::CcByNc40,
-            "CC-BY-SA-4.0" => Self::CcBySa40,
-            "CC-BY-NC-SA-4.0" => Self::CcByNcSa40,
+            "https://creativecommons.org/publicdomain/zero/1.0/" => {
+                Self::HttpsCreativecommonsOrgPublicdomainZero10
+            }
+            "https://creativecommons.org/licenses/by/4.0/" => {
+                Self::HttpsCreativecommonsOrgLicensesBy40
+            }
+            "https://creativecommons.org/licenses/by-nc/4.0/" => {
+                Self::HttpsCreativecommonsOrgLicensesByNc40
+            }
+            "https://creativecommons.org/licenses/by-sa/4.0/" => {
+                Self::HttpsCreativecommonsOrgLicensesBySa40
+            }
+            "https://creativecommons.org/licenses/by-nc-sa/4.0/" => {
+                Self::HttpsCreativecommonsOrgLicensesByNcSa40
+            }
             _ => Self::Other(s),
         }
     }
@@ -148,11 +168,21 @@ where
     type Output = MediaLicense<S::Output>;
     fn into_static(self) -> Self::Output {
         match self {
-            MediaLicense::Cc010 => MediaLicense::Cc010,
-            MediaLicense::CcBy40 => MediaLicense::CcBy40,
-            MediaLicense::CcByNc40 => MediaLicense::CcByNc40,
-            MediaLicense::CcBySa40 => MediaLicense::CcBySa40,
-            MediaLicense::CcByNcSa40 => MediaLicense::CcByNcSa40,
+            MediaLicense::HttpsCreativecommonsOrgPublicdomainZero10 => {
+                MediaLicense::HttpsCreativecommonsOrgPublicdomainZero10
+            }
+            MediaLicense::HttpsCreativecommonsOrgLicensesBy40 => {
+                MediaLicense::HttpsCreativecommonsOrgLicensesBy40
+            }
+            MediaLicense::HttpsCreativecommonsOrgLicensesByNc40 => {
+                MediaLicense::HttpsCreativecommonsOrgLicensesByNc40
+            }
+            MediaLicense::HttpsCreativecommonsOrgLicensesBySa40 => {
+                MediaLicense::HttpsCreativecommonsOrgLicensesBySa40
+            }
+            MediaLicense::HttpsCreativecommonsOrgLicensesByNcSa40 => {
+                MediaLicense::HttpsCreativecommonsOrgLicensesByNcSa40
+            }
             MediaLicense::Other(v) => MediaLicense::Other(v.into_static()),
         }
     }
@@ -301,10 +331,10 @@ impl<S: BosStr> LexiconSchema for Media<S> {
         }
         if let Some(ref value) = self.license {
             #[allow(unused_comparisons)]
-            if <str>::len(value.as_ref()) > 32usize {
+            if <str>::len(value.as_ref()) > 128usize {
                 return Err(ConstraintError::MaxLength {
                     path: ValidationPath::from_field("license"),
-                    max: 32usize,
+                    max: 128usize,
                     actual: <str>::len(value.as_ref()),
                 });
             }
@@ -546,10 +576,10 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_media() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "SPDX license identifier for this media (maps to Dublin Core dcterms:license).",
+                                            "URI of the license under which this media is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.",
                                         ),
                                     ),
-                                    max_length: Some(32usize),
+                                    max_length: Some(128usize),
                                     ..Default::default()
                                 }),
                             );

@@ -5,29 +5,25 @@
 // `uploadModalOpen` flag.
 import { lazy, Suspense, useState, useEffect, type FormEvent, type ChangeEvent } from "react";
 import {
-  Avatar,
   Box,
   ButtonBase,
   Typography,
   TextField,
   Button,
-  Chip,
   Stack,
   IconButton,
-  CircularProgress,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
   Stepper,
   Step,
-  StepLabel,
+  StepButton,
   StepContent,
+  useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import CheckCircleOutlinedIcon from "@mui/icons-material/CheckCircleOutlined";
-import AddCircleOutlinedIcon from "@mui/icons-material/AddCircleOutlined";
 import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice";
@@ -39,15 +35,21 @@ import { useSubmitObservation, useUpdateObservation } from "../../lib/query/muta
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
+import { coverImageSx } from "../common/layoutSx";
+import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
+import { ButtonSpinner } from "../common/ButtonSpinner";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
+import { TaxonMatchChip } from "../common/TaxonMatchChip";
+import { KingdomSelect } from "../common/KingdomSelect";
+import { RankSelect } from "../common/RankSelect";
+import { LicenseSelect } from "../common/LicenseSelect";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
-import { KINGDOMS } from "../../lib/kingdoms";
-import { TAXON_RANKS } from "../../lib/taxonRanks";
 import { pickPhotos } from "../../lib/photoPicker";
-import { LICENSE_OPTIONS, DEFAULT_LICENSE } from "../../lib/licenses";
+import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
+import { DEFAULT_LICENSE } from "../../lib/licenses";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -71,6 +73,7 @@ interface ImageThumbnailProps {
 }
 
 function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) {
+  const theme = useTheme();
   return (
     <Box
       sx={{
@@ -88,12 +91,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
         aria-label="Enlarge photo"
         sx={{ display: "block", width: "100%", height: "100%", cursor: "zoom-in" }}
       >
-        <Box
-          component="img"
-          src={src}
-          alt={alt}
-          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+        <Box component="img" src={src} alt={alt} sx={coverImageSx} />
       </ButtonBase>
       <IconButton
         size="small"
@@ -103,7 +101,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
           position: "absolute",
           top: 2,
           right: 2,
-          bgcolor: "rgba(0, 0, 0, 0.7)",
+          bgcolor: theme.palette.overlay["modalChip"],
           color: "common.white",
           width: 20,
           height: 20,
@@ -166,10 +164,6 @@ export function UploadModal() {
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
-
-  const MAX_IMAGES = 10;
-  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
-  const VALID_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
   const hasLocation = !!lat && !!lng;
 
@@ -273,42 +267,41 @@ export function UploadModal() {
   };
 
   const addFiles = (files: File[]) => {
-    for (const file of files) {
-      if (!VALID_TYPES.includes(file.type)) {
-        toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
-        continue;
-      }
+    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, images.length);
 
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`File too large: ${file.name}. Max size is 10MB.`);
-        continue;
-      }
+    for (const file of invalidType) {
+      toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
+    }
+    for (const file of tooLarge) {
+      toast.error(`File too large: ${file.name}. Max size is 10MB.`);
+    }
+    if (exceededCap) {
+      toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
+    }
+    if (accepted.length === 0) return;
 
-      if (images.length >= MAX_IMAGES) {
-        toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
-        break;
-      }
+    const isFirstPhoto = images.length === 0;
+    const additions = accepted.map((file) => ({ file, preview: URL.createObjectURL(file) }));
+    setImages((prev) => [...prev, ...additions]);
+    setIsDirty(true);
 
-      const preview = URL.createObjectURL(file);
-      setImages((prev) => [...prev, { file, preview }]);
-      setIsDirty(true);
-
-      if (images.length === 0) {
-        extractExifData(file);
-        if (!species && !isEditMode) {
-          setVisualIdImageUrl(preview);
-        }
+    // Only the observation's very first photo seeds the date/location and the
+    // visual ID; the rest of the batch is just attached.
+    const first = additions[0];
+    if (isFirstPhoto && first) {
+      extractExifData(first.file);
+      if (!species && !isEditMode) {
+        setVisualIdImageUrl(first.preview);
       }
     }
   };
 
   const handlePickImages = async () => {
-    const remaining = MAX_IMAGES - images.length;
-    if (remaining <= 0) {
+    if (images.length >= MAX_IMAGES) {
       toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
       return;
     }
-    const files = await pickPhotos({ multiple: true, maxCount: remaining });
+    const files = await pickPhotos({ multiple: true });
     if (files.length > 0) addFiles(files);
   };
 
@@ -527,7 +520,7 @@ export function UploadModal() {
 
   return (
     <>
-      <ModalOverlay isOpen={isOpen} onClose={handleRequestClose}>
+      <ModalOverlay open={isOpen} onClose={handleRequestClose}>
         <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
           {isEditMode ? "Edit Observation" : "New Observation"}
         </Typography>
@@ -543,13 +536,12 @@ export function UploadModal() {
           <Stepper activeStep={activeStep} orientation="vertical" nonLinear>
             {/* Step 1 — Photos (optional) */}
             <Step completed={photoCount > 0}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_PHOTOS]}</Typography>}
                 onClick={() => setActiveStep(STEP_PHOTOS)}
-                sx={{ cursor: "pointer" }}
               >
                 Photos
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 {photoCount > 0 && (
                   <Stack direction="row" spacing={1} sx={{ mb: 1, flexWrap: "wrap", gap: 1 }}>
@@ -605,27 +597,24 @@ export function UploadModal() {
 
             {/* Step 2 — Location (required) */}
             <Step completed={hasLocation}>
-              <StepLabel
-                error={activeStep > STEP_LOCATION && !hasLocation}
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_LOCATION]}</Typography>}
                 onClick={() => setActiveStep(STEP_LOCATION)}
-                sx={{ cursor: "pointer" }}
+                sx={
+                  activeStep > STEP_LOCATION && !hasLocation
+                    ? {
+                        "& .MuiStepLabel-label": { color: "error.main" },
+                        "& .MuiStepIcon-root": { color: "error.main" },
+                      }
+                    : undefined
+                }
               >
                 Location
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 <Suspense
                   fallback={
-                    <Box
-                      sx={{
-                        height: 260,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                      }}
-                    >
-                      <CircularProgress size={24} />
-                    </Box>
+                    <CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />
                   }
                 >
                   <LocationPicker
@@ -645,13 +634,12 @@ export function UploadModal() {
 
             {/* Step 3 — Identify (optional) */}
             <Step completed={!!species.trim()}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_IDENTIFY]}</Typography>}
                 onClick={() => setActiveStep(STEP_IDENTIFY)}
-                sx={{ cursor: "pointer" }}
               >
                 Identify
-              </StepLabel>
+              </StepButton>
               <StepContent>
                 <TaxaAutocomplete
                   value={species}
@@ -677,29 +665,7 @@ export function UploadModal() {
                   placeholder="e.g. Eschscholzia californica - leave blank if unknown"
                   bottomContent={
                     species.trim() ? (
-                      matchedTaxon ? (
-                        <Chip
-                          {...(matchedTaxon.photoUrl
-                            ? { avatar: <Avatar src={matchedTaxon.photoUrl} alt="" /> }
-                            : { icon: <CheckCircleOutlinedIcon /> })}
-                          label={["Existing taxon", matchedTaxon.commonName, matchedTaxon.rank]
-                            .filter((p): p is string => Boolean(p))
-                            .join(" · ")}
-                          color="success"
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 0.5 }}
-                        />
-                      ) : (
-                        <Chip
-                          icon={<AddCircleOutlinedIcon />}
-                          label="New taxon"
-                          color="info"
-                          size="small"
-                          variant="outlined"
-                          sx={{ mt: 0.5 }}
-                        />
-                      )
+                      <TaxonMatchChip matchedTaxon={matchedTaxon} />
                     ) : visualIdImageUrl ? (
                       <VisualId
                         imageUrl={visualIdImageUrl}
@@ -730,51 +696,25 @@ export function UploadModal() {
                 />
 
                 {!!species.trim() && !matchedTaxon && (
-                  <FormControl fullWidth margin="normal" required>
-                    <InputLabel id="kingdom-label">Kingdom</InputLabel>
-                    <Select
-                      labelId="kingdom-label"
-                      value={kingdom}
-                      label="Kingdom"
-                      onChange={(e) => {
-                        setKingdom(e.target.value);
-                        setIsDirty(true);
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {KINGDOMS.map((k) => (
-                        <MenuItem key={k.value} value={k.value}>
-                          {k.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <KingdomSelect
+                    idPrefix="kingdom"
+                    value={kingdom}
+                    onChange={(value) => {
+                      setKingdom(value);
+                      setIsDirty(true);
+                    }}
+                  />
                 )}
 
                 {!!species.trim() && !matchedTaxon && (
-                  <FormControl fullWidth margin="normal">
-                    <InputLabel id="rank-label">Rank (optional)</InputLabel>
-                    <Select
-                      labelId="rank-label"
-                      value={rank}
-                      label="Rank (optional)"
-                      onChange={(e) => {
-                        setRank(e.target.value);
-                        setIsDirty(true);
-                      }}
-                    >
-                      <MenuItem value="">
-                        <em>None</em>
-                      </MenuItem>
-                      {TAXON_RANKS.map((r) => (
-                        <MenuItem key={r} value={r}>
-                          {r}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                  <RankSelect
+                    idPrefix="rank"
+                    value={rank}
+                    onChange={(value) => {
+                      setRank(value);
+                      setIsDirty(true);
+                    }}
+                  />
                 )}
 
                 <StepNav step={STEP_IDENTIFY} />
@@ -783,32 +723,20 @@ export function UploadModal() {
 
             {/* Step 4 — Details + submit */}
             <Step completed={false}>
-              <StepLabel
+              <StepButton
                 optional={<Typography variant="caption">{stepSummaries[STEP_DETAILS]}</Typography>}
                 onClick={() => setActiveStep(STEP_DETAILS)}
-                sx={{ cursor: "pointer" }}
               >
                 Date &amp; details
-              </StepLabel>
+              </StepButton>
               <StepContent>
-                <FormControl fullWidth margin="normal">
-                  <InputLabel id="license-label">License</InputLabel>
-                  <Select
-                    labelId="license-label"
-                    value={license}
-                    label="License"
-                    onChange={(e) => {
-                      setLicense(e.target.value);
-                      setIsDirty(true);
-                    }}
-                  >
-                    {LICENSE_OPTIONS.map((opt) => (
-                      <MenuItem key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
+                <LicenseSelect
+                  value={license}
+                  onChange={(value) => {
+                    setLicense(value);
+                    setIsDirty(true);
+                  }}
+                />
 
                 <TextField
                   fullWidth
@@ -888,9 +816,7 @@ export function UploadModal() {
                     variant="contained"
                     color="primary"
                     disabled={isSubmitting}
-                    startIcon={
-                      isSubmitting ? <CircularProgress size={16} color="inherit" /> : undefined
-                    }
+                    startIcon={isSubmitting ? <ButtonSpinner /> : undefined}
                   >
                     {isSubmitting
                       ? isEditMode

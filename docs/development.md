@@ -6,7 +6,9 @@
 - Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
 - PostgreSQL (14+) with the PostGIS extension — production runs 16, but any modern version works locally
 - [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
-- ONNX Runtime, for the `species-id` service:
+- ONNX Runtime 1.27+, for the `species-id` service (older builds make it panic
+  on startup with `BadVersion`; the required minor version is asserted in
+  `crates/observing-species-id/src/model.rs`):
   - macOS: `brew install onnxruntime`
   - Linux: install via your distro (`libonnxruntime` / `onnxruntime-dev`)
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
@@ -23,7 +25,7 @@ the project's `Brewfile`. asdf/mise users get Node and Go from
 ```bash
 cp .env.example .env       # tweak DATABASE_URL / DB_PASSWORD to match your Postgres
 npm run setup              # bootstraps everything below in one shot
-# ensure Postgres is running (see Database Setup below)
+npm run db:up              # start Postgres + PostGIS (or adopt a running one)
 process-compose up -D      # runs migrations, then starts services
 ```
 
@@ -35,8 +37,9 @@ that's already done. It runs:
 3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
 4. `./scripts/download-models.sh` — BioCLIP models, if not present
 
-Postgres lifecycle is left to you (it's stateful and often shared
-with other projects). Migrations are run automatically by
+Postgres stays a separate step (it's stateful and often shared with
+other projects), but `npm run db:up` handles it — see
+[Database Setup](#database-setup). Migrations are run automatically by
 `process-compose up` as the first process — see
 [Running services](#running-services).
 
@@ -62,7 +65,37 @@ Run PostgreSQL with PostGIS locally. All app services connect over
 production Cloud SQL is a separate concern handled by CI (see
 `docs/deployment.md`).
 
-Docker is the path of least resistance:
+### Scripted (recommended)
+
+```bash
+npm run db:up
+```
+
+Idempotent, and safe whatever your setup already looks like. It:
+
+1. Reads `DATABASE_URL` from `.env` for the user, password, database,
+   and port — so it can't drift from what the services connect to.
+2. Exits early if something already answers on that port, so an existing
+   native or containerized Postgres is adopted, never clobbered.
+3. Starts a `postgis` container otherwise, choosing a native image for
+   your architecture (see the Apple Silicon note below).
+4. Blocks until Postgres actually accepts connections — `docker run -d`
+   returns well before that, and starting `process-compose` too early
+   makes the `migrate` process fail.
+
+Data lives in a named Docker volume (`observing-pgdata`), so the
+container can be recreated without losing the database.
+
+```bash
+npm run db:up -- --stop       # stop the container, keep the data
+npm run db:up -- --destroy    # remove the container AND wipe the volume
+```
+
+It does not create the PostGIS extension: the first migration already
+runs `CREATE EXTENSION IF NOT EXISTS postgis`, and `process-compose`
+applies migrations before anything reads the database.
+
+### By hand
 
 ```bash
 # One-time: create the container
@@ -70,29 +103,32 @@ docker run --name observing-postgres \
   -e POSTGRES_PASSWORD=mysecretpassword \
   -e POSTGRES_DB=observing \
   -p 5432:5432 \
-  -d postgis/postgis
+  -v observing-pgdata:/var/lib/postgresql/data \
+  -d postgis/postgis:16-3.4
 
 # After reboot / on subsequent sessions
 docker start observing-postgres
 ```
 
+Pinned to `16-3.4` to match `.github/workflows/ci.yml`. Don't run this
+untagged (`:latest`): Postgres 18+ images fatally refuse to start against
+the `/var/lib/postgresql/data` mount above (18+ expects a single mount at
+`/var/lib/postgresql` instead, see
+[docker-library/postgres#1259](https://github.com/docker-library/postgres/pull/1259)),
+and both `postgis/postgis:latest` and `imresamu/postgis:latest` now point
+at Postgres 18.
+
 **Apple Silicon (arm64):** the official `postgis/postgis` image is amd64-only
 (no arm64 manifest), so it runs under slow QEMU emulation. Either pass
 `--platform linux/amd64` explicitly to silence the warning and force emulation,
 or use a native multi-arch image like `imresamu/postgis` (drop-in replacement,
-same env vars) for better performance:
-
-```bash
-docker run --name observing-postgres \
-  -e POSTGRES_PASSWORD=mysecretpassword \
-  -e POSTGRES_DB=observing \
-  -p 5432:5432 \
-  -d imresamu/postgis        # native arm64 + amd64; or add --platform linux/amd64 to postgis/postgis
-```
+same env vars) for better performance. `npm run db:up` picks this automatically
+on arm64; override it for either path with `POSTGIS_IMAGE=…`.
 
 Native installs (Postgres.app, Homebrew `postgresql@N` + `postgis`,
 etc.) work too — anything that exposes PostgreSQL with PostGIS on
-`localhost:5432` is fine.
+`localhost:5432` is fine. `npm run db:up` detects these and leaves them
+alone.
 
 ## Configuration
 
@@ -251,7 +287,8 @@ Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
 #### Running several checkouts at once (randomized ports)
 
 The four services default to fixed ports (`appview` 3000, `species-id`
-3005, `frontend`/Vite 5173, `tap-ingester` 8080), so two checkouts that
+3005, `frontend`/Vite 5173, `tap-ingester` 8090 — not 8080, which
+process-compose itself uses for its REST API), so two checkouts that
 both run `process-compose up` collide. To run them in parallel, start the
 stack through the wrapper instead:
 
@@ -311,8 +348,10 @@ npm run dev
 
 The frontend runs in **one of two modes**, and which one you're in is
 determined entirely by whether `dist/public/` has files in it. Both modes
-serve the app at `http://localhost:3000` (not `:5173`) — appview is
-always the front door.
+serve the app at `http://127.0.0.1:3000` (not `:5173`) — appview is
+always the front door. Use `127.0.0.1`, not `localhost`: the local OAuth
+client registers its callback on `127.0.0.1`, so a session started via
+`localhost` lands on a different cookie origin and looks logged-out.
 
 | Mode | When | Behavior |
 |---|---|---|

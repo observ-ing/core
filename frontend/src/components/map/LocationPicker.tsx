@@ -12,7 +12,7 @@ import {
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
-import maplibregl from "maplibre-gl";
+import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
@@ -187,7 +187,7 @@ export function LocationPicker({
     );
 
     // Update marker and inputs when user geolocates via the built-in control
-    geolocateControl?.on("geolocate", (e: GeolocationPosition) => {
+    geolocateControl?.on("geolocate", (e: maplibregl.GeolocatePositionEvent) => {
       const { latitude: lat, longitude: lng } = e.coords;
       updateMarker(lng, lat);
       onChange(lat, lng);
@@ -334,6 +334,10 @@ export function LocationPicker({
                   ...params.slotProps.input,
                   startAdornment: <SearchAdornment />,
                 },
+                htmlInput: {
+                  ...params.slotProps.htmlInput,
+                  "aria-label": "Search for a place",
+                },
               }}
               sx={[searchFieldSx, { mb: 1 }]}
             />
@@ -360,7 +364,7 @@ export function LocationPicker({
         size="small"
         onClick={() => setShowCoordinates((v) => !v)}
         endIcon={showCoordinates ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        sx={{ mt: 1, textTransform: "none", color: "text.secondary" }}
+        sx={{ mt: 1, color: "text.secondary" }}
       >
         {showCoordinates ? "Hide coordinates" : "Enter coordinates manually"}
       </Button>

@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Box, Container, Typography, Button, Drawer } from "@mui/material";
+import { Box, Button, Drawer } from "@mui/material";
+import SearchOffIcon from "@mui/icons-material/SearchOff";
 import type { TreeViewDefaultItemModelProperties } from "@mui/x-tree-view";
 import { fetchTaxonChildren } from "../../services/api";
 import type { TaxonDetail, TaxaResult } from "../../services/types";
-import { slugToName, nameToSlug } from "../../lib/taxonSlug";
+import { slugToName, buildTaxonUrl } from "../../lib/taxonSlug";
 import { useTaxon, useTaxonOccurrences } from "../../lib/query/hooks";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useWikidataThumbnails } from "../../hooks/useWikidataThumbnails";
 import { TaxonDetailPanel } from "./TaxonDetailPanel";
 import { TaxonTreePanel } from "./TaxonTreePanel";
 import { TaxonDetailSkeleton } from "./TaxonDetailSkeleton";
+import { FullPageStatus } from "../common/FullPageStatus";
+import { fullPageStatusSecondaryActionSx } from "../common/layoutSx";
 
 const TREE_WIDTH = 312;
 
@@ -358,11 +361,8 @@ export function TaxonExplorer() {
     const node = nodesRef.current.get(id);
     if (!node) return;
     setMobileTreeOpen(false);
-    if (node.rank === "kingdom") {
-      navigate(`/taxon/${nameToSlug(node.name)}`);
-    } else {
-      navigate(`/taxon/${nameToSlug(node.kingdom)}/${nameToSlug(node.name)}`);
-    }
+    const url = buildTaxonUrl(node.name, node.kingdom, node.rank);
+    if (url) navigate(url);
   };
 
   const handleTreeExpansionToggle = async (id: string, isExpanded: boolean) => {
@@ -419,14 +419,16 @@ export function TaxonExplorer() {
 
   if (error || !taxon) {
     return (
-      <Container maxWidth="md" sx={{ p: 4, textAlign: "center" }}>
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error || "Taxon not found"}
-        </Typography>
-        <Button variant="outlined" onClick={handleBack}>
-          Go Back
-        </Button>
-      </Container>
+      <FullPageStatus
+        icon={<SearchOffIcon />}
+        title="Taxon not found"
+        description={error || "It may have been removed, or the link you followed is incorrect."}
+        actions={
+          <Button variant="outlined" onClick={handleBack} sx={fullPageStatusSecondaryActionSx}>
+            Go Back
+          </Button>
+        }
+      />
     );
   }
 

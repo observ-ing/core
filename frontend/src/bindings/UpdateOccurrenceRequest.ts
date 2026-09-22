@@ -26,7 +26,7 @@ export type UpdateOccurrenceRequest = {
    */
   retainedBlobCids?: Array<string>;
   /**
-   * SPDX license to apply to *newly-uploaded* media records on this edit.
+   * License URI to apply to *newly-uploaded* media records on this edit.
    * Retained media keep whatever license they were originally written with —
    * silently rewriting historical metadata when a default changes would lose
    * the user's intent at upload time.

@@ -6,6 +6,7 @@ import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { GradientSwatch } from "../common/GradientSwatch";
+import { coverImageSx } from "../common/layoutSx";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -53,15 +54,7 @@ function renderTreeItems(
                   : undefined
               }
             >
-              {thumb && (
-                <Box
-                  component="img"
-                  src={thumb}
-                  alt=""
-                  loading="lazy"
-                  sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              )}
+              {thumb && <Box component="img" src={thumb} alt="" loading="lazy" sx={coverImageSx} />}
             </GradientSwatch>
             <Box sx={{ display: "flex", flexDirection: "column", minWidth: 0, flexGrow: 1 }}>
               <Typography

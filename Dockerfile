@@ -187,12 +187,20 @@ ENTRYPOINT ["/app/observing-task-runner"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-species-id
 
-# Install ONNX Runtime shared library
+# Install ONNX Runtime shared library.
+#
+# Keep the minor version in lockstep with the C API version the `ort` crate
+# asks for (`ort::MINOR_VERSION`, set by its default `api-NN` feature): API
+# version NN requires onnxruntime >= 1.NN. A too-old library here makes `ort`
+# panic on load (`BadVersion`) before the server binds its port, which surfaces
+# as a Cloud Run "container failed to start and listen on PORT" deploy failure.
+# The const assertion in crates/observing-species-id/src/model.rs fails the
+# build if the two drift apart.
 RUN apt-get update && apt-get install -y curl && \
     curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 -o /tmp/ort.tgz \
-      https://github.com/microsoft/onnxruntime/releases/download/v1.24.4/onnxruntime-linux-x64-1.24.4.tgz && \
+      https://github.com/microsoft/onnxruntime/releases/download/v1.27.1/onnxruntime-linux-x64-1.27.1.tgz && \
     tar xzf /tmp/ort.tgz && \
-    cp onnxruntime-linux-x64-1.24.4/lib/libonnxruntime*.so* /usr/lib/ && \
+    cp onnxruntime-linux-x64-1.27.1/lib/libonnxruntime*.so* /usr/lib/ && \
     rm -rf onnxruntime-* /tmp/ort.tgz
 
 # Model bundle to bake in. Defaults to the full-accuracy ViT-H build used by
