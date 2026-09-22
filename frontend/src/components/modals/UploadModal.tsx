@@ -35,6 +35,7 @@ import { useSubmitObservation, useUpdateObservation } from "../../lib/query/muta
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import { ModalOverlay } from "./ModalOverlay";
+import { coverImageSx } from "../common/layoutSx";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ButtonSpinner } from "../common/ButtonSpinner";
@@ -90,12 +91,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
         aria-label="Enlarge photo"
         sx={{ display: "block", width: "100%", height: "100%", cursor: "zoom-in" }}
       >
-        <Box
-          component="img"
-          src={src}
-          alt={alt}
-          sx={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-        />
+        <Box component="img" src={src} alt={alt} sx={coverImageSx} />
       </ButtonBase>
       <IconButton
         size="small"

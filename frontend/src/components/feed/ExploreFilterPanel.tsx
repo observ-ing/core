@@ -6,6 +6,7 @@ import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { countChipSx } from "../common/chipSx";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { sectionIconSx } from "../common/Section";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -76,7 +77,7 @@ export function ExploreFilterPanel() {
 
   return (
     <CollapsibleSection
-      icon={<FilterListIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      icon={<FilterListIcon sx={sectionIconSx} />}
       title="Filters"
       sx={{ mb: 2 }}
       trailing={

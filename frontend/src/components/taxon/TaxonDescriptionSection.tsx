@@ -5,6 +5,7 @@ import type { SxProps, Theme } from "@mui/material/styles";
 import NotesOutlinedIcon from "@mui/icons-material/NotesOutlined";
 import type { TaxonDescription } from "../../bindings/TaxonDescription";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { sectionIconSx } from "../common/Section";
 
 interface TaxonDescriptionSectionProps {
   descriptions: TaxonDescription[];
@@ -22,7 +23,7 @@ export function TaxonDescriptionSection({ descriptions, sx }: TaxonDescriptionSe
   return (
     <CollapsibleSection
       title="Description"
-      icon={<NotesOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      icon={<NotesOutlinedIcon sx={sectionIconSx} />}
       defaultExpanded
       sx={sx}
     >

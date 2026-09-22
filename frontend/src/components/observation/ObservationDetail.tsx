@@ -19,7 +19,7 @@ import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { detailHeaderSx } from "../common/layoutSx";
+import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
 import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
@@ -35,7 +35,7 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
-import { Section, SectionHeader } from "../common/Section";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { CenteredSpinner } from "../common/CenteredSpinner";
@@ -284,7 +284,7 @@ export function ObservationDetail() {
                       component="img"
                       src={getImageUrl(img.url)}
                       alt={`Photo ${idx + 1}`}
-                      sx={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      sx={coverImageSx}
                     />
                   </ButtonBase>
                 ))}
@@ -299,7 +299,7 @@ export function ObservationDetail() {
             {/* Details */}
             <Section>
               <SectionHeader
-                icon={<InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+                icon={<InfoOutlinedIcon sx={sectionIconSx} />}
                 title="Details"
                 sx={{ mb: 1.5 }}
               />

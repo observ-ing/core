@@ -38,8 +38,11 @@ export function Section({ children, sx }: SectionProps) {
   );
 }
 
+/** Shared sizing for a {@link SectionHeader}'s (or {@link CollapsibleSection}'s) leading icon. */
+export const sectionIconSx: SxProps<Theme> = { fontSize: 18, color: "primary.main" };
+
 export interface SectionHeaderProps {
-  /** Leading icon (caller sets its own color, typically `primary.main`). Optional. */
+  /** Leading icon, sized/colored via {@link sectionIconSx}. Optional. */
   icon?: ReactNode;
   title: ReactNode;
   /** Trailing content (count chip, add button, expand toggle), right-aligned. */

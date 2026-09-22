@@ -16,6 +16,7 @@ import { getImageUrl } from "../../services/api";
 import { getObservationUrl, getDisplayName } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
+import { denseTableCellSx } from "../common/layoutSx";
 
 interface ExploreTableProps {
   observations: Occurrence[];
@@ -206,7 +207,7 @@ export const ExploreTable = memo(function ExploreTable({ observations }: Explore
         stickyHeader
         size="small"
         sx={{
-          "& th, & td": { fontSize: "0.8rem", py: 0.75, px: 1 },
+          "& th, & td": { ...denseTableCellSx, py: 0.75, px: 1 },
         }}
       >
         <TableHead>

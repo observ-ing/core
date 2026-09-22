@@ -1,13 +1,10 @@
-import { Box, Typography, Stack, Chip } from "@mui/material";
+import { Box, Stack, Chip } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import { countChipSx } from "../common/chipSx";
-import { accentListItemSx } from "../common/layoutSx";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
-import { RelativeTime } from "../common/RelativeTime";
-import { Section, SectionHeader } from "../common/Section";
-import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
-import { UserCard } from "../common/UserCard";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
+import { RecordListItem } from "../common/RecordListItem";
 import { EmptyState } from "../common/EmptyState";
 
 export interface IdentificationHistoryProps {
@@ -61,7 +58,7 @@ export function IdentificationHistory({
   return (
     <Section>
       <SectionHeader
-        icon={<HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<HistoryIcon sx={sectionIconSx} />}
         title="Identification History"
         sx={{ mb: 2 }}
         {...(sortedIds.length > 0
@@ -81,60 +78,35 @@ export function IdentificationHistory({
           {sortedIds.map((id) => {
             const isSuperseded = supersededUris.has(id.uri);
             return (
-              <Box
+              <RecordListItem
                 key={id.uri}
-                sx={{
-                  ...accentListItemSx,
-                  borderColor: isSuperseded ? "text.disabled" : "primary.main",
-                  transition: "background-color 0.2s ease",
-                  opacity: isSuperseded ? 0.5 : 1,
-                  "&:hover": { bgcolor: "action.hover" },
-                }}
-              >
-                <UserCard
-                  actor={id.identifier ?? {}}
-                  linkDid={id.identifier?.did || id.did}
-                  avatarSize={32}
-                  alignItems="flex-start"
-                  link
-                  nameVariant="body2"
-                  nameSx={{ fontWeight: "medium" }}
-                  trailing={
-                    <>
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "text.secondary",
-                        }}
-                      >
-                        <RelativeTime date={new Date(id.date_identified)} withAgo />
-                      </Typography>
-                      {id.uri === observerFirstIdUri && (
-                        <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
-                      )}
-                      {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
-                      <Box sx={{ ml: "auto" }}>
-                        <RecordOverflowMenu
-                          atUri={id.uri}
-                          sx={{ p: 0.5 }}
-                          {...(currentUserDid && id.did === currentUserDid && onDeleteIdentification
-                            ? { onDelete: () => onDeleteIdentification(id.uri) }
-                            : {})}
-                        />
-                      </Box>
-                    </>
-                  }
-                  belowName={
-                    <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
-                      <TaxonLink
-                        name={id.scientific_name}
-                        kingdom={id.kingdom || kingdom}
-                        rank={id.taxon_rank}
-                      />
-                    </Box>
-                  }
-                />
-              </Box>
+                actor={id.identifier ?? {}}
+                linkDid={id.identifier?.did || id.did}
+                date={new Date(id.date_identified)}
+                atUri={id.uri}
+                borderColor={isSuperseded ? "text.disabled" : "primary.main"}
+                opacity={isSuperseded ? 0.5 : 1}
+                {...(currentUserDid && id.did === currentUserDid && onDeleteIdentification
+                  ? { onDelete: () => onDeleteIdentification(id.uri) }
+                  : {})}
+                badges={
+                  <>
+                    {id.uri === observerFirstIdUri && (
+                      <Chip label="Observer's ID" size="small" color="info" variant="outlined" />
+                    )}
+                    {isSuperseded && <Chip label="Superseded" size="small" variant="outlined" />}
+                  </>
+                }
+                belowName={
+                  <Box sx={{ mt: 0.5, textDecoration: isSuperseded ? "line-through" : "none" }}>
+                    <TaxonLink
+                      name={id.scientific_name}
+                      kingdom={id.kingdom || kingdom}
+                      rank={id.taxon_rank}
+                    />
+                  </Box>
+                }
+              />
             );
           })}
         </Stack>

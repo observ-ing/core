@@ -9,6 +9,14 @@ export const detailHeaderSx = {
   alignItems: "center",
 } as const;
 
+/** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
+export const coverImageSx = {
+  width: "100%",
+  height: "100%",
+  objectFit: "cover",
+  display: "block",
+} as const;
+
 /**
  * Frosted "glass" backdrop shared by sticky/translucent surfaces (the app's
  * `TopBar` and detail-page `stickyHeaderSx`): a blurred pane with a
@@ -42,13 +50,18 @@ export const stickyHeaderSx: SxProps<Theme> = {
 /**
  * Left-accent row shell shared by feed-style lists (identification history,
  * comments): a colored border-left with rounded outer corners. Callers add
- * their own `borderColor`, `transition`, and hover behavior on top.
+ * their own `borderColor` and hover behavior on top.
  */
 export const accentListItemSx = {
   pl: 2,
   borderLeft: 3,
   borderRadius: "0 4px 4px 0",
   py: 1,
+} as const;
+
+/** Shared hover-transition timing for left-accent feed rows. */
+export const accentListItemTransitionSx = {
+  transition: "background-color 0.2s ease, border-left-color 0.2s ease",
 } as const;
 
 /**
@@ -74,3 +87,10 @@ export const fullPageStatusPrimaryActionSx = {
 export const fullPageStatusSecondaryActionSx = {
   px: 3,
 } as const;
+
+/**
+ * Dense text size for data-table/code cells (below `body2`'s default 0.875rem),
+ * shared by `LexiconView`'s schema table and `ExploreTable` so the two don't
+ * each hand-roll their own tuning of the same shrink.
+ */
+export const denseTableCellSx = { fontSize: "0.8rem" } as const;

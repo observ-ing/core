@@ -1,4 +1,11 @@
-import { FormControl, InputLabel, MenuItem, Select, type SelectChangeEvent } from "@mui/material";
+import {
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  type SelectChangeEvent,
+  type SelectProps,
+} from "@mui/material";
 import { LICENSE_OPTIONS } from "../../lib/licenses";
 
 export interface LicenseSelectProps {
@@ -7,11 +14,11 @@ export interface LicenseSelectProps {
   label?: string;
   /** Distinguishes this select's `labelId` when more than one instance mounts at once. */
   idPrefix?: string;
-  size?: "small" | "medium";
+  size?: SelectProps["size"];
   disabled?: boolean;
   margin?: "none" | "dense" | "normal";
   /** Optional leading sentinel option, e.g. "No default (use CC BY)". */
-  noneOption?: { value: string; label: string };
+  emptyOption?: { value: string; label: string };
 }
 
 /**
@@ -26,7 +33,7 @@ export function LicenseSelect({
   size,
   disabled,
   margin = "normal",
-  noneOption,
+  emptyOption,
 }: LicenseSelectProps) {
   const labelId = `${idPrefix}-label`;
   return (
@@ -38,7 +45,7 @@ export function LicenseSelect({
         label={label}
         onChange={(e: SelectChangeEvent<string>) => onChange(e.target.value)}
       >
-        {noneOption && <MenuItem value={noneOption.value}>{noneOption.label}</MenuItem>}
+        {emptyOption && <MenuItem value={emptyOption.value}>{emptyOption.label}</MenuItem>}
         {LICENSE_OPTIONS.map((opt) => (
           <MenuItem key={opt.value} value={opt.value}>
             {opt.label}

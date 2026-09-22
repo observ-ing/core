@@ -25,7 +25,7 @@ const headerSx: SxProps<Theme> = {
 
 interface CollapsibleSectionProps {
   title: ReactNode;
-  /** Optional leading icon (caller sets its color, typically `primary.main`). */
+  /** Optional leading icon, sized/colored via {@link sectionIconSx}. */
   icon?: ReactNode;
   /** Extra trailing content (e.g. a count chip), shown before the chevron. */
   trailing?: ReactNode;

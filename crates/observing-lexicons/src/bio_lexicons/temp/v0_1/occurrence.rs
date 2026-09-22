@@ -24,10 +24,107 @@ use jacquard_derive::{lexicon, IntoStatic};
 use jacquard_lexicon::lexicon::LexiconDoc;
 use jacquard_lexicon::schema::LexiconSchema;
 
+use crate::bio_lexicons::temp::v0_1::occurrence;
 use crate::com_atproto::repo::strong_ref::StrongRef;
 #[allow(unused_imports)]
 use jacquard_lexicon::validation::{ConstraintError, ValidationPath};
 use serde::{Deserialize, Serialize};
+/// A reference to a record of this occurrence kept outside this lexicon, which may still be within the AT Protocol network. The target is an occurrence record, not a photo or other media item depicting the organism; media belong on the occurrence's media field. For a record held in another AT Protocol lexicon, reference it by its at-uri, which is canonical and does not tie the reference to any one appview. For anything else, use the canonical web URL of the occurrence record on the holding service.
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
+#[serde(
+    rename_all = "camelCase",
+    bound(deserialize = "S: Deserialize<'de> + BosStr")
+)]
+pub struct ExternalRecord<S: BosStr = DefaultStr> {
+    ///Short identifier for the service holding the record. For an AT Protocol-based app, use the app name (e.g. "gainforest"). Lets consumers group records by platform without parsing hostnames or at-uri collections, which is unreliable across localised network nodes (e.g. inaturalist.nz) and self-hosted instances. Known values are not exhaustive. No Darwin Core equivalent.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub service: Option<ExternalRecordService<S>>,
+    ///Stable URI of the record, preferably its canonical permalink. Any URI scheme is permitted, including at:// for records held in another AT Protocol lexicon. Examples: "https://www.inaturalist.org/observations/123456789", "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/app.gainforest.dwc.occurrence/3mu252kzh4y2h".
+    pub uri: UriValue<S>,
+    #[serde(flatten, default, skip_serializing_if = "Option::is_none")]
+    pub extra_data: Option<BTreeMap<SmolStr, Data<S>>>,
+}
+
+/// Short identifier for the service holding the record. For an AT Protocol-based app, use the app name (e.g. "gainforest"). Lets consumers group records by platform without parsing hostnames or at-uri collections, which is unreliable across localised network nodes (e.g. inaturalist.nz) and self-hosted instances. Known values are not exhaustive. No Darwin Core equivalent.
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ExternalRecordService<S: BosStr = DefaultStr> {
+    Inaturalist,
+    Bugguide,
+    Other(S),
+}
+
+impl<S: BosStr> ExternalRecordService<S> {
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Inaturalist => "inaturalist",
+            Self::Bugguide => "bugguide",
+            Self::Other(s) => s.as_ref(),
+        }
+    }
+    /// Construct from a string-like value, matching known values.
+    pub fn from_value(s: S) -> Self {
+        match s.as_ref() {
+            "inaturalist" => Self::Inaturalist,
+            "bugguide" => Self::Bugguide,
+            _ => Self::Other(s),
+        }
+    }
+}
+
+impl<S: BosStr> core::fmt::Display for ExternalRecordService<S> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl<S: BosStr> AsRef<str> for ExternalRecordService<S> {
+    fn as_ref(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<S: BosStr> Serialize for ExternalRecordService<S> {
+    fn serialize<Ser>(&self, serializer: Ser) -> Result<Ser::Ok, Ser::Error>
+    where
+        Ser: serde::Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de, S: Deserialize<'de> + BosStr> Deserialize<'de> for ExternalRecordService<S> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let s = S::deserialize(deserializer)?;
+        Ok(Self::from_value(s))
+    }
+}
+
+impl<S: BosStr + Default> Default for ExternalRecordService<S> {
+    fn default() -> Self {
+        Self::Other(Default::default())
+    }
+}
+
+impl<S: BosStr> jacquard_common::IntoStatic for ExternalRecordService<S>
+where
+    S: BosStr + jacquard_common::IntoStatic,
+    S::Output: BosStr,
+{
+    type Output = ExternalRecordService<S::Output>;
+    fn into_static(self) -> Self::Output {
+        match self {
+            ExternalRecordService::Inaturalist => ExternalRecordService::Inaturalist,
+            ExternalRecordService::Bugguide => ExternalRecordService::Bugguide,
+            ExternalRecordService::Other(v) => ExternalRecordService::Other(v.into_static()),
+        }
+    }
+}
+
 /// A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, IntoStatic)]
@@ -53,9 +150,18 @@ pub struct Occurrence<S: BosStr = DefaultStr> {
     ///The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus ("/"). Include timezone information whenever a time of day is given. Examples: "1963-03-08", "1971", "1906-06", "1963-03-08T14:07:00-06:00", "1995-05-21/1995-05-23".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_date: Option<S>,
+    ///AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_remarks_id: Option<AtUri<S>>,
+    ///Records of this same occurrence held outside this lexicon, whether in another AT Protocol lexicon (such as an app.gainforest.dwc.occurrence record) or on a service outside the network entirely (such as an iNaturalist observation). Intended for consumers cross-linking between platforms and for deduplicating observations across them. Has no DwC-DP equivalent; on Darwin Core export the entry URIs concatenate into dwc:otherCatalogNumbers.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub external_records: Option<Vec<occurrence::ExternalRecord<S>>>,
     ///Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media: Option<Vec<StrongRef<S>>>,
+    ///AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occurrence_remarks_id: Option<AtUri<S>>,
     ///The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub organism_quantity: Option<S>,
@@ -171,6 +277,42 @@ impl<S: BosStr> Occurrence<S> {
     }
 }
 
+impl<S: BosStr> LexiconSchema for ExternalRecord<S> {
+    fn nsid() -> &'static str {
+        "bio.lexicons.temp.v0-1.occurrence"
+    }
+    fn def_name() -> &'static str {
+        "externalRecord"
+    }
+    fn lexicon_doc() -> LexiconDoc<'static> {
+        lexicon_doc_bio_lexicons_temp_v0_1_occurrence()
+    }
+    fn validate(&self) -> Result<(), ConstraintError> {
+        if let Some(ref value) = self.service {
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 64usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("service"),
+                    max: 64usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        {
+            let value = &self.uri;
+            #[allow(unused_comparisons)]
+            if <str>::len(value.as_ref()) > 512usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("uri"),
+                    max: 512usize,
+                    actual: <str>::len(value.as_ref()),
+                });
+            }
+        }
+        Ok(())
+    }
+}
+
 /// Marker type for deserializing records from this collection.
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -218,6 +360,16 @@ impl<S: BosStr> LexiconSchema for Occurrence<S> {
                 });
             }
         }
+        if let Some(ref value) = self.external_records {
+            #[allow(unused_comparisons)]
+            if value.len() > 10usize {
+                return Err(ConstraintError::MaxLength {
+                    path: ValidationPath::from_field("external_records"),
+                    max: 10usize,
+                    actual: value.len(),
+                });
+            }
+        }
         if let Some(ref value) = self.media {
             #[allow(unused_comparisons)]
             if value.len() > 10usize {
@@ -229,6 +381,351 @@ impl<S: BosStr> LexiconSchema for Occurrence<S> {
             }
         }
         Ok(())
+    }
+}
+
+pub mod external_record_state {
+
+    pub use crate::builder_types::{IsSet, IsUnset, Set, Unset};
+    #[allow(unused)]
+    use ::core::marker::PhantomData;
+    mod sealed {
+        pub trait Sealed {}
+    }
+    /// State trait tracking which required fields have been set
+    pub trait State: sealed::Sealed {
+        type Uri;
+    }
+    /// Empty state - all required fields are unset
+    pub struct Empty(());
+    impl sealed::Sealed for Empty {}
+    impl State for Empty {
+        type Uri = Unset;
+    }
+    ///State transition - sets the `uri` field to Set
+    pub struct SetUri<St: State = Empty>(PhantomData<fn() -> St>);
+    impl<St: State> sealed::Sealed for SetUri<St> {}
+    impl<St: State> State for SetUri<St> {
+        type Uri = Set<members::uri>;
+    }
+    /// Marker types for field names
+    #[allow(non_camel_case_types)]
+    pub mod members {
+        ///Marker type for the `uri` field
+        pub struct uri(());
+    }
+}
+
+/// Builder for constructing an instance of this type.
+pub struct ExternalRecordBuilder<St: external_record_state::State, S: BosStr = DefaultStr> {
+    _state: PhantomData<fn() -> St>,
+    _fields: (Option<ExternalRecordService<S>>, Option<UriValue<S>>),
+    _type: PhantomData<fn() -> S>,
+}
+
+impl ExternalRecord<DefaultStr> {
+    /// Create a new builder for this type, using the default string type (DefaultStr = SmolStr) if needed
+    pub fn new() -> ExternalRecordBuilder<external_record_state::Empty, DefaultStr> {
+        ExternalRecordBuilder::new()
+    }
+}
+
+impl<S: BosStr> ExternalRecord<S> {
+    /// Create a new builder for this type
+    pub fn builder() -> ExternalRecordBuilder<external_record_state::Empty, S> {
+        ExternalRecordBuilder::builder()
+    }
+}
+
+impl ExternalRecordBuilder<external_record_state::Empty, DefaultStr> {
+    /// Create a new builder with all fields unset, using the default string type, if needed
+    pub fn new() -> Self {
+        ExternalRecordBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<S: BosStr> ExternalRecordBuilder<external_record_state::Empty, S> {
+    /// Create a new builder with all fields unset
+    pub fn builder() -> Self {
+        ExternalRecordBuilder {
+            _state: PhantomData,
+            _fields: (None, None),
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St: external_record_state::State, S: BosStr> ExternalRecordBuilder<St, S> {
+    /// Set the `service` field (optional)
+    pub fn service(mut self, value: impl Into<Option<ExternalRecordService<S>>>) -> Self {
+        self._fields.0 = value.into();
+        self
+    }
+    /// Set the `service` field to an Option value (optional)
+    pub fn maybe_service(mut self, value: Option<ExternalRecordService<S>>) -> Self {
+        self._fields.0 = value;
+        self
+    }
+}
+
+impl<St, S: BosStr> ExternalRecordBuilder<St, S>
+where
+    St: external_record_state::State,
+    St::Uri: external_record_state::IsUnset,
+{
+    /// Set the `uri` field (required)
+    pub fn uri(
+        mut self,
+        value: impl Into<UriValue<S>>,
+    ) -> ExternalRecordBuilder<external_record_state::SetUri<St>, S> {
+        self._fields.1 = Option::Some(value.into());
+        ExternalRecordBuilder {
+            _state: PhantomData,
+            _fields: self._fields,
+            _type: PhantomData,
+        }
+    }
+}
+
+impl<St, S: BosStr> ExternalRecordBuilder<St, S>
+where
+    St: external_record_state::State,
+    St::Uri: external_record_state::IsSet,
+{
+    /// Build the final struct.
+    pub fn build(self) -> ExternalRecord<S> {
+        ExternalRecord {
+            service: self._fields.0,
+            uri: self._fields.1.unwrap(),
+            extra_data: Default::default(),
+        }
+    }
+    /// Build the final struct with custom extra_data.
+    pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> ExternalRecord<S> {
+        ExternalRecord {
+            service: self._fields.0,
+            uri: self._fields.1.unwrap(),
+            extra_data: Some(extra_data),
+        }
+    }
+}
+
+fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
+    use alloc::collections::BTreeMap;
+    #[allow(unused_imports)]
+    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
+    use jacquard_lexicon::lexicon::*;
+    LexiconDoc {
+        lexicon: Lexicon::Lexicon1,
+        id: CowStr::new_static("bio.lexicons.temp.v0-1.occurrence"),
+        defs: {
+            let mut map = BTreeMap::new();
+            map.insert(
+                SmolStr::new_static("externalRecord"),
+                LexUserType::Object(LexObject {
+                    description: Some(
+                        CowStr::new_static(
+                            "A reference to a record of this occurrence kept outside this lexicon, which may still be within the AT Protocol network. The target is an occurrence record, not a photo or other media item depicting the organism; media belong on the occurrence's media field. For a record held in another AT Protocol lexicon, reference it by its at-uri, which is canonical and does not tie the reference to any one appview. For anything else, use the canonical web URL of the occurrence record on the holding service.",
+                        ),
+                    ),
+                    required: Some(vec![SmolStr::new_static("uri")]),
+                    properties: {
+                        #[allow(unused_mut)]
+                        let mut map = BTreeMap::new();
+                        map.insert(
+                            SmolStr::new_static("service"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(
+                                    CowStr::new_static(
+                                        "Short identifier for the service holding the record. For an AT Protocol-based app, use the app name (e.g. \"gainforest\"). Lets consumers group records by platform without parsing hostnames or at-uri collections, which is unreliable across localised network nodes (e.g. inaturalist.nz) and self-hosted instances. Known values are not exhaustive. No Darwin Core equivalent.",
+                                    ),
+                                ),
+                                max_length: Some(64usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map.insert(
+                            SmolStr::new_static("uri"),
+                            LexObjectProperty::String(LexString {
+                                description: Some(
+                                    CowStr::new_static(
+                                        "Stable URI of the record, preferably its canonical permalink. Any URI scheme is permitted, including at:// for records held in another AT Protocol lexicon. Examples: \"https://www.inaturalist.org/observations/123456789\", \"at://did:plc:jt6xegjm6ba2lt34aztyi2mn/app.gainforest.dwc.occurrence/3mu252kzh4y2h\".",
+                                    ),
+                                ),
+                                format: Some(LexStringFormat::Uri),
+                                max_length: Some(512usize),
+                                ..Default::default()
+                            }),
+                        );
+                        map
+                    },
+                    ..Default::default()
+                }),
+            );
+            map.insert(
+                SmolStr::new_static("main"),
+                LexUserType::Record(LexRecord {
+                    description: Some(
+                        CowStr::new_static(
+                            "A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.",
+                        ),
+                    ),
+                    key: Some(CowStr::new_static("tid")),
+                    record: LexRecordRecord::Object(LexObject {
+                        properties: {
+                            #[allow(unused_mut)]
+                            let mut map = BTreeMap::new();
+                            map.insert(
+                                SmolStr::new_static("acceptedIdentificationID"),
+                                LexObjectProperty::Ref(LexRef {
+                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("coordinateUncertaintyInMeters"),
+                                LexObjectProperty::Integer(LexInteger {
+                                    minimum: Some(0i64),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("decimalLatitude"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("decimalLongitude"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("eventDate"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus (\"/\"). Include timezone information whenever a time of day is given. Examples: \"1963-03-08\", \"1971\", \"1906-06\", \"1963-03-08T14:07:00-06:00\", \"1995-05-21/1995-05-23\".",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("eventRemarksID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::AtUri),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("externalRecords"),
+                                LexObjectProperty::Array(LexArray {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Records of this same occurrence held outside this lexicon, whether in another AT Protocol lexicon (such as an app.gainforest.dwc.occurrence record) or on a service outside the network entirely (such as an iNaturalist observation). Intended for consumers cross-linking between platforms and for deduplicating observations across them. Has no DwC-DP equivalent; on Darwin Core export the entry URIs concatenate into dwc:otherCatalogNumbers.",
+                                        ),
+                                    ),
+                                    items: LexArrayItem::Ref(LexRef {
+                                        r#ref: CowStr::new_static("#externalRecord"),
+                                        ..Default::default()
+                                    }),
+                                    max_length: Some(10usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("media"),
+                                LexObjectProperty::Array(LexArray {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.",
+                                        ),
+                                    ),
+                                    items: LexArrayItem::Ref(LexRef {
+                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
+                                        ..Default::default()
+                                    }),
+                                    max_length: Some(10usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("occurrenceRemarksID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::AtUri),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("organismQuantity"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("organismQuantityType"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
+                                        ),
+                                    ),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("taxonID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID).",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::Uri),
+                                    ..Default::default()
+                                }),
+                            );
+                            map
+                        },
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                }),
+            );
+            map
+        },
+        ..Default::default()
     }
 }
 
@@ -260,7 +757,10 @@ pub struct OccurrenceBuilder<St: occurrence_state::State, S: BosStr = DefaultStr
         Option<S>,
         Option<S>,
         Option<S>,
+        Option<AtUri<S>>,
+        Option<Vec<occurrence::ExternalRecord<S>>>,
         Option<Vec<StrongRef<S>>>,
+        Option<AtUri<S>>,
         Option<S>,
         Option<OccurrenceOrganismQuantityType<S>>,
         Option<UriValue<S>>,
@@ -287,7 +787,9 @@ impl OccurrenceBuilder<occurrence_state::Empty, DefaultStr> {
     pub fn new() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None, None, None, None),
+            _fields: (
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ),
             _type: PhantomData,
         }
     }
@@ -298,7 +800,9 @@ impl<S: BosStr> OccurrenceBuilder<occurrence_state::Empty, S> {
     pub fn builder() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None, None, None, None),
+            _fields: (
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ),
             _type: PhantomData,
         }
     }
@@ -370,14 +874,59 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 }
 
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
+    /// Set the `eventRemarksID` field (optional)
+    pub fn event_remarks_id(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
+        self._fields.5 = value.into();
+        self
+    }
+    /// Set the `eventRemarksID` field to an Option value (optional)
+    pub fn maybe_event_remarks_id(mut self, value: Option<AtUri<S>>) -> Self {
+        self._fields.5 = value;
+        self
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
+    /// Set the `externalRecords` field (optional)
+    pub fn external_records(
+        mut self,
+        value: impl Into<Option<Vec<occurrence::ExternalRecord<S>>>>,
+    ) -> Self {
+        self._fields.6 = value.into();
+        self
+    }
+    /// Set the `externalRecords` field to an Option value (optional)
+    pub fn maybe_external_records(
+        mut self,
+        value: Option<Vec<occurrence::ExternalRecord<S>>>,
+    ) -> Self {
+        self._fields.6 = value;
+        self
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `media` field (optional)
     pub fn media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
-        self._fields.5 = value.into();
+        self._fields.7 = value.into();
         self
     }
     /// Set the `media` field to an Option value (optional)
     pub fn maybe_media(mut self, value: Option<Vec<StrongRef<S>>>) -> Self {
-        self._fields.5 = value;
+        self._fields.7 = value;
+        self
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
+    /// Set the `occurrenceRemarksID` field (optional)
+    pub fn occurrence_remarks_id(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
+        self._fields.8 = value.into();
+        self
+    }
+    /// Set the `occurrenceRemarksID` field to an Option value (optional)
+    pub fn maybe_occurrence_remarks_id(mut self, value: Option<AtUri<S>>) -> Self {
+        self._fields.8 = value;
         self
     }
 }
@@ -385,12 +934,12 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `organismQuantity` field (optional)
     pub fn organism_quantity(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.6 = value.into();
+        self._fields.9 = value.into();
         self
     }
     /// Set the `organismQuantity` field to an Option value (optional)
     pub fn maybe_organism_quantity(mut self, value: Option<S>) -> Self {
-        self._fields.6 = value;
+        self._fields.9 = value;
         self
     }
 }
@@ -401,7 +950,7 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
         mut self,
         value: impl Into<Option<OccurrenceOrganismQuantityType<S>>>,
     ) -> Self {
-        self._fields.7 = value.into();
+        self._fields.10 = value.into();
         self
     }
     /// Set the `organismQuantityType` field to an Option value (optional)
@@ -409,7 +958,7 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
         mut self,
         value: Option<OccurrenceOrganismQuantityType<S>>,
     ) -> Self {
-        self._fields.7 = value;
+        self._fields.10 = value;
         self
     }
 }
@@ -417,12 +966,12 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `taxonID` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
-        self._fields.8 = value.into();
+        self._fields.11 = value.into();
         self
     }
     /// Set the `taxonID` field to an Option value (optional)
     pub fn maybe_taxon_id(mut self, value: Option<UriValue<S>>) -> Self {
-        self._fields.8 = value;
+        self._fields.11 = value;
         self
     }
 }
@@ -439,10 +988,13 @@ where
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
-            media: self._fields.5,
-            organism_quantity: self._fields.6,
-            organism_quantity_type: self._fields.7,
-            taxon_id: self._fields.8,
+            event_remarks_id: self._fields.5,
+            external_records: self._fields.6,
+            media: self._fields.7,
+            occurrence_remarks_id: self._fields.8,
+            organism_quantity: self._fields.9,
+            organism_quantity_type: self._fields.10,
+            taxon_id: self._fields.11,
             extra_data: Default::default(),
         }
     }
@@ -454,144 +1006,14 @@ where
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
-            media: self._fields.5,
-            organism_quantity: self._fields.6,
-            organism_quantity_type: self._fields.7,
-            taxon_id: self._fields.8,
+            event_remarks_id: self._fields.5,
+            external_records: self._fields.6,
+            media: self._fields.7,
+            occurrence_remarks_id: self._fields.8,
+            organism_quantity: self._fields.9,
+            organism_quantity_type: self._fields.10,
+            taxon_id: self._fields.11,
             extra_data: Some(extra_data),
         }
-    }
-}
-
-fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
-    use alloc::collections::BTreeMap;
-    #[allow(unused_imports)]
-    use jacquard_common::{deps::smol_str::SmolStr, types::blob::MimeType, CowStr};
-    use jacquard_lexicon::lexicon::*;
-    LexiconDoc {
-        lexicon: Lexicon::Lexicon1,
-        id: CowStr::new_static("bio.lexicons.temp.v0-1.occurrence"),
-        defs: {
-            let mut map = BTreeMap::new();
-            map.insert(
-                SmolStr::new_static("main"),
-                LexUserType::Record(LexRecord {
-                    description: Some(
-                        CowStr::new_static(
-                            "A biodiversity observation record following Darwin Core standards. Represents a single occurrence of an organism.",
-                        ),
-                    ),
-                    key: Some(CowStr::new_static("tid")),
-                    record: LexRecordRecord::Object(LexObject {
-                        properties: {
-                            #[allow(unused_mut)]
-                            let mut map = BTreeMap::new();
-                            map.insert(
-                                SmolStr::new_static("acceptedIdentificationID"),
-                                LexObjectProperty::Ref(LexRef {
-                                    r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("coordinateUncertaintyInMeters"),
-                                LexObjectProperty::Integer(LexInteger {
-                                    minimum: Some(0i64),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("decimalLatitude"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The geographic latitude in decimal degrees (Darwin Core dwc:decimalLatitude). Valid range: -90 to 90.",
-                                        ),
-                                    ),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("decimalLongitude"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The geographic longitude in decimal degrees (Darwin Core dwc:decimalLongitude). Valid range: -180 to 180.",
-                                        ),
-                                    ),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("eventDate"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus (\"/\"). Include timezone information whenever a time of day is given. Examples: \"1963-03-08\", \"1971\", \"1906-06\", \"1963-03-08T14:07:00-06:00\", \"1995-05-21/1995-05-23\".",
-                                        ),
-                                    ),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("media"),
-                                LexObjectProperty::Array(LexArray {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.",
-                                        ),
-                                    ),
-                                    items: LexArrayItem::Ref(LexRef {
-                                        r#ref: CowStr::new_static("com.atproto.repo.strongRef"),
-                                        ..Default::default()
-                                    }),
-                                    max_length: Some(10usize),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("organismQuantity"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).",
-                                        ),
-                                    ),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("organismQuantityType"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
-                                        ),
-                                    ),
-                                    ..Default::default()
-                                }),
-                            );
-                            map.insert(
-                                SmolStr::new_static("taxonID"),
-                                LexObjectProperty::String(LexString {
-                                    description: Some(
-                                        CowStr::new_static(
-                                            "Identified taxon the occurrence user has accepted, preferably a stable URI (e.g. a GBIF species URI). Derived from identification specified by acceptedIdentificationID. Must be accompanied by acceptedIdentificationID. Represents a more specific version of the DarwinCore equivalent (Darwin Core dwc:taxonID).",
-                                        ),
-                                    ),
-                                    format: Some(LexStringFormat::Uri),
-                                    ..Default::default()
-                                }),
-                            );
-                            map
-                        },
-                        ..Default::default()
-                    }),
-                    ..Default::default()
-                }),
-            );
-            map
-        },
-        ..Default::default()
     }
 }

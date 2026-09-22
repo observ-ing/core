@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Chip, Typography } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import { Section, SectionHeader } from "./Section";
+import { Section, SectionHeader, sectionIconSx } from "./Section";
 
 const meta = {
   title: "Common/Section",
@@ -31,7 +31,7 @@ export const Default: Story = {
   render: () => (
     <Section>
       <SectionHeader
-        icon={<InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<InfoOutlinedIcon sx={sectionIconSx} />}
         title="Details"
         sx={{ mb: 1.5 }}
       />
@@ -46,7 +46,7 @@ export const WithTrailingCount: Story = {
   render: () => (
     <Section>
       <SectionHeader
-        icon={<HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<HistoryIcon sx={sectionIconSx} />}
         title="Identification History"
         sx={{ mb: 1.5 }}
         trailing={<Chip label={3} size="small" sx={{ height: 20, fontSize: "0.75rem" }} />}
@@ -63,7 +63,7 @@ export const Clickable: Story = {
   render: () => (
     <Section>
       <SectionHeader
-        icon={<InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<InfoOutlinedIcon sx={sectionIconSx} />}
         title="Data quality"
         onClick={() => {}}
         trailing={

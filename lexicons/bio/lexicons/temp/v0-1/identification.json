@@ -39,8 +39,13 @@
           },
           "identificationRemarks": {
             "type": "string",
-            "description": "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
+            "description": "DEPRECATED: use identificationRemarksID instead. Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks). Ignored when identificationRemarksID is also set.",
             "maxLength": 3000
+          },
+          "identificationRemarksID": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body explains the reasoning for this identification. The remark body maps to Darwin Core dwc:identificationRemarks."
           }
         }
       }
