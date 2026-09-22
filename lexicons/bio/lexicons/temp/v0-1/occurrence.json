@@ -44,6 +44,16 @@
             "description": "The type of quantification system used for the quantity of organisms (Darwin Core dwc:organismQuantityType).",
             "knownValues": ["individuals", "percent-cover"]
           },
+          "occurrenceRemarksID": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks."
+          },
+          "eventRemarksID": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks."
+          },
           "taxonID": {
             "type": "string",
             "format": "uri",

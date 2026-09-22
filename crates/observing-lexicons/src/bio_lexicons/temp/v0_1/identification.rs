@@ -38,9 +38,12 @@ use serde::{Deserialize, Serialize};
     bound(deserialize = "S: Deserialize<'de> + BosStr")
 )]
 pub struct Identification<S: BosStr = DefaultStr> {
-    ///Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).
+    ///DEPRECATED: use identificationRemarksID instead. Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks). Ignored when identificationRemarksID is also set.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub identification_remarks: Option<S>,
+    ///AT-URI of a bio.lexicons.temp.v0-1.remark record whose body explains the reasoning for this identification. The remark body maps to Darwin Core dwc:identificationRemarks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub identification_remarks_id: Option<AtUri<S>>,
     ///Taxonomic kingdom for disambiguating homonyms (Darwin Core dwc:kingdom).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<S>,
@@ -318,6 +321,7 @@ pub struct IdentificationBuilder<St: identification_state::State, S: BosStr = De
     _state: PhantomData<fn() -> St>,
     _fields: (
         Option<S>,
+        Option<AtUri<S>>,
         Option<S>,
         Option<StrongRef<S>>,
         Option<S>,
@@ -346,7 +350,7 @@ impl IdentificationBuilder<identification_state::Empty, DefaultStr> {
     pub fn new() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None),
+            _fields: (None, None, None, None, None, None, None),
             _type: PhantomData,
         }
     }
@@ -357,7 +361,7 @@ impl<S: BosStr> IdentificationBuilder<identification_state::Empty, S> {
     pub fn builder() -> Self {
         IdentificationBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None),
+            _fields: (None, None, None, None, None, None, None),
             _type: PhantomData,
         }
     }
@@ -377,14 +381,27 @@ impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
 }
 
 impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
+    /// Set the `identificationRemarksID` field (optional)
+    pub fn identification_remarks_id(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
+        self._fields.1 = value.into();
+        self
+    }
+    /// Set the `identificationRemarksID` field to an Option value (optional)
+    pub fn maybe_identification_remarks_id(mut self, value: Option<AtUri<S>>) -> Self {
+        self._fields.1 = value;
+        self
+    }
+}
+
+impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `kingdom` field (optional)
     pub fn kingdom(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.1 = value.into();
+        self._fields.2 = value.into();
         self
     }
     /// Set the `kingdom` field to an Option value (optional)
     pub fn maybe_kingdom(mut self, value: Option<S>) -> Self {
-        self._fields.1 = value;
+        self._fields.2 = value;
         self
     }
 }
@@ -399,7 +416,7 @@ where
         mut self,
         value: impl Into<StrongRef<S>>,
     ) -> IdentificationBuilder<identification_state::SetOccurrence<St>, S> {
-        self._fields.2 = Option::Some(value.into());
+        self._fields.3 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -418,7 +435,7 @@ where
         mut self,
         value: impl Into<S>,
     ) -> IdentificationBuilder<identification_state::SetScientificName<St>, S> {
-        self._fields.3 = Option::Some(value.into());
+        self._fields.4 = Option::Some(value.into());
         IdentificationBuilder {
             _state: PhantomData,
             _fields: self._fields,
@@ -430,12 +447,12 @@ where
 impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `taxonID` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
-        self._fields.4 = value.into();
+        self._fields.5 = value.into();
         self
     }
     /// Set the `taxonID` field to an Option value (optional)
     pub fn maybe_taxon_id(mut self, value: Option<UriValue<S>>) -> Self {
-        self._fields.4 = value;
+        self._fields.5 = value;
         self
     }
 }
@@ -443,12 +460,12 @@ impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
 impl<St: identification_state::State, S: BosStr> IdentificationBuilder<St, S> {
     /// Set the `taxonRank` field (optional)
     pub fn taxon_rank(mut self, value: impl Into<Option<IdentificationTaxonRank<S>>>) -> Self {
-        self._fields.5 = value.into();
+        self._fields.6 = value.into();
         self
     }
     /// Set the `taxonRank` field to an Option value (optional)
     pub fn maybe_taxon_rank(mut self, value: Option<IdentificationTaxonRank<S>>) -> Self {
-        self._fields.5 = value;
+        self._fields.6 = value;
         self
     }
 }
@@ -463,11 +480,12 @@ where
     pub fn build(self) -> Identification<S> {
         Identification {
             identification_remarks: self._fields.0,
-            kingdom: self._fields.1,
-            occurrence: self._fields.2.unwrap(),
-            scientific_name: self._fields.3.unwrap(),
-            taxon_id: self._fields.4,
-            taxon_rank: self._fields.5,
+            identification_remarks_id: self._fields.1,
+            kingdom: self._fields.2,
+            occurrence: self._fields.3.unwrap(),
+            scientific_name: self._fields.4.unwrap(),
+            taxon_id: self._fields.5,
+            taxon_rank: self._fields.6,
             extra_data: Default::default(),
         }
     }
@@ -475,11 +493,12 @@ where
     pub fn build_with_data(self, extra_data: BTreeMap<SmolStr, Data<S>>) -> Identification<S> {
         Identification {
             identification_remarks: self._fields.0,
-            kingdom: self._fields.1,
-            occurrence: self._fields.2.unwrap(),
-            scientific_name: self._fields.3.unwrap(),
-            taxon_id: self._fields.4,
-            taxon_rank: self._fields.5,
+            identification_remarks_id: self._fields.1,
+            kingdom: self._fields.2,
+            occurrence: self._fields.3.unwrap(),
+            scientific_name: self._fields.4.unwrap(),
+            taxon_id: self._fields.5,
+            taxon_rank: self._fields.6,
             extra_data: Some(extra_data),
         }
     }
@@ -519,10 +538,22 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_identification() -> LexiconDoc<'static> {
                                 LexObjectProperty::String(LexString {
                                     description: Some(
                                         CowStr::new_static(
-                                            "Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks).",
+                                            "DEPRECATED: use identificationRemarksID instead. Explanation or reasoning for this identification (Darwin Core dwc:identificationRemarks). Ignored when identificationRemarksID is also set.",
                                         ),
                                     ),
                                     max_length: Some(3000usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("identificationRemarksID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body explains the reasoning for this identification. The remark body maps to Darwin Core dwc:identificationRemarks.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::AtUri),
                                     ..Default::default()
                                 }),
                             );

@@ -4,7 +4,15 @@ import { suppressMissingImages, type StyleImageMissingMap } from "./mapUtils";
 // maplibre-gl is a heavy WebGL module and `suppressMissingImages` only needs
 // the `on`/`hasImage`/`addImage` surface of the map it's handed, so stub the
 // package to keep this a pure unit test (mapUtils namespace-imports it).
-vi.mock("maplibre-gl", () => ({}));
+// `setWorkerUrl` is stubbed because mapUtils calls it at module scope to point
+// maplibre 6 at the Vite-emitted worker chunk.
+vi.mock("maplibre-gl", () => ({ setWorkerUrl: vi.fn() }));
+
+// `?worker&url` is a Vite-only import form; vitest resolves it through Vite but
+// the real worker chunk is irrelevant here, so hand back a placeholder URL.
+vi.mock("maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url", () => ({
+  default: "/maplibre-gl-worker.mjs",
+}));
 
 describe("suppressMissingImages", () => {
   function makeFakeMap(hasImage = false) {
