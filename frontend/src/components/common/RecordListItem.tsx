@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Box, Typography } from "@mui/material";
-import { accentListItemSx } from "./layoutSx";
+import { accentListItemSx, accentListItemTransitionSx } from "./layoutSx";
 import { RelativeTime } from "./RelativeTime";
 import { RecordOverflowMenu } from "./RecordOverflowMenu";
 import { UserCard, type UserCardActor } from "./UserCard";
@@ -14,9 +14,9 @@ export interface RecordListItemProps {
   date: Date;
   /** AT URI of the record, passed to the overflow menu. */
   atUri: string;
-  /** Left-accent border color, e.g. `"divider"` or `"primary.main"`. */
+  /** Left-accent border color as an MUI `sx` color token/path, e.g. `"divider"` or `"primary.main"`. */
   borderColor: string;
-  /** Border color shown on hover, when the accent should change (default: unchanged). */
+  /** Hover left-accent color as an MUI `sx` color token/path (default: unchanged). */
   hoverBorderColor?: string | undefined;
   /** Row opacity, used to visually de-emphasize e.g. a superseded record (default 1). */
   opacity?: number;
@@ -50,12 +50,12 @@ export function RecordListItem({
     <Box
       sx={{
         ...accentListItemSx,
-        borderColor,
+        ...accentListItemTransitionSx,
+        borderLeftColor: borderColor,
         opacity,
-        transition: "all 0.2s ease",
         "&:hover": {
           bgcolor: "action.hover",
-          ...(hoverBorderColor ? { borderColor: hoverBorderColor } : {}),
+          ...(hoverBorderColor ? { borderLeftColor: hoverBorderColor } : {}),
         },
       }}
     >

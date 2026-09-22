@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { SxProps, Theme } from "@mui/material/styles";
 import CollectionsOutlinedIcon from "@mui/icons-material/CollectionsOutlined";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { sectionIconSx } from "../common/Section";
 import { WikiCommonsGallery } from "../common/WikiCommonsGallery";
 
 interface TaxonMediaSectionProps {
@@ -20,7 +21,7 @@ export function TaxonMediaSection({ scientificName, sx }: TaxonMediaSectionProps
   return (
     <CollapsibleSection
       title="Media"
-      icon={<CollectionsOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+      icon={<CollectionsOutlinedIcon sx={sectionIconSx} />}
       onFirstExpand={() => setMounted(true)}
       sx={sx}
     >

@@ -3,7 +3,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import { countChipSx } from "../common/chipSx";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
-import { Section, SectionHeader } from "../common/Section";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { RecordListItem } from "../common/RecordListItem";
 import { EmptyState } from "../common/EmptyState";
 
@@ -58,7 +58,7 @@ export function IdentificationHistory({
   return (
     <Section>
       <SectionHeader
-        icon={<HistoryIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<HistoryIcon sx={sectionIconSx} />}
         title="Identification History"
         sx={{ mb: 2 }}
         {...(sortedIds.length > 0

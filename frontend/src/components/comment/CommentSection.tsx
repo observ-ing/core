@@ -7,8 +7,8 @@ import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
 import { useSubmitComment } from "../../lib/query/mutations";
 import type { Comment } from "../../services/types";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { RecordListItem } from "../common/RecordListItem";
-import { Section, SectionHeader } from "../common/Section";
 import { EmptyState } from "../common/EmptyState";
 
 interface CommentSectionProps {
@@ -58,7 +58,7 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
   return (
     <Section>
       <SectionHeader
-        icon={<ChatBubbleOutlineIcon fontSize="small" sx={{ color: "primary.main" }} />}
+        icon={<ChatBubbleOutlineIcon sx={sectionIconSx} />}
         title="Discussion"
         sx={{ mb: 2 }}
         trailing={

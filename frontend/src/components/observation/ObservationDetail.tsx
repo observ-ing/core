@@ -34,7 +34,7 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { UserCard } from "../common/UserCard";
-import { Section, SectionHeader } from "../common/Section";
+import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
 import { RecordOverflowMenu } from "../common/RecordOverflowMenu";
 import { CenteredSpinner } from "../common/CenteredSpinner";
@@ -305,7 +305,7 @@ export function ObservationDetail() {
             {/* Details */}
             <Section>
               <SectionHeader
-                icon={<InfoOutlinedIcon fontSize="small" sx={{ color: "primary.main" }} />}
+                icon={<InfoOutlinedIcon sx={sectionIconSx} />}
                 title="Details"
                 sx={{ mb: 1.5 }}
               />

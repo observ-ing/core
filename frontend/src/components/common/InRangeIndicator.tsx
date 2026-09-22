@@ -1,5 +1,6 @@
 import { Box } from "@mui/material";
 import PlaceIcon from "@mui/icons-material/Place";
+import { visuallyHidden } from "@mui/utils";
 
 export interface InRangeIndicatorProps {
   /** Icon size in px. */
@@ -22,7 +23,10 @@ export function InRangeIndicator({ size = 14, color = "success.main" }: InRangeI
       title="Found in your area"
       aria-label="Found in your area"
     >
-      <PlaceIcon sx={{ fontSize: size }} />
+      <Box component="span" sx={visuallyHidden}>
+        Found in your area
+      </Box>
+      <PlaceIcon aria-hidden sx={{ fontSize: size }} />
     </Box>
   );
 }
