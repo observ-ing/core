@@ -34,6 +34,7 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `decimalLongitude` | dwc:decimalLongitude | Longitude in decimal degrees (stored as string; range -180..180) |
 | `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
 | `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.v0-1.media` records (max 10) |
+| `externalRecords` | dwc:otherCatalogNumbers (on export) | Array of `{ uri, service }` entries (max 10) pointing at the same occurrence held elsewhere — another AT Protocol lexicon (`at://…`) or an off-network service such as iNaturalist. `uri` required (≤512 chars); `service` is a short platform identifier with known values `inaturalist`, `bugguide` (≤64 chars). Not written by the appview today. |
 | (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.v0-1.occurrence/...` — derived, not stored |
 | (DID) | dwc:recordedBy | Derived from AT Protocol identity |
 
