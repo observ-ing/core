@@ -9,6 +9,7 @@ import { queryClient } from "./queryClient";
 import { OCCURRENCE_LIST_TAGS } from "./keys";
 import type {
   EffectiveTaxonomy,
+  ExternalRecord,
   Occurrence,
   OccurrenceDetailResponse,
   Profile,
@@ -103,6 +104,8 @@ export interface TombstoneInput {
   license?: string | undefined;
   organismQuantity?: string | undefined;
   organismQuantityType?: string | undefined;
+  /** Cross-platform links the submitter added, shown on the row right away. */
+  externalRecords?: ExternalRecord[] | undefined;
   createdAt: string;
 }
 
@@ -139,10 +142,7 @@ export function makeTombstoneOccurrence(input: TombstoneInput): Occurrence {
       url,
       ...(input.license ? { license: input.license } : {}),
     })),
-    // The submit form doesn't collect external records, so a fresh row never
-    // has any; a cross-posted record written by another client arrives with
-    // `reconcileOccurrence`.
-    externalRecords: [],
+    externalRecords: input.externalRecords ?? [],
     createdAt: input.createdAt,
     likeCount: 0,
     viewerHasLiked: false,

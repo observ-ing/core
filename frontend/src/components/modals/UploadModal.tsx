@@ -34,6 +34,7 @@ import { useUserPreferences } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
+import type { ExternalRecord } from "../../bindings/ExternalRecord";
 import { ModalOverlay } from "./ModalOverlay";
 import { coverImageSx } from "../common/layoutSx";
 import { CenteredSpinner } from "../common/CenteredSpinner";
@@ -44,6 +45,7 @@ import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { LicenseSelect } from "../common/LicenseSelect";
+import { ExternalRecordsField } from "./ExternalRecordsField";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
@@ -160,6 +162,7 @@ export function UploadModal() {
   const [organismQuantityType, setOrganismQuantityType] = useState<string>(
     DEFAULT_ORGANISM_QUANTITY_TYPE,
   );
+  const [externalRecords, setExternalRecords] = useState<ExternalRecord[]>([]);
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -173,6 +176,7 @@ export function UploadModal() {
     setActiveStep(STEP_PHOTOS);
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
+    setExternalRecords([]);
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
@@ -218,6 +222,9 @@ export function UploadModal() {
         editingObservation.organismQuantityType || DEFAULT_ORGANISM_QUANTITY_TYPE,
       );
     }
+    // The edit request replaces the record's whole array, so the form has to
+    // start from what is already on it or saving would drop the entries.
+    setExternalRecords(editingObservation.externalRecords ?? []);
 
     if (!existingName) return undefined;
     const controller = new AbortController();
@@ -247,6 +254,7 @@ export function UploadModal() {
     setUncertaintyMeters(50);
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
+    setExternalRecords([]);
     setVisualIdImageUrl(null);
     setIsDirty(false);
   };
@@ -438,6 +446,7 @@ export function UploadModal() {
             license,
             organismQuantity: organismQuantity.trim() || undefined,
             organismQuantityType: organismQuantityType || undefined,
+            externalRecords,
             createdAt: new Date().toISOString(),
           }),
           currentUser.did,
@@ -466,6 +475,7 @@ export function UploadModal() {
         : {}),
       license,
       eventDate,
+      ...(externalRecords.length > 0 ? { externalRecords } : {}),
       ...(imageData.length > 0 ? { images: imageData } : {}),
     };
 
@@ -806,6 +816,14 @@ export function UploadModal() {
                     </Select>
                   </FormControl>
                 </Stack>
+
+                <ExternalRecordsField
+                  records={externalRecords}
+                  onChange={(records) => {
+                    setExternalRecords(records);
+                    setIsDirty(true);
+                  }}
+                />
 
                 <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                   <Button onClick={() => setActiveStep(STEP_IDENTIFY)} color="inherit" size="small">
