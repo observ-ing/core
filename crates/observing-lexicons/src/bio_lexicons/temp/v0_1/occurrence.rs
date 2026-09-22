@@ -150,12 +150,18 @@ pub struct Occurrence<S: BosStr = DefaultStr> {
     ///The date, date-time, or interval during which the dwc:Event occurred (Darwin Core dwc:eventDate). Recommended best practice is to use a value that conforms to ISO 8601-1:2019 for single dates or date-times, or to ISO 8601-2:2019 (EDTF) for intervals and dates of reduced or uncertain precision; separate the start and end of an interval with a solidus ("/"). Include timezone information whenever a time of day is given. Examples: "1963-03-08", "1971", "1906-06", "1963-03-08T14:07:00-06:00", "1995-05-21/1995-05-23".
     #[serde(skip_serializing_if = "Option::is_none")]
     pub event_date: Option<S>,
+    ///AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub event_remarks_id: Option<AtUri<S>>,
     ///Records of this same occurrence held outside this lexicon, whether in another AT Protocol lexicon (such as an app.gainforest.dwc.occurrence record) or on a service outside the network entirely (such as an iNaturalist observation). Intended for consumers cross-linking between platforms and for deduplicating observations across them. Has no DwC-DP equivalent; on Darwin Core export the entry URIs concatenate into dwc:otherCatalogNumbers.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub external_records: Option<Vec<occurrence::ExternalRecord<S>>>,
     ///Strong references to media records documenting the observation. Conceptually maps to the DwC-DP Occurrence Media table (https://gbif.github.io/dwc-dp/qrg/#Occurrence%20Media), which replaced the legacy dwc:associatedMedia term.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub media: Option<Vec<StrongRef<S>>>,
+    ///AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub occurrence_remarks_id: Option<AtUri<S>>,
     ///The quantity of the organism present at the time of the Occurrence. Generally an integer or float but may be categorical, e.g. 'many' or '10-100' (Darwin Core dwc:organismQuantity).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub organism_quantity: Option<S>,
@@ -621,6 +627,18 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                                 }),
                             );
                             map.insert(
+                                SmolStr::new_static("eventRemarksID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the event (the time and place) of this occurrence. The remark body maps to Darwin Core dwc:eventRemarks.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::AtUri),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
                                 SmolStr::new_static("externalRecords"),
                                 LexObjectProperty::Array(LexArray {
                                     description: Some(
@@ -649,6 +667,18 @@ fn lexicon_doc_bio_lexicons_temp_v0_1_occurrence() -> LexiconDoc<'static> {
                                         ..Default::default()
                                     }),
                                     max_length: Some(10usize),
+                                    ..Default::default()
+                                }),
+                            );
+                            map.insert(
+                                SmolStr::new_static("occurrenceRemarksID"),
+                                LexObjectProperty::String(LexString {
+                                    description: Some(
+                                        CowStr::new_static(
+                                            "AT-URI of a bio.lexicons.temp.v0-1.remark record whose body holds comments or notes about the occurrence. The remark body maps to Darwin Core dwc:occurrenceRemarks.",
+                                        ),
+                                    ),
+                                    format: Some(LexStringFormat::AtUri),
                                     ..Default::default()
                                 }),
                             );
@@ -727,8 +757,10 @@ pub struct OccurrenceBuilder<St: occurrence_state::State, S: BosStr = DefaultStr
         Option<S>,
         Option<S>,
         Option<S>,
+        Option<AtUri<S>>,
         Option<Vec<occurrence::ExternalRecord<S>>>,
         Option<Vec<StrongRef<S>>>,
+        Option<AtUri<S>>,
         Option<S>,
         Option<OccurrenceOrganismQuantityType<S>>,
         Option<UriValue<S>>,
@@ -755,7 +787,9 @@ impl OccurrenceBuilder<occurrence_state::Empty, DefaultStr> {
     pub fn new() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None, None, None, None, None),
+            _fields: (
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ),
             _type: PhantomData,
         }
     }
@@ -766,7 +800,9 @@ impl<S: BosStr> OccurrenceBuilder<occurrence_state::Empty, S> {
     pub fn builder() -> Self {
         OccurrenceBuilder {
             _state: PhantomData,
-            _fields: (None, None, None, None, None, None, None, None, None, None),
+            _fields: (
+                None, None, None, None, None, None, None, None, None, None, None, None,
+            ),
             _type: PhantomData,
         }
     }
@@ -838,12 +874,25 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 }
 
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
+    /// Set the `eventRemarksID` field (optional)
+    pub fn event_remarks_id(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
+        self._fields.5 = value.into();
+        self
+    }
+    /// Set the `eventRemarksID` field to an Option value (optional)
+    pub fn maybe_event_remarks_id(mut self, value: Option<AtUri<S>>) -> Self {
+        self._fields.5 = value;
+        self
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `externalRecords` field (optional)
     pub fn external_records(
         mut self,
         value: impl Into<Option<Vec<occurrence::ExternalRecord<S>>>>,
     ) -> Self {
-        self._fields.5 = value.into();
+        self._fields.6 = value.into();
         self
     }
     /// Set the `externalRecords` field to an Option value (optional)
@@ -851,7 +900,7 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
         mut self,
         value: Option<Vec<occurrence::ExternalRecord<S>>>,
     ) -> Self {
-        self._fields.5 = value;
+        self._fields.6 = value;
         self
     }
 }
@@ -859,12 +908,25 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `media` field (optional)
     pub fn media(mut self, value: impl Into<Option<Vec<StrongRef<S>>>>) -> Self {
-        self._fields.6 = value.into();
+        self._fields.7 = value.into();
         self
     }
     /// Set the `media` field to an Option value (optional)
     pub fn maybe_media(mut self, value: Option<Vec<StrongRef<S>>>) -> Self {
-        self._fields.6 = value;
+        self._fields.7 = value;
+        self
+    }
+}
+
+impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
+    /// Set the `occurrenceRemarksID` field (optional)
+    pub fn occurrence_remarks_id(mut self, value: impl Into<Option<AtUri<S>>>) -> Self {
+        self._fields.8 = value.into();
+        self
+    }
+    /// Set the `occurrenceRemarksID` field to an Option value (optional)
+    pub fn maybe_occurrence_remarks_id(mut self, value: Option<AtUri<S>>) -> Self {
+        self._fields.8 = value;
         self
     }
 }
@@ -872,12 +934,12 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `organismQuantity` field (optional)
     pub fn organism_quantity(mut self, value: impl Into<Option<S>>) -> Self {
-        self._fields.7 = value.into();
+        self._fields.9 = value.into();
         self
     }
     /// Set the `organismQuantity` field to an Option value (optional)
     pub fn maybe_organism_quantity(mut self, value: Option<S>) -> Self {
-        self._fields.7 = value;
+        self._fields.9 = value;
         self
     }
 }
@@ -888,7 +950,7 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
         mut self,
         value: impl Into<Option<OccurrenceOrganismQuantityType<S>>>,
     ) -> Self {
-        self._fields.8 = value.into();
+        self._fields.10 = value.into();
         self
     }
     /// Set the `organismQuantityType` field to an Option value (optional)
@@ -896,7 +958,7 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
         mut self,
         value: Option<OccurrenceOrganismQuantityType<S>>,
     ) -> Self {
-        self._fields.8 = value;
+        self._fields.10 = value;
         self
     }
 }
@@ -904,12 +966,12 @@ impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
 impl<St: occurrence_state::State, S: BosStr> OccurrenceBuilder<St, S> {
     /// Set the `taxonID` field (optional)
     pub fn taxon_id(mut self, value: impl Into<Option<UriValue<S>>>) -> Self {
-        self._fields.9 = value.into();
+        self._fields.11 = value.into();
         self
     }
     /// Set the `taxonID` field to an Option value (optional)
     pub fn maybe_taxon_id(mut self, value: Option<UriValue<S>>) -> Self {
-        self._fields.9 = value;
+        self._fields.11 = value;
         self
     }
 }
@@ -926,11 +988,13 @@ where
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
-            external_records: self._fields.5,
-            media: self._fields.6,
-            organism_quantity: self._fields.7,
-            organism_quantity_type: self._fields.8,
-            taxon_id: self._fields.9,
+            event_remarks_id: self._fields.5,
+            external_records: self._fields.6,
+            media: self._fields.7,
+            occurrence_remarks_id: self._fields.8,
+            organism_quantity: self._fields.9,
+            organism_quantity_type: self._fields.10,
+            taxon_id: self._fields.11,
             extra_data: Default::default(),
         }
     }
@@ -942,11 +1006,13 @@ where
             decimal_latitude: self._fields.2,
             decimal_longitude: self._fields.3,
             event_date: self._fields.4,
-            external_records: self._fields.5,
-            media: self._fields.6,
-            organism_quantity: self._fields.7,
-            organism_quantity_type: self._fields.8,
-            taxon_id: self._fields.9,
+            event_remarks_id: self._fields.5,
+            external_records: self._fields.6,
+            media: self._fields.7,
+            occurrence_remarks_id: self._fields.8,
+            organism_quantity: self._fields.9,
+            organism_quantity_type: self._fields.10,
+            taxon_id: self._fields.11,
             extra_data: Some(extra_data),
         }
     }

@@ -1,0 +1,45 @@
+{
+  "lexicon": 1,
+  "id": "bio.lexicons.temp.v0-1.remark",
+  "defs": {
+    "main": {
+      "type": "record",
+      "description": "Free text that fills a Darwin Core remarks term on another record, such as dwc:occurrenceRemarks on an occurrence. Kept in its own record so authored prose, a potential creative work, can be attributed and licensed separately from the facts in the record it describes. The record it describes points to it with an AT-URI field named for the term (e.g. occurrence.occurrenceRemarksID), and that forward reference is authoritative: a remark nothing references fills no term. Not for discussion or replies.",
+      "key": "tid",
+      "record": {
+        "type": "object",
+        "required": ["subject", "dwcTerm", "body"],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "format": "at-uri",
+            "description": "AT-URI of the record this remark describes, which should be the record whose forward reference points here. Lets the remark be understood and indexed on its own, and lets consumers detect a forward reference that points at the wrong remark."
+          },
+          "dwcTerm": {
+            "type": "string",
+            "description": "The Darwin Core term this remark fills on its subject. Should correspond to the field that references this remark, e.g. occurrenceRemarks for occurrence.occurrenceRemarksID.",
+            "knownValues": ["occurrenceRemarks", "eventRemarks", "identificationRemarks"],
+            "maxLength": 128
+          },
+          "body": {
+            "type": "string",
+            "description": "The text of the remark. Becomes the value of dwcTerm when the subject is exported to Darwin Core.",
+            "maxLength": 3000
+          },
+          "license": {
+            "type": "string",
+            "description": "URI of the license under which this text is published (Dublin Core dcterms:license). Creative Commons license URIs are the recommended values.",
+            "knownValues": [
+              "https://creativecommons.org/publicdomain/zero/1.0/",
+              "https://creativecommons.org/licenses/by/4.0/",
+              "https://creativecommons.org/licenses/by-nc/4.0/",
+              "https://creativecommons.org/licenses/by-sa/4.0/",
+              "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+            ],
+            "maxLength": 128
+          }
+        }
+      }
+    }
+  }
+}
