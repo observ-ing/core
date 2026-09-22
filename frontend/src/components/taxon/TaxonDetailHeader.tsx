@@ -1,7 +1,8 @@
-import { Box, Typography, IconButton } from "@mui/material";
+import { Box, IconButton } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import AccountTreeIcon from "@mui/icons-material/AccountTree";
 import { stickyHeaderSx } from "../common/layoutSx";
+import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 
 interface TaxonDetailHeaderProps {
   /** Taxon rank, shown (capitalized) as the panel title — e.g. "Species". */
@@ -22,16 +23,7 @@ export function TaxonDetailHeader({ rank, onBack, onToggleTree }: TaxonDetailHea
       <IconButton onClick={onBack} sx={{ mr: 1 }} aria-label="Back">
         <ArrowBackIcon />
       </IconButton>
-      <Typography
-        variant="h6"
-        sx={{
-          fontWeight: 600,
-          fontSize: "1.1875rem",
-          flex: 1,
-        }}
-      >
-        {rank.charAt(0).toUpperCase() + rank.slice(1)}
-      </Typography>
+      <DetailHeaderTitle>{rank.charAt(0).toUpperCase() + rank.slice(1)}</DetailHeaderTitle>
       {onToggleTree && (
         <IconButton
           onClick={onToggleTree}
