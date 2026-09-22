@@ -327,7 +327,11 @@ export function ObservationDetail() {
                   />
                 )}
 
-                <ExternalRecordsItem records={observation.externalRecords} />
+                {/* Defaulted: an occurrence served by an appview older than
+                    this field — or replayed from a cache written before it —
+                    has no `externalRecords` at all, and a missing array must
+                    not take the whole page down. */}
+                <ExternalRecordsItem records={observation.externalRecords ?? []} />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}

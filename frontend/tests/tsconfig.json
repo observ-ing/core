@@ -3,7 +3,12 @@
   "compilerOptions": {
     "exactOptionalPropertyTypes": false,
     "noPropertyAccessFromIndexSignature": false,
-    "noUncheckedIndexedAccess": false
+    "noUncheckedIndexedAccess": false,
+    // Specs run under Node (process.env, Buffer, fs), which the app's own
+    // config has no reason to pull in. Without this the project doesn't
+    // typecheck at all, so drift between a fixture and the generated
+    // bindings it claims to satisfy goes unnoticed until CI runs the suite.
+    "types": ["node"]
   },
   "include": ["./**/*"]
 }

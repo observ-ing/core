@@ -68,6 +68,11 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx tsc --project tsconfig.json
+      # The Playwright specs build API fixtures typed against the generated
+      # bindings, but live outside the app's tsconfig. Without this, a fixture
+      # that no longer satisfies the type it claims only surfaces as a wall of
+      # failing e2e tests half an hour later.
+      - run: npx tsc --project frontend/tests/tsconfig.json
 
   frontend-unit:
     runs-on: ubuntu-latest
