@@ -45,6 +45,9 @@ pub struct OccurrenceResponse {
     #[ts(optional)]
     pub organism_quantity_type: Option<String>,
     pub images: Vec<OccurrenceImage>,
+    /// References to this same occurrence on other platforms, straight from
+    /// the record. Empty for the overwhelming majority of observations.
+    pub external_records: Vec<ExternalRecord>,
     pub created_at: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -78,6 +81,22 @@ pub struct OccurrenceImage {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub license: Option<String>,
+}
+
+/// A reference to this occurrence as held by another service — an iNaturalist
+/// observation, a record in another AT Protocol lexicon, and so on. Passed
+/// through verbatim: the appview neither resolves nor validates the target.
+#[derive(Debug, Clone, Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct ExternalRecord {
+    pub uri: String,
+    /// Short service identifier from the record (`inaturalist`, `bugguide`, an
+    /// AT Protocol app name, ...). The lexicon's known values are not
+    /// exhaustive, so clients must handle unfamiliar ones.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub service: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, TS)]
@@ -317,6 +336,14 @@ pub async fn enrich_occurrences(
             organism_quantity: row.organism_quantity.clone(),
             organism_quantity_type: row.organism_quantity_type.clone(),
             images,
+            external_records: row
+                .external_record_entries()
+                .into_iter()
+                .map(|entry| ExternalRecord {
+                    uri: entry.uri,
+                    service: entry.service,
+                })
+                .collect(),
             created_at: row.created_at.to_rfc3339(),
             like_count: Some(*like_counts.get(&row.uri).unwrap_or(&0)),
             viewer_has_liked: viewer_did.map(|_| viewer_likes.contains(&row.uri)),
@@ -480,6 +507,7 @@ mod tests {
             longitude: Some(0.0),
             coordinate_uncertainty_meters: None,
             associated_media: media,
+            external_records: None,
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,

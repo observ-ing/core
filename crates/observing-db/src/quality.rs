@@ -186,6 +186,7 @@ mod tests {
             longitude: Some(-105.0),
             coordinate_uncertainty_meters: Some(10),
             associated_media: Some(blobs_json(1)),
+            external_records: None,
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,

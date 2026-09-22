@@ -33,6 +33,7 @@ import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
+import { ExternalRecordsItem } from "./ExternalRecordsItem";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
@@ -331,6 +332,8 @@ export function ObservationDetail() {
                     }
                   />
                 )}
+
+                <ExternalRecordsItem records={observation.externalRecords} />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}

@@ -45,6 +45,21 @@ impl BlobRef {
     }
 }
 
+/// A single entry of the occurrence lexicon's `externalRecords` array, as
+/// stored in the `external_records` JSONB column: the same occurrence held in
+/// another AT Protocol lexicon or on an off-network service.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ExternalRecordEntry {
+    /// Stable URI of the record on the holding service. Any scheme, including
+    /// `at://` for records kept in another AT Protocol lexicon.
+    pub uri: String,
+    /// Short identifier for the holding service (`inaturalist`, `bugguide`, an
+    /// AT Protocol app name, ...). The lexicon's known values are explicitly
+    /// not exhaustive, so this stays free text.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub service: Option<String>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export, export_to = "bindings/")]
 pub enum InteractionDirection {
@@ -74,6 +89,10 @@ pub struct OccurrenceRow {
     pub longitude: Option<f64>,
     pub coordinate_uncertainty_meters: Option<i32>,
     pub associated_media: Option<serde_json::Value>,
+    /// Raw `externalRecords` array from the record (see
+    /// [`ExternalRecordEntry`]). NULL both on records without external
+    /// references and on rows ingested before the column existed.
+    pub external_records: Option<serde_json::Value>,
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
@@ -110,6 +129,15 @@ impl OccurrenceRow {
         self.associated_media
             .as_ref()
             .and_then(|v| Vec::<BlobEntry>::deserialize(v).ok())
+            .unwrap_or_default()
+    }
+
+    /// Parse `external_records` JSONB into typed entries.
+    /// Returns an empty vec if the field is `None` or cannot be deserialized.
+    pub fn external_record_entries(&self) -> Vec<ExternalRecordEntry> {
+        self.external_records
+            .as_ref()
+            .and_then(|v| Vec::<ExternalRecordEntry>::deserialize(v).ok())
             .unwrap_or_default()
     }
 }
@@ -271,6 +299,9 @@ pub struct UpsertOccurrenceParams {
     /// ("individuals", "percent-cover", ...).
     pub organism_quantity_type: Option<String>,
     pub associated_media: Option<serde_json::Value>,
+    /// The record's `externalRecords` array serialized verbatim (see
+    /// [`ExternalRecordEntry`]). None when the record carries no entries.
+    pub external_records: Option<serde_json::Value>,
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,

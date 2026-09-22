@@ -5,8 +5,8 @@
 //! the ingester (asynchronous firehose path).
 
 use crate::types::{
-    BlobEntry, CreateLikeParams, UpsertCommentParams, UpsertIdentificationParams,
-    UpsertInteractionParams, UpsertOccurrenceParams,
+    BlobEntry, CreateLikeParams, ExternalRecordEntry, UpsertCommentParams,
+    UpsertIdentificationParams, UpsertInteractionParams, UpsertOccurrenceParams,
 };
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
@@ -284,6 +284,25 @@ pub fn occurrence_from_json(
         })
         .unwrap_or_default();
 
+    // Cross-platform references to the same occurrence (iNaturalist, another
+    // AT Protocol lexicon, ...). Stored as JSONB in the record's own shape;
+    // the appview hands them to the client as-is for display and does not
+    // resolve or validate the targets.
+    let external_records = record
+        .external_records
+        .as_ref()
+        .map(|entries| {
+            entries
+                .iter()
+                .map(|entry| ExternalRecordEntry {
+                    uri: entry.uri.as_str().to_string(),
+                    service: entry.service.as_ref().map(|s| s.as_str().to_string()),
+                })
+                .collect::<Vec<_>>()
+        })
+        .filter(|entries| !entries.is_empty())
+        .and_then(|entries| serde_json::to_value(entries).ok());
+
     Ok(ParsedOccurrence {
         params: UpsertOccurrenceParams {
             uri,
@@ -320,6 +339,7 @@ pub fn occurrence_from_json(
                     Some(v.clone())
                 }
             }),
+            external_records,
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,
@@ -1122,6 +1142,88 @@ mod tests {
             "synchronous parser should not populate associated_media from strong \
              refs — that is the ingester's async job"
         );
+    }
+
+    /// `externalRecords` cross-links this occurrence to the same observation
+    /// held elsewhere (iNaturalist, another AT Protocol lexicon). The parser
+    /// stores it as JSONB in the record's own shape so the appview can hand it
+    /// to clients without a second lookup; `service` is optional per the
+    /// lexicon and must survive being absent.
+    #[test]
+    fn test_occurrence_from_json_extracts_external_records() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15",
+            "externalRecords": [
+                {
+                    "uri": "https://www.inaturalist.org/observations/123456789",
+                    "service": "inaturalist"
+                },
+                {
+                    "uri": "at://did:plc:other/app.gainforest.dwc.occurrence/3mu252kzh4y2h"
+                }
+            ]
+        });
+
+        assert_valid_lexicon::<Occurrence>(&record);
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".to_string(),
+            "bafyreioccurrence".to_string(),
+            "did:plc:author".to_string(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        let entries: Vec<ExternalRecordEntry> = serde_json::from_value(
+            parsed
+                .params
+                .external_records
+                .expect("externalRecords should be extracted"),
+        )
+        .expect("stored JSON should round-trip into typed entries");
+
+        assert_eq!(
+            entries,
+            vec![
+                ExternalRecordEntry {
+                    uri: "https://www.inaturalist.org/observations/123456789".into(),
+                    service: Some("inaturalist".into()),
+                },
+                ExternalRecordEntry {
+                    uri: "at://did:plc:other/app.gainforest.dwc.occurrence/3mu252kzh4y2h".into(),
+                    service: None,
+                },
+            ]
+        );
+    }
+
+    /// A record without `externalRecords` must leave the column NULL rather
+    /// than storing an empty array — the upsert COALESCEs this column, and an
+    /// empty array would read as "present" and block a later backfill.
+    #[test]
+    fn test_occurrence_from_json_omits_empty_external_records() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15",
+            "externalRecords": []
+        });
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".to_string(),
+            "bafyreioccurrence".to_string(),
+            "did:plc:author".to_string(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        assert!(parsed.params.external_records.is_none());
     }
 
     /// Records published before the `associatedMedia` → `media` lexicon rename

@@ -56,6 +56,38 @@ export const NoDiscussion: Story = {
   },
 };
 
+/**
+ * An observation cross-linked to the same sighting held elsewhere — an
+ * iNaturalist observation and a record in another AT Protocol lexicon.
+ */
+export const WithExternalRecords: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/occurrences/*", () =>
+          HttpResponse.json({
+            occurrence: {
+              ...OAK_OBSERVATION,
+              externalRecords: [
+                {
+                  uri: "https://www.inaturalist.org/observations/123456789",
+                  service: "inaturalist",
+                },
+                { uri: "https://bugguide.net/node/view/2261861", service: "bugguide" },
+                {
+                  uri: "at://did:plc:gainforest/app.gainforest.dwc.occurrence/3mu252kzh4y2h",
+                },
+              ],
+            },
+            identifications: [OAK_IDENTIFICATION],
+            comments: [],
+          }),
+        ),
+      ],
+    },
+  },
+};
+
 export const NotFound: Story = {
   parameters: {
     msw: {

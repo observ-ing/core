@@ -61,6 +61,7 @@ export const OAK_OBSERVATION: Occurrence = {
   eventDate: "2026-04-12T10:30:00Z",
   location: { latitude: 51.5074, longitude: -0.1278, uncertaintyMeters: 25 },
   images: [PHOTO],
+  externalRecords: [],
   createdAt: "2026-04-12T10:35:00Z",
   likeCount: 3,
   viewerHasLiked: false,
@@ -84,6 +85,12 @@ export const FERN_OBSERVATION: Occurrence = {
   eventDate: "2026-04-08/2026-04-10",
   location: { latitude: 51.51, longitude: -0.13 },
   images: [PHOTO],
+  // Cross-posted: one off-network service and one record in another AT
+  // Protocol lexicon, to exercise both halves of the external-records row.
+  externalRecords: [
+    { uri: "https://www.inaturalist.org/observations/123456789", service: "inaturalist" },
+    { uri: "at://did:plc:gainforest/app.gainforest.dwc.occurrence/3mu252kzh4y2h" },
+  ],
   createdAt: "2026-04-10T14:05:00Z",
   likeCount: 0,
   qualityIssues: [],

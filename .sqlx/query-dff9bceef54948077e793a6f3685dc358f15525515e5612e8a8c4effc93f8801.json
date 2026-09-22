@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                uri, cid, did, scientific_name,\n                event_date_raw as event_date,\n                ST_Y(location::geometry) as latitude,\n                ST_X(location::geometry) as longitude,\n                coordinate_uncertainty_meters,\n                associated_media, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                organism_quantity, organism_quantity_type,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE did != ALL($2)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
+  "query": "\n            SELECT\n                uri, cid, did, scientific_name,\n                event_date_raw as event_date,\n                ST_Y(location::geometry) as latitude,\n                ST_X(location::geometry) as longitude,\n                coordinate_uncertainty_meters,\n                associated_media, external_records, recorded_by,\n                taxon_id, taxon_rank, kingdom, phylum, class, \"order\" as order_, family, genus,\n                organism_quantity, organism_quantity_type,\n                created_at,\n                NULL::float8 as distance_meters,\n                NULL::text as source\n            FROM occurrences\n            WHERE did != ALL($2)\n            ORDER BY created_at DESC\n            LIMIT $1\n            ",
   "describe": {
     "columns": [
       {
@@ -94,6 +94,17 @@
       },
       {
         "ordinal": 9,
+        "name": "external_records",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "external_records"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
         "name": "recorded_by",
         "type_info": "Text",
         "origin": {
@@ -104,7 +115,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "taxon_id",
         "type_info": "Text",
         "origin": {
@@ -115,7 +126,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "taxon_rank",
         "type_info": "Text",
         "origin": {
@@ -126,7 +137,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "kingdom",
         "type_info": "Text",
         "origin": {
@@ -137,7 +148,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "phylum",
         "type_info": "Text",
         "origin": {
@@ -148,7 +159,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "class",
         "type_info": "Text",
         "origin": {
@@ -159,7 +170,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "order_",
         "type_info": "Text",
         "origin": {
@@ -170,7 +181,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "family",
         "type_info": "Text",
         "origin": {
@@ -181,7 +192,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "genus",
         "type_info": "Text",
         "origin": {
@@ -192,7 +203,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "organism_quantity",
         "type_info": "Text",
         "origin": {
@@ -203,7 +214,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "organism_quantity_type",
         "type_info": "Text",
         "origin": {
@@ -214,7 +225,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -225,13 +236,13 @@
         }
       },
       {
-        "ordinal": 21,
+        "ordinal": 22,
         "name": "distance_meters",
         "type_info": "Float8",
         "origin": "Expression"
       },
       {
-        "ordinal": 22,
+        "ordinal": 23,
         "name": "source",
         "type_info": "Text",
         "origin": "Expression"
@@ -264,10 +275,11 @@
       true,
       true,
       true,
+      true,
       false,
       null,
       null
     ]
   },
-  "hash": "7877edec9332f9cbd58a8179b64c3a785c6b840fd583c07a973e4e67e835cde8"
+  "hash": "dff9bceef54948077e793a6f3685dc358f15525515e5612e8a8c4effc93f8801"
 }
