@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { UploadModal } from "./UploadModal";
-import { ALICE_USER, OAK_OBSERVATION } from "../../../.storybook/fixtures";
+import { ALICE_USER, FERN_OBSERVATION, OAK_OBSERVATION } from "../../../.storybook/fixtures";
 
 const meta = {
   title: "Modals/UploadModal",
@@ -55,6 +55,26 @@ export const EditExisting: Story = {
           ...baseUiState,
           uploadModalOpen: true,
           editingObservation: OAK_OBSERVATION,
+        },
+      },
+    },
+  },
+};
+
+/**
+ * Editing an observation that already cross-links to other platforms: the
+ * "Also recorded on" field starts populated, because the save replaces the
+ * record's whole list and would otherwise drop the entries.
+ */
+export const EditWithExternalRecords: Story = {
+  parameters: {
+    storeOptions: {
+      preloadedState: {
+        ...signedInState,
+        ui: {
+          ...baseUiState,
+          uploadModalOpen: true,
+          editingObservation: FERN_OBSERVATION,
         },
       },
     },

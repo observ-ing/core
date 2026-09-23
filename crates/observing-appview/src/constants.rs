@@ -46,6 +46,18 @@ pub const MAX_INTERACTION_TYPE_LENGTH: usize = 64;
 /// Minimum length for search queries (taxonomy search).
 pub const MIN_SEARCH_QUERY_LENGTH: usize = 2;
 
+/// Maximum number of `externalRecords` entries on an occurrence. Mirrors the
+/// `maxLength` the occurrence lexicon puts on the array — exceeding it would
+/// have the PDS reject the whole record.
+pub const MAX_EXTERNAL_RECORDS: usize = 10;
+
+/// Maximum length of an external record's URI, mirroring the lexicon.
+pub const MAX_EXTERNAL_RECORD_URI_LENGTH: usize = 512;
+
+/// Maximum length of an external record's service identifier, mirroring the
+/// lexicon.
+pub const MAX_EXTERNAL_RECORD_SERVICE_LENGTH: usize = 64;
+
 // --- Interaction defaults ---
 
 /// Default direction value for species interactions.

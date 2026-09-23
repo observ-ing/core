@@ -14,6 +14,7 @@
 
 export type { Profile } from "../bindings/Profile";
 export type { Location } from "../bindings/Location";
+export type { ExternalRecord } from "../bindings/ExternalRecord";
 export type { EffectiveTaxonomy } from "../bindings/EffectiveTaxonomy";
 export type { Identification } from "../bindings/Identification";
 export type { Comment } from "../bindings/Comment";

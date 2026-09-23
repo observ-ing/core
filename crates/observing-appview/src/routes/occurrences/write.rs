@@ -4,10 +4,12 @@ use axum::Json;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
+use jacquard_common::types::uri::UriValue;
 use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{
-    Occurrence, OccurrenceOrganismQuantityType, OccurrenceRecord,
+    ExternalRecord, ExternalRecordService, Occurrence, OccurrenceOrganismQuantityType,
+    OccurrenceRecord,
 };
 use observing_lexicons::com_atproto::repo::strong_ref::StrongRef;
 use serde::Deserialize;
@@ -44,6 +46,10 @@ pub struct CreateOccurrenceRequest {
     organism_quantity_type: Option<String>,
     #[ts(optional)]
     event_date: Option<String>,
+    /// References to this same occurrence held on another service. Capped at
+    /// `constants::MAX_EXTERNAL_RECORDS` by the lexicon.
+    #[ts(optional)]
+    external_records: Option<Vec<ExternalRecordInput>>,
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
     /// License URI applied to each uploaded media record (e.g.
@@ -66,6 +72,23 @@ pub struct CreateOccurrenceRequest {
     /// URI). Written to the auto-created identification's `taxonID` field.
     #[ts(optional)]
     taxon_id: Option<String>,
+}
+
+/// One `externalRecords` entry from the submit/edit form: this same occurrence
+/// as held by another service. Both create and update send the full list, so an
+/// edit round-trips whatever the form was populated with.
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct ExternalRecordInput {
+    /// Permalink of the record on the holding service, or an `at://` URI for a
+    /// record in another AT Protocol lexicon.
+    uri: String,
+    /// Short service identifier (`inaturalist`, `bugguide`, an app name).
+    /// Optional — the client derives it from the URI host where it recognizes
+    /// one, and omits it otherwise rather than guessing.
+    #[ts(optional)]
+    service: Option<String>,
 }
 
 #[derive(Deserialize, TS)]
@@ -96,6 +119,10 @@ pub struct UpdateOccurrenceRequest {
     organism_quantity_type: Option<String>,
     #[ts(optional)]
     event_date: Option<String>,
+    /// See `CreateOccurrenceRequest::external_records`. The edit form sends the
+    /// full list back, so omitting it clears the entries on the record.
+    #[ts(optional)]
+    external_records: Option<Vec<ExternalRecordInput>>,
     /// Newly-added images to upload and attach, in addition to any retained ones.
     #[ts(optional)]
     images: Option<Vec<ImageUpload>>,
@@ -151,15 +178,16 @@ pub async fn create_occurrence(
     )
     .await?;
 
-    let record_value = build_occurrence_record_json(
-        body.latitude,
-        body.longitude,
-        body.coordinate_uncertainty_in_meters,
-        body.organism_quantity.as_deref(),
-        body.organism_quantity_type.as_deref(),
-        body.event_date.as_deref(),
+    let record_value = build_occurrence_record_json(OccurrenceRecordFields {
+        latitude: body.latitude,
+        longitude: body.longitude,
+        coordinate_uncertainty_in_meters: body.coordinate_uncertainty_in_meters,
+        organism_quantity: body.organism_quantity.as_deref(),
+        organism_quantity_type: body.organism_quantity_type.as_deref(),
+        event_date: body.event_date.as_deref(),
+        external_records: body.external_records.as_deref(),
         media_refs,
-    )?;
+    })?;
 
     // Create AT Protocol record. The firehose event that follows will trigger
     // observing-ingester to parse the same record into DB rows — we no longer
@@ -367,15 +395,16 @@ pub async fn update_occurrence(
     .await?;
     media_refs.extend(new_media_refs);
 
-    let record_value = build_occurrence_record_json(
-        body.latitude,
-        body.longitude,
-        body.coordinate_uncertainty_in_meters,
-        body.organism_quantity.as_deref(),
-        body.organism_quantity_type.as_deref(),
-        body.event_date.as_deref(),
+    let record_value = build_occurrence_record_json(OccurrenceRecordFields {
+        latitude: body.latitude,
+        longitude: body.longitude,
+        coordinate_uncertainty_in_meters: body.coordinate_uncertainty_in_meters,
+        organism_quantity: body.organism_quantity.as_deref(),
+        organism_quantity_type: body.organism_quantity_type.as_deref(),
+        event_date: body.event_date.as_deref(),
+        external_records: body.external_records.as_deref(),
         media_refs,
-    )?;
+    })?;
 
     // putRecord on the PDS. The firehose commit that follows triggers the
     // ingester to refresh the occurrence row — the appview no longer writes
@@ -539,6 +568,20 @@ async fn upload_media_records(
     Ok((blob_entries, media_refs))
 }
 
+/// The record fields both the create and the edit path assemble before writing.
+/// Grouped into a struct rather than passed positionally so adding a field
+/// doesn't turn the call sites into a row of same-typed `Option<&str>`s.
+struct OccurrenceRecordFields<'a> {
+    latitude: f64,
+    longitude: f64,
+    coordinate_uncertainty_in_meters: Option<i32>,
+    organism_quantity: Option<&'a str>,
+    organism_quantity_type: Option<&'a str>,
+    event_date: Option<&'a str>,
+    external_records: Option<&'a [ExternalRecordInput]>,
+    media_refs: Vec<StrongRef>,
+}
+
 /// Build the `bio.lexicons.temp.v0-1.occurrence` record body and serialize it
 /// to JSON for the PDS write API. `media_refs` are attached via the typed
 /// builder's `associatedMedia` field. Defaults `eventDate` to now, and stamps a
@@ -547,14 +590,18 @@ async fn upload_media_records(
 /// ingested. `createdAt` is an app-specific extension, not part of the upstream
 /// occurrence lexicon; see the matching handling in the identification path.
 fn build_occurrence_record_json(
-    latitude: f64,
-    longitude: f64,
-    coordinate_uncertainty_in_meters: Option<i32>,
-    organism_quantity: Option<&str>,
-    organism_quantity_type: Option<&str>,
-    event_date: Option<&str>,
-    media_refs: Vec<StrongRef>,
+    fields: OccurrenceRecordFields<'_>,
 ) -> Result<serde_json::Value, AppError> {
+    let OccurrenceRecordFields {
+        latitude,
+        longitude,
+        coordinate_uncertainty_in_meters,
+        organism_quantity,
+        organism_quantity_type,
+        event_date,
+        external_records,
+        media_refs,
+    } = fields;
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
     let event_date_str = event_date.unwrap_or(&now_rfc3339);
@@ -572,6 +619,11 @@ fn build_occurrence_record_json(
         None
     } else {
         Some(media_refs)
+    };
+
+    let external_records = match external_records {
+        Some(inputs) => build_external_records(inputs)?,
+        None => None,
     };
 
     let record = Occurrence::new()
@@ -593,6 +645,7 @@ fn build_occurrence_record_json(
                 .map(|s| OccurrenceOrganismQuantityType::from_value(SmolStr::from(s))),
         )
         .maybe_media(media)
+        .maybe_external_records(external_records)
         .build();
 
     let mut record_value = auth::serialize_at_record(&record)?;
@@ -609,6 +662,87 @@ fn build_occurrence_record_json(
     }
 
     Ok(record_value)
+}
+
+/// Validate the submitted external records and turn them into the lexicon's
+/// `#externalRecord` entries, or `None` when nothing survives (an empty array
+/// would be written to the PDS as a meaningless `[]`).
+///
+/// Every limit here mirrors the lexicon, so a record we accept is one the PDS
+/// will too. Schemes are deliberately narrower than the lexicon's "any URI":
+/// the entries are shown to readers as links, and http(s)/at are the only
+/// schemes this app renders or that an occurrence permalink realistically
+/// uses — anything else is more likely a mistake (or a `javascript:` payload)
+/// than a record reference. Blank URIs are dropped rather than rejected, since
+/// the edit form can submit a half-typed row, and duplicates collapse.
+fn build_external_records(
+    inputs: &[ExternalRecordInput],
+) -> Result<Option<Vec<ExternalRecord>>, AppError> {
+    let mut records: Vec<ExternalRecord> = Vec::new();
+    let mut seen: Vec<&str> = Vec::new();
+
+    for input in inputs {
+        let uri = input.uri.trim();
+        if uri.is_empty() {
+            continue;
+        }
+        if uri.len() > constants::MAX_EXTERNAL_RECORD_URI_LENGTH {
+            return Err(AppError::BadRequest(format!(
+                "External record URI must be at most {} characters",
+                constants::MAX_EXTERNAL_RECORD_URI_LENGTH
+            )));
+        }
+        if !is_supported_external_record_uri(uri) {
+            return Err(AppError::BadRequest(format!(
+                "External record URI must start with http://, https://, or at:// — got: {uri}"
+            )));
+        }
+        if seen.contains(&uri) {
+            continue;
+        }
+        seen.push(uri);
+
+        let service = input
+            .service
+            .as_deref()
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        if let Some(service) = service {
+            if service.len() > constants::MAX_EXTERNAL_RECORD_SERVICE_LENGTH {
+                return Err(AppError::BadRequest(format!(
+                    "External record service must be at most {} characters",
+                    constants::MAX_EXTERNAL_RECORD_SERVICE_LENGTH
+                )));
+            }
+        }
+
+        if records.len() == constants::MAX_EXTERNAL_RECORDS {
+            return Err(AppError::BadRequest(format!(
+                "At most {} external records are allowed",
+                constants::MAX_EXTERNAL_RECORDS
+            )));
+        }
+
+        let parsed_uri = UriValue::new_owned(uri)
+            .map_err(|_| AppError::BadRequest(format!("Invalid external record URI: {uri}")))?;
+
+        records.push(
+            ExternalRecord::new()
+                .uri(parsed_uri)
+                .maybe_service(service.map(|s| ExternalRecordService::from_value(SmolStr::from(s))))
+                .build(),
+        );
+    }
+
+    Ok((!records.is_empty()).then_some(records))
+}
+
+/// Whether a URI is one this app is willing to write as an external record.
+/// See `build_external_records` for why the set is narrower than the lexicon's.
+fn is_supported_external_record_uri(uri: &str) -> bool {
+    ["http://", "https://", "at://"]
+        .iter()
+        .any(|scheme| uri.len() > scheme.len() && uri[..scheme.len()].eq_ignore_ascii_case(scheme))
 }
 
 /// Create an identification record on the PDS for the given occurrence. The
@@ -650,4 +784,144 @@ async fn create_auto_identification(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input(uri: &str, service: Option<&str>) -> ExternalRecordInput {
+        ExternalRecordInput {
+            uri: uri.to_string(),
+            service: service.map(str::to_string),
+        }
+    }
+
+    /// The record the PDS receives carries the entries verbatim, with the
+    /// service mapped onto the lexicon's known values where it matches one.
+    #[test]
+    fn builds_entries_with_and_without_a_service() {
+        let records = build_external_records(&[
+            input(
+                "https://www.inaturalist.org/observations/123456789",
+                Some("inaturalist"),
+            ),
+            input(
+                "at://did:plc:other/app.gainforest.dwc.occurrence/3mu2",
+                None,
+            ),
+        ])
+        .expect("valid entries")
+        .expect("some entries");
+
+        assert_eq!(records.len(), 2);
+        assert_eq!(
+            records[0].uri.as_str(),
+            "https://www.inaturalist.org/observations/123456789"
+        );
+        assert_eq!(
+            records[0].service,
+            Some(ExternalRecordService::Inaturalist),
+            "a known value maps onto the enum variant rather than Other"
+        );
+        assert_eq!(records[1].service, None);
+    }
+
+    /// An unfamiliar service identifier is kept as-is: the lexicon says its
+    /// known values are not exhaustive.
+    #[test]
+    fn keeps_an_unknown_service_verbatim() {
+        let records = build_external_records(&[input(
+            "https://observation.org/observation/1",
+            Some("observation-org"),
+        )])
+        .expect("valid entry")
+        .expect("some entries");
+
+        assert_eq!(
+            records[0].service,
+            Some(ExternalRecordService::Other("observation-org".into()))
+        );
+    }
+
+    /// Nothing to write must stay absent rather than becoming `[]` on the
+    /// record — an empty array is noise every reader would have to special-case.
+    #[test]
+    fn empty_input_produces_no_field() {
+        assert!(build_external_records(&[]).expect("valid").is_none());
+        assert!(build_external_records(&[input("   ", None)])
+            .expect("blank rows are dropped, not rejected")
+            .is_none());
+    }
+
+    /// A half-typed row from the edit form shouldn't fail the whole save, and
+    /// the same link added twice collapses.
+    #[test]
+    fn drops_blanks_and_duplicates() {
+        let records = build_external_records(&[
+            input("https://bugguide.net/node/view/1", Some("bugguide")),
+            input("", None),
+            input("  https://bugguide.net/node/view/1  ", Some("bugguide")),
+        ])
+        .expect("valid entries")
+        .expect("some entries");
+
+        assert_eq!(records.len(), 1);
+    }
+
+    /// Both limits mirror the lexicon: exceeding either would have the PDS
+    /// reject the whole record, so we fail early with a readable message.
+    #[test]
+    fn rejects_more_than_the_lexicon_allows() {
+        let inputs: Vec<ExternalRecordInput> = (0..=constants::MAX_EXTERNAL_RECORDS)
+            .map(|i| input(&format!("https://example.org/observations/{i}"), None))
+            .collect();
+
+        assert!(matches!(
+            build_external_records(&inputs).expect_err("over the cap"),
+            AppError::BadRequest(_)
+        ));
+    }
+
+    #[test]
+    fn rejects_an_over_long_uri() {
+        let uri = format!(
+            "https://example.org/{}",
+            "a".repeat(constants::MAX_EXTERNAL_RECORD_URI_LENGTH)
+        );
+        assert!(matches!(
+            build_external_records(&[input(&uri, None)]).expect_err("over the cap"),
+            AppError::BadRequest(_)
+        ));
+    }
+
+    /// Schemes outside http(s)/at are refused: the reader never renders them
+    /// as a link, and `javascript:` has no business on a record.
+    #[test]
+    fn rejects_unsupported_schemes() {
+        for uri in [
+            "javascript:alert(1)",
+            "data:text/html,hi",
+            "www.inaturalist.org/observations/1",
+            "ftp://example.org/1",
+        ] {
+            assert!(
+                matches!(
+                    build_external_records(&[input(uri, None)]),
+                    Err(AppError::BadRequest(_))
+                ),
+                "{uri} should be rejected"
+            );
+        }
+    }
+
+    /// Scheme matching is case-insensitive, as URI schemes are.
+    #[test]
+    fn accepts_an_uppercase_scheme() {
+        assert!(
+            build_external_records(&[input("HTTPS://example.org/1", None)])
+                .expect("valid entry")
+                .is_some()
+        );
+    }
 }

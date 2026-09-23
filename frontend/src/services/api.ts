@@ -14,6 +14,7 @@ import type {
   ValidateResponse,
   UserPreferencesResponse,
   UpdatePreferencesRequest,
+  ExternalRecord,
 } from "./types";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
@@ -236,6 +237,11 @@ export interface ObservationInput {
   organismQuantityType?: string;
   license?: string;
   eventDate: string;
+  /**
+   * Links to this same occurrence on other platforms. Sent as the record's
+   * complete list — on an edit, omitting an entry removes it.
+   */
+  externalRecords?: ExternalRecord[];
   images?: Array<{ data: string; mimeType: string }>;
   // Taxonomy fields
   taxonId?: string;
