@@ -1,4 +1,5 @@
 import { Typography, List, ListItem, ListItemIcon, ListItemText } from "@mui/material";
+import type { SxProps, Theme } from "@mui/material/styles";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
@@ -8,6 +9,7 @@ import { sectionIconSx } from "../common/Section";
 
 interface DataQualitySectionProps {
   issues: QualityIssue[];
+  sx?: SxProps<Theme>;
 }
 
 /**
@@ -60,7 +62,7 @@ const CRITERIA: Array<{
   },
 ];
 
-export function DataQualitySection({ issues }: DataQualitySectionProps) {
+export function DataQualitySection({ issues, sx }: DataQualitySectionProps) {
   const issueSet = new Set(issues);
   const metCount = CRITERIA.filter((criterion) => criterion.met(issueSet)).length;
   const allMet = metCount === CRITERIA.length;
@@ -78,6 +80,7 @@ export function DataQualitySection({ issues }: DataQualitySectionProps) {
           {allMet ? "All criteria met" : `${metCount}/${CRITERIA.length}`}
         </Typography>
       }
+      sx={sx}
     >
       <List disablePadding>
         {CRITERIA.map((criterion) => {
