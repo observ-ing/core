@@ -3,6 +3,7 @@ import { Box, Typography, Paper, Stack } from "@mui/material";
 import { Schema, AutoStories, GitHub, AccountBalance, ChevronRight } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { PageContainer } from "../common/PageContainer";
+import { PageHeader } from "../common/PageHeader";
 
 interface DocLink {
   label: string;
@@ -44,12 +45,7 @@ export function DocsPage() {
 
   return (
     <PageContainer maxWidth="sm">
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-        Docs
-      </Typography>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        Reference material and resources for Observ.ing.
-      </Typography>
+      <PageHeader title="Docs" subtitle="Reference material and resources for Observ.ing." />
 
       <Stack spacing={1.5}>
         {links.map((link) => {
