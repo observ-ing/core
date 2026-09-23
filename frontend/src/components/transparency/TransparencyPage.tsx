@@ -7,12 +7,12 @@ import {
   TableFooter,
   TableHead,
   TableRow,
-  Typography,
 } from "@mui/material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import transparencyData from "../../data/transparency.json";
 import { PageContainer } from "../common/PageContainer";
 import { EmptyState } from "../common/EmptyState";
+import { PageHeader } from "../common/PageHeader";
 
 interface ServiceCost {
   name: string;
@@ -84,12 +84,7 @@ export function TransparencyPage() {
 
   return (
     <PageContainer maxWidth="md">
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
-        Transparency
-      </Typography>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-        {data.notes}
-      </Typography>
+      <PageHeader title="Transparency" subtitle={data.notes} />
 
       <Paper variant="outlined" sx={{ borderRadius: 2 }}>
         {sortedMonths.length === 0 ? (
