@@ -629,18 +629,20 @@ jobs:
       # caps at a few hundred events/s, can't keep pace with the live
       # firehose, and falls irrecoverably behind the relay's ~72h retention
       # window (see incident 2026-05-31). always-allocated CPU lets the loop
-      # run at full speed. --cpu=2 gives headroom for decoding every event on
-      # the network (CBOR decode is CPU-bound). min/max-instances=1 keeps it a
-      # singleton so there's exactly one consumer per cursor.
+      # run at full speed. --cpu=1 is enough: throughput is capped by Tap's
+      # internal per-event serialization, not CPU, and over 14 days at cpu=2
+      # the 1-minute p99 peaked at ~0.62 vCPU (memory ~5% of 2 GiB), including
+      # post-deploy catch-up. min/max-instances=1 keeps it a singleton so
+      # there's exactly one consumer per cursor.
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
             --image=$REGISTRY/tap-ingester:latest \
             --region=$REGION \
             --allow-unauthenticated \
-            --cpu=2 \
+            --cpu=1 \
             --no-cpu-throttling \
-            --memory=2Gi \
+            --memory=1Gi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1 \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
