@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { Dialog, DialogContent, IconButton } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import { Dialog, DialogContent } from "@mui/material";
 import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
+import { CloseIconButton } from "../common/CloseIconButton";
 
 interface ModalOverlayProps {
   open: boolean;
@@ -24,13 +24,10 @@ export function ModalOverlay({ open, onClose, children, maxWidth = "sm" }: Modal
         paper: { sx: fullScreen ? undefined : { maxHeight: "90vh" } },
       }}
     >
-      <IconButton
-        aria-label="Close"
+      <CloseIconButton
         onClick={onClose}
         sx={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}
-      >
-        <CloseIcon />
-      </IconButton>
+      />
       <DialogContent sx={{ p: 3 }}>{children}</DialogContent>
     </Dialog>
   );

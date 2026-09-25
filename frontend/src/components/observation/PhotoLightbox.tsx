@@ -1,6 +1,6 @@
-import { Box, IconButton, Modal, Fade, Typography, useTheme } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import { Box, Modal, Fade, Typography, useTheme } from "@mui/material";
 import { getLicenseLabel } from "../../lib/licenses";
+import { CloseIconButton } from "../common/CloseIconButton";
 
 interface PhotoLightboxProps {
   open: boolean;
@@ -39,12 +39,11 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
             cursor: "zoom-out",
           }}
         >
-          <IconButton
+          <CloseIconButton
             onClick={(e) => {
               e.stopPropagation();
               onClose();
             }}
-            aria-label="Close"
             sx={{
               position: "absolute",
               top: 16,
@@ -53,9 +52,7 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
               bgcolor: theme.palette.overlay["chip"],
               "&:hover": { bgcolor: theme.palette.overlay["chipHover"] },
             }}
-          >
-            <CloseIcon />
-          </IconButton>
+          />
           <Box
             component="img"
             src={src}

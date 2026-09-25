@@ -9,13 +9,13 @@ import {
   Typography,
   useTheme,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import PlaceIcon from "@mui/icons-material/Place";
 import { useLiveId } from "../../hooks/useLiveId";
 import { useAppDispatch } from "../../store";
 import { openUploadModal, setPendingUploadFiles, addToast } from "../../store/uiSlice";
 import { InRangeIndicator } from "../common/InRangeIndicator";
+import { CloseIconButton } from "../common/CloseIconButton";
 
 /**
  * Full-screen live camera identifier — point the camera at something and the
@@ -169,13 +169,10 @@ export function LiveIdView() {
           p: 3,
         }}
       >
-        <IconButton
+        <CloseIconButton
           onClick={handleClose}
-          aria-label="Close"
           sx={{ position: "absolute", top: 8, left: 8, color: "common.white" }}
-        >
-          <CloseIcon />
-        </IconButton>
+        />
         <PlaceIcon sx={{ fontSize: 48, opacity: 0.85 }} />
         {locationState === "prompting" ? (
           <>
@@ -228,9 +225,7 @@ export function LiveIdView() {
           background: theme.palette.overlay["gradientTop"],
         }}
       >
-        <IconButton onClick={handleClose} sx={{ color: "common.white" }} aria-label="Close">
-          <CloseIcon />
-        </IconButton>
+        <CloseIconButton onClick={handleClose} sx={{ color: "common.white" }} />
         {isInferring && <CircularProgress size={18} sx={{ color: "common.white", mr: 1 }} />}
       </Box>
 
