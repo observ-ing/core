@@ -219,6 +219,18 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           }),
         },
       },
+      // Every dialog's action row (ConfirmDialog, LoginModal) uses the same
+      // padding — centralized here instead of repeating `sx={{ px: 3, pb: 2 }}`
+      // at each call site.
+      MuiDialogActions: {
+        styleOverrides: {
+          root: ({ theme }) => ({
+            paddingLeft: theme.spacing(3),
+            paddingRight: theme.spacing(3),
+            paddingBottom: theme.spacing(2),
+          }),
+        },
+      },
     },
   });
 };
