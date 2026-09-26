@@ -15,6 +15,7 @@ use crate::error::{Result, SpeciesIdError};
 use crate::types::SpeciesSuggestion;
 use ndarray::{Array1, Array2};
 use serde::Deserialize;
+use std::io::Read;
 use std::path::Path;
 use tracing::info;
 
@@ -70,36 +71,41 @@ impl SpeciesEmbeddings {
         let num_species = labels.len();
         info!(num_species, "Loading species labels");
 
-        // Load binary embeddings
-        let embeddings_bytes = std::fs::read(&embeddings_path).map_err(|e| {
+        // Load binary embeddings. Read straight into the final f32 buffer
+        // rather than `fs::read` + copy: the file is ~800 MB for ViT-H, so a
+        // byte buffer plus an owned f32 copy briefly doubles peak memory and
+        // adds a full extra pass over the data at startup.
+        let read_err = |e: std::io::Error| {
             SpeciesIdError::Config(format!(
                 "Failed to read species embeddings from {}: {}",
                 embeddings_path.display(),
                 e
             ))
-        })?;
+        };
+        let mut file = std::fs::File::open(&embeddings_path).map_err(read_err)?;
+        let byte_len = file.metadata().map_err(read_err)?.len() as usize;
 
-        let total_floats = embeddings_bytes.len() / std::mem::size_of::<f32>();
-        if embeddings_bytes.len() % std::mem::size_of::<f32>() != 0
+        let total_floats = byte_len / std::mem::size_of::<f32>();
+        if !byte_len.is_multiple_of(std::mem::size_of::<f32>())
             || !total_floats.is_multiple_of(num_species)
         {
             return Err(SpeciesIdError::Config(format!(
                 "Embeddings file size ({} bytes) is not evenly divisible into {} species of f32 vectors",
-                embeddings_bytes.len(),
-                num_species
+                byte_len, num_species
             )));
         }
         let embed_dim = total_floats / num_species;
 
-        // Cast bytes to f32 slice
-        let float_data: &[f32] = bytemuck::cast_slice(&embeddings_bytes);
-        let embeddings = Array2::from_shape_vec((num_species, embed_dim), float_data.to_vec())
+        let mut float_data = vec![0f32; total_floats];
+        file.read_exact(bytemuck::cast_slice_mut(&mut float_data))
+            .map_err(read_err)?;
+        let embeddings = Array2::from_shape_vec((num_species, embed_dim), float_data)
             .map_err(|e| SpeciesIdError::Config(format!("Failed to reshape embeddings: {}", e)))?;
 
         info!(
             num_species,
             embedding_dim = embed_dim,
-            size_mb = embeddings_bytes.len() / (1024 * 1024),
+            size_mb = byte_len / (1024 * 1024),
             "Species embeddings loaded"
         );
 
@@ -187,6 +193,44 @@ mod tests {
             labels,
             embed_dim,
         }
+    }
+
+    fn write_model_dir(labels: &str, embedding_bytes: &[u8]) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(dir.path().join("species_labels.json"), labels).unwrap();
+        std::fs::write(dir.path().join("species_embeddings.bin"), embedding_bytes).unwrap();
+        dir
+    }
+
+    #[test]
+    fn load_reads_rows_and_infers_embed_dim() {
+        let rows: [[f32; 3]; 2] = [[1.0, 0.0, 0.0], [0.0, 0.6, 0.8]];
+        let bytes: Vec<u8> = rows
+            .iter()
+            .flatten()
+            .flat_map(|f| f.to_le_bytes())
+            .collect();
+        let dir = write_model_dir(
+            r#"[{"scientificName":"Species A"},{"scientificName":"Species B","commonName":"B"}]"#,
+            &bytes,
+        );
+
+        let species = SpeciesEmbeddings::load(dir.path()).unwrap();
+
+        assert_eq!(species.len(), 2);
+        assert_eq!(species.embed_dim, 3);
+        assert_eq!(species.embeddings.row(1).to_vec(), vec![0.0, 0.6, 0.8]);
+    }
+
+    #[test]
+    fn load_rejects_size_not_divisible_by_species() {
+        // 5 floats can't split evenly across 2 species.
+        let dir = write_model_dir(
+            r#"[{"scientificName":"A"},{"scientificName":"B"}]"#,
+            &[0u8; 5 * 4],
+        );
+
+        assert!(SpeciesEmbeddings::load(dir.path()).is_err());
     }
 
     #[test]
