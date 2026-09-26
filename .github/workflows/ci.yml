@@ -546,6 +546,14 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      # gen2 is load-bearing for cold starts, not a tuning knob. Startup is
+      # dominated by reading the ~3.3 GB model bundle baked into the image
+      # (ONNX weights + species embeddings). On gen1 those reads run at
+      # ~40 MB/s from the image filesystem (~90-100s to ready); on gen2 they
+      # run at ~260 MB/s (~20s). With files already in page cache the model
+      # loads in ~5-10s either way, so the CPU work is not the bottleneck.
+      # The startup probe polls every 2s (same 300s budget) so readiness
+      # isn't delayed up to 10s after the model finishes loading.
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -556,7 +564,8 @@ jobs:
             --memory=8Gi \
             --cpu-boost \
             --min-instances=1 \
-            --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
+            --execution-environment=gen2 \
+            --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
       # Faster ViT-L service for the live camera loop. Like observing-species-id
@@ -566,6 +575,8 @@ jobs:
       # min-instances=0: the live feature is experimental and sees ~no traffic,
       # so scale to zero rather than pay to keep a 4 GiB instance warm 24/7.
       # Flip back to 1 if/when it launches and cold starts hurt UX.
+      # gen2 + 2s startup probe for the same cold-start reasons as species-id
+      # above (~75s -> ~12s to ready for the ViT-L bundle).
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -576,7 +587,8 @@ jobs:
             --memory=4Gi \
             --cpu-boost \
             --min-instances=0 \
-            --startup-probe=tcpSocket.port=8080,periodSeconds=10,failureThreshold=30,timeoutSeconds=5 \
+            --execution-environment=gen2 \
+            --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
       - name: Get service URLs
