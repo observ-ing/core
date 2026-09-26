@@ -14,7 +14,6 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import * as maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
 import {
   addUncertaintyLayers,
   createCircleGeoJSON,
@@ -23,7 +22,7 @@ import {
   setBasemapStyle,
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
-import { BasemapSelector } from "./BasemapSelector";
+import { MapCanvas } from "./MapCanvas";
 import { SearchAdornment, searchFieldSx } from "../common/SearchField";
 import { formatCoordinate } from "../../lib/utils";
 
@@ -352,14 +351,7 @@ export function LocationPicker({
           );
         }}
       />
-      <Box sx={[{ position: "relative" }, mapContainerSx]}>
-        {/* Fill the parent via width/height, NOT position:absolute+inset — maplibre
-            adds `.maplibregl-map { position: relative }`, which ties on specificity
-            with emotion's `position:absolute` and wins by load order in the prod CSS
-            bundle, collapsing the container to height 0 (a blank map). */}
-        <Box ref={mapContainer} sx={{ width: "100%", height: "100%" }} />
-        {MAPTILER_ENABLED && <BasemapSelector />}
-      </Box>
+      <MapCanvas ref={mapContainer} />
       <Button
         size="small"
         onClick={() => setShowCoordinates((v) => !v)}
