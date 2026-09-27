@@ -59,6 +59,39 @@ export const accentListItemSx = {
   py: 1,
 } as const;
 
+type Corner = "top-left" | "top-right" | "bottom-left" | "bottom-right";
+
+const CORNER_EDGES: Record<Corner, { vertical: "top" | "bottom"; horizontal: "left" | "right" }> = {
+  "top-left": { vertical: "top", horizontal: "left" },
+  "top-right": { vertical: "top", horizontal: "right" },
+  "bottom-left": { vertical: "bottom", horizontal: "left" },
+  "bottom-right": { vertical: "bottom", horizontal: "right" },
+};
+
+/**
+ * Offset for a control pinned to a card/surface/screen corner (badges, close
+ * buttons, map controls, the FAB). `sx`'s built-in spacing transform covers
+ * margin/padding/gap but not top/right/bottom/left, so a bare number there is
+ * raw px, not the spacing scale — this keeps corner offsets on it instead.
+ * `size` picks `theme.spacing()` for a tiny thumbnail control (`"xs"`), a
+ * card/dialog/map control (`"sm"`, the default), or a full-bleed overlay
+ * (`"lg"`); `position` defaults to `"absolute"` (pinned to a positioned
+ * ancestor) and can be set to `"fixed"` for a viewport-pinned control.
+ */
+export const cornerPinSx =
+  (
+    corner: Corner,
+    {
+      size = "sm",
+      position = "absolute",
+    }: { size?: "xs" | "sm" | "lg"; position?: "absolute" | "fixed" } = {},
+  ) =>
+  (theme: Theme) => {
+    const inset = theme.spacing(size === "xs" ? 0.25 : size === "lg" ? 2 : 1);
+    const { vertical, horizontal } = CORNER_EDGES[corner];
+    return { position, [vertical]: inset, [horizontal]: inset };
+  };
+
 /** Shared hover-transition timing for left-accent feed rows. */
 export const accentListItemTransitionSx = {
   transition: "background-color 0.2s ease, border-left-color 0.2s ease",

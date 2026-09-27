@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { Capacitor } from "@capacitor/core";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { openUploadModal } from "../../store/uiSlice";
+import { cornerPinSx } from "./layoutSx";
 
 export function FAB() {
   const dispatch = useAppDispatch();
@@ -53,15 +54,15 @@ export function FAB() {
         if (reason !== "focus") setOpen(true);
       }}
       onClose={() => setOpen(false)}
-      sx={{
-        position: "fixed",
-        bottom: 16,
-        right: 16,
-        zIndex: 100,
-        "@media (min-width: 900px)": {
-          right: "max(16px, calc(50% - 554px))",
+      sx={[
+        cornerPinSx("bottom-right", { size: "lg", position: "fixed" }),
+        {
+          zIndex: 100,
+          "@media (min-width: 900px)": {
+            right: "max(16px, calc(50% - 554px))",
+          },
         },
-      }}
+      ]}
     >
       {actions.map((action) => (
         <SpeedDialAction

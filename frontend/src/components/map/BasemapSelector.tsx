@@ -4,6 +4,7 @@ import LayersIcon from "@mui/icons-material/Layers";
 import CheckIcon from "@mui/icons-material/Check";
 import { BASEMAPS } from "./mapStyle";
 import { useBasemap } from "./useBasemap";
+import { cornerPinSx } from "../common/layoutSx";
 
 /**
  * Floating control (bottom-left of the map) for switching the basemap. The
@@ -25,16 +26,16 @@ export function BasemapSelector() {
           aria-controls={open ? "basemap-selector-menu" : undefined}
           aria-expanded={open ? "true" : undefined}
           onClick={(e) => setAnchorEl(e.currentTarget)}
-          sx={{
-            position: "absolute",
-            bottom: 8,
-            left: 8,
-            zIndex: 1,
-            color: "text.primary",
-            bgcolor: "background.paper",
-            boxShadow: 2,
-            "&:hover": { bgcolor: "background.paper" },
-          }}
+          sx={[
+            cornerPinSx("bottom-left"),
+            {
+              zIndex: 1,
+              color: "text.primary",
+              bgcolor: "background.paper",
+              boxShadow: 2,
+              "&:hover": { bgcolor: "background.paper" },
+            },
+          ]}
         >
           <LayersIcon fontSize="small" />
         </IconButton>
