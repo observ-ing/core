@@ -12,6 +12,8 @@ import {
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import PlaceIcon from "@mui/icons-material/Place";
 import { useLiveId } from "../../hooks/useLiveId";
+import { useSpeciesIdReadyAt, warmSpeciesId } from "../../lib/speciesIdWarmup";
+import { SpeciesIdProgress } from "./SpeciesIdProgress";
 import { useAppDispatch } from "../../store";
 import { openUploadModal, setPendingUploadFiles, addToast } from "../../store/uiSlice";
 import { InRangeIndicator } from "../common/InRangeIndicator";
@@ -109,6 +111,12 @@ export function LiveIdView() {
       streamRef.current = null;
     };
   }, [locationState]);
+
+  // Wake the live model while the user grants location and camera access.
+  useEffect(() => {
+    warmSpeciesId(true);
+  }, []);
+  const readyAt = useSpeciesIdReadyAt(true);
 
   const { suggestions, isInferring } = useLiveId({
     videoRef,
@@ -289,6 +297,8 @@ export function LiveIdView() {
                 </Typography>
               )}
             </>
+          ) : ready && readyAt !== null ? (
+            <SpeciesIdProgress readyAt={readyAt} color="common.white" />
           ) : (
             <Typography variant="body2" sx={{ opacity: 0.7 }}>
               {ready ? "Point at a plant or animal…" : "Starting camera…"}

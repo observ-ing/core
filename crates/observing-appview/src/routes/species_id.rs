@@ -1,9 +1,15 @@
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{
+    extract::{Query, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tracing::{debug, error};
 
 use crate::auth::AuthUser;
-use crate::species_id_client::IdentifyResponse;
+use crate::species_id_client::{IdentifyResponse, SpeciesIdClient};
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonResult;
 
@@ -68,21 +74,8 @@ pub async fn identify(
     _user: AuthUser,
     Json(body): Json<IdentifyRequest>,
 ) -> impl IntoResponse {
-    // Live requests prefer the faster ViT-L service, falling back to the full
-    // model when no live service is configured (e.g. local dev). Non-live
-    // requests (upload/capture re-ID) always use the full-accuracy model.
-    let client = match (body.live, &state.species_id_live, &state.species_id) {
-        (true, Some(live), _) => live,
-        (_, _, Some(full)) => full,
-        (_, _, None) => {
-            return (
-                StatusCode::SERVICE_UNAVAILABLE,
-                Json(ErrorResponse {
-                    error: "Species identification service not configured".into(),
-                }),
-            )
-                .into_response();
-        }
+    let Some(client) = select_client(&state, body.live) else {
+        return not_configured();
     };
 
     match client
@@ -101,6 +94,52 @@ pub async fn identify(
                 .into_response()
         }
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StatusQuery {
+    /// Check the live-loop (ViT-L) service instead of the full model.
+    #[serde(default)]
+    live: bool,
+}
+
+/// GET /api/species-id/status
+///
+/// Reports whether the species-id service has a warm instance and, if not,
+/// roughly how long until an identify request would come back. The check
+/// itself wakes a cold service, so the frontend calls this as soon as the
+/// user starts a flow that will need an ID (e.g. opening the upload modal)
+/// to get the boot underway while they pick a photo. Authenticated like
+/// `identify` so anonymous traffic can't keep the service awake.
+pub async fn status(
+    State(state): State<AppState>,
+    _user: AuthUser,
+    Query(query): Query<StatusQuery>,
+) -> impl IntoResponse {
+    match select_client(&state, query.live) {
+        Some(client) => Json(client.status().await).into_response(),
+        None => not_configured(),
+    }
+}
+
+/// Live requests prefer the faster ViT-L service, falling back to the full
+/// model when no live service is configured (e.g. local dev). Non-live
+/// requests (upload/capture re-ID) always use the full-accuracy model.
+fn select_client(state: &AppState, live: bool) -> Option<&Arc<SpeciesIdClient>> {
+    match (live, &state.species_id_live, &state.species_id) {
+        (true, Some(live), _) => Some(live),
+        (_, _, full) => full.as_ref(),
+    }
+}
+
+fn not_configured() -> Response {
+    (
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(ErrorResponse {
+            error: "Species identification service not configured".into(),
+        }),
+    )
+        .into_response()
 }
 
 /// Hydrate AI suggestions with GBIF match data, photo, and common name.
