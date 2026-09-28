@@ -344,6 +344,33 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo test --workspace
 
+  # State-machine simulation of the ingester against a real Postgres: random
+  # repo writes + adversarial Tap delivery, checked against a reference model
+  # (crates/tap-ingester/src/sim, docs/system-tests.md). Fixed seeds, so it's
+  # deterministic; known bugs are ratcheted via KNOWN_VIOLATIONS.
+  rust-sim:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SIM_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test -p tap-ingester sim -- --nocapture
+
   # End-to-end tests
   e2e:
     runs-on: ubuntu-latest
