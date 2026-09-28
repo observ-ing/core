@@ -1,7 +1,7 @@
 import { useState, useCallback, type FormEvent } from "react";
-import { Box, Typography, Stack, TextField, Button, Chip } from "@mui/material";
+import { Box, Typography, Stack, TextField, Button } from "@mui/material";
 import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutlineOutlined";
-import { countChipSx } from "../common/chipSx";
+import { CountChip } from "../common/CountChip";
 import { useAppSelector } from "../../store";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
@@ -63,7 +63,7 @@ export function CommentSection({ observationUri, observationCid, comments }: Com
         sx={{ mb: 2 }}
         trailing={
           <>
-            {comments.length > 0 && <Chip label={comments.length} size="small" sx={countChipSx} />}
+            {comments.length > 0 && <CountChip count={comments.length} />}
             {user && !showForm && (
               <Button
                 size="small"
