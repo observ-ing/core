@@ -70,11 +70,13 @@ pub async fn delete_like(
     Json(body): Json<DeleteLikeRequest>,
 ) -> Result<Json<SuccessResponse>, AppError> {
     // Short retry window: a rapid like→unlike can race the ingester landing
-    // the freshly-created like row. Without this, the lookup returns None and
-    // we leak a zombie PDS record.
-    let like_uri = find_like_uri_with_retry(&state, &body.occurrence_uri, &user.did).await?;
+    // the freshly-created like row. Without this, the lookup comes back empty
+    // and we leak a zombie PDS record.
+    let like_uris = find_like_uris_with_retry(&state, &body.occurrence_uri, &user.did).await?;
 
-    if let Some(ref uri) = like_uri {
+    // Delete every like record the user holds for the occurrence: a double tap
+    // can create two, and removing only one would leave it liked.
+    for uri in &like_uris {
         // Best-effort: ingester will remove the DB row when the delete commit
         // lands on the firehose.
         let _ = try_delete_atp_record(&state.oauth_client, uri, &user.did).await;
@@ -83,25 +85,25 @@ pub async fn delete_like(
     Ok(Json(SuccessResponse { success: true }))
 }
 
-async fn find_like_uri_with_retry(
+async fn find_like_uris_with_retry(
     state: &AppState,
     subject_uri: &str,
     did: &str,
-) -> Result<Option<String>, AppError> {
+) -> Result<Vec<String>, AppError> {
     const MAX_ATTEMPTS: usize = 5;
     const INTERVAL: Duration = Duration::from_millis(300);
 
     for attempt in 0..MAX_ATTEMPTS {
-        let uri =
-            observing_db::likes::find_uri_by_subject_and_did(&state.pool, subject_uri, did).await?;
-        if uri.is_some() {
-            return Ok(uri);
+        let uris = observing_db::likes::find_uris_by_subject_and_did(&state.pool, subject_uri, did)
+            .await?;
+        if !uris.is_empty() {
+            return Ok(uris);
         }
         if attempt + 1 < MAX_ATTEMPTS {
             sleep(INTERVAL).await;
         }
     }
-    Ok(None)
+    Ok(Vec::new())
 }
 
 /// Best-effort deletion of an AT Protocol record. Returns `None` if any step
