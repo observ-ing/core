@@ -16,6 +16,7 @@ import { useAppDispatch } from "../../store";
 import { openUploadModal, setPendingUploadFiles, addToast } from "../../store/uiSlice";
 import { InRangeIndicator } from "../common/InRangeIndicator";
 import { CloseIconButton } from "../common/CloseIconButton";
+import { cornerPinSx } from "../common/layoutSx";
 
 /**
  * Full-screen live camera identifier — point the camera at something and the
@@ -171,7 +172,7 @@ export function LiveIdView() {
       >
         <CloseIconButton
           onClick={handleClose}
-          sx={{ position: "absolute", top: 8, left: 8, color: "common.white" }}
+          sx={[cornerPinSx("top-left"), { color: "common.white" }]}
         />
         <PlaceIcon sx={{ fontSize: 48, opacity: 0.85 }} />
         {locationState === "prompting" ? (

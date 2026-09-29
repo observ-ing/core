@@ -1,5 +1,6 @@
 import { Chip, CircularProgress, useTheme } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
+import { cornerPinSx } from "./layoutSx";
 
 // Overlay chip marking a row as a not-yet-ingested optimistic submission.
 // Pair it with pendingCardSx() on the card's CardActionArea; it clears once
@@ -12,14 +13,10 @@ export function PendingBadge() {
       size="small"
       icon={<CircularProgress size={12} thickness={6} sx={{ color: "inherit !important" }} />}
       label="Processing…"
-      sx={{
-        position: "absolute",
-        top: 8,
-        left: 8,
-        zIndex: 1,
-        bgcolor: theme.palette.overlay["badge"],
-        color: "common.white",
-      }}
+      sx={[
+        cornerPinSx("top-left"),
+        { zIndex: 1, bgcolor: theme.palette.overlay["badge"], color: "common.white" },
+      ]}
     />
   );
 }

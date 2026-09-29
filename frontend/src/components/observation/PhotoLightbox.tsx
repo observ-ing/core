@@ -1,6 +1,7 @@
 import { Box, Modal, Fade, Typography, useTheme } from "@mui/material";
 import { getLicenseLabel } from "../../lib/licenses";
 import { CloseIconButton } from "../common/CloseIconButton";
+import { cornerPinSx } from "../common/layoutSx";
 
 interface PhotoLightboxProps {
   open: boolean;
@@ -44,14 +45,14 @@ export function PhotoLightbox({ open, onClose, src, alt, license }: PhotoLightbo
               e.stopPropagation();
               onClose();
             }}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              color: "common.white",
-              bgcolor: theme.palette.overlay["chip"],
-              "&:hover": { bgcolor: theme.palette.overlay["chipHover"] },
-            }}
+            sx={[
+              cornerPinSx("top-right", { size: "lg" }),
+              {
+                color: "common.white",
+                bgcolor: theme.palette.overlay["chip"],
+                "&:hover": { bgcolor: theme.palette.overlay["chipHover"] },
+              },
+            ]}
           />
           <Box
             component="img"

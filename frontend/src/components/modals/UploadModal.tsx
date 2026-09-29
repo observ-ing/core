@@ -36,7 +36,7 @@ import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import type { ExternalRecord } from "../../bindings/ExternalRecord";
 import { ModalOverlay } from "./ModalOverlay";
-import { coverImageSx } from "../common/layoutSx";
+import { coverImageSx, cornerPinSx } from "../common/layoutSx";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ButtonSpinner } from "../common/ButtonSpinner";
@@ -99,16 +99,16 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
         size="small"
         onClick={onRemove}
         aria-label="Remove image"
-        sx={{
-          position: "absolute",
-          top: 2,
-          right: 2,
-          bgcolor: theme.palette.overlay["modalChip"],
-          color: "common.white",
-          width: 20,
-          height: 20,
-          "&:hover": { bgcolor: "error.main" },
-        }}
+        sx={[
+          cornerPinSx("top-right", { size: "xs" }),
+          {
+            bgcolor: theme.palette.overlay["modalChip"],
+            color: "common.white",
+            width: 20,
+            height: 20,
+            "&:hover": { bgcolor: "error.main" },
+          },
+        ]}
       >
         <CloseIcon sx={{ fontSize: 14 }} />
       </IconButton>

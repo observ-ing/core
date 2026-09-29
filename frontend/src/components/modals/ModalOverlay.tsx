@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Dialog, DialogContent } from "@mui/material";
 import { useMobileFullScreen } from "../../hooks/useMobileFullScreen";
 import { CloseIconButton } from "../common/CloseIconButton";
+import { cornerPinSx } from "../common/layoutSx";
 
 interface ModalOverlayProps {
   open: boolean;
@@ -24,10 +25,7 @@ export function ModalOverlay({ open, onClose, children, maxWidth = "sm" }: Modal
         paper: { sx: fullScreen ? undefined : { maxHeight: "90vh" } },
       }}
     >
-      <CloseIconButton
-        onClick={onClose}
-        sx={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}
-      />
+      <CloseIconButton onClick={onClose} sx={[cornerPinSx("top-right"), { zIndex: 1 }]} />
       <DialogContent sx={{ p: 3 }}>{children}</DialogContent>
     </Dialog>
   );
