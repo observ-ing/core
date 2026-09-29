@@ -570,7 +570,9 @@ pub struct Snapshot {
     pub likes: BTreeSet<(String, String)>,
     /// occurrence uri → (winning name, vote count)
     pub community_ids: BTreeMap<String, (String, i64)>,
-    /// `(actor, kind, reference uri)` → count, only where count > 1
-    pub duplicate_notifications: BTreeMap<(String, String, Option<String>), i64>,
+    /// `(recipient, actor, kind, reference uri)` → count, only where count > 1.
+    /// Keyed by recipient because a deleted record's rkey can be reused for a
+    /// record about someone else's occurrence, which rightly notifies them.
+    pub duplicate_notifications: BTreeMap<(String, String, String, Option<String>), i64>,
     pub ingest_errors: Vec<String>,
 }

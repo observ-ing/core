@@ -36,27 +36,30 @@ use model::{Action, Effect, Snapshot, World};
 const KNOWN_VIOLATIONS: &[&str] = &[
     // occurrences::upsert COALESCEs organism_quantity(_type)/external_records
     // on conflict, so an edit that removes them leaves the old values behind.
+    // Fix: #856.
     "occurrences_match_repos",
-    // likes::create's ON CONFLICT targets (subject_uri, did), not the uri
-    // primary key, so replaying an older version of a like errors (and lands
-    // in failed_records) instead of being a no-op.
-    "ingest_succeeds",
     // identifications::upsert COALESCEs taxon_rank/kingdom on conflict, so an
-    // edit that clears either field leaves the old value behind.
+    // edit that clears either field leaves the old value behind. Fix: #857.
     "identifications_match_repos",
     // Same upsert keeps a resolved accepted_taxon_key when the name changes,
     // and resolve-taxa only visits NULL keys, so the stale key is permanent.
+    // Fix: #857.
     "accepted_taxon_key_matches_name",
     // Downstream of the kingdom COALESCE: identical names split into separate
-    // (name, kingdom) vote groups in the community_ids matview.
+    // (name, kingdom) vote groups in the community_ids matview. Fix: #857.
     "community_ids_match_model",
+    // notifications has no uniqueness, so every redelivery (or edit) of an
+    // identification/comment/like notifies the owner again. Fix: #858.
+    "notifications_at_most_once",
     // likes::create is ON CONFLICT (subject_uri, did) DO NOTHING, so a second
     // like record for the same subject is dropped; deleting the first then
     // leaves the user "not liking" something their repo still likes.
+    // Fix: #859.
     "likes_match_repos",
-    // notifications has no uniqueness, so every redelivery (or edit) of an
-    // identification/comment/like notifies the owner again.
-    "notifications_at_most_once",
+    // likes::create's ON CONFLICT targets (subject_uri, did), not the uri
+    // primary key, so replaying an older version of a like errors (and lands
+    // in failed_records) instead of being a no-op. Fix: #859.
+    "ingest_succeeds",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
