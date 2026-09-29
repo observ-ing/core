@@ -13,7 +13,9 @@ pub struct NotificationRow {
     pub created_at: DateTime<Utc>,
 }
 
-/// Insert a notification, skipping if actor == recipient
+/// Insert a notification, skipping if actor == recipient or if this
+/// recipient was already notified about this actor's `reference_uri` (a
+/// redelivered or edited record).
 pub async fn create(
     executor: impl sqlx::PgExecutor<'_>,
     recipient_did: &str,
@@ -29,6 +31,7 @@ pub async fn create(
         r#"
         INSERT INTO ingester.notifications (recipient_did, actor_did, kind, subject_uri, reference_uri)
         VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT DO NOTHING
         "#,
         recipient_did,
         actor_did,
