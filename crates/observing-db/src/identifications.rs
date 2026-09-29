@@ -15,6 +15,12 @@ use tracing::{error, trace};
 /// [`CommunityIdsRefresher`] instead (or, for batch jobs, call
 /// [`refresh_community_ids`] once when the batch drains).
 ///
+/// On conflict the record's fields replace the stored ones, so an edit that
+/// clears `taxonRank` or `kingdom` clears them here too. `accepted_taxon_key`
+/// is kept only while the name and kingdom are unchanged: renaming resets it
+/// to the incoming value (NULL from the ingester), which puts the row back in
+/// `observing-resolve-taxa`'s queue instead of leaving the old taxon's key.
+///
 /// Uses the dynamic query API rather than the `query!` macro so the new
 /// `accepted_taxon_key` column doesn't require regenerating the offline
 /// sqlx-prepare cache.
@@ -27,11 +33,19 @@ pub async fn upsert(pool: &PgPool, p: &UpsertIdentificationParams) -> Result<(),
         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
+            subject_uri = $4,
+            subject_cid = $5,
             scientific_name = $6,
-            taxon_rank = COALESCE($7, identifications.taxon_rank),
-            taxon_id = COALESCE($8, identifications.taxon_id),
-            kingdom = COALESCE($10, identifications.kingdom),
-            accepted_taxon_key = COALESCE($11, identifications.accepted_taxon_key),
+            taxon_rank = $7,
+            taxon_id = $8,
+            date_identified = $9,
+            kingdom = $10,
+            accepted_taxon_key = CASE
+                WHEN identifications.scientific_name IS DISTINCT FROM $6
+                  OR identifications.kingdom IS DISTINCT FROM $10
+                THEN $11
+                ELSE COALESCE($11, identifications.accepted_taxon_key)
+            END,
             indexed_at = NOW()
         "#,
     )
