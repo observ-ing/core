@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)\n        VALUES ($1, $2, $3, $4, $5, $6)\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = EXCLUDED.cid,\n            subject_uri = EXCLUDED.subject_uri,\n            subject_cid = EXCLUDED.subject_cid,\n            created_at = EXCLUDED.created_at\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c3eadc1114f3d3cd9a4b771b9bf87c3711d0c9a8d8998299a456b33d6bf90e8"
+}

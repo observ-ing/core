@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT subject_uri, COUNT(*)::int as count\n        FROM likes\n        WHERE subject_uri = ANY($1)\n        GROUP BY subject_uri\n        ",
+  "query": "\n        SELECT subject_uri, COUNT(DISTINCT did)::int as count\n        FROM likes\n        WHERE subject_uri = ANY($1)\n        GROUP BY subject_uri\n        ",
   "describe": {
     "columns": [
       {
@@ -31,5 +31,5 @@
       null
     ]
   },
-  "hash": "1c11b4452dee3386eb3259fc4f43e6fce9b1bea147babf26df5dfaffebf8a01d"
+  "hash": "43114ad88252fff39e466884e1809a9ad4f500046bb35c61e3b66d2cdfbca35b"
 }
