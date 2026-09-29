@@ -11,7 +11,7 @@ use observing_db::identifications::refresh_community_ids;
 use sqlx::postgres::PgPool;
 use sqlx::AssertSqlSafe;
 
-use super::model::{fake_taxon_key, Event, IdentificationRow, Snapshot};
+use super::model::{fake_taxon_key, Event, IdentificationRow, OccurrenceRow, Snapshot};
 use crate::database::Database;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -130,11 +130,27 @@ impl Driver for PgDriver {
         let pool = self.pool();
         refresh_community_ids(pool).await?;
         let mut s = Snapshot {
-            occurrences: sqlx::query_scalar("SELECT uri FROM occurrences")
-                .fetch_all(pool)
-                .await?
-                .into_iter()
-                .collect(),
+            occurrences: sqlx::query_as::<
+                _,
+                (String, Option<String>, Option<String>, Option<String>),
+            >(
+                "SELECT uri, organism_quantity, organism_quantity_type, \
+                        external_records->0->>'uri' FROM occurrences",
+            )
+            .fetch_all(pool)
+            .await?
+            .into_iter()
+            .map(|(uri, quantity, quantity_type, external_record)| {
+                (
+                    uri,
+                    OccurrenceRow {
+                        quantity,
+                        quantity_type,
+                        external_record,
+                    },
+                )
+            })
+            .collect(),
             likes: sqlx::query_as("SELECT did, subject_uri FROM likes")
                 .fetch_all(pool)
                 .await?

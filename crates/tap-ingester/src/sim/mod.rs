@@ -2,7 +2,7 @@
 //! written up in `docs/system-tests.md`.
 //!
 //! Generates random traces of repo writes interleaved with adversarial Tap
-//! delivery (cross-repo reordering, at-least-once redelivery) and background
+//! delivery (cross-repo reordering, redelivery, cursor rewinds) and background
 //! resolve-taxa passes, runs them through the real write path against a
 //! scratch Postgres, then drains every queue and checks the database against
 //! the reference model in [`model`]. On a violation it shrinks the trace to a
@@ -34,6 +34,13 @@ use model::{Action, Effect, Snapshot, World};
 /// not listed here, and on a listed one that no longer reproduces, so the
 /// list can't silently go stale.
 const KNOWN_VIOLATIONS: &[&str] = &[
+    // occurrences::upsert COALESCEs organism_quantity(_type)/external_records
+    // on conflict, so an edit that removes them leaves the old values behind.
+    "occurrences_match_repos",
+    // likes::create's ON CONFLICT targets (subject_uri, did), not the uri
+    // primary key, so replaying an older version of a like errors (and lands
+    // in failed_records) instead of being a no-op.
+    "ingest_succeeds",
     // identifications::upsert COALESCEs taxon_rank/kingdom on conflict, so an
     // edit that clears either field leaves the old value behind.
     "identifications_match_repos",
@@ -91,7 +98,7 @@ impl Property {
         match self {
             Property::IngestSucceeds => (!actual.ingest_errors.is_empty())
                 .then(|| format!("    ingester rejected: {:?}", actual.ingest_errors)),
-            Property::Occurrences => diff_sets(&expected.occurrences, &actual.occurrences),
+            Property::Occurrences => diff_maps(&expected.occurrences, &actual.occurrences),
             Property::Identifications => {
                 diff_maps(&expected.identifications, &actual.identifications)
             }
@@ -152,8 +159,11 @@ async fn run(driver: &mut PgDriver, trace: &[Action]) -> (Snapshot, Snapshot) {
     let mut errors = Vec::new();
     for action in trace {
         match world.step(action) {
-            Effect::None => {}
-            Effect::Ingest(event) => errors.extend(driver.ingest(&event).await.err()),
+            Effect::Ingest(events) => {
+                for event in events {
+                    errors.extend(driver.ingest(&event).await.err());
+                }
+            }
             Effect::ResolveTaxa => driver.resolve_taxa().await.expect("resolve-taxa"),
         }
     }

@@ -18,6 +18,12 @@ const RKEYS: [&str; 3] = ["r0", "r1", "r2"];
 const NAMES: [&str; 3] = ["Acer rubrum", "Quercus alba", "Quercus rubra"];
 const RANKS: [Option<&str>; 2] = [Some("species"), None];
 const KINGDOMS: [Option<&str>; 2] = [Some("Plantae"), None];
+const QUANTITIES: [Option<&str>; 3] = [Some("3"), Some("10-100"), None];
+const EXTERNAL_RECORDS: [Option<&str>; 3] = [
+    Some("https://www.inaturalist.org/observations/1"),
+    Some("https://www.inaturalist.org/observations/2"),
+    None,
+];
 
 /// The `accepted_taxon_key` the fake GBIF upstream resolves each name to.
 pub fn fake_taxon_key(name: &str) -> i64 {
@@ -89,7 +95,12 @@ fn short_collection(collection: &str) -> &'static str {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Record {
-    Occurrence,
+    Occurrence {
+        /// `organismQuantity`; `organismQuantityType` is "individuals" when set.
+        quantity: Option<&'static str>,
+        /// The single `externalRecords` entry's URI, if any.
+        external_record: Option<&'static str>,
+    },
     Identification {
         subject: Key,
         name: &'static str,
@@ -106,13 +117,26 @@ pub enum Record {
 impl Record {
     fn to_json(&self) -> Value {
         match self {
-            Record::Occurrence => json!({
-                "$type": OCCURRENCE_COLLECTION,
-                "decimalLatitude": "37.7749",
-                "decimalLongitude": "-122.4194",
-                "coordinateUncertaintyInMeters": 10,
-                "eventDate": "2024-06-15T08:30:45Z",
-            }),
+            Record::Occurrence {
+                quantity,
+                external_record,
+            } => {
+                let mut v = json!({
+                    "$type": OCCURRENCE_COLLECTION,
+                    "decimalLatitude": "37.7749",
+                    "decimalLongitude": "-122.4194",
+                    "coordinateUncertaintyInMeters": 10,
+                    "eventDate": "2024-06-15T08:30:45Z",
+                });
+                if let Some(quantity) = quantity {
+                    v["organismQuantity"] = json!(quantity);
+                    v["organismQuantityType"] = json!("individuals");
+                }
+                if let Some(uri) = external_record {
+                    v["externalRecords"] = json!([{ "uri": uri, "service": "inaturalist" }]);
+                }
+                v
+            }
             Record::Identification {
                 subject,
                 name,
@@ -162,9 +186,10 @@ pub enum Action {
     /// Tap delivers the next pending event for one repo. Tap preserves order
     /// within a repo but interleaves repos arbitrarily.
     Deliver { did: &'static str },
-    /// Tap re-sends the event it last delivered for a repo: at-least-once
-    /// delivery when the ingester wrote but died before acking.
-    Redeliver { did: &'static str },
+    /// Tap re-sends the last `n` events it delivered for a repo, in order:
+    /// `n == 1` is at-least-once redelivery (the ingester wrote but died
+    /// before acking), larger `n` is a cursor rewind after a reconnect.
+    Rewind { did: &'static str, n: usize },
     /// One pass of the `observing-resolve-taxa` background worker.
     ResolveTaxa,
 }
@@ -175,7 +200,13 @@ impl fmt::Display for Action {
             Action::Put { key, record } => {
                 write!(f, "{} puts {key}", short_did(key.did))?;
                 match record {
-                    Record::Occurrence => Ok(()),
+                    Record::Occurrence {
+                        quantity,
+                        external_record,
+                    } => write!(
+                        f,
+                        " {{ quantity: {quantity:?}, external record: {external_record:?} }}"
+                    ),
                     Record::Identification {
                         subject,
                         name,
@@ -191,8 +222,11 @@ impl fmt::Display for Action {
             }
             Action::Delete { key } => write!(f, "{} deletes {key}", short_did(key.did)),
             Action::Deliver { did } => write!(f, "tap delivers next event from {}", short_did(did)),
-            Action::Redeliver { did } => {
+            Action::Rewind { did, n: 1 } => {
                 write!(f, "tap redelivers last event from {}", short_did(did))
+            }
+            Action::Rewind { did, n } => {
+                write!(f, "tap rewinds {}'s cursor by {n} events", short_did(did))
             }
             Action::ResolveTaxa => write!(f, "resolve-taxa worker runs"),
         }
@@ -211,8 +245,7 @@ pub struct Event {
 }
 
 pub enum Effect {
-    None,
-    Ingest(Event),
+    Ingest(Vec<Event>),
     ResolveTaxa,
 }
 
@@ -222,7 +255,8 @@ pub struct World {
     repos: BTreeMap<Key, Record>,
     /// Commits not yet delivered, per repo, in commit order.
     pending: BTreeMap<&'static str, VecDeque<Event>>,
-    last_delivered: BTreeMap<&'static str, Event>,
+    /// Everything delivered so far, per repo, for redelivery and rewinds.
+    delivered: BTreeMap<&'static str, Vec<Event>>,
     commits: u64,
     clock: u32,
 }
@@ -248,7 +282,7 @@ impl World {
             .into_iter()
             .filter(|d| self.pending.get(d).is_some_and(|q| !q.is_empty()))
             .collect();
-        let redeliverable: Vec<_> = self.last_delivered.keys().copied().collect();
+        let rewindable: Vec<_> = self.delivered.keys().copied().collect();
         let roll = rng.below(100);
         match roll {
             0..=34 => self.propose_put(rng),
@@ -261,8 +295,9 @@ impl World {
             43..=87 if !with_pending.is_empty() => Action::Deliver {
                 did: rng.pick(&with_pending),
             },
-            88..=94 if !redeliverable.is_empty() => Action::Redeliver {
-                did: rng.pick(&redeliverable),
+            88..=94 if !rewindable.is_empty() => Action::Rewind {
+                did: rng.pick(&rewindable),
+                n: rng.pick(&[1, 1, 1, 2, 3, 5]),
             },
             95..=99 => Action::ResolveTaxa,
             _ => self.propose_put(rng),
@@ -289,7 +324,10 @@ impl World {
             rkey,
         };
         let record = match collection {
-            OCCURRENCE_COLLECTION => Record::Occurrence,
+            OCCURRENCE_COLLECTION => Record::Occurrence {
+                quantity: rng.pick(&QUANTITIES),
+                external_record: rng.pick(&EXTERNAL_RECORDS),
+            },
             IDENTIFICATION_COLLECTION => {
                 // Editing an existing identification keeps its subject and
                 // createdAt, like the app's edit flow; a new one gets fresh ones.
@@ -328,34 +366,60 @@ impl World {
     pub fn step(&mut self, action: &Action) -> Effect {
         match action {
             Action::Put { key, record } => {
+                // The app's edit rules live here rather than in the generator,
+                // so a shrunk trace (which the generator never saw) still only
+                // makes edits the app could make.
+                let record = match (self.repos.get(key), record) {
+                    // Likes are never edited.
+                    (Some(Record::Like { .. }), _) => return Effect::Ingest(vec![]),
+                    // Editing an identification keeps its subject and createdAt.
+                    (
+                        Some(Record::Identification {
+                            subject,
+                            created_at,
+                            ..
+                        }),
+                        Record::Identification {
+                            name,
+                            rank,
+                            kingdom,
+                            ..
+                        },
+                    ) => Record::Identification {
+                        subject: *subject,
+                        name,
+                        rank: *rank,
+                        kingdom: *kingdom,
+                        created_at: *created_at,
+                    },
+                    _ => record.clone(),
+                };
                 let action = if self.repos.contains_key(key) {
                     RecordAction::Update
                 } else {
                     RecordAction::Create
                 };
-                self.repos.insert(*key, record.clone());
                 self.commit(*key, action, Some(record.to_json()));
-                Effect::None
+                self.repos.insert(*key, record);
+                Effect::Ingest(vec![])
             }
             Action::Delete { key } => {
                 if self.repos.remove(key).is_some() {
                     self.commit(*key, RecordAction::Delete, None);
                 }
-                Effect::None
+                Effect::Ingest(vec![])
             }
             Action::Deliver { did } => {
-                match self.pending.get_mut(did).and_then(|q| q.pop_front()) {
-                    Some(event) => {
-                        self.last_delivered.insert(did, event.clone());
-                        Effect::Ingest(event)
-                    }
-                    None => Effect::None,
-                }
+                let Some(event) = self.pending.get_mut(did).and_then(|q| q.pop_front()) else {
+                    return Effect::Ingest(vec![]);
+                };
+                self.delivered.entry(did).or_default().push(event.clone());
+                Effect::Ingest(vec![event])
             }
-            Action::Redeliver { did } => match self.last_delivered.get(did) {
-                Some(event) => Effect::Ingest(event.clone()),
-                None => Effect::None,
-            },
+            Action::Rewind { did, n } => {
+                let history = self.delivered.get(did).map(Vec::as_slice).unwrap_or(&[]);
+                Effect::Ingest(history[history.len().saturating_sub(*n)..].to_vec())
+            }
             Action::ResolveTaxa => Effect::ResolveTaxa,
         }
     }
@@ -387,8 +451,18 @@ impl World {
         let mut s = Snapshot::default();
         for (key, record) in &self.repos {
             match record {
-                Record::Occurrence => {
-                    s.occurrences.insert(key.uri());
+                Record::Occurrence {
+                    quantity,
+                    external_record,
+                } => {
+                    s.occurrences.insert(
+                        key.uri(),
+                        OccurrenceRow {
+                            quantity: quantity.map(str::to_string),
+                            quantity_type: quantity.map(|_| "individuals".to_string()),
+                            external_record: external_record.map(str::to_string),
+                        },
+                    );
                 }
                 Record::Identification {
                     subject,
@@ -449,7 +523,7 @@ impl World {
         type Taxon = (&'static str, Option<&'static str>);
         let mut votes: BTreeMap<Key, BTreeMap<Taxon, i64>> = BTreeMap::new();
         for ((_, subject), (_, name, kingdom)) in latest {
-            if matches!(self.repos.get(&subject), Some(Record::Occurrence)) {
+            if matches!(self.repos.get(&subject), Some(Record::Occurrence { .. })) {
                 *votes
                     .entry(subject)
                     .or_default()
@@ -471,6 +545,13 @@ impl World {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub struct OccurrenceRow {
+    pub quantity: Option<String>,
+    pub quantity_type: Option<String>,
+    pub external_record: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct IdentificationRow {
     pub subject: String,
     pub name: String,
@@ -482,7 +563,7 @@ pub struct IdentificationRow {
 /// the driver maps real rows into.
 #[derive(Debug, Default)]
 pub struct Snapshot {
-    pub occurrences: BTreeSet<String>,
+    pub occurrences: BTreeMap<String, OccurrenceRow>,
     pub identifications: BTreeMap<String, IdentificationRow>,
     pub accepted_taxon_keys: BTreeMap<String, Option<i64>>,
     /// `(liker did, subject uri)`
