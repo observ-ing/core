@@ -8,13 +8,17 @@
 use std::error::Error;
 
 use observing_db::identifications::refresh_community_ids;
-use sqlx::postgres::PgPool;
+use sqlx::postgres::{PgConnection, PgPool};
 use sqlx::AssertSqlSafe;
+use sqlx::Connection;
 
 use super::model::{fake_taxon_key, Event, IdentificationRow, OccurrenceRow, Snapshot};
 use crate::database::Database;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
+
+/// Advisory lock key serializing scratch-database setup ("sim" in ASCII).
+const SETUP_LOCK_KEY: i64 = 0x73_69_6d;
 
 pub trait Driver {
     /// Return to an empty system.
@@ -39,6 +43,17 @@ pub struct PgDriver {
 impl PgDriver {
     pub async fn create(server_url: &str) -> Result<Self> {
         let server = PgPool::connect(server_url).await?;
+        // The migrations create and grant roles, which are server-wide, so two
+        // scratch databases migrating at once (the DB tests run in parallel)
+        // race on them on a fresh server like CI's. Serialize setup with an
+        // advisory lock on its own connection: if setup fails, dropping the
+        // connection releases the lock rather than leaving the other test
+        // waiting forever.
+        let mut setup_lock = PgConnection::connect(server_url).await?;
+        sqlx::query("SELECT pg_advisory_lock($1)")
+            .bind(SETUP_LOCK_KEY)
+            .execute(&mut setup_lock)
+            .await?;
         // Tests in one process start together and the clock may only tick in
         // microseconds, so the counter is what keeps concurrent names apart.
         static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
@@ -58,6 +73,7 @@ impl PgDriver {
         let migrate_pool = PgPool::connect(url.as_str()).await?;
         observing_db::migrate::migrate(&migrate_pool).await?;
         migrate_pool.close().await;
+        setup_lock.close().await?;
 
         let db = Database::connect(url.as_str()).await?;
         Ok(Self { db, server, name })
