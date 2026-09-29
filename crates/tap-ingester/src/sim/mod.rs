@@ -35,25 +35,7 @@ use model::{Action, Effect, Snapshot, World};
 /// delete the entry in the PR that fixes it. The test fails on any violation
 /// not listed here, and on a listed one that no longer reproduces, so the
 /// list can't silently go stale.
-const KNOWN_VIOLATIONS: &[&str] = &[
-    // occurrences::upsert COALESCEs organism_quantity(_type)/external_records
-    // on conflict, so an edit that removes them leaves the old values behind.
-    // Fix: #856.
-    "occurrences_match_repos",
-    // identifications::upsert COALESCEs taxon_rank/kingdom on conflict, so an
-    // edit that clears either field leaves the old value behind. Fix: #857.
-    "identifications_match_repos",
-    // Same upsert keeps a resolved accepted_taxon_key when the name changes,
-    // and resolve-taxa only visits NULL keys, so the stale key is permanent.
-    // Fix: #857.
-    "accepted_taxon_key_matches_name",
-    // Downstream of the kingdom COALESCE: identical names split into separate
-    // (name, kingdom) vote groups in the community_ids matview. Fix: #857.
-    "community_ids_match_model",
-    // notifications has no uniqueness, so every redelivery (or edit) of an
-    // identification/comment/like notifies the owner again. Fix: #858.
-    "notifications_at_most_once",
-];
+const KNOWN_VIOLATIONS: &[&str] = &[];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Property {
