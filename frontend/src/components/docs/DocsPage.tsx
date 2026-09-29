@@ -64,7 +64,6 @@ export function DocsPage() {
               {...linkProps}
               sx={{
                 p: 2,
-                borderRadius: 2,
                 display: "flex",
                 alignItems: "center",
                 gap: 2,

@@ -209,6 +209,16 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           },
         },
       },
+      // Outlined Papers (settings cards, docs link cards, the transparency
+      // table) share one card radius — centralized here instead of repeating
+      // `borderRadius: 2` at each call site.
+      MuiPaper: {
+        styleOverrides: {
+          outlined: ({ theme }) => ({
+            borderRadius: Number(theme.shape.borderRadius) * 2,
+          }),
+        },
+      },
       // Every ListItemButton in the app (nav rows, notification rows) rounds
       // its corners the same way — centralized here instead of repeating
       // `borderRadius: 2` at each call site.
