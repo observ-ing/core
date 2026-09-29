@@ -164,14 +164,17 @@ impl Driver for PgDriver {
             .into_iter()
             .map(|(uri, name, count)| (uri, (name, count)))
             .collect(),
-            duplicate_notifications: sqlx::query_as::<_, (String, String, Option<String>, i64)>(
-                "SELECT actor_did, kind, reference_uri, COUNT(*) FROM notifications \
-                 GROUP BY 1, 2, 3 HAVING COUNT(*) > 1",
+            duplicate_notifications: sqlx::query_as::<
+                _,
+                (String, String, String, Option<String>, i64),
+            >(
+                "SELECT recipient_did, actor_did, kind, reference_uri, COUNT(*) \
+                 FROM notifications GROUP BY 1, 2, 3, 4 HAVING COUNT(*) > 1",
             )
             .fetch_all(pool)
             .await?
             .into_iter()
-            .map(|(actor, kind, reference, n)| ((actor, kind, reference), n))
+            .map(|(recipient, actor, kind, reference, n)| ((recipient, actor, kind, reference), n))
             .collect(),
             ..Default::default()
         };
