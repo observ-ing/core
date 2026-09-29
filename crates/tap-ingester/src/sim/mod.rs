@@ -1,4 +1,5 @@
-//! State-machine simulation of the ingester (v0 of `docs/system-tests.md`).
+//! State-machine simulation of the ingester. The pattern it follows is
+//! written up in `docs/system-tests.md`.
 //!
 //! Generates random traces of repo writes interleaved with adversarial Tap
 //! delivery (cross-repo reordering, at-least-once redelivery) and background
