@@ -116,18 +116,17 @@ SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 tests run in the `rust-sim` CI job; the rest run everywhere, including
 `rust-test`.
 
-It found seven problems on main, each shrunk to a 2–7 step scenario. They're
-on the known-bugs list until their fixes land; each fix PR's merge makes its
-entries stop reproducing, which fails CI until they're removed from the list.
-With every fix applied, 5,000 random 80-step scenarios pass.
+It found seven problems on main, each shrunk to a 2–7 step scenario. All
+are fixed and the known-bugs list is empty, so any regression fails CI, and
+the mutants keep the sim able to see each of them.
 
 | Property | Bug | Shortest scenario | Fix |
 |---|---|---|---|
-| `occurrences_match_repos` | Editing an occurrence can't remove `externalRecords` or `organismQuantity` (the upsert uses `COALESCE`), so removing external records in the edit form never reaches the DB | put occurrence with an external record → edit it away | #856 |
-| `identifications_match_repos` | Editing an identification can't clear `taxonRank` or `kingdom` | create ID with rank → edit to no rank | #857 |
-| `accepted_taxon_key_matches_name` | Renaming an identification keeps its old `accepted_taxon_key` forever, because resolve-taxa only looks at `NULL` keys | create ID → resolve → rename | #857 |
-| `community_ids_match_model` | Follows from the `kingdom` bug: identical IDs land in separate vote groups | two users ID the same species, one clears kingdom | #857 |
-| `notifications_at_most_once` | No uniqueness, so a redelivered or edited record notifies again | like → deliver → redeliver | #858 |
+| `occurrences_match_repos` | Editing an occurrence can't remove `externalRecords` or `organismQuantity` (the upsert uses `COALESCE`), so removing external records in the edit form never reaches the DB | put occurrence with an external record → edit it away | #856 (merged) |
+| `identifications_match_repos` | Editing an identification can't clear `taxonRank` or `kingdom` | create ID with rank → edit to no rank | #857 (merged) |
+| `accepted_taxon_key_matches_name` | Renaming an identification keeps its old `accepted_taxon_key` forever, because resolve-taxa only looks at `NULL` keys | create ID → resolve → rename | #857 (merged) |
+| `community_ids_match_model` | Follows from the `kingdom` bug: identical IDs land in separate vote groups | two users ID the same species, one clears kingdom | #857 (merged) |
+| `notifications_at_most_once` | No uniqueness, so a redelivered or edited record notifies again | like → deliver → redeliver | #858 (merged) |
 | `likes_match_repos` | Only one like per user per occurrence is stored, but a double tap creates two records; unliking deletes one and the DB says "not liked" while the repo still likes it | like → like again → delete first | #859 (merged) |
 | `ingest_succeeds` | Replaying an older version of a like (cursor rewind) errors on the primary key instead of being a no-op | like → delete → like again → rewind | #859 (merged) |
 
