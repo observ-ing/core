@@ -4,9 +4,9 @@ import FilterListIcon from "@mui/icons-material/FilterList";
 import ClearIcon from "@mui/icons-material/Clear";
 import VerifiedOutlinedIcon from "@mui/icons-material/VerifiedOutlined";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import { countChipSx } from "../common/chipSx";
 import { CollapsibleSection } from "../common/CollapsibleSection";
 import { sectionIconSx } from "../common/Section";
+import { CountChip } from "../common/CountChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
@@ -81,9 +81,7 @@ export function ExploreFilterPanel() {
       title="Filters"
       sx={{ mb: 2 }}
       trailing={
-        activeFilterCount > 0 ? (
-          <Chip size="small" label={activeFilterCount} color="primary" sx={countChipSx} />
-        ) : undefined
+        activeFilterCount > 0 ? <CountChip count={activeFilterCount} color="primary" /> : undefined
       }
     >
       {/* Taxon Autocomplete */}

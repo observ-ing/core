@@ -1,10 +1,10 @@
-import { Chip, Stack, Typography, Link as MuiLink } from "@mui/material";
+import { Stack, Typography, Link as MuiLink } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material/styles";
 import MenuBookOutlinedIcon from "@mui/icons-material/MenuBookOutlined";
 import type { TaxonReference } from "../../bindings/TaxonReference";
 import { CollapsibleSection } from "../common/CollapsibleSection";
 import { sectionIconSx } from "../common/Section";
-import { countChipSx } from "../common/chipSx";
+import { CountChip } from "../common/CountChip";
 
 interface TaxonReferencesSectionProps {
   references: TaxonReference[];
@@ -20,7 +20,7 @@ export function TaxonReferencesSection({ references, sx }: TaxonReferencesSectio
     <CollapsibleSection
       title="References"
       icon={<MenuBookOutlinedIcon sx={sectionIconSx} />}
-      trailing={<Chip label={references.length} size="small" sx={countChipSx} />}
+      trailing={<CountChip count={references.length} />}
       sx={sx}
     >
       <Stack spacing={0.5}>

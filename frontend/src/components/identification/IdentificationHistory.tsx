@@ -1,10 +1,10 @@
 import { Box, Stack, Chip } from "@mui/material";
 import HistoryIcon from "@mui/icons-material/History";
-import { countChipSx } from "../common/chipSx";
 import type { Identification } from "../../services/types";
 import { TaxonLink } from "../common/TaxonLink";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { RecordListItem } from "../common/RecordListItem";
+import { CountChip } from "../common/CountChip";
 import { EmptyState } from "../common/EmptyState";
 
 export interface IdentificationHistoryProps {
@@ -63,7 +63,7 @@ export function IdentificationHistory({
         sx={{ mb: 2 }}
         {...(sortedIds.length > 0
           ? {
-              trailing: <Chip label={sortedIds.length} size="small" sx={countChipSx} />,
+              trailing: <CountChip count={sortedIds.length} />,
             }
           : {})}
       />
