@@ -576,3 +576,221 @@ pub struct Snapshot {
     pub duplicate_notifications: BTreeMap<(String, String, String, Option<String>), i64>,
     pub ingest_errors: Vec<String>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// What an action does against the current world, for coverage counts.
+    fn situation(world: &World, action: &Action) -> &'static str {
+        match action {
+            Action::Put { key, record } => match (world.repos.get(key), record) {
+                (None, Record::Occurrence { .. }) => "create occurrence",
+                (None, Record::Identification { .. }) => "create identification",
+                (None, Record::Like { .. }) => "create like",
+                (Some(Record::Occurrence { .. }), _) => "edit occurrence",
+                (
+                    Some(Record::Identification { name: old, .. }),
+                    Record::Identification { name: new, .. },
+                ) if old != new => "rename identification",
+                (Some(Record::Identification { .. }), _) => "edit identification fields",
+                (Some(Record::Like { .. }), _) => "re-put like (no-op)",
+            },
+            Action::Delete { key } => match world.repos.get(key) {
+                None => "delete missing record (no-op)",
+                Some(Record::Occurrence { .. }) => "delete occurrence",
+                Some(Record::Identification { .. }) => "delete identification",
+                Some(Record::Like { .. }) => "delete like",
+            },
+            Action::Deliver { did } => {
+                if world.pending.get(did).is_some_and(|q| !q.is_empty()) {
+                    "deliver"
+                } else {
+                    "deliver from empty queue (no-op)"
+                }
+            }
+            Action::Rewind { n: 1, .. } => "redeliver",
+            Action::Rewind { .. } => "rewind cursor",
+            Action::ResolveTaxa => "resolve-taxa",
+        }
+    }
+
+    /// Every situation the properties depend on, with a floor well below
+    /// today's counts (all 177+ over the default seeds). If a generator change
+    /// makes one rare, the sim quietly stops testing it; this fails first.
+    #[test]
+    fn generator_exercises_every_situation() {
+        const FLOOR: usize = 50;
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for seed in 0..300 {
+            let mut world = World::default();
+            for action in World::generate(seed, 40) {
+                *counts.entry(situation(&world, &action)).or_default() += 1;
+                world.step(&action);
+            }
+        }
+        for required in [
+            "create occurrence",
+            "create identification",
+            "create like",
+            "edit occurrence",
+            "edit identification fields",
+            "rename identification",
+            "delete occurrence",
+            "delete identification",
+            "delete like",
+            "deliver",
+            "redeliver",
+            "rewind cursor",
+            "resolve-taxa",
+        ] {
+            let n = counts.get(required).copied().unwrap_or(0);
+            assert!(
+                n >= FLOOR,
+                "generator produced {required:?} only {n} times (floor {FLOOR}): {counts:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn same_seed_same_trace() {
+        let render = |seed| {
+            World::generate(seed, 40)
+                .iter()
+                .map(|a| format!("{a:?}"))
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(render(7), render(7));
+        assert_ne!(render(7), render(8));
+    }
+
+    /// Shrinking relies on every action being total: any subsequence of a
+    /// trace must replay without panicking.
+    #[test]
+    fn any_subsequence_replays() {
+        for seed in 0..100 {
+            let trace = World::generate(seed, 40);
+            for stride in 2..5 {
+                for offset in 0..stride {
+                    let mut world = World::default();
+                    for (i, action) in trace.iter().enumerate() {
+                        if i % stride != offset {
+                            world.step(action);
+                        }
+                    }
+                    world.drain();
+                    world.expected();
+                }
+            }
+        }
+    }
+
+    // The community_ids expectation is the spec for consensus; pin it with
+    // hand-built cases so a model refactor can't quietly change what "right"
+    // means.
+
+    fn occurrence_key() -> Key {
+        Key {
+            did: DIDS[0],
+            collection: OCCURRENCE_COLLECTION,
+            rkey: "r0",
+        }
+    }
+
+    /// A world whose repos hold one occurrence plus identifications of it,
+    /// each `(identifier index, rkey, name, kingdom, created_at)`.
+    fn consensus(
+        ids: &[(usize, &'static str, &'static str, Option<&'static str>, u32)],
+    ) -> Option<(String, i64)> {
+        let mut world = World::default();
+        world.repos.insert(
+            occurrence_key(),
+            Record::Occurrence {
+                quantity: None,
+                external_record: None,
+            },
+        );
+        for &(who, rkey, name, kingdom, created_at) in ids {
+            world.repos.insert(
+                Key {
+                    did: DIDS[who],
+                    collection: IDENTIFICATION_COLLECTION,
+                    rkey,
+                },
+                Record::Identification {
+                    subject: occurrence_key(),
+                    name,
+                    rank: None,
+                    kingdom,
+                    created_at,
+                },
+            );
+        }
+        world
+            .expected()
+            .community_ids
+            .remove(&occurrence_key().uri())
+    }
+
+    #[test]
+    fn consensus_majority_wins() {
+        let result = consensus(&[
+            (0, "r0", "Quercus alba", None, 1),
+            (1, "r0", "Quercus alba", None, 2),
+            (2, "r0", "Acer rubrum", None, 3),
+        ]);
+        assert_eq!(result, Some(("Quercus alba".into(), 2)));
+    }
+
+    #[test]
+    fn consensus_tie_goes_to_first_name_alphabetically() {
+        let result = consensus(&[
+            (0, "r0", "Quercus alba", None, 1),
+            (1, "r0", "Acer rubrum", None, 2),
+        ]);
+        assert_eq!(result, Some(("Acer rubrum".into(), 1)));
+    }
+
+    #[test]
+    fn consensus_counts_only_each_identifiers_latest_id() {
+        // alice changed her mind from Acer to Quercus; only the later counts.
+        let result = consensus(&[
+            (0, "r0", "Acer rubrum", None, 1),
+            (0, "r1", "Quercus alba", None, 4),
+            (1, "r0", "Acer rubrum", None, 2),
+            (2, "r0", "Quercus alba", None, 3),
+        ]);
+        assert_eq!(result, Some(("Quercus alba".into(), 2)));
+    }
+
+    #[test]
+    fn consensus_splits_votes_by_kingdom() {
+        // Intended (if debatable): the same name with and without a kingdom
+        // are separate taxa.
+        let result = consensus(&[
+            (0, "r0", "Quercus alba", Some("Plantae"), 1),
+            (1, "r0", "Quercus alba", None, 2),
+        ]);
+        assert_eq!(result, Some(("Quercus alba".into(), 1)));
+    }
+
+    #[test]
+    fn no_consensus_without_the_occurrence() {
+        let mut world = World::default();
+        world.repos.insert(
+            Key {
+                did: DIDS[1],
+                collection: IDENTIFICATION_COLLECTION,
+                rkey: "r0",
+            },
+            Record::Identification {
+                subject: occurrence_key(),
+                name: "Quercus alba",
+                rank: None,
+                kingdom: None,
+                created_at: 1,
+            },
+        );
+        assert!(world.expected().community_ids.is_empty());
+    }
+}

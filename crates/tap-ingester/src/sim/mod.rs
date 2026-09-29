@@ -6,7 +6,8 @@
 //! resolve-taxa passes, runs them through the real write path against a
 //! scratch Postgres, then drains every queue and checks the database against
 //! the reference model in [`model`]. On a violation it shrinks the trace to a
-//! minimal reproduction.
+//! minimal reproduction. [`mutants`] checks the sim itself: every bug it has
+//! found is re-injected, and the sim must still catch it.
 //!
 //! Opt-in, because it needs Postgres (with PostGIS) and creates a throwaway
 //! database on it:
@@ -22,6 +23,7 @@
 
 mod driver;
 mod model;
+mod mutants;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt::Debug;
@@ -208,6 +210,73 @@ async fn shrink(driver: &mut PgDriver, mut trace: Vec<Action>, property: Propert
     trace
 }
 
+/// Fixed CI budget: seeds `0..DEFAULT_CASES`, `DEFAULT_STEPS` actions each.
+const DEFAULT_CASES: u64 = 300;
+const DEFAULT_STEPS: usize = 40;
+
+/// A property violation, shrunk to its shortest reproduction.
+struct Finding {
+    seed: u64,
+    trace: Vec<Action>,
+    diff: String,
+}
+
+/// Run each seed's trace, shrinking the first violation of each property in
+/// `targets`, until all of `targets` are found or the seeds run out.
+async fn explore(
+    driver: &mut PgDriver,
+    seeds: &[u64],
+    steps: usize,
+    targets: &[Property],
+) -> BTreeMap<Property, Finding> {
+    let mut found = BTreeMap::new();
+    for &seed in seeds {
+        let trace = World::generate(seed, steps);
+        let (expected, actual) = run(driver, &trace).await;
+        for &property in targets {
+            if found.contains_key(&property) || property.check(&expected, &actual).is_none() {
+                continue;
+            }
+            let trace = shrink(driver, trace.clone(), property).await;
+            let (expected, actual) = run(driver, &trace).await;
+            let diff = property.check(&expected, &actual).unwrap_or_default();
+            found.insert(property, Finding { seed, trace, diff });
+        }
+        if targets.iter().all(|p| found.contains_key(p)) {
+            break;
+        }
+    }
+    found
+}
+
+fn print_finding(property: Property, finding: &Finding) {
+    eprintln!(
+        "\n✗ {}  (seed {}, shrunk to {} steps)",
+        property.name(),
+        finding.seed,
+        finding.trace.len()
+    );
+    for (i, action) in finding.trace.iter().enumerate() {
+        eprintln!("    {:>2}. {action}", i + 1);
+    }
+    eprintln!("    -- then all queues drain and resolve-taxa runs --");
+    eprintln!("{}", finding.diff);
+}
+
+/// A driver on a fresh scratch database, or `None` (and a note) when
+/// `SIM_DATABASE_URL` isn't set, so plain `cargo test` skips DB-backed tests.
+async fn scratch_driver() -> Option<PgDriver> {
+    let Ok(server_url) = std::env::var("SIM_DATABASE_URL") else {
+        eprintln!("skipping ingester sim: set SIM_DATABASE_URL to a Postgres server to run it");
+        return None;
+    };
+    Some(
+        PgDriver::create(&server_url)
+            .await
+            .expect("create scratch database"),
+    )
+}
+
 fn env_num(name: &str, default: u64) -> u64 {
     std::env::var(name)
         .ok()
@@ -217,41 +286,20 @@ fn env_num(name: &str, default: u64) -> u64 {
 
 #[tokio::test]
 async fn ingester_converges_to_repo_state() {
-    let Ok(server_url) = std::env::var("SIM_DATABASE_URL") else {
-        eprintln!("skipping ingester sim: set SIM_DATABASE_URL to a Postgres server to run it");
+    let Some(mut driver) = scratch_driver().await else {
         return;
     };
-    let steps = env_num("SIM_STEPS", 40) as usize;
+    let steps = env_num("SIM_STEPS", DEFAULT_STEPS as u64) as usize;
     let replay = std::env::var("SIM_SEED").ok().and_then(|s| s.parse().ok());
     let seeds: Vec<u64> = match replay {
         Some(seed) => vec![seed],
         None => {
             let base = env_num("SIM_BASE_SEED", 0);
-            (base..base + env_num("SIM_CASES", 300)).collect()
+            (base..base + env_num("SIM_CASES", DEFAULT_CASES)).collect()
         }
     };
 
-    let mut driver = PgDriver::create(&server_url)
-        .await
-        .expect("create scratch database");
-    let mut found: BTreeMap<Property, (u64, Vec<Action>, String)> = BTreeMap::new();
-
-    for &seed in &seeds {
-        let trace = World::generate(seed, steps);
-        let (expected, actual) = run(&mut driver, &trace).await;
-        for property in Property::ALL {
-            if found.contains_key(&property) || property.check(&expected, &actual).is_none() {
-                continue;
-            }
-            let minimal = shrink(&mut driver, trace.clone(), property).await;
-            let (expected, actual) = run(&mut driver, &minimal).await;
-            let diff = property.check(&expected, &actual).unwrap_or_default();
-            found.insert(property, (seed, minimal, diff));
-        }
-        if found.len() == Property::ALL.len() {
-            break;
-        }
-    }
+    let found = explore(&mut driver, &seeds, steps, &Property::ALL).await;
     driver.destroy().await.expect("drop scratch database");
 
     eprintln!(
@@ -259,17 +307,8 @@ async fn ingester_converges_to_repo_state() {
         seeds.len(),
         found.len()
     );
-    for (property, (seed, trace, diff)) in &found {
-        eprintln!(
-            "\n✗ {}  (seed {seed}, shrunk to {} steps)",
-            property.name(),
-            trace.len()
-        );
-        for (i, action) in trace.iter().enumerate() {
-            eprintln!("    {:>2}. {action}", i + 1);
-        }
-        eprintln!("    -- then all queues drain and resolve-taxa runs --");
-        eprintln!("{diff}");
+    for (&property, finding) in &found {
+        print_finding(property, finding);
     }
 
     let found_names: BTreeSet<&str> = found.keys().map(|p| p.name()).collect();
