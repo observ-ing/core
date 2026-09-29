@@ -53,15 +53,6 @@ const KNOWN_VIOLATIONS: &[&str] = &[
     // notifications has no uniqueness, so every redelivery (or edit) of an
     // identification/comment/like notifies the owner again. Fix: #858.
     "notifications_at_most_once",
-    // likes::create is ON CONFLICT (subject_uri, did) DO NOTHING, so a second
-    // like record for the same subject is dropped; deleting the first then
-    // leaves the user "not liking" something their repo still likes.
-    // Fix: #859.
-    "likes_match_repos",
-    // likes::create's ON CONFLICT targets (subject_uri, did), not the uri
-    // primary key, so replaying an older version of a like errors (and lands
-    // in failed_records) instead of being a no-op. Fix: #859.
-    "ingest_succeeds",
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]

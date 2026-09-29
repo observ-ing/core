@@ -128,8 +128,8 @@ With every fix applied, 5,000 random 80-step scenarios pass.
 | `accepted_taxon_key_matches_name` | Renaming an identification keeps its old `accepted_taxon_key` forever, because resolve-taxa only looks at `NULL` keys | create ID → resolve → rename | #857 |
 | `community_ids_match_model` | Follows from the `kingdom` bug: identical IDs land in separate vote groups | two users ID the same species, one clears kingdom | #857 |
 | `notifications_at_most_once` | No uniqueness, so a redelivered or edited record notifies again | like → deliver → redeliver | #858 |
-| `likes_match_repos` | Only one like per user per occurrence is stored, but a double tap creates two records; unliking deletes one and the DB says "not liked" while the repo still likes it | like → like again → delete first | #859 |
-| `ingest_succeeds` | Replaying an older version of a like (cursor rewind) errors on the primary key instead of being a no-op | like → delete → like again → rewind | #859 |
+| `likes_match_repos` | Only one like per user per occurrence is stored, but a double tap creates two records; unliking deletes one and the DB says "not liked" while the repo still likes it | like → like again → delete first | #859 (merged) |
+| `ingest_succeeds` | Replaying an older version of a like (cursor rewind) errors on the primary key instead of being a no-op | like → delete → like again → rewind | #859 (merged) |
 
 Open question it surfaced, not changed: should deleting a record withdraw
 the notification it caused?
