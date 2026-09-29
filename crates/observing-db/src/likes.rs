@@ -1,7 +1,8 @@
 use crate::types::CreateLikeParams;
 use std::collections::{HashMap, HashSet};
 
-/// Create a like (no-op if already exists for subject+user)
+/// Upsert a like record. Keyed by the record's uri: a user can hold more than
+/// one like record for the same occurrence, and each gets its own row.
 pub async fn create(
     executor: impl sqlx::PgExecutor<'_>,
     p: &CreateLikeParams,
@@ -10,7 +11,11 @@ pub async fn create(
         r#"
         INSERT INTO likes (uri, cid, did, subject_uri, subject_cid, created_at)
         VALUES ($1, $2, $3, $4, $5, $6)
-        ON CONFLICT (subject_uri, did) DO NOTHING
+        ON CONFLICT (uri) DO UPDATE SET
+            cid = EXCLUDED.cid,
+            subject_uri = EXCLUDED.subject_uri,
+            subject_cid = EXCLUDED.subject_cid,
+            created_at = EXCLUDED.created_at
         "#,
         p.uri,
         p.cid,
@@ -32,23 +37,24 @@ pub async fn delete(executor: impl sqlx::PgExecutor<'_>, uri: &str) -> Result<()
     Ok(())
 }
 
-/// Look up a like's URI by subject URI and user DID.
-pub async fn find_uri_by_subject_and_did(
+/// URIs of every like record a user holds for a subject (usually one, but a
+/// double tap or a second client can create more).
+pub async fn find_uris_by_subject_and_did(
     executor: impl sqlx::PgExecutor<'_>,
     subject_uri: &str,
     did: &str,
-) -> Result<Option<String>, sqlx::Error> {
-    let row = sqlx::query!(
+) -> Result<Vec<String>, sqlx::Error> {
+    let rows = sqlx::query!(
         "SELECT uri FROM likes WHERE subject_uri = $1 AND did = $2",
         subject_uri,
         did
     )
-    .fetch_optional(executor)
+    .fetch_all(executor)
     .await?;
-    Ok(row.map(|r| r.uri))
+    Ok(rows.into_iter().map(|r| r.uri).collect())
 }
 
-/// Get like counts for multiple occurrences (batch)
+/// Get like counts (distinct likers) for multiple occurrences (batch)
 pub async fn get_counts_for_occurrences(
     executor: impl sqlx::PgExecutor<'_>,
     uris: &[String],
@@ -58,7 +64,7 @@ pub async fn get_counts_for_occurrences(
     }
     let rows = sqlx::query!(
         r#"
-        SELECT subject_uri, COUNT(*)::int as count
+        SELECT subject_uri, COUNT(DISTINCT did)::int as count
         FROM likes
         WHERE subject_uri = ANY($1)
         GROUP BY subject_uri
