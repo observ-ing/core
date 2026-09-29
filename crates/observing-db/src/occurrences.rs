@@ -24,7 +24,14 @@ macro_rules! occurrence_columns {
     };
 }
 
-/// Upsert an occurrence record
+/// Upsert an occurrence record.
+///
+/// On conflict the record's fields replace the stored ones outright, so an
+/// edit that removes `organismQuantity` or `externalRecords` clears them.
+/// The COALESCEd columns are the exceptions: `associated_media` because a
+/// transient PDS failure during media resolution yields NULL rather than "no
+/// media", and `recorded_by`/`taxon_*`, which no current write path sets, so
+/// NULL there never means "cleared".
 pub async fn upsert(
     executor: impl sqlx::PgExecutor<'_>,
     p: &UpsertOccurrenceParams,
@@ -61,9 +68,9 @@ pub async fn upsert(
             taxon_id = COALESCE($11, occurrences.taxon_id),
             taxon_rank = COALESCE($12, occurrences.taxon_rank),
             kingdom = COALESCE($13, occurrences.kingdom),
-            organism_quantity = COALESCE($14, occurrences.organism_quantity),
-            organism_quantity_type = COALESCE($15, occurrences.organism_quantity_type),
-            external_records = COALESCE($19, occurrences.external_records),
+            organism_quantity = $14,
+            organism_quantity_type = $15,
+            external_records = $19,
             indexed_at = NOW()
         "#,
         p.uri,

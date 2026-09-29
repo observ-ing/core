@@ -16,11 +16,11 @@
 //! `observing_bootstrap::job` harness supplies the CLI flags, pool setup, and
 //! the bounded-concurrency drive loop.
 //!
-//! Safe to re-run: the upsert COALESCEs the backfilled columns
-//! (`organism_quantity = COALESCE($n, occurrences.organism_quantity)`), so a
-//! second pass never clobbers a value with NULL, and `associated_media` is
-//! likewise preserved. Records that have been deleted from their PDS, or whose
-//! PDS is unreachable, are skipped rather than failing the run.
+//! Safe to re-run: each pass writes what the live record says (a field the
+//! author has since removed becomes NULL, as it should), and
+//! `associated_media` is preserved when media resolution comes back empty.
+//! Records that have been deleted from their PDS, or whose PDS is
+//! unreachable, are skipped rather than failing the run.
 
 use atproto_blob_resolver::BlobResolver;
 use chrono::{DateTime, Utc};
