@@ -39,10 +39,14 @@ pub struct PgDriver {
 impl PgDriver {
     pub async fn create(server_url: &str) -> Result<Self> {
         let server = PgPool::connect(server_url).await?;
+        // Tests in one process start together and the clock may only tick in
+        // microseconds, so the counter is what keeps concurrent names apart.
+        static NEXT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+        let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .subsec_nanos();
-        let name = format!("observing_sim_{}_{nanos}", std::process::id());
+        let name = format!("observing_sim_{}_{nanos}_{n}", std::process::id());
         sqlx::query(AssertSqlSafe(format!("CREATE DATABASE \"{name}\"")))
             .execute(&server)
             .await?;
@@ -72,6 +76,13 @@ impl PgDriver {
 
     fn pool(&self) -> &PgPool {
         self.db.pool()
+    }
+
+    /// Run a multi-statement SQL script against the scratch database (used to
+    /// install and remove mutants).
+    pub async fn execute(&self, sql: &'static str) -> Result<()> {
+        sqlx::raw_sql(sql).execute(self.pool()).await?;
+        Ok(())
     }
 }
 

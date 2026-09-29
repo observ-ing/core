@@ -61,6 +61,12 @@ failing scenario and the difference.
 - **Keep a known-bugs list.** Name each property. The test fails on a
   violation not in the list, *and* on a listed one that no longer reproduces,
   so each fix removes its entry and the list can't go stale.
+- **Keep a mutant for every bug you fix.** The known-bugs list proves a fixed
+  bug stays fixed, but it can't tell "fixed" from "the test can no longer see
+  it". Re-inject each fixed bug (a trigger, a dropped constraint, a flag) and
+  assert the test still catches it with the right property, in a readable
+  number of steps. Otherwise a generator tweak that makes deletes rare, or a
+  property that compares empty to empty, leaves CI silently green.
 - **Model what's intended, not what the code does.** Where they differ, it's
   either a bug or a decision nobody wrote down. Both are worth knowing.
 - **When it fails, check the spec before the code.** Some failures are the
@@ -82,6 +88,23 @@ failing scenario and the difference.
 - `model.rs`: the source of truth and the expected state
 - `driver.rs`: runs events through the ingester's real write path (`apply_record`) against a throwaway database, and reads the result back
 - `mod.rs`: properties, runner, shrinking, the known-bugs list
+- `mutants.rs`: every bug below, re-injected as a Postgres trigger or constraint, plus a synthetic one; the test fails if the sim misses any of them. A mutant whose property is still failing (its bug is on the known list) is caught trivially, the output says so, and it starts proving something once the fix lands
+
+The suite checks the sim itself as well as the ingester:
+
+| Test | Needs a DB | Guards against |
+|---|---|---|
+| `ingester_converges_to_repo_state` | yes | new bugs in the ingester |
+| `sim_catches_every_mutant` | yes | the sim losing the ability to find known bug shapes, or shrinking regressing |
+| `every_property_has_a_mutant` | no | a property with no mutant, which could be vacuous |
+| `generator_exercises_every_situation` | no | the generator making some situation (edits, deletes, rewinds, ...) rare |
+| `any_subsequence_replays` | no | an action that isn't total, which breaks shrinking |
+| `same_seed_same_trace` | no | nondeterminism, which breaks replay |
+| `consensus_*` | no | the expected consensus rules changing unnoticed |
+
+Breaking the sim on purpose shows the mutation test working: stop generating
+deletes and two mutants go uncaught; stop shrinking and every reproduction
+blows past the step limit. Either way the main test alone would stay green.
 
 ```sh
 SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
@@ -89,8 +112,9 @@ SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 ```
 
 `SIM_SEED=<n>` replays one scenario; `SIM_CASES`, `SIM_STEPS`, and
-`SIM_BASE_SEED` widen the search. 300 scenarios take ~16s. CI runs it in the
-`rust-sim` job.
+`SIM_BASE_SEED` widen the search. The whole suite takes ~15s. The DB-backed
+tests run in the `rust-sim` CI job; the rest run everywhere, including
+`rust-test`.
 
 It found seven problems on main, each shrunk to a 2–7 step scenario. They're
 on the known-bugs list until their fixes land; each fix PR's merge makes its
