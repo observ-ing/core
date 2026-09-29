@@ -1,9 +1,9 @@
 //! The seam between the model and the real system.
 //!
-//! [`Driver`] is the in-process shape of the language-agnostic protocol in
-//! `docs/system-tests.md` (reset / apply / quiesce / snapshot). [`PgDriver`]
-//! implements it against a scratch Postgres database using the ingester's
-//! real write path ([`crate::apply_record`]).
+//! [`Driver`] is everything the sim needs from the system under test: reset
+//! it, feed it events, run its background work, and read its state back in
+//! the model's terms. [`PgDriver`] does that against a scratch Postgres
+//! database using the ingester's real write path ([`crate::apply_record`]).
 
 use std::error::Error;
 
