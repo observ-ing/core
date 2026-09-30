@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Box, Typography, useTheme } from "@mui/material";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { mapContainerSx, MAPTILER_ENABLED } from "./mapStyle";
+import { mapContainerSx } from "./mapStyle";
 import {
   createCircleGeoJSON,
   createMap,
@@ -10,7 +10,7 @@ import {
   setBasemapStyle,
 } from "./mapUtils";
 import { useBasemap } from "./useBasemap";
-import { BasemapSelector } from "./BasemapSelector";
+import { MapCanvas } from "./MapCanvas";
 import * as maplibregl from "maplibre-gl";
 
 export interface LocationMapProps {
@@ -123,14 +123,5 @@ export function LocationMap({ latitude, longitude, uncertaintyMeters }: Location
     );
   }
 
-  return (
-    <Box sx={[{ position: "relative" }, mapContainerSx]}>
-      {/* Fill the parent via width/height, NOT position:absolute+inset — maplibre
-          adds `.maplibregl-map { position: relative }`, which ties on specificity
-          with emotion's `position:absolute` and wins by load order in the prod CSS
-          bundle, collapsing the container to height 0 (a blank map). */}
-      <Box ref={mapContainer} sx={{ width: "100%", height: "100%" }} />
-      {MAPTILER_ENABLED && <BasemapSelector />}
-    </Box>
-  );
+  return <MapCanvas ref={mapContainer} />;
 }
