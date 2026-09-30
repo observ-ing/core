@@ -30,6 +30,8 @@ fn occurrence(
         organism_quantity_type: quantity.map(|_| "individuals".to_string()),
         associated_media,
         external_records,
+        occurrence_remarks_uri: None,
+        event_remarks_uri: None,
         recorded_by: None,
         taxon_id: None,
         taxon_rank: None,

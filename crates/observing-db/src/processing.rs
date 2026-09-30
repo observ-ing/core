@@ -7,9 +7,11 @@
 use crate::types::{
     BlobEntry, CreateLikeParams, ExternalRecordEntry, UpsertCommentParams,
     UpsertIdentificationParams, UpsertInteractionParams, UpsertOccurrenceParams,
+    UpsertRemarkParams,
 };
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::Occurrence;
+use observing_lexicons::bio_lexicons::temp::v0_1::remark::Remark;
 use observing_lexicons::ing_observ::temp::{
     comment::Comment,
     interaction::{Interaction, InteractionSubject},
@@ -340,6 +342,15 @@ pub fn occurrence_from_json(
                 }
             }),
             external_records,
+            // Forward references to remark records. Stored as-is: the remark
+            // may not have been ingested yet (the appview writes it first, but
+            // arrival order isn't guaranteed), so resolution happens at read
+            // time in `remarks::get_for_occurrences`. Read from raw JSON: the
+            // lexicon's canonical casing is `…RemarksID`, which the generated
+            // struct's camelCase `…RemarksId` would silently miss (as with
+            // `taxonID` on identifications).
+            occurrence_remarks_uri: json_str(record_json, "occurrenceRemarksID"),
+            event_remarks_uri: json_str(record_json, "eventRemarksID"),
             recorded_by: None,
             taxon_id: None,
             taxon_rank: None,
@@ -450,6 +461,40 @@ pub fn comment_from_json(
         reply_to_uri: record.reply_to.as_ref().map(|r| r.uri.to_string()),
         reply_to_cid: record.reply_to.as_ref().map(|r| r.cid.to_string()),
         created_at,
+    })
+}
+
+/// A top-level string field of a raw record, if present and non-empty.
+fn json_str(record_json: &Value, key: &str) -> Option<String> {
+    record_json
+        .get(key)
+        .and_then(|v| v.as_str())
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+}
+
+/// Convert a `bio.lexicons.temp.v0-1.remark` record JSON to database params.
+///
+/// The lexicon carries no timestamp, so there is no `created_at`: ordering,
+/// where it matters at all, falls back to `indexed_at` and the rkey TID.
+pub fn remark_from_json(
+    record_json: &Value,
+    uri: String,
+    cid: String,
+    did: String,
+) -> Result<UpsertRemarkParams, ProcessingError> {
+    let record_str = record_json.to_string();
+    let record: Remark =
+        serde_json::from_str(&record_str).map_err(ProcessingError::Deserialization)?;
+
+    Ok(UpsertRemarkParams {
+        uri,
+        cid,
+        did,
+        subject_uri: record.subject.to_string(),
+        dwc_term: record.dwc_term.as_str().to_string(),
+        body: record.body.to_string(),
+        license: record.license.as_ref().map(|l| l.as_str().to_string()),
     })
 }
 
@@ -1224,6 +1269,94 @@ mod tests {
         .expect("record should parse");
 
         assert!(parsed.params.external_records.is_none());
+    }
+
+    /// `occurrenceRemarksID` / `eventRemarksID` are stored verbatim so reads
+    /// can resolve them against `remarks`, whichever record arrives first.
+    #[test]
+    fn test_occurrence_from_json_keeps_remark_references() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.occurrence",
+            "decimalLatitude": "37.7749",
+            "decimalLongitude": "-122.4194",
+            "eventDate": "2024-06-15",
+            "occurrenceRemarksID": "at://did:plc:author/bio.lexicons.temp.v0-1.remark/aaa",
+            "eventRemarksID": "at://did:plc:author/bio.lexicons.temp.v0-1.remark/bbb"
+        });
+
+        assert_valid_lexicon::<Occurrence>(&record);
+
+        let parsed = occurrence_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz".to_string(),
+            "bafyreioccurrence".to_string(),
+            "did:plc:author".to_string(),
+            Utc::now(),
+        )
+        .expect("record should parse");
+
+        assert_eq!(
+            parsed.params.occurrence_remarks_uri.as_deref(),
+            Some("at://did:plc:author/bio.lexicons.temp.v0-1.remark/aaa")
+        );
+        assert_eq!(
+            parsed.params.event_remarks_uri.as_deref(),
+            Some("at://did:plc:author/bio.lexicons.temp.v0-1.remark/bbb")
+        );
+    }
+
+    #[test]
+    fn test_remark_from_json_happy_path() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.remark",
+            "subject": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz",
+            "dwcTerm": "occurrenceRemarks",
+            "body": "Feeding on milkweed at the trail edge.",
+            "license": "https://creativecommons.org/licenses/by/4.0/"
+        });
+
+        assert_valid_lexicon::<Remark>(&record);
+
+        let params = remark_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.remark/aaa".to_string(),
+            "bafyreiremark".to_string(),
+            "did:plc:author".to_string(),
+        )
+        .expect("record should parse");
+
+        assert_eq!(
+            params.subject_uri,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz"
+        );
+        assert_eq!(params.dwc_term, "occurrenceRemarks");
+        assert_eq!(params.body, "Feeding on milkweed at the trail edge.");
+        assert_eq!(
+            params.license.as_deref(),
+            Some("https://creativecommons.org/licenses/by/4.0/")
+        );
+    }
+
+    /// `dwcTerm` is an open vocabulary: an unfamiliar term is kept verbatim.
+    #[test]
+    fn test_remark_from_json_keeps_unknown_term() {
+        let record = serde_json::json!({
+            "$type": "bio.lexicons.temp.v0-1.remark",
+            "subject": "at://did:plc:author/bio.lexicons.temp.v0-1.occurrence/xyz",
+            "dwcTerm": "georeferenceRemarks",
+            "body": "Coordinates from a trail map."
+        });
+
+        let params = remark_from_json(
+            &record,
+            "at://did:plc:author/bio.lexicons.temp.v0-1.remark/aaa".to_string(),
+            "bafyreiremark".to_string(),
+            "did:plc:author".to_string(),
+        )
+        .expect("record should parse");
+
+        assert_eq!(params.dwc_term, "georeferenceRemarks");
+        assert!(params.license.is_none());
     }
 
     /// Records published before the `associatedMedia` → `media` lexicon rename

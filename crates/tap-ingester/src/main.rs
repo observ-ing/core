@@ -50,7 +50,7 @@ use dashboard::DashboardState;
 use database::Database;
 use observing_collections::{
     COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
-    OCCURRENCE_COLLECTION,
+    OCCURRENCE_COLLECTION, REMARK_COLLECTION,
 };
 use observing_db::failed_records::FailedRecord;
 use serde_json::Value;
@@ -140,6 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .signal_collection(OCCURRENCE_COLLECTION)
                 .collection_filter(OCCURRENCE_COLLECTION)
                 .collection_filter(IDENTIFICATION_COLLECTION)
+                .collection_filter(REMARK_COLLECTION)
                 .collection_filter(COMMENT_COLLECTION)
                 .collection_filter(INTERACTION_COLLECTION)
                 .collection_filter(LIKE_COLLECTION)
@@ -290,7 +291,12 @@ async fn heartbeat(state: SharedState, tap: TapClient, relay_url: String) {
             let st = &s.stats;
             (
                 s.connected,
-                st.occurrences + st.identifications + st.comments + st.interactions + st.likes,
+                st.occurrences
+                    + st.identifications
+                    + st.remarks
+                    + st.comments
+                    + st.interactions
+                    + st.likes,
                 st.errors,
             )
         };
@@ -447,6 +453,7 @@ async fn process_record(
     let event_type = match collection {
         OCCURRENCE_COLLECTION => "occurrence",
         IDENTIFICATION_COLLECTION => "identification",
+        REMARK_COLLECTION => "remark",
         COMMENT_COLLECTION => "comment",
         INTERACTION_COLLECTION => "interaction",
         LIKE_COLLECTION => "like",
@@ -459,6 +466,7 @@ async fn process_record(
         match collection {
             OCCURRENCE_COLLECTION => db.delete_occurrence(&uri).await,
             IDENTIFICATION_COLLECTION => db.delete_identification(&uri).await,
+            REMARK_COLLECTION => db.delete_remark(&uri).await,
             COMMENT_COLLECTION => db.delete_comment(&uri).await,
             INTERACTION_COLLECTION => db.delete_interaction(&uri).await,
             LIKE_COLLECTION => db.delete_like(&uri).await,
@@ -486,6 +494,10 @@ async fn process_record(
                 db.upsert_identification(&record.did, &uri, cid, now, &record_value)
                     .await
             }
+            REMARK_COLLECTION => {
+                db.upsert_remark(&record.did, &uri, cid, &record_value)
+                    .await
+            }
             COMMENT_COLLECTION => {
                 db.upsert_comment(&record.did, &uri, cid, now, &record_value)
                     .await
@@ -511,6 +523,7 @@ async fn process_record(
         match event_type {
             "occurrence" => s.stats.occurrences += 1,
             "identification" => s.stats.identifications += 1,
+            "remark" => s.stats.remarks += 1,
             "comment" => s.stats.comments += 1,
             "interaction" => s.stats.interactions += 1,
             "like" => s.stats.likes += 1,

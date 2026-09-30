@@ -21,7 +21,9 @@
 
 use chrono::{DateTime, Utc};
 use observing_bootstrap::job::{self, JobOpts, Outcome};
-use observing_db::{comments, identifications, interactions, likes, occurrences, processing};
+use observing_db::{
+    comments, identifications, interactions, likes, occurrences, processing, remarks,
+};
 use serde_json::Value;
 use sqlx::postgres::PgPool;
 use std::process::ExitCode;
@@ -29,7 +31,7 @@ use tracing::{error, info, warn};
 
 use observing_collections::{
     COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
-    OCCURRENCE_COLLECTION,
+    OCCURRENCE_COLLECTION, REMARK_COLLECTION,
 };
 
 #[derive(clap::Args, Debug)]
@@ -177,6 +179,20 @@ async fn replay_one(pool: &PgPool, row: FailedRow, dry_run: bool) -> Outcome {
                         Ok(())
                     } else {
                         identifications::upsert(pool, &params)
+                            .await
+                            .map_err(|e| e.to_string())
+                    }
+                }
+                Err(e) => Err(format!("parse: {e}")),
+            }
+        }
+        REMARK_COLLECTION => {
+            match processing::remark_from_json(record_json, row.uri.clone(), cid, row.did.clone()) {
+                Ok(params) => {
+                    if dry_run {
+                        Ok(())
+                    } else {
+                        remarks::upsert(pool, &params)
                             .await
                             .map_err(|e| e.to_string())
                     }
