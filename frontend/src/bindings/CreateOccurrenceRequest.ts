@@ -52,7 +52,7 @@ export type CreateOccurrenceRequest = {
   occurrenceRemarks?: string;
   /**
    * Darwin Core dwc:eventRemarks — notes on the time and place. Written the
-   * same way as `occurrence_remarks`.
+   * same way as the occurrence remarks.
    */
   eventRemarks?: string;
 };
