@@ -302,6 +302,11 @@ pub struct UpsertOccurrenceParams {
     /// The record's `externalRecords` array serialized verbatim (see
     /// [`ExternalRecordEntry`]). None when the record carries no entries.
     pub external_records: Option<serde_json::Value>,
+    /// The record's `occurrenceRemarksID`: AT-URI of the
+    /// `bio.lexicons.temp.v0-1.remark` whose body fills dwc:occurrenceRemarks.
+    pub occurrence_remarks_uri: Option<String>,
+    /// The record's `eventRemarksID`, filling dwc:eventRemarks.
+    pub event_remarks_uri: Option<String>,
     pub recorded_by: Option<String>,
     pub taxon_id: Option<String>,
     pub taxon_rank: Option<String>,
@@ -351,6 +356,32 @@ pub struct UpsertCommentParams {
     pub reply_to_uri: Option<String>,
     pub reply_to_cid: Option<String>,
     pub created_at: DateTime<Utc>,
+}
+
+/// Parameters for upserting a `bio.lexicons.temp.v0-1.remark` record
+#[derive(Debug, Clone)]
+pub struct UpsertRemarkParams {
+    pub uri: String,
+    pub cid: String,
+    pub did: String,
+    /// The remark's self-declared subject. Not what attaches it — the subject
+    /// record's forward reference does — but reads require the two to agree.
+    pub subject_uri: String,
+    /// Darwin Core term the remark fills (`occurrenceRemarks`, ...).
+    pub dwc_term: String,
+    pub body: String,
+    pub license: Option<String>,
+}
+
+/// A remark resolved through an occurrence's forward reference: the text that
+/// fills `dwc_term` on `occurrence_uri`.
+#[derive(Debug, Clone, FromRow)]
+pub struct ResolvedRemarkRow {
+    pub occurrence_uri: String,
+    pub uri: String,
+    pub dwc_term: String,
+    pub body: String,
+    pub license: Option<String>,
 }
 
 /// Parameters for upserting an interaction

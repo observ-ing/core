@@ -242,6 +242,12 @@ export interface ObservationInput {
    * complete list — on an edit, omitting an entry removes it.
    */
   externalRecords?: ExternalRecord[];
+  /**
+   * The observer's own notes on the organism (dwc:occurrenceRemarks) and on
+   * the time and place (dwc:eventRemarks). On an edit, omitting one removes it.
+   */
+  occurrenceRemarks?: string;
+  eventRemarks?: string;
   images?: Array<{ data: string; mimeType: string }>;
   // Taxonomy fields
   taxonId?: string;

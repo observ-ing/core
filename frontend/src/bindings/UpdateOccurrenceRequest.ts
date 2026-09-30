@@ -48,4 +48,14 @@ export type UpdateOccurrenceRequest = {
    * See `CreateOccurrenceRequest::taxon_id`.
    */
   taxonId?: string;
+  /**
+   * See `CreateOccurrenceRequest::occurrence_remarks`. Like the other
+   * fields, omitting it clears the remark (and deletes the record), so the
+   * edit form sends back the existing text.
+   */
+  occurrenceRemarks?: string;
+  /**
+   * See `CreateOccurrenceRequest::event_remarks`.
+   */
+  eventRemarks?: string;
 };

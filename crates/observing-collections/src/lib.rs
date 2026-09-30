@@ -10,7 +10,7 @@
 
 use jacquard_common::types::collection::Collection;
 use observing_lexicons::bio_lexicons::temp::v0_1::{
-    identification::IdentificationRecord, occurrence::OccurrenceRecord,
+    identification::IdentificationRecord, occurrence::OccurrenceRecord, remark::RemarkRecord,
 };
 use observing_lexicons::ing_observ::temp::{
     comment::CommentRecord, interaction::InteractionRecord, like::LikeRecord,
@@ -20,6 +20,8 @@ use observing_lexicons::ing_observ::temp::{
 pub const OCCURRENCE_COLLECTION: &str = OccurrenceRecord::NSID;
 /// `bio.lexicons.temp.v0-1.identification`
 pub const IDENTIFICATION_COLLECTION: &str = IdentificationRecord::NSID;
+/// `bio.lexicons.temp.v0-1.remark`
+pub const REMARK_COLLECTION: &str = RemarkRecord::NSID;
 /// `ing.observ.temp.comment`
 pub const COMMENT_COLLECTION: &str = CommentRecord::NSID;
 /// `ing.observ.temp.interaction`
@@ -38,6 +40,7 @@ mod tests {
             IDENTIFICATION_COLLECTION,
             "bio.lexicons.temp.v0-1.identification"
         );
+        assert_eq!(REMARK_COLLECTION, "bio.lexicons.temp.v0-1.remark");
         assert_eq!(COMMENT_COLLECTION, "ing.observ.temp.comment");
         assert_eq!(INTERACTION_COLLECTION, "ing.observ.temp.interaction");
         assert_eq!(LIKE_COLLECTION, "ing.observ.temp.like");

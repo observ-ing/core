@@ -53,6 +53,9 @@ import { pickPhotos } from "../../lib/photoPicker";
 import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 
+/** Mirrors the remark lexicon's `body.maxLength` (and the appview's check). */
+const MAX_REMARK_LENGTH = 3000;
+
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
 );
@@ -163,6 +166,8 @@ export function UploadModal() {
     DEFAULT_ORGANISM_QUANTITY_TYPE,
   );
   const [externalRecords, setExternalRecords] = useState<ExternalRecord[]>([]);
+  const [occurrenceRemarks, setOccurrenceRemarks] = useState("");
+  const [eventRemarks, setEventRemarks] = useState("");
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -177,6 +182,8 @@ export function UploadModal() {
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
     setExternalRecords([]);
+    setOccurrenceRemarks("");
+    setEventRemarks("");
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
@@ -225,6 +232,9 @@ export function UploadModal() {
     // The edit request replaces the record's whole array, so the form has to
     // start from what is already on it or saving would drop the entries.
     setExternalRecords(editingObservation.externalRecords ?? []);
+    // Likewise, an edit that omits a remark deletes it.
+    setOccurrenceRemarks(editingObservation.occurrenceRemarks ?? "");
+    setEventRemarks(editingObservation.eventRemarks ?? "");
 
     if (!existingName) return undefined;
     const controller = new AbortController();
@@ -255,6 +265,8 @@ export function UploadModal() {
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
     setExternalRecords([]);
+    setOccurrenceRemarks("");
+    setEventRemarks("");
     setVisualIdImageUrl(null);
     setIsDirty(false);
   };
@@ -447,6 +459,8 @@ export function UploadModal() {
             organismQuantity: organismQuantity.trim() || undefined,
             organismQuantityType: organismQuantityType || undefined,
             externalRecords,
+            occurrenceRemarks: occurrenceRemarks.trim() || undefined,
+            eventRemarks: eventRemarks.trim() || undefined,
             createdAt: new Date().toISOString(),
           }),
           currentUser.did,
@@ -476,6 +490,8 @@ export function UploadModal() {
       license,
       eventDate,
       ...(externalRecords.length > 0 ? { externalRecords } : {}),
+      ...(occurrenceRemarks.trim() ? { occurrenceRemarks: occurrenceRemarks.trim() } : {}),
+      ...(eventRemarks.trim() ? { eventRemarks: eventRemarks.trim() } : {}),
       ...(imageData.length > 0 ? { images: imageData } : {}),
     };
 
@@ -816,6 +832,38 @@ export function UploadModal() {
                     </Select>
                   </FormControl>
                 </Stack>
+
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Notes on the organism (optional)"
+                  value={occurrenceRemarks}
+                  onChange={(e) => {
+                    setOccurrenceRemarks(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  margin="normal"
+                  placeholder="e.g. worn wings, feeding on milkweed"
+                  helperText="Shared publicly as Darwin Core occurrence remarks."
+                  slotProps={{ htmlInput: { maxLength: MAX_REMARK_LENGTH } }}
+                />
+
+                <TextField
+                  fullWidth
+                  multiline
+                  minRows={2}
+                  label="Notes on the time and place (optional)"
+                  value={eventRemarks}
+                  onChange={(e) => {
+                    setEventRemarks(e.target.value);
+                    setIsDirty(true);
+                  }}
+                  margin="normal"
+                  placeholder="e.g. overcast after rain, along the creek trail"
+                  helperText="Shared publicly as Darwin Core event remarks."
+                  slotProps={{ htmlInput: { maxLength: MAX_REMARK_LENGTH } }}
+                />
 
                 <ExternalRecordsField
                   records={externalRecords}

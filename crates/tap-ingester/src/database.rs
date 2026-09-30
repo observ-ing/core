@@ -185,6 +185,37 @@ impl Database {
         Ok(())
     }
 
+    /// A remark carries no notification: it is the occurrence author's own
+    /// text, attached by their own forward reference.
+    pub async fn upsert_remark(
+        &self,
+        did: &str,
+        uri: &str,
+        cid: &str,
+        record: &Value,
+    ) -> Result<()> {
+        debug!("Upserting remark: {}", uri);
+
+        let params = process_or_fail!(
+            uri,
+            remark_from_json,
+            "remark",
+            record,
+            uri.to_string(),
+            cid.to_string(),
+            did.to_string(),
+        );
+
+        observing_db::remarks::upsert(&self.pool, &params).await?;
+        Ok(())
+    }
+
+    pub async fn delete_remark(&self, uri: &str) -> Result<()> {
+        debug!("Deleting remark: {}", uri);
+        observing_db::remarks::delete(&self.pool, uri).await?;
+        Ok(())
+    }
+
     pub async fn upsert_comment(
         &self,
         did: &str,

@@ -44,4 +44,15 @@ export type CreateOccurrenceRequest = {
    * URI). Written to the auto-created identification's `taxonID` field.
    */
   taxonId?: string;
+  /**
+   * Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
+   * organism. Written as a separate `bio.lexicons.temp.v0-1.remark` record
+   * that the occurrence references; blank or omitted writes none.
+   */
+  occurrenceRemarks?: string;
+  /**
+   * Darwin Core dwc:eventRemarks — notes on the time and place. Written the
+   * same way as `occurrence_remarks`.
+   */
+  eventRemarks?: string;
 };
