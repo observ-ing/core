@@ -5,6 +5,7 @@ import {
   Table,
   TableBody,
   TableCell,
+  type TableCellProps,
   TableHead,
   TableRow,
   Tooltip,
@@ -17,6 +18,14 @@ import { getObservationUrl, getDisplayName } from "../../lib/utils";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
 import { denseTableCellSx } from "../common/layoutSx";
+
+/** Secondary-text table cell for the taxonomy ladder and created-at columns. */
+function MutedCell(props: TableCellProps) {
+  const { sx, ...rest } = props;
+  return (
+    <TableCell {...rest} sx={[{ color: "text.secondary" }, ...(Array.isArray(sx) ? sx : [sx])]} />
+  );
+}
 
 interface ExploreTableProps {
   observations: Occurrence[];
@@ -93,7 +102,10 @@ function text(v?: string | null): string {
   return v && v.length > 0 ? v : "—";
 }
 
-const numericSx = { fontVariantNumeric: "tabular-nums", textAlign: "right" } as const;
+const numericSx = {
+  fontVariantNumeric: "tabular-nums",
+  textAlign: "right",
+} as const;
 
 const ExploreTableRow = memo(function ExploreTableRow({
   observation: obs,
@@ -145,15 +157,13 @@ const ExploreTableRow = memo(function ExploreTableRow({
         {sciName}
       </TableCell>
       <TableCell>{text(tax?.vernacularName)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.rank)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.kingdom)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.phylum)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.class)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.order)}</TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{text(tax?.family)}</TableCell>
-      <TableCell sx={{ color: "text.secondary", fontStyle: "italic" }}>
-        {text(tax?.genus)}
-      </TableCell>
+      <MutedCell>{text(tax?.rank)}</MutedCell>
+      <MutedCell>{text(tax?.kingdom)}</MutedCell>
+      <MutedCell>{text(tax?.phylum)}</MutedCell>
+      <MutedCell>{text(tax?.class)}</MutedCell>
+      <MutedCell>{text(tax?.order)}</MutedCell>
+      <MutedCell>{text(tax?.family)}</MutedCell>
+      <MutedCell sx={{ fontStyle: "italic" }}>{text(tax?.genus)}</MutedCell>
       <TableCell>{getDisplayName(obs.observer)}</TableCell>
       <TableCell>{formatEventDateCell(obs.eventDate)}</TableCell>
       <TableCell sx={numericSx}>{formatCoord(obs.location?.latitude)}</TableCell>
@@ -180,7 +190,7 @@ const ExploreTableRow = memo(function ExploreTableRow({
           </Tooltip>
         )}
       </TableCell>
-      <TableCell sx={{ color: "text.secondary" }}>{formatDate(obs.createdAt)}</TableCell>
+      <MutedCell>{formatDate(obs.createdAt)}</MutedCell>
     </TableRow>
   );
 });
