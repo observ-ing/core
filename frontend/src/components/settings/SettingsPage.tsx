@@ -29,7 +29,7 @@ interface SettingsSectionProps {
 /** Titled, outlined card wrapper shared by the settings page sections. */
 function SettingsSection({ title, description, sx, children }: SettingsSectionProps) {
   return (
-    <Paper variant="outlined" sx={{ p: 3, borderRadius: 2, ...sx }}>
+    <Paper variant="outlined" sx={{ p: 3, ...sx }}>
       <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
         {title}
       </Typography>

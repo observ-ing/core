@@ -86,7 +86,7 @@ export function TransparencyPage() {
     <PageContainer maxWidth="md">
       <PageHeader title="Transparency" subtitle={data.notes} />
 
-      <Paper variant="outlined" sx={{ borderRadius: 2 }}>
+      <Paper variant="outlined">
         {sortedMonths.length === 0 ? (
           <EmptyState message="No cost data has been recorded yet." p={3} />
         ) : (

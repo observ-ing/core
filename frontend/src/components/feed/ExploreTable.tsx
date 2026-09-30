@@ -201,7 +201,14 @@ export const ExploreTable = memo(function ExploreTable({ observations }: Explore
   return (
     <Paper
       variant="outlined"
-      sx={{ width: "max-content", minWidth: "100%", my: 1.5, overflow: "visible" }}
+      sx={{
+        width: "max-content",
+        minWidth: "100%",
+        my: 1.5,
+        overflow: "visible",
+        // Sticky-header table keeps the default radius, not the card radius.
+        borderRadius: 1,
+      }}
     >
       <Table
         stickyHeader
