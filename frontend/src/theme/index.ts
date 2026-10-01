@@ -187,11 +187,16 @@ const createAppTheme = (mode: PaletteMode): Theme => {
         },
       },
       // Warm the loading shimmer to the bone palette (the default is a cool
-      // black-alpha grey that clashes with the warm background).
+      // black-alpha grey that clashes with the warm background). Rectangular
+      // blocks share the theme corner radius instead of repeating
+      // `borderRadius: 1` at each call site.
       MuiSkeleton: {
         styleOverrides: {
           root: ({ theme }) => ({
             backgroundColor: theme.palette.placeholder,
+          }),
+          rectangular: ({ theme }) => ({
+            borderRadius: theme.shape.borderRadius,
           }),
         },
       },

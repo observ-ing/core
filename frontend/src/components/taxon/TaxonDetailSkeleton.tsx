@@ -27,15 +27,15 @@ export function TaxonDetailSkeleton() {
         <Skeleton variant="text" width="50%" height={20} sx={{ mt: 2 }} />
 
         {/* Classification accordion */}
-        <Skeleton variant="rectangular" height={48} sx={{ borderRadius: 1, mt: 3 }} />
+        <Skeleton variant="rectangular" height={48} sx={{ mt: 3 }} />
 
         {/* Media accordion */}
-        <Skeleton variant="rectangular" height={48} sx={{ borderRadius: 1, mt: 0.5 }} />
+        <Skeleton variant="rectangular" height={48} sx={{ mt: 0.5 }} />
 
         {/* External links */}
         <Stack direction="row" spacing={1} sx={{ mt: 3 }}>
-          <Skeleton variant="rectangular" width={130} height={32} sx={{ borderRadius: 1 }} />
-          <Skeleton variant="rectangular" width={150} height={32} sx={{ borderRadius: 1 }} />
+          <Skeleton variant="rectangular" width={130} height={32} />
+          <Skeleton variant="rectangular" width={150} height={32} />
         </Stack>
       </Box>
 
