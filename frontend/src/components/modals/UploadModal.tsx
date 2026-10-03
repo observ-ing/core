@@ -167,7 +167,6 @@ export function UploadModal() {
   );
   const [externalRecords, setExternalRecords] = useState<ExternalRecord[]>([]);
   const [occurrenceRemarks, setOccurrenceRemarks] = useState("");
-  const [eventRemarks, setEventRemarks] = useState("");
   const [visualIdImageUrl, setVisualIdImageUrl] = useState<string | null>(null);
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
@@ -183,7 +182,6 @@ export function UploadModal() {
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
     setExternalRecords([]);
     setOccurrenceRemarks("");
-    setEventRemarks("");
     if (!editingObservation) {
       setLicense(defaultLicense ?? DEFAULT_LICENSE);
       if (currentLocation) {
@@ -234,7 +232,6 @@ export function UploadModal() {
     setExternalRecords(editingObservation.externalRecords ?? []);
     // Likewise, an edit that omits a remark deletes it.
     setOccurrenceRemarks(editingObservation.occurrenceRemarks ?? "");
-    setEventRemarks(editingObservation.eventRemarks ?? "");
 
     if (!existingName) return undefined;
     const controller = new AbortController();
@@ -266,7 +263,6 @@ export function UploadModal() {
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
     setExternalRecords([]);
     setOccurrenceRemarks("");
-    setEventRemarks("");
     setVisualIdImageUrl(null);
     setIsDirty(false);
   };
@@ -460,7 +456,6 @@ export function UploadModal() {
             organismQuantityType: organismQuantityType || undefined,
             externalRecords,
             occurrenceRemarks: occurrenceRemarks.trim() || undefined,
-            eventRemarks: eventRemarks.trim() || undefined,
             createdAt: new Date().toISOString(),
           }),
           currentUser.did,
@@ -491,7 +486,11 @@ export function UploadModal() {
       eventDate,
       ...(externalRecords.length > 0 ? { externalRecords } : {}),
       ...(occurrenceRemarks.trim() ? { occurrenceRemarks: occurrenceRemarks.trim() } : {}),
-      ...(eventRemarks.trim() ? { eventRemarks: eventRemarks.trim() } : {}),
+      // The form has no event-remarks input yet, but an edit that omits one
+      // deletes it — so carry through any written by another client.
+      ...(isEditMode && editingObservation?.eventRemarks
+        ? { eventRemarks: editingObservation.eventRemarks }
+        : {}),
       ...(imageData.length > 0 ? { images: imageData } : {}),
     };
 
@@ -837,31 +836,15 @@ export function UploadModal() {
                   fullWidth
                   multiline
                   minRows={2}
-                  label="Notes on the organism (optional)"
+                  label="Notes (optional)"
                   value={occurrenceRemarks}
                   onChange={(e) => {
                     setOccurrenceRemarks(e.target.value);
                     setIsDirty(true);
                   }}
                   margin="normal"
-                  placeholder="e.g. worn wings, feeding on milkweed"
+                  placeholder="e.g. worn wings, feeding on milkweed along the creek trail"
                   helperText="Shared publicly as Darwin Core occurrence remarks."
-                  slotProps={{ htmlInput: { maxLength: MAX_REMARK_LENGTH } }}
-                />
-
-                <TextField
-                  fullWidth
-                  multiline
-                  minRows={2}
-                  label="Notes on the time and place (optional)"
-                  value={eventRemarks}
-                  onChange={(e) => {
-                    setEventRemarks(e.target.value);
-                    setIsDirty(true);
-                  }}
-                  margin="normal"
-                  placeholder="e.g. overcast after rain, along the creek trail"
-                  helperText="Shared publicly as Darwin Core event remarks."
                   slotProps={{ htmlInput: { maxLength: MAX_REMARK_LENGTH } }}
                 />
 

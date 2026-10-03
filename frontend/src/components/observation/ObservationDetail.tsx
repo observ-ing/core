@@ -335,7 +335,7 @@ export function ObservationDetail() {
                 {observation.occurrenceRemarks && (
                   <DetailListItem
                     icon={<NotesIcon sx={detailIconSx} />}
-                    primary="Notes on the organism"
+                    primary="Notes"
                     secondary={<Box sx={remarkSx}>{observation.occurrenceRemarks}</Box>}
                   />
                 )}

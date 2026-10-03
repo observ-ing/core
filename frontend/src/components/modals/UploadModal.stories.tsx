@@ -81,6 +81,30 @@ export const EditWithExternalRecords: Story = {
   },
 };
 
+/**
+ * Editing an observation with the observer's own notes: the field starts
+ * populated, because an edit that omits a remark deletes it. Event remarks
+ * have no input but are carried through on save for the same reason.
+ */
+export const EditWithRemarks: Story = {
+  parameters: {
+    storeOptions: {
+      preloadedState: {
+        ...signedInState,
+        ui: {
+          ...baseUiState,
+          uploadModalOpen: true,
+          editingObservation: {
+            ...OAK_OBSERVATION,
+            occurrenceRemarks: "Mature tree, roughly 20 m tall. Acorns present.",
+            eventRemarks: "Overcast after morning rain, on the north-facing slope.",
+          },
+        },
+      },
+    },
+  },
+};
+
 export const WithGeolocation: Story = {
   parameters: {
     storeOptions: {
