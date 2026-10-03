@@ -1,0 +1,78 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT\n            o.uri AS \"occurrence_uri!\",\n            r.uri AS \"uri!\",\n            r.dwc_term AS \"dwc_term!\",\n            r.body AS \"body!\",\n            r.license\n        FROM occurrences o\n        CROSS JOIN LATERAL (\n            VALUES\n                ($2::text, o.occurrence_remarks_uri),\n                ($3::text, o.event_remarks_uri)\n        ) AS ref(dwc_term, remark_uri)\n        JOIN remarks r\n            ON r.uri = ref.remark_uri\n            AND r.did = o.did\n            AND r.subject_uri = o.uri\n            AND r.dwc_term = ref.dwc_term\n        WHERE o.uri = ANY($1)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "occurrence_uri!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "occurrences",
+            "name": "uri"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "uri!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "remarks",
+            "name": "uri"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "dwc_term!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "remarks",
+            "name": "dwc_term"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "body!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "remarks",
+            "name": "body"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "license",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "remarks",
+            "name": "license"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "TextArray",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "2ccdf4243f538e004166234eabddbc5d0e344faded1fdd29fd26e239077324d6"
+}

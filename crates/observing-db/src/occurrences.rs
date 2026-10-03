@@ -27,7 +27,8 @@ macro_rules! occurrence_columns {
 /// Upsert an occurrence record.
 ///
 /// On conflict the record's fields replace the stored ones outright, so an
-/// edit that removes `organismQuantity` or `externalRecords` clears them.
+/// edit that removes `organismQuantity`, `externalRecords` or a `*RemarksID`
+/// clears them.
 /// The COALESCEd columns are the exceptions: `associated_media` because a
 /// transient PDS failure during media resolution yields NULL rather than "no
 /// media", and `recorded_by`/`taxon_*`, which no current write path sets, so
@@ -45,7 +46,8 @@ pub async fn upsert(
             taxon_id, taxon_rank, kingdom,
             organism_quantity, organism_quantity_type,
             created_at, event_date_raw, event_date_end,
-            external_records
+            external_records,
+            occurrence_remarks_uri, event_remarks_uri
         ) VALUES (
             $1, $2, $3, $4, $5,
             ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography,
@@ -53,7 +55,8 @@ pub async fn upsert(
             $11, $12, $13,
             $14, $15,
             $16, $17, $18,
-            $19
+            $19,
+            $20, $21
         )
         ON CONFLICT (uri) DO UPDATE SET
             cid = $2,
@@ -71,6 +74,8 @@ pub async fn upsert(
             organism_quantity = $14,
             organism_quantity_type = $15,
             external_records = $19,
+            occurrence_remarks_uri = $20,
+            event_remarks_uri = $21,
             indexed_at = NOW()
         "#,
         p.uri,
@@ -95,6 +100,8 @@ pub async fn upsert(
         p.event_date_raw as _,
         p.event_date_end as _,
         p.external_records as _,
+        p.occurrence_remarks_uri as _,
+        p.event_remarks_uri as _,
     )
     .execute(executor)
     .await?;

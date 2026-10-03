@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO remarks (uri, cid, did, subject_uri, dwc_term, body, license, indexed_at)\n        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())\n        ON CONFLICT (uri) DO UPDATE SET\n            cid = EXCLUDED.cid,\n            subject_uri = EXCLUDED.subject_uri,\n            dwc_term = EXCLUDED.dwc_term,\n            body = EXCLUDED.body,\n            license = EXCLUDED.license,\n            indexed_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ecbd13231d7470fc6ad7480b02483e79253147b005219a736d1dd6ac9f386b89"
+}

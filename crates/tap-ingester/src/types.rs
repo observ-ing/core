@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 pub struct IngesterStats {
     pub occurrences: u64,
     pub identifications: u64,
+    pub remarks: u64,
     pub comments: u64,
     pub interactions: u64,
     pub likes: u64,
