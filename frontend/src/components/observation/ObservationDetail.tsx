@@ -14,7 +14,9 @@ import {
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
 import MyLocationIcon from "@mui/icons-material/MyLocation";
+import NotesIcon from "@mui/icons-material/Notes";
 import NumbersIcon from "@mui/icons-material/Numbers";
+import EventNoteIcon from "@mui/icons-material/EventNote";
 import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
@@ -50,6 +52,9 @@ import { getLicenseLabel } from "../../lib/licenses";
 const LocationMap = lazy(() =>
   import("../map/LocationMap").then((m) => ({ default: m.LocationMap })),
 );
+
+/** Remarks are free prose: keep the author's line breaks and wrap long words. */
+const remarkSx = { whiteSpace: "pre-wrap", overflowWrap: "anywhere" } as const;
 
 export function ObservationDetail() {
   const { did, rkey } = useParams<{ did: string; rkey: string }>();
@@ -324,6 +329,22 @@ export function ObservationDetail() {
                         )}
                       </>
                     }
+                  />
+                )}
+
+                {observation.occurrenceRemarks && (
+                  <DetailListItem
+                    icon={<NotesIcon sx={detailIconSx} />}
+                    primary="Notes on the organism"
+                    secondary={<Box sx={remarkSx}>{observation.occurrenceRemarks}</Box>}
+                  />
+                )}
+
+                {observation.eventRemarks && (
+                  <DetailListItem
+                    icon={<EventNoteIcon sx={detailIconSx} />}
+                    primary="Notes on the time and place"
+                    secondary={<Box sx={remarkSx}>{observation.eventRemarks}</Box>}
                   />
                 )}
 

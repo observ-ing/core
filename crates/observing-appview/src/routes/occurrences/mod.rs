@@ -1,5 +1,6 @@
 mod auto_id;
 mod read;
+mod remarks;
 mod write;
 
 pub use read::{get_bbox, get_feed, get_geojson, get_nearby, get_occurrence};

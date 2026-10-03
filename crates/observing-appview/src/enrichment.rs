@@ -44,6 +44,16 @@ pub struct OccurrenceResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub organism_quantity_type: Option<String>,
+    /// Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
+    /// organism, from the remark record the occurrence references.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub occurrence_remarks: Option<String>,
+    /// Darwin Core dwc:eventRemarks — the observer's notes on the time and
+    /// place, resolved the same way.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub event_remarks: Option<String>,
     pub images: Vec<OccurrenceImage>,
     /// References to this same occurrence on other platforms, straight from
     /// the record. Empty for the overwhelming majority of observations.
@@ -242,7 +252,7 @@ pub async fn enrich_occurrences(
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
 
     // Stage 1: Batch-fetch all DB data concurrently
-    let (like_counts, viewer_likes, community_ids, identifications_by_uri) = tokio::join!(
+    let (like_counts, viewer_likes, community_ids, identifications_by_uri, remarks) = tokio::join!(
         async {
             observing_db::likes::get_counts_for_occurrences(pool, &uris)
                 .await
@@ -267,7 +277,18 @@ pub async fn enrich_occurrences(
                 .await
                 .unwrap_or_default()
         },
+        async {
+            observing_db::remarks::get_for_occurrences(pool, &uris)
+                .await
+                .unwrap_or_default()
+        },
     );
+    let remark_body = |occurrence_uri: &str, dwc_term: &str| {
+        remarks
+            .iter()
+            .find(|r| r.occurrence_uri == occurrence_uri && r.dwc_term == dwc_term)
+            .map(|r| r.body.clone())
+    };
 
     // Stage 2: Batch profile resolution
     let dids_vec: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
@@ -335,6 +356,8 @@ pub async fn enrich_occurrences(
             },
             organism_quantity: row.organism_quantity.clone(),
             organism_quantity_type: row.organism_quantity_type.clone(),
+            occurrence_remarks: remark_body(&row.uri, observing_db::remarks::OCCURRENCE_REMARKS),
+            event_remarks: remark_body(&row.uri, observing_db::remarks::EVENT_REMARKS),
             images,
             external_records: row
                 .external_record_entries()

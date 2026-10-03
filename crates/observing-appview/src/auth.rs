@@ -132,6 +132,25 @@ pub async fn create_at_record(
     nsid: &str,
     record_value: Value,
 ) -> Result<atrium_api::com::atproto::repo::create_record::Output, AppError> {
+    create_at_record_with_rkey(agent, did, nsid, None, record_value).await
+}
+
+/// [`create_at_record`] with a caller-chosen record key. Used when a record's
+/// URI must be known before it exists — e.g. so a remark written first can
+/// name the occurrence that will reference it.
+pub async fn create_at_record_with_rkey(
+    agent: &AgentType,
+    did: atrium_api::types::string::Did,
+    nsid: &str,
+    rkey: Option<&str>,
+    record_value: Value,
+) -> Result<atrium_api::com::atproto::repo::create_record::Output, AppError> {
+    let rkey = rkey
+        .map(|k| {
+            k.parse()
+                .map_err(|e| AppError::Internal(format!("Invalid rkey: {e}")))
+        })
+        .transpose()?;
     agent
         .api
         .com
@@ -145,22 +164,83 @@ pub async fn create_at_record(
                 record: serde_json::from_value(record_value)
                     .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
                 repo: atrium_api::types::string::AtIdentifier::Did(did),
-                rkey: None,
+                rkey,
                 swap_commit: None,
                 validate: None,
             }
             .into(),
         )
         .await
-        .map_err(|e| {
-            if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
-                tracing::warn!(
-                    error = %e,
-                    "AT Protocol authentication failed (session expired)"
-                );
-                AppError::Unauthorized
-            } else {
-                AppError::Internal(format!("Failed to create record: {e}"))
+        .map_err(|e| map_xrpc_error(e, "create"))
+}
+
+/// Replace the record at `at_uri` via `putRecord`.
+pub async fn put_at_record(
+    agent: &AgentType,
+    did: atrium_api::types::string::Did,
+    at_uri: &AtUri,
+    record_value: Value,
+) -> Result<atrium_api::com::atproto::repo::put_record::Output, AppError> {
+    let (collection, rkey) = parse_collection_and_rkey(at_uri)?;
+    agent
+        .api
+        .com
+        .atproto
+        .repo
+        .put_record(
+            atrium_api::com::atproto::repo::put_record::InputData {
+                collection,
+                record: serde_json::from_value(record_value)
+                    .map_err(|e| AppError::Internal(format!("Failed to convert record: {e}")))?,
+                repo: atrium_api::types::string::AtIdentifier::Did(did),
+                rkey,
+                swap_commit: None,
+                swap_record: None,
+                validate: None,
             }
-        })
+            .into(),
+        )
+        .await
+        .map_err(|e| map_xrpc_error(e, "put"))
+}
+
+/// Delete the record at `at_uri` via `deleteRecord`.
+pub async fn delete_at_record(
+    agent: &AgentType,
+    did: atrium_api::types::string::Did,
+    at_uri: &AtUri,
+) -> Result<(), AppError> {
+    let (collection, rkey) = parse_collection_and_rkey(at_uri)?;
+    agent
+        .api
+        .com
+        .atproto
+        .repo
+        .delete_record(
+            atrium_api::com::atproto::repo::delete_record::InputData {
+                collection,
+                repo: atrium_api::types::string::AtIdentifier::Did(did),
+                rkey,
+                swap_commit: None,
+                swap_record: None,
+            }
+            .into(),
+        )
+        .await
+        .map_err(|e| map_xrpc_error(e, "delete"))?;
+    Ok(())
+}
+
+/// Map a PDS write error: an expired session becomes `Unauthorized` (so the
+/// client re-authenticates), anything else an `Internal` naming the verb.
+fn map_xrpc_error<E: std::fmt::Debug + std::fmt::Display>(
+    e: atrium_api::xrpc::Error<E>,
+    verb: &str,
+) -> AppError {
+    if matches!(e, atrium_api::xrpc::Error::Authentication(_)) {
+        tracing::warn!(error = %e, "AT Protocol authentication failed (session expired)");
+        AppError::Unauthorized
+    } else {
+        AppError::Internal(format!("Failed to {verb} record: {e}"))
+    }
 }

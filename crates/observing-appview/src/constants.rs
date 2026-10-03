@@ -37,6 +37,10 @@ pub const MAX_NOTIFICATION_LIMIT: i64 = 50;
 /// Maximum allowed length of a comment body (in characters).
 pub const MAX_COMMENT_LENGTH: usize = 3000;
 
+/// Maximum allowed length of a remark body (in characters), mirroring the
+/// `bio.lexicons.temp.v0-1.remark` lexicon's `body.maxLength`.
+pub const MAX_REMARK_LENGTH: usize = 3000;
+
 /// Maximum allowed length of a scientific name (in characters).
 pub const MAX_SCIENTIFIC_NAME_LENGTH: usize = 256;
 

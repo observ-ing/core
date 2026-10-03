@@ -21,6 +21,7 @@ import { AtpAgent } from "@atproto/api";
 const COLLECTIONS = [
   "bio.lexicons.temp.v0-1.occurrence",
   "bio.lexicons.temp.v0-1.identification",
+  "bio.lexicons.temp.v0-1.remark",
   "ing.observ.temp.comment",
   "ing.observ.temp.interaction",
   "ing.observ.temp.like",

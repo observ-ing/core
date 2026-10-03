@@ -106,6 +106,8 @@ export interface TombstoneInput {
   organismQuantityType?: string | undefined;
   /** Cross-platform links the submitter added, shown on the row right away. */
   externalRecords?: ExternalRecord[] | undefined;
+  occurrenceRemarks?: string | undefined;
+  eventRemarks?: string | undefined;
   createdAt: string;
 }
 
@@ -138,6 +140,8 @@ export function makeTombstoneOccurrence(input: TombstoneInput): Occurrence {
     },
     ...(input.organismQuantity ? { organismQuantity: input.organismQuantity } : {}),
     ...(input.organismQuantityType ? { organismQuantityType: input.organismQuantityType } : {}),
+    ...(input.occurrenceRemarks ? { occurrenceRemarks: input.occurrenceRemarks } : {}),
+    ...(input.eventRemarks ? { eventRemarks: input.eventRemarks } : {}),
     images: input.imageUrls.map((url) => ({
       url,
       ...(input.license ? { license: input.license } : {}),
