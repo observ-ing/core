@@ -35,6 +35,8 @@ An occurrence is "an existence of an Organism at a particular place at a particu
 | `coordinateUncertaintyInMeters` | dwc:coordinateUncertaintyInMeters | Uncertainty radius in meters |
 | `associatedMedia` | dwc:associatedMedia | Array of AT Protocol strong refs to `bio.lexicons.temp.v0-1.media` records (max 10) |
 | `externalRecords` | dwc:otherCatalogNumbers (on export) | Array of `{ uri, service }` entries (max 10) pointing at the same occurrence held elsewhere — another AT Protocol lexicon (`at://…`) or an off-network service such as iNaturalist. `uri` required (≤512 chars); `service` is a short platform identifier with known values `inaturalist`, `bugguide` (≤64 chars). Not written by the appview today. |
+| `occurrenceRemarksID` | dwc:occurrenceRemarks (via the remark's `body`) | AT-URI of a `bio.lexicons.temp.v0-1.remark` holding the observer's notes on the organism. See [remark](#biolexiconstempv0-1remark). |
+| `eventRemarksID` | dwc:eventRemarks (via the remark's `body`) | AT-URI of a `bio.lexicons.temp.v0-1.remark` holding the observer's notes on the time and place. |
 | (AT URI) | dwc:occurrenceID | `at://did:plc:.../bio.lexicons.temp.v0-1.occurrence/...` — derived, not stored |
 | (DID) | dwc:recordedBy | Derived from AT Protocol identity |
 
@@ -68,6 +70,36 @@ An image record referenced from occurrences. Media records are created by users 
 > identifiers (`CC-BY-4.0`, …) instead. Those records are user-owned and are not rewritten — the
 > appview maps them to the equivalent URI when serving occurrence images, so API consumers only
 > ever see the URI form.
+
+## bio.lexicons.temp.v0-1.remark
+
+Free text that fills one Darwin Core remarks term on another record, kept in its own record so the prose can be attributed and licensed separately from the facts it describes. Observ.ing writes remarks only for the occurrence author's own notes, and only on occurrences (not identifications) for now. The submit/edit form's "Notes" field writes `occurrenceRemarks`. There is no `eventRemarks` input yet — event-level notes may belong on a future first-class event record — but the appview reads and displays them, and an edit carries an existing one through unchanged. Discussion stays in `ing.observ.temp.comment`: a remark is not a reply, and a third party can't attach one to someone else's occurrence.
+
+### Example
+
+```json
+{
+  "subject": "at://did:plc:abc.../bio.lexicons.temp.v0-1.occurrence/3kabc...",
+  "dwcTerm": "occurrenceRemarks",
+  "body": "Worn wings; feeding on milkweed at the trail edge.",
+  "license": "https://creativecommons.org/licenses/by/4.0/"
+}
+```
+
+### Fields
+
+| Field | Darwin Core / Dublin Core | Description |
+|-------|---------------------------|-------------|
+| `subject` | — | AT-URI of the record the remark describes. Required. |
+| `dwcTerm` | — | The term the body fills: `occurrenceRemarks`, `eventRemarks`, `identificationRemarks` (open vocabulary, ≤128 chars). Required. |
+| `body` | the value of `dwcTerm` | The remark text (≤3000 chars). Required. |
+| `license` | dcterms:license | License URI, same recommended values as media. The appview defaults it to the observation's license. |
+
+### Resolution
+
+The subject's forward reference (`occurrenceRemarksID` / `eventRemarksID`) is authoritative: a remark nothing references fills no term. The appview resolves remarks at read time from the occurrence's reference and additionally requires the remark to have the same author, name that occurrence as its `subject`, and carry the matching `dwcTerm`; a reference that disagrees fills nothing. The two records can be ingested in either order.
+
+Writes are two records with no transaction between them, ordered so a partial failure only ever leaves an unreferenced remark (harmless) and never a reference to a missing one: a remark is created or edited (`putRecord`, same URI) *before* the occurrence write that references it, and deleted only *after* the occurrence write that drops the reference. Deleting an occurrence also deletes the author's remarks about it.
 
 ## bio.lexicons.temp.v0-1.identification
 
@@ -121,13 +153,13 @@ Terms we may adopt later on the occurrence record, grouped by the kind of inform
 `dwc:geodeticDatum`, `dwc:continent`, `dwc:country`, `dwc:countryCode`, `dwc:stateProvince`, `dwc:county`, `dwc:municipality`, `dwc:locality`, `dwc:verbatimLocality`, `dwc:waterBody`, `dwc:minimumElevationInMeters`, `dwc:maximumElevationInMeters`, `dwc:minimumDepthInMeters`, `dwc:maximumDepthInMeters`.
 
 **Occurrence context:**
-`dwc:basisOfRecord` (assumed `HumanObservation`), `dwc:occurrenceStatus` (assumed `present`), `dwc:occurrenceRemarks`, `dwc:individualCount`, `dwc:sex`, `dwc:lifeStage`, `dwc:behavior`, `dwc:reproductiveCondition`.
+`dwc:basisOfRecord` (assumed `HumanObservation`), `dwc:occurrenceStatus` (assumed `present`), `dwc:individualCount`, `dwc:sex`, `dwc:lifeStage`, `dwc:behavior`, `dwc:reproductiveCondition`.
 
 **Establishment / invasiveness:**
 `dwc:establishmentMeans`, `dwc:degreeOfEstablishment`, `dwc:pathway`.
 
 **Sampling event:**
-`dwc:habitat`, `dwc:samplingProtocol`, `dwc:samplingEffort`, `dwc:eventRemarks`.
+`dwc:habitat`, `dwc:samplingProtocol`, `dwc:samplingEffort`.
 
 On identification:
 `dwc:identificationQualifier` (cf./aff.), `dwc:identificationVerificationStatus`, `dwc:identificationReferences`, `dwc:typeStatus`, `dwc:dateIdentified` (currently overlaps with app-specific `createdAt`).

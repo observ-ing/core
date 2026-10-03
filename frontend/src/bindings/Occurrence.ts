@@ -33,6 +33,16 @@ export type Occurrence = {
    * ("individuals", "percent-cover", ...).
    */
   organismQuantityType?: string;
+  /**
+   * Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
+   * organism, from the remark record the occurrence references.
+   */
+  occurrenceRemarks?: string;
+  /**
+   * Darwin Core dwc:eventRemarks — the observer's notes on the time and
+   * place, resolved the same way.
+   */
+  eventRemarks?: string;
   images: Array<OccurrenceImage>;
   /**
    * References to this same occurrence on other platforms, straight from

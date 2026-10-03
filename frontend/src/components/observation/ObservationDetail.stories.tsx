@@ -57,6 +57,32 @@ export const NoDiscussion: Story = {
 };
 
 /**
+ * The observer's own notes (Darwin Core occurrence and event remarks), shown
+ * in Details. Line breaks in the text are kept.
+ */
+export const WithRemarks: Story = {
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/occurrences/*", () =>
+          HttpResponse.json({
+            occurrence: {
+              ...OAK_OBSERVATION,
+              occurrenceRemarks:
+                "Mature tree, roughly 20 m tall.\nAcorns present; lobed leaves with bristle tips.",
+              eventRemarks:
+                "Overcast after morning rain, on the north-facing slope above the creek.",
+            },
+            identifications: [OAK_IDENTIFICATION],
+            comments: [],
+          }),
+        ),
+      ],
+    },
+  },
+};
+
+/**
  * An observation cross-linked to the same sighting held elsewhere — an
  * iNaturalist observation and a record in another AT Protocol lexicon.
  */

@@ -4,6 +4,7 @@ use axum::Json;
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
+use jacquard_common::types::tid::Tid;
 use jacquard_common::types::uri::UriValue;
 use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
@@ -27,6 +28,7 @@ use jacquard_common::types::string::AtUri;
 use std::str::FromStr;
 
 use super::auto_id;
+use super::remarks::{self, PreparedRemark, RemarkTerm};
 
 #[derive(Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
@@ -72,6 +74,24 @@ pub struct CreateOccurrenceRequest {
     /// URI). Written to the auto-created identification's `taxonID` field.
     #[ts(optional)]
     taxon_id: Option<String>,
+    /// Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
+    /// organism. Written as a separate `bio.lexicons.temp.v0-1.remark` record
+    /// that the occurrence references; blank or omitted writes none.
+    #[ts(optional)]
+    occurrence_remarks: Option<String>,
+    /// Darwin Core dwc:eventRemarks — notes on the time and place. Written the
+    /// same way as the occurrence remarks.
+    #[ts(optional)]
+    event_remarks: Option<String>,
+}
+
+impl RemarkTexts for CreateOccurrenceRequest {
+    fn remark_text(&self, term: RemarkTerm) -> Option<&str> {
+        match term {
+            RemarkTerm::Occurrence => self.occurrence_remarks.as_deref(),
+            RemarkTerm::Event => self.event_remarks.as_deref(),
+        }
+    }
 }
 
 /// One `externalRecords` entry from the submit/edit form: this same occurrence
@@ -146,6 +166,37 @@ pub struct UpdateOccurrenceRequest {
     /// See `CreateOccurrenceRequest::taxon_id`.
     #[ts(optional)]
     taxon_id: Option<String>,
+    /// See `CreateOccurrenceRequest::occurrence_remarks`. Like the other
+    /// fields, omitting it clears the remark (and deletes the record), so the
+    /// edit form sends back the existing text.
+    #[ts(optional)]
+    occurrence_remarks: Option<String>,
+    /// See `CreateOccurrenceRequest::event_remarks`.
+    #[ts(optional)]
+    event_remarks: Option<String>,
+}
+
+impl RemarkTexts for UpdateOccurrenceRequest {
+    fn remark_text(&self, term: RemarkTerm) -> Option<&str> {
+        match term {
+            RemarkTerm::Occurrence => self.occurrence_remarks.as_deref(),
+            RemarkTerm::Event => self.event_remarks.as_deref(),
+        }
+    }
+}
+
+/// Access to the remark text a create or edit request carries, per term.
+trait RemarkTexts {
+    fn remark_text(&self, term: RemarkTerm) -> Option<&str>;
+
+    /// Every term's normalized text, validated before any PDS write.
+    fn normalized_remarks(&self) -> Result<[(RemarkTerm, Option<&str>); 2], AppError> {
+        let [a, b] = RemarkTerm::ALL;
+        Ok([
+            (a, remarks::normalize_text(a, self.remark_text(a))?),
+            (b, remarks::normalize_text(b, self.remark_text(b))?),
+        ])
+    }
 }
 
 pub async fn create_occurrence(
@@ -162,6 +213,7 @@ pub async fn create_occurrence(
         Some(ref license) => Some(validate_license(license)?),
         None => None,
     };
+    let remark_texts = body.normalized_remarks()?;
 
     // Restore OAuth session for AT Protocol operations
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
@@ -178,6 +230,27 @@ pub async fn create_occurrence(
     )
     .await?;
 
+    // Remarks are written before the occurrence that references them (see
+    // `remarks`), and each names the occurrence as its subject, so the
+    // occurrence's record key is chosen here rather than by the PDS.
+    let rkey = Tid::now_0();
+    let occurrence_uri = format!("at://{}/{}/{}", user.did, OccurrenceRecord::NSID, rkey);
+    let mut remark_ids = RemarkIds::default();
+    for (term, text) in remark_texts {
+        let prepared = remarks::prepare(
+            &agent,
+            &user.did,
+            &occurrence_uri,
+            term,
+            text,
+            None,
+            None,
+            license,
+        )
+        .await?;
+        remark_ids.set(term, prepared.id);
+    }
+
     let record_value = build_occurrence_record_json(OccurrenceRecordFields {
         latitude: body.latitude,
         longitude: body.longitude,
@@ -187,14 +260,21 @@ pub async fn create_occurrence(
         event_date: body.event_date.as_deref(),
         external_records: body.external_records.as_deref(),
         media_refs,
+        remark_ids: &remark_ids,
     })?;
 
     // Create AT Protocol record. The firehose event that follows will trigger
     // observing-ingester to parse the same record into DB rows — we no longer
     // do that here, so there is a single writer for the occurrences and
     // associated media state.
-    let resp =
-        auth::create_at_record(&agent, did_parsed, OccurrenceRecord::NSID, record_value).await?;
+    let resp = auth::create_at_record_with_rkey(
+        &agent,
+        did_parsed,
+        OccurrenceRecord::NSID,
+        Some(rkey.as_str()),
+        record_value,
+    )
+    .await?;
 
     let uri = resp.uri.to_string();
     let cid = resp.cid.as_ref().to_string();
@@ -250,6 +330,15 @@ pub async fn delete_occurrence(
         ));
     }
 
+    // The user's remarks on this occurrence, looked up before the delete so
+    // they can be removed after it (see `remarks` for the ordering).
+    let remark_uris = observing_db::remarks::get_uris_for_subject(&state.pool, &uri, &user.did)
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "Failed to look up remarks for deleted occurrence");
+            Vec::new()
+        });
+
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let (collection, rkey) = auth::parse_collection_and_rkey(&at_uri)?;
     agent
@@ -277,6 +366,8 @@ pub async fn delete_occurrence(
             }
         })?;
 
+    remarks::delete_unreferenced(&agent, &user.did, &remark_uris).await;
+
     // The firehose delete commit will trigger the ingester to remove the row
     // (and cascade to identifications/comments/likes/interactions via FK).
     Ok(Json(SuccessResponse { success: true }))
@@ -297,6 +388,7 @@ pub async fn update_occurrence(
         Some(ref license) => Some(validate_license(license)?),
         None => None,
     };
+    let remark_texts = body.normalized_remarks()?;
 
     // Parse AT URI and enforce ownership / collection match
     let at_uri =
@@ -395,6 +487,41 @@ pub async fn update_occurrence(
     .await?;
     media_refs.extend(new_media_refs);
 
+    // Remarks: edit in place with putRecord, create when newly added, and
+    // hold deletions until the occurrence write below has dropped the
+    // reference. The PDS record's forward references are authoritative; the
+    // indexed rows only tell us whether the text actually changed.
+    let indexed_remarks =
+        observing_db::remarks::get_for_occurrences(&state.pool, std::slice::from_ref(&body.uri))
+            .await
+            .unwrap_or_else(|e| {
+                warn!(error = %e, "Failed to load indexed remarks; rewriting any present");
+                Vec::new()
+            });
+    let mut remark_ids = RemarkIds::default();
+    let mut remarks_to_delete = Vec::new();
+    for (term, text) in remark_texts {
+        let existing_id = existing_value
+            .get(term.occurrence_field())
+            .and_then(|v| v.as_str());
+        let indexed = indexed_remarks
+            .iter()
+            .find(|r| r.dwc_term == term.dwc_term());
+        let PreparedRemark { id, delete_after } = remarks::prepare(
+            &agent,
+            &user.did,
+            &body.uri,
+            term,
+            text,
+            existing_id,
+            indexed,
+            license,
+        )
+        .await?;
+        remark_ids.set(term, id);
+        remarks_to_delete.extend(delete_after);
+    }
+
     let record_value = build_occurrence_record_json(OccurrenceRecordFields {
         latitude: body.latitude,
         longitude: body.longitude,
@@ -404,6 +531,7 @@ pub async fn update_occurrence(
         event_date: body.event_date.as_deref(),
         external_records: body.external_records.as_deref(),
         media_refs,
+        remark_ids: &remark_ids,
     })?;
 
     // putRecord on the PDS. The firehose commit that follows triggers the
@@ -441,6 +569,8 @@ pub async fn update_occurrence(
     let cid = resp.cid.as_ref().to_string();
 
     info!(uri = %uri, "Updated occurrence (PDS); awaiting ingester for DB refresh");
+
+    remarks::delete_unreferenced(&agent, &user.did, &remarks_to_delete).await;
 
     // Private location data is intentionally never written to the PDS, so the
     // ingester has no path to populate it. This is still the appview's job.
@@ -580,6 +710,23 @@ struct OccurrenceRecordFields<'a> {
     event_date: Option<&'a str>,
     external_records: Option<&'a [ExternalRecordInput]>,
     media_refs: Vec<StrongRef>,
+    remark_ids: &'a RemarkIds,
+}
+
+/// The remark URIs an occurrence write references, per term.
+#[derive(Debug, Default)]
+struct RemarkIds {
+    occurrence_remarks: Option<String>,
+    event_remarks: Option<String>,
+}
+
+impl RemarkIds {
+    fn set(&mut self, term: RemarkTerm, id: Option<String>) {
+        match term {
+            RemarkTerm::Occurrence => self.occurrence_remarks = id,
+            RemarkTerm::Event => self.event_remarks = id,
+        }
+    }
 }
 
 /// Build the `bio.lexicons.temp.v0-1.occurrence` record body and serialize it
@@ -601,6 +748,7 @@ fn build_occurrence_record_json(
         event_date,
         external_records,
         media_refs,
+        remark_ids,
     } = fields;
     let now = Datetime::now();
     let now_rfc3339 = now.as_str().to_string();
@@ -659,6 +807,18 @@ fn build_occurrence_record_json(
             "createdAt".to_string(),
             serde_json::json!(chrono::Utc::now().to_rfc3339()),
         );
+        // Remark references are lexicon fields, but written by hand: the
+        // generated struct serializes them as camelCase `…RemarksId`, while
+        // the lexicon (and every other reader) spells them `…RemarksID` —
+        // the same codegen gap `taxonID` has on identifications.
+        for (term, id) in [
+            (RemarkTerm::Occurrence, &remark_ids.occurrence_remarks),
+            (RemarkTerm::Event, &remark_ids.event_remarks),
+        ] {
+            if let Some(id) = id {
+                obj.insert(term.occurrence_field().to_string(), serde_json::json!(id));
+            }
+        }
     }
 
     Ok(record_value)
@@ -913,6 +1073,36 @@ mod tests {
                 "{uri} should be rejected"
             );
         }
+    }
+
+    /// Remark references are written with the lexicon's `…RemarksID`
+    /// casing — the generated struct alone would write `…RemarksId`, which no
+    /// reader (ours included) would see.
+    #[test]
+    fn writes_remark_references_with_lexicon_casing() {
+        let remark_ids = RemarkIds {
+            occurrence_remarks: Some("at://did:plc:alice/bio.lexicons.temp.v0-1.remark/a".into()),
+            event_remarks: None,
+        };
+        let record = build_occurrence_record_json(OccurrenceRecordFields {
+            latitude: 37.7749,
+            longitude: -122.4194,
+            coordinate_uncertainty_in_meters: None,
+            organism_quantity: None,
+            organism_quantity_type: None,
+            event_date: Some("2024-06-15"),
+            external_records: None,
+            media_refs: Vec::new(),
+            remark_ids: &remark_ids,
+        })
+        .expect("valid record");
+
+        assert_eq!(
+            record["occurrenceRemarksID"],
+            "at://did:plc:alice/bio.lexicons.temp.v0-1.remark/a"
+        );
+        assert!(record.get("eventRemarksID").is_none());
+        assert!(record.get("occurrenceRemarksId").is_none());
     }
 
     /// Scheme matching is case-insensitive, as URI schemes are.
