@@ -1,9 +1,10 @@
-import { Box, Button, CircularProgress, Typography } from "@mui/material";
+import { Box, Button } from "@mui/material";
 import AutoFixHighIcon from "@mui/icons-material/AutoFixHigh";
 import type { SpeciesSuggestion } from "../../services/api";
 import { useVisualId } from "../../hooks/useVisualId";
 import { VisualIdCards, type AncestorSelection } from "./VisualIdCards";
 import { ButtonSpinner } from "../common/ButtonSpinner";
+import { SpeciesIdProgress } from "./SpeciesIdProgress";
 
 interface VisualIdProps {
   imageUrl: string;
@@ -28,7 +29,7 @@ export function VisualId({
   autoFetch,
   quiet,
 }: VisualIdProps) {
-  const { suggestions, isLoading, hasLoaded, handleFetch } = useVisualId({
+  const { suggestions, isLoading, hasLoaded, handleFetch, readyAt } = useVisualId({
     imageUrl,
     latitude,
     longitude,
@@ -52,19 +53,7 @@ export function VisualId({
           Visual ID
         </Button>
       )}
-      {isLoading && autoFetch && (
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1 }}>
-          <CircularProgress size={16} />
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.secondary",
-            }}
-          >
-            Identifying species...
-          </Typography>
-        </Box>
-      )}
+      {isLoading && (autoFetch || readyAt !== null) && <SpeciesIdProgress readyAt={readyAt} />}
       <VisualIdCards
         suggestions={suggestions}
         onSelectSpecies={onSelect}

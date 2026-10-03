@@ -52,6 +52,7 @@ import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils
 import { pickPhotos } from "../../lib/photoPicker";
 import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
+import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -169,6 +170,12 @@ export function UploadModal() {
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
 
   const hasLocation = !!lat && !!lng;
+
+  // Wake the species-id service now so it boots while the user picks a photo
+  // and location, instead of when the visual ID actually runs.
+  useEffect(() => {
+    if (isOpen) warmSpeciesId();
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return undefined;

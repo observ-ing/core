@@ -3,6 +3,7 @@ import { identifySpecies, type SpeciesSuggestion } from "../services/api";
 import { useAppDispatch } from "../store";
 import { addToast } from "../store/uiSlice";
 import { fileToBase64 } from "../lib/utils";
+import { markSpeciesIdWarm, useSpeciesIdReadyAt, warmSpeciesId } from "../lib/speciesIdWarmup";
 
 interface UseVisualIdOptions {
   imageUrl: string;
@@ -27,10 +28,14 @@ export function useVisualId({
   const [isLoading, setIsLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
   const fetchedRef = useRef(false);
+  const readyAt = useSpeciesIdReadyAt();
 
   const handleFetch = async () => {
     setIsLoading(true);
     setSuggestions([]);
+    // Usually already warmed when the flow opened; this covers entry points
+    // that weren't, and gets a countdown if the service is still booting.
+    warmSpeciesId();
     try {
       const response = await fetch(imageUrl);
       const blob = await response.blob();
@@ -44,6 +49,7 @@ export function useVisualId({
       if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
 
       const result = await identifySpecies(params);
+      markSpeciesIdWarm();
       setSuggestions(result.suggestions);
       setHasLoaded(true);
       if (result.suggestions.length === 0 && !quiet) {
@@ -67,5 +73,5 @@ export function useVisualId({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoFetch]);
 
-  return { suggestions, isLoading, hasLoaded, handleFetch };
+  return { suggestions, isLoading, hasLoaded, handleFetch, readyAt };
 }
