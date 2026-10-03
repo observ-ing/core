@@ -23,13 +23,9 @@ export const SECTION_PADDING = 2.5;
 export function Section({ children, sx }: SectionProps) {
   return (
     <Paper
-      elevation={0}
+      variant="outlined"
       sx={{
         p: SECTION_PADDING,
-        bgcolor: "background.paper",
-        borderRadius: 2,
-        border: 1,
-        borderColor: "divider",
         ...sx,
       }}
     >
