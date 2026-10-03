@@ -32,7 +32,7 @@ export function ProfileHeaderSkeleton() {
           </Box>
         ))}
       </Stack>
-      <Skeleton variant="rectangular" width={160} height={32} sx={{ borderRadius: 1, mt: 2 }} />
+      <Skeleton variant="rectangular" width={160} height={32} sx={{ mt: 2 }} />
     </Box>
   );
 }
