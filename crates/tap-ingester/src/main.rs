@@ -39,6 +39,8 @@ mod error;
 mod lag_probe;
 mod media_resolver;
 mod server;
+#[cfg(test)]
+mod sim;
 mod subject_resolver;
 mod types;
 
@@ -455,51 +457,20 @@ async fn process_record(
 
     let uri = format_uri(record);
 
-    let result = if matches!(record.action, RecordAction::Delete) {
-        match collection {
-            OCCURRENCE_COLLECTION => db.delete_occurrence(&uri).await,
-            IDENTIFICATION_COLLECTION => db.delete_identification(&uri).await,
-            COMMENT_COLLECTION => db.delete_comment(&uri).await,
-            INTERACTION_COLLECTION => db.delete_interaction(&uri).await,
-            LIKE_COLLECTION => db.delete_like(&uri).await,
-            _ => unreachable!(),
-        }
-    } else {
-        let Some(record_value) = record_json(record) else {
-            warn!(%uri, "record event without parseable JSON; skipping");
-            return Ok(());
-        };
-        let cid = record.cid.as_deref().unwrap_or("");
-        let now = Utc::now();
-
-        // Like records are filtered to occurrence-subjects only.
-        if collection == LIKE_COLLECTION && !subject_uri_is_occurrence(&record_value) {
-            return Ok(());
-        }
-
-        match collection {
-            OCCURRENCE_COLLECTION => {
-                db.upsert_occurrence(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            IDENTIFICATION_COLLECTION => {
-                db.upsert_identification(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            COMMENT_COLLECTION => {
-                db.upsert_comment(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            INTERACTION_COLLECTION => {
-                db.upsert_interaction(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            LIKE_COLLECTION => {
-                db.upsert_like(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            _ => unreachable!(),
-        }
+    let result = match apply_record(
+        db,
+        &record.did,
+        collection,
+        &uri,
+        record.action,
+        record.cid.as_deref(),
+        record_json(record),
+    )
+    .await
+    {
+        Ok(false) => return Ok(()),
+        Ok(true) => Ok(()),
+        Err(e) => Err(e),
     };
 
     let mut s = state.write().await;
@@ -524,6 +495,66 @@ async fn process_record(
         });
         Ok(())
     }
+}
+
+/// Apply one record event to the database: the ingester's whole write path,
+/// minus the Tap plumbing and dashboard stats. Returns `Ok(false)` when the
+/// event is intentionally skipped (unknown collection, unparseable JSON, a
+/// like whose subject isn't an occurrence).
+///
+/// Split out of [`process_record`] so the `sim` state-machine tests drive
+/// exactly the production write path without a Tap connection.
+async fn apply_record(
+    db: &Database,
+    did: &str,
+    collection: &str,
+    uri: &str,
+    action: RecordAction,
+    cid: Option<&str>,
+    record_value: Option<Value>,
+) -> error::Result<bool> {
+    if matches!(action, RecordAction::Delete) {
+        match collection {
+            OCCURRENCE_COLLECTION => db.delete_occurrence(uri).await?,
+            IDENTIFICATION_COLLECTION => db.delete_identification(uri).await?,
+            COMMENT_COLLECTION => db.delete_comment(uri).await?,
+            INTERACTION_COLLECTION => db.delete_interaction(uri).await?,
+            LIKE_COLLECTION => db.delete_like(uri).await?,
+            _ => return Ok(false),
+        }
+        return Ok(true);
+    }
+
+    let Some(record_value) = record_value else {
+        warn!(%uri, "record event without parseable JSON; skipping");
+        return Ok(false);
+    };
+    let cid = cid.unwrap_or("");
+    let now = Utc::now();
+
+    // Like records are filtered to occurrence-subjects only.
+    if collection == LIKE_COLLECTION && !subject_uri_is_occurrence(&record_value) {
+        return Ok(false);
+    }
+
+    match collection {
+        OCCURRENCE_COLLECTION => {
+            db.upsert_occurrence(did, uri, cid, now, &record_value)
+                .await?
+        }
+        IDENTIFICATION_COLLECTION => {
+            db.upsert_identification(did, uri, cid, now, &record_value)
+                .await?
+        }
+        COMMENT_COLLECTION => db.upsert_comment(did, uri, cid, now, &record_value).await?,
+        INTERACTION_COLLECTION => {
+            db.upsert_interaction(did, uri, cid, now, &record_value)
+                .await?
+        }
+        LIKE_COLLECTION => db.upsert_like(did, uri, cid, now, &record_value).await?,
+        _ => return Ok(false),
+    }
+    Ok(true)
 }
 
 fn subject_uri_is_occurrence(record: &Value) -> bool {
