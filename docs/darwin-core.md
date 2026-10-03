@@ -73,7 +73,7 @@ An image record referenced from occurrences. Media records are created by users 
 
 ## bio.lexicons.temp.v0-1.remark
 
-Free text that fills one Darwin Core remarks term on another record, kept in its own record so the prose can be attributed and licensed separately from the facts it describes. Observ.ing writes remarks only for the occurrence author's own notes — the submit/edit form's "Notes on the organism" and "Notes on the time and place" — and only on occurrences (not identifications) for now. Discussion stays in `ing.observ.temp.comment`: a remark is not a reply, and a third party can't attach one to someone else's occurrence.
+Free text that fills one Darwin Core remarks term on another record, kept in its own record so the prose can be attributed and licensed separately from the facts it describes. Observ.ing writes remarks only for the occurrence author's own notes, and only on occurrences (not identifications) for now. The submit/edit form's "Notes" field writes `occurrenceRemarks`. There is no `eventRemarks` input yet — event-level notes may belong on a future first-class event record — but the appview reads and displays them, and an edit carries an existing one through unchanged. Discussion stays in `ing.observ.temp.comment`: a remark is not a reply, and a third party can't attach one to someone else's occurrence.
 
 ### Example
 
