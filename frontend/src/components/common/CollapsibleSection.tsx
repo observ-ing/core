@@ -8,7 +8,7 @@ import { ExpandToggleButton } from "./ExpandToggleButton";
 // bleeds out to fill the card's full width and padding (negative top/side
 // margins to the edges, matching padding to put the content back), giving a
 // click area and hover highlight the size of the collapsed card. `borderRadius`
-// matches the card so the highlight is a rounded rectangle in both states; the
+// inherits the card's so the highlight is a rounded rectangle in both states; the
 // card's `overflow: hidden` clips its top corners flush to the card edge. There
 // is deliberately no negative *bottom* margin: the row's own bottom padding is
 // the full click target down to the body, and nothing overlaps it. The card
@@ -18,7 +18,7 @@ const headerSx: SxProps<Theme> = {
   mt: -SECTION_PADDING,
   mx: -SECTION_PADDING,
   p: SECTION_PADDING,
-  borderRadius: 2,
+  borderRadius: "inherit",
   transition: (theme) => theme.transitions.create("background-color"),
   "&:hover": { bgcolor: "action.hover" },
 };
