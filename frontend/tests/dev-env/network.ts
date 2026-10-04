@@ -5,11 +5,12 @@
  * test account. Nothing federates to the public network, so e2e test records
  * never reach production or any other AppView.
  *
- * `@atproto/dev-env` is NOT a committed dependency — it drags in ~1260
- * transitive packages that only this isolated-e2e path needs, so vendoring it
- * would bloat the root lockfile for every dev and CI job. Instead it is fetched
- * on demand into a gitignored `.deps/` dir the first time the harness runs
- * (see `ensureDevEnv`) and imported dynamically from there.
+ * `@atproto/dev-env` is NOT a root dependency — it drags in ~780 transitive
+ * packages that only this isolated-e2e path needs, so adding it to the root
+ * would bloat the root lockfile and `npm ci` for every dev and CI job. Instead
+ * it lives in its own `deps/` package (committed package.json + lockfile),
+ * installed on demand with `npm ci` the first time the harness runs (see
+ * `ensureDevEnv`) and imported dynamically from there.
  *
  * Consumed by:
  *   - bootstrap.ts          — standalone demo / manual inspection
@@ -18,14 +19,25 @@
  */
 
 import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
+import { readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
-/** Pinned so on-demand installs are reproducible without a committed lockfile. */
-const DEV_ENV_VERSION = "0.5.8";
-/** Gitignored install target — kept out of the root package tree on purpose. */
-const DEPS_DIR = join(dirname(fileURLToPath(import.meta.url)), ".deps");
+/**
+ * Standalone package holding the pinned `@atproto/dev-env` and its committed
+ * lockfile; its `node_modules/` is gitignored. Bump the version there and
+ * regenerate the lockfile (`npm install --package-lock-only` in that dir).
+ */
+const DEPS_DIR = join(dirname(fileURLToPath(import.meta.url)), "deps");
+const LOCKFILE = join(DEPS_DIR, "package-lock.json");
+/**
+ * Written into node_modules only after `npm ci` succeeds, holding the hash of
+ * the lockfile it installed. A missing or stale stamp (interrupted install,
+ * lockfile bumped since) triggers a fresh `npm ci`.
+ */
+const STAMP = join(DEPS_DIR, "node_modules", ".installed-lock-sha256");
 
 /**
  * Minimal structural view of the bits of `@atproto/dev-env`'s
@@ -48,39 +60,31 @@ interface DevEnvModule {
   TestNetworkNoAppView: { create(config: object): Promise<TestNetwork> };
 }
 
+function readStamp(): string | undefined {
+  try {
+    return readFileSync(STAMP, "utf8").trim();
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Resolve `@atproto/dev-env`, installing it on demand (no-save, gitignored)
- * the first time. Returns the dynamically-imported module.
+ * Resolve `@atproto/dev-env`, installing it from the committed lockfile
+ * (`npm ci`) when the install is missing or doesn't match the lockfile.
+ * Returns the dynamically-imported module.
  */
 async function ensureDevEnv(): Promise<DevEnvModule> {
-  // Anchor resolution inside DEPS_DIR; the anchor file need not exist.
-  const requireFromDeps = createRequire(join(DEPS_DIR, "noop.cjs"));
-  const resolveEntry = (): string => requireFromDeps.resolve("@atproto/dev-env");
-
-  let entry: string;
-  try {
-    entry = resolveEntry();
-  } catch {
-    console.log(
-      `[dev-env] installing @atproto/dev-env@${DEV_ENV_VERSION} on demand ` +
-        `(~1260 packages, one time) into ${DEPS_DIR} ...`,
-    );
-    execFileSync(
-      "npm",
-      [
-        "install",
-        "--no-save",
-        "--no-package-lock",
-        "--no-audit",
-        "--no-fund",
-        "--prefix",
-        DEPS_DIR,
-        `@atproto/dev-env@${DEV_ENV_VERSION}`,
-      ],
-      { stdio: "inherit" },
-    );
-    entry = resolveEntry();
+  const lockHash = createHash("sha256").update(readFileSync(LOCKFILE)).digest("hex");
+  if (readStamp() !== lockHash) {
+    console.log(`[dev-env] installing @atproto/dev-env from ${LOCKFILE} (npm ci) ...`);
+    execFileSync("npm", ["ci", "--no-audit", "--no-fund", "--prefix", DEPS_DIR], {
+      stdio: "inherit",
+    });
+    writeFileSync(STAMP, `${lockHash}\n`);
   }
+
+  // Anchor resolution inside DEPS_DIR; the anchor file need not exist.
+  const entry = createRequire(join(DEPS_DIR, "noop.cjs")).resolve("@atproto/dev-env");
 
   const mod = (await import(pathToFileURL(entry).href)) as Partial<DevEnvModule> & {
     default?: Partial<DevEnvModule>;

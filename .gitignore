@@ -1,8 +1,9 @@
 # Dependencies
 node_modules/
 
-# On-demand @atproto/dev-env install for isolated e2e (not vendored in the root tree)
-frontend/tests/dev-env/.deps/
+# On-demand @atproto/dev-env install for isolated e2e (its package.json +
+# lockfile are committed; only the install is ignored)
+frontend/tests/dev-env/deps/node_modules/
 
 # Build output
 dist/

@@ -368,6 +368,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
+        id: node
         with:
           node-version: '24'
           cache: 'npm'
@@ -415,15 +416,24 @@ jobs:
           process-compose version
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
+      - name: Cache @atproto/dev-env install
+        # The harness `npm ci`s its own lockfile (frontend/tests/dev-env/deps)
+        # on demand; restoring node_modules (including the install stamp
+        # network.ts checks) skips that ~780-package install. Keyed on the exact
+        # Node version too, since better-sqlite3 builds a native addon.
+        uses: actions/cache@v4
+        with:
+          path: frontend/tests/dev-env/deps/node_modules
+          key: devenv-deps-${{ runner.os }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('frontend/tests/dev-env/deps/package-lock.json') }}
       - name: Run isolated dev-env e2e + integration tests
         # Boots a local @atproto/dev-env network (PLC + PDS + firehose), points
         # the Rust stack at it (process-compose.yaml + devenv overlay), then runs the
         # mocked integration suite plus the dev-env CRUD e2e (playwright.devenv.
         # config.ts). No test data ever reaches the public network, so no
-        # BLUESKY_* credentials are needed. @atproto/dev-env is fetched on demand
-        # rather than vendored — see frontend/tests/dev-env/network.ts. The
-        # orchestrator inherits stdio, so service logs stream to this job's
-        # output on failure.
+        # BLUESKY_* credentials are needed. @atproto/dev-env is installed from
+        # its own lockfile rather than the root one — see
+        # frontend/tests/dev-env/network.ts. The orchestrator inherits stdio, so
+        # service logs stream to this job's output on failure.
         run: npm run test:e2e:devenv
       - uses: actions/upload-artifact@v4
         if: always()

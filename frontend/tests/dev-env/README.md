@@ -86,29 +86,32 @@ Each run is isolated from your dev stack and from previous runs:
   values would otherwise override the orchestrator's environment (e.g. point
   `DATABASE_URL` back at the dev database).
 
-`@atproto/dev-env` is **not** a committed dependency. The first run installs it
-on demand (`npm install --no-save`) into a gitignored `.deps/` dir and imports
-it from there (see `ensureDevEnv` in `network.ts`); subsequent runs reuse it.
-This keeps its ~1260 transitive packages out of the root lockfile so normal
-`npm ci` for devs and CI stays unaffected.
+`@atproto/dev-env` is **not** a root dependency. It lives in its own package,
+`deps/` (committed `package.json` + `package-lock.json`), which the first run
+installs on demand with `npm ci` and imports from (see `ensureDevEnv` in
+`network.ts`). Later runs reuse the install until the lockfile changes; a stamp
+written after a successful `npm ci` catches both lockfile bumps and interrupted
+installs. This keeps its ~780 transitive packages out of the root lockfile, so
+normal `npm ci` for devs and CI stays unaffected, while the dev-env tree is
+still fully locked. CI caches `deps/node_modules` keyed on that lockfile.
 
 ## File map
 
-| File                                   | Role                                                             |
-| -------------------------------------- | ---------------------------------------------------------------- |
-| `network.ts`                           | boot network + seed account + export endpoints/env (reusable)    |
-| `bootstrap.ts`                         | standalone demo of the live-lexicon + blob path                  |
-| `../devenv-auth.setup.ts`              | log in via the dev-env PDS OAuth UI                              |
-| `../playwright.devenv.config.ts`       | `devenv-setup` → `devenv` + `integration` (reuses `e2e.spec.ts`) |
-| `../../../scripts/e2e-devenv.ts`       | orchestrator (`npm run test:e2e:devenv`)                         |
-| `../../../process-compose.devenv.yaml` | overlay on `process-compose.yaml` for the run                    |
+| File                                   | Role                                                               |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `network.ts`                           | boot network + seed account + export endpoints/env (reusable)      |
+| `deps/`                                | pinned `@atproto/dev-env` package + lockfile (installed on demand) |
+| `bootstrap.ts`                         | standalone demo of the live-lexicon + blob path                    |
+| `../devenv-auth.setup.ts`              | log in via the dev-env PDS OAuth UI                                |
+| `../playwright.devenv.config.ts`       | `devenv-setup` → `devenv` + `integration` (reuses `e2e.spec.ts`)   |
+| `../../../scripts/e2e-devenv.ts`       | orchestrator (`npm run test:e2e:devenv`)                           |
+| `../../../process-compose.devenv.yaml` | overlay on `process-compose.yaml` for the run                      |
 
 ## Notes
 
-- `@atproto/dev-env` pulls ~1260 transitive packages (incl. `@atproto/pds`,
-  `@did-plc/server`). Fetched on demand into `.deps/` rather than vendored (see
-  "Running it"); bump `DEV_ENV_VERSION` in `network.ts` to change the pinned
-  version.
+- `@atproto/dev-env` pulls ~780 transitive packages (incl. `@atproto/pds`,
+  `@did-plc/server`). To change the pinned version, edit `deps/package.json`
+  and run `npm install --package-lock-only` in `deps/`, then commit both.
 - The dev-env PDS binds to `http://localhost:<random-port>` (not `127.0.0.1`),
   while the app is served at `127.0.0.1:3000`. The OAuth setup waits for the
   browser to leave the app origin, not for a non-localhost host.
