@@ -5,15 +5,15 @@ import { defineConfig, devices } from "@playwright/test";
  *
  * Runs two project groups against the local dev-env stack that
  * scripts/e2e-devenv.ts boots (network + Rust services):
- *   - `devenv`: the same CRUD flow as the `e2e` project in playwright.config.ts,
- *     but authenticated against a local @atproto/dev-env PDS instead of
- *     bsky.social — so no test data touches the public network.
+ *   - `devenv`: the CRUD e2e (e2e.spec.ts), authenticated against a local
+ *     @atproto/dev-env PDS — so no test data touches the public network. This
+ *     is the only place the real e2e runs.
  *   - `integration`: the mocked suite (identical to playwright.config.ts). It
  *     stubs every backend call via page.route and only needs the SPA served at
  *     baseURL, which the dev-env appview provides. Kept here so CI gets full
  *     integration coverage from this single isolated run, with no live network.
  *
- * Needs no BLUESKY_* credentials; the orchestrator supplies DEVENV_* instead.
+ * Needs no real-account credentials; the orchestrator supplies DEVENV_*.
  */
 export default defineConfig({
   testDir: ".",

@@ -14,7 +14,7 @@ export interface TestUser {
 let _testUser: TestUser | null = null;
 
 /**
- * Lazily loads user info written by auth.setup.ts.
+ * Lazily loads user info written by devenv-auth.setup.ts.
  * Deferred because test modules are imported before the setup project runs.
  */
 export function getTestUser(): TestUser {
@@ -27,8 +27,8 @@ export function getTestUser(): TestUser {
 /**
  * Provides an authenticated page for tests.
  *
- * Creates a new browser context with the storageState saved by auth.setup.ts.
- * Requires BLUESKY_TEST_EMAIL and BLUESKY_TEST_PASSWORD to be set.
+ * Creates a new browser context with the storageState saved by
+ * devenv-auth.setup.ts (run via `npm run test:e2e:devenv`).
  */
 export const test = base.extend<{ authenticatedPage: Page }>({
   authenticatedPage: async ({ browser }, use) => {

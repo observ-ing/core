@@ -6,8 +6,8 @@ import { dirname, resolve } from "path";
  * Authenticates against the local @atproto/dev-env PDS (not bsky.social), so
  * the e2e run is fully isolated from the public network.
  *
- * Writes the same files as auth.setup.ts (playwright/.auth/user.json +
- * user-info.json), so e2e.spec.ts and the auth fixture work unchanged.
+ * Writes playwright/.auth/user.json + user-info.json, which e2e.spec.ts and
+ * the auth fixture (fixtures/auth.ts) read.
  *
  * Credentials come from scripts/e2e-devenv.ts via DEVENV_HANDLE / DEVENV_PASSWORD.
  *
@@ -49,8 +49,9 @@ setup("authenticate via dev-env PDS OAuth", async ({ page, baseURL }) => {
   //    `localhost:<random-port>` (e.g. http://localhost:56868) while the app is
   //    served at 127.0.0.1:3000 — so wait for the navigation to leave the app's
   //    own origin, not for a non-localhost host (the PDS *is* on localhost).
-  //    Predicate form — a negative-lookahead regex would match immediately; see
-  //    auth.setup.ts.
+  //    Predicate form: a negative-lookahead regex like /(?!.*127\.0\.0\.1).*/
+  //    matches any URL (the engine finds a suffix where the lookahead holds),
+  //    so waitForURL would return without waiting for the redirect.
   await page.waitForURL((url) => url.origin !== appOrigin, { timeout: 15000 });
   await page.waitForLoadState("domcontentloaded");
 

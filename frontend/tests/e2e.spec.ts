@@ -23,16 +23,15 @@ async function waitForOccurrenceIndexed(
 }
 
 /**
- * End-to-end CRUD test against a live Bluesky PDS.
+ * End-to-end CRUD test against a real PDS on a throwaway local ATProto
+ * network (@atproto/dev-env), so test records never reach the public firehose.
  *
- * Requires BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, and BLUESKY_TEST_HANDLE.
- * Creates real records on the test user's PDS and cleans them up at the end.
- *
- * The firehose → tap-ingester → DB round-trip is sensitive to backfill
- * volume: `/repos/add` for the test DID walks the user's full history
- * before live commits are forwarded. CI runs `scripts/cleanup-test-user.ts`
- * before tests start so the backfill is bounded and the live commit reaches
- * the DB well within `waitForOccurrenceIndexed`'s 30s budget (issue #473).
+ * Runs via `npm run test:e2e:devenv` (playwright.devenv.config.ts), which boots
+ * the network and the stack and logs in through devenv-auth.setup.ts. Creates
+ * real records on the test account's PDS and cleans them up at the end; the
+ * create → firehose → tap-ingester → DB round-trip must complete within
+ * `waitForOccurrenceIndexed`'s budget. The account is fresh each run, so the
+ * `/repos/add` backfill ahead of the live commit is trivially small.
  */
 authTest.describe("E2E CRUD flow", () => {
   // Each test polls the ingester for up to 30s (sometimes twice) on top of
