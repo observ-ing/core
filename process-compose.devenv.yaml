@@ -17,8 +17,22 @@ processes:
   species-id:
     disabled: true
 
+  # exit_on_failure: if any of these dies, take process-compose down with its
+  # exit code, so the orchestrator fails fast with the real cause instead of
+  # polling health endpoints until they time out (the frontend process would
+  # otherwise keep process-compose alive).
+  migrate:
+    availability:
+      restart: exit_on_failure
+
   appview:
+    availability:
+      restart: exit_on_failure
     environment:
       # Empty → appview treats species-id as absent instead of calling the
       # disabled service.
       - SPECIES_ID_SERVICE_URL=
+
+  tap-ingester:
+    availability:
+      restart: exit_on_failure

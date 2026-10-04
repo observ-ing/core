@@ -19,6 +19,7 @@
 
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { connect } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,26 +29,67 @@ import { bootDevEnv, type DevEnv, devEnvVars } from "../frontend/tests/dev-env/n
 const ROOT = resolve(fileURLToPath(import.meta.url), "../..");
 // The normal stack plus the dev-env overlay (later files override earlier ones).
 const COMPOSE_FILES = ["process-compose.yaml", "process-compose.devenv.yaml"];
-// Passed to process-compose.yaml as APPVIEW_PORT / TAP_INGESTER_PORT.
+// Passed to process-compose.yaml as APPVIEW_PORT / TAP_INGESTER_PORT / VITE_PORT.
 const APPVIEW_PORT = 3000;
 const TAP_INGESTER_PORT = 8090;
+const VITE_PORT = 5173;
 const APPVIEW_HEALTH = `http://127.0.0.1:${APPVIEW_PORT}/health`;
 // tap-ingester's /health. Its `connected` flag flips true once Tap's firehose
 // channel is up.
 const TAP_HEALTH = `http://127.0.0.1:${TAP_INGESTER_PORT}/health`;
 // Embedded Tap's admin endpoint (its built-in default port; see
 // docs/deployment.md TAP_URL). `/repos/add` registers a DID for tracking.
-const TAP_REPOS_ADD = "http://127.0.0.1:2480/repos/add";
+const TAP_ADMIN_PORT = 2480;
+const TAP_REPOS_ADD = `http://127.0.0.1:${TAP_ADMIN_PORT}/repos/add`;
 // Keep process-compose's own API off its default 8080, which a concurrently
 // running normal stack's process-compose would already hold.
-const PC_PORT = "8099";
+const PC_PORT = 8099;
+// Every fixed port the stack binds. They must all be free before starting: if
+// e.g. the normal dev stack holds them, our services fail to bind while the
+// health checks happily pass against *its* appview, and `/repos/add` registers
+// the test DID with *its* Tap — which is attached to the public relay.
+const STACK_PORTS: Record<string, number> = {
+  appview: APPVIEW_PORT,
+  "tap-ingester": TAP_INGESTER_PORT,
+  "Tap admin": TAP_ADMIN_PORT,
+  Vite: VITE_PORT,
+  "process-compose API": PC_PORT,
+};
 // Dropped and recreated at the start of every run. Deliberately a fixed name
 // distinct from the dev stack's `observing` DB, so a run can never wipe it.
 const DEVENV_DB = "observing_devenv";
 
 function onPath(bin: string): Promise<boolean> {
   const r = spawn("sh", ["-c", `command -v ${bin}`], { stdio: "ignore" });
-  return new Promise<boolean>((res) => r.on("exit", (code) => res(code === 0)));
+  return new Promise<boolean>((res) => {
+    r.on("error", () => res(false));
+    r.on("exit", (code) => res(code === 0));
+  });
+}
+
+/**
+ * Whether something accepts TCP connections on loopback `port`. Probes by
+ * connecting rather than binding: macOS lets a specific-address bind coexist
+ * with another process's wildcard listener, so a bind test can miss a server
+ * that our health checks would still reach.
+ */
+async function portInUse(port: number): Promise<boolean> {
+  const probe = (host: string) =>
+    new Promise<boolean>((res) => {
+      const sock = connect({ port, host });
+      sock.setTimeout(1000);
+      sock.once("connect", () => {
+        sock.destroy();
+        res(true);
+      });
+      sock.once("timeout", () => {
+        sock.destroy();
+        res(false);
+      });
+      sock.once("error", () => res(false));
+    });
+  const hits = await Promise.all([probe("127.0.0.1"), probe("::1")]);
+  return hits.some(Boolean);
 }
 
 async function preflight(): Promise<void> {
@@ -58,6 +100,16 @@ async function preflight(): Promise<void> {
     throw new Error(
       `Missing on PATH: ${missing.join(", ")}. See docs/development.md ` +
         "(process-compose; scripts/install-tap.sh; the Postgres client).",
+    );
+  }
+
+  const ports = Object.entries(STACK_PORTS);
+  const inUse = await Promise.all(ports.map(([, port]) => portInUse(port)));
+  const busy = ports.filter((_, i) => inUse[i]).map(([name, port]) => `${name} :${port}`);
+  if (busy.length) {
+    throw new Error(
+      `Port(s) already in use: ${busy.join(", ")}. Stop whatever holds them ` +
+        "(usually the normal dev stack: `process-compose down`) and re-run.",
     );
   }
 }
@@ -121,8 +173,31 @@ function run(cmd: string, args: string[], env: NodeJS.ProcessEnv): ChildProcess 
   return spawn(cmd, args, { cwd: ROOT, env, stdio: "inherit" });
 }
 
+/**
+ * Resolves with the child's exit code (1 if killed by a signal). Rejects if it
+ * couldn't be spawned (e.g. ENOENT), which emits `error` and never `exit`.
+ */
 function exitCode(child: ChildProcess): Promise<number> {
-  return new Promise((res) => child.on("exit", (code) => res(code ?? 1)));
+  return new Promise((res, rej) => {
+    child.once("error", rej);
+    child.once("exit", (code) => res(code ?? 1));
+  });
+}
+
+/**
+ * Rejects as soon as process-compose exits — at any code, since it also exits
+ * 0 once nothing is left runnable (e.g. migrate failed, so appview and
+ * tap-ingester never start). Raced against the startup waits so a dead stack
+ * fails the run immediately instead of after the health-check timeouts.
+ */
+function composeExited(compose: ChildProcess): Promise<never> {
+  const exited = exitCode(compose).then((code) => {
+    throw new Error(`process-compose exited early (code ${code}); see the service output above`);
+  });
+  // Rejection is only meaningful while a race is listening; after a
+  // successful startup the normal teardown exit must not surface as unhandled.
+  exited.catch(() => {});
+  return exited;
 }
 
 /**
@@ -199,6 +274,7 @@ async function main() {
       TAP_DATABASE_URL: `sqlite://${join(tapDir, "tap.db")}`,
       APPVIEW_PORT: String(APPVIEW_PORT),
       TAP_INGESTER_PORT: String(TAP_INGESTER_PORT),
+      VITE_PORT: String(VITE_PORT),
       // Surface Tap's stdout/stderr (via tap-ingester) so startup failures are
       // debuggable; tapped defaults this to /dev/null.
       TAP_INHERIT_STDIO: "1",
@@ -216,20 +292,21 @@ async function main() {
         // the dev database. serverDatabaseUrl() reads what it needs from .env.
         "--disable-dotenv",
         "-p",
-        PC_PORT,
+        String(PC_PORT),
         "up",
         "-t=false",
       ],
       env,
     );
+    const stackDown = composeExited(compose);
 
     console.log("[e2e-devenv] waiting for appview health...");
-    await waitForHealth(APPVIEW_HEALTH, 180_000);
+    await Promise.race([waitForHealth(APPVIEW_HEALTH, 180_000), stackDown]);
 
     console.log("[e2e-devenv] waiting for tap-ingester firehose channel...");
-    await waitForTapConnected(120_000);
+    await Promise.race([waitForTapConnected(120_000), stackDown]);
     console.log(`[e2e-devenv] registering test DID with Tap (${dev.account.did})...`);
-    await prewarmTap(dev.account.did);
+    await Promise.race([prewarmTap(dev.account.did), stackDown]);
 
     console.log("[e2e-devenv] running Playwright...");
     const pw = run(
@@ -241,7 +318,8 @@ async function main() {
     console.log(`[e2e-devenv] Playwright exited ${code}`);
     process.exitCode = code;
   } finally {
-    if (compose && compose.exitCode === null) {
+    // pid is undefined if process-compose never spawned; there's nothing to stop.
+    if (compose?.pid !== undefined && compose.exitCode === null && compose.signalCode === null) {
       console.log("[e2e-devenv] stopping services...");
       compose.kill("SIGINT");
       await Promise.race([exitCode(compose), new Promise((r) => setTimeout(r, 15_000))]);
