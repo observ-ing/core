@@ -362,13 +362,9 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
+      # The Postgres server the orchestrator uses. It recreates its own
+      # `observing_devenv` database on it (and a temp Tap cursor DB) per run.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
-      # tap-ingester writes Tap's cursor DB here (three-slash = absolute path,
-      # which Tap's sqlite parser expects).
-      TAP_DATABASE_URL: sqlite:///tmp/tap.db
-      # Surface Tap's stdout/stderr (via tap-ingester) so dev-env startup
-      # failures are debuggable; tapped defaults this to /dev/null.
-      TAP_INHERIT_STDIO: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -386,7 +382,8 @@ jobs:
       # once dist/public exists.
       - name: Build frontend
         run: npm run build
-      # Pre-build the binaries process-compose.devenv.yaml launches via
+      # Pre-build the binaries process-compose.yaml (+ the devenv overlay,
+      # which disables species-id) launches via
       # `cargo run` (migrate, appview, tap-ingester) so the stack comes up well
       # within its readiness probes. Migrations run inside the stack (the
       # `migrate` process), so no separate sqlx step is needed.
@@ -408,7 +405,7 @@ jobs:
           GODEBUG=netdns=go go build -tags timetzdata -o /usr/local/bin/tap ./cmd/tap
       - name: Install process-compose
         # The dev-env orchestrator (scripts/e2e-devenv.ts) brings the Rust stack
-        # up via process-compose.devenv.yaml.
+        # up via process-compose.yaml + the process-compose.devenv.yaml overlay.
         env:
           PC_VERSION: v1.116.0
         run: |
@@ -420,7 +417,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run isolated dev-env e2e + integration tests
         # Boots a local @atproto/dev-env network (PLC + PDS + firehose), points
-        # the Rust stack at it via process-compose.devenv.yaml, then runs the
+        # the Rust stack at it (process-compose.yaml + devenv overlay), then runs the
         # mocked integration suite plus the dev-env CRUD e2e (playwright.devenv.
         # config.ts). No test data ever reaches the public network, so no
         # BLUESKY_* credentials are needed. @atproto/dev-env is fetched on demand

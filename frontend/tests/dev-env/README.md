@@ -38,7 +38,8 @@ Sample output (ports are random each run):
 dev-env hands us a PLC URL and a PDS URL (which serves both `resolveHandle` and,
 like a relay, `subscribeRepos`). These env vars redirect the stack at them (all
 no-op in production when unset). `devEnvVars()` in `network.ts` sets them from the
-booted network; `process-compose.devenv.yaml` passes them to the services.
+booted network; the orchestrator passes them to process-compose, which hands
+its environment to every service.
 
 | Var                   | Effect                                                                                                     |
 | --------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -65,11 +66,25 @@ Two details the round-trip depends on, handled for you:
 npm run test:e2e:devenv
 ```
 
-Prereqs (same as the normal stack): Postgres running and the `tap` binary on
-PATH (`scripts/install-tap.sh`). The orchestrator preflights both. Services run
-via `process-compose.devenv.yaml` (species-id dropped — the create/view flow
-doesn't need it). Playwright runs `playwright.devenv.config.ts`, which covers the
-mocked `integration` suite plus the dev-env CRUD `e2e` flow in one pass.
+Prereqs (same as the normal stack): Postgres running, plus `psql` and the `tap`
+binary on PATH (`scripts/install-tap.sh`). The orchestrator preflights them.
+Services run from `process-compose.yaml` with the `process-compose.devenv.yaml`
+overlay on top (species-id disabled — the create/view flow doesn't need it).
+Playwright runs `playwright.devenv.config.ts`, which covers the mocked
+`integration` suite plus the dev-env CRUD `e2e` flow in one pass.
+
+Each run is isolated from your dev stack and from previous runs:
+
+- **Postgres:** the orchestrator drops and recreates an `observing_devenv`
+  database on the server named by `DATABASE_URL` (or `.env`), and the stack's
+  `migrate` process applies the schema to it. Your `observing` database is never
+  touched. The database is left in place after the run for inspection.
+- **Tap:** its sqlite cursor DB lives in a fresh temp dir, removed afterwards.
+  Each run's PDS restarts its firehose sequence near 0, so a persisted cursor
+  would sit ahead of the new head and Tap would miss the run's commits.
+- **`.env`:** process-compose is started with `--disable-dotenv`, since `.env`
+  values would otherwise override the orchestrator's environment (e.g. point
+  `DATABASE_URL` back at the dev database).
 
 `@atproto/dev-env` is **not** a committed dependency. The first run installs it
 on demand (`npm install --no-save`) into a gitignored `.deps/` dir and imports
@@ -86,7 +101,7 @@ This keeps its ~1260 transitive packages out of the root lockfile so normal
 | `../devenv-auth.setup.ts`              | log in via the dev-env PDS OAuth UI                              |
 | `../playwright.devenv.config.ts`       | `devenv-setup` → `devenv` + `integration` (reuses `e2e.spec.ts`) |
 | `../../../scripts/e2e-devenv.ts`       | orchestrator (`npm run test:e2e:devenv`)                         |
-| `../../../process-compose.devenv.yaml` | service stack for the run                                        |
+| `../../../process-compose.devenv.yaml` | overlay on `process-compose.yaml` for the run                    |
 
 ## Notes
 
