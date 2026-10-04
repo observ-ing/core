@@ -66,8 +66,7 @@ use types::RecentEvent;
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]
 struct Cli {}
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _cli = Cli::parse();
 
     let env_filter = EnvFilter::from_default_env().add_directive("tap_ingester=info".parse()?);
@@ -76,6 +75,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with(tracing_stackdriver::layer())
         .init();
 
+    // Mutates the process environment, so it must run here, while we're still
+    // single-threaded, before the tokio runtime spawns its workers.
+    apply_tap_url_overrides();
+
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run())
+}
+
+async fn run() -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting Observ.ing tap-ingester...");
 
     let database_url = resolve_database_url()?;
@@ -148,27 +158,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Some(pw) = admin_password.as_deref() {
                 builder = builder.admin_password(pw.to_string());
             }
-            // dev-env override: point Tap's DID resolution + firehose at a local
-            // @atproto/dev-env network so e2e test records never touch the
-            // public firehose. Both no-op in production (vars unset); Tap then
-            // uses its built-in plc.directory + public relay defaults.
-            if let Some(url) = parse_url_env("PLC_DIRECTORY_URL") {
-                // Set Tap's native TAP_PLC_URL directly rather than via
-                // `builder.plc_url()`: tapped serializes that through
-                // `Url::to_string()`, which appends a trailing slash, and
-                // indigo's PLC client then builds `{url}/{did}` → `…//{did}`,
-                // which the dev-env PLC 404s on (Tap can't resolve the DID, so
-                // it never backfills the repo or forwards its commits). Trim the
-                // slash; Tap inherits our process env, and because we leave
-                // `config.plc_url` unset, tapped won't re-add the slashed value.
-                let plc = url.as_str().trim_end_matches('/').to_string();
-                info!(plc_url = %plc, "overriding Tap PLC directory");
-                std::env::set_var("TAP_PLC_URL", plc);
-            }
-            if let Some(url) = parse_url_env("TAP_RELAY_URL") {
-                info!(relay_url = %url, "overriding Tap relay/firehose source");
-                builder = builder.relay_url(url);
-            }
+            // The dev-env PLC/relay overrides reach the spawned Tap through
+            // the environment it inherits, not the builder; see
+            // `apply_tap_url_overrides`.
             // tapped defaults Tap's stdio to /dev/null. In CI we want
             // Tap's startup logs visible so failures are debuggable.
             if std::env::var("TAP_INHERIT_STDIO").is_ok() {
@@ -426,6 +418,44 @@ fn resolve_lag_probe_relay() -> String {
         .unwrap_or_else(|_| "wss://relay1.us-east.bsky.network".to_string())
 }
 
+/// dev-env override: point the spawned Tap's DID resolution + firehose at a
+/// local @atproto/dev-env network, so e2e test records never touch the public
+/// firehose. No-op in production (vars unset); Tap then uses its built-in
+/// plc.directory + public relay defaults.
+///
+/// Exported as Tap's own `TAP_PLC_URL` / `TAP_RELAY_URL`, which the spawned
+/// `tap` inherits, rather than via `TapConfig::plc_url` / `relay_url`: tapped
+/// serializes those with `Url::to_string()`, which appends a trailing slash,
+/// and indigo's PLC client then builds `{url}/{did}` → `…//{did}`, which the
+/// dev-env PLC 404s on (Tap can't resolve the DID, so it never backfills the
+/// repo or forwards its commits). indigo's firehose and API clients replace
+/// the relay URL's path, so the relay is trimmed only for consistency.
+///
+/// Must run before the tokio runtime starts: `set_var` while other threads may
+/// read the environment is a data race (UB on glibc; `unsafe` from edition
+/// 2024).
+fn apply_tap_url_overrides() {
+    for (var, url) in tap_url_overrides(parse_url_env) {
+        info!(var, url = %url, "overriding Tap URL for dev-env");
+        std::env::set_var(var, url);
+    }
+}
+
+/// The Tap env vars to export (see `apply_tap_url_overrides`), each with any
+/// trailing slash trimmed. `parse` reads and parses an env var by name.
+fn tap_url_overrides(parse: impl Fn(&str) -> Option<url::Url>) -> Vec<(&'static str, String)> {
+    [
+        ("PLC_DIRECTORY_URL", "TAP_PLC_URL"),
+        ("TAP_RELAY_URL", "TAP_RELAY_URL"),
+    ]
+    .into_iter()
+    .filter_map(|(source, target)| {
+        let url = parse(source)?;
+        Some((target, url.as_str().trim_end_matches('/').to_string()))
+    })
+    .collect()
+}
+
 /// Parse an optional URL env var, warning (and treating as unset) on a bad
 /// value rather than failing startup.
 fn parse_url_env(name: &str) -> Option<url::Url> {
@@ -586,7 +616,37 @@ fn action_to_str(action: RecordAction) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use super::ensure_sqlite_parent_dir;
+    use super::{ensure_sqlite_parent_dir, tap_url_overrides};
+
+    #[test]
+    fn tap_url_overrides_trim_trailing_slash() {
+        let overrides = tap_url_overrides(|name| match name {
+            "PLC_DIRECTORY_URL" => "http://localhost:54176".parse().ok(),
+            "TAP_RELAY_URL" => "http://localhost:54177/".parse().ok(),
+            _ => None,
+        });
+        assert_eq!(
+            overrides,
+            vec![
+                ("TAP_PLC_URL", "http://localhost:54176".to_string()),
+                ("TAP_RELAY_URL", "http://localhost:54177".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn tap_url_overrides_skip_unset_vars() {
+        assert!(tap_url_overrides(|_| None).is_empty());
+        let only_plc = tap_url_overrides(|name| {
+            (name == "PLC_DIRECTORY_URL")
+                .then(|| "https://plc.example".parse().ok())
+                .flatten()
+        });
+        assert_eq!(
+            only_plc,
+            vec![("TAP_PLC_URL", "https://plc.example".to_string())]
+        );
+    }
 
     #[test]
     fn creates_missing_sqlite_parent_dir() {
