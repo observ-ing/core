@@ -484,6 +484,24 @@ export interface IdentifyResponse {
   inferenceTimeMs: number;
 }
 
+export interface SpeciesIdStatus {
+  /** A warm instance answered; an identify request will be fast. */
+  ready: boolean;
+  /** When cold: rough seconds until an identify request would complete. */
+  estimatedSeconds?: number;
+}
+
+/**
+ * Check whether the species-id service is warm. When it isn't, the check
+ * itself starts it booting, so call this as soon as a flow will need an ID.
+ */
+export async function getSpeciesIdStatus(live = false): Promise<SpeciesIdStatus> {
+  const query = live ? "?live=true" : "";
+  return fetchApi(`${API_BASE}/api/species-id/status${query}`, "Species ID status failed", {
+    credentials: "include",
+  });
+}
+
 export async function identifySpecies(data: {
   image: string;
   latitude?: number;

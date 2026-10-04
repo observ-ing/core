@@ -15,6 +15,8 @@ import { TaxonLink } from "../common/TaxonLink";
 import { useFormSubmit } from "../../hooks/useFormSubmit";
 import { useToast } from "../../hooks/useToast";
 import { ButtonSpinner } from "../common/ButtonSpinner";
+import { SpeciesIdProgress } from "./SpeciesIdProgress";
+import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 
 interface IdentificationPanelProps {
   observation: {
@@ -163,7 +165,12 @@ export function IdentificationPanel({
           color="inherit"
           size="small"
           startIcon={<EditIcon />}
-          onClick={() => setShowSuggestForm(true)}
+          onClick={() => {
+            setShowSuggestForm(true);
+            // Wake species-id while the user reads the form, in case they
+            // reach for Visual ID.
+            if (imageUrl) warmSpeciesId();
+          }}
           disabled={isSubmitting || showSuggestForm}
         >
           Suggest Different ID
@@ -244,6 +251,10 @@ export function IdentificationPanel({
               </Button>
             )}
           </Stack>
+
+          {visualId.isLoading && visualId.readyAt !== null && (
+            <SpeciesIdProgress readyAt={visualId.readyAt} />
+          )}
 
           {!!taxonName.trim() && !matchedTaxon && (
             <KingdomSelect

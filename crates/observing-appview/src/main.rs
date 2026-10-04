@@ -17,6 +17,7 @@ mod validation;
 
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::extract::DefaultBodyLimit;
 use axum::http::{header, Method};
@@ -59,15 +60,19 @@ async fn main() {
     let oauth_client =
         state::create_oauth_client(pool.clone(), config.public_url.as_deref(), config.port);
 
+    // Cold-start estimates (boot + first inference) for the status endpoint's
+    // countdown, measured on Cloud Run gen2: ViT-H is ready in ~20s and
+    // answers a cold identify in ~21s; ViT-L is ready in ~12s. Rounded up so
+    // the countdown tends to finish after the suggestions arrive, not before.
     let species_id = config
         .species_id_service_url
         .as_deref()
-        .map(|url| Arc::new(SpeciesIdClient::new(url)));
+        .map(|url| Arc::new(SpeciesIdClient::new(url, Duration::from_secs(25))));
 
     let species_id_live = config
         .species_id_live_service_url
         .as_deref()
-        .map(|url| Arc::new(SpeciesIdClient::new(url)));
+        .map(|url| Arc::new(SpeciesIdClient::new(url, Duration::from_secs(15))));
 
     let media = media::MediaCache::from_env().await;
 
@@ -189,6 +194,7 @@ async fn main() {
         // Actors
         // Species identification
         .route("/api/species-id", post(routes::species_id::identify))
+        .route("/api/species-id/status", get(routes::species_id::status))
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))

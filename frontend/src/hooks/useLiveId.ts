@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { identifySpecies, type SpeciesSuggestion } from "../services/api";
+import { markSpeciesIdWarm } from "../lib/speciesIdWarmup";
 
 interface UseLiveIdOptions {
   /** The live preview element to sample frames from. */
@@ -143,6 +144,7 @@ export function useLiveId({ videoRef, active, latitude, longitude }: UseLiveIdOp
             if (longitude != null && Number.isFinite(longitude)) params.longitude = longitude;
 
             const result = await identifySpecies(params);
+            markSpeciesIdWarm(true);
             if (!cancelled) {
               // Append this frame, then drop anything older than the window or
               // beyond the sample cap, and republish the smoothed ranking.

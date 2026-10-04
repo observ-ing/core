@@ -3,6 +3,7 @@ import { http, HttpResponse, delay } from "msw";
 import { Box } from "@mui/material";
 import { VisualId } from "./VisualId";
 import type { SpeciesSuggestion } from "../../services/api";
+import { resetSpeciesIdWarmupForTests } from "../../lib/speciesIdWarmup";
 
 const SUGGESTIONS: SpeciesSuggestion[] = [
   {
@@ -46,6 +47,8 @@ const meta = {
     layout: "padded",
   },
   tags: ["autodocs"],
+  // Warm-up state is module-level; start every story from "unknown".
+  beforeEach: () => resetSpeciesIdWarmupForTests(),
   args: {
     imageUrl: SAMPLE_IMAGE,
     onSelect: () => undefined,
@@ -85,6 +88,24 @@ export const AutoFetchLoading: Story = {
   parameters: {
     msw: {
       handlers: [
+        http.post("/api/species-id", async () => {
+          await delay("infinite");
+          return HttpResponse.json({ suggestions: [] });
+        }),
+      ],
+    },
+  },
+};
+
+/** Species-id is booting from zero: the pending state counts down. */
+export const AutoFetchColdStart: Story = {
+  args: { autoFetch: true },
+  parameters: {
+    msw: {
+      handlers: [
+        http.get("/api/species-id/status", () =>
+          HttpResponse.json({ ready: false, estimatedSeconds: 20 }),
+        ),
         http.post("/api/species-id", async () => {
           await delay("infinite");
           return HttpResponse.json({ suggestions: [] });
