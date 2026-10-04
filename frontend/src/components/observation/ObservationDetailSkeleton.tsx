@@ -44,12 +44,7 @@ export function ObservationDetailSkeleton() {
         }}
       >
         {SECTION_CARD_HEIGHTS.map((height) => (
-          <Skeleton
-            key={height}
-            variant="rectangular"
-            height={height}
-            sx={{ borderRadius: 2 }}
-          />
+          <Skeleton key={height} variant="rectangular" height={height} sx={{ borderRadius: 2 }} />
         ))}
       </Box>
     </Box>
