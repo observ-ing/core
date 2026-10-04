@@ -20,7 +20,11 @@ const AUTH_FILE = resolve("playwright/.auth/user.json");
 const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
 const AUTH_DIR = dirname(AUTH_FILE);
 
-setup("authenticate via dev-env PDS OAuth", async ({ page }) => {
+setup("authenticate via dev-env PDS OAuth", async ({ page, baseURL }) => {
+  // The app's own origin (http://127.0.0.1:3000). Compared by origin, never by
+  // matching "127.0.0.1" in the URL string: the PDS authorize URL carries our
+  // loopback client_id, whose redirect_uri spells out 127.0.0.1 in the query.
+  const appOrigin = new URL(baseURL!).origin;
   const handle = process.env.DEVENV_HANDLE;
   const password = process.env.DEVENV_PASSWORD;
 
@@ -47,9 +51,7 @@ setup("authenticate via dev-env PDS OAuth", async ({ page }) => {
   //    own origin, not for a non-localhost host (the PDS *is* on localhost).
   //    Predicate form — a negative-lookahead regex would match immediately; see
   //    auth.setup.ts.
-  await page.waitForURL((url) => !(url.hostname === "127.0.0.1" && url.port === "3000"), {
-    timeout: 15000,
-  });
+  await page.waitForURL((url) => url.origin !== appOrigin, { timeout: 15000 });
   await page.waitForLoadState("domcontentloaded");
 
   // 4. dev-env PDS sign-in form. The username may be pre-filled from the OAuth
@@ -68,7 +70,7 @@ setup("authenticate via dev-env PDS OAuth", async ({ page }) => {
   await authorizeButton.click();
 
   // 6. Back to our app.
-  await page.waitForURL(/127\.0\.0\.1/, { timeout: 30000 });
+  await page.waitForURL((url) => url.origin === appOrigin, { timeout: 30000 });
   await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
     timeout: 10000,
   });

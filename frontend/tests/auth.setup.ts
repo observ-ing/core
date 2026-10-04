@@ -6,7 +6,7 @@ const AUTH_FILE = resolve("playwright/.auth/user.json");
 const USER_INFO_FILE = resolve("playwright/.auth/user-info.json");
 const AUTH_DIR = dirname(AUTH_FILE);
 
-setup("authenticate via Bluesky OAuth", async ({ page }) => {
+setup("authenticate via Bluesky OAuth", async ({ page, baseURL }) => {
   const email = process.env.BLUESKY_TEST_EMAIL;
   const password = process.env.BLUESKY_TEST_PASSWORD;
   const handle = process.env.BLUESKY_TEST_HANDLE;
@@ -57,8 +57,12 @@ setup("authenticate via Bluesky OAuth", async ({ page }) => {
   await expect(authorizeButton).toBeVisible({ timeout: 15000 });
   await authorizeButton.click();
 
-  // 8. Wait for redirect back to our app
-  await page.waitForURL(/127\.0\.0\.1/, { timeout: 30000 });
+  // 8. Wait for redirect back to our app. Compare origins rather than matching
+  //    /127\.0\.0\.1/: the authorization server's URL carries our loopback
+  //    client_id, whose redirect_uri contains "127.0.0.1" in the query string,
+  //    so a regex can match while we're still on the consent page.
+  const appOrigin = new URL(baseURL!).origin;
+  await page.waitForURL((url) => url.origin === appOrigin, { timeout: 30000 });
 
   // 9. Verify we're authenticated — the avatar/menu button is the only
   // login indicator reliably rendered post-OAuth. `@handle` only appears
