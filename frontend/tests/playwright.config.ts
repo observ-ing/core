@@ -27,7 +27,7 @@ export default defineConfig({
     // Requires BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, BLUESKY_TEST_HANDLE.
     {
       name: "e2e-setup",
-      testMatch: /auth\.setup\.ts/,
+      testMatch: /(^|\/)auth\.setup\.ts$/,
     },
     {
       name: "e2e",
