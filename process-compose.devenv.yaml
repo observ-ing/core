@@ -1,0 +1,38 @@
+version: "0.5"
+
+# Overlay for the ISOLATED dev-env e2e run (scripts/e2e-devenv.ts), layered on
+# the normal stack:
+#
+#   process-compose -f process-compose.yaml -f process-compose.devenv.yaml up
+#
+# Only what differs from process-compose.yaml lives here. Everything
+# run-specific (the dev-env PLC/PDS endpoints, a throwaway DATABASE_URL and
+# TAP_DATABASE_URL, ports) is environment the orchestrator sets: process-compose
+# passes its environment through to every process, and the base file's
+# ${VAR:-default} entries pick it up.
+
+processes:
+
+  # The create/view flow doesn't need species-id (and its ~2.4 GB model).
+  species-id:
+    disabled: true
+
+  # exit_on_failure: if any of these dies, take process-compose down with its
+  # exit code, so the orchestrator fails fast with the real cause instead of
+  # polling health endpoints until they time out (the frontend process would
+  # otherwise keep process-compose alive).
+  migrate:
+    availability:
+      restart: exit_on_failure
+
+  appview:
+    availability:
+      restart: exit_on_failure
+    environment:
+      # Empty → appview treats species-id as absent instead of calling the
+      # disabled service.
+      - SPECIES_ID_SERVICE_URL=
+
+  tap-ingester:
+    availability:
+      restart: exit_on_failure

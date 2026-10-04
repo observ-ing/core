@@ -1,0 +1,8 @@
+{
+  "name": "observing-devenv-deps",
+  "private": true,
+  "description": "On-demand install of @atproto/dev-env for the isolated e2e harness (frontend/tests/dev-env/network.ts). Kept out of the root package tree; installed with `npm ci` from the committed lockfile.",
+  "dependencies": {
+    "@atproto/dev-env": "0.5.8"
+  }
+}

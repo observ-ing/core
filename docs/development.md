@@ -150,7 +150,6 @@ set -a && source .env && set +a
 
 The only var that's required for the basic stack to come up is
 `DATABASE_URL` (or the `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASSWORD` quad).
-`BLUESKY_TEST_*` are only needed for `npm run test:e2e`.
 
 ## Models (species-id)
 
@@ -204,20 +203,6 @@ cargo sqlx migrate run --source crates/observing-db/migrations
 ```
 
 In production, migrations run in a one-shot `observing-migrate` Cloud Run Job *before* services are deployed — long-running services never run DDL. See `docs/deployment.md`.
-
-### Seed Data
-
-`frontend/tests/seed.sql` inserts a handful of observation records under the e2e
-test DID. CI loads it after migrations so e2e specs have something to
-render against; locally it's optional but useful when poking around the
-explore feed:
-
-```bash
-psql "$DATABASE_URL" -f frontend/tests/seed.sql
-```
-
-Safe to re-run only after wiping the relevant rows — it does plain
-`INSERT`s, not upserts.
 
 ## Common Commands
 
@@ -387,15 +372,11 @@ process-compose up -D
 npm run test:integration
 ```
 
-E2E tests (`npm run test:e2e`) are truly end-to-end — they sign in to a real Bluesky account, so they require a full stack and these credentials in the environment: `BLUESKY_TEST_EMAIL`, `BLUESKY_TEST_PASSWORD`, `BLUESKY_TEST_HANDLE`.
+E2E tests are truly end-to-end — they sign in, create an observation and wait for it to round-trip through the firehose and tap-ingester into the DB — but against a throwaway local ATProto network (`@atproto/dev-env`), so test records never reach the public firehose or any other AppView. No real account or credentials are needed. The run boots the network and its own isolated stack (a separate `observing_devenv` database), so stop the normal stack first:
 
 ```sh
-# Start full development stack
-process-compose up -D
-
-# Source credentials from .env
-set -a && source .env && set +a
-
-# Run the tests
-npm run test:e2e
+process-compose down
+npm run test:e2e:devenv
 ```
+
+See [`frontend/tests/dev-env/README.md`](../frontend/tests/dev-env/README.md) for prerequisites and how it works.

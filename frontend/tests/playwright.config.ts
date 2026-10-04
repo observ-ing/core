@@ -23,24 +23,8 @@ export default defineConfig({
     serviceWorkers: "block",
   },
   projects: [
-    // Real e2e: signs in to Bluesky and runs a CRUD flow against the live PDS.
-    // Requires BLUESKY_TEST_EMAIL, BLUESKY_TEST_PASSWORD, BLUESKY_TEST_HANDLE.
-    {
-      name: "e2e-setup",
-      testMatch: /auth\.setup\.ts/,
-    },
-    {
-      name: "e2e",
-      testMatch: /e2e\.spec\.ts/,
-      dependencies: ["e2e-setup"],
-      use: {
-        ...devices["Desktop Chrome"],
-        launchOptions: {
-          args: ["--use-gl=angle", "--use-angle=swiftshader"],
-        },
-        storageState: "playwright/.auth/user.json",
-      },
-    },
+    // The real CRUD e2e (e2e.spec.ts) runs only in playwright.devenv.config.ts,
+    // against a throwaway local ATProto network: `npm run test:e2e:devenv`.
     // Integration: mocked Bluesky auth, no credentials required.
     {
       name: "integration",
