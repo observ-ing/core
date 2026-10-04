@@ -2,6 +2,9 @@ import { Box, Divider, Skeleton } from "@mui/material";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 
+// Placeholder heights for the section cards below the image (card radius matches outlined Paper).
+const SECTION_CARD_HEIGHTS = [220, 56, 120];
+
 /**
  * Skeleton loader matching observation detail page layout
  */
@@ -32,10 +35,22 @@ export function ObservationDetailSkeleton() {
       <Skeleton variant="rectangular" height={400} sx={{ width: "100%" }} />
 
       {/* Content: uniform section cards */}
-      <Box sx={{ p: { xs: 2, sm: 3 }, display: "flex", flexDirection: "column", gap: 2.5 }}>
-        <Skeleton variant="rectangular" height={220} sx={{ borderRadius: 2 }} />
-        <Skeleton variant="rectangular" height={56} sx={{ borderRadius: 2 }} />
-        <Skeleton variant="rectangular" height={120} sx={{ borderRadius: 2 }} />
+      <Box
+        sx={{
+          p: { xs: 2, sm: 3 },
+          display: "flex",
+          flexDirection: "column",
+          gap: 2.5,
+        }}
+      >
+        {SECTION_CARD_HEIGHTS.map((height) => (
+          <Skeleton
+            key={height}
+            variant="rectangular"
+            height={height}
+            sx={{ borderRadius: 2 }}
+          />
+        ))}
       </Box>
     </Box>
   );
