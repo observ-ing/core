@@ -60,7 +60,7 @@ export function ConfirmDialog({
       <DialogContent>
         {message !== undefined ? <Typography>{message}</Typography> : children}
       </DialogContent>
-      <DialogActions sx={{ px: 3, pb: 2 }}>
+      <DialogActions>
         <Button onClick={handleCancel} disabled={pending} color="inherit">
           {cancelLabel}
         </Button>

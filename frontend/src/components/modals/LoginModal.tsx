@@ -95,7 +95,7 @@ export function LoginModal() {
             error={!!error}
           />
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2 }}>
+        <DialogActions>
           <Button onClick={handleClose} color="inherit" disabled={isLoading}>
             Cancel
           </Button>
