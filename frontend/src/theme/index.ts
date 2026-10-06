@@ -190,6 +190,12 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       // black-alpha grey that clashes with the warm background). Rectangular
       // blocks share the theme corner radius instead of repeating
       // `borderRadius: 1` at each call site.
+      MuiTableCell: {
+        styleOverrides: {
+          head: { fontWeight: 600 },
+          footer: { fontWeight: 600 },
+        },
+      },
       MuiSkeleton: {
         styleOverrides: {
           root: ({ theme }) => ({
