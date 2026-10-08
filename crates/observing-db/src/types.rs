@@ -264,6 +264,40 @@ pub struct UserPreferencesRow {
     pub updated_at: DateTime<Utc>,
 }
 
+/// An account on another platform that a user has linked for cross-posting.
+/// Not `Serialize`: `access_token` must never reach a response or a log.
+#[derive(Debug, Clone, FromRow)]
+pub struct LinkedAccountRow {
+    pub did: String,
+    pub service: String,
+    pub external_user_id: String,
+    pub external_login: String,
+    pub access_token: String,
+    pub linked_at: DateTime<Utc>,
+}
+
+/// One occurrence queued for, or posted to, another platform.
+#[derive(Debug, Clone, FromRow)]
+pub struct CrosspostRow {
+    pub occurrence_uri: String,
+    pub service: String,
+    pub did: String,
+    /// Permalink of the record on the other platform, once it exists there.
+    pub external_uri: Option<String>,
+    pub synced_blob_cids: Vec<String>,
+    /// `pending`, `synced`, or `failed`.
+    pub status: String,
+    pub attempts: i32,
+    pub last_error: Option<String>,
+}
+
+/// A link cross-posting produced: an `externalRecords` entry that is ours.
+#[derive(Debug, Clone, PartialEq, FromRow)]
+pub struct CrosspostLink {
+    pub service: String,
+    pub external_uri: String,
+}
+
 /// Parameters for upserting an occurrence.
 ///
 /// `event_date`, `longitude`, and `latitude` are optional because the

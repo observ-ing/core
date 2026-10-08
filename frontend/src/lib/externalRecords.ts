@@ -50,6 +50,20 @@ export function detectExternalRecordService(uri: string): string | undefined {
 }
 
 /**
+ * Whether an observation already links to an iNaturalist observation, by
+ * `service` or by host. Cross-posting it would create the duplicate these
+ * links exist to prevent. Kept in step with `names_inat_observation` in the
+ * appview, which enforces the same rule.
+ */
+export function hasInatRecord(records: ExternalRecord[]): boolean {
+  return records.some(
+    (record) =>
+      record.service?.trim().toLowerCase() === "inaturalist" ||
+      detectExternalRecordService(record.uri) === "inaturalist",
+  );
+}
+
+/**
  * Turn a pasted URI into an entry ready to submit, or explain why it can't be
  * one. The message is written for the person typing, not for a log.
  */

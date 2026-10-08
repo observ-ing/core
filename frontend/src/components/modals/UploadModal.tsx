@@ -30,7 +30,7 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
-import { useUserPreferences } from "../../lib/query/hooks";
+import { useUserPreferences, useCrosspostStatus } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
@@ -144,6 +144,8 @@ export function UploadModal() {
   const currentUser = useAppSelector((state) => state.auth.user);
 
   const isEditMode = !!editingObservation;
+  // Which external record, if any, cross-posting added to the one being edited.
+  const crosspostStatus = useCrosspostStatus(editingObservation?.uri, isEditMode);
 
   const submitObs = useSubmitObservation();
   const updateObs = useUpdateObservation();
@@ -861,6 +863,7 @@ export function UploadModal() {
                     setExternalRecords(records);
                     setIsDirty(true);
                   }}
+                  lockedUri={crosspostStatus.data?.inatUrl}
                 />
 
                 <Stack direction="row" spacing={1} sx={{ mt: 2 }}>

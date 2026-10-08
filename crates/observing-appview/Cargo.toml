@@ -64,6 +64,16 @@ atrium-identity = "0.1"
 atrium-oauth = "0.1"
 hickory-resolver = "0.26"
 
+# iNaturalist cross-posting (#878). Git dependencies until the changes in
+# https://tangled.org/rwell.org/rust-inaturalist/pulls/6 are released.
+inaturalist = { git = "https://tangled.org/kueda.net/rust-inaturalist", rev = "c23d32f81dadf9e7a6a47782c8010d8f67598544", default-features = false, features = ["rustls"] }
+inaturalist-oauth = { git = "https://tangled.org/kueda.net/rust-inaturalist", rev = "c23d32f81dadf9e7a6a47782c8010d8f67598544" }
+# inaturalist-oauth takes its authorization code as an oauth2 type
+oauth2 = "5"
+# Deterministic IDs for cross-posted records
+uuid = { version = "1", features = ["v5"] }
+url = { workspace = true }
+
 # Async trait support (needed for Store implementations)
 async-trait = "0.1"
 
@@ -80,6 +90,8 @@ moka = { workspace = true }
 # HTTP mock server for testing the GBIF cache layer without
 # hitting the live GBIF API.
 wiremock = "0.6"
+# Paused time, for testing the iNaturalist rate limiter
+tokio = { workspace = true, features = ["test-util"] }
 
 [[bin]]
 name = "observing-appview"

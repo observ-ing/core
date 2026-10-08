@@ -16,6 +16,10 @@ import type {
   UpdatePreferencesRequest,
   ExternalRecord,
 } from "./types";
+import type { InatAccountResponse } from "../bindings/InatAccountResponse";
+import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
+import type { CrosspostStatusResponse } from "../bindings/CrosspostStatusResponse";
+import type { CreateCrosspostRequest } from "../bindings/CreateCrosspostRequest";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -446,6 +450,46 @@ export async function updateUserPreferences(
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(prefs),
+  });
+}
+
+// ============================================================================
+// iNaturalist cross-posting API Functions
+// ============================================================================
+
+export async function fetchInatAccount(): Promise<InatAccountResponse> {
+  return fetchApi(`${API_BASE}/api/inat/account`, "Failed to load iNaturalist account", {
+    credentials: "include",
+  });
+}
+
+/** Get the iNaturalist authorize URL to send the user to. */
+export async function startInatLink(): Promise<InatAuthorizeResponse> {
+  return fetchApi(`${API_BASE}/api/inat/authorize`, "Couldn't start connecting to iNaturalist", {
+    credentials: "include",
+  });
+}
+
+export async function unlinkInatAccount(): Promise<{ success: boolean }> {
+  return deleteResource(`${API_BASE}/api/inat/account`, "Couldn't disconnect iNaturalist");
+}
+
+export async function fetchCrosspostStatus(uri: string): Promise<CrosspostStatusResponse> {
+  return fetchApi(
+    `${API_BASE}/api/inat/crosspost/${encodeURIComponent(uri)}`,
+    "Failed to load iNaturalist status",
+    { credentials: "include" },
+  );
+}
+
+/** Queue one of the viewer's observations for posting to iNaturalist. */
+export async function crosspostObservation(uri: string): Promise<CrosspostStatusResponse> {
+  const body: CreateCrosspostRequest = { uri };
+  return fetchApi(`${API_BASE}/api/inat/crosspost`, "Couldn't post to iNaturalist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
   });
 }
 

@@ -6,7 +6,7 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use jacquard_common::types::tid::Tid;
 use jacquard_common::types::uri::UriValue;
-use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef};
+use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef, CrosspostLink};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{
     ExternalRecord, ExternalRecordService, Occurrence, OccurrenceOrganismQuantityType,
@@ -522,6 +522,18 @@ pub async fn update_occurrence(
         remarks_to_delete.extend(delete_after);
     }
 
+    // Keep the links cross-posting wrote, whatever the form sent.
+    let crosspost_links =
+        observing_db::crossposts::links_for_occurrence(&state.pool, &body.uri).await?;
+    let merged_external_records;
+    let external_records = if crosspost_links.is_empty() {
+        body.external_records.as_deref()
+    } else {
+        merged_external_records =
+            with_crosspost_links(body.external_records.as_deref(), &crosspost_links);
+        Some(merged_external_records.as_slice())
+    };
+
     let record_value = build_occurrence_record_json(OccurrenceRecordFields {
         latitude: body.latitude,
         longitude: body.longitude,
@@ -529,7 +541,7 @@ pub async fn update_occurrence(
         organism_quantity: body.organism_quantity.as_deref(),
         organism_quantity_type: body.organism_quantity_type.as_deref(),
         event_date: body.event_date.as_deref(),
-        external_records: body.external_records.as_deref(),
+        external_records,
         media_refs,
         remark_ids: &remark_ids,
     })?;
@@ -897,6 +909,33 @@ fn build_external_records(
     Ok((!records.is_empty()).then_some(records))
 }
 
+/// The submitted external records plus the links cross-posting has produced for
+/// the occurrence, so an edit can't drop them. An edit form loaded before a
+/// cross-post finished doesn't know about its link, and saving that form would
+/// otherwise erase it.
+fn with_crosspost_links(
+    submitted: Option<&[ExternalRecordInput]>,
+    links: &[CrosspostLink],
+) -> Vec<ExternalRecordInput> {
+    let mut records: Vec<ExternalRecordInput> = submitted
+        .unwrap_or_default()
+        .iter()
+        .map(|record| ExternalRecordInput {
+            uri: record.uri.clone(),
+            service: record.service.clone(),
+        })
+        .collect();
+    for link in links {
+        if !records.iter().any(|r| r.uri.trim() == link.external_uri) {
+            records.push(ExternalRecordInput {
+                uri: link.external_uri.clone(),
+                service: Some(link.service.clone()),
+            });
+        }
+    }
+    records
+}
+
 /// Whether a URI is one this app is willing to write as an external record.
 /// See `build_external_records` for why the set is narrower than the lexicon's.
 fn is_supported_external_record_uri(uri: &str) -> bool {
@@ -1002,6 +1041,70 @@ mod tests {
             records[0].service,
             Some(ExternalRecordService::Other("observation-org".into()))
         );
+    }
+
+    fn link(uri: &str) -> CrosspostLink {
+        CrosspostLink {
+            service: "inaturalist".to_string(),
+            external_uri: uri.to_string(),
+        }
+    }
+
+    fn uris_and_services(records: &[ExternalRecordInput]) -> Vec<(&str, Option<&str>)> {
+        records
+            .iter()
+            .map(|r| (r.uri.as_str(), r.service.as_deref()))
+            .collect()
+    }
+
+    #[test]
+    fn restores_a_crosspost_link_the_form_omitted() {
+        let merged = with_crosspost_links(
+            Some(&[input("https://bugguide.net/node/view/1", Some("bugguide"))]),
+            &[link("https://www.inaturalist.org/observations/1")],
+        );
+        assert_eq!(
+            uris_and_services(&merged),
+            vec![
+                ("https://bugguide.net/node/view/1", Some("bugguide")),
+                (
+                    "https://www.inaturalist.org/observations/1",
+                    Some("inaturalist")
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn restores_a_crosspost_link_when_the_form_sent_none() {
+        let merged =
+            with_crosspost_links(None, &[link("https://www.inaturalist.org/observations/1")]);
+        assert_eq!(
+            uris_and_services(&merged),
+            vec![(
+                "https://www.inaturalist.org/observations/1",
+                Some("inaturalist")
+            )]
+        );
+    }
+
+    #[test]
+    fn does_not_duplicate_a_crosspost_link_the_form_kept() {
+        let merged = with_crosspost_links(
+            Some(&[input(" https://www.inaturalist.org/observations/1 ", None)]),
+            &[link("https://www.inaturalist.org/observations/1")],
+        );
+        assert_eq!(merged.len(), 1);
+    }
+
+    #[test]
+    fn without_crosspost_links_the_submitted_records_pass_through() {
+        let merged = with_crosspost_links(Some(&[input("https://example.org/1", None)]), &[]);
+        assert_eq!(
+            uris_and_services(&merged),
+            vec![("https://example.org/1", None)]
+        );
+        assert!(with_crosspost_links(None, &[]).is_empty());
     }
 
     /// Nothing to write must stay absent rather than becoming `[]` on the

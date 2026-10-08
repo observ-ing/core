@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT occurrence_uri, service, did, external_uri, synced_blob_cids,\n               status, attempts, last_error\n        FROM crossposts\n        WHERE occurrence_uri = $1 AND service = $2\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "occurrence_uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "occurrence_uri"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "service",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "service"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "did",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "did"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "external_uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "external_uri"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "synced_blob_cids",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "synced_blob_cids"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "last_error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "last_error"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6675e82a294ce9ef11195e5e4f467420252a8d8bddb01f4a1864e4462ce4457f"
+}

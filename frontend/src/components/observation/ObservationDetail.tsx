@@ -24,6 +24,7 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
 import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 import { useToast } from "../../hooks/useToast";
+import { useInatCrosspost } from "../../hooks/useInatCrosspost";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
 import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
@@ -83,6 +84,7 @@ export function ObservationDetail() {
   // Waits for the ingester to drop the identification, then refetches the
   // detail so the removed row disappears.
   const deleteId = useDeleteIdentification();
+  const crosspost = useInatCrosspost(observation, user?.did);
 
   usePageTitle(
     observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Observation",
@@ -352,7 +354,10 @@ export function ObservationDetail() {
                     this field — or replayed from a cache written before it —
                     has no `externalRecords` at all, and a missing array must
                     not take the whole page down. */}
-                <ExternalRecordsItem records={observation.externalRecords ?? []} />
+                <ExternalRecordsItem
+                  records={observation.externalRecords ?? []}
+                  crosspost={crosspost}
+                />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}

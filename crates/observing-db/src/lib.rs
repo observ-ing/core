@@ -1,5 +1,6 @@
 pub mod comments;
 pub mod community_ids;
+pub mod crossposts;
 pub mod failed_records;
 pub mod feeds;
 pub mod identifications;
@@ -16,6 +17,7 @@ pub mod quality;
 pub mod remarks;
 pub mod repos;
 pub mod taxa;
+pub mod taxon_uri;
 pub mod taxonomy_resolver;
 pub mod types;
 pub mod user_preferences;
