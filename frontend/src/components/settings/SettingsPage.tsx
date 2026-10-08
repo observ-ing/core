@@ -1,12 +1,4 @@
-import type { ReactNode } from "react";
-import {
-  Typography,
-  ToggleButtonGroup,
-  ToggleButton,
-  Paper,
-  type SxProps,
-  type Theme,
-} from "@mui/material";
+import { Typography, ToggleButtonGroup, ToggleButton } from "@mui/material";
 import { LightMode, DarkMode, SettingsBrightness } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useToast } from "../../hooks/useToast";
@@ -16,30 +8,10 @@ import { useUserPreferences } from "../../lib/query/hooks";
 import { useUpdatePreferences } from "../../lib/query/mutations";
 import { PageContainer } from "../common/PageContainer";
 import { LicenseSelect } from "../common/LicenseSelect";
+import { SettingsSection } from "./SettingsSection";
+import { InatSettings } from "./InatSettings";
 
 const NO_DEFAULT = "__none__";
-
-interface SettingsSectionProps {
-  title: ReactNode;
-  description: ReactNode;
-  sx?: SxProps<Theme>;
-  children: ReactNode;
-}
-
-/** Titled, outlined card wrapper shared by the settings page sections. */
-function SettingsSection({ title, description, sx, children }: SettingsSectionProps) {
-  return (
-    <Paper variant="outlined" sx={{ p: 3, ...sx }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
-        {title}
-      </Typography>
-      <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>
-        {description}
-      </Typography>
-      {children}
-    </Paper>
-  );
-}
 
 export function SettingsPage() {
   usePageTitle("Settings");
@@ -130,6 +102,8 @@ export function SettingsPage() {
           />
         </SettingsSection>
       )}
+
+      {user && <InatSettings />}
     </PageContainer>
   );
 }

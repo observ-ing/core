@@ -3,6 +3,11 @@ import { IconButton, Menu, MenuItem, type SxProps, type Theme } from "@mui/mater
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { getPdslsUrl } from "../../lib/utils";
 
+export interface RecordOverflowAction {
+  label: string;
+  onSelect: () => void;
+}
+
 export interface RecordOverflowMenuProps {
   /** AT URI of the record; builds the "View on AT Protocol" link. */
   atUri: string;
@@ -13,6 +18,8 @@ export interface RecordOverflowMenuProps {
    * disables itself for the duration so a slow delete can't be double-fired.
    */
   onDelete?: (() => void | Promise<void>) | undefined;
+  /** Further items, shown between "Edit" and "Delete". */
+  actions?: RecordOverflowAction[] | undefined;
   /**
    * Set when this button sits inside another clickable element (e.g. a card
    * that navigates on click) so opening the menu or clicking an item doesn't
@@ -26,6 +33,7 @@ export function RecordOverflowMenu({
   atUri,
   onEdit,
   onDelete,
+  actions,
   stopPropagation,
   sx,
 }: RecordOverflowMenuProps) {
@@ -90,6 +98,17 @@ export function RecordOverflowMenu({
             Edit
           </MenuItem>
         )}
+        {actions?.map((action) => (
+          <MenuItem
+            key={action.label}
+            onClick={() => {
+              handleClose();
+              action.onSelect();
+            }}
+          >
+            {action.label}
+          </MenuItem>
+        ))}
         {onDelete && (
           <MenuItem onClick={handleDelete} disabled={isDeleting} sx={{ color: "error.main" }}>
             Delete

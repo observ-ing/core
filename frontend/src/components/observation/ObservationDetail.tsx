@@ -24,6 +24,7 @@ import { usePageTitle } from "../../hooks/usePageTitle";
 import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
 import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 import { useToast } from "../../hooks/useToast";
+import { useInatCrosspost } from "../../hooks/useInatCrosspost";
 import { useObservation } from "../../lib/query/hooks";
 import { useLike, useDeleteIdentification } from "../../lib/query/mutations";
 import { openDeleteConfirm, openEditModal } from "../../store/uiSlice";
@@ -37,6 +38,7 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { ExternalRecordsItem } from "./ExternalRecordsItem";
+import { InatCrosspostItem } from "./InatCrosspostItem";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
@@ -83,6 +85,7 @@ export function ObservationDetail() {
   // Waits for the ingester to drop the identification, then refetches the
   // detail so the removed row disappears.
   const deleteId = useDeleteIdentification();
+  const crosspost = useInatCrosspost(observation, user?.did);
 
   usePageTitle(
     observation?.communityId || observation?.effectiveTaxonomy?.scientificName || "Observation",
@@ -170,6 +173,7 @@ export function ObservationDetail() {
                     onDelete: () => {
                       dispatch(openDeleteConfirm(observation));
                     },
+                    actions: crosspost.action ? [crosspost.action] : undefined,
                   }
                 : {})}
             />
@@ -353,6 +357,7 @@ export function ObservationDetail() {
                     has no `externalRecords` at all, and a missing array must
                     not take the whole page down. */}
                 <ExternalRecordsItem records={observation.externalRecords ?? []} />
+                <InatCrosspostItem crosspost={crosspost} />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}
