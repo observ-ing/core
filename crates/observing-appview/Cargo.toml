@@ -88,6 +88,8 @@ moka = { workspace = true }
 # HTTP mock server for testing the GBIF cache layer without
 # hitting the live GBIF API.
 wiremock = "0.6"
+# Paused time, for testing the iNaturalist rate limiter
+tokio = { workspace = true, features = ["test-util"] }
 
 [[bin]]
 name = "observing-appview"

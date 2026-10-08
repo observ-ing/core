@@ -3,6 +3,7 @@
 //! An occurrence is pushed once, at its owner's request. Nothing is pulled
 //! back, and later edits here are not pushed.
 
+pub mod client;
 pub mod ids;
 pub mod links;
 pub mod payload;
