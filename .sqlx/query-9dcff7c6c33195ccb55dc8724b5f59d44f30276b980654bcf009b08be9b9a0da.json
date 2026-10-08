@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts\n        SET synced_blob_cids = array_append(synced_blob_cids, $3), updated_at = NOW()\n        WHERE occurrence_uri = $1 AND service = $2 AND NOT ($3 = ANY(synced_blob_cids))\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9dcff7c6c33195ccb55dc8724b5f59d44f30276b980654bcf009b08be9b9a0da"
+}

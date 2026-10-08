@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM linked_accounts WHERE did = $1 AND service = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "202b0a044681eb7fb715fd776a80b490eee13b038e115adf565ecdbcbf345c92"
+}
