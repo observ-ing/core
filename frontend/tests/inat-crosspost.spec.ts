@@ -134,16 +134,21 @@ test.describe("iNaturalist - Settings", () => {
 });
 
 test.describe("iNaturalist - Post an existing observation", () => {
-  test("posts from the Also recorded on row and shows it is pending", async ({
+  test("posts from the observation's details and shows it is pending", async ({
     authenticatedPage: page,
   }) => {
     await mockAccount(page, LINKED);
     const calls = await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page);
 
-    await alsoRecordedOn(page).getByRole("button", { name: "Post to iNaturalist" }).click();
+    // With no links to list, the button stands on its own: no "Also recorded
+    // on" label for something that isn't recorded anywhere else yet.
+    await expect(postButton(page)).toBeVisible();
+    await expect(alsoRecordedOn(page)).toHaveCount(0);
+    await postButton(page).click();
 
-    await expect(alsoRecordedOn(page).getByText("Posting to iNaturalist")).toBeVisible();
+    await expect(page.getByText("Posting to iNaturalist")).toBeVisible();
+    await expect(alsoRecordedOn(page)).toHaveCount(0);
     expect(calls.posts).toBe(1);
     // Once queued it can't be posted again.
     await expect(postButton(page)).toHaveCount(0);
@@ -200,12 +205,12 @@ test.describe("iNaturalist - Post an existing observation", () => {
     });
     await gotoOwnObservation(page);
 
-    const row = alsoRecordedOn(page);
-    await expect(row.getByText("Couldn't post to iNaturalist")).toBeVisible();
-    await expect(row.getByText("iNaturalist returned 422")).toBeVisible();
+    await expect(page.getByText("Couldn't post to iNaturalist")).toBeVisible();
+    await expect(page.getByText("iNaturalist returned 422")).toBeVisible();
+    await expect(alsoRecordedOn(page)).toHaveCount(0);
     await retryButton(page).click();
 
-    await expect(row.getByText("Posting to iNaturalist")).toBeVisible();
+    await expect(page.getByText("Posting to iNaturalist")).toBeVisible();
     expect(calls.posts).toBe(1);
   });
 
@@ -249,16 +254,17 @@ test.describe("iNaturalist - Post an existing observation", () => {
     await expect(inaturalist.locator(".MuiChip-deleteIcon")).toHaveCount(0);
   });
 
-  test("the row is absent without a linked account", async ({ authenticatedPage: page }) => {
+  test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
     await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page);
 
     await expect(page.getByText("Coordinates")).toBeVisible();
+    await expect(postButton(page)).toHaveCount(0);
     await expect(alsoRecordedOn(page)).toHaveCount(0);
   });
 
-  test("the row is absent on someone else's observation", async ({ authenticatedPage: page }) => {
+  test("is not offered on someone else's observation", async ({ authenticatedPage: page }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page, {
@@ -266,6 +272,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
     });
 
     await expect(page.getByText("Coordinates")).toBeVisible();
+    await expect(postButton(page)).toHaveCount(0);
     await expect(alsoRecordedOn(page)).toHaveCount(0);
   });
 

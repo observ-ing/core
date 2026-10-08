@@ -65,11 +65,11 @@ export function InatSettings() {
       title="iNaturalist"
       description={
         <>
-          Connect your iNaturalist account to post observations there too, from "Also recorded on"
-          in an observation's details. Each one is posted once: later edits here don't change it
-          there, and nothing comes back from iNaturalist. Posting adds a public link to the
-          iNaturalist observation, so anyone can follow it to your iNaturalist account. Photos get
-          your iNaturalist default license.
+          Connect your iNaturalist account to post observations there too, from an observation's
+          details. Each one is posted once: later edits here don't change it there, and nothing
+          comes back from iNaturalist. Posting adds a public link to the iNaturalist observation, so
+          anyone can follow it to your iNaturalist account. Photos get your iNaturalist default
+          license.
         </>
       }
       sx={{ mt: 3 }}

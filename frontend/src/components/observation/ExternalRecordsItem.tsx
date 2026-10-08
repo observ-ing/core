@@ -24,7 +24,8 @@ interface ExternalRecordsItemProps {
  * Renders nothing when there are none — which is the case for the vast
  * majority of observations, so the row never becomes dead weight in the list.
  * The exception is the observation's owner with a linked iNaturalist account,
- * who gets the row as the place to post it there. Entries are shown verbatim:
+ * who gets the row as the place to post it there, without the "Also recorded
+ * on" label until there is a link to list. Entries are shown verbatim:
  * the appview doesn't resolve the targets, so we label them by service and let
  * the reader decide whether to follow.
  */
@@ -47,7 +48,9 @@ export function ExternalRecordsItem({ records, crosspost }: ExternalRecordsItemP
   return (
     <DetailListItem
       icon={<LinkOutlinedIcon sx={detailIconSx} />}
-      primary="Also recorded on"
+      // Unlabelled when all it holds is the offer to post: nothing is
+      // recorded anywhere else yet.
+      primary={shown.length > 0 ? "Also recorded on" : null}
       secondary={
         <Stack spacing={0.25}>
           {shown.map((record) => {
