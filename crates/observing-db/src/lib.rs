@@ -17,6 +17,7 @@ pub mod quality;
 pub mod remarks;
 pub mod repos;
 pub mod taxa;
+pub mod taxon_uri;
 pub mod taxonomy_resolver;
 pub mod types;
 pub mod user_preferences;

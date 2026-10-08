@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod inat;
 mod media;
 mod middleware;
 mod oauth_store;
