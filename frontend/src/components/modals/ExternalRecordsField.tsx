@@ -11,6 +11,12 @@ import {
 interface ExternalRecordsFieldProps {
   records: ExternalRecord[];
   onChange: (records: ExternalRecord[]) => void;
+  /**
+   * URI of an entry that can't be removed here: the link cross-posting added.
+   * The appview puts it back on every save, so offering to remove it would
+   * promise something that doesn't happen.
+   */
+  lockedUri?: string | null | undefined;
 }
 
 /**
@@ -24,7 +30,7 @@ interface ExternalRecordsFieldProps {
  * rather than guessed at. Added entries render as chips showing that label,
  * which is also how they read on the observation page.
  */
-export function ExternalRecordsField({ records, onChange }: ExternalRecordsFieldProps) {
+export function ExternalRecordsField({ records, onChange, lockedUri }: ExternalRecordsFieldProps) {
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -69,7 +75,9 @@ export function ExternalRecordsField({ records, onChange }: ExternalRecordsField
               <Chip
                 label={getExternalRecordLabel(record)}
                 size="small"
-                onDelete={() => onChange(records.filter((r) => r.uri !== record.uri))}
+                {...(record.uri === lockedUri
+                  ? {}
+                  : { onDelete: () => onChange(records.filter((r) => r.uri !== record.uri)) })}
               />
             </Tooltip>
           ))}

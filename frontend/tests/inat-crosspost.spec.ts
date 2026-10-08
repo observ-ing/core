@@ -1,6 +1,7 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 import { MOCK_OBS_URL, mockObservationDetailRoute } from "./helpers/mock-observation";
+import { gotoUploadStep } from "./helpers/navigation";
 import type { InatAccountResponse } from "../src/bindings/InatAccountResponse";
 import type { CrosspostStatusResponse } from "../src/bindings/CrosspostStatusResponse";
 
@@ -191,6 +192,33 @@ test.describe("iNaturalist - Post an existing observation", () => {
 
     await openMenu(page);
     await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
+  });
+
+  test("the edit form can't remove the link that posting added", async ({
+    authenticatedPage: page,
+  }) => {
+    const inatUrl = "https://www.inaturalist.org/observations/123";
+    await mockAccount(page, LINKED);
+    await mockCrosspost(page, { status: "synced", lastError: null, inatUrl });
+    await gotoOwnObservation(page, {
+      externalRecords: [
+        { uri: "https://bugguide.net/node/view/1", service: "bugguide" },
+        { uri: inatUrl, service: "inaturalist" },
+      ],
+    });
+
+    await openMenu(page);
+    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await gotoUploadStep(page, "Date & details");
+
+    const chips = page.getByRole("dialog").locator(".MuiChip-root");
+    const bugguide = chips.filter({ hasText: "BugGuide" });
+    const inaturalist = chips.filter({ hasText: "iNaturalist" });
+    await expect(bugguide).toBeVisible();
+    await expect(inaturalist).toBeVisible();
+    // A link someone typed in can be removed; the cross-post's can't.
+    await expect(bugguide.locator(".MuiChip-deleteIcon")).toHaveCount(1);
+    await expect(inaturalist.locator(".MuiChip-deleteIcon")).toHaveCount(0);
   });
 
   test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
