@@ -70,11 +70,14 @@ async function gotoOwnObservation(page: Page, overrides = {}) {
   await page.getByText("Observed").waitFor({ timeout: 15_000 });
 }
 
-async function openMenu(page: Page) {
-  await page.getByLabel("More options").first().click();
-  // Edit is always there for the owner, so the menu has finished rendering.
-  await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
+/** The "Also recorded on" row of the Details list. */
+function alsoRecordedOn(page: Page) {
+  return page.getByRole("listitem").filter({ hasText: "Also recorded on" });
 }
+
+const postButton = (page: Page) => page.getByRole("button", { name: "Post to iNaturalist" });
+const retryButton = (page: Page) =>
+  page.getByRole("button", { name: "Retry posting to iNaturalist" });
 
 test.describe("iNaturalist - Settings", () => {
   test("offers to connect an account when none is linked", async ({ authenticatedPage: page }) => {
@@ -131,20 +134,31 @@ test.describe("iNaturalist - Settings", () => {
 });
 
 test.describe("iNaturalist - Post an existing observation", () => {
-  test("posts from the menu and shows it is pending", async ({ authenticatedPage: page }) => {
+  test("posts from the Also recorded on row and shows it is pending", async ({
+    authenticatedPage: page,
+  }) => {
     await mockAccount(page, LINKED);
     const calls = await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page);
 
-    await openMenu(page);
-    await page.getByRole("menuitem", { name: "Post to iNaturalist" }).click();
+    await alsoRecordedOn(page).getByRole("button", { name: "Post to iNaturalist" }).click();
 
-    await expect(page.getByText("Posting to iNaturalist")).toBeVisible();
+    await expect(alsoRecordedOn(page).getByText("Posting to iNaturalist")).toBeVisible();
     expect(calls.posts).toBe(1);
-
     // Once queued it can't be posted again.
-    await openMenu(page);
-    await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
+    await expect(postButton(page)).toHaveCount(0);
+  });
+
+  test("sits below links the observation already has", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockCrosspost(page, NOT_POSTED);
+    await gotoOwnObservation(page, {
+      externalRecords: [{ uri: "https://bugguide.net/node/view/1", service: "bugguide" }],
+    });
+
+    const row = alsoRecordedOn(page);
+    await expect(row.getByRole("link", { name: "BugGuide" })).toBeVisible();
+    await expect(row.getByRole("button", { name: "Post to iNaturalist" })).toBeVisible();
   });
 
   test("links to the iNaturalist observation once posted", async ({ authenticatedPage: page }) => {
@@ -156,12 +170,25 @@ test.describe("iNaturalist - Post an existing observation", () => {
     });
     await gotoOwnObservation(page);
 
-    await expect(page.getByRole("link", { name: "View on iNaturalist" })).toHaveAttribute(
+    // Shown from the cross-post status, before the link has reached the record.
+    await expect(alsoRecordedOn(page).getByRole("link", { name: "iNaturalist" })).toHaveAttribute(
       "href",
       "https://www.inaturalist.org/observations/123",
     );
-    await openMenu(page);
-    await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
+    await expect(postButton(page)).toHaveCount(0);
+  });
+
+  test("shows the link once, after it has reached the record", async ({
+    authenticatedPage: page,
+  }) => {
+    const inatUrl = "https://www.inaturalist.org/observations/123";
+    await mockAccount(page, LINKED);
+    await mockCrosspost(page, { status: "synced", lastError: null, inatUrl });
+    await gotoOwnObservation(page, {
+      externalRecords: [{ uri: inatUrl, service: "inaturalist" }],
+    });
+
+    await expect(alsoRecordedOn(page).getByRole("link", { name: "iNaturalist" })).toHaveCount(1);
   });
 
   test("offers a retry when posting failed", async ({ authenticatedPage: page }) => {
@@ -173,11 +200,12 @@ test.describe("iNaturalist - Post an existing observation", () => {
     });
     await gotoOwnObservation(page);
 
-    await expect(page.getByText("Couldn't post to iNaturalist")).toBeVisible();
-    await openMenu(page);
-    await page.getByRole("menuitem", { name: "Retry posting to iNaturalist" }).click();
+    const row = alsoRecordedOn(page);
+    await expect(row.getByText("Couldn't post to iNaturalist")).toBeVisible();
+    await expect(row.getByText("iNaturalist returned 422")).toBeVisible();
+    await retryButton(page).click();
 
-    await expect(page.getByText("Posting to iNaturalist")).toBeVisible();
+    await expect(row.getByText("Posting to iNaturalist")).toBeVisible();
     expect(calls.posts).toBe(1);
   });
 
@@ -190,8 +218,8 @@ test.describe("iNaturalist - Post an existing observation", () => {
       externalRecords: [{ uri: "https://inaturalist.nz/observations/9" }],
     });
 
-    await openMenu(page);
-    await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
+    await expect(alsoRecordedOn(page)).toBeVisible();
+    await expect(postButton(page)).toHaveCount(0);
   });
 
   test("the edit form can't remove the link that posting added", async ({
@@ -207,7 +235,7 @@ test.describe("iNaturalist - Post an existing observation", () => {
       ],
     });
 
-    await openMenu(page);
+    await page.getByLabel("More options").first().click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
     await gotoUploadStep(page, "Date & details");
 
@@ -221,24 +249,33 @@ test.describe("iNaturalist - Post an existing observation", () => {
     await expect(inaturalist.locator(".MuiChip-deleteIcon")).toHaveCount(0);
   });
 
-  test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
+  test("the row is absent without a linked account", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
     await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page);
 
-    await openMenu(page);
-    await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
+    await expect(page.getByText("Coordinates")).toBeVisible();
+    await expect(alsoRecordedOn(page)).toHaveCount(0);
   });
 
-  test("is not offered on someone else's observation", async ({ authenticatedPage: page }) => {
+  test("the row is absent on someone else's observation", async ({ authenticatedPage: page }) => {
     await mockAccount(page, LINKED);
     await mockCrosspost(page, NOT_POSTED);
     await gotoOwnObservation(page, {
       observer: { did: "did:plc:someoneelse", handle: "other.test" },
     });
 
+    await expect(page.getByText("Coordinates")).toBeVisible();
+    await expect(alsoRecordedOn(page)).toHaveCount(0);
+  });
+
+  test("the menu has no iNaturalist item", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockCrosspost(page, NOT_POSTED);
+    await gotoOwnObservation(page);
+
     await page.getByLabel("More options").first().click();
-    await expect(page.getByRole("menuitem", { name: "View on AT Protocol" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: /iNaturalist/ })).toHaveCount(0);
   });
 });

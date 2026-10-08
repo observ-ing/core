@@ -38,7 +38,6 @@ import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { ExternalRecordsItem } from "./ExternalRecordsItem";
-import { InatCrosspostItem } from "./InatCrosspostItem";
 import { UserCard } from "../common/UserCard";
 import { Section, SectionHeader, sectionIconSx } from "../common/Section";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
@@ -173,7 +172,6 @@ export function ObservationDetail() {
                     onDelete: () => {
                       dispatch(openDeleteConfirm(observation));
                     },
-                    actions: crosspost.action ? [crosspost.action] : undefined,
                   }
                 : {})}
             />
@@ -356,8 +354,10 @@ export function ObservationDetail() {
                     this field — or replayed from a cache written before it —
                     has no `externalRecords` at all, and a missing array must
                     not take the whole page down. */}
-                <ExternalRecordsItem records={observation.externalRecords ?? []} />
-                <InatCrosspostItem crosspost={crosspost} />
+                <ExternalRecordsItem
+                  records={observation.externalRecords ?? []}
+                  crosspost={crosspost}
+                />
 
                 <DetailListItem
                   icon={<MyLocationIcon sx={detailIconSx} />}

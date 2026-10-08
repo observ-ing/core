@@ -9,16 +9,18 @@ export interface InatCrosspost {
   /**
    * What to tell the owner about this observation's cross-post, or null when
    * there is nothing to say: it was never posted, or its iNaturalist link is
-   * already on the record and shown with the other external records.
+   * already on the record with the other external records.
    */
   status: "pending" | "failed" | "synced" | null;
   /** Why the last attempt failed. */
   lastError: string | null;
   /** The iNaturalist observation, once it exists. */
   inatUrl: string | null;
-  /** Present when the viewer can post this observation, or retry posting it. */
-  action: { label: string; onSelect: () => void } | null;
+  /** Post the observation, or retry posting it. Null when the viewer can't. */
+  post: (() => void) | null;
 }
+
+const NOTHING: InatCrosspost = { status: null, lastError: null, inatUrl: null, post: null };
 
 /**
  * Cross-posting state for an observation, from its owner's point of view.
@@ -36,28 +38,23 @@ export function useInatCrosspost(
   const statusQuery = useCrosspostStatus(observation?.uri, isOwner && linked);
   const post = useCrosspostObservation();
 
-  if (!observation || !statusQuery.data) {
-    return { status: null, lastError: null, inatUrl: null, action: null };
-  }
+  if (!observation || !statusQuery.data) return NOTHING;
 
   const { status, lastError, inatUrl } = statusQuery.data;
-  // The appview refuses these too; this only keeps the menu from offering them.
+  // The appview refuses these too; this only keeps the page from offering them.
   const onInat = hasInatRecord(observation.externalRecords ?? []);
-  const canPost = !onInat && !post.isPending && (status === null || status === "failed");
+  if (onInat) return NOTHING;
 
+  const canPost = !post.isPending && (status === null || status === "failed");
   return {
-    status: onInat ? null : status,
+    status,
     lastError,
     inatUrl,
-    action: canPost
-      ? {
-          label: status === "failed" ? "Retry posting to iNaturalist" : "Post to iNaturalist",
-          onSelect: () =>
-            post.mutate(observation.uri, {
-              onError: (error) =>
-                toast.error(getErrorMessage(error, "Couldn't post to iNaturalist")),
-            }),
-        }
+    post: canPost
+      ? () =>
+          post.mutate(observation.uri, {
+            onError: (error) => toast.error(getErrorMessage(error, "Couldn't post to iNaturalist")),
+          })
       : null,
   };
 }
