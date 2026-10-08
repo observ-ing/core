@@ -1,4 +1,4 @@
-import { Button, Stack, Typography, Link as MuiLink } from "@mui/material";
+import { Button, CircularProgress, Stack, Typography, Link as MuiLink } from "@mui/material";
 import LinkOutlinedIcon from "@mui/icons-material/LinkOutlined";
 import type { ExternalRecord } from "../../bindings/ExternalRecord";
 import { DetailListItem, detailIconSx } from "../common/DetailListItem";
@@ -91,9 +91,17 @@ export function ExternalRecordsItem({ records, crosspost }: ExternalRecordsItemP
 function InatCrosspostEntry({ crosspost }: { crosspost: InatCrosspost }) {
   if (crosspost.status === "pending") {
     return (
-      <Typography variant="body2" component="div" sx={{ color: "text.secondary" }}>
-        Posting to iNaturalist…
-      </Typography>
+      <Stack
+        role="status"
+        direction="row"
+        spacing={1}
+        sx={{ alignItems: "center", color: "text.secondary" }}
+      >
+        <CircularProgress size={14} color="inherit" />
+        <Typography variant="body2" component="div">
+          Posting to iNaturalist…
+        </Typography>
+      </Stack>
     );
   }
 

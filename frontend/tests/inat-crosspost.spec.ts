@@ -147,7 +147,9 @@ test.describe("iNaturalist - Post an existing observation", () => {
     await expect(alsoRecordedOn(page)).toHaveCount(0);
     await postButton(page).click();
 
-    await expect(page.getByText("Posting to iNaturalist")).toBeVisible();
+    const posting = page.getByRole("status").filter({ hasText: "Posting to iNaturalist" });
+    await expect(posting).toBeVisible();
+    await expect(posting.getByRole("progressbar")).toBeVisible();
     await expect(alsoRecordedOn(page)).toHaveCount(0);
     expect(calls.posts).toBe(1);
     // Once queued it can't be posted again.
