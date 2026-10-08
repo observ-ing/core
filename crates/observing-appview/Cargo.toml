@@ -68,6 +68,8 @@ hickory-resolver = "0.26"
 # https://tangled.org/rwell.org/rust-inaturalist/pulls/6 are released.
 inaturalist = { git = "https://tangled.org/kueda.net/rust-inaturalist", rev = "c23d32f81dadf9e7a6a47782c8010d8f67598544", default-features = false, features = ["rustls"] }
 inaturalist-oauth = { git = "https://tangled.org/kueda.net/rust-inaturalist", rev = "c23d32f81dadf9e7a6a47782c8010d8f67598544" }
+# inaturalist-oauth takes its authorization code as an oauth2 type
+oauth2 = "5"
 # Deterministic IDs for cross-posted records
 uuid = { version = "1", features = ["v5"] }
 url = { workspace = true }

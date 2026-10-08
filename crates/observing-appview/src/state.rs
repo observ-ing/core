@@ -2,6 +2,7 @@ use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
+use crate::inat::Inat;
 use crate::media::MediaCache;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
@@ -110,6 +111,9 @@ pub struct AppState {
     /// Base URL of the tap-ingester service, if configured. Enables the
     /// HTTP-backed `ingester/*` tables in the admin browser.
     pub ingester_url: Option<String>,
+    /// iNaturalist cross-posting, when an iNaturalist application is
+    /// configured. `None` turns the feature off.
+    pub inat: Option<Arc<Inat>>,
 }
 
 /// Create an OAuthClient.

@@ -100,7 +100,7 @@ async fn serve_blob(media: &MediaCache, did_str: &str, cid: &str) -> Response {
 }
 
 /// Fetch a blob, using cache if available; populate the cache on miss.
-async fn fetch_and_cache(
+pub(crate) async fn fetch_and_cache(
     media: &MediaCache,
     did: &Did,
     cid: &str,

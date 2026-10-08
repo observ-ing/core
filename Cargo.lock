@@ -3060,6 +3060,7 @@ dependencies = [
  "inaturalist-oauth",
  "jacquard-common",
  "moka",
+ "oauth2",
  "observing-bootstrap",
  "observing-db",
  "observing-lexicons",

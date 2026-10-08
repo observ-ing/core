@@ -77,6 +77,14 @@ async fn main() {
 
     let media = media::MediaCache::from_env().await;
 
+    let inat = config.inat.clone().map(|inat_config| {
+        Arc::new(inat::Inat::new(
+            inat_config,
+            config.public_url.as_deref(),
+            config.port,
+        ))
+    });
+
     let state = AppState {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::from_env()),
@@ -89,7 +97,13 @@ async fn main() {
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
         ingester_url: config.ingester_url.clone(),
+        inat: inat.clone(),
     };
+
+    if let Some(inat) = inat {
+        info!("iNaturalist cross-posting enabled");
+        inat::worker::spawn(state.clone(), inat);
+    }
 
     // CORS
     let cors = if config.cors_origins.iter().any(|o| o == "*") {
@@ -191,6 +205,17 @@ async fn main() {
         .route(
             "/api/user/preferences",
             get(routes::preferences::get_preferences).put(routes::preferences::update_preferences),
+        )
+        // iNaturalist cross-posting
+        .route("/api/inat/authorize", get(routes::inat::authorize))
+        .route("/api/inat/callback", get(routes::inat::callback))
+        .route(
+            "/api/inat/account",
+            get(routes::inat::get_account).delete(routes::inat::delete_account),
+        )
+        .route(
+            "/api/inat/crosspost/{*uri}",
+            get(routes::inat::get_crosspost).post(routes::inat::create_crosspost),
         )
         // Actors
         // Species identification

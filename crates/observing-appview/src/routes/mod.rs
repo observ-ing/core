@@ -4,6 +4,7 @@ pub mod comments;
 pub mod feeds;
 pub mod health;
 pub mod identifications;
+pub mod inat;
 pub mod interactions;
 pub mod likes;
 pub mod media;
