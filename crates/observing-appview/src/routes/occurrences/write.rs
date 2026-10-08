@@ -1043,8 +1043,6 @@ mod tests {
         );
     }
 
-    /// Nothing to write must stay absent rather than becoming `[]` on the
-    /// record — an empty array is noise every reader would have to special-case.
     fn link(uri: &str) -> CrosspostLink {
         CrosspostLink {
             service: "inaturalist".to_string(),
@@ -1109,6 +1107,8 @@ mod tests {
         assert!(with_crosspost_links(None, &[]).is_empty());
     }
 
+    /// Nothing to write must stay absent rather than becoming `[]` on the
+    /// record — an empty array is noise every reader would have to special-case.
     #[test]
     fn empty_input_produces_no_field() {
         assert!(build_external_records(&[]).expect("valid").is_none());

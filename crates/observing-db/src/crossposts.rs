@@ -220,7 +220,7 @@ pub async fn mark_synced(
     sqlx::query!(
         r#"
         UPDATE crossposts SET status = 'synced', last_error = NULL, updated_at = NOW()
-        WHERE occurrence_uri = $1 AND service = $2
+        WHERE occurrence_uri = $1 AND service = $2 AND status = 'pending'
         "#,
         occurrence_uri,
         service,
@@ -231,7 +231,11 @@ pub async fn mark_synced(
 }
 
 /// Record why an attempt failed. The crosspost stays `pending` for another
-/// attempt until it has been tried `max_attempts` times, then becomes `failed`.
+/// attempt until it has been tried `max_attempts` times, then becomes `failed`;
+/// pass 0 to fail it now.
+///
+/// Like [`mark_synced`], this only touches a `pending` crosspost, so a worker
+/// that held a job past its lease can't undo the outcome another one recorded.
 pub async fn record_failure(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,
@@ -245,7 +249,7 @@ pub async fn record_failure(
         SET last_error = $3,
             status = CASE WHEN attempts >= $4 THEN 'failed' ELSE 'pending' END,
             updated_at = NOW()
-        WHERE occurrence_uri = $1 AND service = $2
+        WHERE occurrence_uri = $1 AND service = $2 AND status = 'pending'
         "#,
         occurrence_uri,
         service,

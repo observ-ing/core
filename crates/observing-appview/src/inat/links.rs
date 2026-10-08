@@ -11,24 +11,23 @@ pub fn observation_url(site_url: &str, id: i32) -> String {
     format!("{}/observations/{id}", site_url.trim_end_matches('/'))
 }
 
-/// Whether an occurrence already says it is on iNaturalist, in which case
-/// cross-posting it would make the duplicate `externalRecords` exists to avoid.
+/// Whether an `externalRecords` entry points at iNaturalist. An occurrence
+/// with one is already there, and cross-posting it would make the duplicate
+/// `externalRecords` exists to avoid.
 ///
 /// Matches the `service`, or a host containing `inaturalist`, the same rule as
 /// `SERVICE_HOSTS` in `frontend/src/lib/externalRecords.ts`, so localized nodes
 /// (inaturalist.nz, inaturalist.ca) count.
-pub fn names_inat_observation(entries: &[ExternalRecordEntry]) -> bool {
-    entries.iter().any(|entry| {
-        let by_service = entry
-            .service
-            .as_deref()
-            .is_some_and(|service| service.trim().eq_ignore_ascii_case(SERVICE));
-        let by_host = url::Url::parse(&entry.uri).is_ok_and(|uri| {
-            uri.host_str()
-                .is_some_and(|host| host.to_ascii_lowercase().contains("inaturalist"))
-        });
-        by_service || by_host
-    })
+pub fn is_inat_record(entry: &ExternalRecordEntry) -> bool {
+    let by_service = entry
+        .service
+        .as_deref()
+        .is_some_and(|service| service.trim().eq_ignore_ascii_case(SERVICE));
+    let by_host = url::Url::parse(&entry.uri).is_ok_and(|uri| {
+        uri.host_str()
+            .is_some_and(|host| host.to_ascii_lowercase().contains("inaturalist"))
+    });
+    by_service || by_host
 }
 
 /// What [`add_external_record`] did to the record.
@@ -91,32 +90,33 @@ mod tests {
 
     #[test]
     fn recognizes_an_entry_by_service() {
-        assert!(names_inat_observation(&[entry(
+        assert!(is_inat_record(&entry(
             "https://example.org/1",
             Some("iNaturalist")
-        )]));
+        )));
     }
 
     #[test]
     fn recognizes_an_entry_by_host_including_localized_nodes() {
-        assert!(names_inat_observation(&[entry(
+        assert!(is_inat_record(&entry(
             "https://www.inaturalist.org/observations/1",
             None
-        )]));
-        assert!(names_inat_observation(&[entry(
+        )));
+        assert!(is_inat_record(&entry(
             "https://inaturalist.nz/observations/1",
             None
-        )]));
+        )));
     }
 
     #[test]
     fn ignores_other_services_and_inaturalist_in_a_path() {
-        assert!(!names_inat_observation(&[]));
-        assert!(!names_inat_observation(&[
+        for other in [
             entry("https://bugguide.net/node/view/1", Some("bugguide")),
             entry("https://example.org/inaturalist/1", None),
             entry("at://did:plc:abc/app.example.obs/1", None),
-        ]));
+        ] {
+            assert!(!is_inat_record(&other), "{other:?}");
+        }
     }
 
     #[test]

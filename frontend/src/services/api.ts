@@ -19,6 +19,7 @@ import type {
 import type { InatAccountResponse } from "../bindings/InatAccountResponse";
 import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
 import type { CrosspostStatusResponse } from "../bindings/CrosspostStatusResponse";
+import type { CreateCrosspostRequest } from "../bindings/CreateCrosspostRequest";
 
 const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -483,11 +484,13 @@ export async function fetchCrosspostStatus(uri: string): Promise<CrosspostStatus
 
 /** Queue one of the viewer's observations for posting to iNaturalist. */
 export async function crosspostObservation(uri: string): Promise<CrosspostStatusResponse> {
-  return fetchApi(
-    `${API_BASE}/api/inat/crosspost/${encodeURIComponent(uri)}`,
-    "Couldn't post to iNaturalist",
-    { method: "POST", credentials: "include" },
-  );
+  const body: CreateCrosspostRequest = { uri };
+  return fetchApi(`${API_BASE}/api/inat/crosspost`, "Couldn't post to iNaturalist", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
 }
 
 // ============================================================================

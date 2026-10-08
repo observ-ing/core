@@ -7,9 +7,8 @@ import { useToast } from "./useToast";
 
 export interface InatCrosspost {
   /**
-   * What to tell the owner about this observation's cross-post, or null when
-   * there is nothing to say: it was never posted, or its iNaturalist link is
-   * already on the record with the other external records.
+   * Where this observation's cross-post stands, or null when it has none:
+   * it was never posted, or it reached iNaturalist some other way.
    */
   status: "pending" | "failed" | "synced" | null;
   /** Why the last attempt failed. */
@@ -38,12 +37,20 @@ export function useInatCrosspost(
   const statusQuery = useCrosspostStatus(observation?.uri, isOwner && linked);
   const post = useCrosspostObservation();
 
-  if (!observation || !statusQuery.data) return NOTHING;
+  // Checked here as well as on the query: the edit form reads the same status
+  // for any owner, so cached data alone doesn't mean the viewer can post.
+  if (!observation || !isOwner || !linked || !statusQuery.data) return NOTHING;
 
   const { status, lastError, inatUrl } = statusQuery.data;
-  // The appview refuses these too; this only keeps the page from offering them.
-  const onInat = hasInatRecord(observation.externalRecords ?? []);
-  if (onInat) return NOTHING;
+  // An iNaturalist link from anywhere else means the observation is already
+  // there. The cross-post's own link doesn't count: it goes on the record
+  // before the photos are posted, so a cross-post can fail with it in place.
+  // The appview applies the same rule; this keeps the page from offering what
+  // it would refuse.
+  const otherRecords = (observation.externalRecords ?? []).filter(
+    (record) => record.uri !== inatUrl,
+  );
+  if (hasInatRecord(otherRecords)) return NOTHING;
 
   const canPost = !post.isPending && (status === null || status === "failed");
   return {

@@ -1,6 +1,11 @@
 import type { Page, Route } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
-import { MOCK_OBS_URL, mockObservationDetailRoute } from "./helpers/mock-observation";
+import {
+  MOCK_OBS_DID,
+  MOCK_OBS_RKEY,
+  MOCK_OBS_URL,
+  mockObservationDetailRoute,
+} from "./helpers/mock-observation";
 import { gotoUploadStep } from "./helpers/navigation";
 import type { InatAccountResponse } from "../src/bindings/InatAccountResponse";
 import type { CrosspostStatusResponse } from "../src/bindings/CrosspostStatusResponse";
@@ -43,15 +48,14 @@ async function mockCrosspost(
     inatUrl: null,
   },
 ) {
-  const calls = { posts: 0 };
+  const calls = { posts: 0, postedUris: [] as string[] };
   let current = status;
-  await page.route("**/api/inat/crosspost/**", (route: Route) => {
-    if (route.request().method() === "POST") {
-      calls.posts += 1;
-      current = afterPost;
-      return route.fulfill(json(current, 202));
-    }
-    return route.fulfill(json(current));
+  await page.route("**/api/inat/crosspost/**", (route: Route) => route.fulfill(json(current)));
+  await page.route("**/api/inat/crosspost", (route: Route) => {
+    calls.posts += 1;
+    calls.postedUris.push(route.request().postDataJSON()?.uri);
+    current = afterPost;
+    return route.fulfill(json(current, 202));
   });
   return calls;
 }
@@ -151,7 +155,9 @@ test.describe("iNaturalist - Post an existing observation", () => {
     await expect(posting).toBeVisible();
     await expect(posting.getByRole("progressbar")).toBeVisible();
     await expect(alsoRecordedOn(page)).toHaveCount(0);
-    expect(calls.posts).toBe(1);
+    expect(calls.postedUris).toEqual([
+      `at://${MOCK_OBS_DID}/bio.lexicons.temp.v0-1.occurrence/${MOCK_OBS_RKEY}`,
+    ]);
     // Once queued it can't be posted again.
     await expect(postButton(page)).toHaveCount(0);
   });
@@ -216,6 +222,30 @@ test.describe("iNaturalist - Post an existing observation", () => {
     expect(calls.posts).toBe(1);
   });
 
+  test("offers a retry when posting failed after the link was added", async ({
+    authenticatedPage: page,
+  }) => {
+    // The link goes on the record before the photos are uploaded, so a photo
+    // failure leaves a failed cross-post on an observation that has its link.
+    const inatUrl = "https://www.inaturalist.org/observations/123";
+    await mockAccount(page, LINKED);
+    const calls = await mockCrosspost(page, {
+      status: "failed",
+      lastError: "Could not fetch photo bafkrei1 from your PDS",
+      inatUrl,
+    });
+    await gotoOwnObservation(page, {
+      externalRecords: [{ uri: inatUrl, service: "inaturalist" }],
+    });
+
+    const row = alsoRecordedOn(page);
+    await expect(row.getByRole("link", { name: "iNaturalist" })).toHaveCount(1);
+    await expect(row.getByText("Couldn't post to iNaturalist")).toBeVisible();
+    await retryButton(page).click();
+
+    expect(calls.posts).toBe(1);
+  });
+
   test("is not offered for an observation that already links to iNaturalist", async ({
     authenticatedPage: page,
   }) => {
@@ -264,6 +294,25 @@ test.describe("iNaturalist - Post an existing observation", () => {
     await expect(page.getByText("Coordinates")).toBeVisible();
     await expect(postButton(page)).toHaveCount(0);
     await expect(alsoRecordedOn(page)).toHaveCount(0);
+  });
+
+  test("is not offered without a linked account even after editing", async ({
+    authenticatedPage: page,
+  }) => {
+    // The edit form looks up the cross-post status for its own purposes. That
+    // lookup must not make the detail page think the viewer can post.
+    await mockAccount(page, UNLINKED);
+    await mockCrosspost(page, NOT_POSTED);
+    await gotoOwnObservation(page);
+
+    await page.getByLabel("More options").first().click();
+    await page.getByRole("menuitem", { name: "Edit" }).click();
+    await expect(page.getByRole("dialog")).toBeVisible();
+    await page.getByRole("button", { name: "Cancel" }).click();
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+
+    await expect(page.getByText("Coordinates")).toBeVisible();
+    await expect(postButton(page)).toHaveCount(0);
   });
 
   test("is not offered on someone else's observation", async ({ authenticatedPage: page }) => {

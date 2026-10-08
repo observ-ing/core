@@ -26,6 +26,10 @@ pub const SERVICE: &str = "inaturalist";
 /// iNaturalist asks applications to stay at or under 60 requests a minute.
 const MIN_CALL_INTERVAL: Duration = Duration::from_secs(1);
 
+/// How long to wait on iNaturalist before giving up on a request. Generous,
+/// because a photo upload is one request.
+const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
+
 /// An API token lasts 24 hours; replace ours well before that.
 const API_TOKEN_TTL: Duration = Duration::from_secs(12 * 60 * 60);
 
@@ -44,7 +48,7 @@ pub struct Inat {
 impl Inat {
     pub fn new(config: InatConfig, public_url: Option<&str>, port: u16) -> Self {
         Self {
-            client: InatClient::new(config.api_url.clone(), MIN_CALL_INTERVAL),
+            client: InatClient::new(config.api_url.clone(), MIN_CALL_INTERVAL, REQUEST_TIMEOUT),
             redirect_uri: redirect_uri(public_url, port),
             config,
             api_tokens: Cache::builder().time_to_live(API_TOKEN_TTL).build(),
@@ -69,7 +73,7 @@ impl Inat {
     /// verifier to hold on to until they come back.
     pub fn authorization_url(&self) -> Result<AuthorizationInfo, InatError> {
         self.authenticator().authorization_url().map_err(|e| {
-            InatError(format!(
+            InatError::transient(format!(
                 "Could not build the iNaturalist authorize URL: {e}"
             ))
         })
@@ -81,10 +85,13 @@ impl Inat {
         code: String,
         pkce_verifier: PkceVerifier,
     ) -> Result<TokenDetails, InatError> {
-        self.authenticator()
-            .exchange_code(oauth2::AuthorizationCode::new(code), pkce_verifier)
+        let authenticator = self.authenticator();
+        let exchange =
+            authenticator.exchange_code(oauth2::AuthorizationCode::new(code), pkce_verifier);
+        tokio::time::timeout(REQUEST_TIMEOUT, exchange)
             .await
-            .map_err(|e| InatError(format!("iNaturalist authorization failed: {e}")))
+            .map_err(|_| unanswered())?
+            .map_err(|e| InatError::transient(format!("iNaturalist authorization failed: {e}")))
     }
 
     /// An API token for the user, minted from their OAuth access token unless
@@ -93,9 +100,13 @@ impl Inat {
         if let Some(token) = self.api_tokens.get(did).await {
             return Ok(token);
         }
-        let details = inaturalist_oauth::api_token(access_token)
-            .await
-            .map_err(|e| InatError(format!("Could not get an iNaturalist API token: {e}")))?;
+        let details =
+            tokio::time::timeout(REQUEST_TIMEOUT, inaturalist_oauth::api_token(access_token))
+                .await
+                .map_err(|_| unanswered())?
+                .map_err(|e| {
+                    InatError::transient(format!("Could not get an iNaturalist API token: {e}"))
+                })?;
         self.remember_api_token(did, &details.api_token).await;
         Ok(details.api_token)
     }
@@ -118,6 +129,11 @@ impl Inat {
     async fn woken(&self) {
         self.wake.notified().await;
     }
+}
+
+/// `inaturalist-oauth` sets no timeout of its own.
+fn unanswered() -> InatError {
+    InatError::transient("iNaturalist did not respond")
 }
 
 /// Where iNaturalist sends the user back to. Must be registered on the

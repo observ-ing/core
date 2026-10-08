@@ -213,9 +213,10 @@ async fn main() {
             "/api/inat/account",
             get(routes::inat::get_account).delete(routes::inat::delete_account),
         )
+        .route("/api/inat/crosspost", post(routes::inat::create_crosspost))
         .route(
             "/api/inat/crosspost/{*uri}",
-            get(routes::inat::get_crosspost).post(routes::inat::create_crosspost),
+            get(routes::inat::get_crosspost),
         )
         // Actors
         // Species identification

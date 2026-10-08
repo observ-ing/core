@@ -64,7 +64,7 @@ pub async fn authorize(
 ) -> Result<Json<InatAuthorizeResponse>, AppError> {
     let authorization = inat(&state)?
         .authorization_url()
-        .map_err(|e| AppError::Internal(e.0))?;
+        .map_err(|e| AppError::Internal(e.message))?;
     let pending = serde_json::to_string(&PendingLink {
         did: user.did,
         pkce_verifier: authorization.pkce_verifier,
@@ -141,12 +141,12 @@ async fn link_account(
     let tokens = inat
         .exchange_code(code, pending.pkce_verifier)
         .await
-        .map_err(|e| AppError::Internal(e.0))?;
+        .map_err(|e| AppError::Internal(e.message))?;
     let account = inat
         .client
         .me(&tokens.api_token)
         .await
-        .map_err(|e| AppError::Internal(e.0))?;
+        .map_err(|e| AppError::Internal(e.message))?;
     observing_db::crossposts::upsert_account(
         &state.pool,
         &user.did,
@@ -273,14 +273,27 @@ pub async fn get_crosspost(
     Ok(Json(row.into()))
 }
 
-/// POST /api/inat/crosspost/{*uri}
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct CreateCrosspostRequest {
+    /// AT URI of the occurrence to cross-post.
+    pub uri: String,
+}
+
+/// POST /api/inat/crosspost
 ///
 /// Queue one of the caller's own occurrences for cross-posting, or retry one
 /// whose cross-post failed.
+///
+/// The occurrence is named in a JSON body, like every other write here, and
+/// not in the path: a JSON content type can't be sent cross-site without a
+/// CORS preflight, which is what keeps another site from triggering this with
+/// the caller's session cookie.
 pub async fn create_crosspost(
     State(state): State<AppState>,
     user: AuthUser,
-    Path(uri): Path<String>,
+    Json(CreateCrosspostRequest { uri }): Json<CreateCrosspostRequest>,
 ) -> Result<(StatusCode, Json<CrosspostStatusResponse>), AppError> {
     let inat = inat(&state)?;
     let occurrence_did = occurrence_did(&uri)?;
@@ -309,6 +322,9 @@ pub async fn create_crosspost(
         linked,
         external_records: external_records.as_deref(),
         crosspost_status: existing.as_ref().map(|row| row.status.as_str()),
+        crosspost_uri: existing
+            .as_ref()
+            .and_then(|row| row.external_uri.as_deref()),
     })?;
 
     // `enqueue` is the real arbiter: it refuses if another request got in

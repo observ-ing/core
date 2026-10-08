@@ -6,7 +6,7 @@
 
 use observing_db::types::ExternalRecordEntry;
 
-use super::links::names_inat_observation;
+use super::links::is_inat_record;
 use crate::error::AppError;
 
 /// What is known about an occurrence someone asked to cross-post.
@@ -20,6 +20,8 @@ pub struct CrosspostRequest<'a> {
     pub external_records: Option<&'a [ExternalRecordEntry]>,
     /// Status of the occurrence's existing crosspost, if it has one.
     pub crosspost_status: Option<&'a str>,
+    /// The iNaturalist observation that crosspost made, if it got that far.
+    pub crosspost_uri: Option<&'a str>,
 }
 
 #[derive(Debug, PartialEq)]
@@ -41,7 +43,13 @@ pub fn check(request: &CrosspostRequest) -> Result<(), Refusal> {
         return Err(Refusal::NotLinked);
     }
     let external_records = request.external_records.ok_or(Refusal::NotFound)?;
-    if names_inat_observation(external_records) {
+    // The link our own crosspost wrote doesn't count: it is written before the
+    // photos, so a crosspost can fail, and need retrying, with it in place.
+    let on_inat_already = external_records
+        .iter()
+        .filter(|record| Some(record.uri.as_str()) != request.crosspost_uri)
+        .any(is_inat_record);
+    if on_inat_already {
         return Err(Refusal::AlreadyOnInat);
     }
     match request.crosspost_status {
@@ -81,7 +89,64 @@ mod tests {
             linked: true,
             external_records: Some(NO_RECORDS),
             crosspost_status: None,
+            crosspost_uri: None,
         }
+    }
+
+    const OURS: &str = "https://www.inaturalist.org/observations/1";
+
+    fn inat_record(uri: &str) -> ExternalRecordEntry {
+        ExternalRecordEntry {
+            uri: uri.into(),
+            service: Some("inaturalist".into()),
+        }
+    }
+
+    #[test]
+    fn allows_retrying_a_failed_crosspost_whose_link_is_already_on_the_record() {
+        // The link is written before the photos, so a photo failure leaves a
+        // failed crosspost on an occurrence that already names its observation.
+        let records = [inat_record(OURS)];
+        assert_eq!(
+            check(&CrosspostRequest {
+                external_records: Some(&records),
+                crosspost_status: Some("failed"),
+                crosspost_uri: Some(OURS),
+                ..request()
+            }),
+            Ok(())
+        );
+    }
+
+    #[test]
+    fn our_own_link_does_not_excuse_someone_elses() {
+        let records = [
+            inat_record(OURS),
+            inat_record("https://www.inaturalist.org/observations/2"),
+        ];
+        assert_eq!(
+            check(&CrosspostRequest {
+                external_records: Some(&records),
+                crosspost_status: Some("failed"),
+                crosspost_uri: Some(OURS),
+                ..request()
+            }),
+            Err(Refusal::AlreadyOnInat)
+        );
+    }
+
+    #[test]
+    fn a_finished_crosspost_is_reported_as_done_not_as_a_foreign_link() {
+        let records = [inat_record(OURS)];
+        assert_eq!(
+            check(&CrosspostRequest {
+                external_records: Some(&records),
+                crosspost_status: Some("synced"),
+                crosspost_uri: Some(OURS),
+                ..request()
+            }),
+            Err(Refusal::AlreadyQueued)
+        );
     }
 
     #[test]

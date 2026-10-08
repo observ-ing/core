@@ -25,13 +25,13 @@ use crate::routes::media::fetch_and_cache;
 use crate::state::AppState;
 
 /// Attempts before a cross-post is marked `failed` and left for its owner to
-/// retry. With the queue's backoff that is about 15 minutes of trying.
-const MAX_ATTEMPTS: i32 = 6;
+/// retry. The queue waits 30s, 90s, then 210s between them, so a failure that
+/// keeps recurring is reported after about six minutes. A failure that
+/// retrying can't fix is reported at once (see [`InatError::permanent`]).
+const MAX_ATTEMPTS: i32 = 4;
 
 /// How often to look for cross-posts whose backoff has elapsed.
 const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
-
-const BATCH_SIZE: i64 = 5;
 
 pub fn spawn(state: AppState, inat: Arc<Inat>) {
     tokio::spawn(async move {
@@ -46,46 +46,50 @@ pub fn spawn(state: AppState, inat: Arc<Inat>) {
 }
 
 /// Work through every cross-post that is due.
+///
+/// Jobs are claimed one at a time: a claim is a 30s lease (the queue's first
+/// backoff), and a job claimed in a batch could sit behind the others for
+/// longer than that and be claimed again by another instance.
 async fn run_pending(state: &AppState, inat: &Inat) {
     loop {
-        let jobs =
-            match observing_db::crossposts::claim_pending(&state.pool, SERVICE, BATCH_SIZE).await {
-                Ok(jobs) => jobs,
-                Err(e) => {
-                    warn!(error = %e, "Failed to claim pending cross-posts");
-                    return;
-                }
-            };
-        if jobs.is_empty() {
-            return;
-        }
-        for job in jobs {
-            let outcome = match crosspost(state, inat, &job).await {
-                Ok(()) => {
-                    info!(uri = %job.occurrence_uri, "Cross-posted occurrence to iNaturalist");
-                    observing_db::crossposts::mark_synced(&state.pool, &job.occurrence_uri, SERVICE)
-                        .await
-                }
-                Err(e) => {
-                    warn!(
-                        uri = %job.occurrence_uri,
-                        attempt = job.attempts,
-                        error = %e,
-                        "Cross-post to iNaturalist failed"
-                    );
-                    observing_db::crossposts::record_failure(
-                        &state.pool,
-                        &job.occurrence_uri,
-                        SERVICE,
-                        &e.0,
-                        MAX_ATTEMPTS,
-                    )
-                    .await
-                }
-            };
-            if let Err(e) = outcome {
-                warn!(uri = %job.occurrence_uri, error = %e, "Failed to record cross-post outcome");
+        let job = match observing_db::crossposts::claim_pending(&state.pool, SERVICE, 1).await {
+            Ok(jobs) => jobs.into_iter().next(),
+            Err(e) => {
+                warn!(error = %e, "Failed to claim pending cross-posts");
+                return;
             }
+        };
+        let Some(job) = job else {
+            return;
+        };
+
+        let outcome = match crosspost(state, inat, &job).await {
+            Ok(()) => {
+                info!(uri = %job.occurrence_uri, "Cross-posted occurrence to iNaturalist");
+                observing_db::crossposts::mark_synced(&state.pool, &job.occurrence_uri, SERVICE)
+                    .await
+            }
+            Err(e) => {
+                warn!(
+                    uri = %job.occurrence_uri,
+                    attempt = job.attempts,
+                    permanent = e.permanent,
+                    error = %e,
+                    "Cross-post to iNaturalist failed"
+                );
+                observing_db::crossposts::record_failure(
+                    &state.pool,
+                    &job.occurrence_uri,
+                    SERVICE,
+                    &e.message,
+                    // Zero attempts allowed: fail now instead of retrying.
+                    if e.permanent { 0 } else { MAX_ATTEMPTS },
+                )
+                .await
+            }
+        };
+        if let Err(e) = outcome {
+            warn!(uri = %job.occurrence_uri, error = %e, "Failed to record cross-post outcome");
         }
     }
 }
@@ -94,48 +98,61 @@ async fn run_pending(state: &AppState, inat: &Inat) {
 /// record, then its photos.
 async fn crosspost(state: &AppState, inat: &Inat, job: &CrosspostRow) -> Result<(), InatError> {
     let at_uri = AtUri::from_str(&job.occurrence_uri)
-        .map_err(|_| InatError("The occurrence has an invalid AT URI".into()))?;
+        .map_err(|_| InatError::permanent("The occurrence has an invalid AT URI"))?;
     let rkey = at_uri
         .rkey()
-        .ok_or_else(|| InatError("The occurrence's AT URI has no record key".into()))?;
+        .ok_or_else(|| InatError::permanent("The occurrence's AT URI has no record key"))?;
     let rkey = rkey.as_str();
+    let did = Did::new_owned(&job.did)
+        .map_err(|_| InatError::permanent("The occurrence has an invalid DID"))?;
 
     let account = observing_db::crossposts::get_account(&state.pool, &job.did, SERVICE)
         .await
         .map_err(database)?
-        .ok_or_else(|| InatError("The iNaturalist account is no longer linked".into()))?;
+        .ok_or_else(unlinked)?;
     let jwt = inat.api_token(&job.did, &account.access_token).await?;
 
     let occurrence = observing_db::occurrences::get(&state.pool, &job.occurrence_uri)
         .await
         .map_err(database)?
-        .ok_or_else(|| InatError("The observation is no longer on observ.ing".into()))?;
+        .ok_or_else(gone)?;
 
-    let taxon = choose_taxon(state, inat, &jwt, job).await?;
     let observation_uuid = ids::observation_uuid(&job.did, rkey);
-    let observation = payload::build_observation(
-        observation_uuid,
-        &OccurrenceFields {
-            event_date: occurrence.event_date.as_deref(),
-            latitude: occurrence.latitude,
-            longitude: occurrence.longitude,
-            coordinate_uncertainty_meters: occurrence.coordinate_uncertainty_meters,
-        },
-        taxon,
-    );
-    let id = inat.client.upsert_observation(&jwt, observation).await?;
-
-    let url = links::observation_url(inat.site_url(), id);
-    observing_db::crossposts::set_external_uri(&state.pool, &job.occurrence_uri, SERVICE, &url)
-        .await
-        .map_err(database)?;
+    // The observation is posted once. An attempt that picks up after it
+    // exists, to finish the link or the photos, must not post it again: that
+    // would overwrite whatever its owner has changed on iNaturalist since.
+    let url = match &job.external_uri {
+        Some(url) => url.clone(),
+        None => {
+            let taxon = choose_taxon(state, inat, &jwt, job).await?;
+            let observation = payload::build_observation(
+                observation_uuid,
+                &OccurrenceFields {
+                    event_date: occurrence.event_date.as_deref(),
+                    latitude: occurrence.latitude,
+                    longitude: occurrence.longitude,
+                    coordinate_uncertainty_meters: occurrence.coordinate_uncertainty_meters,
+                },
+                taxon,
+            );
+            let id = inat.client.upsert_observation(&jwt, observation).await?;
+            let url = links::observation_url(inat.site_url(), id);
+            observing_db::crossposts::set_external_uri(
+                &state.pool,
+                &job.occurrence_uri,
+                SERVICE,
+                &url,
+            )
+            .await
+            .map_err(database)?;
+            url
+        }
+    };
 
     // Before the photos, so the public link is up even if an upload fails. A
     // failure here still lets the photos through; the job is retried for it.
     let written_back = write_link_back(state, job, &at_uri, &url).await;
 
-    let did = Did::new_owned(&job.did)
-        .map_err(|e| InatError(format!("The occurrence has an invalid DID: {e}")))?;
     for (position, blob) in occurrence.blob_entries().iter().enumerate() {
         let cid = blob.image.ref_.cid();
         if job.synced_blob_cids.iter().any(|synced| synced == cid) {
@@ -143,7 +160,10 @@ async fn crosspost(state: &AppState, inat: &Inat, job: &CrosspostRow) -> Result<
         }
         let (data, _, _) = fetch_and_cache(&state.media, &did, cid)
             .await
-            .map_err(|e| InatError(format!("Could not fetch photo {cid}: {e}")))?;
+            .map_err(|e| {
+                warn!(uri = %job.occurrence_uri, cid = %cid, error = %e, "Failed to fetch photo");
+                InatError::transient(format!("Could not fetch photo {cid} from your PDS"))
+            })?;
         let photo = Upload {
             file_name: payload::photo_file_name(cid, &blob.image.mime_type),
             content_type: Some(blob.image.mime_type.clone()),
@@ -206,10 +226,10 @@ async fn write_link_back(
 ) -> Result<(), InatError> {
     let (agent, did) = auth::require_agent(&state.oauth_client, &job.did)
         .await
-        .map_err(|e| pds("open a session to link the observation", e))?;
+        .map_err(|e| pds("link the observation on the record", e))?;
     let (mut record, cid) = auth::get_at_record(&agent, did.clone(), at_uri)
         .await
-        .map_err(|e| pds("fetch the record to link the observation", e))?;
+        .map_err(|e| pds("link the observation on the record", e))?;
 
     match links::add_external_record(&mut record, url, MAX_EXTERNAL_RECORDS) {
         WriteBack::AlreadyPresent => {}
@@ -230,10 +250,69 @@ async fn write_link_back(
     Ok(())
 }
 
+// What these return is shown to the occurrence's owner, so the detail of an
+// internal failure goes to the log instead.
+
+fn unlinked() -> InatError {
+    InatError::permanent("The iNaturalist account is no longer linked")
+}
+
+fn gone() -> InatError {
+    InatError::permanent("The observation is no longer on observ.ing")
+}
+
 fn database(error: sqlx::Error) -> InatError {
-    InatError(format!("Database error: {error}"))
+    warn!(error = %error, "Database error while cross-posting");
+    InatError::transient("Something went wrong on observ.ing")
 }
 
 fn pds(action: &str, error: AppError) -> InatError {
-    InatError(format!("Could not {action}: {error:?}"))
+    match error {
+        // Retrying can't restore a session; the owner has to.
+        AppError::Unauthorized => InatError::permanent(
+            "Your observ.ing session has expired: log in again, then retry posting",
+        ),
+        other => {
+            warn!(error = ?other, "PDS error while cross-posting: could not {action}");
+            InatError::transient(format!("Could not {action}"))
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_database_error_keeps_its_detail_out_of_what_the_owner_sees() {
+        let error = database(sqlx::Error::PoolTimedOut);
+        assert_eq!(error.message, "Something went wrong on observ.ing");
+        assert!(!error.permanent);
+    }
+
+    #[test]
+    fn a_pds_error_keeps_its_detail_out_of_what_the_owner_sees() {
+        let error = pds(
+            "link the observation on the record",
+            AppError::Internal("Failed to put record: secret detail".into()),
+        );
+        assert_eq!(
+            error.message,
+            "Could not link the observation on the record"
+        );
+        assert!(!error.permanent);
+    }
+
+    #[test]
+    fn an_expired_session_tells_the_owner_what_to_do() {
+        let error = pds("link the observation on the record", AppError::Unauthorized);
+        assert!(error.message.contains("log in again"), "{error}");
+        assert!(error.permanent);
+    }
+
+    #[test]
+    fn errors_about_the_job_itself_are_permanent() {
+        assert!(unlinked().permanent);
+        assert!(gone().permanent);
+    }
 }

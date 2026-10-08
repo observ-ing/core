@@ -21,14 +21,39 @@ use super::payload::exact_taxon_match;
 /// Identifies observ.ing to iNaturalist, as their API terms ask.
 const USER_AGENT: &str = "observ.ing cross-post (+https://observ.ing)";
 
-/// A failed iNaturalist call, described for a log line and for the
-/// `last_error` the owner of a failed cross-post is shown.
+/// Why a cross-post step failed.
 #[derive(Debug, Clone, PartialEq)]
-pub struct InatError(pub String);
+pub struct InatError {
+    /// Shown to the owner of a failed cross-post as its `last_error`, so it
+    /// must not carry internal detail. Log that where the error is made.
+    pub message: String,
+    /// Whether trying again could not help, e.g. iNaturalist rejected the
+    /// observation. A permanent failure is reported straight away instead of
+    /// being retried.
+    pub permanent: bool,
+}
+
+impl InatError {
+    /// A failure worth retrying.
+    pub fn transient(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            permanent: false,
+        }
+    }
+
+    /// A failure that retrying won't fix.
+    pub fn permanent(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            permanent: true,
+        }
+    }
+}
 
 impl fmt::Display for InatError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.write_str(&self.message)
     }
 }
 
@@ -40,9 +65,19 @@ impl<T: fmt::Debug> From<apis::Error<T>> for InatError {
         match error {
             apis::Error::ResponseError(response) => {
                 let body: String = response.content.chars().take(500).collect();
-                InatError(format!("iNaturalist returned {}: {body}", response.status))
+                let message = format!("iNaturalist returned {}: {body}", response.status);
+                // A 4xx is iNaturalist rejecting the request, which a retry
+                // would only repeat, unless it is asking us to wait.
+                let rejected = response.status.is_client_error()
+                    && response.status != reqwest::StatusCode::REQUEST_TIMEOUT
+                    && response.status != reqwest::StatusCode::TOO_MANY_REQUESTS;
+                if rejected {
+                    InatError::permanent(message)
+                } else {
+                    InatError::transient(message)
+                }
             }
-            other => InatError(format!("iNaturalist request failed: {other}")),
+            other => InatError::transient(format!("iNaturalist request failed: {other}")),
         }
     }
 }
@@ -84,12 +119,16 @@ pub struct InatClient {
 }
 
 impl InatClient {
-    /// `min_interval` is the spacing between calls. iNaturalist asks for at
-    /// most 60 requests a minute.
-    pub fn new(api_url: impl Into<String>, min_interval: Duration) -> Self {
+    /// `min_interval` is the spacing between calls; iNaturalist asks for at
+    /// most 60 requests a minute. `timeout` bounds each request, so one that
+    /// iNaturalist never answers can't hold up everything queued behind it.
+    pub fn new(api_url: impl Into<String>, min_interval: Duration, timeout: Duration) -> Self {
         Self {
             api_url: api_url.into(),
-            http: reqwest::Client::new(),
+            http: reqwest::Client::builder()
+                .timeout(timeout)
+                .build()
+                .expect("failed to build the iNaturalist HTTP client"),
             limiter: RateLimiter::new(min_interval),
         }
     }
@@ -129,7 +168,7 @@ impl InatClient {
                     login: user.login?,
                 })
             })
-            .ok_or_else(|| InatError("iNaturalist returned no account for the token".into()))
+            .ok_or_else(|| InatError::transient("iNaturalist returned no account for the token"))
     }
 
     /// The ID of the iNaturalist taxon named exactly `name` at `rank`, if
@@ -187,7 +226,7 @@ impl InatClient {
             .results
             .first()
             .and_then(|observation| observation.id.flatten())
-            .ok_or_else(|| InatError("iNaturalist returned no id for the observation".into()))
+            .ok_or_else(|| InatError::transient("iNaturalist returned no id for the observation"))
     }
 
     /// Attach a photo to an observation, or replace the one with the same UUID.
@@ -230,7 +269,7 @@ mod tests {
     const PHOTO_UUID: &str = "0a1b2c3d-0000-4000-8000-000000000002";
 
     fn client(server: &MockServer) -> InatClient {
-        InatClient::new(server.uri(), Duration::ZERO)
+        InatClient::new(server.uri(), Duration::ZERO, Duration::from_secs(5))
     }
 
     fn results(results: Value) -> ResponseTemplate {
@@ -292,7 +331,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(error.0.contains("no id"), "{error}");
+        assert!(error.message.contains("no id"), "{error}");
     }
 
     #[tokio::test]
@@ -312,8 +351,62 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(error.0.contains("422"), "{error}");
-        assert!(error.0.contains("can't be in the future"), "{error}");
+        assert!(error.message.contains("422"), "{error}");
+        assert!(error.message.contains("can't be in the future"), "{error}");
+    }
+
+    async fn error_for_status(status: u16) -> InatError {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/observations"))
+            .respond_with(ResponseTemplate::new(status).set_body_json(json!({ "error": "no" })))
+            .mount(&server)
+            .await;
+        client(&server)
+            .upsert_observation("jwt", observation())
+            .await
+            .unwrap_err()
+    }
+
+    #[tokio::test]
+    async fn a_rejection_is_permanent() {
+        // Retrying can't make iNaturalist accept the same observation.
+        assert!(error_for_status(422).await.permanent);
+        assert!(error_for_status(401).await.permanent);
+    }
+
+    #[tokio::test]
+    async fn server_trouble_and_rate_limiting_are_worth_retrying() {
+        assert!(!error_for_status(500).await.permanent);
+        assert!(!error_for_status(503).await.permanent);
+        assert!(!error_for_status(429).await.permanent);
+        assert!(!error_for_status(408).await.permanent);
+    }
+
+    #[tokio::test]
+    async fn gives_up_on_a_response_that_never_comes() {
+        let server = MockServer::start().await;
+        Mock::given(method("POST"))
+            .and(path("/observations"))
+            .respond_with(
+                results(json!([{ "uuid": OBSERVATION_UUID, "id": 123 }]))
+                    .set_delay(Duration::from_secs(3)),
+            )
+            .mount(&server)
+            .await;
+        let client = InatClient::new(server.uri(), Duration::ZERO, Duration::from_millis(100));
+
+        let started = std::time::Instant::now();
+        let error = client
+            .upsert_observation("jwt", observation())
+            .await
+            .unwrap_err();
+
+        assert!(
+            started.elapsed() < Duration::from_secs(2),
+            "waited for the response"
+        );
+        assert!(!error.permanent);
     }
 
     #[tokio::test]
