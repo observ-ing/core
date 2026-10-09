@@ -9,6 +9,9 @@ export const detailHeaderSx = {
   alignItems: "center",
 } as const;
 
+/** Inline glyph size for icons embedded in chips, small buttons and caption rows. */
+export const miniIconSx = { fontSize: 14 } as const;
+
 /** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
 export const coverImageSx = {
   width: "100%",
