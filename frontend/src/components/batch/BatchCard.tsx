@@ -13,6 +13,7 @@ import {
   useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import CheckIcon from "@mui/icons-material/Check";
 import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -76,6 +77,34 @@ function Line({ children, warning }: { children: ReactNode; warning?: boolean })
       {warning && <WarningAmberIcon sx={{ fontSize: 16 }} />}
       {children}
     </Typography>
+  );
+}
+
+/**
+ * The card's checkbox glyph. MUI's default is an outline, or a filled box with
+ * the tick cut out of it, so over a photo the tick is whatever the photo is.
+ * This one is opaque: a white rim sets it off from any background and the tick
+ * is drawn in a color of its own.
+ */
+function SelectionBox({ checked }: { checked: boolean }) {
+  return (
+    <Box
+      sx={{
+        width: 24,
+        height: 24,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        borderRadius: 0.75,
+        border: 2,
+        borderColor: "common.white",
+        bgcolor: checked ? "primary.main" : "rgba(0, 0, 0, 0.4)",
+        color: "primary.contrastText",
+        boxShadow: "0 0 3px rgba(0, 0, 0, 0.5)",
+      }}
+    >
+      {checked && <CheckIcon sx={{ fontSize: 18 }} />}
+    </Box>
   );
 }
 
@@ -216,13 +245,9 @@ export function BatchCard({
             checked={selected}
             onChange={() => onSelect(true)}
             slotProps={{ input: { "aria-label": "Select observation" } }}
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              color: "common.white",
-              filter: "drop-shadow(0 0 2px rgba(0, 0, 0, 0.6))",
-            }}
+            icon={<SelectionBox checked={false} />}
+            checkedIcon={<SelectionBox checked />}
+            sx={{ position: "absolute", top: 0, left: 0 }}
           />
         )}
         {multi && (
