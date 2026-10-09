@@ -793,7 +793,13 @@ export function BatchUploadPage() {
                   />
                 ))}
                 {!uploading && (
-                  <Box sx={[dropZoneSx, { minHeight: 260 }]}>
+                  <Box
+                    sx={[
+                      dropZoneSx,
+                      // A row of its own under the cards, whatever the column count.
+                      { gridColumn: "1 / -1" },
+                    ]}
+                  >
                     <FileUploadIcon fontSize="large" />
                     <Typography sx={{ color: "text.primary", fontWeight: 600 }}>
                       {overNew && drag ? "Drop to make a new observation" : "Add photos"}
