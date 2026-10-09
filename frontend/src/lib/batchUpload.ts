@@ -331,6 +331,17 @@ export function missingFields(observation: BatchObservation): MissingField[] {
   return missing;
 }
 
+/** One sentence for what `missingFields` found, e.g. "Missing date and location". */
+export function describeMissing(missing: MissingField[]): string {
+  const names = missing.filter((field) => field !== "endDate");
+  const parts: string[] = [];
+  if (names.length > 0) {
+    parts.push(`Missing ${new Intl.ListFormat("en", { type: "conjunction" }).format(names)}`);
+  }
+  if (missing.includes("endDate")) parts.push("End date is before start");
+  return parts.join(". ");
+}
+
 /** Whether these observations fit in one, under the per-observation photo limit. */
 export function canCombine(observations: BatchObservation[]): boolean {
   const photos = observations.reduce((count, o) => count + o.photos.length, 0);

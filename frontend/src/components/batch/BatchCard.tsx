@@ -19,7 +19,12 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { coverImageSx } from "../common/layoutSx";
-import { isReading, missingFields, type BatchObservation } from "../../lib/batchUpload";
+import {
+  describeMissing,
+  isReading,
+  missingFields,
+  type BatchObservation,
+} from "../../lib/batchUpload";
 import { formatCoordinate } from "../../lib/utils";
 import { setPhotoDragImage } from "./photoDragImage";
 
@@ -62,19 +67,9 @@ export function formatBatchDate(observation: BatchObservation): string {
   return new Date(date).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
-function Line({ children, warning }: { children: ReactNode; warning?: boolean }) {
+function Line({ children }: { children: ReactNode }) {
   return (
-    <Typography
-      variant="body2"
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        gap: 0.5,
-        color: warning ? "warning.main" : "text.secondary",
-        fontWeight: warning ? 500 : 400,
-      }}
-    >
-      {warning && <WarningAmberIcon sx={{ fontSize: 16 }} />}
+    <Typography variant="body2" sx={{ color: "text.secondary" }}>
       {children}
     </Typography>
   );
@@ -143,6 +138,7 @@ export function BatchCard({
   const missing = missingFields(observation);
   const multi = photos.length > 1;
   const failed = status === "failed";
+  const incomplete = !reading && missing.length > 0;
   const busy = reading || status === "uploading";
 
   const handleClick = (event: MouseEvent) => {
@@ -177,7 +173,9 @@ export function BatchCard({
       ? "error.main"
       : selected || dropState !== "none"
         ? "primary.main"
-        : "divider";
+        : incomplete
+          ? "warning.main"
+          : "divider";
 
   return (
     <Box
@@ -362,6 +360,29 @@ export function BatchCard({
           textAlign: "left",
         }}
       >
+        {incomplete && (
+          // A solid band, edge to edge, so an incomplete card stands out in a
+          // full grid and still does once selecting it turns the border green.
+          <Typography
+            variant="body2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.75,
+              mx: -1.5,
+              mt: -1.5,
+              mb: 0.5,
+              px: 1.5,
+              py: 0.75,
+              bgcolor: "warning.main",
+              color: "warning.contrastText",
+              fontWeight: 600,
+            }}
+          >
+            <WarningAmberIcon sx={{ fontSize: 18 }} />
+            {describeMissing(missing)}
+          </Typography>
+        )}
         {reading ? (
           <>
             <Typography sx={{ fontWeight: 600, color: "text.secondary" }}>Reading photo</Typography>
@@ -380,22 +401,11 @@ export function BatchCard({
             >
               {taxon.name || "No identification"}
             </Typography>
-            {missing.includes("kingdom") && <Line warning>Missing kingdom</Line>}
-            {observation.date ? (
-              <Line warning={missing.includes("endDate")}>
-                {missing.includes("endDate")
-                  ? "End date before start"
-                  : formatBatchDate(observation)}
-              </Line>
-            ) : (
-              <Line warning>Missing date</Line>
-            )}
-            {observation.latitude !== null && observation.longitude !== null ? (
+            {observation.date && <Line>{formatBatchDate(observation)}</Line>}
+            {observation.latitude !== null && observation.longitude !== null && (
               <Line>
                 {formatCoordinate(observation.latitude)}, {formatCoordinate(observation.longitude)}
               </Line>
-            ) : (
-              <Line warning>Missing location</Line>
             )}
             {observation.remarks && (
               <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>

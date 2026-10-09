@@ -3,6 +3,7 @@ import {
   MAX_BATCH_PHOTOS,
   batchReducer,
   canCombine,
+  describeMissing,
   initialBatchState,
   isReading,
   missingFields,
@@ -363,6 +364,23 @@ describe("completeness", () => {
   it("rejects an end date before the start date", () => {
     expect(missingFields(edited({ endDate: "2026-10-01" }))).toEqual(["endDate"]);
     expect(missingFields(edited({ endDate: "2026-10-05" }))).toEqual([]);
+  });
+});
+
+describe("describeMissing", () => {
+  it("names what is missing in one sentence", () => {
+    expect(describeMissing(["date"])).toBe("Missing date");
+    expect(describeMissing(["date", "location"])).toBe("Missing date and location");
+    expect(describeMissing(["date", "location", "kingdom"])).toBe(
+      "Missing date, location, and kingdom",
+    );
+  });
+
+  it("reports an end date before the start in its own words", () => {
+    expect(describeMissing(["endDate"])).toBe("End date is before start");
+    expect(describeMissing(["location", "endDate"])).toBe(
+      "Missing location. End date is before start",
+    );
   });
 });
 

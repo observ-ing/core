@@ -142,8 +142,7 @@ authTest.describe("Batch upload", () => {
       await addPhotos(page, [barePhoto("a.jpg"), barePhoto("b.jpg")]);
 
       await authExpect(cards(page)).toHaveCount(2);
-      await authExpect(cards(page).first()).toContainText("Missing date");
-      await authExpect(cards(page).first()).toContainText("Missing location");
+      await authExpect(cards(page).first()).toContainText("Missing date and location");
       await authExpect(page.getByRole("button", { name: "2 incomplete" })).toBeVisible();
       const upload = page.getByRole("button", { name: "Upload 2 observations" });
       await authExpect(upload).toBeDisabled();
@@ -277,8 +276,7 @@ authTest.describe("Batch upload", () => {
       await card.getByRole("button", { name: "Photo b.jpg" }).dragTo(page.getByText("Add photos"));
       await authExpect(cards(page)).toHaveCount(2);
       await authExpect(cards(page).first()).toContainText("2 photos");
-      await authExpect(cards(page).nth(1)).toContainText("Missing date");
-      await authExpect(cards(page).nth(1)).toContainText("Missing location");
+      await authExpect(cards(page).nth(1)).toContainText("Missing date and location");
     },
   );
 
