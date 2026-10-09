@@ -8,12 +8,14 @@ import {
   ButtonBase,
   Checkbox,
   CircularProgress,
+  IconButton,
   Skeleton,
   Typography,
   useTheme,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckIcon from "@mui/icons-material/Check";
+import CloseIcon from "@mui/icons-material/Close";
 import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
@@ -58,6 +60,7 @@ export interface BatchCardProps {
   onDragLeave: (event: DragEvent) => void;
   onDrop: (event: DragEvent) => void;
   onRetry: () => void;
+  onRemove: () => void;
 }
 
 const THUMB_SIZE = 56;
@@ -134,6 +137,7 @@ export function BatchCard({
   onDragLeave,
   onDrop,
   onRetry,
+  onRemove,
 }: BatchCardProps) {
   const theme = useTheme();
   const { photos, taxon, status } = observation;
@@ -229,7 +233,8 @@ export function BatchCard({
               position: "absolute",
               left: 8,
               bottom: 8,
-              maxWidth: "calc(100% - 16px)",
+              // Leaves room for the photo count beside it.
+              maxWidth: multi ? "calc(100% - 96px)" : "calc(100% - 16px)",
               px: 0.75,
               borderRadius: 0.5,
               bgcolor: "background.paper",
@@ -255,13 +260,30 @@ export function BatchCard({
             sx={{ position: "absolute", top: 0, left: 0 }}
           />
         )}
+        {!locked && (
+          <IconButton
+            size="small"
+            onClick={onRemove}
+            aria-label="Remove observation"
+            sx={{
+              position: "absolute",
+              top: 8,
+              right: 8,
+              bgcolor: theme.palette.overlay["modalChip"],
+              color: "common.white",
+              "&:hover": { bgcolor: "error.main" },
+            }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        )}
         {multi && (
           <Typography
             variant="caption"
             sx={{
               position: "absolute",
-              top: 10,
-              right: 10,
+              bottom: 8,
+              right: 8,
               px: 1,
               borderRadius: 4,
               bgcolor: theme.palette.overlay["modalChip"],

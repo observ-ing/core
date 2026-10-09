@@ -790,6 +790,10 @@ export function BatchUploadPage() {
                     }}
                     onDrop={(event) => handleCardDrop(event, observation)}
                     onRetry={() => void upload([observation])}
+                    onRemove={() => {
+                      observation.photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+                      dispatch({ type: "remove", id: observation.id });
+                    }}
                   />
                 ))}
                 {!uploading && (

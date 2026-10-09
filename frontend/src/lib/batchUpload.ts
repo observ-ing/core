@@ -83,6 +83,7 @@ export type BatchAction =
   | { type: "combineSelected" }
   | { type: "splitSelected" }
   | { type: "reorderPhoto"; observationId: string; photoId: string; index: number }
+  | { type: "remove"; id: string }
   | { type: "removeSelected" }
   | { type: "setStatus"; ids: string[]; status: UploadStatus; error?: string }
   | { type: "uploaded"; id: string }
@@ -273,6 +274,12 @@ export function batchReducer(state: BatchState, action: BatchAction): BatchState
       });
       return { ...state, observations };
     }
+    case "remove":
+      return {
+        ...state,
+        observations: state.observations.filter((o) => o.id !== action.id),
+        selected: state.selected.filter((id) => id !== action.id),
+      };
     case "removeSelected":
       return {
         ...state,

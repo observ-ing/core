@@ -26,6 +26,7 @@ const meta = {
     onDragLeave: noop,
     onDrop: noop,
     onRetry: noop,
+    onRemove: noop,
   },
   decorators: [
     (Story) => (

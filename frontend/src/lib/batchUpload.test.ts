@@ -168,6 +168,19 @@ describe("selection and editing", () => {
     expect(state.observations.map((o) => o.taxon.name)).toEqual(["Quercus", "Quercus", ""]);
   });
 
+  it("removes one observation and leaves the rest of the selection alone", () => {
+    const state = run(
+      [
+        { type: "selectAll", ids: ["o1", "o2"] },
+        { type: "remove", id: "o2" },
+      ],
+      batchOf("a", "b", "c"),
+    );
+
+    expect(photoIds(state)).toEqual([["a"], ["c"]]);
+    expect(state.selected).toEqual(["o1"]);
+  });
+
   it("removes the selected observations", () => {
     const state = run(
       [{ type: "selectAll", ids: ["o1", "o3"] }, { type: "removeSelected" }],

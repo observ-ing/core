@@ -272,6 +272,21 @@ authTest.describe("Batch upload", () => {
     },
   );
 
+  authTest("a card's remove button removes only that card", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+    await cards(page).nth(0).getByText("No identification").click();
+    await authExpect(editor(page)).toContainText("Editing 1 observation");
+
+    await cards(page).nth(1).getByRole("button", { name: "Remove observation" }).click();
+
+    await authExpect(cards(page)).toHaveCount(2);
+    await authExpect(page.getByRole("button", { name: "Photo b.jpg" })).toHaveCount(0);
+    // The selection on another card is untouched.
+    await authExpect(editor(page)).toContainText("Editing 1 observation");
+    await authExpect(cards(page).nth(0).getByRole("checkbox")).toBeChecked();
+  });
+
   authTest("combines and splits with the toolbar", async ({ authenticatedPage: page }) => {
     await page.goto(BATCH_URL);
     await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
