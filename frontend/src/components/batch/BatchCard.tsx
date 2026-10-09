@@ -316,7 +316,7 @@ export function BatchCard({
       </Box>
 
       {multi && (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, px: 0.75, pt: 0.75 }}>
+        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, p: 0.75 }}>
           {extras.map((photo, i) => (
             <Box key={photo.id} sx={{ display: "flex", gap: 0.75 }}>
               {insertionIndex === i + 1 && <InsertionBar />}
