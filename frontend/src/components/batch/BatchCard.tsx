@@ -23,7 +23,7 @@ import { formatCoordinate } from "../../lib/utils";
 import { setPhotoDragImage } from "./photoDragImage";
 
 /** What dropping the current drag on this card would do. */
-export type CardDropState = "none" | "combine" | "refuse";
+export type CardDropState = "none" | "combine" | "add" | "refuse";
 
 export interface BatchCardProps {
   observation: BatchObservation;
@@ -146,7 +146,7 @@ export function BatchCard({
   const borderColor =
     dropState === "refuse" || failed
       ? "error.main"
-      : selected || dropState === "combine"
+      : selected || dropState !== "none"
         ? "primary.main"
         : "divider";
 
@@ -277,7 +277,11 @@ export function BatchCard({
           >
             {dropState === "refuse" ? <ErrorIcon /> : <AddIcon />}
             <Typography sx={{ fontWeight: 600 }}>
-              {dropState === "refuse" ? "Can't combine" : "Combine"}
+              {dropState === "refuse"
+                ? "Can't combine"
+                : dropState === "add"
+                  ? "Add photos"
+                  : "Combine"}
             </Typography>
             <Typography variant="body2">
               {dropState === "refuse"

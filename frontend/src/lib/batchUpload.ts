@@ -72,7 +72,8 @@ export type BatchEdit = Partial<
 > & { taxon?: Partial<BatchTaxon> };
 
 export type BatchAction =
-  | { type: "addPhotos"; photos: BatchPhoto[] }
+  /** New observations, one per photo; or, with `targetId`, more photos for that one. */
+  | { type: "addPhotos"; photos: BatchPhoto[]; targetId?: string }
   | { type: "exifLoaded"; photoId: string; exif: PhotoExif }
   | { type: "select"; id: string; additive: boolean }
   | { type: "selectAll"; ids: string[] }
@@ -213,6 +214,15 @@ function exifLoaded(state: BatchState, photoId: string, exif: PhotoExif): BatchS
 export function batchReducer(state: BatchState, action: BatchAction): BatchState {
   switch (action.type) {
     case "addPhotos": {
+      if (action.targetId !== undefined) {
+        const target = state.observations.find((o) => o.id === action.targetId);
+        if (!target || target.photos.length + action.photos.length > MAX_IMAGES) return state;
+        // Its values stay as they are; `exifLoaded` fills any blanks as each file is read.
+        const observations = state.observations.map((o) =>
+          o === target ? { ...o, photos: [...o.photos, ...action.photos] } : o,
+        );
+        return { ...state, observations };
+      }
       const added = action.photos.map((p, i) => observationFromPhoto(`o${state.nextId + i}`, p));
       return {
         ...state,

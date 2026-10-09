@@ -99,6 +99,42 @@ describe("adding photos", () => {
   });
 });
 
+describe("adding photos to an existing observation", () => {
+  it("appends them and keeps the observation's own values", () => {
+    const state = run(
+      [
+        { type: "select", id: "o1", additive: false },
+        { type: "edit", patch: { remarks: "mine" } },
+        { type: "addPhotos", photos: [photo("x", null), photo("y", null)], targetId: "o1" },
+        { type: "exifLoaded", photoId: "x", exif: { ...OAKLAND, date: "2001-01-01T00:00" } },
+      ],
+      batchOf("a", "b"),
+    );
+
+    expect(photoIds(state)).toEqual([["a", "x", "y"], ["b"]]);
+    expect(state.observations[0]).toMatchObject({ remarks: "mine", date: "2026-10-03T10:42" });
+    const [target] = state.observations;
+    expect(target && isReading(target)).toBe(true);
+  });
+
+  it("fills a missing date and location from the added photo's EXIF", () => {
+    const state = run([
+      { type: "addPhotos", photos: [photo("a", EMPTY_EXIF)] },
+      { type: "addPhotos", photos: [photo("x", null)], targetId: "o1" },
+      { type: "exifLoaded", photoId: "x", exif: OAKLAND },
+    ]);
+
+    expect(state.observations[0]).toMatchObject({ date: "2026-10-03T10:42", latitude: 37.905 });
+  });
+
+  it("refuses photos that would exceed the per-observation limit", () => {
+    const state = batchOf("a");
+    const tooMany = Array.from({ length: MAX_IMAGES }, (_, i) => photo(`x${i}`));
+
+    expect(batchReducer(state, { type: "addPhotos", photos: tooMany, targetId: "o1" })).toBe(state);
+  });
+});
+
 describe("selection and editing", () => {
   it("replaces the selection on a plain click and toggles on an additive one", () => {
     let state = run(

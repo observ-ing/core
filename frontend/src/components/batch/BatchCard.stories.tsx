@@ -94,6 +94,11 @@ export const CombineTarget: Story = {
   args: { dropState: "combine" },
 };
 
+/** Files from the computer are being dragged over this card. */
+export const AddFilesTarget: Story = {
+  args: { dropState: "add", combinedPhotoCount: 3 },
+};
+
 /** The drop would put more than 10 photos in one observation. */
 export const CombineRefused: Story = {
   args: { dropState: "refuse", observation: storyObservation({ photos: fourPhotos }) },

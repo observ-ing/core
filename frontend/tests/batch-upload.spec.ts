@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
@@ -35,6 +35,27 @@ async function addPhotos(
   files: Array<{ name: string; mimeType: string; buffer: Buffer }>,
 ) {
   await page.getByTestId("batch-file-input").setInputFiles(files);
+}
+
+/** Drop files from outside the page onto `target`, as a drag from the file manager would. */
+async function dropFiles(
+  page: Page,
+  target: Locator,
+  files: Array<{ name: string; mimeType: string; buffer: Buffer }>,
+) {
+  const dataTransfer = await page.evaluateHandle(
+    (items) => {
+      const transfer = new DataTransfer();
+      for (const item of items) {
+        const bytes = Uint8Array.from(atob(item.base64), (c) => c.charCodeAt(0));
+        transfer.items.add(new File([bytes], item.name, { type: item.mimeType }));
+      }
+      return transfer;
+    },
+    files.map((f) => ({ name: f.name, mimeType: f.mimeType, base64: f.buffer.toString("base64") })),
+  );
+  await target.dispatchEvent("dragover", { dataTransfer });
+  await target.dispatchEvent("drop", { dataTransfer });
 }
 
 /** Capture POSTed observations and answer each with a fresh uri. */
@@ -195,6 +216,41 @@ authTest.describe("Batch upload", () => {
     await authExpect(cards(page)).toHaveCount(1);
     await authExpect(cards(page).first()).toContainText("2 photos");
   });
+
+  authTest(
+    "files dropped on a card join it; files dropped elsewhere start new observations",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      await authExpect(cards(page)).toHaveCount(1);
+
+      await dropFiles(page, cards(page).first(), [barePhoto("b.jpg"), barePhoto("c.jpg")]);
+      await authExpect(cards(page)).toHaveCount(1);
+      await authExpect(cards(page).first()).toContainText("3 photos");
+      // The card keeps what it already had.
+      await authExpect(cards(page).first()).toContainText("Oct 3, 2026");
+
+      await dropFiles(page, page.getByText("Add photos"), [barePhoto("d.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(cards(page).nth(1)).toContainText("Missing date");
+    },
+  );
+
+  authTest(
+    "refuses files that would put more than 10 photos on a card",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      await authExpect(cards(page)).toHaveCount(1);
+
+      const tooMany = Array.from({ length: 10 }, (_, i) => barePhoto(`x${i}.jpg`));
+      await dropFiles(page, cards(page).first(), tooMany);
+
+      await authExpect(page.getByText("An observation holds up to 10 photos")).toBeVisible();
+      await authExpect(cards(page)).toHaveCount(1);
+      await authExpect(cards(page).first()).not.toContainText("photos");
+    },
+  );
 
   authTest(
     "dragging a photo within its card reorders it, and out of the card splits it off",

@@ -78,6 +78,8 @@ type Drag =
 interface Over {
   id: string;
   insertionIndex: number | null;
+  /** How many files from outside the page are being dragged; 0 for a drag within it. */
+  files: number;
 }
 
 const NEW_OBSERVATION = "new";
@@ -174,9 +176,14 @@ export function BatchUploadPage() {
     void navigate(profilePath);
   }, [uploading, hasUnsent, uploadedCount, toast, navigate, profilePath]);
 
-  const addFiles = (files: File[]) => {
+  /** Add files as new observations, or to `target` when they were dropped on its card. */
+  const addFiles = (files: File[], target?: BatchObservation) => {
     if (files.length === 0) return;
     const { accepted, skipped: skippedFiles } = vetBatchFiles(files, photoCount);
+    if (target && target.photos.length + accepted.length > MAX_IMAGES) {
+      toast.error(`An observation holds up to ${MAX_IMAGES} photos`);
+      return;
+    }
     if (skippedFiles.length > 0) setSkipped({ files: skippedFiles, added: accepted.length });
     if (accepted.length === 0) return;
 
@@ -186,7 +193,7 @@ export function BatchUploadPage() {
       previewUrl: URL.createObjectURL(file),
       exif: null,
     }));
-    dispatch({ type: "addPhotos", photos });
+    dispatch({ type: "addPhotos", photos, ...(target ? { targetId: target.id } : {}) });
     void runPool(photos, EXIF_CONCURRENCY, async (photo) => {
       dispatch({ type: "exifLoaded", photoId: photo.id, exif: await readPhotoExif(photo.file) });
     });
@@ -283,7 +290,11 @@ export function BatchUploadPage() {
 
   const updateOver = (next: Over | null) =>
     setOver((prev) =>
-      prev?.id === next?.id && prev?.insertionIndex === next?.insertionIndex ? prev : next,
+      prev?.id === next?.id &&
+      prev?.insertionIndex === next?.insertionIndex &&
+      prev?.files === next?.files
+        ? prev
+        : next,
     );
 
   const isOwnCard = (d: Drag, id: string) =>
@@ -305,29 +316,41 @@ export function BatchUploadPage() {
     insertionIndex: number | null,
   ) => {
     const d = dragRef.current;
-    // Files from outside, and a card over itself, fall through to the page.
-    if (!d || uploading || (d.kind === "cards" && isOwnCard(d, observation.id))) return;
+    // A card over itself falls through to the page, where it does nothing.
+    if (uploading || (d?.kind === "cards" && isOwnCard(d, observation.id))) return;
     event.preventDefault();
     event.stopPropagation();
-    if (d.kind === "photo" && isOwnCard(d, observation.id)) {
+    if (!d) {
+      // Files from outside the page: they will be added to this observation.
+      updateOver({
+        id: observation.id,
+        insertionIndex: null,
+        files: event.dataTransfer.items.length,
+      });
+    } else if (d.kind === "photo" && isOwnCard(d, observation.id)) {
       // Between photo slots the pointer is over the card but no slot; keep the bar.
       setOver((prev) => {
         const kept = prev?.id === observation.id ? prev.insertionIndex : null;
         const next = insertionIndex ?? kept;
         return prev?.id === observation.id && prev.insertionIndex === next
           ? prev
-          : { id: observation.id, insertionIndex: next };
+          : { id: observation.id, insertionIndex: next, files: 0 };
       });
     } else {
-      updateOver({ id: observation.id, insertionIndex: null });
+      updateOver({ id: observation.id, insertionIndex: null, files: 0 });
     }
   };
 
   const handleCardDrop = (event: DragEvent, observation: BatchObservation) => {
     const d = dragRef.current;
-    if (!d || uploading || (d.kind === "cards" && isOwnCard(d, observation.id))) return;
+    if (uploading || (d?.kind === "cards" && isOwnCard(d, observation.id))) return;
     event.preventDefault();
     event.stopPropagation();
+    if (!d) {
+      addFiles(Array.from(event.dataTransfer.files), observation);
+      endDrag();
+      return;
+    }
     const [photoId] = d.photoIds;
     if (d.kind === "photo" && isOwnCard(d, observation.id)) {
       const from = observation.photos.findIndex((p) => p.id === photoId);
@@ -356,7 +379,9 @@ export function BatchUploadPage() {
     event.preventDefault();
     if (uploading) return;
     const d = dragRef.current;
-    updateOver(!d || d.kind === "photo" ? { id: NEW_OBSERVATION, insertionIndex: null } : null);
+    updateOver(
+      !d || d.kind === "photo" ? { id: NEW_OBSERVATION, insertionIndex: null, files: 0 } : null,
+    );
   };
 
   const handlePageDrop = (event: DragEvent) => {
@@ -369,9 +394,15 @@ export function BatchUploadPage() {
     endDrag();
   };
 
+  /** Photos a drop on this card would bring in, from the page or from outside it. */
+  const incomingCount = (observation: BatchObservation) =>
+    over?.id !== observation.id ? 0 : drag ? drag.photoIds.length : over.files;
+
   const dropStateFor = (observation: BatchObservation): CardDropState => {
-    if (!drag || over?.id !== observation.id || isOwnCard(drag, observation.id)) return "none";
-    return observation.photos.length + drag.photoIds.length > MAX_IMAGES ? "refuse" : "combine";
+    const incoming = incomingCount(observation);
+    if (incoming === 0 || (drag && isOwnCard(drag, observation.id))) return "none";
+    if (observation.photos.length + incoming > MAX_IMAGES) return "refuse";
+    return drag ? "combine" : "add";
   };
 
   // --- Render --------------------------------------------------------------
@@ -608,7 +639,7 @@ export function BatchUploadPage() {
                   selected={selected.includes(observation.id)}
                   locked={uploading}
                   dropState={dropStateFor(observation)}
-                  combinedPhotoCount={observation.photos.length + (drag?.photoIds.length ?? 0)}
+                  combinedPhotoCount={observation.photos.length + incomingCount(observation)}
                   insertionIndex={
                     drag?.kind === "photo" && over?.id === observation.id
                       ? over.insertionIndex
@@ -648,8 +679,8 @@ export function BatchUploadPage() {
                   <Typography variant="body2">
                     {overNew && drag
                       ? "Date and location come from the photo. Identification starts blank."
-                      : "Drop photos from your computer, or drag a photo out of a card to give " +
-                        "it its own observation."}
+                      : "Drop photos here to start new observations, or onto a card to add " +
+                        "them to it. Drag a photo out of a card to give it its own observation."}
                   </Typography>
                   <Button
                     variant="outlined"
