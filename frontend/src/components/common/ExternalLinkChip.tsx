@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { Chip } from "@mui/material";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import { miniIconSx } from "./layoutSx";
 
 export interface ExternalLinkChipProps {
   /** Visible chip text (e.g. "GBIF", "Wikidata"). */
@@ -27,7 +28,7 @@ export function ExternalLinkChip({ label, href, icon }: ExternalLinkChipProps) {
       size="small"
       variant="outlined"
       clickable
-      icon={icon ?? <OpenInNewIcon sx={{ fontSize: 14 }} />}
+      icon={icon ?? <OpenInNewIcon sx={miniIconSx} />}
     />
   );
 }
