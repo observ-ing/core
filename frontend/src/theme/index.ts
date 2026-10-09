@@ -240,6 +240,16 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           }),
         },
       },
+      // Popup menus (account, record overflow, basemap) share the outlined card
+      // radius — centralized here instead of repeating `borderRadius: 2` on
+      // the TopBar menu paper only.
+      MuiMenu: {
+        styleOverrides: {
+          paper: ({ theme }) => ({
+            borderRadius: Number(theme.shape.borderRadius) * 2,
+          }),
+        },
+      },
       // Every dialog's action row (ConfirmDialog, LoginModal) uses the same
       // padding — centralized here instead of repeating `sx={{ px: 3, pb: 2 }}`
       // at each call site.

@@ -183,7 +183,6 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                       sx: {
                         mt: 1.5,
                         minWidth: 200,
-                        borderRadius: 2,
                         "& .MuiMenuItem-root": {
                           px: 2,
                           py: 1,
