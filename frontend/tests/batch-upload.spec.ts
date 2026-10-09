@@ -200,7 +200,16 @@ authTest.describe("Batch upload", () => {
       await editor(page).getByText("Editing 1 observation").click();
       await authExpect(editor(page)).toContainText("Editing 1 observation");
 
-      await page.getByRole("heading", { name: "Batch upload" }).click();
+      // A drag that starts in the editor (panning its map, selecting text) and
+      // ends over the background is not a background click.
+      const title = page.getByRole("heading", { name: "Batch upload" });
+      await editor(page).getByText("Editing 1 observation").hover();
+      await page.mouse.down();
+      await title.hover();
+      await page.mouse.up();
+      await authExpect(editor(page)).toContainText("Editing 1 observation");
+
+      await title.click();
       await authExpect(editor(page)).toContainText("Nothing selected");
       await authExpect(cards(page).first()).toContainText("kept");
     },

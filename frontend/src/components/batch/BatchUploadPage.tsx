@@ -265,11 +265,22 @@ export function BatchUploadPage() {
   // A click on the page's background drops the selection. Buttons, cards, and
   // the editor keep it, as do dialogs and menus: those render outside this
   // element, though their clicks still bubble here through React.
-  const handleBackgroundClick = (event: MouseEvent) => {
+  const isBackground = (event: MouseEvent) => {
     const { target } = event;
-    if (!(target instanceof Element) || !event.currentTarget.contains(target)) return;
-    if (target.closest(`button, a, input, textarea, label, [${KEEPS_SELECTION}]`)) return;
-    if (selected.length > 0) dispatch({ type: "clearSelection" });
+    return (
+      target instanceof Element &&
+      event.currentTarget.contains(target) &&
+      !target.closest(`button, a, input, textarea, label, [${KEEPS_SELECTION}]`)
+    );
+  };
+  // The press has to start on the background too. A drag that starts in the
+  // editor (panning its map, selecting text) and is released outside it still
+  // produces a click, on whatever element contains both ends.
+  const pressedOnBackground = useRef(false);
+  const handleBackgroundClick = (event: MouseEvent) => {
+    if (pressedOnBackground.current && isBackground(event) && selected.length > 0) {
+      dispatch({ type: "clearSelection" });
+    }
   };
 
   // --- Drag and drop -------------------------------------------------------
@@ -450,6 +461,9 @@ export function BatchUploadPage() {
         if (leftElement(event)) updateOver(null);
       }}
       onDrop={handlePageDrop}
+      onMouseDown={(event) => {
+        pressedOnBackground.current = isBackground(event);
+      }}
       onClick={handleBackgroundClick}
       // The header and controls stay put; only the area below them scrolls.
       sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
