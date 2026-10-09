@@ -31,6 +31,9 @@ import { setPhotoDragImage } from "./photoDragImage";
 /** Attribute marking an element whose clicks must not clear the page's selection. */
 export const KEEPS_SELECTION = "data-keeps-selection";
 
+/** Attribute carrying a card's observation id, for hit-testing a drawn rectangle. */
+export const OBSERVATION_ID = "data-observation-id";
+
 /** What dropping the current drag on this card would do. */
 export type CardDropState = "none" | "combine" | "add" | "refuse";
 
@@ -183,7 +186,7 @@ export function BatchCard({
   return (
     <Box
       data-testid="batch-card"
-      {...{ [KEEPS_SELECTION]: "" }}
+      {...{ [KEEPS_SELECTION]: "", [OBSERVATION_ID]: observation.id }}
       aria-busy={busy}
       draggable={!locked}
       onDragStart={onCardDragStart}

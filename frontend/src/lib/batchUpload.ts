@@ -405,6 +405,24 @@ export function vetBatchFiles(
   return { accepted: vetted.accepted, skipped };
 }
 
+export interface Rect {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
+/** The area two rectangles share, or `null` when they don't overlap. */
+export function intersectRects(a: Rect, b: Rect): Rect | null {
+  const rect = {
+    left: Math.max(a.left, b.left),
+    top: Math.max(a.top, b.top),
+    right: Math.min(a.right, b.right),
+    bottom: Math.min(a.bottom, b.bottom),
+  };
+  return rect.left < rect.right && rect.top < rect.bottom ? rect : null;
+}
+
 /** Run `worker` over `items`, keeping at most `limit` calls in flight. */
 export async function runPool<T>(
   items: T[],

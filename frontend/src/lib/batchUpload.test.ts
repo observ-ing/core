@@ -4,6 +4,7 @@ import {
   batchReducer,
   canCombine,
   describeMissing,
+  intersectRects,
   initialBatchState,
   isReading,
   missingFields,
@@ -381,6 +382,24 @@ describe("describeMissing", () => {
     expect(describeMissing(["location", "endDate"])).toBe(
       "Missing location. End date is before start",
     );
+  });
+});
+
+describe("intersectRects", () => {
+  const box = (left: number, top: number, right: number, bottom: number) => ({
+    left,
+    top,
+    right,
+    bottom,
+  });
+
+  it("returns the overlap of two rectangles", () => {
+    expect(intersectRects(box(0, 0, 10, 10), box(5, 6, 20, 20))).toEqual(box(5, 6, 10, 10));
+  });
+
+  it("returns null when they are apart or only touch", () => {
+    expect(intersectRects(box(0, 0, 10, 10), box(11, 0, 20, 10))).toBeNull();
+    expect(intersectRects(box(0, 0, 10, 10), box(10, 0, 20, 10))).toBeNull();
   });
 });
 

@@ -215,6 +215,33 @@ authTest.describe("Batch upload", () => {
     },
   );
 
+  authTest(
+    "drawing a rectangle from the background selects the cards it touches",
+    async ({ authenticatedPage: page }) => {
+      await page.setViewportSize({ width: 1400, height: 900 });
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+      await authExpect(cards(page)).toHaveCount(3);
+
+      // From the title, above and left of the grid, to the middle of the second
+      // card: touches the first two cards and stops short of the third.
+      const start = await page.getByRole("heading", { name: "Batch upload" }).boundingBox();
+      const second = await cards(page).nth(1).boundingBox();
+      if (!start || !second) throw new Error("layout not ready");
+      await page.mouse.move(start.x + 5, start.y + 5);
+      await page.mouse.down();
+      await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2, {
+        steps: 5,
+      });
+      await page.mouse.up();
+
+      await authExpect(editor(page)).toContainText("Editing 2 observations");
+      await authExpect(cards(page).nth(0).getByRole("checkbox")).toBeChecked();
+      await authExpect(cards(page).nth(1).getByRole("checkbox")).toBeChecked();
+      await authExpect(cards(page).nth(2).getByRole("checkbox")).not.toBeChecked();
+    },
+  );
+
   authTest("combines and splits with the toolbar", async ({ authenticatedPage: page }) => {
     await page.goto(BATCH_URL);
     await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
