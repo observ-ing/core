@@ -1,0 +1,274 @@
+import { test, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
+import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+import { exifJpeg } from "./helpers/exif-jpeg";
+
+const BATCH_URL = "/batch-upload";
+
+/** A photo with no EXIF at all: arrives with no date and no location. */
+const barePhoto = (name: string) => ({
+  name,
+  mimeType: "image/jpeg",
+  buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+});
+
+/** A photo taken in Oakland at 10:42 local time, UTC-7, accurate to 12 m. */
+const taggedPhoto = (name: string) => ({
+  name,
+  mimeType: "image/jpeg",
+  buffer: exifJpeg({
+    dateTimeOriginal: "2026:10:03 10:42:19",
+    offsetTimeOriginal: "-07:00",
+    latitude: 37.905,
+    longitude: -122.2445,
+    accuracyMeters: 12,
+  }),
+});
+
+const cards = (page: Page) => page.getByTestId("batch-card");
+const editor = (page: Page) => page.getByRole("complementary", { name: /Edit selected/ });
+
+async function addPhotos(
+  page: Page,
+  files: Array<{ name: string; mimeType: string; buffer: Buffer }>,
+) {
+  await page.getByTestId("batch-file-input").setInputFiles(files);
+}
+
+/** Capture POSTed observations and answer each with a fresh uri. */
+async function mockSubmit(page: Page, failNames: string[] = []) {
+  const bodies: Array<Record<string, unknown>> = [];
+  await page.route("**/api/occurrences", (route) => {
+    if (route.request().method() !== "POST") return route.continue();
+    const body = route.request().postDataJSON();
+    if (failNames.includes(body.occurrenceRemarks)) {
+      return route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "PDS unavailable" }),
+      });
+    }
+    bodies.push(body);
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        uri: `at://${getTestUser().did}/bio.lexicons.temp.v0-1.occurrence/batch${bodies.length}`,
+        cid: `bafybatch${bodies.length}`,
+      }),
+    });
+  });
+  return bodies;
+}
+
+test.describe("Batch upload - logged out", () => {
+  test("nav has no Batch upload item", async ({ page }) => {
+    await page.goto("/explore");
+    await expect(page.getByRole("link", { name: "Explore" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Batch upload" })).toHaveCount(0);
+  });
+});
+
+authTest.describe("Batch upload", () => {
+  authTest.beforeEach(async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
+    await mockTaxaSearchRoute(page);
+  });
+
+  authTest("is reachable from the top bar", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "Batch upload" }).click();
+    await authExpect(page).toHaveURL(BATCH_URL);
+    await authExpect(page.getByRole("heading", { name: "Drag photos here" })).toBeVisible();
+    await authExpect(page.getByRole("button", { name: "Upload" })).toBeDisabled();
+  });
+
+  authTest(
+    "reads date, location, and accuracy from each photo's EXIF",
+    async ({ authenticatedPage: page }) => {
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("IMG_1.jpg")]);
+
+      const card = cards(page).first();
+      await authExpect(card).toContainText("Oct 3, 2026");
+      await authExpect(card).toContainText("37.905");
+      await authExpect(card).toContainText("-122.2445");
+
+      await card.getByText("No identification").click();
+      await authExpect(editor(page)).toContainText("UTC-07:00");
+      await authExpect(editor(page)).toContainText("Coordinate Uncertainty: 12m");
+
+      await page.getByRole("button", { name: "Upload 1 observation" }).click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies).toHaveLength(1);
+      // 10:42 at UTC-7, whatever zone the browser is in.
+      authExpect(bodies[0]).toMatchObject({
+        eventDate: "2026-10-03T17:42:00.000Z",
+        coordinateUncertaintyInMeters: 12,
+      });
+      authExpect(bodies[0]?.["images"]).toHaveLength(1);
+    },
+  );
+
+  authTest(
+    "blocks upload until every observation has a date and a location",
+    async ({ authenticatedPage: page }) => {
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [barePhoto("a.jpg"), barePhoto("b.jpg")]);
+
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(cards(page).first()).toContainText("Missing date");
+      await authExpect(cards(page).first()).toContainText("Missing location");
+      await authExpect(page.getByRole("button", { name: "2 incomplete" })).toBeVisible();
+      const upload = page.getByRole("button", { name: "Upload 2 observations" });
+      await authExpect(upload).toBeDisabled();
+
+      // Edit both at once.
+      await page.getByRole("button", { name: "Select all" }).click();
+      await authExpect(editor(page)).toContainText("Editing 2 observations");
+      await page.getByLabel("Observation date").fill("2026-10-04T08:15");
+      await page.getByRole("button", { name: "Enter coordinates manually" }).click();
+      await page.getByLabel("Latitude").fill("37.9");
+      await page.getByLabel("Longitude").fill("-122.2");
+      await page.getByRole("button", { name: "Set location for 2 observations" }).click();
+      await page.getByLabel("Remarks").fill("creek trail");
+
+      await authExpect(page.getByRole("button", { name: /incomplete/ })).toHaveCount(0);
+      await upload.click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies).toHaveLength(2);
+      for (const body of bodies) {
+        authExpect(body).toMatchObject({
+          latitude: 37.9,
+          longitude: -122.2,
+          coordinateUncertaintyInMeters: 50,
+          occurrenceRemarks: "creek trail",
+        });
+      }
+    },
+  );
+
+  authTest("lists skipped files and adds the rest", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [
+      barePhoto("ok.jpg"),
+      { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("x") },
+    ]);
+
+    const dialog = page.getByRole("dialog");
+    await authExpect(dialog).toContainText("1 file wasn't added");
+    await authExpect(dialog).toContainText("notes.pdf");
+    await authExpect(dialog).toContainText("Not a JPEG, PNG, or WebP");
+    await dialog.getByRole("button", { name: "OK" }).click();
+    await authExpect(cards(page)).toHaveCount(1);
+  });
+
+  authTest("combines and splits with the toolbar", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+    await authExpect(cards(page)).toHaveCount(3);
+
+    await authExpect(page.getByRole("button", { name: "Combine" })).toBeDisabled();
+    await page.getByRole("button", { name: "Select all" }).click();
+    await page.getByRole("button", { name: "Combine" }).click();
+    await authExpect(cards(page)).toHaveCount(1);
+    await authExpect(cards(page).first()).toContainText("3 photos");
+
+    await page.getByRole("button", { name: "Split photos" }).click();
+    await authExpect(cards(page)).toHaveCount(3);
+  });
+
+  authTest("dragging one card onto another combines them", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+    await authExpect(cards(page)).toHaveCount(2);
+
+    await cards(page)
+      .nth(1)
+      .getByText("No identification")
+      .dragTo(cards(page).first().getByText("No identification"));
+
+    await authExpect(cards(page)).toHaveCount(1);
+    await authExpect(cards(page).first()).toContainText("2 photos");
+  });
+
+  authTest(
+    "dragging a photo within its card reorders it, and out of the card splits it off",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), barePhoto("b.jpg"), taggedPhoto("c.jpg")]);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByRole("button", { name: "Combine" }).click();
+      const card = cards(page).first();
+      await authExpect(card).toContainText("3 photos");
+
+      // Onto the left half of the cover: c.jpg becomes the cover.
+      await card
+        .getByRole("button", { name: "Photo c.jpg" })
+        .dragTo(card.getByRole("button", { name: "Photo a.jpg" }), {
+          targetPosition: { x: 20, y: 120 },
+        });
+      await authExpect(card.getByRole("button", { name: /^Photo / }).first()).toHaveAccessibleName(
+        "Photo c.jpg",
+      );
+      await authExpect(cards(page)).toHaveCount(1);
+
+      // Out to the "Add photos" tile: b.jpg starts over from its own (empty) EXIF.
+      await card.getByRole("button", { name: "Photo b.jpg" }).dragTo(page.getByText("Add photos"));
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(cards(page).first()).toContainText("2 photos");
+      await authExpect(cards(page).nth(1)).toContainText("Missing date");
+      await authExpect(cards(page).nth(1)).toContainText("Missing location");
+    },
+  );
+
+  authTest(
+    "keeps failed observations for a retry and drops uploaded ones",
+    async ({ authenticatedPage: page }) => {
+      const bodies = await mockSubmit(page, ["fails"]);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+
+      await cards(page).nth(1).getByText("No identification").click();
+      await page.getByLabel("Remarks").fill("fails");
+      await page.getByRole("button", { name: "Upload 2 observations" }).click();
+
+      await authExpect(cards(page)).toHaveCount(1);
+      await authExpect(cards(page).first()).toContainText("Upload failed");
+      await authExpect(cards(page).first()).toContainText("PDS unavailable");
+      await authExpect(page.getByText("1 of 2 uploaded")).toBeVisible();
+      await authExpect(page.getByRole("link", { name: /View the 1 uploaded/ })).toBeVisible();
+      await authExpect(page).toHaveURL(BATCH_URL);
+
+      // Fix it and retry from the card.
+      await cards(page).first().getByText("No identification").click();
+      await page.getByLabel("Remarks").fill("fixed");
+      await cards(page).first().getByRole("button", { name: "Retry" }).click();
+
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies).toHaveLength(2);
+    },
+  );
+
+  authTest("confirms before leaving with unsent photos", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg")]);
+    await authExpect(cards(page)).toHaveCount(1);
+
+    await page.getByRole("link", { name: "Explore" }).click();
+    const dialog = page.getByRole("dialog");
+    await authExpect(dialog).toContainText("Leave batch upload?");
+    await dialog.getByRole("button", { name: "Keep editing" }).click();
+    await authExpect(page).toHaveURL(BATCH_URL);
+    await authExpect(cards(page)).toHaveCount(1);
+
+    await page.getByRole("link", { name: "Explore" }).click();
+    await page.getByRole("dialog").getByRole("button", { name: "Leave" }).click();
+    await authExpect(page).toHaveURL("/explore");
+  });
+});

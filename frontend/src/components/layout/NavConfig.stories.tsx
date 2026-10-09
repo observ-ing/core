@@ -19,10 +19,18 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-function NavItemList({ user, unreadCount }: { user: { did: string } | null; unreadCount: number }) {
+function NavItemList({
+  user,
+  unreadCount,
+  batchUpload = false,
+}: {
+  user: { did: string } | null;
+  unreadCount: number;
+  batchUpload?: boolean;
+}) {
   return (
     <List>
-      {getNavItems(user, unreadCount).map((item) => (
+      {getNavItems(user, unreadCount, { batchUpload }).map((item) => (
         <ListItem key={item.path}>
           <ListItemIcon>{item.icon}</ListItemIcon>
           <ListItemText primary={item.label} secondary={item.path} />
@@ -42,6 +50,11 @@ export const SignedInNoUnread: Story = {
 
 export const SignedInWithUnread: Story = {
   render: () => <NavItemList user={{ did: "did:plc:alice" }} unreadCount={3} />,
+};
+
+/** Desktop browsers with a precise pointer also get the batch uploader. */
+export const SignedInWithBatchUpload: Story = {
+  render: () => <NavItemList user={{ did: "did:plc:alice" }} unreadCount={0} batchUpload />,
 };
 
 export const ThemeIcons: Story = {
