@@ -126,9 +126,7 @@ export function TransparencyPage() {
                       {formatCurrency(serviceTotals.get(s) ?? 0)}
                     </TableCell>
                   ))}
-                  <TableCell align="right">
-                    {formatCurrency(grandTotal)}
-                  </TableCell>
+                  <TableCell align="right">{formatCurrency(grandTotal)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
