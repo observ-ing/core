@@ -215,6 +215,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
               onChange={(latitude, longitude) => onEdit({ latitude, longitude })}
               uncertaintyMeters={first.uncertaintyMeters}
               onUncertaintyChange={(uncertaintyMeters) => onEdit({ uncertaintyMeters })}
+              showHints={false}
             />
           ) : (
             <LocationPicker
@@ -223,6 +224,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
               longitude={proposed?.longitude ?? null}
               onChange={(latitude, longitude) => setProposed({ latitude, longitude })}
               extraMarkers={located}
+              showHints={false}
             />
           )}
         </Suspense>
@@ -275,15 +277,11 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
             ? MIXED
             : "e.g. worn wings, feeding on milkweed along the creek trail"
         }
+        // The count only earns its line once the limit is in sight.
         helperText={
-          <Box component="span" sx={{ display: "flex", justifyContent: "space-between", gap: 1.5 }}>
-            <span>Shared publicly as Darwin Core occurrence remarks.</span>
-            {remarks !== undefined && (
-              <span>
-                {remarks.length} / {MAX_REMARK_LENGTH}
-              </span>
-            )}
-          </Box>
+          remarks !== undefined && remarks.length >= MAX_REMARK_LENGTH * 0.9
+            ? `${remarks.length} / ${MAX_REMARK_LENGTH}`
+            : undefined
         }
         slotProps={{
           inputLabel: { shrink: true },

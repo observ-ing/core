@@ -37,6 +37,8 @@ interface LocationPickerProps {
    * of several observations being given one new location).
    */
   extraMarkers?: ReadonlyArray<{ latitude: number; longitude: number }>;
+  /** Show the one-line usage hints under the map and the slider. Defaults to true. */
+  showHints?: boolean;
 }
 
 interface NominatimResult {
@@ -73,6 +75,7 @@ export function LocationPicker({
   uncertaintyMeters = 50,
   onUncertaintyChange,
   extraMarkers,
+  showHints = true,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -410,16 +413,18 @@ export function LocationPicker({
           />
         </Stack>
       </Collapse>
-      <Typography
-        variant="caption"
-        sx={{
-          color: "text.disabled",
-          display: "block",
-          mt: 0.5,
-        }}
-      >
-        Search or click the map to set a location
-      </Typography>
+      {showHints && (
+        <Typography
+          variant="caption"
+          sx={{
+            color: "text.disabled",
+            display: "block",
+            mt: 0.5,
+          }}
+        >
+          Search or click the map to set a location
+        </Typography>
+      )}
       {onUncertaintyChange && (
         <Box sx={{ mt: 2 }}>
           <Typography
@@ -467,14 +472,16 @@ export function LocationPicker({
               },
             }}
           />
-          <Typography
-            variant="caption"
-            sx={{
-              color: "text.disabled",
-            }}
-          >
-            Adjust the circle to indicate location precision
-          </Typography>
+          {showHints && (
+            <Typography
+              variant="caption"
+              sx={{
+                color: "text.disabled",
+              }}
+            >
+              Adjust the circle to indicate location precision
+            </Typography>
+          )}
         </Box>
       )}
     </Box>
