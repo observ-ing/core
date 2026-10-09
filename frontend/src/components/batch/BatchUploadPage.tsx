@@ -550,65 +550,17 @@ export function BatchUploadPage() {
                 Uploaded observations leave this list. Editing is paused until the upload finishes.
               </Typography>
             ) : (
-              <>
-                {failedCount > 0 && (
-                  <Typography sx={{ color: "text.secondary", mb: 2 }}>
-                    {plural(failedCount, "observation")} {failedCount === 1 ? "was" : "were"} not
-                    uploaded. You can edit {failedCount === 1 ? "it" : "them"} and try again.{" "}
-                    {uploadedCount > 0 && (
-                      <MuiLink component={Link} to={profilePath} sx={{ fontWeight: 600 }}>
-                        View the {plural(uploadedCount, "uploaded observation")}
-                      </MuiLink>
-                    )}
-                  </Typography>
-                )}
-                <Box
-                  sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 1, mb: 2 }}
-                >
-                  <Typography sx={{ flex: "1 1 160px", color: "text.secondary" }}>
-                    {filtering && `Showing ${incomplete.length} incomplete. `}
-                    {picked.length > 0
-                      ? `${picked.length} selected`
-                      : "Drag cards together to combine them"}
-                  </Typography>
-                  <ToolbarButton
-                    icon={<SelectAllIcon />}
-                    onClick={() => dispatch({ type: "selectAll", ids: shown.map((o) => o.id) })}
-                  >
-                    Select all
-                  </ToolbarButton>
-                  <ToolbarButton
-                    icon={<DeselectIcon />}
-                    disabled={picked.length === 0}
-                    onClick={() => dispatch({ type: "clearSelection" })}
-                  >
-                    Clear
-                  </ToolbarButton>
-                  <Divider orientation="vertical" flexItem />
-                  <ToolbarButton
-                    icon={<CallMergeIcon />}
-                    disabled={!canCombine(picked)}
-                    onClick={() => dispatch({ type: "combineSelected" })}
-                  >
-                    Combine
-                  </ToolbarButton>
-                  <ToolbarButton
-                    icon={<CallSplitIcon />}
-                    disabled={!picked.some((o) => o.photos.length > 1)}
-                    onClick={() => dispatch({ type: "splitSelected" })}
-                  >
-                    Split photos
-                  </ToolbarButton>
-                  <ToolbarButton
-                    icon={<DeleteOutlineIcon />}
-                    color="error"
-                    disabled={picked.length === 0}
-                    onClick={removeSelected}
-                  >
-                    Remove
-                  </ToolbarButton>
-                </Box>
-              </>
+              failedCount > 0 && (
+                <Typography sx={{ color: "text.secondary", mb: 2 }}>
+                  {plural(failedCount, "observation")} {failedCount === 1 ? "was" : "were"} not
+                  uploaded. You can edit {failedCount === 1 ? "it" : "them"} and try again.{" "}
+                  {uploadedCount > 0 && (
+                    <MuiLink component={Link} to={profilePath} sx={{ fontWeight: 600 }}>
+                      View the {plural(uploadedCount, "uploaded observation")}
+                    </MuiLink>
+                  )}
+                </Typography>
+              )
             )}
           </>
         )}
@@ -658,6 +610,67 @@ export function BatchUploadPage() {
                 [theme.breakpoints.up("lg")]: { height: "100%", overflowY: "auto" },
               }}
             >
+              {!uploading && (
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 1,
+                    // Stays at the top of the cards it acts on while they scroll
+                    // under it, so it needs a solid backing.
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 1,
+                    px: 0.5,
+                    pb: 2,
+                    bgcolor: "background.default",
+                  }}
+                >
+                  <Typography sx={{ flex: "1 1 160px", color: "text.secondary" }}>
+                    {filtering && `Showing ${incomplete.length} incomplete. `}
+                    {picked.length > 0
+                      ? `${picked.length} selected`
+                      : "Drag cards together to combine them"}
+                  </Typography>
+                  <ToolbarButton
+                    icon={<SelectAllIcon />}
+                    onClick={() => dispatch({ type: "selectAll", ids: shown.map((o) => o.id) })}
+                  >
+                    Select all
+                  </ToolbarButton>
+                  <ToolbarButton
+                    icon={<DeselectIcon />}
+                    disabled={picked.length === 0}
+                    onClick={() => dispatch({ type: "clearSelection" })}
+                  >
+                    Clear
+                  </ToolbarButton>
+                  <Divider orientation="vertical" flexItem />
+                  <ToolbarButton
+                    icon={<CallMergeIcon />}
+                    disabled={!canCombine(picked)}
+                    onClick={() => dispatch({ type: "combineSelected" })}
+                  >
+                    Combine
+                  </ToolbarButton>
+                  <ToolbarButton
+                    icon={<CallSplitIcon />}
+                    disabled={!picked.some((o) => o.photos.length > 1)}
+                    onClick={() => dispatch({ type: "splitSelected" })}
+                  >
+                    Split photos
+                  </ToolbarButton>
+                  <ToolbarButton
+                    icon={<DeleteOutlineIcon />}
+                    color="error"
+                    disabled={picked.length === 0}
+                    onClick={removeSelected}
+                  >
+                    Remove
+                  </ToolbarButton>
+                </Box>
+              )}
               <Box
                 sx={{
                   display: "grid",
