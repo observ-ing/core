@@ -447,118 +447,104 @@ export function BatchUploadPage() {
         if (leftElement(event)) updateOver(null);
       }}
       onDrop={handlePageDrop}
-      sx={{ flex: 1, overflow: "auto", px: 3, py: 2.5 }}
+      // The header and controls stay put; only the area below them scrolls.
+      sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
     >
       {fileInput}
-      <Box
-        component="header"
-        sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px 20px" }}
-      >
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, flex: "1 1 240px" }}>
-          Batch upload
-        </Typography>
-        {uploading ? (
-          <>
-            <Box sx={{ flex: "1 1 280px", maxWidth: 420 }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5, mb: 0.75 }}>
-                <Typography sx={{ fontWeight: 600 }}>Uploading</Typography>
-                <Typography sx={{ color: "text.secondary" }}>
-                  {uploadedCount} of {total} uploaded
-                </Typography>
+      <Box sx={{ flexShrink: 0, px: 3, pt: 2.5 }}>
+        <Box
+          component="header"
+          sx={{
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: "12px 20px",
+            mb: 2,
+          }}
+        >
+          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, flex: "1 1 240px" }}>
+            Batch upload
+          </Typography>
+          {uploading ? (
+            <>
+              <Box sx={{ flex: "1 1 280px", maxWidth: 420 }}>
+                <Box sx={{ display: "flex", justifyContent: "space-between", gap: 1.5, mb: 0.75 }}>
+                  <Typography sx={{ fontWeight: 600 }}>Uploading</Typography>
+                  <Typography sx={{ color: "text.secondary" }}>
+                    {uploadedCount} of {total} uploaded
+                  </Typography>
+                </Box>
+                <LinearProgress
+                  variant="determinate"
+                  value={(uploadedCount / total) * 100}
+                  aria-label="Upload progress"
+                />
               </Box>
-              <LinearProgress
-                variant="determinate"
-                value={(uploadedCount / total) * 100}
-                aria-label="Upload progress"
-              />
-            </Box>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={() => {
-                cancelledRef.current = true;
-                dispatch({ type: "resetQueued" });
-              }}
-            >
-              Cancel remaining
-            </Button>
-          </>
-        ) : (
-          <>
-            <Typography sx={{ color: "text.secondary" }}>
-              {uploadedCount > 0
-                ? `${uploadedCount} of ${total} uploaded`
-                : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
-            </Typography>
-            {failedCount > 0 && (
-              <Typography
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.75,
-                  color: "error.main",
-                  fontWeight: 600,
-                }}
-              >
-                <ErrorIcon fontSize="small" />
-                {failedCount} failed
-              </Typography>
-            )}
-            {incomplete.length > 0 && !filtering && (
               <Button
                 variant="outlined"
-                color="warning"
-                startIcon={<WarningAmberIcon />}
-                onClick={() => setOnlyIncomplete(true)}
+                color="inherit"
+                onClick={() => {
+                  cancelledRef.current = true;
+                  dispatch({ type: "resetQueued" });
+                }}
               >
-                {incomplete.length} incomplete
+                Cancel remaining
               </Button>
-            )}
-            {filtering && (
-              <Button variant="outlined" color="inherit" onClick={() => setOnlyIncomplete(false)}>
-                Show all
+            </>
+          ) : (
+            <>
+              <Typography sx={{ color: "text.secondary" }}>
+                {uploadedCount > 0
+                  ? `${uploadedCount} of ${total} uploaded`
+                  : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
+              </Typography>
+              {failedCount > 0 && (
+                <Typography
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 0.75,
+                    color: "error.main",
+                    fontWeight: 600,
+                  }}
+                >
+                  <ErrorIcon fontSize="small" />
+                  {failedCount} failed
+                </Typography>
+              )}
+              {incomplete.length > 0 && !filtering && (
+                <Button
+                  variant="outlined"
+                  color="warning"
+                  startIcon={<WarningAmberIcon />}
+                  onClick={() => setOnlyIncomplete(true)}
+                >
+                  {incomplete.length} incomplete
+                </Button>
+              )}
+              {filtering && (
+                <Button variant="outlined" color="inherit" onClick={() => setOnlyIncomplete(false)}>
+                  Show all
+                </Button>
+              )}
+              <Button
+                variant="contained"
+                disabled={blocked}
+                startIcon={allFailed ? <RefreshIcon /> : <CloudUploadIcon />}
+                onClick={() => void upload(observations)}
+              >
+                {allFailed
+                  ? "Retry all failed"
+                  : observations.length > 0
+                    ? `Upload ${plural(observations.length, "observation")}`
+                    : "Upload"}
               </Button>
-            )}
-            <Button
-              variant="contained"
-              disabled={blocked}
-              startIcon={allFailed ? <RefreshIcon /> : <CloudUploadIcon />}
-              onClick={() => void upload(observations)}
-            >
-              {allFailed
-                ? "Retry all failed"
-                : observations.length > 0
-                  ? `Upload ${plural(observations.length, "observation")}`
-                  : "Upload"}
-            </Button>
-          </>
-        )}
-      </Box>
-
-      {observations.length === 0 ? (
-        <Box sx={[dropZoneSx, { mt: 3, minHeight: 360 }]}>
-          <FileUploadIcon fontSize="large" />
-          <Typography variant="h6" component="h2" sx={{ color: "text.primary", fontWeight: 700 }}>
-            Drag photos here
-          </Typography>
-          <Typography sx={{ maxWidth: 480 }}>
-            Each photo starts as its own observation. Date and location are read from the photo when
-            it has them. You can combine photos of the same organism afterward.
-          </Typography>
-          <Button variant="outlined" color="inherit" onClick={() => fileInputRef.current?.click()}>
-            Browse files
-          </Button>
-          <Typography variant="body2">
-            JPEG, PNG, or WebP. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
-          </Typography>
+            </>
+          )}
         </Box>
-      ) : (
-        <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "flex-start", gap: 3, mt: 2.5 }}>
-          <Box
-            component="section"
-            aria-label="Observations"
-            sx={{ flex: "999 1 560px", minWidth: 0 }}
-          >
+
+        {observations.length > 0 && (
+          <>
             {uploading ? (
               <Typography sx={{ color: "text.secondary", mb: 2 }}>
                 Uploaded observations leave this list. Editing is paused until the upload finishes.
@@ -624,99 +610,146 @@ export function BatchUploadPage() {
                 </Box>
               </>
             )}
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-                gap: 2,
-                alignItems: "start",
-              }}
+          </>
+        )}
+      </Box>
+
+      <Box sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 3, pb: 2.5 }}>
+        {observations.length === 0 ? (
+          <Box sx={[dropZoneSx, { minHeight: 360 }]}>
+            <FileUploadIcon fontSize="large" />
+            <Typography variant="h6" component="h2" sx={{ color: "text.primary", fontWeight: 700 }}>
+              Drag photos here
+            </Typography>
+            <Typography sx={{ maxWidth: 480 }}>
+              Each photo starts as its own observation. Date and location are read from the photo
+              when it has them. You can combine photos of the same organism afterward.
+            </Typography>
+            <Button
+              variant="outlined"
+              color="inherit"
+              onClick={() => fileInputRef.current?.click()}
             >
-              {shown.map((observation) => (
-                <BatchCard
-                  key={observation.id}
-                  observation={observation}
-                  selected={selected.includes(observation.id)}
-                  locked={uploading}
-                  dropState={dropStateFor(observation)}
-                  combinedPhotoCount={observation.photos.length + incomingCount(observation)}
-                  insertionIndex={
-                    drag?.kind === "photo" && over?.id === observation.id
-                      ? over.insertionIndex
-                      : null
-                  }
-                  draggingPhotoId={
-                    drag?.kind === "photo" && drag.sourceId === observation.id
-                      ? (drag.photoIds[0] ?? null)
-                      : null
-                  }
-                  onSelect={(additive) =>
-                    dispatch({ type: "select", id: observation.id, additive })
-                  }
-                  onCardDragStart={(event) => handleCardDragStart(event, observation)}
-                  onPhotoDragStart={(event, photoId) =>
-                    startDrag(event, {
-                      kind: "photo",
-                      photoIds: [photoId],
-                      sourceId: observation.id,
-                    })
-                  }
-                  onDragEnd={endDrag}
-                  onDragOver={(event, index) => handleCardDragOver(event, observation, index)}
-                  onDragLeave={(event) => {
-                    if (leftElement(event)) updateOver(null);
-                  }}
-                  onDrop={(event) => handleCardDrop(event, observation)}
-                  onRetry={() => void upload([observation])}
-                />
-              ))}
-              {!uploading && (
-                <Box sx={[dropZoneSx, { minHeight: 260 }]}>
-                  <FileUploadIcon fontSize="large" />
-                  <Typography sx={{ color: "text.primary", fontWeight: 600 }}>
-                    {overNew && drag ? "Drop to make a new observation" : "Add photos"}
-                  </Typography>
-                  <Typography variant="body2">
-                    {overNew && drag
-                      ? "Date and location come from the photo. Identification starts blank."
-                      : "Drop photos here to start new observations, or onto a card to add " +
-                        "them to it. Drag a photo out of a card to give it its own observation."}
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    color="inherit"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
-                    Browse files
-                  </Button>
-                </Box>
-              )}
-            </Box>
+              Browse files
+            </Button>
+            <Typography variant="body2">
+              JPEG, PNG, or WebP. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
+            </Typography>
           </Box>
-          {!uploading && (
+        ) : (
+          <Box
+            sx={{
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
+              gap: 3,
+              // Side by side, the grid and the editor each scroll on their own, so
+              // the editor stays in view however long the grid is. Below `lg` the
+              // editor may wrap under the grid and the two scroll together.
+              [theme.breakpoints.up("lg")]: { flexWrap: "nowrap", height: "100%" },
+            }}
+          >
             <Box
+              component="section"
+              aria-label="Observations"
               sx={{
-                flex: "1 1 320px",
+                flex: "999 1 560px",
                 minWidth: 0,
-                // Beside the grid, keep the editor in view and let it scroll on its
-                // own; it is taller than most windows. Below `lg` it may wrap under
-                // the grid, where it just flows with the page.
-                [theme.breakpoints.up("lg")]: {
-                  position: "sticky",
-                  top: 0,
-                  maxHeight: "calc(100vh - 160px)",
-                  overflowY: "auto",
-                },
+                [theme.breakpoints.up("lg")]: { height: "100%", overflowY: "auto" },
               }}
             >
-              <BatchEditor
-                selected={picked}
-                onEdit={(patch) => dispatch({ type: "edit", patch })}
-              />
+              <Box
+                sx={{
+                  display: "grid",
+                  // Room for the cards' borders and shadows inside the scroll box.
+                  p: 0.5,
+                  gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+                  gap: 2,
+                  alignItems: "start",
+                }}
+              >
+                {shown.map((observation) => (
+                  <BatchCard
+                    key={observation.id}
+                    observation={observation}
+                    selected={selected.includes(observation.id)}
+                    locked={uploading}
+                    dropState={dropStateFor(observation)}
+                    combinedPhotoCount={observation.photos.length + incomingCount(observation)}
+                    insertionIndex={
+                      drag?.kind === "photo" && over?.id === observation.id
+                        ? over.insertionIndex
+                        : null
+                    }
+                    draggingPhotoId={
+                      drag?.kind === "photo" && drag.sourceId === observation.id
+                        ? (drag.photoIds[0] ?? null)
+                        : null
+                    }
+                    onSelect={(additive) =>
+                      dispatch({ type: "select", id: observation.id, additive })
+                    }
+                    onCardDragStart={(event) => handleCardDragStart(event, observation)}
+                    onPhotoDragStart={(event, photoId) =>
+                      startDrag(event, {
+                        kind: "photo",
+                        photoIds: [photoId],
+                        sourceId: observation.id,
+                      })
+                    }
+                    onDragEnd={endDrag}
+                    onDragOver={(event, index) => handleCardDragOver(event, observation, index)}
+                    onDragLeave={(event) => {
+                      if (leftElement(event)) updateOver(null);
+                    }}
+                    onDrop={(event) => handleCardDrop(event, observation)}
+                    onRetry={() => void upload([observation])}
+                  />
+                ))}
+                {!uploading && (
+                  <Box sx={[dropZoneSx, { minHeight: 260 }]}>
+                    <FileUploadIcon fontSize="large" />
+                    <Typography sx={{ color: "text.primary", fontWeight: 600 }}>
+                      {overNew && drag ? "Drop to make a new observation" : "Add photos"}
+                    </Typography>
+                    <Typography variant="body2">
+                      {overNew && drag
+                        ? "Date and location come from the photo. Identification starts blank."
+                        : "Drop photos here to start new observations, or onto a card to add " +
+                          "them to it. Drag a photo out of a card to give it its own observation."}
+                    </Typography>
+                    <Button
+                      variant="outlined"
+                      color="inherit"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      Browse files
+                    </Button>
+                  </Box>
+                )}
+              </Box>
             </Box>
-          )}
-        </Box>
-      )}
+            {!uploading && (
+              <Box
+                sx={{
+                  flex: "1 1 320px",
+                  minWidth: 0,
+                  [theme.breakpoints.up("lg")]: {
+                    flex: "0 0 360px",
+                    height: "100%",
+                    overflowY: "auto",
+                  },
+                }}
+              >
+                <BatchEditor
+                  selected={picked}
+                  onEdit={(patch) => dispatch({ type: "edit", patch })}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+      </Box>
 
       <SkippedFilesDialog
         skipped={skipped.files}
