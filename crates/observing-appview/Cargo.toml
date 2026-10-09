@@ -76,6 +76,9 @@ futures = { workspace = true }
 # In-memory cache for taxonomy lookups
 moka = { workspace = true }
 
+# Scratch directory for HEIC conversion
+tempfile = { workspace = true }
+
 [dev-dependencies]
 # HTTP mock server for testing the GBIF cache layer without
 # hitting the live GBIF API.

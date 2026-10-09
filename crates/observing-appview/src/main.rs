@@ -3,6 +3,7 @@ mod config;
 mod constants;
 mod enrichment;
 mod error;
+mod heic;
 mod media;
 mod middleware;
 mod oauth_store;
@@ -84,6 +85,7 @@ async fn main() {
         species_id_live,
         oauth_client: Arc::new(oauth_client),
         media,
+        heic: Arc::new(heic::HeicConverter::from_env()),
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
@@ -222,6 +224,12 @@ async fn main() {
         .route("/admin", get(routes::admin_browse::redirect_to_browse))
         .nest_service("/admin/browse", routes::admin_browse::router(state.clone()))
         // Media (blob/thumb cache, formerly observing-media-proxy)
+        .route(
+            "/api/media/heic-to-jpeg",
+            // Raw HEIC bytes rather than base64 JSON; a large phone photo is
+            // ~5-10MB.
+            post(routes::heic::heic_to_jpeg).layer(DefaultBodyLimit::max(25 * 1024 * 1024)),
+        )
         .route("/media/health", get(routes::media::health))
         .route("/media/blob/{did}/{cid}", get(routes::media::get_blob))
         .route("/media/thumb/{did}/{cid}", get(routes::media::get_thumb))
