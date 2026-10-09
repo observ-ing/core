@@ -32,6 +32,11 @@ interface LocationPickerProps {
   onChange: (lat: number, lng: number) => void;
   uncertaintyMeters?: number;
   onUncertaintyChange?: (meters: number) => void;
+  /**
+   * Other positions to show as read-only grey pins (e.g. the current locations
+   * of several observations being given one new location).
+   */
+  extraMarkers?: ReadonlyArray<{ latitude: number; longitude: number }>;
 }
 
 interface NominatimResult {
@@ -67,6 +72,7 @@ export function LocationPicker({
   onChange,
   uncertaintyMeters = 50,
   onUncertaintyChange,
+  extraMarkers,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -81,6 +87,7 @@ export function LocationPicker({
   const theme = useTheme();
   const mode = theme.palette.mode;
   const markerColor = theme.palette.mapMarker;
+  const extraMarkerColor = theme.palette.text.secondary;
   const [basemap] = useBasemap();
   // Latest mode/basemap for the init effect (which runs once); theme/basemap
   // changes are handled by swapping the style, not rebuilding the map.
@@ -235,6 +242,29 @@ export function LocationPicker({
       marker.current = null;
     };
   }, []);
+
+  // Draw the read-only pins, and frame them when there is no position of our
+  // own to center on. Keyed on the coordinates so a new array with the same
+  // contents doesn't redraw (and re-frame) on every render.
+  const extraMarkersKey = JSON.stringify(extraMarkers ?? []);
+  useEffect(() => {
+    const mapInstance = map.current;
+    const positions = extraMarkers ?? [];
+    if (!mapInstance || positions.length === 0) return undefined;
+
+    const markers = positions.map((p) =>
+      new maplibregl.Marker({ color: extraMarkerColor, scale: 0.8 })
+        .setLngLat([p.longitude, p.latitude])
+        .addTo(mapInstance),
+    );
+    if (!marker.current) {
+      const bounds = new maplibregl.LngLatBounds();
+      positions.forEach((p) => bounds.extend([p.longitude, p.latitude]));
+      mapInstance.fitBounds(bounds, { padding: 40, maxZoom: 14, animate: false });
+    }
+    return () => markers.forEach((m) => m.remove());
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- extraMarkers is tracked by extraMarkersKey
+  }, [extraMarkersKey, extraMarkerColor]);
 
   // Swap the style on theme/basemap change, preserving the current view,
   // marker, and uncertainty circle (skips the initial render — the map starts

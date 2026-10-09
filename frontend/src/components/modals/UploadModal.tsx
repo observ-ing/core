@@ -51,11 +51,9 @@ import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils
 import { pickPhotos } from "../../lib/photoPicker";
 import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { readPhotoExif } from "../../lib/exif";
+import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
-
-/** Mirrors the remark lexicon's `body.maxLength` (and the appview's check). */
-const MAX_REMARK_LENGTH = 3000;
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
