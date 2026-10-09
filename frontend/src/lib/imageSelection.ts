@@ -12,11 +12,13 @@ export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 export const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export interface VettedImages {
-  /** Files that passed every check, already trimmed to fit under MAX_IMAGES. */
+  /** Files that passed every check, already trimmed to fit under the cap. */
   accepted: File[];
   invalidType: File[];
   tooLarge: File[];
-  /** True when an otherwise-valid file was dropped to stay within MAX_IMAGES. */
+  /** Otherwise-valid files dropped to stay within the cap. */
+  overCap: File[];
+  /** True when an otherwise-valid file was dropped to stay within the cap. */
   exceededCap: boolean;
 }
 
@@ -26,16 +28,22 @@ export interface VettedImages {
  *
  * Callers pass the whole batch at once: the cap is tracked across the batch,
  * so selecting 15 files into an empty observation yields 10 accepted rather
- * than all 15.
+ * than all 15. `max` defaults to the per-observation limit; the batch uploader
+ * passes its own.
  */
-export function vetImageFiles(files: File[], currentCount: number): VettedImages {
+export function vetImageFiles(
+  files: File[],
+  currentCount: number,
+  max: number = MAX_IMAGES,
+): VettedImages {
   const result: VettedImages = {
     accepted: [],
     invalidType: [],
     tooLarge: [],
+    overCap: [],
     exceededCap: false,
   };
-  let remaining = Math.max(0, MAX_IMAGES - currentCount);
+  let remaining = Math.max(0, max - currentCount);
 
   for (const file of files) {
     if (!VALID_IMAGE_TYPES.includes(file.type)) {
@@ -47,9 +55,9 @@ export function vetImageFiles(files: File[], currentCount: number): VettedImages
       continue;
     }
     if (remaining === 0) {
-      // Everything left over is surplus; one "at the limit" message covers it.
+      result.overCap.push(file);
       result.exceededCap = true;
-      break;
+      continue;
     }
     result.accepted.push(file);
     remaining -= 1;
