@@ -46,7 +46,6 @@ import {
   batchReducer,
   canCombine,
   initialBatchState,
-  intersectRects,
   isReading,
   missingFields,
   runPool,
@@ -55,7 +54,6 @@ import {
   vetBatchFiles,
   type BatchObservation,
   type BatchPhoto,
-  type Rect,
   type SkippedFile,
 } from "../../lib/batchUpload";
 import { readPhotoExif } from "../../lib/exif";
@@ -63,14 +61,13 @@ import { MAX_IMAGES, VALID_IMAGE_TYPES } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 import { fileToBase64, getErrorMessage } from "../../lib/utils";
-import { BatchCard, KEEPS_SELECTION, OBSERVATION_ID, type CardDropState } from "./BatchCard";
+import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
+import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
-/** How far the pointer must travel before a press becomes a selection rectangle. */
-const MARQUEE_THRESHOLD_PX = 5;
 /** Files read for EXIF at once; each read holds the whole file in memory. */
 const EXIF_CONCURRENCY = 4;
 
@@ -295,67 +292,28 @@ export function BatchUploadPage() {
     }
   };
 
-  // Drawing a rectangle from the background selects the cards it touches.
-  const [marquee, setMarquee] = useState<Rect | null>(null);
+  // Drawing a rectangle from the background selects the cards it touches. Until
+  // the mouse is released the selection is provisional: the cards show it, but
+  // the editor doesn't rebuild itself for every card the rectangle passes over.
   const bodyRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
-
-  /** The part of the screen where cards can actually be seen right now. */
-  const visibleCardArea = (): Rect | null => {
-    const body = bodyRef.current?.getBoundingClientRect();
-    const section = sectionRef.current?.getBoundingClientRect();
-    if (!body || !section) return null;
-    const area = intersectRects(body, section);
-    // Cards scroll under the pinned control row; what it covers doesn't count.
-    const controlsBottom = controlsRef.current?.getBoundingClientRect().bottom;
-    return area && controlsBottom !== undefined
-      ? { ...area, top: Math.max(area.top, controlsBottom) }
-      : area;
-  };
+  const {
+    rectRef: marqueeRef,
+    provisional,
+    start: startMarquee,
+  } = useMarqueeSelection({ bodyRef, sectionRef, controlsRef });
+  const shownSelection = provisional ?? selected;
 
   const handleMouseDown = (event: MouseEvent) => {
     pressedOnBackground.current = isBackground(event);
     if (!pressedOnBackground.current || event.button !== 0 || uploading) return;
-    const root = event.currentTarget;
-    const start = { x: event.clientX, y: event.clientY };
     const additive = event.shiftKey || event.metaKey || event.ctrlKey;
-    let rect: Rect | null = null;
-
-    const move = (e: globalThis.MouseEvent) => {
-      const distance = Math.hypot(e.clientX - start.x, e.clientY - start.y);
-      if (!rect && distance < MARQUEE_THRESHOLD_PX) return;
-      // The press may have begun a text selection before it became a rectangle.
-      if (!rect) window.getSelection()?.removeAllRanges();
-      rect = {
-        left: Math.min(start.x, e.clientX),
-        top: Math.min(start.y, e.clientY),
-        right: Math.max(start.x, e.clientX),
-        bottom: Math.max(start.y, e.clientY),
-      };
-      setMarquee(rect);
-    };
-    const up = () => {
-      window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseup", up);
-      setMarquee(null);
-      const drawn = rect;
-      if (!drawn) return;
-      // The click that follows this release ends the drag; it isn't a background click.
+    startMarquee(event, additive ? selected : [], (ids) => {
+      // The click that follows the release ends the drag; it isn't a background click.
       pressedOnBackground.current = false;
-      const area = visibleCardArea();
-      const hits = Array.from(root.querySelectorAll(`[${OBSERVATION_ID}]`)).flatMap((card) => {
-        const id = card.getAttribute(OBSERVATION_ID);
-        const shown = area && intersectRects(card.getBoundingClientRect(), area);
-        return id && shown && intersectRects(shown, drawn) ? [id] : [];
-      });
-      dispatch({
-        type: "selectAll",
-        ids: additive ? [...new Set([...selected, ...hits])] : hits,
-      });
-    };
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseup", up);
+      dispatch({ type: "selectAll", ids });
+    });
   };
 
   // --- Drag and drop -------------------------------------------------------
@@ -545,26 +503,23 @@ export function BatchUploadPage() {
         display: "flex",
         flexDirection: "column",
         // Drawing a selection rectangle shouldn't also select the text under it.
-        userSelect: marquee ? "none" : "auto",
+        userSelect: provisional ? "none" : "auto",
       }}
     >
-      {marquee && (
-        <Box
-          aria-hidden
-          sx={{
-            position: "fixed",
-            left: marquee.left,
-            top: marquee.top,
-            width: marquee.right - marquee.left,
-            height: marquee.bottom - marquee.top,
-            border: 1,
-            borderColor: "primary.main",
-            bgcolor: alpha(theme.palette.primary.main, 0.15),
-            pointerEvents: "none",
-            zIndex: theme.zIndex.tooltip,
-          }}
-        />
-      )}
+      <Box
+        ref={marqueeRef}
+        aria-hidden
+        sx={{
+          // Positioned and shown by useMarqueeSelection while a rectangle is drawn.
+          display: "none",
+          position: "fixed",
+          border: 1,
+          borderColor: "primary.main",
+          bgcolor: alpha(theme.palette.primary.main, 0.15),
+          pointerEvents: "none",
+          zIndex: theme.zIndex.tooltip,
+        }}
+      />
       {fileInput}
       <Box sx={{ flexShrink: 0, px: 3, pt: 2.5 }}>
         <Box
@@ -746,8 +701,8 @@ export function BatchUploadPage() {
                 >
                   <Typography sx={{ flex: "1 1 160px", color: "text.secondary" }}>
                     {filtering && `Showing ${incomplete.length} incomplete. `}
-                    {picked.length > 0
-                      ? `${picked.length} selected`
+                    {shownSelection.length > 0
+                      ? `${shownSelection.length} selected`
                       : "Drag cards together to combine them"}
                   </Typography>
                   <ToolbarButton
@@ -803,7 +758,7 @@ export function BatchUploadPage() {
                   <BatchCard
                     key={observation.id}
                     observation={observation}
-                    selected={selected.includes(observation.id)}
+                    selected={shownSelection.includes(observation.id)}
                     locked={uploading}
                     dropState={dropStateFor(observation)}
                     combinedPhotoCount={observation.photos.length + incomingCount(observation)}

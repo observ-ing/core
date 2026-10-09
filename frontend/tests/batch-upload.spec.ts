@@ -233,12 +233,42 @@ authTest.describe("Batch upload", () => {
       await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2, {
         steps: 5,
       });
+      // Cards show the selection while the rectangle is still being drawn.
+      await authExpect(cards(page).nth(1).getByRole("checkbox")).toBeChecked();
+      await authExpect(editor(page)).toContainText("Nothing selected");
       await page.mouse.up();
 
       await authExpect(editor(page)).toContainText("Editing 2 observations");
       await authExpect(cards(page).nth(0).getByRole("checkbox")).toBeChecked();
       await authExpect(cards(page).nth(1).getByRole("checkbox")).toBeChecked();
       await authExpect(cards(page).nth(2).getByRole("checkbox")).not.toBeChecked();
+    },
+  );
+
+  authTest(
+    "a rectangle held at the bottom edge scrolls the grid and keeps selecting",
+    async ({ authenticatedPage: page }) => {
+      await page.setViewportSize({ width: 1400, height: 700 });
+      await page.goto(BATCH_URL);
+      await addPhotos(
+        page,
+        Array.from({ length: 12 }, (_, i) => taggedPhoto(`p${i}.jpg`)),
+      );
+      await authExpect(cards(page)).toHaveCount(12);
+      await authExpect(cards(page).last()).not.toBeInViewport();
+
+      const start = await page.getByRole("heading", { name: "Batch upload" }).boundingBox();
+      const grid = await page.getByRole("region", { name: "Observations" }).boundingBox();
+      if (!start || !grid) throw new Error("layout not ready");
+      await page.mouse.move(start.x + 5, start.y + 5);
+      await page.mouse.down();
+      // To the bottom-right corner of the grid, and hold there.
+      await page.mouse.move(grid.x + grid.width - 10, grid.y + grid.height - 5, { steps: 5 });
+      await authExpect(page.getByText("12 selected")).toBeVisible();
+      await page.mouse.up();
+
+      await authExpect(editor(page)).toContainText("Editing 12 observations");
+      await authExpect(cards(page).last()).toBeInViewport();
     },
   );
 
