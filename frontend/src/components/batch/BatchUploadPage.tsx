@@ -12,15 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { Link, useBlocker, useNavigate } from "react-router-dom";
-import {
-  Box,
-  Button,
-  Divider,
-  LinearProgress,
-  Link as MuiLink,
-  Typography,
-  useTheme,
-} from "@mui/material";
+import { Box, Button, LinearProgress, Link as MuiLink, Typography, useTheme } from "@mui/material";
 import CallMergeIcon from "@mui/icons-material/CallMerge";
 import CallSplitIcon from "@mui/icons-material/CallSplit";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -646,7 +638,8 @@ export function BatchUploadPage() {
                   >
                     Clear
                   </ToolbarButton>
-                  <Divider orientation="vertical" flexItem />
+                  {/* Space, not a rule, between choosing cards and changing them. */}
+                  <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
                     icon={<CallMergeIcon />}
                     disabled={!canCombine(picked)}
