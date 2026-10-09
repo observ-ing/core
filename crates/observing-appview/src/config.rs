@@ -51,7 +51,9 @@ impl Config {
                 ]
             });
 
-        let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL").ok();
+        let species_id_service_url = env::var("SPECIES_ID_SERVICE_URL")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
         let species_id_live_service_url = env::var("SPECIES_ID_LIVE_SERVICE_URL")
             .ok()
             .filter(|s| !s.trim().is_empty());
