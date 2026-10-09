@@ -114,6 +114,8 @@ authTest.describe("Batch upload", () => {
       await addPhotos(page, [taggedPhoto("IMG_1.jpg")]);
 
       const card = cards(page).first();
+      // Truncated text carries its full value for hover.
+      await authExpect(card.getByTitle("IMG_1.jpg")).toBeVisible();
       await authExpect(card).toContainText("Oct 3, 2026");
       await authExpect(card).toContainText("37.905");
       await authExpect(card).toContainText("-122.2445");

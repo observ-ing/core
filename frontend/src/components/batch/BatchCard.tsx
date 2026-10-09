@@ -229,6 +229,7 @@ export function BatchCard({
           <Typography
             variant="caption"
             noWrap
+            title={cover.file.name}
             sx={{
               position: "absolute",
               left: 8,
@@ -422,6 +423,7 @@ export function BatchCard({
           <>
             <Typography
               noWrap
+              title={taxon.name || undefined}
               sx={{
                 fontWeight: 600,
                 fontStyle: taxon.name ? "italic" : "normal",
@@ -437,7 +439,12 @@ export function BatchCard({
               </Line>
             )}
             {observation.remarks && (
-              <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
+              <Typography
+                variant="body2"
+                noWrap
+                title={observation.remarks}
+                sx={{ color: "text.secondary" }}
+              >
                 {observation.remarks}
               </Typography>
             )}
