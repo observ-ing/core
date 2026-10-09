@@ -28,6 +28,9 @@ import {
 import { formatCoordinate } from "../../lib/utils";
 import { setPhotoDragImage } from "./photoDragImage";
 
+/** Attribute marking an element whose clicks must not clear the page's selection. */
+export const KEEPS_SELECTION = "data-keeps-selection";
+
 /** What dropping the current drag on this card would do. */
 export type CardDropState = "none" | "combine" | "add" | "refuse";
 
@@ -180,6 +183,7 @@ export function BatchCard({
   return (
     <Box
       data-testid="batch-card"
+      {...{ [KEEPS_SELECTION]: "" }}
       aria-busy={busy}
       draggable={!locked}
       onDragStart={onCardDragStart}

@@ -9,6 +9,7 @@ import {
   useState,
   type ChangeEvent,
   type DragEvent,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 import { Link, useBlocker, useNavigate } from "react-router-dom";
@@ -52,7 +53,7 @@ import { MAX_IMAGES, VALID_IMAGE_TYPES } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 import { fileToBase64, getErrorMessage } from "../../lib/utils";
-import { BatchCard, type CardDropState } from "./BatchCard";
+import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 
@@ -261,6 +262,16 @@ export function BatchUploadPage() {
     setUploading(false);
   };
 
+  // A click on the page's background drops the selection. Buttons, cards, and
+  // the editor keep it, as do dialogs and menus: those render outside this
+  // element, though their clicks still bubble here through React.
+  const handleBackgroundClick = (event: MouseEvent) => {
+    const { target } = event;
+    if (!(target instanceof Element) || !event.currentTarget.contains(target)) return;
+    if (target.closest(`button, a, input, textarea, label, [${KEEPS_SELECTION}]`)) return;
+    if (selected.length > 0) dispatch({ type: "clearSelection" });
+  };
+
   // --- Drag and drop -------------------------------------------------------
 
   const startDrag = (event: DragEvent, next: Drag) => {
@@ -439,6 +450,7 @@ export function BatchUploadPage() {
         if (leftElement(event)) updateOver(null);
       }}
       onDrop={handlePageDrop}
+      onClick={handleBackgroundClick}
       // The header and controls stay put; only the area below them scrolls.
       sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}
     >
@@ -737,6 +749,7 @@ export function BatchUploadPage() {
             </Box>
             {!uploading && (
               <Box
+                {...{ [KEEPS_SELECTION]: "" }}
                 sx={{
                   flex: "1 1 320px",
                   minWidth: 0,

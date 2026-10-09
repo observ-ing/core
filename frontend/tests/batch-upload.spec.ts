@@ -187,6 +187,25 @@ authTest.describe("Batch upload", () => {
     await authExpect(cards(page)).toHaveCount(1);
   });
 
+  authTest(
+    "clicking the page background clears the selection",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await cards(page).first().getByText("No identification").click();
+      await authExpect(editor(page)).toContainText("Editing 1 observation");
+
+      // Working in the editor keeps the selection.
+      await page.getByLabel("Remarks").fill("kept");
+      await editor(page).getByText("Editing 1 observation").click();
+      await authExpect(editor(page)).toContainText("Editing 1 observation");
+
+      await page.getByRole("heading", { name: "Batch upload" }).click();
+      await authExpect(editor(page)).toContainText("Nothing selected");
+      await authExpect(cards(page).first()).toContainText("kept");
+    },
+  );
+
   authTest("combines and splits with the toolbar", async ({ authenticatedPage: page }) => {
     await page.goto(BATCH_URL);
     await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
