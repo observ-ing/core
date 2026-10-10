@@ -382,6 +382,10 @@ jobs:
       # The Postgres server the orchestrator uses. It recreates its own
       # `observing_devenv` database on it (and a temp Tap cursor DB) per run.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
+      # Upstream `tap` revision; same indigo commit the production Dockerfile
+      # pins. Also keys the tap binary cache below.
+      INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
+      TAP_GO_VERSION: '1.26'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -407,20 +411,31 @@ jobs:
       # `migrate` process), so no separate sqlx step is needed.
       - name: Build appview, tap-ingester, migrate
         run: cargo build -p observing-appview -p tap-ingester -p observing-migrate
-      - uses: actions/setup-go@v5
+      - name: Cache upstream `tap` binary
+        # Building tap from source takes ~70s and the pinned commit rarely
+        # changes, so cache the binary itself. (setup-go's own cache can't help:
+        # it keys on a go.sum, and this repo has none.)
+        id: tap-cache
+        uses: actions/cache@v4
         with:
-          go-version: '1.26'
-      - name: Build and install upstream `tap`
-        # Same indigo commit the production Dockerfile pins.
-        env:
-          INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
+          path: ~/.cache/tap-bin
+          key: tap-${{ runner.os }}-go${{ env.TAP_GO_VERSION }}-${{ env.INDIGO_REV }}
+      - uses: actions/setup-go@v5
+        if: steps.tap-cache.outputs.cache-hit != 'true'
+        with:
+          go-version: ${{ env.TAP_GO_VERSION }}
+          cache: false
+      - name: Build upstream `tap`
+        if: steps.tap-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p /tmp/indigo && cd /tmp/indigo
           git init . >/dev/null
           git remote add origin https://github.com/bluesky-social/indigo.git
           git fetch --depth 1 origin "$INDIGO_REV"
           git checkout FETCH_HEAD
-          GODEBUG=netdns=go go build -tags timetzdata -o /usr/local/bin/tap ./cmd/tap
+          GODEBUG=netdns=go go build -tags timetzdata -o ~/.cache/tap-bin/tap ./cmd/tap
+      - name: Add `tap` to PATH
+        run: echo "$HOME/.cache/tap-bin" >> "$GITHUB_PATH"
       - name: Install process-compose
         # The dev-env orchestrator (scripts/e2e-devenv.ts) brings the Rust stack
         # up via process-compose.yaml + the process-compose.devenv.yaml overlay.
