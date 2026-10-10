@@ -346,12 +346,13 @@ export function BatchCard({
       </Box>
 
       {multi && (
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, p: 0.75 }}>
+        // Clicks on the thumbnails bubble up to here, so the strip's own padding
+        // selects the card like the rest of it does.
+        <Box onClick={handleClick} sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, p: 0.75 }}>
           {extras.map((photo, i) => (
             <Box key={photo.id} sx={{ display: "flex", gap: 0.75 }}>
               {insertionIndex === i + 1 && <InsertionBar />}
               <ButtonBase
-                onClick={handleClick}
                 onDragOver={slotDragOver(i + 1)}
                 aria-label={`Photo ${photo.file.name}`}
                 title={photo.file.name}

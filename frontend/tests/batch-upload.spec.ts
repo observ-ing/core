@@ -300,6 +300,23 @@ authTest.describe("Batch upload", () => {
     await authExpect(cards(page)).toHaveCount(1);
     await authExpect(cards(page).first()).toContainText("3 photos");
 
+    // The space beside the extra photos selects the card, and a thumbnail
+    // toggles it once, not twice.
+    await page.getByRole("button", { name: "Clear" }).click();
+    const strip = cards(page).first().getByRole("button", { name: "Photo c.jpg" }).locator("../..");
+    const box = await strip.boundingBox();
+    if (!box) throw new Error("layout not ready");
+    await strip.click({ position: { x: box.width - 10, y: box.height / 2 } });
+    await authExpect(cards(page).first().getByRole("checkbox")).toBeChecked();
+    await cards(page)
+      .first()
+      .getByRole("button", { name: "Photo c.jpg" })
+      .click({
+        modifiers: ["Shift"],
+      });
+    await authExpect(cards(page).first().getByRole("checkbox")).not.toBeChecked();
+    await cards(page).first().getByRole("button", { name: "Photo c.jpg" }).click();
+
     await page.getByRole("button", { name: "Split photos" }).click();
     await authExpect(cards(page)).toHaveCount(3);
   });
