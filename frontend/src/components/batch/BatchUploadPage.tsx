@@ -553,6 +553,12 @@ export function BatchUploadPage() {
   }
 
   const overNew = over?.id === NEW_OBSERVATION;
+  // Once there are cards, anywhere off them takes a drop, so the toolbar says what it will do.
+  const dropHint = !overNew
+    ? null
+    : drag
+      ? "Drop to make a new observation"
+      : "Drop to start new observations";
   const allFailed = failedCount > 0 && failedCount === observations.length;
   const fileInput = (
     <input
@@ -808,11 +814,22 @@ export function BatchUploadPage() {
                   }}
                 >
                   <Typography sx={{ flex: "1 1 160px", color: "text.secondary" }}>
-                    {filtering && `Showing ${incomplete.length} incomplete. `}
-                    {shownSelection.length > 0
-                      ? `${shownSelection.length} selected`
-                      : "Drag cards together to combine them"}
+                    {dropHint ?? (
+                      <>
+                        {filtering && `Showing ${incomplete.length} incomplete. `}
+                        {shownSelection.length > 0
+                          ? `${shownSelection.length} selected`
+                          : "Drag cards together to combine them"}
+                      </>
+                    )}
                   </Typography>
+                  <ToolbarButton
+                    icon={<FileUploadIcon />}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Add photos
+                  </ToolbarButton>
+                  <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
                     icon={<SelectAllIcon />}
                     onClick={() => dispatch({ type: "selectAll", ids: shown.map((o) => o.id) })}
@@ -904,33 +921,6 @@ export function BatchUploadPage() {
                     }}
                   />
                 ))}
-                {!uploading && (
-                  <Box
-                    sx={[
-                      dropZoneSx,
-                      // A row of its own under the cards, whatever the column count.
-                      { gridColumn: "1 / -1" },
-                    ]}
-                  >
-                    <FileUploadIcon fontSize="large" />
-                    <Typography sx={{ color: "text.primary", fontWeight: 600 }}>
-                      {overNew && drag ? "Drop to make a new observation" : "Add photos"}
-                    </Typography>
-                    <Typography variant="body2">
-                      {overNew && drag
-                        ? "Date and location come from the photo. Identification starts blank."
-                        : "Drop photos here to start new observations, or onto a card to add " +
-                          "them to it. Drag a photo out of a card to give it its own observation."}
-                    </Typography>
-                    <Button
-                      variant="outlined"
-                      color="inherit"
-                      onClick={() => fileInputRef.current?.click()}
-                    >
-                      Browse files
-                    </Button>
-                  </Box>
-                )}
               </Box>
             </Box>
             {!uploading && (

@@ -279,6 +279,24 @@ authTest.describe("Batch upload", () => {
   });
 
   authTest(
+    "swaps the drop area for a toolbar button once photos are added",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await authExpect(page.getByRole("heading", { name: "Drag photos here" })).toBeVisible();
+
+      await addPhotos(page, [barePhoto("a.jpg")]);
+      await authExpect(cards(page)).toHaveCount(1);
+      await authExpect(page.getByRole("heading", { name: "Drag photos here" })).toHaveCount(0);
+      await authExpect(page.getByRole("button", { name: "Browse files" })).toHaveCount(0);
+
+      const chooser = page.waitForEvent("filechooser");
+      await page.getByRole("button", { name: "Add photos" }).click();
+      await (await chooser).setFiles([barePhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+    },
+  );
+
+  authTest(
     "converts HEIC photos to JPEG, keeping their EXIF",
     async ({ authenticatedPage: page }) => {
       await mockHeicConversion(page);
@@ -468,7 +486,9 @@ authTest.describe("Batch upload", () => {
       // The card keeps what it already had.
       await authExpect(cards(page).first()).toContainText("Oct 3, 2026");
 
-      await dropFiles(page, page.getByText("Add photos"), [barePhoto("d.jpg")]);
+      await dropFiles(page, page.getByRole("heading", { name: "Batch upload" }), [
+        barePhoto("d.jpg"),
+      ]);
       await authExpect(cards(page)).toHaveCount(2);
       await authExpect(cards(page).nth(1)).toContainText("Missing date");
     },
@@ -511,8 +531,10 @@ authTest.describe("Batch upload", () => {
       );
       await authExpect(cards(page)).toHaveCount(1);
 
-      // Out to the "Add photos" tile: b.jpg starts over from its own (empty) EXIF.
-      await card.getByRole("button", { name: "Photo b.jpg" }).dragTo(page.getByText("Add photos"));
+      // Out of the card, anywhere off one: b.jpg starts over from its own (empty) EXIF.
+      await card
+        .getByRole("button", { name: "Photo b.jpg" })
+        .dragTo(page.getByRole("heading", { name: "Batch upload" }));
       await authExpect(cards(page)).toHaveCount(2);
       await authExpect(cards(page).first()).toContainText("2 photos");
       await authExpect(cards(page).nth(1)).toContainText("Missing date and location");
