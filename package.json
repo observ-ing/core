@@ -73,7 +73,7 @@
     "oxlint": "^1.64.0",
     "storybook": "^10.3.6",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.0.12",
     "vite-plugin-pwa": "^1.3.0",
     "vitest": "^4.0.17"
