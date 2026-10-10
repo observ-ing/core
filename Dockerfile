@@ -21,7 +21,7 @@ ARG SERVICE=observing-appview
 # ---------------------------------------------------------------------------
 # Stage: frontend-builder (only meaningful for appview)
 # ---------------------------------------------------------------------------
-FROM node:24-slim AS frontend-builder
+FROM node:26-slim AS frontend-builder
 
 WORKDIR /app
 

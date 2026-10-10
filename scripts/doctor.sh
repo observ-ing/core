@@ -40,10 +40,10 @@ section "Toolchain"
 
 if command -v node >/dev/null 2>&1; then
   node_major=$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)
-  if [ "$node_major" -ge 24 ]; then
+  if [ "$node_major" -ge 26 ]; then
     pass "Node $(node -v)"
   else
-    fail "Node $(node -v) is too old; need 24+ (package.json engines.node)"
+    fail "Node $(node -v) is too old; need 26+ (package.json engines.node)"
   fi
 else
   fail "node not installed"

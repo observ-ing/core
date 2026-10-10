@@ -47,12 +47,12 @@ jobs:
       - uses: actions/checkout@v4
 
       # Pin toolchains via the same actions the rest of CI uses, rather
-      # than relying on the Brewfile's `rustup` / `node@24` formulae —
+      # than relying on the Brewfile's `rustup` / `node` formulae —
       # that keeps this job's signal scoped to "do the scripts work?"
       # rather than "did a brew formula get renamed this week?"
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '26'
           cache: 'npm'
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1

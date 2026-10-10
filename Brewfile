@@ -5,7 +5,7 @@
 # packages.
 
 # Toolchain
-brew "node@24"
+brew "node"              # Node 26; Homebrew has no `node@26` until Node 27 ships
 brew "rustup"            # `rustup` manages Rust per rust-toolchain.toml
 brew "go"                # for building the upstream `tap` binary
 

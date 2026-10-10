@@ -21,7 +21,7 @@ open http://127.0.0.1:3000            # use 127.0.0.1, not localhost, or OAuth l
 `npm run doctor` walks every prerequisite the stack needs and prints
 what's missing — run it any time things look broken.
 
-Prerequisites (Node 24+, Rust per `rust-toolchain.toml`, Postgres+PostGIS,
+Prerequisites (Node 26+, Rust per `rust-toolchain.toml`, Postgres+PostGIS,
 process-compose, ONNX Runtime, optional Go for `tap`) are listed in
 [docs/development.md](docs/development.md#prerequisites). On macOS,
 `brew bundle` installs all of them from the project's `Brewfile`.
