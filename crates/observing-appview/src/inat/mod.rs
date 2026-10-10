@@ -14,7 +14,6 @@ use std::time::Duration;
 
 use inaturalist_oauth::{Authenticator, AuthorizationInfo, PkceVerifier, TokenDetails};
 use moka::future::Cache;
-use tokio::sync::Notify;
 
 use crate::config::InatConfig;
 use client::{InatClient, InatError};
@@ -41,8 +40,6 @@ pub struct Inat {
     redirect_uri: String,
     /// API tokens by DID, so a job doesn't mint one per call.
     api_tokens: Cache<String, String>,
-    /// Wakes the worker when a cross-post is queued.
-    wake: Notify,
 }
 
 impl Inat {
@@ -52,7 +49,6 @@ impl Inat {
             redirect_uri: redirect_uri(public_url, port),
             config,
             api_tokens: Cache::builder().time_to_live(API_TOKEN_TTL).build(),
-            wake: Notify::new(),
         }
     }
 
@@ -119,15 +115,6 @@ impl Inat {
 
     pub async fn forget_api_token(&self, did: &str) {
         self.api_tokens.invalidate(did).await;
-    }
-
-    /// Tell the worker there is a cross-post to do.
-    pub fn wake_worker(&self) {
-        self.wake.notify_one();
-    }
-
-    async fn woken(&self) {
-        self.wake.notified().await;
     }
 }
 

@@ -1,8 +1,18 @@
 //! Background task that carries out queued cross-posts.
 //!
-//! Runs in-process: woken when a cross-post is queued, and sweeping on a
-//! timer for retries. Every step is safe to repeat (see [`super::ids`]), so a
-//! job that fails partway is simply run again.
+//! Polls the queue on a timer, in whichever appview process is started with
+//! `INAT_CROSSPOST_WORKER` on. That should be exactly one process, and one
+//! that has CPU between requests:
+//!
+//! - The rate limit in [`super::client`] is per process, so every extra
+//!   worker multiplies what observ.ing sends to iNaturalist.
+//! - Nothing here is driven by a request. On Cloud Run's default, CPU is
+//!   throttled to near zero outside request handling, which stalls the loop
+//!   until some unrelated request arrives.
+//!
+//! The processes serving the web only queue cross-posts and report on them,
+//! so the queue is the one thing the two share. Every step is safe to repeat
+//! (see [`super::ids`]), so a job that fails partway is simply run again.
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -30,17 +40,17 @@ use crate::state::AppState;
 /// retrying can't fix is reported at once (see [`InatError::permanent`]).
 const MAX_ATTEMPTS: i32 = 4;
 
-/// How often to look for cross-posts whose backoff has elapsed.
-const SWEEP_INTERVAL: Duration = Duration::from_secs(60);
+/// How often to look for cross-posts that are due: newly queued, or with
+/// their backoff elapsed. Short, because a newly queued one has someone
+/// watching for it, and whoever queued it may be in another process with no
+/// way to wake this one.
+const POLL_INTERVAL: Duration = Duration::from_secs(5);
 
 pub fn spawn(state: AppState, inat: Arc<Inat>) {
     tokio::spawn(async move {
         loop {
             run_pending(&state, &inat).await;
-            tokio::select! {
-                _ = inat.woken() => {}
-                _ = tokio::time::sleep(SWEEP_INTERVAL) => {}
-            }
+            tokio::time::sleep(POLL_INTERVAL).await;
         }
     });
 }

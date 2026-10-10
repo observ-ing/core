@@ -24,6 +24,11 @@ pub struct Config {
     pub admin_dids: Vec<String>,
     /// iNaturalist cross-posting. `None` turns the feature off.
     pub inat: Option<InatConfig>,
+    /// Whether this process carries out queued cross-posts
+    /// (`INAT_CROSSPOST_WORKER`). Off by default: the worker needs CPU between
+    /// requests and must be the only one running, neither of which holds for
+    /// an autoscaled web instance. See [`crate::inat::worker`].
+    pub run_inat_worker: bool,
 }
 
 /// Settings for cross-posting to iNaturalist, present when an iNaturalist
@@ -134,6 +139,7 @@ impl Config {
             env::var("INAT_SITE_URL").ok(),
             env::var("INAT_API_URL").ok(),
         );
+        let run_inat_worker = is_on(env::var("INAT_CROSSPOST_WORKER").ok());
 
         Self {
             port,
@@ -146,8 +152,18 @@ impl Config {
             hidden_dids,
             admin_dids,
             inat,
+            run_inat_worker,
         }
     }
+}
+
+/// Whether an on/off environment variable is on: `1` or `true`. Unset, blank,
+/// and anything else are off.
+fn is_on(value: Option<String>) -> bool {
+    value.is_some_and(|v| {
+        let v = v.trim();
+        v == "1" || v.eq_ignore_ascii_case("true")
+    })
 }
 
 /// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
@@ -238,6 +254,21 @@ mod tests {
         .expect("configured");
         assert_eq!(config.site_url, "http://localhost:3000");
         assert_eq!(config.api_url, "http://localhost:4000/v2");
+    }
+
+    #[test]
+    fn the_inat_worker_is_off_unless_asked_for() {
+        assert!(!is_on(None));
+        assert!(!is_on(some("")));
+        assert!(!is_on(some("0")));
+        assert!(!is_on(some("false")));
+    }
+
+    #[test]
+    fn the_inat_worker_is_turned_on_by_1_or_true() {
+        assert!(is_on(some("1")));
+        assert!(is_on(some("true")));
+        assert!(is_on(some(" TRUE ")));
     }
 
     #[test]

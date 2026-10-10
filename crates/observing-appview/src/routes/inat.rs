@@ -295,7 +295,8 @@ pub async fn create_crosspost(
     user: AuthUser,
     Json(CreateCrosspostRequest { uri }): Json<CreateCrosspostRequest>,
 ) -> Result<(StatusCode, Json<CrosspostStatusResponse>), AppError> {
-    let inat = inat(&state)?;
+    // Only to refuse when cross-posting is off; the worker does the posting.
+    inat(&state)?;
     let occurrence_did = occurrence_did(&uri)?;
 
     // Nothing is looked up for someone else's occurrence.
@@ -332,7 +333,6 @@ pub async fn create_crosspost(
     if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did).await? {
         return Err(Refusal::AlreadyQueued.into());
     }
-    inat.wake_worker();
     info!(uri = %uri, "Queued occurrence for cross-posting to iNaturalist");
 
     let row = observing_db::crossposts::get(&state.pool, &uri, SERVICE).await?;

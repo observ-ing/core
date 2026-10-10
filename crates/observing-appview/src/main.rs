@@ -102,7 +102,10 @@ async fn main() {
 
     if let Some(inat) = inat {
         info!("iNaturalist cross-posting enabled");
-        inat::worker::spawn(state.clone(), inat);
+        if config.run_inat_worker {
+            info!("Running the iNaturalist cross-post worker");
+            inat::worker::spawn(state.clone(), inat);
+        }
     }
 
     // CORS
