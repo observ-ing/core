@@ -3,15 +3,11 @@ import { defineConfig, devices } from "@playwright/test";
 /**
  * Playwright config for the isolated dev-env run.
  *
- * Runs two project groups against the local dev-env stack that
- * scripts/e2e-devenv.ts boots (network + Rust services):
- *   - `devenv`: the CRUD e2e (e2e.spec.ts), authenticated against a local
- *     @atproto/dev-env PDS — so no test data touches the public network. This
- *     is the only place the real e2e runs.
- *   - `integration`: the mocked suite (identical to playwright.config.ts). It
- *     stubs every backend call via page.route and only needs the SPA served at
- *     baseURL, which the dev-env appview provides. Kept here so CI gets full
- *     integration coverage from this single isolated run, with no live network.
+ * Runs the CRUD e2e (e2e.spec.ts) against the local dev-env stack that
+ * scripts/e2e-devenv.ts boots (network + Rust services), authenticated against
+ * a local @atproto/dev-env PDS — so no test data touches the public network.
+ * This is the only place the real e2e runs. The mocked `integration` suite
+ * needs no backend and runs from playwright.config.ts instead.
  *
  * Needs no real-account credentials; the orchestrator supplies DEVENV_*.
  */
@@ -45,19 +41,6 @@ export default defineConfig({
           args: ["--use-gl=angle", "--use-angle=swiftshader"],
         },
         storageState: "playwright/.auth/user.json",
-      },
-    },
-    // Mocked suite — no backend dependency (page.route stubs everything), just
-    // needs the SPA served at baseURL. Mirrors the `integration` project in
-    // playwright.config.ts; no auth setup dependency (auth is mocked per-test).
-    {
-      name: "integration",
-      testMatch: /(?<!e2e)\.spec\.ts/,
-      use: {
-        ...devices["Desktop Chrome"],
-        launchOptions: {
-          args: ["--use-gl=angle", "--use-angle=swiftshader"],
-        },
       },
     },
   ],
