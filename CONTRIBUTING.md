@@ -122,8 +122,8 @@ For visibility, the full gate is in `.github/workflows/ci.yml`. The
 short version:
 
 - **Frontend**: `npm audit`, `oxfmt --check`, `oxlint`, `tsc`,
-  `npm run build`, Android APK build, Storybook coverage + build, TS
-  bindings drift check
+  `npm run build`, Android APK build, Storybook coverage + build +
+  story render test (`npm run test:storybook`), TS bindings drift check
 - **Rust**: `cargo check --locked`, `cargo fmt --check`,
   `cargo-deny`, `cargo clippy -D warnings`, `cargo sqlx prepare --check`,
   generated-lexicons drift check, `cargo test --workspace`

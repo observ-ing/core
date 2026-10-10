@@ -134,7 +134,8 @@ jobs:
           retention-days: 7
 
   # Enforce that every component in frontend/src/components has a sibling
-  # *.stories.tsx file. Catches new components that ship without a story.
+  # *.stories.tsx file. Catches new components that ship without a story,
+  # and stories that add their own router on top of the global one.
   storybook-coverage:
     runs-on: ubuntu-latest
     steps:
@@ -143,6 +144,22 @@ jobs:
         with:
           node-version: '26'
       - run: npm run check:stories
+
+  # Mount every story in headless Chromium (Vitest browser mode via
+  # @storybook/addon-vitest). `storybook-build` only proves stories compile;
+  # this catches the ones that throw at render time.
+  storybook-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:storybook
 
   # Build Storybook on every PR so a broken story fails the merge gate.
   # On push to main the static output is uploaded as an artifact for
