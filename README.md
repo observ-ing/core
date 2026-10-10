@@ -10,7 +10,7 @@ Observ.ing lets users record and share biodiversity observations on the federate
 
 ## Quick Start
 
-Prerequisites: Node 24+, Rust (auto-pinned by `rust-toolchain.toml`),
+Prerequisites: Node 26+, Rust (auto-pinned by `rust-toolchain.toml`),
 PostgreSQL (14+) with PostGIS,
 [`process-compose`](https://github.com/F1bonacc1/process-compose),
 ONNX Runtime (`brew install onnxruntime` on macOS), and optionally Go

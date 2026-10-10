@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 24+ (matches `engines.node` in `package.json` and the version CI runs)
+- Node.js 26+ (matches `engines.node` in `package.json` and the version CI runs)
 - Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
 - PostgreSQL (14+) with the PostGIS extension — production runs 16, but any modern version works locally
 - [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
@@ -38,7 +38,7 @@ process-compose up -D      # runs migrations, then starts services
 `npm run setup` is idempotent — re-run any time, and it skips work
 that's already done. It runs:
 
-1. Prerequisite check (Node 24+, Rust, process-compose)
+1. Prerequisite check (Node 26+, Rust, process-compose)
 2. `npm install`
 3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
 4. `./scripts/download-models.sh` — BioCLIP models, if not present

@@ -5,7 +5,7 @@
 # packages.
 
 # Toolchain
-brew "node@24"
+brew "node@26"
 brew "rustup"            # `rustup` manages Rust per rust-toolchain.toml
 brew "go"                # for building the upstream `tap` binary
 

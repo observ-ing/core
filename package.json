@@ -57,7 +57,7 @@
     "@storybook/addon-themes": "^10.3.6",
     "@storybook/react-vite": "^10.3.6",
     "@testing-library/react": "^16.3.2",
-    "@types/node": "^25.7.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
@@ -84,6 +84,6 @@
     "ejs": "^5.0.0"
   },
   "engines": {
-    "node": ">=24.0.0"
+    "node": ">=26.0.0"
   }
 }

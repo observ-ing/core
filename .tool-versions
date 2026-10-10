@@ -4,5 +4,5 @@
 # Rust is intentionally NOT pinned here — rust-toolchain.toml is the
 # source of truth, and rustup auto-switches to the channel it declares
 # on any cargo invocation.
-nodejs 24
+nodejs 26
 golang 1.26
