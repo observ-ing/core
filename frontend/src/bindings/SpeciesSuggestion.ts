@@ -7,11 +7,16 @@
  * to GBIF's `match_name` as a disambiguator when the appview enriches a
  * missing common name.
  */
-export type SpeciesSuggestion = { scientificName: string, confidence: number, commonName?: string, kingdom?: string, 
-/**
- * Whether this species' iNat range covers the request lat/lon.
- * `None` when geo lookup wasn't performed (no lat/lon, no geo index)
- * or when the cell at the request point is unknown to the index — i.e.
- * the field is only populated with an opinion when one is well-founded.
- */
-inRange?: boolean, };
+export type SpeciesSuggestion = {
+  scientificName: string;
+  confidence: number;
+  commonName?: string;
+  kingdom?: string;
+  /**
+   * Whether this species' iNat range covers the request lat/lon.
+   * `None` when geo lookup wasn't performed (no lat/lon, no geo index)
+   * or when the cell at the request point is unknown to the index — i.e.
+   * the field is only populated with an opinion when one is well-founded.
+   */
+  inRange?: boolean;
+};

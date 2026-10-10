@@ -5,10 +5,12 @@
  * observation, a record in another AT Protocol lexicon, and so on. Passed
  * through verbatim: the appview neither resolves nor validates the target.
  */
-export type ExternalRecord = { uri: string, 
-/**
- * Short service identifier from the record (`inaturalist`, `bugguide`, an
- * AT Protocol app name, ...). The lexicon's known values are not
- * exhaustive, so clients must handle unfamiliar ones.
- */
-service?: string, };
+export type ExternalRecord = {
+  uri: string;
+  /**
+   * Short service identifier from the record (`inaturalist`, `bugguide`, an
+   * AT Protocol app name, ...). The lexicon's known values are not
+   * exhaustive, so clients must handle unfamiliar ones.
+   */
+  service?: string;
+};

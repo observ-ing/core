@@ -2,49 +2,57 @@
 import type { ExternalRecordInput } from "./ExternalRecordInput";
 import type { ImageUpload } from "./ImageUpload";
 
-export type CreateOccurrenceRequest = { latitude: number, longitude: number, coordinateUncertaintyInMeters?: number, 
-/**
- * Darwin Core dwc:organismQuantity — free text (a count, a range like
- * "10-100", or a categorical value like "many"). Written verbatim.
- */
-organismQuantity?: string, 
-/**
- * Darwin Core dwc:organismQuantityType — the quantification system the
- * quantity uses ("individuals", "percent-cover", or an open-vocab value).
- */
-organismQuantityType?: string, eventDate?: string, 
-/**
- * References to this same occurrence held on another service. Capped at
- * `constants::MAX_EXTERNAL_RECORDS` by the lexicon.
- */
-externalRecords?: Array<ExternalRecordInput>, images?: Array<ImageUpload>, 
-/**
- * License URI applied to each uploaded media record (e.g.
- * `https://creativecommons.org/licenses/by/4.0/`). Validated against
- * `validation::ALLOWED_LICENSES`; a retired SPDX identifier is upgraded to
- * its URI rather than rejected. When omitted, the PDS media record stores
- * no license.
- */
-license?: string, scientificName?: string, taxonRank?: string, 
-/**
- * Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
- * genus-level names for the auto-identification's GBIF validate call
- * and acts as a fallback when validation doesn't return a kingdom.
- */
-kingdom?: string, 
-/**
- * Stable taxon URI from a GBIF autocomplete pick (e.g. a GBIF species
- * URI). Written to the auto-created identification's `taxonID` field.
- */
-taxonId?: string, 
-/**
- * Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
- * organism. Written as a separate `bio.lexicons.temp.v0-1.remark` record
- * that the occurrence references; blank or omitted writes none.
- */
-occurrenceRemarks?: string, 
-/**
- * Darwin Core dwc:eventRemarks — notes on the time and place. Written the
- * same way as the occurrence remarks.
- */
-eventRemarks?: string, };
+export type CreateOccurrenceRequest = {
+  latitude: number;
+  longitude: number;
+  coordinateUncertaintyInMeters?: number;
+  /**
+   * Darwin Core dwc:organismQuantity — free text (a count, a range like
+   * "10-100", or a categorical value like "many"). Written verbatim.
+   */
+  organismQuantity?: string;
+  /**
+   * Darwin Core dwc:organismQuantityType — the quantification system the
+   * quantity uses ("individuals", "percent-cover", or an open-vocab value).
+   */
+  organismQuantityType?: string;
+  eventDate?: string;
+  /**
+   * References to this same occurrence held on another service. Capped at
+   * `constants::MAX_EXTERNAL_RECORDS` by the lexicon.
+   */
+  externalRecords?: Array<ExternalRecordInput>;
+  images?: Array<ImageUpload>;
+  /**
+   * License URI applied to each uploaded media record (e.g.
+   * `https://creativecommons.org/licenses/by/4.0/`). Validated against
+   * `validation::ALLOWED_LICENSES`; a retired SPDX identifier is upgraded to
+   * its URI rather than rejected. When omitted, the PDS media record stores
+   * no license.
+   */
+  license?: string;
+  scientificName?: string;
+  taxonRank?: string;
+  /**
+   * Optional kingdom hint from a GBIF autocomplete pick. Disambiguates
+   * genus-level names for the auto-identification's GBIF validate call
+   * and acts as a fallback when validation doesn't return a kingdom.
+   */
+  kingdom?: string;
+  /**
+   * Stable taxon URI from a GBIF autocomplete pick (e.g. a GBIF species
+   * URI). Written to the auto-created identification's `taxonID` field.
+   */
+  taxonId?: string;
+  /**
+   * Darwin Core dwc:occurrenceRemarks — the observer's own notes on the
+   * organism. Written as a separate `bio.lexicons.temp.v0-1.remark` record
+   * that the occurrence references; blank or omitted writes none.
+   */
+  occurrenceRemarks?: string;
+  /**
+   * Darwin Core dwc:eventRemarks — notes on the time and place. Written the
+   * same way as the occurrence remarks.
+   */
+  eventRemarks?: string;
+};

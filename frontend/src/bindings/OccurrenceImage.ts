@@ -4,4 +4,4 @@
  * A single image attached to an occurrence, with the license URI the uploader
  * chose (when one is recorded on the underlying media record).
  */
-export type OccurrenceImage = { url: string, license?: string, };
+export type OccurrenceImage = { url: string; license?: string };
