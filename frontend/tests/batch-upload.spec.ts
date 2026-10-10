@@ -193,6 +193,9 @@ authTest.describe("Batch upload", () => {
       await authExpect(editor(page)).toContainText("Coordinate Uncertainty: 1m");
 
       // Setting a location for both afterwards keeps the uncertainty just chosen.
+      // (The two are in different time zones, so that comes before the date.)
+      await page.getByLabel("Time zone").click();
+      await page.getByRole("option", { name: "UTC-07:00", exact: true }).click();
       await page.getByLabel("Observation date").fill("2026-10-04T08:15");
       await page.getByRole("button", { name: "Enter coordinates manually" }).click();
       await page.getByLabel("Latitude").fill("37.9");
@@ -202,6 +205,40 @@ authTest.describe("Batch upload", () => {
       await page.getByRole("button", { name: "Upload 2 observations" }).click();
       await authExpect(page).toHaveURL(/\/profile\//);
       authExpect(bodies.map((b) => b["coordinateUncertaintyInMeters"])).toEqual([1, 1]);
+    },
+  );
+
+  authTest(
+    "observations in different time zones need one zone before their date can be edited",
+    async ({ authenticatedPage: page }) => {
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      // The first photo was taken at UTC-7; the second records no zone.
+      await addPhotos(page, [taggedPhoto("a.jpg"), barePhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+
+      await page.getByRole("button", { name: "Select all" }).click();
+      const date = page.getByLabel("Observation date");
+      await authExpect(date).toBeDisabled();
+      await authExpect(editor(page)).toContainText("different time zones");
+
+      await page.getByLabel("Time zone").click();
+      await page.getByRole("option", { name: "UTC-07:00", exact: true }).click();
+      await authExpect(date).toBeEnabled();
+      await date.fill("2026-10-04T08:15");
+
+      await page.getByRole("button", { name: "Enter coordinates manually" }).click();
+      await page.getByLabel("Latitude").fill("37.9");
+      await page.getByLabel("Longitude").fill("-122.2");
+      await page.getByRole("button", { name: "Set location for 2 observations" }).click();
+      await page.getByRole("button", { name: "Upload 2 observations" }).click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+
+      // 08:15 at UTC-7 for both, whatever zone the browser is in.
+      authExpect(bodies.map((b) => b["eventDate"])).toEqual([
+        "2026-10-04T15:15:00.000Z",
+        "2026-10-04T15:15:00.000Z",
+      ]);
     },
   );
 

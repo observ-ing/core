@@ -4,6 +4,7 @@ import {
   batchReducer,
   canCombine,
   describeMissing,
+  formatUtcOffset,
   intersectRects,
   initialBatchState,
   isReading,
@@ -424,6 +425,28 @@ describe("intersectRects", () => {
   it("returns null when they are apart or only touch", () => {
     expect(intersectRects(box(0, 0, 10, 10), box(11, 0, 20, 10))).toBeNull();
     expect(intersectRects(box(0, 0, 10, 10), box(10, 0, 20, 10))).toBeNull();
+  });
+});
+
+describe("time zones", () => {
+  it("formats an offset in minutes east of UTC as ±HH:MM", () => {
+    expect(formatUtcOffset(-420)).toBe("-07:00");
+    expect(formatUtcOffset(345)).toBe("+05:45");
+    expect(formatUtcOffset(0)).toBe("+00:00");
+  });
+
+  it("re-reads the same wall-clock time when the zone is changed", () => {
+    const state = run(
+      [
+        { type: "select", id: "o1", additive: false },
+        { type: "edit", patch: { utcOffset: "+09:00" } },
+      ],
+      batchOf("a"),
+    );
+    const [obs] = state.observations;
+
+    expect(obs?.date).toBe("2026-10-03T10:42");
+    expect(obs && toEventDate(obs)).toBe("2026-10-03T01:42:00.000Z");
   });
 });
 

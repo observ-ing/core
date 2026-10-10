@@ -71,7 +71,7 @@ export const initialBatchState: BatchState = {
 export type BatchEdit = Partial<
   Pick<
     BatchObservation,
-    "date" | "endDate" | "latitude" | "longitude" | "uncertaintyMeters" | "remarks"
+    "date" | "endDate" | "utcOffset" | "latitude" | "longitude" | "uncertaintyMeters" | "remarks"
   >
 > & { taxon?: Partial<BatchTaxon> };
 
@@ -366,6 +366,26 @@ export function canCombine(observations: BatchObservation[]): boolean {
   const photos = observations.reduce((count, o) => count + o.photos.length, 0);
   return observations.length > 1 && photos <= MAX_IMAGES;
 }
+
+/** An offset in minutes east of UTC as EXIF and ISO 8601 write it, e.g. "-07:00". */
+export function formatUtcOffset(minutesEast: number): string {
+  const abs = Math.abs(minutesEast);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${minutesEast < 0 ? "-" : "+"}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+}
+
+/** The offset the browser's own zone has at `date` (a `datetime-local` value), or now. */
+export function browserUtcOffset(date: string): string {
+  const at = date ? new Date(date) : new Date();
+  return formatUtcOffset(-(isNaN(at.getTime()) ? new Date() : at).getTimezoneOffset());
+}
+
+/** Every UTC offset in civil use, west to east. */
+export const UTC_OFFSETS: readonly string[] = [
+  ...[-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60],
+  ...[0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570],
+  ...[600, 630, 660, 720, 765, 780, 840],
+].map(formatUtcOffset);
 
 export function toEventDate(observation: BatchObservation): string {
   const { date, endDate, utcOffset } = observation;
