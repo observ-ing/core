@@ -38,14 +38,9 @@ export function FAB() {
     void navigate(path);
   };
 
+  // Listed from the dial upward: the ways to create observations sit nearest it.
   const actions = [
     { icon: <CameraAltIcon />, name: "New Observation", action: handleNewObservation },
-    // Live ID relies on getUserMedia, which only works on web/PWA. Native
-    // builds would open a broken viewfinder, so hide the entry point there
-    // until a Capacitor camera-preview plugin is wired up.
-    ...(Capacitor.isNativePlatform()
-      ? []
-      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: () => goTo("/identify") }]),
     ...(batchUpload
       ? [
           {
@@ -55,6 +50,12 @@ export function FAB() {
           },
         ]
       : []),
+    // Live ID relies on getUserMedia, which only works on web/PWA. Native
+    // builds would open a broken viewfinder, so hide the entry point there
+    // until a Capacitor camera-preview plugin is wired up.
+    ...(Capacitor.isNativePlatform()
+      ? []
+      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: () => goTo("/identify") }]),
   ];
 
   // The labels stay up while the dial is open, so nobody has to hover or
