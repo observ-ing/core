@@ -13,6 +13,11 @@ export function formatCoordinate(value: number): string {
   return value.toFixed(COORDINATE_PRECISION);
 }
 
+/** A count with its noun, which takes a plain "s" in the plural: "1 photo", "3 photos". */
+export function plural(count: number, word: string): string {
+  return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
 /**
  * Format a Date as a compact relative time string (e.g., "now", "5m", "2h", "3d")
  * For dates older than a week, returns a formatted date string.

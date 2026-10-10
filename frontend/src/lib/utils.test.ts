@@ -10,6 +10,7 @@ import {
   buildOccurrenceAtUri,
   getDisplayName,
   getErrorMessage,
+  plural,
 } from "./utils";
 
 // Anchor "now" so the relative-time tests are deterministic.
@@ -244,5 +245,13 @@ describe("getErrorMessage", () => {
 
   it("uses a caller-provided fallback", () => {
     expect(getErrorMessage(undefined, "Something went wrong")).toBe("Something went wrong");
+  });
+});
+
+describe("plural", () => {
+  it("counts one of something in the singular and any other number in the plural", () => {
+    expect(plural(1, "photo")).toBe("1 photo");
+    expect(plural(0, "photo")).toBe("0 photos");
+    expect(plural(12, "observation")).toBe("12 observations");
   });
 });

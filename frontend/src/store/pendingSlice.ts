@@ -16,6 +16,8 @@ interface PendingSubmission {
   cid: string;
   kind: "create" | "update";
   createdAt: number;
+  /** Skip the per-submission toast; the batch uploader reports once for all. */
+  quiet?: boolean;
 }
 
 interface PendingState {
@@ -74,9 +76,9 @@ function persist(submissions: PendingSubmission[]) {
 // submissions can preserve their original timestamp (and keep aging out).
 export const trackSubmission = createAsyncThunk<
   void,
-  { uri: string; cid: string; kind: "create" | "update"; createdAt?: number },
+  { uri: string; cid: string; kind: "create" | "update"; createdAt?: number; quiet?: boolean },
   { state: RootState; dispatch: AppDispatch }
->("pending/trackSubmission", async ({ uri, cid, kind }, { dispatch }) => {
+>("pending/trackSubmission", async ({ uri, cid, kind, quiet }, { dispatch }) => {
   const processed = await pollObservation(uri, (r) => r?.occurrence?.cid === cid);
 
   // Replace the tombstone (or a pre-edit row) with the canonical record now that
@@ -86,6 +88,8 @@ export const trackSubmission = createAsyncThunk<
     const detail = await fetchObservation(uri);
     if (detail) reconcileOccurrence(detail);
   }
+
+  if (quiet) return;
 
   if (kind === "update") {
     dispatch(addToast({ message: "Observation updated successfully!", type: "success" }));
@@ -130,8 +134,14 @@ const pendingSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(trackSubmission.pending, (state, action) => {
-        const { uri, cid, kind, createdAt } = action.meta.arg;
-        const entry: PendingSubmission = { uri, cid, kind, createdAt: createdAt ?? Date.now() };
+        const { uri, cid, kind, createdAt, quiet } = action.meta.arg;
+        const entry: PendingSubmission = {
+          uri,
+          cid,
+          kind,
+          createdAt: createdAt ?? Date.now(),
+          ...(quiet ? { quiet } : {}),
+        };
         const existing = state.submissions.findIndex((s) => s.uri === uri);
         if (existing >= 0) state.submissions[existing] = entry;
         else state.submissions.push(entry);

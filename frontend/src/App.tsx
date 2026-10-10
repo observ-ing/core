@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { createBrowserRouter, RouterProvider, Routes, Route, useLocation } from "react-router-dom";
 import { Provider } from "react-redux";
 import { ThemeProvider, CssBaseline, Box, Alert } from "@mui/material";
 import { getTheme } from "./theme";
@@ -8,6 +8,7 @@ import { checkAuth } from "./store/authSlice";
 import { updateSystemTheme } from "./store/uiSlice";
 import { resumePendingSubmissions } from "./store/pendingSlice";
 import { useUnreadCount } from "./lib/query/hooks";
+import { BATCH_UPLOAD_PATH } from "./components/layout/NavConfig";
 // Eager: the shell (layout, always-mounted modals, global UI) — needed on
 // every page, so splitting them buys nothing.
 import { Sidebar } from "./components/layout/Sidebar";
@@ -64,6 +65,9 @@ const TransparencyPage = lazy(() =>
 );
 const NotFound = lazy(() =>
   import("./components/common/NotFound").then((m) => ({ default: m.NotFound })),
+);
+const BatchUploadPage = lazy(() =>
+  import("./components/batch/BatchUploadPage").then((m) => ({ default: m.BatchUploadPage })),
 );
 const LiveIdView = lazy(() =>
   import("./components/identification/LiveIdView").then((m) => ({ default: m.LiveIdView })),
@@ -155,13 +159,16 @@ function AppContent() {
               <Route path="/docs" element={<DocsPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/identify" element={<LiveIdView />} />
+              <Route path={BATCH_UPLOAD_PATH} element={<BatchUploadPage />} />
               <Route path="/transparency" element={<TransparencyPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
         </ErrorBoundary>
       </Box>
-      {!showLanding && <FAB />}
+      {/* The batch uploader is its own way to create observations, and the FAB
+          would sit on top of its editor panel. */}
+      {!showLanding && location.pathname !== BATCH_UPLOAD_PATH && <FAB />}
       <LoginModal />
       <UploadModal />
       <DeleteConfirmDialog />
@@ -171,6 +178,11 @@ function AppContent() {
   );
 }
 
+// A data router, rather than <BrowserRouter>, because the batch uploader blocks
+// navigation while it holds unsent work and `useBlocker` only works under one.
+// The route table itself still lives in AppContent's <Routes>.
+const router = createBrowserRouter([{ path: "*", element: <AppContent /> }]);
+
 function ThemedApp() {
   const effectiveTheme = useAppSelector((state) => state.ui.effectiveTheme);
   const theme = useMemo(() => getTheme(effectiveTheme), [effectiveTheme]);
@@ -178,9 +190,7 @@ function ThemedApp() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }

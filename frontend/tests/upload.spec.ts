@@ -57,6 +57,25 @@ authTest.describe("Upload Modal - Logged In", () => {
     },
   );
 
+  authTest(
+    "create FAB menu shows its labels over a backdrop that closes it",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await page.locator(FAB).click();
+      // The labels are always shown, not just on hover.
+      await authExpect(page.getByText("New Observation", { exact: true })).toBeVisible();
+
+      // Anywhere away from the dial lands on the backdrop.
+      await page.mouse.click(10, 300);
+      await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
+      // Closed labels fade out rather than leave the DOM.
+      await authExpect(page.getByText("New Observation", { exact: true })).toHaveCSS(
+        "opacity",
+        "0",
+      );
+    },
+  );
+
   // TC-UPLOAD-003: Authenticated mode banner
   authTest("upload modal shows posting as handle", async ({ authenticatedPage: page }) => {
     await page.goto("/");
