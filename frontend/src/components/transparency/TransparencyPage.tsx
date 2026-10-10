@@ -120,15 +120,13 @@ export function TransparencyPage() {
               </TableBody>
               <TableFooter>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 600 }}>Total</TableCell>
+                  <TableCell>Total</TableCell>
                   {services.map((s) => (
-                    <TableCell key={s} align="right" sx={{ fontWeight: 600 }}>
+                    <TableCell key={s} align="right">
                       {formatCurrency(serviceTotals.get(s) ?? 0)}
                     </TableCell>
                   ))}
-                  <TableCell align="right" sx={{ fontWeight: 600 }}>
-                    {formatCurrency(grandTotal)}
-                  </TableCell>
+                  <TableCell align="right">{formatCurrency(grandTotal)}</TableCell>
                 </TableRow>
               </TableFooter>
             </Table>

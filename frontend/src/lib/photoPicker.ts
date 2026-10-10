@@ -1,5 +1,6 @@
 import { Capacitor } from "@capacitor/core";
 import { OriginalPhotoPicker } from "capacitor-original-photo-picker";
+import { IMAGE_INPUT_ACCEPT } from "./imageSelection";
 
 interface PickPhotosOptions {
   multiple?: boolean;
@@ -35,7 +36,7 @@ function pickWeb({ multiple }: PickPhotosOptions): Promise<File[]> {
   return new Promise((resolve) => {
     const input = document.createElement("input");
     input.type = "file";
-    input.accept = "image/jpeg,image/png,image/webp";
+    input.accept = IMAGE_INPUT_ACCEPT;
     if (multiple) {
       input.multiple = true;
     }

@@ -126,9 +126,9 @@ function PropertyTable({
       <Table size="small" sx={{ minWidth: 600 }}>
         <TableHead>
           <TableRow>
-            <TableCell sx={{ fontWeight: 600 }}>Field</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Type</TableCell>
-            <TableCell sx={{ fontWeight: 600 }}>Description</TableCell>
+            <TableCell>Field</TableCell>
+            <TableCell>Type</TableCell>
+            <TableCell>Description</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>

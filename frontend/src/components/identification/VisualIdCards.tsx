@@ -5,6 +5,7 @@ import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
 import { InRangeIndicator } from "../common/InRangeIndicator";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
+import { miniIconSx } from "../common/layoutSx";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -189,7 +190,7 @@ export function VisualIdCards({
 function SectionHeader() {
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mb: 0.75 }}>
-      <AutoFixHighIcon sx={{ fontSize: 14, color: "text.secondary" }} />
+      <AutoFixHighIcon sx={{ ...miniIconSx, color: "text.secondary" }} />
       <Typography variant="caption" sx={{ color: "text.secondary" }}>
         Visual matches
       </Typography>

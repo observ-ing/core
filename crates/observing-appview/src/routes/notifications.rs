@@ -5,26 +5,36 @@ use atproto_identity::Profile;
 use axum::extract::{Query, State};
 use axum::Json;
 use serde::{Deserialize, Serialize};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::AuthUser;
 use crate::constants;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{SuccessResponse, UnreadCountResponse};
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ListParams {
+    /// Page size. Values above 50 are clamped.
+    #[param(default = json!(constants::DEFAULT_NOTIFICATION_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = Notification)]
 pub struct NotificationResponse {
     id: i64,
+    /// DID of the user whose action triggered the notification.
     actor_did: String,
+    /// `identification`, `comment`, or `like`.
     kind: String,
+    /// AT URI of the viewer's occurrence that was acted on.
     subject_uri: String,
+    /// AT URI of the identification, comment, or like record.
     #[serde(skip_serializing_if = "Option::is_none")]
     reference_uri: Option<String>,
     read: bool,
@@ -33,7 +43,7 @@ pub struct NotificationResponse {
     actor: Option<ActorProfile>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 struct ActorProfile {
     did: String,
@@ -54,13 +64,28 @@ fn actor_from_profile(did: &str, profiles: &HashMap<String, Arc<Profile>>) -> Op
     })
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NotificationListResponse {
     notifications: Vec<NotificationResponse>,
     cursor: Option<String>,
 }
 
+/// List the viewer's notifications.
+///
+/// Newest first.
+#[utoipa::path(
+    get,
+    path = "/api/notifications",
+    operation_id = "list_notifications",
+    tag = "notifications",
+    params(ListParams),
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "A page of notifications", body = NotificationListResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn list(
     State(state): State<AppState>,
     user: AuthUser,
@@ -100,6 +125,18 @@ pub async fn list(
     }))
 }
 
+/// Count the viewer's unread notifications.
+#[utoipa::path(
+    get,
+    path = "/api/notifications/unread-count",
+    operation_id = "get_unread_notification_count",
+    tag = "notifications",
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The unread count", body = UnreadCountResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn unread_count(
     State(state): State<AppState>,
     user: AuthUser,
@@ -109,11 +146,25 @@ pub async fn unread_count(
     Ok(Json(UnreadCountResponse { count }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, ToSchema)]
 pub struct MarkReadBody {
+    /// The notification to mark read. Omit to mark all of them read.
     id: Option<i64>,
 }
 
+/// Mark notifications read.
+#[utoipa::path(
+    post,
+    path = "/api/notifications/read",
+    operation_id = "mark_notifications_read",
+    tag = "notifications",
+    request_body = MarkReadBody,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The notifications were marked read", body = SuccessResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn mark_read(
     State(state): State<AppState>,
     user: AuthUser,

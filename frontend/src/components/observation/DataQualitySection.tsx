@@ -5,6 +5,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CancelIcon from "@mui/icons-material/Cancel";
 import type { QualityIssue } from "../../bindings/QualityIssue";
 import { CollapsibleSection } from "../common/CollapsibleSection";
+import { detailIconSx } from "../common/DetailListItem";
 import { sectionIconSx } from "../common/Section";
 
 interface DataQualitySectionProps {
@@ -89,9 +90,9 @@ export function DataQualitySection({ issues, sx }: DataQualitySectionProps) {
             <ListItem key={criterion.id} disableGutters alignItems="flex-start" sx={{ py: 0.25 }}>
               <ListItemIcon sx={{ minWidth: 32, mt: 0.25 }}>
                 {met ? (
-                  <CheckCircleIcon sx={{ fontSize: 18, color: "success.main" }} />
+                  <CheckCircleIcon sx={[detailIconSx, { color: "success.main" }]} />
                 ) : (
-                  <CancelIcon sx={{ fontSize: 18, color: "warning.main" }} />
+                  <CancelIcon sx={[detailIconSx, { color: "warning.main" }]} />
                 )}
               </ListItemIcon>
               <ListItemText

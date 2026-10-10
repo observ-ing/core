@@ -21,7 +21,7 @@ open http://127.0.0.1:3000            # use 127.0.0.1, not localhost, or OAuth l
 `npm run doctor` walks every prerequisite the stack needs and prints
 what's missing — run it any time things look broken.
 
-Prerequisites (Node 24+, Rust per `rust-toolchain.toml`, Postgres+PostGIS,
+Prerequisites (Node 26+, Rust per `rust-toolchain.toml`, Postgres+PostGIS,
 process-compose, ONNX Runtime, optional Go for `tap`) are listed in
 [docs/development.md](docs/development.md#prerequisites). On macOS,
 `brew bundle` installs all of them from the project's `Brewfile`.
@@ -81,13 +81,14 @@ cargo clippy --workspace -- -D warnings
 
 ```bash
 cargo test --workspace          # backend; no setup required
-npm run test:integration        # frontend integration (full stack must be up)
+npm run test:integration        # frontend integration (mocked; no setup required)
 npm run test:e2e:devenv         # e2e against a throwaway local ATProto network
 ```
 
-The integration tests expect `process-compose up -D` to have been run
-first. The e2e run brings up its own isolated stack, so stop the normal
-one first (`process-compose down`). See
+The integration tests build the frontend and serve it themselves, with
+every backend call mocked, so they don't need the stack. The e2e run
+brings up its own isolated stack, so stop the normal one first
+(`process-compose down`). See
 [docs/development.md#tests](docs/development.md#tests) for details.
 
 ## SQL changes
@@ -122,8 +123,8 @@ For visibility, the full gate is in `.github/workflows/ci.yml`. The
 short version:
 
 - **Frontend**: `npm audit`, `oxfmt --check`, `oxlint`, `tsc`,
-  `npm run build`, Android APK build, Storybook coverage + build, TS
-  bindings drift check
+  `npm run build`, Android APK build, Storybook coverage + build +
+  story render test (`npm run test:storybook`), TS bindings drift check
 - **Rust**: `cargo check --locked`, `cargo fmt --check`,
   `cargo-deny`, `cargo clippy -D warnings`, `cargo sqlx prepare --check`,
   generated-lexicons drift check, `cargo test --workspace`

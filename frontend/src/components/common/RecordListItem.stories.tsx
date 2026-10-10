@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MemoryRouter } from "react-router-dom";
 import { Chip, List, Stack, Typography } from "@mui/material";
 import { RecordListItem } from "./RecordListItem";
 
@@ -25,11 +24,9 @@ const meta = {
   tags: ["autodocs"],
   decorators: [
     (Story) => (
-      <MemoryRouter>
-        <List disablePadding sx={{ maxWidth: 480 }}>
-          <Story />
-        </List>
-      </MemoryRouter>
+      <List disablePadding sx={{ maxWidth: 480 }}>
+        <Story />
+      </List>
     ),
   ],
   args: {

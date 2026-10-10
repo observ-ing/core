@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 24+ (matches `engines.node` in `package.json` and the version CI runs)
+- Node.js 26+ (matches `engines.node` in `package.json` and the version CI runs)
 - Rust (pinned to the channel in `rust-toolchain.toml`; `rustup` will pick it up automatically)
 - PostgreSQL (14+) with the PostGIS extension — production runs 16, but any modern version works locally
 - [`process-compose`](https://github.com/F1bonacc1/process-compose) to orchestrate the dev stack
@@ -11,6 +11,12 @@
   `crates/observing-species-id/src/model.rs`):
   - macOS: `brew install onnxruntime`
   - Linux: install via your distro (`libonnxruntime` / `onnxruntime-dev`)
+- libheif's `heif-convert`, optional, for importing HEIC photos in browsers
+  that can't decode them (anything but Safari). Without it the appview's
+  `/api/media/heic-to-jpeg` returns 503 and those photos are rejected:
+  - macOS: `brew install libheif`
+  - Linux: `libheif-examples`, plus `libheif-plugin-libde265` on distros with
+    libheif 1.16+ (e.g. Debian trixie, Ubuntu 24.04)
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
 
 > First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.
@@ -32,7 +38,7 @@ process-compose up -D      # runs migrations, then starts services
 `npm run setup` is idempotent — re-run any time, and it skips work
 that's already done. It runs:
 
-1. Prerequisite check (Node 24+, Rust, process-compose)
+1. Prerequisite check (Node 26+, Rust, process-compose)
 2. `npm install`
 3. `./scripts/install-tap.sh` — pinned `tap` Go binary, if not on PATH
 4. `./scripts/download-models.sh` — BioCLIP models, if not present
@@ -362,15 +368,13 @@ up until you rebuild — a common "why isn't my change appearing?" gotcha.
 
 Backend tests with `cargo test --workspace` should run without setup.
 
-Frontend integration tests require the full stack to run:
+Frontend integration tests need no stack. Playwright builds the frontend into `dist/integration` and serves it on port 4173 (`INTEGRATION_PORT` overrides) with every backend route answering 404. Each spec mocks the API calls it relies on with `page.route`, so they run fully parallel and can't reach a real AppView:
 
 ```sh
-# Start full development stack
-process-compose up -D
-
-# Run the tests
 npm run test:integration
 ```
+
+The build goes to `dist/integration` rather than `dist/public` because the appview serves `dist/public` whenever it exists, which would switch a local stack out of Vite mode.
 
 E2E tests are truly end-to-end — they sign in, create an observation and wait for it to round-trip through the firehose and tap-ingester into the DB — but against a throwaway local ATProto network (`@atproto/dev-env`), so test records never reach the public firehose or any other AppView. No real account or credentials are needed. The run boots the network and its own isolated stack (a separate `observing_devenv` database), so stop the normal stack first:
 

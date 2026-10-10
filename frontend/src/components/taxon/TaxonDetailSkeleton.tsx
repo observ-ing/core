@@ -2,6 +2,8 @@ import { Box, Divider, Skeleton, Stack } from "@mui/material";
 import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 
+const CHIP_WIDTHS = [60, 80];
+
 /**
  * Skeleton loader matching taxon detail page layout
  */
@@ -19,8 +21,15 @@ export function TaxonDetailSkeleton() {
 
         {/* Chips */}
         <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-          <Skeleton variant="rectangular" width={60} height={24} sx={{ borderRadius: 4 }} />
-          <Skeleton variant="rectangular" width={80} height={24} sx={{ borderRadius: 4 }} />
+          {CHIP_WIDTHS.map((width) => (
+            <Skeleton
+              key={width}
+              variant="rectangular"
+              width={width}
+              height={24}
+              sx={{ borderRadius: 4 }}
+            />
+          ))}
         </Stack>
 
         {/* Stats */}

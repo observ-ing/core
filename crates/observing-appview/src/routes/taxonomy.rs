@@ -2,22 +2,41 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use observing_db::types::TaxonOccurrenceOptions;
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{OccurrenceListResponse, TaxonSearchResponse};
 use crate::state::AppState;
 use crate::taxonomy_client::{
-    TaxonDetail, TaxonDetailWithCount, TaxonomyClientError, ValidateResponse,
+    TaxonDetail, TaxonDetailWithCount, TaxonResult, TaxonomyClientError, ValidateResponse,
 };
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct SearchParams {
+    /// Search text, at least 2 characters.
+    #[param(required = true, value_type = String)]
     q: Option<String>,
 }
 
+/// Search taxa by name.
+///
+/// Full-text search of the GBIF backbone taxonomy, for autocomplete. Returns
+/// up to 10 matches.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/search",
+    operation_id = "search_taxa",
+    tag = "taxonomy",
+    params(SearchParams),
+    responses(
+        (status = 200, description = "Matching taxa", body = TaxonSearchResponse),
+        (status = 400, description = "`q` missing or too short", body = ErrorResponse),
+    )
+)]
 pub async fn search(
     State(state): State<AppState>,
     Query(params): Query<SearchParams>,
@@ -42,12 +61,28 @@ pub async fn search(
     Ok(Json(TaxonSearchResponse { results }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ValidateParams {
+    /// Scientific name to check.
+    #[param(required = true, value_type = String)]
     name: Option<String>,
+    /// Kingdom hint, to disambiguate names used in more than one kingdom.
     kingdom: Option<String>,
 }
 
+/// Check a scientific name against GBIF.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/validate",
+    operation_id = "validate_taxon",
+    tag = "taxonomy",
+    params(ValidateParams),
+    responses(
+        (status = 200, description = "Whether the name matched, with the match or close suggestions", body = ValidateResponse),
+        (status = 400, description = "`name` missing", body = ErrorResponse),
+    )
+)]
 pub async fn validate(
     State(state): State<AppState>,
     Query(params): Query<ValidateParams>,
@@ -71,12 +106,27 @@ pub async fn validate(
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct TaxonOccurrenceParams {
+    /// Page size. Values above 100 are clamped.
+    #[param(default = json!(constants::DEFAULT_FEED_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
 }
 
+/// Get a taxon by kingdom and name.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/{kingdom}/{name}",
+    tag = "taxonomy",
+    params(("kingdom" = String, Path, description = "Kingdom name, e.g. `Plantae`"), ("name" = String, Path, description = "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)")),
+    responses(
+        (status = 200, description = "The taxon, with how many occurrences it has", body = TaxonDetailWithCount),
+        (status = 404, description = "No such taxon", body = ErrorResponse),
+    )
+)]
 pub async fn get_taxon_by_kingdom_name(
     State(state): State<AppState>,
     Path((kingdom, name)): Path<(String, String)>,
@@ -105,10 +155,20 @@ pub async fn get_taxon_by_kingdom_name(
     }))
 }
 
+/// List a taxon's child taxa.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/{kingdom}/{name}/children",
+    tag = "taxonomy",
+    params(("kingdom" = String, Path, description = "Kingdom name, e.g. `Plantae`"), ("name" = String, Path, description = "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)")),
+    responses(
+        (status = 200, description = "Up to 20 children; empty if none were found", body = Vec<TaxonResult>),
+    )
+)]
 pub async fn get_children_by_kingdom_name(
     State(state): State<AppState>,
     Path((kingdom, name)): Path<(String, String)>,
-) -> Result<Json<Vec<crate::taxonomy_client::TaxonResult>>, AppError> {
+) -> Result<Json<Vec<TaxonResult>>, AppError> {
     let name = name.replace('-', " ");
     let children = state
         .taxonomy
@@ -119,6 +179,20 @@ pub async fn get_children_by_kingdom_name(
     Ok(Json(children))
 }
 
+/// List occurrences of a taxon, by kingdom and name.
+///
+/// Matches on the community identification, so includes occurrences of
+/// descendant taxa.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/{kingdom}/{name}/occurrences",
+    tag = "taxonomy",
+    params(("kingdom" = String, Path, description = "Kingdom name, e.g. `Plantae`"), ("name" = String, Path, description = "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)"), TaxonOccurrenceParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
+    )
+)]
 pub async fn get_taxon_occurrences_by_kingdom_name(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -191,6 +265,17 @@ async fn resolve_taxon_by_id_or_name(
     state.taxonomy.get_by_name(id, None).await
 }
 
+/// Get a taxon by id.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/{id}",
+    tag = "taxonomy",
+    params(("id" = String, Path, description = "GBIF taxon id (`gbif:2878688` or `2878688`), or a scientific name")),
+    responses(
+        (status = 200, description = "The taxon, with how many occurrences it has", body = TaxonDetailWithCount),
+        (status = 404, description = "No such taxon", body = ErrorResponse),
+    )
+)]
 pub async fn get_taxon_by_id(
     State(state): State<AppState>,
     Path(id): Path<String>,
@@ -214,6 +299,20 @@ pub async fn get_taxon_by_id(
     }))
 }
 
+/// List occurrences of a taxon, by id.
+///
+/// Matches on the community identification, so includes occurrences of
+/// descendant taxa.
+#[utoipa::path(
+    get,
+    path = "/api/taxa/{id}/occurrences",
+    tag = "taxonomy",
+    params(("id" = String, Path, description = "GBIF taxon id (`gbif:2878688` or `2878688`), or a scientific name"), TaxonOccurrenceParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
+    )
+)]
 pub async fn get_taxon_occurrences_by_id(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

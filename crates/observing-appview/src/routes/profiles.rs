@@ -3,22 +3,44 @@ use axum::extract::{Path, Query, State};
 use axum::Json;
 use observing_db::types::{ProfileFeedOptions, ProfileFeedType};
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment::{self, ProfileSummary};
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{ProfileCounts, ProfileFeedResponse};
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ProfileFeedParams {
+    /// Page size. Values above 100 are clamped.
+    #[param(default = json!(constants::DEFAULT_FEED_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
+    /// `observations` or `identifications` to return only that kind of
+    /// activity; anything else returns both.
     #[serde(rename = "type")]
     feed_type: Option<String>,
 }
 
+/// Get a user's profile and activity.
+///
+/// Returns the profile, activity counts, and a page of the user's
+/// occurrences and identifications.
+#[utoipa::path(
+    get,
+    path = "/api/profiles/{did}/feed",
+    tag = "profiles",
+    params(("did" = String, Path, description = "The user's DID"), ProfileFeedParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "The profile and a page of activity", body = ProfileFeedResponse),
+        (status = 400, description = "Invalid DID", body = ErrorResponse),
+    )
+)]
 pub async fn get_profile_feed(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

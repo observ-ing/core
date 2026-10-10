@@ -9,15 +9,27 @@ use observing_lexicons::ing_observ::temp::interaction::{
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{InteractionListResponse, RecordCreatedResponse};
 use crate::state::AppState;
 use crate::validation::validate_string_length;
 
+/// List species interactions involving an occurrence.
+#[utoipa::path(
+    get,
+    path = "/api/interactions/occurrence/{uri}",
+    operation_id = "list_interactions",
+    tag = "interactions",
+    params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
+    responses(
+        (status = 200, description = "Interactions in which the occurrence is either subject", body = InteractionListResponse),
+    )
+)]
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
     Path(uri): Path<String>,
@@ -31,7 +43,8 @@ pub async fn get_for_occurrence(
 
 // --- Write handlers ---
 
-#[derive(Deserialize, TS)]
+/// One side of an interaction: an occurrence, a taxon, or both.
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct InteractionSubjectRequest {
@@ -45,14 +58,16 @@ pub struct InteractionSubjectRequest {
     kingdom: Option<String>,
 }
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateInteractionRequest {
     subject_a: InteractionSubjectRequest,
     subject_b: InteractionSubjectRequest,
     interaction_type: String,
+    /// Defaults to `AtoB`.
     #[ts(optional, as = "Option<InteractionDirection>")]
+    #[schema(value_type = Option<InteractionDirection>)]
     direction: Option<String>,
     #[ts(optional)]
     comment: Option<String>,
@@ -79,6 +94,22 @@ fn build_interaction_subject(
     })
 }
 
+/// Record a species interaction.
+///
+/// Writes an interaction record (e.g. predation, pollination) between two
+/// subjects to the caller's PDS.
+#[utoipa::path(
+    post,
+    path = "/api/interactions",
+    tag = "interactions",
+    request_body = CreateInteractionRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
+        (status = 400, description = "A field failed validation", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+    )
+)]
 pub async fn create_interaction(
     State(state): State<AppState>,
     user: AuthUser,

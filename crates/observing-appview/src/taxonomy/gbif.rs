@@ -13,12 +13,13 @@ use crate::taxonomy_client::{
 use gbif::checklistbank::{
     types::{
         DiagnosticsMatchType, NameUsage, NameUsageMatch, NameUsageMediaObject,
-        NameUsageSearchResult, RankedName, Status, Usage,
+        NameUsageSearchResult, RankedName, Status, Usage, VernacularName,
     },
     Client as GbifChecklistbankClient, Error as GbifClientError,
 };
 use gbif::Uuid;
 use moka::future::Cache;
+use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 use tracing::warn;
@@ -294,6 +295,28 @@ impl GbifClient {
         }
     }
 
+    /// v1 `/species/{key}/vernacularNames`. Returns `Ok(vec![])` on 404.
+    ///
+    /// Asks for GBIF's maximum page size in a single request. GBIF lists
+    /// entries with no `preferred` value first, so the flagged ones
+    /// `pick_vernacular` wants are often past the first 100; 1000 covers the
+    /// whole list for every taxon we've looked at without an unbounded
+    /// number of requests.
+    async fn get_name_usage_vernacular_names(
+        &self,
+        key: i32,
+    ) -> Result<Vec<VernacularName>, GbifError> {
+        match self
+            .api
+            .get_name_usage_vernacular_names(key, Some(1000), None)
+            .await
+        {
+            Ok(rv) => Ok(rv.into_inner().results),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
+            Err(e) => Err(e.into()),
+        }
+    }
+
     /// v1 `/species/{key}/children`. Returns `Ok(vec![])` on 404.
     async fn get_name_usage_children(
         &self,
@@ -509,21 +532,11 @@ impl GbifClient {
                     Err(e) => Err(GbifError::from(e)),
                 }
             },
-            async {
-                // The v1 `/species/{key}` scalar `vernacularName` is unreliable
-                // (it can surface a non-preferred name, e.g. "Red Maple" for
-                // Acer saccharinum). Fetch the full vernacular list so we can
-                // apply the same preference logic as the search path.
-                match self
-                    .api
-                    .get_name_usage_vernacular_names(key, Some(100), None)
-                    .await
-                {
-                    Ok(rv) => Ok(rv.into_inner().results),
-                    Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(vec![]),
-                    Err(e) => Err(GbifError::from(e)),
-                }
-            },
+            // The v1 `/species/{key}` scalar `vernacularName` is unreliable
+            // (it can surface a non-preferred name, e.g. "Red Maple" for
+            // Acer saccharinum). Fetch the full vernacular list so we can
+            // apply the same preference logic as the search path.
+            self.get_name_usage_vernacular_names(key),
             self.wikidata.get_entity_url(key_u64),
             self.wikidata.get_images_for_keys(&key_slice, 600),
         );
@@ -850,9 +863,10 @@ impl GbifClient {
 
     /// Convert a v1 NameUsageSearchResult into a TaxonResult.
     ///
-    /// Picks the best vernacular name: top-level `vernacularName`, then any
-    /// English-tagged entry, then an untagged entry (which GBIF often omits
-    /// for English), then any preferred entry, then the first one.
+    /// Picks the vernacular name with [`pick_vernacular`]. Search results
+    /// carry neither `preferred` nor `source` on their vernacular entries, so
+    /// here that comes down to the most-listed English name, and it can
+    /// differ from the name `get_by_id` picks for the same taxon.
     fn search_result_to_taxon(&self, item: &NameUsageSearchResult) -> TaxonResult {
         let name = item
             .canonical_name
@@ -977,48 +991,148 @@ fn pick_vernacular_name(item: &NameUsageSearchResult) -> Option<String> {
 /// comes first because GBIF's lists routinely include several conflicting
 /// English names (e.g. *Acer saccharinum* lists "Red Maple" ahead of "Silver
 /// Maple"); only the authoritative `preferred` flag disambiguates them.
-fn pick_vernacular(names: &[gbif::checklistbank::types::VernacularName]) -> Option<String> {
+///
+/// Within a tier the name the most sources agree on wins (see
+/// [`most_agreed_vernacular`]), because the first entry is often an oddity
+/// (e.g. the banding code "BCNH" for *Nycticorax nycticorax*).
+fn pick_vernacular(names: &[VernacularName]) -> Option<String> {
     // The serialized form of `VernacularNameLanguage::Eng` is "eng"; we
     // compare via a serde round-trip so we don't depend on the enum's
-    // identifier munging.
-    fn is_english(v: &gbif::checklistbank::types::VernacularName) -> bool {
-        v.language.as_ref().and_then(rank_to_string).as_deref() == Some("eng")
+    // identifier munging. An untagged entry has no language in search
+    // results and an empty one from `/species/{key}/vernacularNames`.
+    fn language(v: &VernacularName) -> Option<String> {
+        v.language
+            .as_ref()
+            .and_then(rank_to_string)
+            .filter(|l| !l.is_empty())
+    }
+    fn is_preferred(v: &&VernacularName) -> bool {
+        v.preferred == Some(true)
     }
 
-    // English + preferred.
-    if let Some(name) = names
+    let english: Vec<&VernacularName> = names
         .iter()
-        .find(|v| is_english(v) && v.preferred == Some(true))
-        .map(|v| v.vernacular_name.clone())
-    {
-        return Some(name);
+        .filter(|v| language(v).as_deref() == Some("eng"))
+        .collect();
+    let preferred_english: Vec<&VernacularName> =
+        english.iter().copied().filter(is_preferred).collect();
+    let untagged: Vec<&VernacularName> = names.iter().filter(|v| language(v).is_none()).collect();
+    let preferred: Vec<&VernacularName> = names.iter().filter(is_preferred).collect();
+
+    // English + preferred. Each source sets the flag for itself, so a few
+    // checklists often back one name each (*Canis lupus*: "Dog", "Grey
+    // Wolf", "Wolf"); the rest of the English entries break that tie.
+    most_agreed_vernacular(&preferred_english, &english)
+        // English-tagged.
+        .or_else(|| most_agreed_vernacular(&english, &[]))
+        // Untagged (GBIF often omits the language tag for English).
+        .or_else(|| most_agreed_vernacular(&untagged, &[]))
+        // Preferred.
+        .or_else(|| most_agreed_vernacular(&preferred, &[]))
+        // First available.
+        .or_else(|| names.first().map(|v| v.vernacular_name.clone()))
+}
+
+/// Entries for one vernacular name, ignoring case and punctuation.
+struct VernacularTally<'a> {
+    key: String,
+    sources: HashSet<&'a str>,
+    /// Search results don't say where an entry came from.
+    unsourced: usize,
+    /// (spelling, entries), in listed order.
+    spellings: Vec<(&'a str, usize)>,
+}
+
+impl VernacularTally<'_> {
+    /// One vote per source, however many times it lists the name. Entries
+    /// with no source can't be told apart, so each one counts.
+    fn votes(&self) -> usize {
+        self.sources.len() + self.unsourced
     }
-    // English-tagged.
-    if let Some(name) = names
+}
+
+/// Group entries by name, in listed order. Entries that differ only in case
+/// or punctuation ("Black-crowned Night Heron" / "Black-crowned Night-Heron")
+/// are the same name.
+fn tally_vernacular<'a>(entries: &[&'a VernacularName]) -> Vec<VernacularTally<'a>> {
+    let mut tallies: Vec<VernacularTally<'a>> = Vec::new();
+    let mut index: HashMap<String, usize> = HashMap::new();
+    for v in entries {
+        let key: String = v
+            .vernacular_name
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .flat_map(char::to_lowercase)
+            .collect();
+        // Nothing but punctuation ("?", "-") isn't a name.
+        if key.is_empty() {
+            continue;
+        }
+        let i = *index.entry(key.clone()).or_insert_with(|| {
+            tallies.push(VernacularTally {
+                key,
+                sources: HashSet::new(),
+                unsourced: 0,
+                spellings: Vec::new(),
+            });
+            tallies.len() - 1
+        });
+        let tally = &mut tallies[i];
+        match v.source.as_deref() {
+            Some(source) => {
+                tally.sources.insert(source);
+            }
+            None => tally.unsourced += 1,
+        }
+        match tally
+            .spellings
+            .iter_mut()
+            .find(|(s, _)| *s == v.vernacular_name)
+        {
+            Some((_, n)) => *n += 1,
+            None => tally.spellings.push((&v.vernacular_name, 1)),
+        }
+    }
+    tallies
+}
+
+/// The name in `tier` that the most sources agree on, in its most frequent
+/// spelling, or `None` when `tier` has no usable name.
+///
+/// Names level on votes within `tier` are separated by their votes in
+/// `tie_break`, and after that by which was listed first.
+fn most_agreed_vernacular(
+    tier: &[&VernacularName],
+    tie_break: &[&VernacularName],
+) -> Option<String> {
+    let tie_break = tally_vernacular(tie_break);
+    let tie_votes: HashMap<&str, usize> = tie_break
         .iter()
-        .find(|v| is_english(v))
-        .map(|v| v.vernacular_name.clone())
-    {
-        return Some(name);
+        .map(|t| (t.key.as_str(), t.votes()))
+        .collect();
+
+    let winner = first_max_by_key(tally_vernacular(tier), |t| {
+        (
+            t.votes(),
+            tie_votes.get(t.key.as_str()).copied().unwrap_or(0),
+        )
+    })?;
+    first_max_by_key(winner.spellings, |(_, n)| *n).map(|(s, _)| s.to_string())
+}
+
+/// `Iterator::max_by_key`, except that the first maximum wins, not the last.
+fn first_max_by_key<T, K: Ord>(
+    items: impl IntoIterator<Item = T>,
+    key: impl Fn(&T) -> K,
+) -> Option<T> {
+    let mut best: Option<(K, T)> = None;
+    for item in items {
+        let k = key(&item);
+        if best.as_ref().is_none_or(|(b, _)| k > *b) {
+            best = Some((k, item));
+        }
     }
-    // Untagged (GBIF often omits the language tag for English).
-    if let Some(name) = names
-        .iter()
-        .find(|v| v.language.is_none())
-        .map(|v| v.vernacular_name.clone())
-    {
-        return Some(name);
-    }
-    // Preferred.
-    if let Some(name) = names
-        .iter()
-        .find(|v| v.preferred == Some(true))
-        .map(|v| v.vernacular_name.clone())
-    {
-        return Some(name);
-    }
-    // First available.
-    names.first().map(|v| v.vernacular_name.clone())
+    best.map(|(_, item)| item)
 }
 
 /// Cache hit/miss/entry-count snapshot.
@@ -1209,6 +1323,139 @@ mod tests {
         );
         let result = client.search_result_to_taxon(&item);
         assert_eq!(result.common_name.as_deref(), Some("Silver Maple"));
+    }
+
+    #[test]
+    fn test_vernacular_majority_breaks_tie_among_english() {
+        // Reproduces the Nycticorax nycticorax case (#873): GBIF sorts the
+        // banding code "BCNH" ahead of the name most sources agree on.
+        let client = GbifClient::new();
+        let item = make_search_result(
+            "Nycticorax nycticorax",
+            "SPECIES",
+            None,
+            vec![
+                vn("BCNH", Some("eng"), None),
+                vn("Black-crowned Night Heron", Some("eng"), None),
+                vn("Black-crowned Night-Heron", Some("eng"), None),
+                vn("Black-crowned Night Heron", Some("eng"), None),
+            ],
+        );
+        let result = client.search_result_to_taxon(&item);
+        assert_eq!(
+            result.common_name.as_deref(),
+            Some("Black-crowned Night Heron")
+        );
+    }
+
+    // ---------- `/species/{key}/vernacularNames` shape ----------
+    //
+    // Unlike search results, these entries carry `source` and `preferred`,
+    // and an untagged entry has `"language": ""` rather than no language key.
+
+    fn detail_vn(
+        name: &str,
+        language: &str,
+        preferred: Option<bool>,
+        source: &str,
+    ) -> serde_json::Value {
+        let mut m = serde_json::Map::new();
+        m.insert("vernacularName".into(), json!(name));
+        m.insert("language".into(), json!(language));
+        m.insert("source".into(), json!(source));
+        if let Some(p) = preferred {
+            m.insert("preferred".into(), json!(p));
+        }
+        serde_json::Value::Object(m)
+    }
+
+    fn pick_detail(names: Vec<serde_json::Value>) -> Option<String> {
+        let names: Vec<gbif::checklistbank::types::VernacularName> =
+            serde_json::from_value(json!(names)).unwrap();
+        pick_vernacular(&names)
+    }
+
+    #[test]
+    fn test_vernacular_most_sources_wins_among_preferred_english() {
+        // Reproduces the Nycticorax nycticorax case.
+        let pick = pick_detail(vec![
+            detail_vn("Night-heron", "eng", Some(true), "UKSI"),
+            detail_vn("Black-crowned Night Heron", "eng", Some(true), "IUCN"),
+            detail_vn("Black-crowned Night Heron", "eng", Some(true), "Dyntaxa"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("Black-crowned Night Heron"));
+    }
+
+    #[test]
+    fn test_vernacular_preferred_english_beats_english_majority() {
+        // More sources say "Scotch broom", but the `preferred` flag still
+        // outranks a plain majority.
+        let pick = pick_detail(vec![
+            detail_vn("Scotch broom", "eng", None, "ITIS"),
+            detail_vn("Scotch broom", "eng", None, "TAXREF"),
+            detail_vn("Scotch broom", "eng", None, "Catalogue of Life"),
+            detail_vn("Broom", "eng", Some(true), "UKSI"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("Broom"));
+    }
+
+    #[test]
+    fn test_vernacular_full_tie_keeps_first_listed() {
+        // Reproduces the Umbellularia californica case: two preferred English
+        // names from one source each, and nothing else to separate them.
+        let pick = pick_detail(vec![
+            detail_vn("California Bay", "eng", Some(true), "IUCN"),
+            detail_vn("Californian Bay", "eng", Some(true), "UKSI"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("California Bay"));
+    }
+
+    #[test]
+    fn test_vernacular_preferred_tie_broken_by_all_english() {
+        // Reproduces the Canis lupus case: three preferred English names from
+        // one source each, with "Dog" listed first. The unflagged English
+        // entries settle it.
+        let pick = pick_detail(vec![
+            detail_vn("Dog", "eng", Some(true), "Dutch Caribbean Species Register"),
+            detail_vn("Grey Wolf", "eng", Some(true), "IUCN"),
+            detail_vn("Wolf", "eng", Some(true), "UKSI"),
+            detail_vn("Wolf", "eng", None, "ITIS"),
+            detail_vn("Wolf", "eng", None, "Catalogue of Life"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("Wolf"));
+    }
+
+    #[test]
+    fn test_vernacular_repeats_from_one_source_count_once() {
+        // Reproduces the Umbellularia californica case: Catalogue of Life
+        // lists "Oregon-myrtle" twice, which must not outvote a name two
+        // independent sources agree on.
+        let pick = pick_detail(vec![
+            detail_vn("Oregon-myrtle", "eng", None, "Catalogue of Life"),
+            detail_vn("Oregon-myrtle", "eng", None, "Catalogue of Life"),
+            detail_vn("California Bay", "eng", None, "ITIS"),
+            detail_vn("California Bay", "eng", None, "TAXREF"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("California Bay"));
+    }
+
+    #[test]
+    fn test_vernacular_empty_language_is_untagged() {
+        let pick = pick_detail(vec![
+            detail_vn("Meldugfamilien", "dan", None, "Dyntaxa"),
+            detail_vn("Powdery Mildews", "", None, "Catalogue of Life"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("Powdery Mildews"));
+    }
+
+    #[test]
+    fn test_vernacular_names_without_letters_or_digits_do_not_vote() {
+        let pick = pick_detail(vec![
+            detail_vn("?", "eng", None, "ITIS"),
+            detail_vn("-", "eng", None, "TAXREF"),
+            detail_vn("Coast Live Oak", "eng", None, "Catalogue of Life"),
+        ]);
+        assert_eq!(pick.as_deref(), Some("Coast Live Oak"));
     }
 
     #[test]
@@ -1435,5 +1682,54 @@ mod tests {
             Some("https://www.gbif.org/species/5231190"),
             "the resolved taxon carries the GBIF species URI used as dwc:taxonID"
         );
+    }
+
+    /// One request at GBIF's maximum page size, and no more: the entries that
+    /// decide the pick can sit past the first 100 (*Achillea millefolium*
+    /// only reaches "Yarrow" that way), but following pages without bound
+    /// isn't worth it for a taxon with thousands of names.
+    #[tokio::test]
+    async fn get_name_usage_vernacular_names_fetches_one_max_size_page() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2480863/vernacularNames"))
+            .and(query_param("limit", "1000"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "endOfRecords": false,
+                "results": [
+                    vn("BCNH", Some("eng"), None),
+                    vn("Black-crowned Night Heron", Some("eng"), Some(true)),
+                ]
+            })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let names = client
+            .get_name_usage_vernacular_names(2480863)
+            .await
+            .expect("lookup succeeds");
+
+        assert_eq!(names.len(), 2);
+        // server.verify() on drop will panic if expect(1) was violated.
+    }
+
+    #[tokio::test]
+    async fn get_name_usage_vernacular_names_empty_on_404() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/v1/species/1/vernacularNames"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let names = client
+            .get_name_usage_vernacular_names(1)
+            .await
+            .expect("a 404 is not an error");
+
+        assert!(names.is_empty());
     }
 }

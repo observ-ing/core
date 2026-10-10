@@ -5,7 +5,7 @@
 # packages.
 
 # Toolchain
-brew "node@24"
+brew "node@26"
 brew "rustup"            # `rustup` manages Rust per rust-toolchain.toml
 brew "go"                # for building the upstream `tap` binary
 
@@ -23,3 +23,7 @@ brew "postgis"
 
 # species-id native dependency
 brew "onnxruntime"
+
+# `heif-convert`, for the appview's HEIC → JPEG fallback (optional: without it
+# HEIC photos only import in browsers that decode HEIC natively, i.e. Safari)
+brew "libheif"
