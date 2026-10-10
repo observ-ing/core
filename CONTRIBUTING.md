@@ -81,13 +81,14 @@ cargo clippy --workspace -- -D warnings
 
 ```bash
 cargo test --workspace          # backend; no setup required
-npm run test:integration        # frontend integration (full stack must be up)
+npm run test:integration        # frontend integration (mocked; no setup required)
 npm run test:e2e:devenv         # e2e against a throwaway local ATProto network
 ```
 
-The integration tests expect `process-compose up -D` to have been run
-first. The e2e run brings up its own isolated stack, so stop the normal
-one first (`process-compose down`). See
+The integration tests build the frontend and serve it themselves, with
+every backend call mocked, so they don't need the stack. The e2e run
+brings up its own isolated stack, so stop the normal one first
+(`process-compose down`). See
 [docs/development.md#tests](docs/development.md#tests) for details.
 
 ## SQL changes

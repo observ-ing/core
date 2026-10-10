@@ -85,6 +85,29 @@ jobs:
       - run: npm ci
       - run: npm run test:unit
 
+  # Mocked Playwright suite. Needs no backend: playwright.config.ts's webServer
+  # builds the SPA and serves it with every backend route answering 404, and
+  # each spec mocks what it uses via page.route. So it runs on its own, in
+  # parallel, instead of behind the dev-env stack the `e2e` job boots.
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+      - run: npm ci
+      - name: Install Playwright
+        run: npx playwright install --with-deps chromium
+      - run: npm run test:integration
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-integration
+          path: playwright-report/
+          retention-days: 7
+
   frontend-build:
     runs-on: ubuntu-latest
     steps:
@@ -457,11 +480,11 @@ jobs:
         with:
           path: frontend/tests/dev-env/deps/node_modules
           key: devenv-deps-${{ runner.os }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('frontend/tests/dev-env/deps/package-lock.json') }}
-      - name: Run isolated dev-env e2e + integration tests
+      - name: Run isolated dev-env e2e tests
         # Boots a local @atproto/dev-env network (PLC + PDS + firehose), points
-        # the Rust stack at it (process-compose.yaml + devenv overlay), then runs the
-        # mocked integration suite plus the dev-env CRUD e2e (playwright.devenv.
-        # config.ts). No test data ever reaches the public network, so no
+        # the Rust stack at it (process-compose.yaml + devenv overlay), then runs
+        # the dev-env CRUD e2e (playwright.devenv.config.ts); the mocked suite is
+        # the `integration` job. No test data ever reaches the public network, so no
         # BLUESKY_* credentials are needed. @atproto/dev-env is installed from
         # its own lockfile rather than the root one — see
         # frontend/tests/dev-env/network.ts. The orchestrator inherits stdio, so
@@ -477,7 +500,7 @@ jobs:
   # Build Docker images in parallel with caching
   build-images:
     runs-on: ubuntu-latest
-    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, e2e]
+    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, integration, e2e]
     if: github.event_name == 'push'
     env:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing

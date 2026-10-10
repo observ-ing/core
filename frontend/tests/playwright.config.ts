@@ -1,18 +1,32 @@
 import { defineConfig, devices } from "@playwright/test";
 
+// The mocked suite brings its own server (integration-server.ts) on a port of
+// its own, so it doesn't need — or collide with — a running dev stack on :3000.
+const PORT = Number(process.env.INTEGRATION_PORT) || 4173;
+const BASE_URL = `http://127.0.0.1:${PORT}`;
+
 export default defineConfig({
   testDir: ".",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // Every backend call is mocked or answered 404 by integration-server.ts, so
+  // tests share no state. Explicit for CI: the default is half the cores, i.e.
+  // 2 on GitHub's 4-vCPU runners.
+  workers: process.env.CI ? 4 : undefined,
   reporter: "html",
   expect: { timeout: 15_000 },
+  webServer: {
+    // Builds the SPA, then serves it with every backend route answering 404.
+    command: "npx tsx integration-server.ts",
+    url: BASE_URL,
+    env: { INTEGRATION_PORT: String(PORT) },
+    // Never reuse: whatever already holds the port isn't this build.
+    reuseExistingServer: false,
+    timeout: 120_000,
+  },
   use: {
-    // Must use 127.0.0.1 (not localhost) because AT Protocol OAuth
-    // redirects to http://127.0.0.1:3000/oauth/callback, and the
-    // session_did cookie is set for the 127.0.0.1 domain.
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: BASE_URL,
     navigationTimeout: 30_000,
     trace: "on-first-retry",
     screenshot: "only-on-failure",
@@ -25,7 +39,7 @@ export default defineConfig({
   projects: [
     // The real CRUD e2e (e2e.spec.ts) runs only in playwright.devenv.config.ts,
     // against a throwaway local ATProto network: `npm run test:e2e:devenv`.
-    // Integration: mocked Bluesky auth, no credentials required.
+    // Integration: mocked Bluesky auth, no credentials or backend required.
     {
       name: "integration",
       testMatch: /(?<!e2e)\.spec\.ts/,

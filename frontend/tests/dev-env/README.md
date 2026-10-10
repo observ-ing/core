@@ -23,8 +23,9 @@ run uses the same ports and refuses to start if they're taken.
    temp Tap cursor DB.
 4. Registers the account's DID with Tap (`/repos/add`), since Tap only forwards
    repos it tracks.
-5. Runs `playwright.devenv.config.ts`: the dev-env login, `e2e.spec.ts`, and the
-   mocked `integration` suite.
+5. Runs `playwright.devenv.config.ts`: the dev-env login, then `e2e.spec.ts`.
+   (The mocked `integration` suite needs no backend; it's CI's `integration`
+   job, `npm run test:integration`.)
 
 | Var                   | Points at                                              |
 | --------------------- | ------------------------------------------------------ |

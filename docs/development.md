@@ -368,15 +368,13 @@ up until you rebuild — a common "why isn't my change appearing?" gotcha.
 
 Backend tests with `cargo test --workspace` should run without setup.
 
-Frontend integration tests require the full stack to run:
+Frontend integration tests need no stack. Playwright builds the frontend into `dist/integration` and serves it on port 4173 (`INTEGRATION_PORT` overrides) with every backend route answering 404. Each spec mocks the API calls it relies on with `page.route`, so they run fully parallel and can't reach a real AppView:
 
 ```sh
-# Start full development stack
-process-compose up -D
-
-# Run the tests
 npm run test:integration
 ```
+
+The build goes to `dist/integration` rather than `dist/public` because the appview serves `dist/public` whenever it exists, which would switch a local stack out of Vite mode.
 
 E2E tests are truly end-to-end — they sign in, create an observation and wait for it to round-trip through the firehose and tap-ingester into the DB — but against a throwaway local ATProto network (`@atproto/dev-env`), so test records never reach the public firehose or any other AppView. No real account or credentials are needed. The run boots the network and its own isolated stack (a separate `observing_devenv` database), so stop the normal stack first:
 
