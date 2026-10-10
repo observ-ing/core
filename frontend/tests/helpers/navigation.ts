@@ -15,7 +15,10 @@ export type UploadStep = "Photos" | "Location" | "Identify" | "Date & details";
 export async function openUploadModal(page: Page) {
   const fab = page.locator(FAB);
   await fab.waitFor({ state: "visible", timeout: 10_000 });
-  await fab.click();
+  // Hover, don't click. MUI opens the dial on mouseenter via a 0ms timer, and
+  // click() moves the mouse before pressing: if that timer fires in between
+  // (likely under CI load), the click's toggle closes the dial it just opened.
+  await fab.hover();
   const newObsAction = page.getByRole("menuitem", {
     name: "New Observation",
   });
