@@ -11,9 +11,10 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   // Every backend call is mocked or answered 404 by integration-server.ts, so
-  // tests share no state. Explicit for CI: the default is half the cores, i.e.
-  // 2 on GitHub's 4-vCPU runners.
-  workers: process.env.CI ? 4 : undefined,
+  // tests share no state. CI stays at 2: on GitHub's 4-vCPU runners, 4 workers
+  // (each rendering via SwiftShader) made every test ~2.4x slower for only a
+  // 1.4x wall-clock gain, and pushed timing-sensitive specs past their timeouts.
+  workers: process.env.CI ? 2 : undefined,
   reporter: "html",
   expect: { timeout: 15_000 },
   webServer: {
