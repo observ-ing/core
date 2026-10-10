@@ -2,6 +2,7 @@ use reqwest::Client;
 use serde::Serialize;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
+use utoipa::ToSchema;
 
 pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse};
 
@@ -27,7 +28,7 @@ const MIN_REMAINING: Duration = Duration::from_secs(3);
 const STALE_BOOT_GRACE: Duration = Duration::from_secs(60);
 
 /// Warm/cold state of a species-id service, as reported to the frontend.
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct SpeciesIdStatus {
     pub ready: bool,

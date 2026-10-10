@@ -6,15 +6,16 @@ use observing_lexicons::ing_observ::temp::comment::{Comment, CommentRecord};
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::{self, AuthUser};
 use crate::constants;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::RecordCreatedResponse;
 use crate::state::AppState;
 use crate::validation::validate_string_length;
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateCommentRequest {
@@ -27,6 +28,21 @@ pub struct CreateCommentRequest {
     reply_to_cid: Option<String>,
 }
 
+/// Comment on an occurrence.
+///
+/// Set both `replyToUri` and `replyToCid` to reply to another comment.
+#[utoipa::path(
+    post,
+    path = "/api/comments",
+    tag = "comments",
+    request_body = CreateCommentRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
+        (status = 400, description = "Empty or over-long body, or an invalid URI or CID", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+    )
+)]
 pub async fn create_comment(
     State(state): State<AppState>,
     user: AuthUser,

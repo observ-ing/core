@@ -10,15 +10,16 @@ use serde::Deserialize;
 use tokio::time::sleep;
 use tracing::info;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::{self, AuthUser};
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AppState, OAuthClientType};
 use jacquard_common::types::string::AtUri;
 use std::str::FromStr;
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateLikeRequest {
@@ -26,6 +27,19 @@ pub struct CreateLikeRequest {
     occurrence_cid: String,
 }
 
+/// Like an occurrence.
+#[utoipa::path(
+    post,
+    path = "/api/likes",
+    tag = "likes",
+    request_body = CreateLikeRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
+        (status = 400, description = "Invalid URI or CID", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+    )
+)]
 pub async fn create_like(
     State(state): State<AppState>,
     user: AuthUser,
@@ -57,13 +71,28 @@ pub async fn create_like(
     }))
 }
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct DeleteLikeRequest {
     occurrence_uri: String,
 }
 
+/// Unlike an occurrence.
+///
+/// Removes every like the caller holds on the occurrence. Succeeds even when
+/// there is nothing to remove.
+#[utoipa::path(
+    delete,
+    path = "/api/likes",
+    tag = "likes",
+    request_body = DeleteLikeRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The caller no longer likes the occurrence", body = SuccessResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn delete_like(
     State(state): State<AppState>,
     user: AuthUser,

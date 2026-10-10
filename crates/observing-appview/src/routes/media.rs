@@ -18,23 +18,31 @@ use axum::{
 use chrono::Utc;
 use serde::Serialize;
 use tracing::{error, warn};
+use utoipa::ToSchema;
 
+use crate::error::ErrorResponse;
 use crate::media::MediaCache;
 use crate::state::AppState;
 
-#[derive(Serialize)]
-struct ErrorResponse {
-    error: String,
-}
-
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
+#[schema(as = MediaHealthResponse)]
 pub struct HealthResponse {
+    #[schema(example = "ok")]
     pub status: &'static str,
     pub uptime_secs: u64,
+    /// Blob cache counters: `entries`, `total_size` (bytes), `hits`, `misses`.
+    #[schema(value_type = Object)]
     pub cache: file_blob_cache::CacheStats,
 }
 
-/// `GET /media/health` — service liveness + cache stats.
+/// Media cache liveness and stats.
+#[utoipa::path(
+    get,
+    path = "/media/health",
+    operation_id = "media_health",
+    tag = "media",
+    responses((status = 200, description = "The media cache is up", body = HealthResponse))
+)]
 pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     let cache_stats = state.media.cache.stats().await;
     let uptime_secs = (Utc::now() - state.media.started_at).num_seconds().max(0) as u64;
@@ -45,7 +53,22 @@ pub async fn health(State(state): State<AppState>) -> Json<HealthResponse> {
     })
 }
 
-/// `GET /media/blob/{did}/{cid}` — full blob.
+/// Get an image blob.
+///
+/// Fetches the blob from the owner's PDS and caches it. Responses are
+/// immutable and safe to cache forever.
+#[utoipa::path(
+    get,
+    path = "/media/blob/{did}/{cid}",
+    operation_id = "get_media_blob",
+    tag = "media",
+    params(("did" = String, Path, description = "DID of the account that owns the blob"), ("cid" = String, Path, description = "CID of the blob")),
+    responses(
+        (status = 200, description = "The blob bytes, with the content type the PDS reported", content_type = "application/octet-stream"),
+        (status = 400, description = "Invalid DID", body = ErrorResponse),
+        (status = 404, description = "The blob could not be fetched", body = ErrorResponse),
+    )
+)]
 pub async fn get_blob(
     State(state): State<AppState>,
     Path((did, cid)): Path<(String, String)>,
@@ -53,9 +76,21 @@ pub async fn get_blob(
     serve_blob(&state.media, &did, &cid).await
 }
 
-/// `GET /media/thumb/{did}/{cid}` — thumbnail.
+/// Get an image thumbnail.
 ///
 /// Currently returns the full blob, matching the previous service.
+#[utoipa::path(
+    get,
+    path = "/media/thumb/{did}/{cid}",
+    operation_id = "get_media_thumb",
+    tag = "media",
+    params(("did" = String, Path, description = "DID of the account that owns the blob"), ("cid" = String, Path, description = "CID of the blob")),
+    responses(
+        (status = 200, description = "The image bytes", content_type = "application/octet-stream"),
+        (status = 400, description = "Invalid DID", body = ErrorResponse),
+        (status = 404, description = "The blob could not be fetched", body = ErrorResponse),
+    )
+)]
 pub async fn get_thumb(
     State(state): State<AppState>,
     Path((did, cid)): Path<(String, String)>,

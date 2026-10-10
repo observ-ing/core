@@ -10,8 +10,9 @@ use serde::de::{self, Deserializer, IntoDeserializer};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(export, export_to = "bindings/", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum QualityIssue {
@@ -45,7 +46,7 @@ pub const IMPRECISE_UNCERTAINTY_THRESHOLD_M: i32 = 5000;
 /// it is exported to the frontend as `bindings/QualityCriterion.ts` and reused
 /// by [`FromStr`] below, so the UI, the `?quality=` parser, and the generated
 /// type can't drift.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[ts(export, export_to = "bindings/", rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum QualityCriterion {

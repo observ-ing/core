@@ -7,14 +7,16 @@ use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, Occurre
 use serde::Serialize;
 use sqlx::PgPool;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::taxonomy_client::TaxonomyClient;
 use crate::validation::normalize_license;
 
 /// Enriched occurrence ready for API response
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "Occurrence", export_to = "bindings/")]
+#[schema(as = Occurrence)]
 pub struct OccurrenceResponse {
     pub uri: String,
     pub cid: String,
@@ -83,7 +85,7 @@ impl OccurrenceResponse {
 
 /// A single image attached to an occurrence, with the license URI the uploader
 /// chose (when one is recorded on the underlying media record).
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct OccurrenceImage {
@@ -96,7 +98,7 @@ pub struct OccurrenceImage {
 /// A reference to this occurrence as held by another service — an iNaturalist
 /// observation, a record in another AT Protocol lexicon, and so on. Passed
 /// through verbatim: the appview neither resolves nor validates the target.
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct ExternalRecord {
@@ -109,9 +111,10 @@ pub struct ExternalRecord {
     pub service: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "Profile", export_to = "bindings/")]
+#[schema(as = Profile)]
 pub struct ProfileSummary {
     pub did: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -125,9 +128,10 @@ pub struct ProfileSummary {
     pub avatar: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "Location", export_to = "bindings/")]
+#[schema(as = Location)]
 pub struct LocationResponse {
     pub latitude: f64,
     pub longitude: f64,
@@ -136,7 +140,7 @@ pub struct LocationResponse {
     pub uncertainty_meters: Option<i32>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct EffectiveTaxonomy {
@@ -169,9 +173,10 @@ pub struct EffectiveTaxonomy {
 }
 
 /// Enriched identification with profile info
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "Identification", export_to = "bindings/")]
+#[schema(as = Identification)]
 pub struct EnrichedIdentification {
     #[serde(flatten)]
     pub row: IdentificationRow,
@@ -179,9 +184,10 @@ pub struct EnrichedIdentification {
 }
 
 /// Enriched comment with profile info
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "Comment", export_to = "bindings/")]
+#[schema(as = Comment)]
 pub struct EnrichedComment {
     #[serde(flatten)]
     pub row: CommentRow,
@@ -189,7 +195,7 @@ pub struct EnrichedComment {
 }
 
 /// Enriched interaction with profile info
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct EnrichedInteraction {

@@ -1,7 +1,15 @@
 import { Link as RouterLink } from "react-router-dom";
 import { Box, Typography, Paper, Stack } from "@mui/material";
-import { Schema, AutoStories, GitHub, AccountBalance, ChevronRight } from "@mui/icons-material";
+import {
+  Schema,
+  Api,
+  AutoStories,
+  GitHub,
+  AccountBalance,
+  ChevronRight,
+} from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { API_BASE } from "../../services/api";
 import { PageContainer } from "../common/PageContainer";
 import { PageHeader } from "../common/PageHeader";
 
@@ -19,6 +27,12 @@ const links: DocLink[] = [
     description: "AT Protocol record schemas that define how data is stored.",
     icon: <Schema />,
     to: "/lexicons",
+  },
+  {
+    label: "API",
+    description: "OpenAPI reference for the HTTP API, browsable in Swagger UI.",
+    icon: <Api />,
+    href: `${API_BASE}/api/docs`,
   },
   {
     label: "Transparency",

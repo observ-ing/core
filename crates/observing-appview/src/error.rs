@@ -1,6 +1,13 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
-use serde_json::json;
+use serde::Serialize;
+use utoipa::ToSchema;
+
+/// JSON body of every error response.
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponse {
+    pub error: String,
+}
 
 /// Application error type that converts to HTTP responses
 #[derive(Debug)]
@@ -38,7 +45,7 @@ impl IntoResponse for AppError {
             AppError::ServiceUnavailable(msg) => (StatusCode::SERVICE_UNAVAILABLE, msg),
         };
 
-        (status, axum::Json(json!({ "error": message }))).into_response()
+        (status, axum::Json(ErrorResponse { error: message })).into_response()
     }
 }
 

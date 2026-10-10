@@ -2,14 +2,15 @@ use axum::extract::State;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::AuthUser;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::SuccessResponse;
 use crate::state::AppState;
 use crate::validation::{validate_basemap, validate_license};
 
-#[derive(Serialize, TS)]
+#[derive(Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct UserPreferencesResponse {
@@ -19,7 +20,7 @@ pub struct UserPreferencesResponse {
     pub basemap: Option<String>,
 }
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct UpdatePreferencesRequest {
@@ -34,6 +35,17 @@ pub struct UpdatePreferencesRequest {
     pub basemap: Option<String>,
 }
 
+/// Get the viewer's preferences.
+#[utoipa::path(
+    get,
+    path = "/api/user/preferences",
+    tag = "preferences",
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The viewer's preferences; unset values are null", body = UserPreferencesResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn get_preferences(
     State(state): State<AppState>,
     user: AuthUser,
@@ -45,6 +57,21 @@ pub async fn get_preferences(
     }))
 }
 
+/// Update the viewer's preferences.
+///
+/// Replaces both preferences: an omitted field is cleared, same as `null`.
+#[utoipa::path(
+    put,
+    path = "/api/user/preferences",
+    tag = "preferences",
+    request_body = UpdatePreferencesRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The preferences were saved", body = SuccessResponse),
+        (status = 400, description = "Unknown license or basemap", body = ErrorResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn update_preferences(
     State(state): State<AppState>,
     user: AuthUser,
