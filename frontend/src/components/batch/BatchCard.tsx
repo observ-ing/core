@@ -21,6 +21,7 @@ import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import { coverImageSx } from "../common/layoutSx";
+import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import {
   describeMissing,
   isReading,
@@ -148,6 +149,9 @@ export function BatchCard({
   const missing = missingFields(observation);
   const multi = photos.length > 1;
   const failed = status === "failed";
+  const italicName =
+    !!taxon.name &&
+    shouldItalicizeTaxonName(taxon.name, taxon.match?.rank ?? (taxon.rank || undefined));
   const incomplete = !reading && missing.length > 0;
   const busy = reading || status === "uploading";
 
@@ -427,7 +431,7 @@ export function BatchCard({
               title={taxon.name || undefined}
               sx={{
                 fontWeight: 600,
-                fontStyle: taxon.name ? "italic" : "normal",
+                fontStyle: italicName ? "italic" : "normal",
                 color: taxon.name ? "text.primary" : "text.secondary",
               }}
             >

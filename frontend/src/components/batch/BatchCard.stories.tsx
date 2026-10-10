@@ -59,6 +59,15 @@ export const MultiplePhotos: Story = {
   },
 };
 
+/** Ranks above genus are not italicized. */
+export const FamilyRank: Story = {
+  args: {
+    observation: storyObservation({
+      taxon: { name: "Coccinellidae", match: null, kingdom: "Animalia", rank: "family" },
+    }),
+  },
+};
+
 export const ReadingExif: Story = {
   args: {
     observation: storyObservation({
