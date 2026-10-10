@@ -133,12 +133,11 @@ WORKDIR /app
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-appview
 
-# libheif's `heif-convert` CLI + HEVC decoder plugin, for the
-# /api/media/heic-to-jpeg fallback used by browsers that can't decode HEIC
-# photos themselves. Spawned as a child process, not linked.
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        libheif-examples \
-        libheif-plugin-libde265 \
+# libheif's `heif-convert` CLI, for the /api/media/heic-to-jpeg fallback used
+# by browsers that can't decode HEIC photos themselves. Spawned as a child
+# process, not linked. Bookworm's libheif (1.15) pulls in the libde265 HEVC
+# decoder itself; the separate libheif-plugin-* packages only exist from 1.16.
+RUN apt-get update && apt-get install -y --no-install-recommends libheif-examples \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /app/target/release/observing-appview /app/observing-appview
