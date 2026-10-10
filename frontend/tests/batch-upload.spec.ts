@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { test, expect } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
@@ -26,6 +28,25 @@ const taggedPhoto = (name: string) => ({
     accuracyMeters: 12,
   }),
 });
+
+/**
+ * An iPhone-style HEIC carrying GPS 37°46'30"N 122°25'6"W and a capture date of
+ * 2024:05:17 08:42:10. Chromium can't decode HEIC, so it goes to the server.
+ */
+const heicPhoto = (name: string) => ({
+  name,
+  mimeType: "image/heic",
+  buffer: readFileSync(join(import.meta.dirname, "../src/lib/testdata/exif-gps.heic")),
+});
+
+/** Answer HEIC conversions with a JPEG, or fail them with `status`. */
+async function mockHeicConversion(page: Page, status = 200) {
+  await page.route("**/api/media/heic-to-jpeg", (route) =>
+    status === 200
+      ? route.fulfill({ status, contentType: "image/jpeg", body: barePhoto("x.jpg").buffer })
+      : route.fulfill({ status, contentType: "application/json", body: "{}" }),
+  );
+}
 
 const cards = (page: Page) => page.getByTestId("batch-card");
 const editor = (page: Page) => page.getByRole("complementary", { name: /Edit selected/ });
@@ -252,10 +273,41 @@ authTest.describe("Batch upload", () => {
     const dialog = page.getByRole("dialog");
     await authExpect(dialog).toContainText("1 file wasn't added");
     await authExpect(dialog).toContainText("notes.pdf");
-    await authExpect(dialog).toContainText("Not a JPEG, PNG, or WebP");
+    await authExpect(dialog).toContainText("Not a JPEG, PNG, WebP, or HEIC");
     await dialog.getByRole("button", { name: "OK" }).click();
     await authExpect(cards(page)).toHaveCount(1);
   });
+
+  authTest(
+    "converts HEIC photos to JPEG, keeping their EXIF",
+    async ({ authenticatedPage: page }) => {
+      await mockHeicConversion(page);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [heicPhoto("IMG_0001.HEIC")]);
+
+      const card = cards(page).first();
+      await authExpect(card.getByTitle("IMG_0001.jpg")).toBeVisible();
+      await authExpect(card).toContainText("May 17, 2024");
+      await authExpect(card).toContainText("37.775");
+      await authExpect(card).toContainText("-122.418333");
+    },
+  );
+
+  authTest(
+    "lists a HEIC photo that couldn't be converted as skipped",
+    async ({ authenticatedPage: page }) => {
+      await mockHeicConversion(page, 503);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [barePhoto("ok.jpg"), heicPhoto("IMG_0002.HEIC")]);
+
+      const dialog = page.getByRole("dialog");
+      await authExpect(dialog).toContainText("1 file wasn't added");
+      await authExpect(dialog).toContainText("IMG_0002.HEIC");
+      await authExpect(dialog).toContainText("Couldn't convert from HEIC");
+      await dialog.getByRole("button", { name: "OK" }).click();
+      await authExpect(cards(page)).toHaveCount(1);
+    },
+  );
 
   authTest(
     "clicking the page background clears the selection",

@@ -15,8 +15,8 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {
   args: {
     skipped: [
-      { name: "IMG_5001.heic", reason: "Not a JPEG, PNG, or WebP" },
-      { name: "trip-notes.pdf", reason: "Not a JPEG, PNG, or WebP" },
+      { name: "IMG_5001.heic", reason: "Couldn't convert from HEIC" },
+      { name: "trip-notes.pdf", reason: "Not a JPEG, PNG, WebP, or HEIC" },
       { name: "pano_ridge.jpg", reason: "Larger than 10 MB" },
       { name: "IMG_5107.jpg", reason: "Over the 100-photo limit" },
     ],
@@ -26,6 +26,6 @@ export const Default: Story = {
 export const NothingAdded: Story = {
   args: {
     addedCount: 0,
-    skipped: [{ name: "trip-notes.pdf", reason: "Not a JPEG, PNG, or WebP" }],
+    skipped: [{ name: "trip-notes.pdf", reason: "Not a JPEG, PNG, WebP, or HEIC" }],
   },
 };

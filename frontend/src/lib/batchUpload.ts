@@ -4,6 +4,7 @@
 import type { ObservationInput } from "../services/api";
 import type { TaxaResult } from "../services/types";
 import type { PhotoExif } from "./exif";
+import { convertHeicToJpeg, isHeic, MAX_HEIC_SIZE } from "./heic";
 import { MAX_IMAGES, vetImageFiles } from "./imageSelection";
 
 /** Most photos one batch can hold. */
@@ -426,20 +427,57 @@ export interface SkippedFile {
   reason: string;
 }
 
-/** Split dropped files into the ones to add and the ones to report as skipped. */
-export function vetBatchFiles(
+/**
+ * A dropped file under the name it was dropped with, and what goes on in its
+ * place: itself, the JPEG a HEIC photo became, or the reason it couldn't be.
+ */
+export type DroppedFile = { name: string; file: File } | { name: string; reason: string };
+
+/**
+ * Convert the HEIC photos in a drop to JPEG (see lib/heic), so the rest of the
+ * uploader only ever sees formats every browser can show. Other files pass
+ * through untouched.
+ */
+export async function convertDroppedHeic(
   files: File[],
+  convert: (file: File) => Promise<File> = convertHeicToJpeg,
+): Promise<DroppedFile[]> {
+  const dropped: DroppedFile[] = [];
+  // One at a time, as convertHeicFiles does: a browser decoding several large
+  // photos at once can run out of memory.
+  for (const file of files) {
+    if (!isHeic(file)) {
+      dropped.push({ name: file.name, file });
+    } else if (file.size > MAX_HEIC_SIZE) {
+      dropped.push({ name: file.name, reason: "Larger than 25 MB" });
+    } else {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- deliberately sequential, see above
+        dropped.push({ name: file.name, file: await convert(file) });
+      } catch {
+        dropped.push({ name: file.name, reason: "Couldn't convert from HEIC" });
+      }
+    }
+  }
+  return dropped;
+}
+
+/** Split a drop into the files to add and the ones to report as skipped, in drop order. */
+export function vetBatchFiles(
+  dropped: DroppedFile[],
   currentPhotoCount: number,
 ): { accepted: File[]; skipped: SkippedFile[] } {
+  const files = dropped.flatMap((d) => ("file" in d ? [d.file] : []));
   const vetted = vetImageFiles(files, currentPhotoCount, MAX_BATCH_PHOTOS);
   const reasons = new Map<File, string>([
-    ...vetted.invalidType.map((f) => [f, "Not a JPEG, PNG, or WebP"] as const),
+    ...vetted.invalidType.map((f) => [f, "Not a JPEG, PNG, WebP, or HEIC"] as const),
     ...vetted.tooLarge.map((f) => [f, "Larger than 10 MB"] as const),
     ...vetted.overCap.map((f) => [f, `Over the ${MAX_BATCH_PHOTOS}-photo limit`] as const),
   ]);
-  const skipped = files.flatMap((file) => {
-    const reason = reasons.get(file);
-    return reason ? [{ name: file.name, reason }] : [];
+  // Listed by the dropped name, so a converted HEIC is still the file the user knows.
+  const skipped = dropped.flatMap((d) => {
+    const reason = "file" in d ? reasons.get(d.file) : d.reason;
+    return reason ? [{ name: d.name, reason }] : [];
   });
   return { accepted: vetted.accepted, skipped };
 }

@@ -4,6 +4,7 @@
 // the drag-and-drop gestures, and the upload queue.
 import {
   useEffect,
+  useLayoutEffect,
   useReducer,
   useRef,
   useState,
@@ -18,6 +19,7 @@ import {
   alpha,
   Box,
   Button,
+  CircularProgress,
   LinearProgress,
   Link as MuiLink,
   Typography,
@@ -46,6 +48,7 @@ import {
   MAX_BATCH_PHOTOS,
   batchReducer,
   canCombine,
+  convertDroppedHeic,
   initialBatchState,
   isReading,
   missingFields,
@@ -57,7 +60,8 @@ import {
   type SkippedFile,
 } from "../../lib/batchUpload";
 import { readPhotoExif } from "../../lib/exif";
-import { MAX_IMAGES, VALID_IMAGE_TYPES } from "../../lib/imageSelection";
+import { isHeic } from "../../lib/heic";
+import { IMAGE_INPUT_ACCEPT, MAX_IMAGES } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 import { fileToBase64, getErrorMessage, plural } from "../../lib/utils";
@@ -91,6 +95,10 @@ const draggedFileCount = (event: DragEvent) =>
   Array.from(event.dataTransfer.items).filter((item) => item.kind === "file").length;
 
 let photoSeq = 0;
+
+/** Photos on the cards still to be sent, which is what the batch limit counts. */
+const unsentPhotoCount = (cards: BatchObservation[]) =>
+  cards.reduce((count, o) => (o.status === "done" ? count : count + o.photos.length), 0);
 
 /**
  * Apply a state change as one animated step where the browser can: cards that
@@ -140,6 +148,8 @@ export function BatchUploadPage() {
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
   const [uploading, setUploading] = useState(false);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
+  /** HEIC photos still being converted to JPEG, across every drop. */
+  const [converting, setConverting] = useState(0);
   // `open` is separate so the list stays as it was while the dialog fades out.
   const [skipped, setSkipped] = useState<{ files: SkippedFile[]; added: number; open: boolean }>({
     files: [],
@@ -158,7 +168,7 @@ export function BatchUploadPage() {
   // Uploaded cards stay on screen until the run ends, so the grid holds still,
   // but everything below counts and acts on the ones still to be sent.
   const observations = cards.filter((o) => o.status !== "done");
-  const photoCount = observations.reduce((count, o) => count + o.photos.length, 0);
+  const photoCount = unsentPhotoCount(cards);
   const picked = observations.filter((o) => selected.includes(o.id));
   const incomplete = observations.filter((o) => !isReading(o) && missingFields(o).length > 0);
   const failedCount = observations.filter((o) => o.status === "failed").length;
@@ -175,6 +185,7 @@ export function BatchUploadPage() {
     observations.length === 0 ||
     incomplete.length > 0 ||
     observations.some(isReading) ||
+    converting > 0 ||
     preferences.isPending;
   const total = uploadedCount + observations.length;
   const profilePath = user ? `/profile/${encodeURIComponent(user.did)}` : "/";
@@ -228,11 +239,29 @@ export function BatchUploadPage() {
     void navigate(profilePath);
   }, [uploading, hasUnsent, uploadedCount, toast, navigate, profilePath]);
 
+  // Converting HEIC makes adding files async, so a drop checks the limits
+  // against the cards as they are once it's converted, not as they were when it
+  // was dropped. Each drop's addition is flushed, so the next one sees it.
+  const latest = useRef(state);
+  useLayoutEffect(() => {
+    latest.current = state;
+  });
+
   /** Add files as new observations, or to `target` when they were dropped on its card. */
-  const addFiles = (files: File[], target?: BatchObservation) => {
+  const addFiles = async (files: File[], target?: BatchObservation) => {
     if (files.length === 0) return;
-    const { accepted, skipped: skippedFiles } = vetBatchFiles(files, photoCount);
-    if (target && target.photos.length + accepted.length > MAX_IMAGES) {
+    const heicCount = files.filter(isHeic).length;
+    setConverting((n) => n + heicCount);
+    const dropped = await convertDroppedHeic(files).finally(() =>
+      setConverting((n) => n - heicCount),
+    );
+    if (goneRef.current) return;
+
+    const cardsNow = latest.current.observations;
+    // A card removed in the meantime leaves its photos to start their own.
+    const into = target && cardsNow.find((o) => o.id === target.id);
+    const { accepted, skipped: skippedFiles } = vetBatchFiles(dropped, unsentPhotoCount(cardsNow));
+    if (into && into.photos.length + accepted.length > MAX_IMAGES) {
       toast.error(`An observation holds up to ${MAX_IMAGES} photos`);
       return;
     }
@@ -247,14 +276,16 @@ export function BatchUploadPage() {
       previewUrl: URL.createObjectURL(file),
       exif: null,
     }));
-    dispatch({ type: "addPhotos", photos, ...(target ? { targetId: target.id } : {}) });
+    flushSync(() =>
+      dispatch({ type: "addPhotos", photos, ...(into ? { targetId: into.id } : {}) }),
+    );
     void runPool(photos, EXIF_CONCURRENCY, async (photo) => {
       dispatch({ type: "exifLoaded", photoId: photo.id, exif: await readPhotoExif(photo.file) });
     });
   };
 
   const handlePickFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    addFiles(Array.from(event.target.files ?? []));
+    void addFiles(Array.from(event.target.files ?? []));
     event.target.value = "";
   };
 
@@ -458,7 +489,7 @@ export function BatchUploadPage() {
     event.preventDefault();
     event.stopPropagation();
     if (!d) {
-      addFiles(Array.from(event.dataTransfer.files), observation);
+      void addFiles(Array.from(event.dataTransfer.files), observation);
       endDrag();
       return;
     }
@@ -498,7 +529,7 @@ export function BatchUploadPage() {
     event.preventDefault();
     if (uploading) return;
     const d = dragRef.current;
-    if (!d) addFiles(Array.from(event.dataTransfer.files));
+    if (!d) void addFiles(Array.from(event.dataTransfer.files));
     else if (d.kind === "photo")
       dispatch({ type: "movePhotos", photoIds: d.photoIds, targetId: null });
     endDrag();
@@ -528,7 +559,7 @@ export function BatchUploadPage() {
       ref={fileInputRef}
       type="file"
       multiple
-      accept={VALID_IMAGE_TYPES.join(",")}
+      accept={IMAGE_INPUT_ACCEPT}
       onChange={handlePickFiles}
       style={{ display: "none" }}
       data-testid="batch-file-input"
@@ -631,6 +662,15 @@ export function BatchUploadPage() {
                   ? `${uploadedCount} of ${total} uploaded`
                   : `${plural(observations.length, "observation")}, ${plural(photoCount, "photo")}`}
               </Typography>
+              {converting > 0 && (
+                <Typography
+                  role="status"
+                  sx={{ display: "flex", alignItems: "center", gap: 0.75, color: "text.secondary" }}
+                >
+                  <CircularProgress size={16} color="inherit" />
+                  Converting {plural(converting, "HEIC photo")}…
+                </Typography>
+              )}
               {failedCount > 0 && (
                 <Typography
                   sx={{
@@ -723,7 +763,7 @@ export function BatchUploadPage() {
               Browse files
             </Button>
             <Typography variant="body2">
-              JPEG, PNG, or WebP. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
+              JPEG, PNG, WebP, or HEIC. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
             </Typography>
           </Box>
         ) : (

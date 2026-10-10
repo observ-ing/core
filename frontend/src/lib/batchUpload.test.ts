@@ -1,8 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import {
   MAX_BATCH_PHOTOS,
   batchReducer,
   canCombine,
+  convertDroppedHeic,
   describeMissing,
   formatUtcOffset,
   intersectRects,
@@ -19,6 +20,7 @@ import {
 } from "./batchUpload";
 import { MAX_FILE_SIZE, MAX_IMAGES } from "./imageSelection";
 import { EMPTY_EXIF, type PhotoExif } from "./exif";
+import { MAX_HEIC_SIZE } from "./heic";
 
 function imageFile(name: string, { type = "image/jpeg", size = 1024 } = {}): File {
   const file = new File([""], name, { type });
@@ -524,23 +526,62 @@ describe("building the request", () => {
   });
 });
 
-describe("vetBatchFiles", () => {
-  it("accepts valid files and explains each skipped one, in drop order", () => {
+describe("convertDroppedHeic", () => {
+  it("converts HEIC photos in place and reports the ones that can't be", async () => {
     const files = [
-      imageFile("IMG_5001.heic", { type: "image/heic" }),
+      imageFile("IMG_5001.HEIC", { type: "image/heic" }),
       imageFile("ok.jpg"),
-      imageFile("pano.jpg", { size: MAX_FILE_SIZE + 1 }),
-      imageFile("over.jpg"),
+      imageFile("broken.heic", { type: "" }),
+      imageFile("huge.heic", { type: "image/heic", size: MAX_HEIC_SIZE + 1 }),
+    ];
+    const convert = vi.fn(async (file: File) => {
+      if (file.name === "broken.heic") throw new Error("decode failed");
+      return imageFile(file.name.replace(/\.heic$/i, ".jpg"));
+    });
+
+    const dropped = await convertDroppedHeic(files, convert);
+
+    expect(dropped.map((d) => ("file" in d ? d.file.name : d.reason))).toEqual([
+      "IMG_5001.jpg",
+      "ok.jpg",
+      "Couldn't convert from HEIC",
+      "Larger than 25 MB",
+    ]);
+    expect(dropped.map((d) => d.name)).toEqual(files.map((f) => f.name));
+    // The oversized one is turned away without trying.
+    expect(convert).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("vetBatchFiles", () => {
+  const asDropped = (file: File) => ({ name: file.name, file });
+
+  it("accepts valid files and explains each skipped one, in drop order", () => {
+    const dropped = [
+      asDropped(imageFile("clip.mov", { type: "video/quicktime" })),
+      { name: "IMG_5001.heic", reason: "Couldn't convert from HEIC" },
+      asDropped(imageFile("ok.jpg")),
+      asDropped(imageFile("pano.jpg", { size: MAX_FILE_SIZE + 1 })),
+      asDropped(imageFile("over.jpg")),
     ];
 
-    const result = vetBatchFiles(files, MAX_BATCH_PHOTOS - 1);
+    const result = vetBatchFiles(dropped, MAX_BATCH_PHOTOS - 1);
 
     expect(result.accepted.map((f) => f.name)).toEqual(["ok.jpg"]);
     expect(result.skipped).toEqual([
-      { name: "IMG_5001.heic", reason: "Not a JPEG, PNG, or WebP" },
+      { name: "clip.mov", reason: "Not a JPEG, PNG, WebP, or HEIC" },
+      { name: "IMG_5001.heic", reason: "Couldn't convert from HEIC" },
       { name: "pano.jpg", reason: "Larger than 10 MB" },
       { name: "over.jpg", reason: "Over the 100-photo limit" },
     ]);
+  });
+
+  it("lists a converted photo under the name it was dropped with", () => {
+    const converted = imageFile("IMG_5002.jpg", { size: MAX_FILE_SIZE + 1 });
+
+    const result = vetBatchFiles([{ name: "IMG_5002.HEIC", file: converted }], 0);
+
+    expect(result.skipped).toEqual([{ name: "IMG_5002.HEIC", reason: "Larger than 10 MB" }]);
   });
 });
 
