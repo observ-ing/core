@@ -1,7 +1,7 @@
 import type { Preview } from "@storybook/react-vite";
 import { withThemeFromJSXProvider } from "@storybook/addon-themes";
 import { ThemeProvider, CssBaseline } from "@mui/material";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { Provider } from "react-redux";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { initialize, mswLoader } from "msw-storybook-addon";
@@ -48,12 +48,12 @@ const preview: Preview = {
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
       const initialEntries = context.parameters.routerInitialEntries ?? ["/"];
+      // A data router, like the app's, so components using `useBlocker` render.
+      const router = createMemoryRouter([{ path: "*", element: <Story /> }], { initialEntries });
       return (
         <Provider store={store}>
           <QueryClientProvider client={queryClient}>
-            <MemoryRouter initialEntries={initialEntries}>
-              <Story />
-            </MemoryRouter>
+            <RouterProvider router={router} />
           </QueryClientProvider>
         </Provider>
       );

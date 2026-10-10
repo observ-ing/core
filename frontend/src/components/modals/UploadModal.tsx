@@ -32,7 +32,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import AddPhotoAlternateIcon from "@mui/icons-material/AddPhotoAlternate";
-import ExifReader from "exifreader";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice";
 import { trackSubmission } from "../../store/pendingSlice";
@@ -60,11 +59,10 @@ import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils
 import { pickPhotos } from "../../lib/photoPicker";
 import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { convertHeicFiles, isHeic } from "../../lib/heic";
+import { readPhotoExif } from "../../lib/exif";
+import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
-
-/** Mirrors the remark lexicon's `body.maxLength` (and the appview's check). */
-const MAX_REMARK_LENGTH = 3000;
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -371,50 +369,13 @@ export function UploadModal() {
   };
 
   const extractExifData = async (file: File) => {
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const tags = ExifReader.load(arrayBuffer);
-
-      const gpsLat = tags.GPSLatitude;
-      const gpsLng = tags.GPSLongitude;
-      const latRef = tags.GPSLatitudeRef;
-      const lngRef = tags.GPSLongitudeRef;
-
-      if (gpsLat && gpsLng) {
-        let latitude =
-          typeof gpsLat.description === "number"
-            ? gpsLat.description
-            : parseFloat(String(gpsLat.description));
-        let longitude =
-          typeof gpsLng.description === "number"
-            ? gpsLng.description
-            : parseFloat(String(gpsLng.description));
-
-        const isZeroIsland = latitude === 0 && longitude === 0;
-        if (Number.isFinite(latitude) && Number.isFinite(longitude) && !isZeroIsland) {
-          const latRefValue = Array.isArray(latRef?.value) ? latRef.value[0] : undefined;
-          const lngRefValue = Array.isArray(lngRef?.value) ? lngRef.value[0] : undefined;
-          if (latRefValue === "S") latitude = -Math.abs(latitude);
-          if (lngRefValue === "W") longitude = -Math.abs(longitude);
-
-          setLat(formatCoordinate(latitude));
-          setLng(formatCoordinate(longitude));
-          toast.success("Location extracted from photo EXIF data");
-        }
-      }
-
-      const dateOriginal = tags.DateTimeOriginal || tags.DateTime;
-      if (dateOriginal?.description) {
-        const dateStr = dateOriginal.description;
-        const parsed = dateStr.replace(/^(\d{4}):(\d{2}):(\d{2})/, "$1-$2-$3");
-        const date = new Date(parsed);
-        if (!isNaN(date.getTime())) {
-          setObservationDate(toDatetimeLocal(date));
-        }
-      }
-    } catch (error) {
-      console.error("EXIF extraction error:", error);
+    const exif = await readPhotoExif(file);
+    if (exif.latitude != null && exif.longitude != null) {
+      setLat(formatCoordinate(exif.latitude));
+      setLng(formatCoordinate(exif.longitude));
+      toast.success("Location extracted from photo EXIF data");
     }
+    if (exif.date) setObservationDate(exif.date);
   };
 
   const handleRemoveImage = (index: number) => {
