@@ -190,6 +190,12 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       // black-alpha grey that clashes with the warm background). Rectangular
       // blocks share the theme corner radius instead of repeating
       // `borderRadius: 1` at each call site.
+      MuiTableCell: {
+        styleOverrides: {
+          head: { fontWeight: 600 },
+          footer: { fontWeight: 600 },
+        },
+      },
       MuiSkeleton: {
         styleOverrides: {
           root: ({ theme }) => ({
@@ -230,6 +236,16 @@ const createAppTheme = (mode: PaletteMode): Theme => {
       MuiListItemButton: {
         styleOverrides: {
           root: ({ theme }) => ({
+            borderRadius: Number(theme.shape.borderRadius) * 2,
+          }),
+        },
+      },
+      // Popup menus (account, record overflow, basemap) share the outlined card
+      // radius — centralized here instead of repeating `borderRadius: 2` on
+      // the TopBar menu paper only.
+      MuiMenu: {
+        styleOverrides: {
+          paper: ({ theme }) => ({
             borderRadius: Number(theme.shape.borderRadius) * 2,
           }),
         },

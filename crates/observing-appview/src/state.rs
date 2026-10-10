@@ -2,6 +2,7 @@ use atproto_identity::IdentityResolver;
 use sqlx::postgres::PgPool;
 use std::sync::Arc;
 
+use crate::heic::HeicConverter;
 use crate::media::MediaCache;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
@@ -102,6 +103,8 @@ pub struct AppState {
     /// In-process AT Protocol blob cache + PDS fetcher (formerly the
     /// `observing-media-proxy` service).
     pub media: Arc<MediaCache>,
+    /// HEIC → JPEG conversion for browsers that can't decode HEIC photos.
+    pub heic: Arc<HeicConverter>,
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,

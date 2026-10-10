@@ -3,6 +3,7 @@ pub mod admin_ingester;
 pub mod comments;
 pub mod feeds;
 pub mod health;
+pub mod heic;
 pub mod identifications;
 pub mod interactions;
 pub mod likes;

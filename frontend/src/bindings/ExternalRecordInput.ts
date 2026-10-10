@@ -5,16 +5,15 @@
  * as held by another service. Both create and update send the full list, so an
  * edit round-trips whatever the form was populated with.
  */
-export type ExternalRecordInput = {
-  /**
-   * Permalink of the record on the holding service, or an `at://` URI for a
-   * record in another AT Protocol lexicon.
-   */
-  uri: string;
-  /**
-   * Short service identifier (`inaturalist`, `bugguide`, an app name).
-   * Optional — the client derives it from the URI host where it recognizes
-   * one, and omits it otherwise rather than guessing.
-   */
-  service?: string;
-};
+export type ExternalRecordInput = { 
+/**
+ * Permalink of the record on the holding service, or an `at://` URI for a
+ * record in another AT Protocol lexicon.
+ */
+uri: string, 
+/**
+ * Short service identifier (`inaturalist`, `bugguide`, an app name).
+ * Optional — the client derives it from the URI host where it recognizes
+ * one, and omits it otherwise rather than guessing.
+ */
+service?: string, };

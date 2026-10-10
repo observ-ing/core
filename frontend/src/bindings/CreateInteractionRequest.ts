@@ -2,10 +2,4 @@
 import type { InteractionDirection } from "./InteractionDirection";
 import type { InteractionSubjectRequest } from "./InteractionSubjectRequest";
 
-export type CreateInteractionRequest = {
-  subjectA: InteractionSubjectRequest;
-  subjectB: InteractionSubjectRequest;
-  interactionType: string;
-  direction?: InteractionDirection;
-  comment?: string;
-};
+export type CreateInteractionRequest = { subjectA: InteractionSubjectRequest, subjectB: InteractionSubjectRequest, interactionType: string, direction?: InteractionDirection, comment?: string, };

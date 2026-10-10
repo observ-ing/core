@@ -166,7 +166,9 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
                   </>
                 }
                 sx={{
-                  borderRadius: "0 0 4px 4px",
+                  // Match the thumbnail's `borderRadius: 0.5` on the bottom corners.
+                  borderBottomLeftRadius: (theme) => Number(theme.shape.borderRadius) * 0.5,
+                  borderBottomRightRadius: (theme) => Number(theme.shape.borderRadius) * 0.5,
                   "& .MuiImageListItemBar-subtitle": {
                     fontSize: "0.65rem",
                   },

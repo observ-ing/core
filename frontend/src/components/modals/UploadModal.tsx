@@ -3,7 +3,15 @@
 // Date & details. Location is the only required step and gates leaving it; the
 // rest are optional and skippable straight to Submit. Driven by the Redux
 // `uploadModalOpen` flag.
-import { lazy, Suspense, useState, useEffect, type FormEvent, type ChangeEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useState,
+  useEffect,
+  useRef,
+  type FormEvent,
+  type ChangeEvent,
+} from "react";
 import {
   Box,
   ButtonBase,
@@ -35,7 +43,7 @@ import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import type { ExternalRecord } from "../../bindings/ExternalRecord";
 import { ModalOverlay } from "./ModalOverlay";
-import { coverImageSx, cornerPinSx } from "../common/layoutSx";
+import { coverImageSx, cornerPinSx, miniIconSx } from "../common/layoutSx";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ButtonSpinner } from "../common/ButtonSpinner";
@@ -49,7 +57,8 @@ import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { pickPhotos } from "../../lib/photoPicker";
-import { MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
+import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
+import { convertHeicFiles, isHeic } from "../../lib/heic";
 import { readPhotoExif } from "../../lib/exif";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
@@ -112,7 +121,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
           },
         ]}
       >
-        <CloseIcon sx={{ fontSize: 14 }} />
+        <CloseIcon sx={miniIconSx} />
       </IconButton>
     </Box>
   );
@@ -170,6 +179,16 @@ export function UploadModal() {
   const [isDirty, setIsDirty] = useState(false);
   const [discardConfirmOpen, setDiscardConfirmOpen] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
+  const [isConvertingPhotos, setIsConvertingPhotos] = useState(false);
+  // HEIC conversion makes adding photos async. These let a batch that finishes
+  // converting vet against the current photo count, and drop itself if the
+  // form was reset (e.g. the modal closed) in the meantime.
+  const imageCountRef = useRef(0);
+  const formGenerationRef = useRef(0);
+
+  useEffect(() => {
+    imageCountRef.current = images.length;
+  }, [images.length]);
 
   const hasLocation = !!lat && !!lng;
 
@@ -195,7 +214,7 @@ export function UploadModal() {
       }
       const pending = consumePendingUploadFiles();
       if (pending.length > 0) {
-        addFiles(pending);
+        void addFiles(pending);
       }
       return undefined;
     }
@@ -252,6 +271,7 @@ export function UploadModal() {
   }, [isOpen, currentLocation, editingObservation, defaultLicense]);
 
   const resetForm = () => {
+    formGenerationRef.current += 1;
     setActiveStep(STEP_PHOTOS);
     setSpecies("");
     setMatchedTaxon(null);
@@ -287,11 +307,28 @@ export function UploadModal() {
     resetForm();
   };
 
-  const addFiles = (files: File[]) => {
-    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, images.length);
+  const addFiles = async (picked: File[]) => {
+    const generation = formGenerationRef.current;
+    let files = picked;
+    if (picked.some(isHeic)) {
+      setIsConvertingPhotos(true);
+      try {
+        const converted = await convertHeicFiles(picked);
+        if (formGenerationRef.current !== generation) return;
+        files = converted.files;
+        for (const failure of converted.failures) {
+          toast.error(failure.message);
+        }
+      } finally {
+        setIsConvertingPhotos(false);
+      }
+    }
+
+    const currentCount = imageCountRef.current;
+    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, currentCount);
 
     for (const file of invalidType) {
-      toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, or WebP.`);
+      toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, WebP, or HEIC.`);
     }
     for (const file of tooLarge) {
       toast.error(`File too large: ${file.name}. Max size is 10MB.`);
@@ -301,7 +338,7 @@ export function UploadModal() {
     }
     if (accepted.length === 0) return;
 
-    const isFirstPhoto = images.length === 0;
+    const isFirstPhoto = currentCount === 0;
     const additions = accepted.map((file) => ({ file, preview: URL.createObjectURL(file) }));
     setImages((prev) => [...prev, ...additions]);
     setIsDirty(true);
@@ -323,11 +360,11 @@ export function UploadModal() {
       return;
     }
     const files = await pickPhotos({ multiple: true });
-    if (files.length > 0) addFiles(files);
+    if (files.length > 0) await addFiles(files);
   };
 
   const handleImageSelect = (e: ChangeEvent<HTMLInputElement>) => {
-    addFiles(Array.from(e.target.files ?? []));
+    void addFiles(Array.from(e.target.files ?? []));
     e.target.value = "";
   };
 
@@ -520,7 +557,7 @@ export function UploadModal() {
         <form onSubmit={handleSubmit}>
           <input
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept={IMAGE_INPUT_ACCEPT}
             multiple
             onChange={handleImageSelect}
             style={{ display: "none" }}
@@ -566,14 +603,19 @@ export function UploadModal() {
                     fullWidth
                     variant="outlined"
                     onClick={handleUploadClick}
-                    startIcon={<AddPhotoAlternateIcon />}
+                    disabled={isConvertingPhotos}
+                    startIcon={isConvertingPhotos ? <ButtonSpinner /> : <AddPhotoAlternateIcon />}
                     sx={{
                       borderStyle: "dashed",
                       color: "text.disabled",
                       "&:hover": { borderColor: "primary.main", color: "primary.main" },
                     }}
                   >
-                    {images.length === 0 ? "Add photos" : "Add more photos"}
+                    {isConvertingPhotos
+                      ? "Converting photos…"
+                      : images.length === 0
+                        ? "Add photos"
+                        : "Add more photos"}
                   </Button>
                 )}
 
@@ -581,7 +623,7 @@ export function UploadModal() {
                   variant="caption"
                   sx={{ color: "text.disabled", display: "block", mt: 0.5 }}
                 >
-                  JPG, PNG, or WebP - Max 10MB each - Up to {MAX_IMAGES} photos
+                  JPG, PNG, WebP, or HEIC - Max 10MB each - Up to {MAX_IMAGES} photos
                 </Typography>
 
                 <StepNav step={STEP_PHOTOS} />
