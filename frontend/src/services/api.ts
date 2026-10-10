@@ -522,6 +522,20 @@ export async function identifySpecies(data: {
   });
 }
 
+/**
+ * Have the server convert a HEIC/HEIF photo to JPEG, for browsers that can't
+ * decode HEIC themselves. Resolves to the raw `Response` so the caller can
+ * tell "not supported here" (503) apart from a bad file; rejects when offline.
+ */
+export async function convertHeicOnServer(file: Blob): Promise<Response> {
+  return fetch(`${API_BASE}/api/media/heic-to-jpeg`, {
+    method: "POST",
+    headers: { "Content-Type": "application/octet-stream" },
+    credentials: "include",
+    body: file,
+  });
+}
+
 export async function unlikeObservation(occurrenceUri: string): Promise<{ success: boolean }> {
   return fetchApi(`${API_BASE}/api/likes`, "Failed to unlike observation", {
     method: "DELETE",

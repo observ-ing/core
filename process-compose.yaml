@@ -84,12 +84,17 @@ processes:
     depends_on:
       migrate:
         condition: process_completed_successfully
+    # A readiness probe that exhausts its failure_threshold (default 3) makes
+    # process-compose stop the process, and the budget includes `cargo run`'s
+    # build — which queues behind migrate's and appview's on cargo's
+    # artifact-dir lock. At 30s, a cold build got tap-ingester killed before
+    # it ever started; match appview's 120s.
     readiness_probe:
       http_get:
         host: localhost
         port: ${TAP_INGESTER_PORT:-8090}
         path: /health
-      initial_delay_seconds: 30
+      initial_delay_seconds: 120
       period_seconds: 5
 
   frontend:
