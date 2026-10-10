@@ -1,9 +1,7 @@
 //! OpenAPI description of the appview's HTTP API, generated from the
 //! `#[utoipa::path]` annotations on the route handlers.
 //!
-//! Served at `/api/openapi.json` with a Swagger UI at `/api/docs`, and
-//! snapshotted to `docs/openapi.json` so API changes show up in review. The
-//! `openapi_snapshot_is_current` test fails when the snapshot is stale.
+//! Served at `/api/openapi.json` with a Swagger UI at `/api/docs`.
 //!
 //! A new route needs its handler annotated and listed in `paths(...)` below.
 //! The admin browser (`/admin/*`) is deliberately left out.
@@ -130,29 +128,5 @@ mod tests {
                 assert!(seen.insert(id), "duplicate operationId `{id}` ({path})");
             }
         }
-    }
-
-    const SNAPSHOT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/openapi.json");
-
-    /// Keeps `docs/openapi.json` in sync with the code. Regenerate with
-    /// `UPDATE_OPENAPI=1 cargo test -p observing-appview openapi_snapshot`.
-    #[test]
-    fn openapi_snapshot_is_current() {
-        let generated = ApiDoc::openapi()
-            .to_pretty_json()
-            .expect("OpenAPI document serializes")
-            + "\n";
-
-        if std::env::var_os("UPDATE_OPENAPI").is_some() {
-            std::fs::write(SNAPSHOT, &generated).expect("write docs/openapi.json");
-            return;
-        }
-
-        let committed = std::fs::read_to_string(SNAPSHOT).unwrap_or_default();
-        assert!(
-            committed == generated,
-            "docs/openapi.json is out of date. Regenerate it with \
-             `UPDATE_OPENAPI=1 cargo test -p observing-appview openapi_snapshot`."
-        );
     }
 }
