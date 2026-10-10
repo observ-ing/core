@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::taxonomy::GbifClient;
 
@@ -34,9 +35,10 @@ pub struct TaxonomyClient {
     inner: GbifClient,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, rename = "TaxaResult", export_to = "bindings/")]
+#[schema(as = TaxaResult)]
 pub struct TaxonResult {
     pub id: String,
     /// Stable URI for this taxon (e.g. `https://www.gbif.org/species/{key}`),
@@ -70,14 +72,14 @@ pub struct TaxonResult {
     pub conservation_status: Option<ConservationStatus>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export, export_to = "bindings/")]
 pub struct ConservationStatus {
     pub category: String,
     pub source: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonAncestor {
@@ -86,7 +88,7 @@ pub struct TaxonAncestor {
     pub rank: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonDescription {
@@ -97,7 +99,7 @@ pub struct TaxonDescription {
     pub source: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonReference {
@@ -108,7 +110,7 @@ pub struct TaxonReference {
     pub link: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonMedia {
@@ -126,7 +128,7 @@ pub struct TaxonMedia {
     pub license: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonDetail {
@@ -178,7 +180,7 @@ pub struct TaxonDetail {
     pub wikidata_url: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, TS)]
+#[derive(Debug, Clone, Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct TaxonDetailWithCount {
@@ -187,7 +189,7 @@ pub struct TaxonDetailWithCount {
     pub observation_count: i64,
 }
 
-#[derive(Debug, Serialize, Deserialize, TS)]
+#[derive(Debug, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export, export_to = "bindings/")]
 pub struct ValidateResponse {
     pub valid: bool,

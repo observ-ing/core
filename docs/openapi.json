@@ -1,0 +1,4685 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Observ.ing API",
+    "description": "HTTP API behind [observ.ing](https://observ.ing), a biodiversity observation app built on the AT Protocol.\n\nReads come from the appview's index of the network. Writes go to the signed-in user's PDS as AT Protocol records, then reach the index via the firehose, so a newly written record can take a moment to appear in reads.\n\nAuthentication is the `session_did` cookie set by the OAuth flow (`/oauth/login`). Endpoints that accept it optionally use it to fill in viewer-specific fields such as `viewerHasLiked`.",
+    "license": {
+      "name": "MIT OR Apache-2.0",
+      "identifier": "MIT OR Apache-2.0"
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/comments": {
+      "post": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Comment on an occurrence.",
+        "description": "Set both `replyToUri` and `replyToCid` to reply to another comment.",
+        "operationId": "create_comment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was written to the caller's PDS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Empty or over-long body, or an invalid URI or CID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/feeds/explore": {
+      "get": {
+        "tags": [
+          "feeds"
+        ],
+        "summary": "Explore feed.",
+        "description": "All public occurrences, newest first, with optional filters.",
+        "operationId": "get_explore_feed",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "taxon",
+            "in": "query",
+            "description": "Only occurrences whose scientific name starts with this text\n(case-insensitive).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kingdom",
+            "in": "query",
+            "description": "Only occurrences whose community identification is in this kingdom.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "startDate",
+            "in": "query",
+            "description": "Only occurrences whose event date overlaps the window starting on this\nday (`YYYY-MM-DD`). Undated occurrences never match a date filter.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "endDate",
+            "in": "query",
+            "description": "Only occurrences whose event date overlaps the window ending on this\nday, inclusive (`YYYY-MM-DD`).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quality",
+            "in": "query",
+            "description": "Comma-separated data-quality criteria every returned occurrence must\nmeet: `HAS_DATE`, `HAS_LOCATION`, `PRECISE_LOCATION`, `HAS_MEDIA`,\n`HAS_CONSENSUS_ID`, or `complete` for all of them.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "HAS_MEDIA,HAS_CONSENSUS_ID"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExploreFeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown `quality` criterion"
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/feeds/home": {
+      "get": {
+        "tags": [
+          "feeds"
+        ],
+        "summary": "Home feed.",
+        "description": "All public occurrences, newest first, for a signed-in viewer. Unlike the\nexplore feed it takes no taxon, kingdom, or date filters.",
+        "operationId": "get_home_feed",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "quality",
+            "in": "query",
+            "description": "Data-quality criteria, as for the explore feed.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "example": "complete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeFeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown `quality` criterion"
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/identifications": {
+      "post": {
+        "tags": [
+          "identifications"
+        ],
+        "summary": "Identify an occurrence.",
+        "description": "Writes an identification record to the caller's PDS. The name is matched\nagainst GBIF to fill in its rank and higher taxonomy.",
+        "operationId": "create_identification",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIdentificationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was written to the caller's PDS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/identifications/{uri}": {
+      "get": {
+        "tags": [
+          "identifications"
+        ],
+        "summary": "List identifications of an occurrence.",
+        "operationId": "list_identifications",
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "path",
+            "description": "AT URI of the occurrence (`at://...`), percent-encoded",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The identifications and the resulting community ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentificationListResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "identifications"
+        ],
+        "summary": "Delete an identification.",
+        "operationId": "delete_identification",
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "path",
+            "description": "AT URI of the identification (`at://...`), percent-encoded",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record was deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid AT URI",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The identification belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/interactions": {
+      "post": {
+        "tags": [
+          "interactions"
+        ],
+        "summary": "Record a species interaction.",
+        "description": "Writes an interaction record (e.g. predation, pollination) between two\nsubjects to the caller's PDS.",
+        "operationId": "create_interaction",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInteractionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was written to the caller's PDS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/interactions/occurrence/{uri}": {
+      "get": {
+        "tags": [
+          "interactions"
+        ],
+        "summary": "List species interactions involving an occurrence.",
+        "operationId": "list_interactions",
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "path",
+            "description": "AT URI of the occurrence (`at://...`), percent-encoded",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Interactions in which the occurrence is either subject",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InteractionListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/likes": {
+      "post": {
+        "tags": [
+          "likes"
+        ],
+        "summary": "Like an occurrence.",
+        "operationId": "create_like",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLikeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was written to the caller's PDS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid URI or CID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "likes"
+        ],
+        "summary": "Unlike an occurrence.",
+        "description": "Removes every like the caller holds on the occurrence. Succeeds even when\nthere is nothing to remove.",
+        "operationId": "delete_like",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteLikeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The caller no longer likes the occurrence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/media/heic-to-jpeg": {
+      "post": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Convert a HEIC photo to JPEG.",
+        "description": "Takes the raw bytes of a HEIC/HEIF photo and returns it as a JPEG, for\nbrowsers that can't decode HEIC themselves. Called at import time so the\npreview, EXIF extraction and species ID all see a JPEG. Authenticated like\nspecies ID: it burns real CPU per request.",
+        "operationId": "convert_heic_to_jpeg",
+        "requestBody": {
+          "description": "Raw HEIC/HEIF bytes, up to 25 MB",
+          "content": {
+            "image/heic": {}
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "The photo as a JPEG",
+            "content": {
+              "image/jpeg": {}
+            }
+          },
+          "400": {
+            "description": "Not a HEIC/HEIF image, or it could not be decoded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "HEIC conversion is not available on this server",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/notifications": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "List the viewer's notifications.",
+        "description": "Newest first.",
+        "operationId": "list_notifications",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 50 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/read": {
+      "post": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Mark notifications read.",
+        "operationId": "mark_notifications_read",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkReadBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The notifications were marked read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/unread-count": {
+      "get": {
+        "tags": [
+          "notifications"
+        ],
+        "summary": "Count the viewer's unread notifications.",
+        "operationId": "get_unread_notification_count",
+        "responses": {
+          "200": {
+            "description": "The unread count",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UnreadCountResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/occurrences": {
+      "put": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "Update an occurrence.",
+        "description": "Replaces the record on the caller's PDS. The request is the full new state\nof the occurrence: omitted optional fields are cleared, and existing media\nis kept only if its blob CID is listed in `retainedBlobCids`.",
+        "operationId": "update_occurrence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateOccurrenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The occurrence belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "Create an occurrence.",
+        "description": "Uploads any images to the caller's PDS, writes the occurrence record (plus\nremark records for any notes), and, when `scientificName` is given, the\nobserver's own identification. The occurrence shows up in feeds once the\nrecord reaches the firehose and is indexed.",
+        "operationId": "create_occurrence",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateOccurrenceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The record was written to the caller's PDS",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCreatedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A field failed validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/occurrences/bbox": {
+      "get": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "List occurrences inside a bounding box.",
+        "operationId": "get_occurrences_in_bbox",
+        "parameters": [
+          {
+            "name": "minLat",
+            "in": "query",
+            "description": "Southern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "minLng",
+            "in": "query",
+            "description": "Western edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "maxLat",
+            "in": "query",
+            "description": "Northern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "maxLng",
+            "in": "query",
+            "description": "Eastern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of occurrences to return. Ignored by the GeoJSON\nendpoint, which always returns up to 10000 points.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Occurrences inside the box",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BboxResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A bound is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/occurrences/feed": {
+      "get": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "List recent occurrences.",
+        "description": "Newest first, unfiltered. Pass the returned `cursor` to fetch the next page.",
+        "operationId": "get_occurrence_feed",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/occurrences/geojson": {
+      "get": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "Occurrence points inside a bounding box, as GeoJSON.",
+        "description": "A lightweight alternative to the bbox endpoint for map rendering: each\nfeature carries only the occurrence URI and event date.",
+        "operationId": "get_occurrence_geojson",
+        "parameters": [
+          {
+            "name": "minLat",
+            "in": "query",
+            "description": "Southern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "minLng",
+            "in": "query",
+            "description": "Western edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "maxLat",
+            "in": "query",
+            "description": "Northern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "maxLng",
+            "in": "query",
+            "description": "Eastern edge, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Maximum number of occurrences to return. Ignored by the GeoJSON\nendpoint, which always returns up to 10000 points.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A GeoJSON FeatureCollection of points",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GeoJsonResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "A bound is missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/occurrences/nearby": {
+      "get": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "List occurrences near a point.",
+        "description": "Ordered by distance from the given point.",
+        "operationId": "get_nearby_occurrences",
+        "parameters": [
+          {
+            "name": "lat",
+            "in": "query",
+            "description": "Latitude of the search center, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "lng",
+            "in": "query",
+            "description": "Longitude of the search center, in decimal degrees.",
+            "required": true,
+            "schema": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          {
+            "name": "radius",
+            "in": "query",
+            "description": "Search radius in meters.",
+            "required": false,
+            "schema": {
+              "type": "number",
+              "format": "double",
+              "default": 10000.0
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 1000 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "description": "Number of results to skip.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 0
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Occurrences within the radius",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NearbyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`lat` or `lng` missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/occurrences/{uri}": {
+      "get": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "Get an occurrence with its identifications and comments.",
+        "operationId": "get_occurrence",
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "path",
+            "description": "AT URI of the occurrence (`at://...`), percent-encoded",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The occurrence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such occurrence",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      },
+      "delete": {
+        "tags": [
+          "occurrences"
+        ],
+        "summary": "Delete an occurrence.",
+        "description": "Deletes the record from the caller's PDS. The indexed occurrence, along\nwith its identifications, comments, likes, and interactions, disappears\nonce the delete reaches the firehose.",
+        "operationId": "delete_occurrence",
+        "parameters": [
+          {
+            "name": "uri",
+            "in": "path",
+            "description": "AT URI of the occurrence (`at://...`), percent-encoded",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The record was deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid AT URI",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in, or the session expired",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The occurrence belongs to someone else",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/profiles/{did}/feed": {
+      "get": {
+        "tags": [
+          "profiles"
+        ],
+        "summary": "Get a user's profile and activity.",
+        "description": "Returns the profile, activity counts, and a page of the user's\noccurrences and identifications.",
+        "operationId": "get_profile_feed",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "description": "The user's DID",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": "`observations` or `identifications` to return only that kind of\nactivity; anything else returns both.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The profile and a page of activity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileFeedResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid DID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/species-id": {
+      "post": {
+        "tags": [
+          "species-id"
+        ],
+        "summary": "Identify the species in a photo.",
+        "description": "Returns ranked suggestions from the species identification model, each\nmatched against GBIF where the name resolves. Requires authentication to\nprevent abuse.",
+        "operationId": "identify_species",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/IdentifyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Ranked suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/IdentifyResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "The identification service failed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No identification service is configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/species-id/status": {
+      "get": {
+        "tags": [
+          "species-id"
+        ],
+        "summary": "Check whether species identification is warm.",
+        "description": "Reports whether the species-id service has a warm instance and, if not,\nroughly how long until an identify request would come back. The check\nitself wakes a cold service, so the frontend calls this as soon as the\nuser starts a flow that will need an ID (e.g. opening the upload modal)\nto get the boot underway while they pick a photo. Authenticated like\n`identify` so anonymous traffic can't keep the service awake.",
+        "operationId": "get_species_id_status",
+        "parameters": [
+          {
+            "name": "live",
+            "in": "query",
+            "description": "Check the live-loop (ViT-L) service instead of the full model.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whether the service is warm, and if not, roughly how long it will take",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpeciesIdStatus"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "No identification service is configured",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/taxa/search": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "Search taxa by name.",
+        "description": "Full-text search of the GBIF backbone taxonomy, for autocomplete. Returns\nup to 10 matches.",
+        "operationId": "search_taxa",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search text, at least 2 characters.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Matching taxa",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonSearchResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`q` missing or too short",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/validate": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "Check a scientific name against GBIF.",
+        "operationId": "validate_taxon",
+        "parameters": [
+          {
+            "name": "name",
+            "in": "query",
+            "description": "Scientific name to check.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "kingdom",
+            "in": "query",
+            "description": "Kingdom hint, to disambiguate names used in more than one kingdom.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whether the name matched, with the match or close suggestions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`name` missing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{id}": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "Get a taxon by id.",
+        "operationId": "get_taxon_by_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "GBIF taxon id (`gbif:2878688` or `2878688`), or a scientific name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The taxon, with how many occurrences it has",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonDetailWithCount"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such taxon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{id}/occurrences": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "List occurrences of a taxon, by id.",
+        "description": "Matches on the community identification, so includes occurrences of\ndescendant taxa.",
+        "operationId": "get_taxon_occurrences_by_id",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "GBIF taxon id (`gbif:2878688` or `2878688`), or a scientific name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/taxa/{kingdom}/{name}": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "Get a taxon by kingdom and name.",
+        "operationId": "get_taxon_by_kingdom_name",
+        "parameters": [
+          {
+            "name": "kingdom",
+            "in": "path",
+            "description": "Kingdom name, e.g. `Plantae`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The taxon, with how many occurrences it has",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaxonDetailWithCount"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No such taxon",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{kingdom}/{name}/children": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "List a taxon's child taxa.",
+        "operationId": "get_children_by_kingdom_name",
+        "parameters": [
+          {
+            "name": "kingdom",
+            "in": "path",
+            "description": "Kingdom name, e.g. `Plantae`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Up to 20 children; empty if none were found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TaxaResult"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/taxa/{kingdom}/{name}/occurrences": {
+      "get": {
+        "tags": [
+          "taxonomy"
+        ],
+        "summary": "List occurrences of a taxon, by kingdom and name.",
+        "description": "Matches on the community identification, so includes occurrences of\ndescendant taxa.",
+        "operationId": "get_taxon_occurrences_by_kingdom_name",
+        "parameters": [
+          {
+            "name": "kingdom",
+            "in": "path",
+            "description": "Kingdom name, e.g. `Plantae`",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "description": "Scientific name, with spaces written as dashes (e.g. `Morus-alba`)",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Page size. Values above 100 are clamped.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64",
+              "default": 20
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "description": "`cursor` from the previous page.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of occurrences",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OccurrenceListResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/api/user/preferences": {
+      "get": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Get the viewer's preferences.",
+        "operationId": "get_preferences",
+        "responses": {
+          "200": {
+            "description": "The viewer's preferences; unset values are null",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserPreferencesResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      },
+      "put": {
+        "tags": [
+          "preferences"
+        ],
+        "summary": "Update the viewer's preferences.",
+        "description": "Replaces both preferences: an omitted field is cleared, same as `null`.",
+        "operationId": "update_preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePreferencesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The preferences were saved",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Unknown license or basemap",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not signed in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "session": []
+          }
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "meta"
+        ],
+        "summary": "Liveness check.",
+        "operationId": "health",
+        "responses": {
+          "200": {
+            "description": "The service is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/blob/{did}/{cid}": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get an image blob.",
+        "description": "Fetches the blob from the owner's PDS and caches it. Responses are\nimmutable and safe to cache forever.",
+        "operationId": "get_media_blob",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "description": "DID of the account that owns the blob",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "CID of the blob",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The blob bytes, with the content type the PDS reported",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "400": {
+            "description": "Invalid DID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The blob could not be fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/health": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Media cache liveness and stats.",
+        "operationId": "media_health",
+        "responses": {
+          "200": {
+            "description": "The media cache is up",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaHealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/thumb/{did}/{cid}": {
+      "get": {
+        "tags": [
+          "media"
+        ],
+        "summary": "Get an image thumbnail.",
+        "description": "Currently returns the full blob, matching the previous service.",
+        "operationId": "get_media_thumb",
+        "parameters": [
+          {
+            "name": "did",
+            "in": "path",
+            "description": "DID of the account that owns the blob",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cid",
+            "in": "path",
+            "description": "CID of the blob",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The image bytes",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "400": {
+            "description": "Invalid DID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The blob could not be fetched",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/callback": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Finish signing in.",
+        "description": "The OAuth redirect target: completes the flow, sets the session cookie,\nand redirects to the app. Not called directly.",
+        "operationId": "oauth_callback",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "iss",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "303": {
+            "description": "Signed in; the `session_did` cookie is set"
+          },
+          "500": {
+            "description": "The authorization could not be completed",
+            "content": {
+              "text/plain": {}
+            }
+          }
+        }
+      }
+    },
+    "/oauth/client-metadata.json": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "OAuth client metadata.",
+        "description": "The client metadata document that atproto authorization servers fetch to\nidentify this app.",
+        "operationId": "get_oauth_client_metadata",
+        "responses": {
+          "200": {
+            "description": "The client metadata",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not served in local development",
+            "content": {
+              "text/plain": {}
+            }
+          }
+        }
+      }
+    },
+    "/oauth/login": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Start signing in.",
+        "description": "Returns the authorization URL to send the user's browser to. After the user\napproves, their PDS redirects back to `/oauth/callback`, which sets the\nsession cookie.",
+        "operationId": "oauth_login",
+        "parameters": [
+          {
+            "name": "handle",
+            "in": "query",
+            "description": "The user's atproto handle, e.g. `alice.bsky.social`.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Where to send the browser",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing or invalid handle, or the login could not be started",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Sign out.",
+        "description": "Clears the session cookie.",
+        "operationId": "oauth_logout",
+        "responses": {
+          "200": {
+            "description": "Signed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/me": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Get the signed-in user.",
+        "operationId": "get_current_user",
+        "responses": {
+          "200": {
+            "description": "The signed-in user, or `null`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {},
+          {
+            "session": []
+          }
+        ]
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ActorProfile": {
+        "type": "object",
+        "required": [
+          "did"
+        ],
+        "properties": {
+          "did": {
+            "type": "string"
+          },
+          "handle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "BboxBounds": {
+        "type": "object",
+        "required": [
+          "minLat",
+          "minLng",
+          "maxLat",
+          "maxLng"
+        ],
+        "properties": {
+          "minLat": {
+            "type": "number",
+            "format": "double"
+          },
+          "minLng": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxLat": {
+            "type": "number",
+            "format": "double"
+          },
+          "maxLng": {
+            "type": "number",
+            "format": "double"
+          }
+        }
+      },
+      "BboxMeta": {
+        "type": "object",
+        "required": [
+          "bounds",
+          "count"
+        ],
+        "properties": {
+          "bounds": {
+            "$ref": "#/components/schemas/BboxBounds"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "BboxResponse": {
+        "type": "object",
+        "required": [
+          "occurrences",
+          "meta"
+        ],
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/BboxMeta"
+          }
+        }
+      },
+      "Comment": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CommentRow"
+          },
+          {
+            "type": "object",
+            "required": [
+              "commenter"
+            ],
+            "properties": {
+              "commenter": {
+                "$ref": "#/components/schemas/Profile"
+              }
+            }
+          }
+        ],
+        "description": "Enriched comment with profile info"
+      },
+      "CommentRow": {
+        "type": "object",
+        "description": "Comment row returned from SELECT queries",
+        "required": [
+          "uri",
+          "cid",
+          "did",
+          "subject_uri",
+          "subject_cid",
+          "body",
+          "created_at"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "subject_uri": {
+            "type": "string"
+          },
+          "subject_cid": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "reply_to_uri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reply_to_cid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ConservationStatus": {
+        "type": "object",
+        "required": [
+          "category",
+          "source"
+        ],
+        "properties": {
+          "category": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateCommentRequest": {
+        "type": "object",
+        "required": [
+          "occurrenceUri",
+          "occurrenceCid",
+          "body"
+        ],
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          },
+          "occurrenceCid": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "replyToUri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "replyToCid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateIdentificationRequest": {
+        "type": "object",
+        "required": [
+          "occurrenceUri",
+          "occurrenceCid",
+          "scientificName"
+        ],
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          },
+          "occurrenceCid": {
+            "type": "string"
+          },
+          "scientificName": {
+            "type": "string"
+          },
+          "taxonRank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional kingdom hint from a GBIF autocomplete pick. Disambiguates\ngenus-level names for the GBIF validate call and acts as a fallback\nwhen validation doesn't return a kingdom of its own."
+          }
+        }
+      },
+      "CreateInteractionRequest": {
+        "type": "object",
+        "required": [
+          "subjectA",
+          "subjectB",
+          "interactionType"
+        ],
+        "properties": {
+          "subjectA": {
+            "$ref": "#/components/schemas/InteractionSubjectRequest"
+          },
+          "subjectB": {
+            "$ref": "#/components/schemas/InteractionSubjectRequest"
+          },
+          "interactionType": {
+            "type": "string"
+          },
+          "direction": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/InteractionDirection",
+                "description": "Defaults to `AtoB`."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateLikeRequest": {
+        "type": "object",
+        "required": [
+          "occurrenceUri",
+          "occurrenceCid"
+        ],
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          },
+          "occurrenceCid": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateOccurrenceRequest": {
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "coordinateUncertaintyInMeters": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "organismQuantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:organismQuantity — free text (a count, a range like\n\"10-100\", or a categorical value like \"many\"). Written verbatim."
+          },
+          "organismQuantityType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:organismQuantityType — the quantification system the\nquantity uses (\"individuals\", \"percent-cover\", or an open-vocab value)."
+          },
+          "eventDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "externalRecords": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExternalRecordInput"
+            },
+            "description": "References to this same occurrence held on another service. Capped at\n`constants::MAX_EXTERNAL_RECORDS` by the lexicon."
+          },
+          "images": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ImageUpload"
+            }
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "License URI applied to each uploaded media record (e.g.\n`https://creativecommons.org/licenses/by/4.0/`). Validated against\n`validation::ALLOWED_LICENSES`; a retired SPDX identifier is upgraded to\nits URI rather than rejected. When omitted, the PDS media record stores\nno license."
+          },
+          "scientificName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxonRank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional kingdom hint from a GBIF autocomplete pick. Disambiguates\ngenus-level names for the auto-identification's GBIF validate call\nand acts as a fallback when validation doesn't return a kingdom."
+          },
+          "taxonId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Stable taxon URI from a GBIF autocomplete pick (e.g. a GBIF species\nURI). Written to the auto-created identification's `taxonID` field."
+          },
+          "occurrenceRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:occurrenceRemarks — the observer's own notes on the\norganism. Written as a separate `bio.lexicons.temp.v0-1.remark` record\nthat the occurrence references; blank or omitted writes none."
+          },
+          "eventRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:eventRemarks — notes on the time and place. Written the\nsame way as the occurrence remarks."
+          }
+        }
+      },
+      "DeleteLikeRequest": {
+        "type": "object",
+        "required": [
+          "occurrenceUri"
+        ],
+        "properties": {
+          "occurrenceUri": {
+            "type": "string"
+          }
+        }
+      },
+      "EffectiveTaxonomy": {
+        "type": "object",
+        "required": [
+          "scientificName"
+        ],
+        "properties": {
+          "scientificName": {
+            "type": "string"
+          },
+          "vernacularName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rank": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Lowercase Darwin Core rank of `scientific_name` (e.g. \"genus\", \"species\")."
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phylum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "genus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "EnrichedInteraction": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/InteractionRow"
+          },
+          {
+            "type": "object",
+            "required": [
+              "creator"
+            ],
+            "properties": {
+              "creator": {
+                "$ref": "#/components/schemas/Profile"
+              }
+            }
+          }
+        ],
+        "description": "Enriched interaction with profile info"
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "description": "JSON body of every error response.",
+        "required": [
+          "error"
+        ],
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        }
+      },
+      "ExploreFeedResponse": {
+        "type": "object",
+        "required": [
+          "occurrences",
+          "meta"
+        ],
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "meta": {
+            "$ref": "#/components/schemas/ExploreMeta"
+          }
+        }
+      },
+      "ExploreFilters": {
+        "type": "object",
+        "properties": {
+          "taxon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "startDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "endDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ExploreMeta": {
+        "type": "object",
+        "required": [
+          "filters"
+        ],
+        "properties": {
+          "filters": {
+            "$ref": "#/components/schemas/ExploreFilters"
+          }
+        }
+      },
+      "ExternalRecord": {
+        "type": "object",
+        "description": "A reference to this occurrence as held by another service — an iNaturalist\nobservation, a record in another AT Protocol lexicon, and so on. Passed\nthrough verbatim: the appview neither resolves nor validates the target.",
+        "required": [
+          "uri"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Short service identifier from the record (`inaturalist`, `bugguide`, an\nAT Protocol app name, ...). The lexicon's known values are not\nexhaustive, so clients must handle unfamiliar ones."
+          }
+        }
+      },
+      "ExternalRecordInput": {
+        "type": "object",
+        "description": "One `externalRecords` entry from the submit/edit form: this same occurrence\nas held by another service. Both create and update send the full list, so an\nedit round-trips whatever the form was populated with.",
+        "required": [
+          "uri"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "description": "Permalink of the record on the holding service, or an `at://` URI for a\nrecord in another AT Protocol lexicon."
+          },
+          "service": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Short service identifier (`inaturalist`, `bugguide`, an app name).\nOptional — the client derives it from the URI host where it recognizes\none, and omits it otherwise rather than guessing."
+          }
+        }
+      },
+      "GeoJsonFeature": {
+        "type": "object",
+        "required": [
+          "type",
+          "geometry",
+          "properties"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "geometry": {
+            "$ref": "#/components/schemas/GeoJsonPoint"
+          },
+          "properties": {
+            "$ref": "#/components/schemas/GeoJsonProperties"
+          }
+        }
+      },
+      "GeoJsonPoint": {
+        "type": "object",
+        "required": [
+          "type",
+          "coordinates"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "coordinates": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        }
+      },
+      "GeoJsonProperties": {
+        "type": "object",
+        "required": [
+          "uri"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "eventDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "GeoJsonResponse": {
+        "type": "object",
+        "required": [
+          "type",
+          "features"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GeoJsonFeature"
+            }
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          }
+        }
+      },
+      "HomeFeedResponse": {
+        "type": "object",
+        "required": [
+          "occurrences"
+        ],
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Identification": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/IdentificationRow"
+          },
+          {
+            "type": "object",
+            "required": [
+              "identifier"
+            ],
+            "properties": {
+              "identifier": {
+                "$ref": "#/components/schemas/Profile"
+              }
+            }
+          }
+        ],
+        "description": "Enriched identification with profile info"
+      },
+      "IdentificationListResponse": {
+        "type": "object",
+        "required": [
+          "identifications"
+        ],
+        "properties": {
+          "identifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identification"
+            }
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IdentificationRow": {
+        "type": "object",
+        "description": "Identification row returned from SELECT queries",
+        "required": [
+          "uri",
+          "cid",
+          "did",
+          "subject_uri",
+          "subject_cid",
+          "scientific_name",
+          "date_identified"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "subject_uri": {
+            "type": "string"
+          },
+          "subject_cid": {
+            "type": "string"
+          },
+          "scientific_name": {
+            "type": "string"
+          },
+          "taxon_rank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identification_qualifier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxon_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "identification_verification_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "type_status": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_identified": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phylum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "genus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "IdentifyRequest": {
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "properties": {
+          "image": {
+            "type": "string",
+            "description": "Base64-encoded image data"
+          },
+          "latitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double",
+            "description": "Where the photo was taken. With `longitude`, lets the model flag\nsuggestions that are out of range."
+          },
+          "longitude": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "Maximum number of suggestions to return.",
+            "minimum": 0
+          },
+          "live": {
+            "type": "boolean",
+            "description": "Route to the faster live-loop model (ViT-L). The continuous camera\npreview sets this; the upload/capture re-ID leaves it false so it gets\nthe full-accuracy model. Falls back to the full model when no live\nservice is configured."
+          }
+        }
+      },
+      "IdentifyResponse": {
+        "type": "object",
+        "required": [
+          "suggestions",
+          "modelVersion",
+          "inferenceTimeMs"
+        ],
+        "properties": {
+          "suggestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SpeciesSuggestion"
+            }
+          },
+          "modelVersion": {
+            "type": "string"
+          },
+          "inferenceTimeMs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          }
+        }
+      },
+      "ImageUpload": {
+        "type": "object",
+        "required": [
+          "data",
+          "mimeType"
+        ],
+        "properties": {
+          "data": {
+            "type": "string",
+            "description": "Base64-encoded image bytes."
+          },
+          "mimeType": {
+            "type": "string",
+            "description": "Deserialized from frontend but unused — PDS infers MIME type from bytes."
+          }
+        }
+      },
+      "InteractionDirection": {
+        "type": "string",
+        "enum": [
+          "AtoB",
+          "BtoA",
+          "bidirectional"
+        ]
+      },
+      "InteractionListResponse": {
+        "type": "object",
+        "required": [
+          "interactions"
+        ],
+        "properties": {
+          "interactions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrichedInteraction"
+            }
+          }
+        }
+      },
+      "InteractionRow": {
+        "type": "object",
+        "description": "Interaction row returned from SELECT queries",
+        "required": [
+          "uri",
+          "cid",
+          "did",
+          "interaction_type",
+          "direction",
+          "created_at"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "did": {
+            "type": "string"
+          },
+          "subject_a_occurrence_uri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject_a_taxon_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject_a_kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject_b_occurrence_uri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject_b_taxon_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "subject_b_kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interaction_type": {
+            "type": "string"
+          },
+          "direction": {
+            "$ref": "#/components/schemas/InteractionDirection"
+          },
+          "comment": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "indexed_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          }
+        }
+      },
+      "InteractionSubjectRequest": {
+        "type": "object",
+        "description": "One side of an interaction: an occurrence, a taxon, or both.",
+        "properties": {
+          "occurrenceUri": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "occurrenceCid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scientificName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Location": {
+        "type": "object",
+        "required": [
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "uncertaintyMeters": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "LoginResponse": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "Authorization URL on the user's PDS to send the browser to."
+          }
+        }
+      },
+      "MarkReadBody": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The notification to mark read. Omit to mark all of them read."
+          }
+        }
+      },
+      "MeResponse": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/UserInfo",
+                "description": "`null` when not signed in or the session has expired."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "MediaHealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "uptime_secs",
+          "cache"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "example": "ok"
+          },
+          "uptime_secs": {
+            "type": "integer",
+            "format": "int64",
+            "minimum": 0
+          },
+          "cache": {
+            "type": "object",
+            "description": "Blob cache counters: `entries`, `total_size` (bytes), `hits`, `misses`."
+          }
+        }
+      },
+      "NearbyMeta": {
+        "type": "object",
+        "required": [
+          "lat",
+          "lng",
+          "radius",
+          "limit",
+          "offset",
+          "count"
+        ],
+        "properties": {
+          "lat": {
+            "type": "number",
+            "format": "double"
+          },
+          "lng": {
+            "type": "number",
+            "format": "double"
+          },
+          "radius": {
+            "type": "number",
+            "format": "double"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "offset": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      },
+      "NearbyResponse": {
+        "type": "object",
+        "required": [
+          "occurrences",
+          "meta"
+        ],
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/NearbyMeta"
+          }
+        }
+      },
+      "Notification": {
+        "type": "object",
+        "required": [
+          "id",
+          "actorDid",
+          "kind",
+          "subjectUri",
+          "read",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "actorDid": {
+            "type": "string",
+            "description": "DID of the user whose action triggered the notification."
+          },
+          "kind": {
+            "type": "string",
+            "description": "`identification`, `comment`, or `like`."
+          },
+          "subjectUri": {
+            "type": "string",
+            "description": "AT URI of the viewer's occurrence that was acted on."
+          },
+          "referenceUri": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "AT URI of the identification, comment, or like record."
+          },
+          "read": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "actor": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ActorProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "NotificationListResponse": {
+        "type": "object",
+        "required": [
+          "notifications"
+        ],
+        "properties": {
+          "notifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Occurrence": {
+        "type": "object",
+        "description": "Enriched occurrence ready for API response",
+        "required": [
+          "uri",
+          "cid",
+          "observer",
+          "identificationCount",
+          "images",
+          "externalRecords",
+          "createdAt",
+          "qualityIssues"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          },
+          "observer": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "communityId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "effectiveTaxonomy": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/EffectiveTaxonomy"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "identificationCount": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "eventDate": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "NULL on survey-based occurrences whose `eventDate` lives on the\nreferenced survey record we don't yet ingest. The explore page\nrenders a placeholder rather than dropping the observation."
+          },
+          "location": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Location"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "organismQuantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:organismQuantity — free text (an int/float, or\ncategorical like \"many\"/\"10-100\")."
+          },
+          "organismQuantityType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:organismQuantityType — open vocabulary\n(\"individuals\", \"percent-cover\", ...)."
+          },
+          "occurrenceRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:occurrenceRemarks — the observer's own notes on the\norganism, from the remark record the occurrence references."
+          },
+          "eventRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Darwin Core dwc:eventRemarks — the observer's notes on the time and\nplace, resolved the same way."
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OccurrenceImage"
+            }
+          },
+          "externalRecords": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExternalRecord"
+            },
+            "description": "References to this same occurrence on other platforms, straight from\nthe record. Empty for the overwhelming majority of observations."
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "likeCount": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "viewerHasLiked": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "qualityIssues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QualityIssue"
+            },
+            "description": "Empty means the observation is \"verifiable\" — pass `?quality=verifiable`\non feed requests to filter to just those rows."
+          }
+        }
+      },
+      "OccurrenceDetailResponse": {
+        "type": "object",
+        "required": [
+          "occurrence",
+          "identifications",
+          "comments"
+        ],
+        "properties": {
+          "occurrence": {
+            "$ref": "#/components/schemas/Occurrence"
+          },
+          "identifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identification"
+            }
+          },
+          "comments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Comment"
+            }
+          }
+        }
+      },
+      "OccurrenceImage": {
+        "type": "object",
+        "description": "A single image attached to an occurrence, with the license URI the uploader\nchose (when one is recorded on the underlying media record).",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "OccurrenceListResponse": {
+        "type": "object",
+        "required": [
+          "occurrences"
+        ],
+        "properties": {
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Profile": {
+        "type": "object",
+        "required": [
+          "did"
+        ],
+        "properties": {
+          "did": {
+            "type": "string"
+          },
+          "handle": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ProfileCounts": {
+        "type": "object",
+        "required": [
+          "observations",
+          "identifications",
+          "species"
+        ],
+        "properties": {
+          "observations": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "identifications": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "species": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "ProfileFeedResponse": {
+        "type": "object",
+        "required": [
+          "profile",
+          "counts",
+          "occurrences",
+          "identifications"
+        ],
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/Profile"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/ProfileCounts"
+          },
+          "occurrences": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Occurrence"
+            }
+          },
+          "identifications": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Identification"
+            }
+          },
+          "cursor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "QualityIssue": {
+        "type": "string",
+        "enum": [
+          "MISSING_DATE",
+          "MISSING_LOCATION",
+          "MISSING_MEDIA",
+          "COORDINATES_IMPRECISE",
+          "NO_CONSENSUS_ID"
+        ]
+      },
+      "RecordCreatedResponse": {
+        "type": "object",
+        "description": "Response returned when an AT Protocol record is created.",
+        "required": [
+          "success",
+          "uri",
+          "cid"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "uri": {
+            "type": "string"
+          },
+          "cid": {
+            "type": "string"
+          }
+        }
+      },
+      "SpeciesIdStatus": {
+        "type": "object",
+        "description": "Warm/cold state of a species-id service, as reported to the frontend.",
+        "required": [
+          "ready"
+        ],
+        "properties": {
+          "ready": {
+            "type": "boolean"
+          },
+          "estimatedSeconds": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Rough seconds until an identify request would complete, when cold.",
+            "minimum": 0
+          }
+        }
+      },
+      "SpeciesSuggestion": {
+        "type": "object",
+        "description": "A single ranked AI suggestion enriched with the GBIF match (when the\nscientific name resolves to a known taxon). The frontend treats a\nsuggestion with `taxonMatch` set the same as a user picking from the\nautocomplete: the kingdom/rank fields disappear and the match indicator\nshows \"Existing taxon\".",
+        "required": [
+          "scientificName",
+          "confidence"
+        ],
+        "properties": {
+          "scientificName": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "format": "float"
+          },
+          "commonName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "inRange": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "taxonMatch": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TaxaResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "description": "Simple success/failure response with no additional payload.",
+        "required": [
+          "success"
+        ],
+        "properties": {
+          "success": {
+            "type": "boolean"
+          }
+        }
+      },
+      "TaxaResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "scientificName",
+          "rank",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "taxonId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Stable URI for this taxon (e.g. `https://www.gbif.org/species/{key}`),\nsuitable for Darwin Core dwc:taxonID. `None` when GBIF didn't supply a\nbackbone key. Distinct from `id`, which is a path-based slug used for\nin-app taxon navigation."
+          },
+          "scientificName": {
+            "type": "string"
+          },
+          "commonName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rank": {
+            "type": "string"
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phylum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "genus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "species": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "conservationStatus": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConservationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "TaxonAncestor": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "rank"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "string"
+          }
+        }
+      },
+      "TaxonDescription": {
+        "type": "object",
+        "required": [
+          "description"
+        ],
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "type": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TaxonDetail": {
+        "type": "object",
+        "required": [
+          "id",
+          "scientificName",
+          "rank",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "scientificName": {
+            "type": "string"
+          },
+          "commonName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "photoUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rank": {
+            "type": "string"
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phylum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "class": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "order": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "family": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "genus": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "species": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": "string"
+          },
+          "conservationStatus": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConservationStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wikidataId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ancestors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxonAncestor"
+            }
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxaResult"
+            }
+          },
+          "numDescendants": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "minimum": 0
+          },
+          "extinct": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "descriptions": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaxonDescription"
+            }
+          },
+          "references": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaxonReference"
+            }
+          },
+          "media": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaxonMedia"
+            }
+          },
+          "gbifUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "wikidataUrl": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TaxonDetailWithCount": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TaxonDetail"
+          },
+          {
+            "type": "object",
+            "required": [
+              "observationCount"
+            ],
+            "properties": {
+              "observationCount": {
+                "type": "integer",
+                "format": "int64"
+              }
+            }
+          }
+        ]
+      },
+      "TaxonMedia": {
+        "type": "object",
+        "required": [
+          "type",
+          "url"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "title": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "creator": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TaxonReference": {
+        "type": "object",
+        "required": [
+          "citation"
+        ],
+        "properties": {
+          "citation": {
+            "type": "string"
+          },
+          "doi": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "link": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TaxonSearchResponse": {
+        "type": "object",
+        "required": [
+          "results"
+        ],
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaxaResult"
+            }
+          }
+        }
+      },
+      "UnreadCountResponse": {
+        "type": "object",
+        "required": [
+          "count"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "UpdateOccurrenceRequest": {
+        "type": "object",
+        "required": [
+          "uri",
+          "latitude",
+          "longitude"
+        ],
+        "properties": {
+          "uri": {
+            "type": "string"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double"
+          },
+          "coordinateUncertaintyInMeters": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32"
+          },
+          "organismQuantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::organism_quantity`. Omitting it clears the\nvalue on the record, so the edit form sends back the existing value."
+          },
+          "organismQuantityType": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::organism_quantity_type`."
+          },
+          "eventDate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "externalRecords": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ExternalRecordInput"
+            },
+            "description": "See `CreateOccurrenceRequest::external_records`. The edit form sends the\nfull list back, so omitting it clears the entries on the record."
+          },
+          "images": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ImageUpload"
+            },
+            "description": "Newly-added images to upload and attach, in addition to any retained ones."
+          },
+          "retainedBlobCids": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            },
+            "description": "Blob CIDs of existing media records to retain on the updated occurrence.\nMedia whose CID is not in this list is dropped from the record."
+          },
+          "license": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "License URI to apply to *newly-uploaded* media records on this edit.\nRetained media keep whatever license they were originally written with —\nsilently rewriting historical metadata when a default changes would lose\nthe user's intent at upload time."
+          },
+          "scientificName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxonRank": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "kingdom": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::kingdom`."
+          },
+          "taxonId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::taxon_id`."
+          },
+          "occurrenceRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::occurrence_remarks`. Like the other\nfields, omitting it clears the remark (and deletes the record), so the\nedit form sends back the existing text."
+          },
+          "eventRemarks": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "See `CreateOccurrenceRequest::event_remarks`."
+          }
+        }
+      },
+      "UpdatePreferencesRequest": {
+        "type": "object",
+        "properties": {
+          "defaultLicense": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Pass `null` to clear the user's saved default."
+          },
+          "basemap": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Map basemap id (\"outdoor\" | \"topo\" | \"streets\" | \"satellite\"). Pass\n`null` to clear."
+          }
+        }
+      },
+      "UserInfo": {
+        "type": "object",
+        "required": [
+          "did",
+          "handle"
+        ],
+        "properties": {
+          "did": {
+            "type": "string"
+          },
+          "handle": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "avatar": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "UserPreferencesResponse": {
+        "type": "object",
+        "properties": {
+          "defaultLicense": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "basemap": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ValidateResponse": {
+        "type": "object",
+        "required": [
+          "valid"
+        ],
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "matchedName": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "taxon": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TaxaResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "suggestions": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/TaxaResult"
+            }
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "session": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session_did",
+        "description": "Set by the OAuth callback after signing in via `/oauth/login`."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "occurrences",
+      "description": "Observations of an organism at a place and time"
+    },
+    {
+      "name": "feeds",
+      "description": "Paginated occurrence feeds"
+    },
+    {
+      "name": "identifications",
+      "description": "Taxon identifications of occurrences"
+    },
+    {
+      "name": "comments",
+      "description": "Discussion on occurrences"
+    },
+    {
+      "name": "likes",
+      "description": "Likes on occurrences"
+    },
+    {
+      "name": "interactions",
+      "description": "Species interactions between two subjects"
+    },
+    {
+      "name": "profiles",
+      "description": "User profiles and activity"
+    },
+    {
+      "name": "notifications",
+      "description": "Activity on the viewer's occurrences"
+    },
+    {
+      "name": "preferences",
+      "description": "Per-user app settings"
+    },
+    {
+      "name": "taxonomy",
+      "description": "Taxon lookup, backed by GBIF and Wikidata"
+    },
+    {
+      "name": "species-id",
+      "description": "AI species identification from photos"
+    },
+    {
+      "name": "media",
+      "description": "Image blobs and conversion"
+    },
+    {
+      "name": "auth",
+      "description": "AT Protocol OAuth sign-in"
+    },
+    {
+      "name": "meta",
+      "description": "Service health"
+    }
+  ]
+}

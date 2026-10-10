@@ -17,10 +17,11 @@ use serde::Deserialize;
 use serde_json::json;
 use tracing::{info, warn};
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::{self, AuthUser};
 use crate::constants;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
@@ -30,7 +31,7 @@ use std::str::FromStr;
 use super::auto_id;
 use super::remarks::{self, PreparedRemark, RemarkTerm};
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateOccurrenceRequest {
@@ -97,7 +98,7 @@ impl RemarkTexts for CreateOccurrenceRequest {
 /// One `externalRecords` entry from the submit/edit form: this same occurrence
 /// as held by another service. Both create and update send the full list, so an
 /// edit round-trips whatever the form was populated with.
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct ExternalRecordInput {
@@ -111,17 +112,18 @@ pub struct ExternalRecordInput {
     service: Option<String>,
 }
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct ImageUpload {
-    data: String, // base64
+    /// Base64-encoded image bytes.
+    data: String,
     /// Deserialized from frontend but unused — PDS infers MIME type from bytes.
     #[allow(dead_code)]
     mime_type: String,
 }
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct UpdateOccurrenceRequest {
@@ -199,6 +201,24 @@ trait RemarkTexts {
     }
 }
 
+/// Create an occurrence.
+///
+/// Uploads any images to the caller's PDS, writes the occurrence record (plus
+/// remark records for any notes), and, when `scientificName` is given, the
+/// observer's own identification. The occurrence shows up in feeds once the
+/// record reaches the firehose and is indexed.
+#[utoipa::path(
+    post,
+    path = "/api/occurrences",
+    tag = "occurrences",
+    request_body = CreateOccurrenceRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
+        (status = 400, description = "A field failed validation", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+    )
+)]
 pub async fn create_occurrence(
     State(state): State<AppState>,
     user: AuthUser,
@@ -315,7 +335,24 @@ pub async fn create_occurrence(
     }))
 }
 
-/// DELETE /api/occurrences/{*uri} — delete an occurrence record via PDS deleteRecord.
+/// Delete an occurrence.
+///
+/// Deletes the record from the caller's PDS. The indexed occurrence, along
+/// with its identifications, comments, likes, and interactions, disappears
+/// once the delete reaches the firehose.
+#[utoipa::path(
+    delete,
+    path = "/api/occurrences/{uri}",
+    tag = "occurrences",
+    params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was deleted", body = SuccessResponse),
+        (status = 400, description = "Invalid AT URI", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+        (status = 403, description = "The occurrence belongs to someone else", body = ErrorResponse),
+    )
+)]
 pub async fn delete_occurrence(
     State(state): State<AppState>,
     user: AuthUser,
@@ -373,7 +410,24 @@ pub async fn delete_occurrence(
     Ok(Json(SuccessResponse { success: true }))
 }
 
-/// PUT /api/occurrences — update an existing occurrence record via putRecord.
+/// Update an occurrence.
+///
+/// Replaces the record on the caller's PDS. The request is the full new state
+/// of the occurrence: omitted optional fields are cleared, and existing media
+/// is kept only if its blob CID is listed in `retainedBlobCids`.
+#[utoipa::path(
+    put,
+    path = "/api/occurrences",
+    tag = "occurrences",
+    request_body = UpdateOccurrenceRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was replaced", body = RecordCreatedResponse),
+        (status = 400, description = "A field failed validation", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+        (status = 403, description = "The occurrence belongs to someone else", body = ErrorResponse),
+    )
+)]
 pub async fn update_occurrence(
     State(state): State<AppState>,
     user: AuthUser,

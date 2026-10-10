@@ -47,6 +47,11 @@ serde_json = { workspace = true }
 # TypeScript type generation
 ts-rs = { workspace = true }
 
+# OpenAPI spec + Swagger UI (vendored: the UI assets are embedded at build
+# time instead of downloaded or loaded from a CDN)
+utoipa = { workspace = true }
+utoipa-swagger-ui = { version = "10", features = ["axum", "vendored"] }
+
 # Logging
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }

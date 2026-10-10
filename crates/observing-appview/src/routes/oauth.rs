@@ -3,25 +3,50 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use tracing::{error, info};
+use utoipa::{IntoParams, ToSchema};
 
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
+use crate::responses::SuccessResponse;
 use crate::state::AppState;
 
 const SESSION_MAX_AGE_SECS: i64 = 14 * 24 * 60 * 60;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct LoginParams {
+    /// The user's atproto handle, e.g. `alice.bsky.social`.
+    #[param(required = true, value_type = String)]
     handle: Option<String>,
 }
 
-/// GET /oauth/login?handle=alice.bsky.social
-/// Returns JSON { url: "..." } for the frontend to redirect to.
+#[derive(Serialize, ToSchema)]
+pub struct LoginResponse {
+    /// Authorization URL on the user's PDS to send the browser to.
+    url: String,
+}
+
+/// Start signing in.
+///
+/// Returns the authorization URL to send the user's browser to. After the user
+/// approves, their PDS redirects back to `/oauth/callback`, which sets the
+/// session cookie.
+#[utoipa::path(
+    get,
+    path = "/oauth/login",
+    operation_id = "oauth_login",
+    tag = "auth",
+    params(LoginParams),
+    responses(
+        (status = 200, description = "Where to send the browser", body = LoginResponse),
+        (status = 400, description = "Missing or invalid handle, or the login could not be started", body = ErrorResponse),
+    )
+)]
 pub async fn login(
     State(state): State<AppState>,
     Query(params): Query<LoginParams>,
-) -> Result<Json<Value>, AppError> {
+) -> Result<Json<LoginResponse>, AppError> {
     let handle = params
         .handle
         .ok_or_else(|| AppError::BadRequest("Handle is required".into()))?;
@@ -53,18 +78,32 @@ pub async fn login(
             AppError::BadRequest(format!("Could not initiate login: {e}"))
         })?;
 
-    Ok(Json(json!({ "url": url })))
+    Ok(Json(LoginResponse { url }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct CallbackParams {
     code: String,
     state: String,
     iss: Option<String>,
 }
 
-/// GET /oauth/callback?code=...&state=...&iss=...
-/// Completes the OAuth flow, sets session_did cookie, and redirects to /.
+/// Finish signing in.
+///
+/// The OAuth redirect target: completes the flow, sets the session cookie,
+/// and redirects to the app. Not called directly.
+#[utoipa::path(
+    get,
+    path = "/oauth/callback",
+    operation_id = "oauth_callback",
+    tag = "auth",
+    params(CallbackParams),
+    responses(
+        (status = 303, description = "Signed in; the `session_did` cookie is set"),
+        (status = 500, description = "The authorization could not be completed", content_type = "text/plain"),
+    )
+)]
 pub async fn callback(
     State(state): State<AppState>,
     Query(params): Query<CallbackParams>,
@@ -128,8 +167,16 @@ pub async fn callback(
     }
 }
 
-/// POST /oauth/logout
-/// Clears session cookie and returns { success: true }.
+/// Sign out.
+///
+/// Clears the session cookie.
+#[utoipa::path(
+    post,
+    path = "/oauth/logout",
+    operation_id = "oauth_logout",
+    tag = "auth",
+    responses((status = 200, description = "Signed out", body = SuccessResponse))
+)]
 pub async fn logout(cookies: axum_extra::extract::CookieJar) -> Response {
     let did = cookies.get("session_did").map(|c| c.value().to_string());
     if let Some(ref did) = did {
@@ -140,13 +187,25 @@ pub async fn logout(cookies: axum_extra::extract::CookieJar) -> Response {
     let cookie = "session_did=; HttpOnly; Path=/; Max-Age=0";
     (
         [(axum::http::header::SET_COOKIE, cookie)],
-        Json(json!({ "success": true })),
+        Json(SuccessResponse { success: true }),
     )
         .into_response()
 }
 
-/// GET /oauth/client-metadata.json
-/// Serves OAuth client metadata for AT Protocol authorization servers.
+/// OAuth client metadata.
+///
+/// The client metadata document that atproto authorization servers fetch to
+/// identify this app.
+#[utoipa::path(
+    get,
+    path = "/oauth/client-metadata.json",
+    operation_id = "get_oauth_client_metadata",
+    tag = "auth",
+    responses(
+        (status = 200, description = "The client metadata", body = Object),
+        (status = 404, description = "Not served in local development", content_type = "text/plain"),
+    )
+)]
 pub async fn client_metadata(State(state): State<AppState>) -> Response {
     let Some(ref public_url) = state.public_url else {
         return (StatusCode::NOT_FOUND, "Not available in development mode").into_response();
@@ -167,7 +226,7 @@ pub async fn client_metadata(State(state): State<AppState>) -> Response {
     .into_response()
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UserInfo {
     did: String,
@@ -178,13 +237,21 @@ pub struct UserInfo {
     avatar: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct MeResponse {
+    /// `null` when not signed in or the session has expired.
     user: Option<UserInfo>,
 }
 
-/// GET /oauth/me
-/// Returns { user: { did, handle, displayName?, avatar? } } or { user: null }.
+/// Get the signed-in user.
+#[utoipa::path(
+    get,
+    path = "/oauth/me",
+    operation_id = "get_current_user",
+    tag = "auth",
+    security((), ("session" = [])),
+    responses((status = 200, description = "The signed-in user, or `null`", body = MeResponse))
+)]
 pub async fn me(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

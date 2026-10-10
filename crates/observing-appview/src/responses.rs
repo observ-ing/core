@@ -1,5 +1,6 @@
 use serde::Serialize;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::enrichment::{
     EnrichedComment, EnrichedIdentification, EnrichedInteraction, OccurrenceResponse,
@@ -8,7 +9,7 @@ use crate::enrichment::{
 use crate::taxonomy_client::TaxonResult;
 
 /// Response returned when an AT Protocol record is created.
-#[derive(Serialize, TS)]
+#[derive(Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct RecordCreatedResponse {
@@ -18,7 +19,7 @@ pub struct RecordCreatedResponse {
 }
 
 /// Simple success/failure response with no additional payload.
-#[derive(Serialize, TS)]
+#[derive(Serialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct SuccessResponse {
@@ -27,14 +28,14 @@ pub struct SuccessResponse {
 
 // --- Feed responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OccurrenceListResponse {
     pub occurrences: Vec<OccurrenceResponse>,
     pub cursor: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExploreFilters {
     pub taxon: Option<String>,
@@ -43,13 +44,13 @@ pub struct ExploreFilters {
     pub end_date: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExploreMeta {
     pub filters: ExploreFilters,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExploreFeedResponse {
     pub occurrences: Vec<OccurrenceResponse>,
@@ -57,7 +58,7 @@ pub struct ExploreFeedResponse {
     pub meta: ExploreMeta,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HomeFeedResponse {
     pub occurrences: Vec<OccurrenceResponse>,
@@ -66,7 +67,7 @@ pub struct HomeFeedResponse {
 
 // --- Occurrence responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NearbyMeta {
     pub lat: f64,
@@ -77,14 +78,14 @@ pub struct NearbyMeta {
     pub count: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NearbyResponse {
     pub occurrences: Vec<OccurrenceResponse>,
     pub meta: NearbyMeta,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BboxBounds {
     pub min_lat: f64,
@@ -93,21 +94,21 @@ pub struct BboxBounds {
     pub max_lng: f64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BboxMeta {
     pub bounds: BboxBounds,
     pub count: usize,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct BboxResponse {
     pub occurrences: Vec<OccurrenceResponse>,
     pub meta: BboxMeta,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonFeature {
     #[serde(rename = "type")]
@@ -116,7 +117,7 @@ pub struct GeoJsonFeature {
     pub properties: GeoJsonProperties,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonPoint {
     #[serde(rename = "type")]
@@ -124,7 +125,7 @@ pub struct GeoJsonPoint {
     pub coordinates: [f64; 2],
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonProperties {
     pub uri: String,
@@ -132,7 +133,7 @@ pub struct GeoJsonProperties {
     pub event_date: Option<String>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeoJsonResponse {
     #[serde(rename = "type")]
@@ -140,7 +141,7 @@ pub struct GeoJsonResponse {
     pub features: Vec<GeoJsonFeature>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OccurrenceDetailResponse {
     pub occurrence: OccurrenceResponse,
@@ -150,7 +151,7 @@ pub struct OccurrenceDetailResponse {
 
 // --- Notification responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UnreadCountResponse {
     pub count: i64,
@@ -158,7 +159,7 @@ pub struct UnreadCountResponse {
 
 // --- Identification responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentificationListResponse {
     pub identifications: Vec<EnrichedIdentification>,
@@ -167,7 +168,7 @@ pub struct IdentificationListResponse {
 
 // --- Interaction responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InteractionListResponse {
     pub interactions: Vec<EnrichedInteraction>,
@@ -175,7 +176,7 @@ pub struct InteractionListResponse {
 
 // --- Taxonomy responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct TaxonSearchResponse {
     pub results: Vec<TaxonResult>,
@@ -183,7 +184,7 @@ pub struct TaxonSearchResponse {
 
 // --- Profile responses ---
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileCounts {
     pub observations: i64,
@@ -191,7 +192,7 @@ pub struct ProfileCounts {
     pub species: i64,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ProfileFeedResponse {
     pub profile: ProfileSummary,

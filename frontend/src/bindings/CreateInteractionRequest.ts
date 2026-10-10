@@ -6,6 +6,9 @@ export type CreateInteractionRequest = {
   subjectA: InteractionSubjectRequest;
   subjectB: InteractionSubjectRequest;
   interactionType: string;
+  /**
+   * Defaults to `AtoB`.
+   */
   direction?: InteractionDirection;
   comment?: string;
 };

@@ -3,27 +3,58 @@ use axum::Json;
 use observing_db::quality::QualitySelection;
 use observing_db::types::{ExploreFeedOptions, HomeFeedOptions};
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{ExploreFeedResponse, ExploreFilters, ExploreMeta, HomeFeedResponse};
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct ExploreParams {
+    /// Page size. Values above 100 are clamped.
+    #[param(default = json!(constants::DEFAULT_FEED_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
+    /// Only occurrences whose scientific name starts with this text
+    /// (case-insensitive).
     taxon: Option<String>,
+    /// Only occurrences whose community identification is in this kingdom.
     kingdom: Option<String>,
+    /// Only occurrences whose event date overlaps the window starting on this
+    /// day (`YYYY-MM-DD`). Undated occurrences never match a date filter.
     #[serde(rename = "startDate")]
     start_date: Option<String>,
+    /// Only occurrences whose event date overlaps the window ending on this
+    /// day, inclusive (`YYYY-MM-DD`).
     #[serde(rename = "endDate")]
     end_date: Option<String>,
+    /// Comma-separated data-quality criteria every returned occurrence must
+    /// meet: `HAS_DATE`, `HAS_LOCATION`, `PRECISE_LOCATION`, `HAS_MEDIA`,
+    /// `HAS_CONSENSUS_ID`, or `complete` for all of them.
+    #[param(value_type = Option<String>, example = "HAS_MEDIA,HAS_CONSENSUS_ID")]
     quality: Option<QualitySelection>,
 }
 
+/// Explore feed.
+///
+/// All public occurrences, newest first, with optional filters.
+#[utoipa::path(
+    get,
+    path = "/api/feeds/explore",
+    operation_id = "get_explore_feed",
+    tag = "feeds",
+    params(ExploreParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "A page of occurrences", body = ExploreFeedResponse),
+        (status = 400, description = "Unknown `quality` criterion"),
+    )
+)]
 pub async fn get_explore(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -77,13 +108,36 @@ pub async fn get_explore(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct HomeParams {
+    /// Page size. Values above 100 are clamped.
+    #[param(default = json!(constants::DEFAULT_FEED_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
+    /// Data-quality criteria, as for the explore feed.
+    #[param(value_type = Option<String>, example = "complete")]
     quality: Option<QualitySelection>,
 }
 
+/// Home feed.
+///
+/// All public occurrences, newest first, for a signed-in viewer. Unlike the
+/// explore feed it takes no taxon, kingdom, or date filters.
+#[utoipa::path(
+    get,
+    path = "/api/feeds/home",
+    operation_id = "get_home_feed",
+    tag = "feeds",
+    params(HomeParams),
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "A page of occurrences", body = HomeFeedResponse),
+        (status = 400, description = "Unknown `quality` criterion"),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+    )
+)]
 pub async fn get_home(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

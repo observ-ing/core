@@ -7,6 +7,7 @@ mod heic;
 mod media;
 mod middleware;
 mod oauth_store;
+mod openapi;
 mod resolver;
 mod responses;
 mod routes;
@@ -31,6 +32,8 @@ use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
 use tracing::info;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 use config::Config;
 use species_id_client::SpeciesIdClient;
@@ -233,6 +236,8 @@ async fn main() {
         .route("/media/health", get(routes::media::health))
         .route("/media/blob/{did}/{cid}", get(routes::media::get_blob))
         .route("/media/thumb/{did}/{cid}", get(routes::media::get_thumb))
+        // OpenAPI spec and a Swagger UI to browse it
+        .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", openapi::ApiDoc::openapi()))
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(CompressionLayer::new())
         .layer(cors)
