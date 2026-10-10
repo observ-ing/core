@@ -50,7 +50,6 @@ import {
   isReading,
   missingFields,
   runPool,
-  toEventDate,
   toObservationInput,
   vetBatchFiles,
   type BatchObservation,
@@ -61,7 +60,7 @@ import { readPhotoExif } from "../../lib/exif";
 import { MAX_IMAGES, VALID_IMAGE_TYPES } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
-import { fileToBase64, getErrorMessage } from "../../lib/utils";
+import { fileToBase64, getErrorMessage, plural } from "../../lib/utils";
 import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
@@ -87,7 +86,9 @@ interface Over {
 
 const NEW_OBSERVATION = "new";
 
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
+/** How many files a drag from outside the page carries. Text and links don't count. */
+const draggedFileCount = (event: DragEvent) =>
+  Array.from(event.dataTransfer.items).filter((item) => item.kind === "file").length;
 
 let photoSeq = 0;
 
@@ -133,14 +134,17 @@ export function BatchUploadPage() {
   const toast = useToast();
   const user = useAppSelector((s) => s.auth.user);
   const isAuthLoading = useAppSelector((s) => s.auth.isLoading);
-  const license = useUserPreferences().data?.defaultLicense ?? DEFAULT_LICENSE;
+  const preferences = useUserPreferences();
+  const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
 
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
   const [uploading, setUploading] = useState(false);
   const [onlyIncomplete, setOnlyIncomplete] = useState(false);
-  const [skipped, setSkipped] = useState<{ files: SkippedFile[]; added: number }>({
+  // `open` is separate so the list stays as it was while the dialog fades out.
+  const [skipped, setSkipped] = useState<{ files: SkippedFile[]; added: number; open: boolean }>({
     files: [],
     added: 0,
+    open: false,
   });
   const [drag, setDrag] = useState<Drag | null>(null);
   const [over, setOver] = useState<Over | null>(null);
@@ -160,9 +164,18 @@ export function BatchUploadPage() {
   const failedCount = observations.filter((o) => o.status === "failed").length;
   // The filter lapses once nothing is incomplete, so the grid never empties itself.
   const filtering = onlyIncomplete && incomplete.length > 0;
-  const shown = filtering ? incomplete : cards;
+  // A selected card stays in view even once it is complete. Whatever the editor
+  // and the toolbar act on can be seen, and a card doesn't vanish mid-edit.
+  const shown = filtering
+    ? observations.filter((o) => incomplete.includes(o) || selected.includes(o.id))
+    : cards;
+  // Nothing here shows the license, so wait for the saved one rather than send
+  // the default in its place.
   const blocked =
-    observations.length === 0 || incomplete.length > 0 || observations.some(isReading);
+    observations.length === 0 ||
+    incomplete.length > 0 ||
+    observations.some(isReading) ||
+    preferences.isPending;
   const total = uploadedCount + observations.length;
   const profilePath = user ? `/profile/${encodeURIComponent(user.did)}` : "/";
 
@@ -170,26 +183,43 @@ export function BatchUploadPage() {
   useEffect(() => warmSpeciesId(), []);
 
   // Photos and edits live only in this page, so confirm before losing them.
+  // Signed out, the page shows none of it (nor the dialog that asks), so there
+  // is nothing to hold anyone here for.
   const hasUnsent = observations.length > 0;
+  const guarded = hasUnsent && user !== null;
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      hasUnsent && currentLocation.pathname !== nextLocation.pathname,
+      guarded && currentLocation.pathname !== nextLocation.pathname,
   );
   useEffect(() => {
-    if (!hasUnsent) return undefined;
+    if (!guarded) return undefined;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [hasUnsent]);
+  }, [guarded]);
 
-  // Release previews still held when the page goes away. Uploaded photos have
-  // already left the state: their previews stand in for the real images in the
-  // feeds until the ingester catches up, so they are deliberately kept.
+  // Release previews still held when the page goes away. Uploaded photos are
+  // left out: their previews stand in for the real images in the feeds until
+  // the ingester catches up, so they are deliberately kept. So are those of an
+  // observation on its way up, which is about to join them.
   const heldPhotos = useRef<BatchPhoto[]>([]);
   useEffect(() => {
-    heldPhotos.current = observations.flatMap((o) => o.photos);
+    heldPhotos.current = observations
+      .filter((o) => o.status !== "uploading")
+      .flatMap((o) => o.photos);
   }, [observations]);
-  useEffect(() => () => heldPhotos.current.forEach((p) => URL.revokeObjectURL(p.previewUrl)), []);
+  // Set once the page has gone, for an upload that is still running.
+  const goneRef = useRef(false);
+  useEffect(() => {
+    goneRef.current = false;
+    return () => {
+      goneRef.current = true;
+      // Leaving abandons whatever hasn't been sent, as the dialog on the way
+      // out says: nothing still queued may start.
+      cancelledRef.current = true;
+      heldPhotos.current.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    };
+  }, []);
 
   // Once every observation has been uploaded (or removed), go see them.
   useEffect(() => {
@@ -206,7 +236,9 @@ export function BatchUploadPage() {
       toast.error(`An observation holds up to ${MAX_IMAGES} photos`);
       return;
     }
-    if (skippedFiles.length > 0) setSkipped({ files: skippedFiles, added: accepted.length });
+    if (skippedFiles.length > 0) {
+      setSkipped({ files: skippedFiles, added: accepted.length, open: true });
+    }
     if (accepted.length === 0) return;
 
     const photos: BatchPhoto[] = accepted.map((file) => ({
@@ -261,7 +293,7 @@ export function BatchUploadPage() {
               latitude: input.latitude,
               longitude: input.longitude,
               uncertaintyMeters: observation.uncertaintyMeters,
-              eventDate: toEventDate(observation),
+              eventDate: input.eventDate,
               scientificName: input.scientificName,
               kingdom: input.kingdom,
               rank: observation.taxon.match?.rank ?? (observation.taxon.rank || undefined),
@@ -288,6 +320,10 @@ export function BatchUploadPage() {
         });
       }
     });
+
+    // The page was left while this ran: there is nothing to tidy up, and
+    // nothing of the page the user is on now to animate.
+    if (goneRef.current) return;
 
     // If that was everything, the page is about to leave for the observations
     // list. Otherwise the uploaded cards go now, all at once.
@@ -400,11 +436,8 @@ export function BatchUploadPage() {
     event.stopPropagation();
     if (!d) {
       // Files from outside the page: they will be added to this observation.
-      updateOver({
-        id: observation.id,
-        insertionIndex: null,
-        files: event.dataTransfer.items.length,
-      });
+      const files = draggedFileCount(event);
+      updateOver(files > 0 ? { id: observation.id, insertionIndex: null, files } : null);
     } else if (d.kind === "photo" && isOwnCard(d, observation.id)) {
       // Between photo slots the pointer is over the card but no slot; keep the bar.
       setOver((prev) => {
@@ -457,9 +490,8 @@ export function BatchUploadPage() {
     event.preventDefault();
     if (uploading) return;
     const d = dragRef.current;
-    updateOver(
-      !d || d.kind === "photo" ? { id: NEW_OBSERVATION, insertionIndex: null, files: 0 } : null,
-    );
+    const makesNew = d ? d.kind === "photo" : draggedFileCount(event) > 0;
+    updateOver(makesNew ? { id: NEW_OBSERVATION, insertionIndex: null, files: 0 } : null);
   };
 
   const handlePageDrop = (event: DragEvent) => {
@@ -618,7 +650,12 @@ export function BatchUploadPage() {
                   variant="outlined"
                   color="warning"
                   startIcon={<WarningAmberIcon />}
-                  onClick={() => setOnlyIncomplete(true)}
+                  onClick={() => {
+                    // Only the cards about to stay in view stay selected.
+                    const ids = incomplete.map((o) => o.id).filter((id) => selected.includes(id));
+                    dispatch({ type: "selectAll", ids });
+                    setOnlyIncomplete(true);
+                  }}
                 >
                   {incomplete.length} incomplete
                 </Button>
@@ -880,9 +917,10 @@ export function BatchUploadPage() {
       </Box>
 
       <SkippedFilesDialog
+        open={skipped.open}
         skipped={skipped.files}
         addedCount={skipped.added}
-        onClose={() => setSkipped({ files: [], added: 0 })}
+        onClose={() => setSkipped((prev) => ({ ...prev, open: false }))}
       />
       <ConfirmDialog
         open={blocker.state === "blocked"}

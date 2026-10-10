@@ -499,4 +499,258 @@ authTest.describe("Batch upload", () => {
     await page.getByRole("dialog").getByRole("button", { name: "Leave" }).click();
     await authExpect(page).toHaveURL("/explore");
   });
+
+  authTest(
+    "leaving mid-upload sends nothing that was still queued",
+    async ({ authenticatedPage: page }) => {
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const bodies = await mockSubmit(page, [], gate);
+      await page.goto(BATCH_URL);
+      // One more than the uploader sends at once, so one waits its turn.
+      await addPhotos(
+        page,
+        ["a", "b", "c", "d"].map((name) => taggedPhoto(`${name}.jpg`)),
+      );
+      await authExpect(cards(page)).toHaveCount(4);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByLabel("Remarks").fill("slow");
+      await page.getByRole("button", { name: "Upload 4 observations" }).click();
+      await authExpect(page.getByText("Queued", { exact: true })).toHaveCount(1);
+
+      await page.getByRole("link", { name: "Explore" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Leave" }).click();
+      await authExpect(page).toHaveURL("/explore");
+      // The address changes first; the page itself goes once the next one is ready.
+      await authExpect(page.getByRole("heading", { name: "Batch upload" })).toHaveCount(0);
+
+      release();
+      await authExpect.poll(() => bodies.length).toBe(3);
+      // Long enough for a fourth request to go out, if one were coming.
+      await page.waitForTimeout(500);
+      authExpect(bodies).toHaveLength(3);
+    },
+  );
+
+  authTest(
+    "logging out with photos held does not trap navigation",
+    async ({ authenticatedPage: page }) => {
+      await page.route("**/oauth/logout", (route) => route.fulfill({ status: 200, body: "" }));
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      await authExpect(cards(page)).toHaveCount(1);
+
+      await page.getByRole("button", { name: "Account menu" }).click();
+      await page.getByRole("menuitem", { name: "Log out" }).click();
+      await authExpect(page.getByText("Log in to upload observations.")).toBeVisible();
+
+      await page.getByRole("link", { name: "Explore" }).click();
+      await authExpect(page).toHaveURL("/explore");
+    },
+  );
+
+  authTest(
+    "the incomplete filter never leaves a hidden card selected",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("ok.jpg"), barePhoto("a.jpg"), barePhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(3);
+
+      // Turning the filter on takes the complete card out of the selection too.
+      await page.getByRole("button", { name: "Select all" }).click();
+      await authExpect(editor(page)).toContainText("Editing 3 observations");
+      await page.getByRole("button", { name: "2 incomplete" }).click();
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(editor(page)).toContainText("Editing 2 observations");
+
+      // A card completed while selected stays in view for as long as it is selected.
+      await cards(page).first().getByText("No identification").click();
+      await page.getByLabel("Observation date").fill("2026-10-04T08:15");
+      await page.getByRole("button", { name: "Enter coordinates manually" }).click();
+      await page.getByLabel("Latitude").fill("37.9");
+      await page.getByLabel("Longitude").fill("-122.2");
+      await authExpect(cards(page).first()).toContainText("37.9");
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(editor(page)).toContainText("Editing 1 observation");
+
+      await cards(page).nth(1).getByText("No identification").click();
+      await authExpect(cards(page)).toHaveCount(1);
+      await authExpect(page.getByRole("button", { name: "Photo a.jpg" })).toHaveCount(0);
+    },
+  );
+
+  authTest(
+    "a failed observation edited into an incomplete one cannot be retried",
+    async ({ authenticatedPage: page }) => {
+      await mockSubmit(page, ["fails"]);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      const card = cards(page).first();
+      await card.getByText("No identification").click();
+      await page.getByLabel("Remarks").fill("fails");
+      await page.getByRole("button", { name: "Upload 1 observation" }).click();
+      await authExpect(card).toContainText("Upload failed");
+      await authExpect(card.getByRole("button", { name: "Retry" })).toBeEnabled();
+
+      await card.getByText("No identification").click();
+      await page.getByLabel("Observation date").fill("");
+      await authExpect(card).toContainText("Missing date");
+      await authExpect(card.getByRole("button", { name: "Retry" })).toBeDisabled();
+    },
+  );
+
+  authTest(
+    "waits for the saved default license before uploading",
+    async ({ authenticatedPage: page }) => {
+      const cc0 = "https://creativecommons.org/publicdomain/zero/1.0/";
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route("**/api/user/preferences", async (route) => {
+        await gate;
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ defaultLicense: cc0, basemap: null }),
+        });
+      });
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      // The photo has been read, so nothing else is holding the upload back.
+      await authExpect(cards(page).first()).toContainText("Oct 3, 2026");
+      const upload = page.getByRole("button", { name: "Upload 1 observation" });
+      await authExpect(upload).toBeDisabled();
+
+      release();
+      await upload.click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies[0]).toMatchObject({ license: cc0 });
+    },
+  );
+
+  authTest(
+    "visual ID starts over when a different photo becomes the cover",
+    async ({ authenticatedPage: page }) => {
+      await page.route("**/api/species-id/status*", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ ready: true }),
+        }),
+      );
+      await page.route("**/api/species-id", (route) =>
+        route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            suggestions: [{ scientificName: "Quercus robur", confidence: 0.9 }],
+            modelVersion: "test",
+            inferenceTimeMs: 1,
+          }),
+        }),
+      );
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByRole("button", { name: "Combine" }).click();
+      const card = cards(page).first();
+      await authExpect(card).toContainText("2 photos");
+
+      await editor(page).getByRole("button", { name: "Visual ID" }).click();
+      await authExpect(editor(page).getByText("Quercus robur")).toBeVisible();
+
+      // Onto the left half of the cover: b.jpg becomes the cover.
+      await card
+        .getByRole("button", { name: "Photo b.jpg" })
+        .dragTo(card.getByRole("button", { name: "Photo a.jpg" }), {
+          targetPosition: { x: 20, y: 120 },
+        });
+      await authExpect(card.getByRole("button", { name: /^Photo / }).first()).toHaveAccessibleName(
+        "Photo b.jpg",
+      );
+      // Those suggestions were for a.jpg.
+      await authExpect(editor(page).getByText("Quercus robur")).toHaveCount(0);
+      await authExpect(editor(page).getByRole("button", { name: "Visual ID" })).toBeVisible();
+    },
+  );
+
+  authTest(
+    "a press whose release never arrives does not turn into a rectangle",
+    async ({ authenticatedPage: page }) => {
+      await page.setViewportSize({ width: 1400, height: 900 });
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+
+      // A press alone, as when a context menu or a native drag swallows the
+      // mouseup; the pointer then moves with no button held.
+      const title = page.getByRole("heading", { name: "Batch upload" });
+      const start = await title.boundingBox();
+      const second = await cards(page).nth(1).boundingBox();
+      if (!start || !second) throw new Error("layout not ready");
+      await page.mouse.move(start.x + 5, start.y + 5);
+      await title.dispatchEvent("mousedown", {
+        button: 0,
+        clientX: start.x + 5,
+        clientY: start.y + 5,
+      });
+      await page.mouse.move(second.x + second.width / 2, second.y + second.height / 2, {
+        steps: 5,
+      });
+
+      await authExpect(page.getByText("Drag cards together to combine them")).toBeVisible();
+      await authExpect(cards(page).nth(1).getByRole("checkbox")).not.toBeChecked();
+    },
+  );
+
+  authTest(
+    "the skipped-files summary keeps its wording while it closes",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [
+        barePhoto("ok.jpg"),
+        { name: "notes.pdf", mimeType: "application/pdf", buffer: Buffer.from("x") },
+      ]);
+      const dialog = page.getByRole("dialog");
+      await authExpect(dialog).toContainText("1 file wasn't added");
+
+      await dialog.getByRole("button", { name: "OK" }).click();
+      // Checked at once, while it is still fading out.
+      authExpect(await page.getByText("0 files weren't added").count()).toBe(0);
+      await authExpect(dialog).toHaveCount(0);
+    },
+  );
+
+  authTest(
+    "counts only the files in a drag from outside the page",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      const card = cards(page).first();
+      await authExpect(card).toContainText("Oct 3, 2026");
+
+      // A file, plus the text some sources send along with it.
+      const fileAndText = await page.evaluateHandle(() => {
+        const transfer = new DataTransfer();
+        transfer.items.add(new File(["x"], "b.jpg", { type: "image/jpeg" }));
+        transfer.items.add("b.jpg", "text/plain");
+        return transfer;
+      });
+      await card.dispatchEvent("dragover", { dataTransfer: fileAndText });
+      await authExpect(card).toContainText("2 photos, 1 observation");
+
+      // Text alone (a dragged link or selection) is nothing this page can add.
+      const textOnly = await page.evaluateHandle(() => {
+        const transfer = new DataTransfer();
+        transfer.items.add("hello", "text/plain");
+        return transfer;
+      });
+      await card.dispatchEvent("dragover", { dataTransfer: textOnly });
+      await authExpect(card).not.toContainText("1 observation");
+    },
+  );
 });

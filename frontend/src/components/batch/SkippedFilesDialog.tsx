@@ -9,21 +9,30 @@ import {
   Typography,
 } from "@mui/material";
 import type { SkippedFile } from "../../lib/batchUpload";
+import { plural } from "../../lib/utils";
 
 export interface SkippedFilesDialogProps {
-  /** Files left out of the last drop; the dialog is open while there are any. */
+  /**
+   * Separate from the list, which has to stay as it was while the dialog fades
+   * out, or it rewords itself as "0 files" on the way.
+   */
+  open: boolean;
+  /** Files left out of the last drop. */
   skipped: SkippedFile[];
   /** How many files from the same drop were added. */
   addedCount: number;
   onClose: () => void;
 }
 
-const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-
 /** One summary of everything a drop left out, and why. */
-export function SkippedFilesDialog({ skipped, addedCount, onClose }: SkippedFilesDialogProps) {
+export function SkippedFilesDialog({
+  open,
+  skipped,
+  addedCount,
+  onClose,
+}: SkippedFilesDialogProps) {
   return (
-    <Dialog open={skipped.length > 0} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>
         {plural(skipped.length, "file")} {skipped.length === 1 ? "wasn't" : "weren't"} added
       </DialogTitle>

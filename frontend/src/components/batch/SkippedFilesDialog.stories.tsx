@@ -6,7 +6,7 @@ const meta = {
   component: SkippedFilesDialog,
   parameters: { layout: "fullscreen" },
   tags: ["autodocs"],
-  args: { addedCount: 12, onClose: () => {} },
+  args: { open: true, addedCount: 12, onClose: () => {} },
 } satisfies Meta<typeof SkippedFilesDialog>;
 
 export default meta;

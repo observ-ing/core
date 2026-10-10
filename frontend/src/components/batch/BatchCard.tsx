@@ -517,6 +517,9 @@ export function BatchCard({
           size="small"
           startIcon={<RefreshIcon />}
           onClick={onRetry}
+          // An edit since the failure may have left it unfit to send, and a
+          // retry goes straight to the upload without the page's own check.
+          disabled={incomplete || reading}
           sx={{ mx: 1.5, mb: 1.5 }}
         >
           Retry

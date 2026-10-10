@@ -31,6 +31,16 @@ describe("parseExifTags", () => {
     expect(exif.utcOffset).toBe("+09:00");
   });
 
+  it("reads a capture time written with dashes instead of colons", () => {
+    // Off-spec, but some software writes it, and the upload form used to read it.
+    expect(parseExifTags({ DateTimeOriginal: { description: "2026-10-03 10:42:19" } }).date).toBe(
+      "2026-10-03T10:42",
+    );
+    expect(parseExifTags({ DateTime: { description: "2026-10-03T10:42:19" } }).date).toBe(
+      "2026-10-03T10:42",
+    );
+  });
+
   it("leaves the date empty when there is none or it is malformed", () => {
     expect(parseExifTags({}).date).toBeNull();
     expect(parseExifTags({ DateTimeOriginal: { description: "0000:00:00 00:00:00" } }).date).toBe(

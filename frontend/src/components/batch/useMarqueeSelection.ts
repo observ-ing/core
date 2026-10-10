@@ -125,6 +125,13 @@ export function useMarqueeSelection({ bodyRef, sectionRef, controlsRef }: Marque
     };
 
     const handleMove = (e: globalThis.MouseEvent) => {
+      // No button is down, so the release never reached us (a context menu or
+      // a native drag took it). End the press here, or the rectangle would
+      // follow the bare pointer until the next click.
+      if (e.buttons === 0) {
+        handleUp();
+        return;
+      }
       pointer = { x: e.clientX, y: e.clientY };
       if (!active) {
         if (Math.hypot(pointer.x - press.x, pointer.y - press.y) < THRESHOLD_PX) return;

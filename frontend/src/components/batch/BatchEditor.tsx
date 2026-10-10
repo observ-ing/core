@@ -12,7 +12,7 @@ import { coverImageSx } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { BatchEdit, BatchObservation } from "../../lib/batchUpload";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
-import { formatCoordinate } from "../../lib/utils";
+import { formatCoordinate, plural } from "../../lib/utils";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -30,8 +30,6 @@ function shared<T>(values: T[]): T | undefined {
   const [first, ...rest] = values;
   return rest.every((v) => v === first) ? first : undefined;
 }
-
-const plural = (count: number) => `${count} observation${count === 1 ? "" : "s"}`;
 
 function EditorFields({ selected, onEdit }: BatchEditorProps) {
   const [first] = selected;
@@ -68,7 +66,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
     <Stack spacing={2}>
       <Box>
         <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
-          Editing {plural(selected.length)}
+          Editing {plural(selected.length, "observation")}
         </Typography>
         {!single && (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
@@ -114,6 +112,8 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
                   </Typography>
                 </Stack>
                 <VisualId
+                  // Suggestions are for one photo; a new cover starts over.
+                  key={cover.id}
                   imageUrl={cover.previewUrl}
                   latitude={first.latitude ?? undefined}
                   longitude={first.longitude ?? undefined}
@@ -261,7 +261,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
                   clearProposal();
                 }}
               >
-                Set location for {plural(selected.length)}
+                Set location for {plural(selected.length, "observation")}
               </Button>
               <Button variant="outlined" color="inherit" onClick={clearProposal}>
                 Cancel

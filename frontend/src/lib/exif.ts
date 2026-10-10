@@ -49,7 +49,10 @@ function firstValue(tag: ExifTag | undefined): unknown {
 }
 
 function parseDate(tag: ExifTag | undefined): string | null {
-  const match = /^(\d{4}):(\d{2}):(\d{2})[ T](\d{2}):(\d{2})/.exec(String(tag?.description ?? ""));
+  // EXIF separates the date with colons; some software writes dashes instead.
+  const match = /^(\d{4})[:-](\d{2})[:-](\d{2})[ T](\d{2}):(\d{2})/.exec(
+    String(tag?.description ?? ""),
+  );
   if (!match) return null;
   const [, year, month, day, hour, minute] = match;
   const value = `${year}-${month}-${day}T${hour}:${minute}`;
