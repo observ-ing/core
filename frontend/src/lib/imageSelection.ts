@@ -3,6 +3,8 @@
 // render-time `images.length`, and so it can be tested without mounting the
 // modal.
 
+import { HEIC_ACCEPT } from "./heic";
+
 /** Most photos one observation can carry. */
 export const MAX_IMAGES = 10;
 
@@ -10,6 +12,12 @@ export const MAX_IMAGES = 10;
 export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 export const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
+/**
+ * `accept` value for photo file inputs. HEIC is offered too, but converted to
+ * JPEG (see `heic.ts`) before it reaches `vetImageFiles`.
+ */
+export const IMAGE_INPUT_ACCEPT = [...VALID_IMAGE_TYPES, HEIC_ACCEPT].join(",");
 
 export interface VettedImages {
   /** Files that passed every check, already trimmed to fit under MAX_IMAGES. */

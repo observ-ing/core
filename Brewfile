@@ -23,3 +23,7 @@ brew "postgis"
 
 # species-id native dependency
 brew "onnxruntime"
+
+# `heif-convert`, for the appview's HEIC → JPEG fallback (optional: without it
+# HEIC photos only import in browsers that decode HEIC natively, i.e. Safari)
+brew "libheif"

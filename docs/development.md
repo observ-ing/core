@@ -11,6 +11,11 @@
   `crates/observing-species-id/src/model.rs`):
   - macOS: `brew install onnxruntime`
   - Linux: install via your distro (`libonnxruntime` / `onnxruntime-dev`)
+- libheif's `heif-convert`, optional, for importing HEIC photos in browsers
+  that can't decode them (anything but Safari). Without it the appview's
+  `/api/media/heic-to-jpeg` returns 503 and those photos are rejected:
+  - macOS: `brew install libheif`
+  - Linux: `libheif-examples` plus the `libheif-plugin-libde265` HEVC decoder
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
 
 > First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.

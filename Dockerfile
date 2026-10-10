@@ -133,6 +133,14 @@ WORKDIR /app
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-appview
 
+# libheif's `heif-convert` CLI + HEVC decoder plugin, for the
+# /api/media/heic-to-jpeg fallback used by browsers that can't decode HEIC
+# photos themselves. Spawned as a child process, not linked.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libheif-examples \
+        libheif-plugin-libde265 \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY --from=builder /app/target/release/observing-appview /app/observing-appview
 COPY --from=frontend-builder /app/dist/public /app/public
 
