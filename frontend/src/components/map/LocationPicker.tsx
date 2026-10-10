@@ -37,6 +37,11 @@ interface LocationPickerProps {
    * of several observations being given one new location).
    */
   extraMarkers?: ReadonlyArray<{ latitude: number; longitude: number }>;
+  /**
+   * The slider stands for several positions whose uncertainties differ. It
+   * says so in place of a value until it is moved.
+   */
+  uncertaintyMixed?: boolean;
   /** Show the one-line usage hints under the map and the slider. Defaults to true. */
   showHints?: boolean;
 }
@@ -75,6 +80,7 @@ export function LocationPicker({
   uncertaintyMeters = 50,
   onUncertaintyChange,
   extraMarkers,
+  uncertaintyMixed = false,
   showHints = true,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
@@ -435,11 +441,17 @@ export function LocationPicker({
             }}
           >
             Coordinate Uncertainty:{" "}
-            {uncertaintyMeters >= 1000
-              ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km`
-              : `${uncertaintyMeters}m`}
+            {uncertaintyMixed
+              ? "Mixed values"
+              : uncertaintyMeters >= 1000
+                ? `${(uncertaintyMeters / 1000).toFixed(uncertaintyMeters >= 10000 ? 0 : 1)}km`
+                : `${uncertaintyMeters}m`}
           </Typography>
           <Slider
+            aria-label="Coordinate uncertainty"
+            // With mixed values the thumb's position means nothing yet, so it is
+            // drawn faint and without a filled track.
+            track={uncertaintyMixed ? false : "normal"}
             value={valueToSlider(uncertaintyMeters)}
             min={SLIDER_MIN}
             max={SLIDER_MAX}
@@ -470,6 +482,7 @@ export function LocationPicker({
               "& .MuiSlider-markLabel": {
                 fontSize: "0.75rem",
               },
+              ...(uncertaintyMixed ? { "& .MuiSlider-thumb": { opacity: 0.4 } } : {}),
             }}
           />
           {showHints && (

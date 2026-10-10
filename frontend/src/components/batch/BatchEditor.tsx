@@ -48,6 +48,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
   const rank = shared(selected.map((o) => o.taxon.rank)) ?? "";
   const date = shared(selected.map((o) => o.date));
   const remarks = shared(selected.map((o) => o.remarks));
+  const uncertainty = shared(selected.map((o) => o.uncertaintyMeters));
   const located = selected.flatMap((o) =>
     o.latitude !== null && o.longitude !== null
       ? [{ latitude: o.latitude, longitude: o.longitude }]
@@ -223,6 +224,11 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
               latitude={proposed?.latitude ?? null}
               longitude={proposed?.longitude ?? null}
               onChange={(latitude, longitude) => setProposed({ latitude, longitude })}
+              // Applies to every selected observation as it moves, like the other
+              // fields; setting a new location below leaves it alone.
+              uncertaintyMeters={uncertainty ?? first.uncertaintyMeters}
+              uncertaintyMixed={uncertainty === undefined}
+              onUncertaintyChange={(uncertaintyMeters) => onEdit({ uncertaintyMeters })}
               extraMarkers={located}
               showHints={false}
             />

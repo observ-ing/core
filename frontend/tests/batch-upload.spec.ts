@@ -174,6 +174,35 @@ authTest.describe("Batch upload", () => {
     },
   );
 
+  authTest(
+    "sets one coordinate uncertainty on several observations at once",
+    async ({ authenticatedPage: page }) => {
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      // 12 m from the first photo's EXIF, the 50 m default for the second.
+      await addPhotos(page, [taggedPhoto("a.jpg"), barePhoto("b.jpg")]);
+      await authExpect(cards(page)).toHaveCount(2);
+
+      await page.getByRole("button", { name: "Select all" }).click();
+      await authExpect(editor(page)).toContainText("Coordinate Uncertainty: Mixed values");
+      const slider = page.getByRole("slider", { name: "Coordinate uncertainty" });
+      await slider.focus();
+      await slider.press("Home");
+      await authExpect(editor(page)).toContainText("Coordinate Uncertainty: 1m");
+
+      // Setting a location for both afterwards keeps the uncertainty just chosen.
+      await page.getByLabel("Observation date").fill("2026-10-04T08:15");
+      await page.getByRole("button", { name: "Enter coordinates manually" }).click();
+      await page.getByLabel("Latitude").fill("37.9");
+      await page.getByLabel("Longitude").fill("-122.2");
+      await page.getByRole("button", { name: "Set location for 2 observations" }).click();
+
+      await page.getByRole("button", { name: "Upload 2 observations" }).click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies.map((b) => b["coordinateUncertaintyInMeters"])).toEqual([1, 1]);
+    },
+  );
+
   authTest("lists skipped files and adds the rest", async ({ authenticatedPage: page }) => {
     await page.goto(BATCH_URL);
     await addPhotos(page, [
