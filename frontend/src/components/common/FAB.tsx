@@ -1,12 +1,16 @@
 import { useState } from "react";
-import { SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
+import { Backdrop, SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CameraAltIcon from "@mui/icons-material/CameraAlt";
 import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
+import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import { useNavigate } from "react-router-dom";
+import type { Theme } from "@mui/material/styles";
 import { Capacitor } from "@capacitor/core";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { openUploadModal } from "../../store/uiSlice";
+import { useBatchUploadAvailable } from "../../hooks/useBatchUploadAvailable";
+import { BATCH_UPLOAD_PATH } from "../layout/NavConfig";
 import { cornerPinSx } from "./layoutSx";
 
 export function FAB() {
@@ -17,6 +21,7 @@ export function FAB() {
   // opens a modal, and keep it closed when focus returns to the FAB after that
   // modal closes (see onOpen below).
   const [open, setOpen] = useState(false);
+  const batchUpload = useBatchUploadAvailable();
 
   if (!user) {
     return null;
@@ -27,8 +32,10 @@ export function FAB() {
     dispatch(openUploadModal());
   };
 
-  const handleLiveId = () => {
-    navigate("/identify");
+  // Close before leaving, or the backdrop stays up over the next page.
+  const goTo = (path: string) => {
+    setOpen(false);
+    void navigate(path);
   };
 
   const actions = [
@@ -38,40 +45,66 @@ export function FAB() {
     // until a Capacitor camera-preview plugin is wired up.
     ...(Capacitor.isNativePlatform()
       ? []
-      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: handleLiveId }]),
+      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: () => goTo("/identify") }]),
+    ...(batchUpload
+      ? [
+          {
+            icon: <PhotoLibraryIcon />,
+            name: "Batch upload",
+            action: () => goTo(BATCH_UPLOAD_PATH),
+          },
+        ]
+      : []),
   ];
 
+  // The labels stay up while the dial is open, so nobody has to hover or
+  // long-press to learn what an icon does. The backdrop keeps them legible over
+  // the page, and covers the top bar along with it.
+  const raised = (theme: Theme) => theme.zIndex.drawer + 2;
+
   return (
-    <SpeedDial
-      ariaLabel="Create actions"
-      icon={<SpeedDialIcon icon={<AddIcon />} />}
-      direction="up"
-      open={open}
-      // Ignore the "focus" reason: MUI re-opens the dial when focus returns to
-      // it after a modal we launched closes, which is the reopen bug. Click
-      // ("toggle") and hover ("mouseEnter") still open it.
-      onOpen={(_event, reason) => {
-        if (reason !== "focus") setOpen(true);
-      }}
-      onClose={() => setOpen(false)}
-      sx={[
-        cornerPinSx("bottom-right", { size: "lg", position: "fixed" }),
-        {
-          zIndex: 100,
-          "@media (min-width: 900px)": {
-            right: "max(16px, calc(50% - 554px))",
+    <>
+      <Backdrop
+        open={open}
+        onClick={() => setOpen(false)}
+        sx={(theme) => ({ zIndex: raised(theme) })}
+      />
+      <SpeedDial
+        ariaLabel="Create actions"
+        icon={<SpeedDialIcon icon={<AddIcon />} />}
+        direction="up"
+        open={open}
+        // Ignore the "focus" reason: MUI re-opens the dial when focus returns to
+        // it after a modal we launched closes, which is the reopen bug. Click
+        // ("toggle") and hover ("mouseEnter") still open it.
+        onOpen={(_event, reason) => {
+          if (reason !== "focus") setOpen(true);
+        }}
+        onClose={() => setOpen(false)}
+        sx={[
+          cornerPinSx("bottom-right", { size: "lg", position: "fixed" }),
+          (theme) => ({ zIndex: open ? raised(theme) + 1 : 100 }),
+          {
+            "@media (min-width: 900px)": {
+              right: "max(16px, calc(50% - 554px))",
+            },
           },
-        },
-      ]}
-    >
-      {actions.map((action) => (
-        <SpeedDialAction
-          key={action.name}
-          icon={action.icon}
-          slotProps={{ tooltip: { title: action.name } }}
-          onClick={action.action}
-        />
-      ))}
-    </SpeedDial>
+        ]}
+      >
+        {actions.map((action) => (
+          <SpeedDialAction
+            key={action.name}
+            icon={action.icon}
+            slotProps={{
+              tooltip: { open: true, title: action.name },
+              // The label is positioned against the action, so it would wrap at
+              // the action's width without this.
+              staticTooltipLabel: { sx: { whiteSpace: "nowrap" } },
+            }}
+            onClick={action.action}
+          />
+        ))}
+      </SpeedDial>
+    </>
   );
 }

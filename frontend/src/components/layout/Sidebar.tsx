@@ -13,7 +13,6 @@ import { Login, Logout, MenuBook } from "@mui/icons-material";
 import { BrandLockup } from "../common/BrandLockup";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
-import { useBatchUploadAvailable } from "../../hooks/useBatchUploadAvailable";
 
 export const DRAWER_WIDTH = 240;
 
@@ -36,8 +35,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
     onMobileClose();
   };
 
-  const batchUpload = useBatchUploadAvailable();
-  const navItems = getNavItems(user, unreadCount, { batchUpload });
+  const navItems = getNavItems(user, unreadCount);
 
   const drawerContent = (
     <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>

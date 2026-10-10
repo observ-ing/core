@@ -108,10 +108,10 @@ async function mockSubmit(page: Page, failNames: string[] = [], slow?: Promise<v
 }
 
 test.describe("Batch upload - logged out", () => {
-  test("nav has no Batch upload item", async ({ page }) => {
+  test("is not offered", async ({ page }) => {
     await page.goto("/explore");
     await expect(page.getByRole("link", { name: "Explore" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Batch upload" })).toHaveCount(0);
+    await expect(page.getByRole("menuitem", { name: "Batch upload" })).toHaveCount(0);
   });
 });
 
@@ -121,9 +121,18 @@ authTest.describe("Batch upload", () => {
     await mockTaxaSearchRoute(page);
   });
 
-  authTest("is reachable from the top bar", async ({ authenticatedPage: page }) => {
+  authTest("is reachable from the create speed dial", async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    await page.getByRole("link", { name: "Batch upload" }).click();
+    // It lives in the speed dial, not the top bar.
+    await authExpect(page.getByRole("link", { name: "Explore" })).toBeVisible();
+    await authExpect(page.getByRole("link", { name: "Batch upload" })).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Create actions" }).click();
+    // Every action's label shows as soon as the dial opens, without hovering it.
+    for (const label of ["New Observation", "Live ID", "Batch upload"]) {
+      await authExpect(page.getByText(label, { exact: true })).toBeVisible();
+    }
+    await page.getByRole("menuitem", { name: "Batch upload" }).click();
     await authExpect(page).toHaveURL(BATCH_URL);
     await authExpect(page.getByRole("heading", { name: "Drag photos here" })).toBeVisible();
     await authExpect(page.getByRole("button", { name: "Upload" })).toBeDisabled();

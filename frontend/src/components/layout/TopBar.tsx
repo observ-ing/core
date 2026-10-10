@@ -24,8 +24,7 @@ import { getDisplayName } from "../../lib/utils";
 import { BrandLockup } from "../common/BrandLockup";
 import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
-import { BATCH_UPLOAD_LABEL, getNavItems } from "./NavConfig";
-import { useBatchUploadAvailable } from "../../hooks/useBatchUploadAvailable";
+import { getNavItems } from "./NavConfig";
 import { PendingIndicator } from "./PendingIndicator";
 import { glassBlurSx } from "../common/layoutSx";
 
@@ -54,11 +53,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
     handleLogout();
   };
 
-  const batchUpload = useBatchUploadAvailable();
-  const allNavItems = getNavItems(user, unreadCount, { batchUpload });
+  const allNavItems = getNavItems(user, unreadCount);
   const mainNavItems = allNavItems.filter(
-    (item) =>
-      item.label === "Home" || item.label === "Explore" || item.label === BATCH_UPLOAD_LABEL,
+    (item) => item.label === "Home" || item.label === "Explore",
   );
   const notificationItem = allNavItems.find((item) => item.label === "Notifications");
 
