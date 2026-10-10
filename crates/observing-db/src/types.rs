@@ -3,6 +3,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 /// A single blob/image entry as stored in the `associated_media` JSONB column.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,7 +61,7 @@ pub struct ExternalRecordEntry {
     pub service: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, TS, ToSchema)]
 #[ts(export, export_to = "bindings/")]
 pub enum InteractionDirection {
     AtoB,
@@ -143,7 +144,7 @@ impl OccurrenceRow {
 }
 
 /// Identification row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS, ToSchema)]
 pub struct IdentificationRow {
     pub uri: String,
     pub cid: String,
@@ -180,7 +181,7 @@ pub struct IdentificationRow {
 }
 
 /// Comment row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS, ToSchema)]
 pub struct CommentRow {
     pub uri: String,
     pub cid: String,
@@ -207,7 +208,7 @@ pub struct LikeRow {
 }
 
 /// Interaction row returned from SELECT queries
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, TS, ToSchema)]
 pub struct InteractionRow {
     pub uri: String,
     pub cid: String,
@@ -229,6 +230,7 @@ pub struct InteractionRow {
     // Interaction details
     pub interaction_type: String,
     #[ts(as = "InteractionDirection")]
+    #[schema(value_type = InteractionDirection)]
     pub direction: String,
     #[ts(optional)]
     pub comment: Option<String>,

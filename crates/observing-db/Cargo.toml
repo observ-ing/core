@@ -20,6 +20,9 @@ serde_json = { workspace = true }
 # TypeScript type generation
 ts-rs = { workspace = true }
 
+# OpenAPI schemas for the row types the appview returns verbatim
+utoipa = { workspace = true }
+
 # Logging
 tracing = { workspace = true }
 

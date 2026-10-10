@@ -7,21 +7,26 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::{debug, error};
+use utoipa::{IntoParams, ToSchema};
 
 use crate::auth::AuthUser;
-use crate::species_id_client::{IdentifyResponse, SpeciesIdClient};
+use crate::error::ErrorResponse;
+use crate::species_id_client::{IdentifyResponse, SpeciesIdClient, SpeciesIdStatus};
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonResult;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct IdentifyRequest {
     /// Base64-encoded image data
     image: String,
+    /// Where the photo was taken. With `longitude`, lets the model flag
+    /// suggestions that are out of range.
     #[serde(default)]
     latitude: Option<f64>,
     #[serde(default)]
     longitude: Option<f64>,
+    /// Maximum number of suggestions to return.
     #[serde(default)]
     limit: Option<usize>,
     /// Route to the faster live-loop model (ViT-L). The continuous camera
@@ -32,18 +37,14 @@ pub struct IdentifyRequest {
     live: bool,
 }
 
-#[derive(Serialize)]
-pub struct ErrorResponse {
-    error: String,
-}
-
 /// A single ranked AI suggestion enriched with the GBIF match (when the
 /// scientific name resolves to a known taxon). The frontend treats a
 /// suggestion with `taxonMatch` set the same as a user picking from the
 /// autocomplete: the kingdom/rank fields disappear and the match indicator
 /// shows "Existing taxon".
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = SpeciesSuggestion)]
 pub struct EnrichedSpeciesSuggestion {
     pub scientific_name: String,
     pub confidence: f32,
@@ -57,18 +58,34 @@ pub struct EnrichedSpeciesSuggestion {
     pub taxon_match: Option<TaxonResult>,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
+#[schema(as = IdentifyResponse)]
 pub struct EnrichedIdentifyResponse {
     pub suggestions: Vec<EnrichedSpeciesSuggestion>,
     pub model_version: String,
     pub inference_time_ms: u64,
 }
 
-/// POST /api/species-id
+/// Identify the species in a photo.
 ///
-/// Proxies to the species identification service.
-/// Requires authentication to prevent abuse.
+/// Returns ranked suggestions from the species identification model, each
+/// matched against GBIF where the name resolves. Requires authentication to
+/// prevent abuse.
+#[utoipa::path(
+    post,
+    path = "/api/species-id",
+    operation_id = "identify_species",
+    tag = "species-id",
+    request_body = IdentifyRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "Ranked suggestions", body = EnrichedIdentifyResponse),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+        (status = 502, description = "The identification service failed", body = ErrorResponse),
+        (status = 503, description = "No identification service is configured", body = ErrorResponse),
+    )
+)]
 pub async fn identify(
     State(state): State<AppState>,
     _user: AuthUser,
@@ -96,14 +113,15 @@ pub async fn identify(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct StatusQuery {
     /// Check the live-loop (ViT-L) service instead of the full model.
     #[serde(default)]
     live: bool,
 }
 
-/// GET /api/species-id/status
+/// Check whether species identification is warm.
 ///
 /// Reports whether the species-id service has a warm instance and, if not,
 /// roughly how long until an identify request would come back. The check
@@ -111,6 +129,19 @@ pub struct StatusQuery {
 /// user starts a flow that will need an ID (e.g. opening the upload modal)
 /// to get the boot underway while they pick a photo. Authenticated like
 /// `identify` so anonymous traffic can't keep the service awake.
+#[utoipa::path(
+    get,
+    path = "/api/species-id/status",
+    operation_id = "get_species_id_status",
+    tag = "species-id",
+    params(StatusQuery),
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "Whether the service is warm, and if not, roughly how long it will take", body = SpeciesIdStatus),
+        (status = 401, description = "Not signed in", body = ErrorResponse),
+        (status = 503, description = "No identification service is configured", body = ErrorResponse),
+    )
+)]
 pub async fn status(
     State(state): State<AppState>,
     _user: AuthUser,

@@ -1,26 +1,53 @@
 use axum::extract::{Path, Query, State};
 use axum::Json;
 use serde::Deserialize;
+use utoipa::IntoParams;
 
 use crate::auth::session_did;
 use crate::constants;
 use crate::enrichment;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{
     BboxBounds, BboxMeta, BboxResponse, GeoJsonFeature, GeoJsonPoint, GeoJsonProperties,
     GeoJsonResponse, NearbyMeta, NearbyResponse, OccurrenceDetailResponse, OccurrenceListResponse,
 };
 use crate::state::AppState;
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct NearbyParams {
+    /// Latitude of the search center, in decimal degrees.
+    #[param(required = true, value_type = f64)]
     lat: Option<f64>,
+    /// Longitude of the search center, in decimal degrees.
+    #[param(required = true, value_type = f64)]
     lng: Option<f64>,
+    /// Search radius in meters.
+    #[param(default = json!(constants::DEFAULT_NEARBY_RADIUS))]
     radius: Option<f64>,
+    /// Page size. Values above 1000 are clamped.
+    #[param(default = json!(constants::DEFAULT_NEARBY_LIMIT))]
     limit: Option<i64>,
+    /// Number of results to skip.
+    #[param(default = 0)]
     offset: Option<i64>,
 }
 
+/// List occurrences near a point.
+///
+/// Ordered by distance from the given point.
+#[utoipa::path(
+    get,
+    path = "/api/occurrences/nearby",
+    operation_id = "get_nearby_occurrences",
+    tag = "occurrences",
+    params(NearbyParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "Occurrences within the radius", body = NearbyResponse),
+        (status = 400, description = "`lat` or `lng` missing", body = ErrorResponse),
+    )
+)]
 pub async fn get_nearby(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -73,12 +100,30 @@ pub async fn get_nearby(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct FeedParams {
+    /// Page size. Values above 100 are clamped.
+    #[param(default = json!(constants::DEFAULT_FEED_LIMIT))]
     limit: Option<i64>,
+    /// `cursor` from the previous page.
     cursor: Option<String>,
 }
 
+/// List recent occurrences.
+///
+/// Newest first, unfiltered. Pass the returned `cursor` to fetch the next page.
+#[utoipa::path(
+    get,
+    path = "/api/occurrences/feed",
+    operation_id = "get_occurrence_feed",
+    tag = "occurrences",
+    params(FeedParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "A page of occurrences", body = OccurrenceListResponse),
+    )
+)]
 pub async fn get_feed(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -115,19 +160,44 @@ pub async fn get_feed(
     }))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
 pub struct BboxParams {
+    /// Southern edge, in decimal degrees.
     #[serde(rename = "minLat")]
+    #[param(required = true, value_type = f64)]
     min_lat: Option<f64>,
+    /// Western edge, in decimal degrees.
     #[serde(rename = "minLng")]
+    #[param(required = true, value_type = f64)]
     min_lng: Option<f64>,
+    /// Northern edge, in decimal degrees.
     #[serde(rename = "maxLat")]
+    #[param(required = true, value_type = f64)]
     max_lat: Option<f64>,
+    /// Eastern edge, in decimal degrees.
     #[serde(rename = "maxLng")]
+    #[param(required = true, value_type = f64)]
     max_lng: Option<f64>,
+    /// Maximum number of occurrences to return. Ignored by the GeoJSON
+    /// endpoint, which always returns up to 10000 points.
+    #[param(default = json!(constants::DEFAULT_BBOX_LIMIT))]
     limit: Option<i64>,
 }
 
+/// List occurrences inside a bounding box.
+#[utoipa::path(
+    get,
+    path = "/api/occurrences/bbox",
+    operation_id = "get_occurrences_in_bbox",
+    tag = "occurrences",
+    params(BboxParams),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "Occurrences inside the box", body = BboxResponse),
+        (status = 400, description = "A bound is missing", body = ErrorResponse),
+    )
+)]
 pub async fn get_bbox(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,
@@ -182,6 +252,21 @@ pub async fn get_bbox(
     }))
 }
 
+/// Occurrence points inside a bounding box, as GeoJSON.
+///
+/// A lightweight alternative to the bbox endpoint for map rendering: each
+/// feature carries only the occurrence URI and event date.
+#[utoipa::path(
+    get,
+    path = "/api/occurrences/geojson",
+    operation_id = "get_occurrence_geojson",
+    tag = "occurrences",
+    params(BboxParams),
+    responses(
+        (status = 200, description = "A GeoJSON FeatureCollection of points", body = GeoJsonResponse),
+        (status = 400, description = "A bound is missing", body = ErrorResponse),
+    )
+)]
 pub async fn get_geojson(
     State(state): State<AppState>,
     Query(params): Query<BboxParams>,
@@ -238,6 +323,18 @@ pub async fn get_geojson(
     }))
 }
 
+/// Get an occurrence with its identifications and comments.
+#[utoipa::path(
+    get,
+    path = "/api/occurrences/{uri}",
+    tag = "occurrences",
+    params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
+    security((), ("session" = [])),
+    responses(
+        (status = 200, description = "The occurrence", body = OccurrenceDetailResponse),
+        (status = 404, description = "No such occurrence", body = ErrorResponse),
+    )
+)]
 pub async fn get_occurrence(
     State(state): State<AppState>,
     cookies: axum_extra::extract::CookieJar,

@@ -7,11 +7,12 @@ use observing_lexicons::bio_lexicons::temp::v0_1::identification::{
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
+use utoipa::ToSchema;
 
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::enrichment;
-use crate::error::AppError;
+use crate::error::{AppError, ErrorResponse};
 use crate::responses::{IdentificationListResponse, RecordCreatedResponse, SuccessResponse};
 use crate::state::AppState;
 use crate::taxonomy_client::TaxonFields;
@@ -19,6 +20,17 @@ use crate::validation::validate_string_length;
 use jacquard_common::types::string::AtUri;
 use std::str::FromStr;
 
+/// List identifications of an occurrence.
+#[utoipa::path(
+    get,
+    path = "/api/identifications/{uri}",
+    operation_id = "list_identifications",
+    tag = "identifications",
+    params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
+    responses(
+        (status = 200, description = "The identifications and the resulting community ID", body = IdentificationListResponse),
+    )
+)]
 pub async fn get_for_occurrence(
     State(state): State<AppState>,
     Path(occurrence_uri): Path<String>,
@@ -39,7 +51,7 @@ pub async fn get_for_occurrence(
 
 // --- Write handlers ---
 
-#[derive(Deserialize, TS)]
+#[derive(Deserialize, TS, ToSchema)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct CreateIdentificationRequest {
@@ -55,6 +67,22 @@ pub struct CreateIdentificationRequest {
     kingdom: Option<String>,
 }
 
+/// Identify an occurrence.
+///
+/// Writes an identification record to the caller's PDS. The name is matched
+/// against GBIF to fill in its rank and higher taxonomy.
+#[utoipa::path(
+    post,
+    path = "/api/identifications",
+    tag = "identifications",
+    request_body = CreateIdentificationRequest,
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
+        (status = 400, description = "A field failed validation", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+    )
+)]
 pub async fn create_identification(
     State(state): State<AppState>,
     user: AuthUser,
@@ -113,6 +141,20 @@ pub async fn create_identification(
     }))
 }
 
+/// Delete an identification.
+#[utoipa::path(
+    delete,
+    path = "/api/identifications/{uri}",
+    tag = "identifications",
+    params(("uri" = String, Path, description = "AT URI of the identification (`at://...`), percent-encoded")),
+    security(("session" = [])),
+    responses(
+        (status = 200, description = "The record was deleted", body = SuccessResponse),
+        (status = 400, description = "Invalid AT URI", body = ErrorResponse),
+        (status = 401, description = "Not signed in, or the session expired", body = ErrorResponse),
+        (status = 403, description = "The identification belongs to someone else", body = ErrorResponse),
+    )
+)]
 pub async fn delete_identification(
     State(state): State<AppState>,
     user: AuthUser,
