@@ -87,7 +87,7 @@ test.describe("iNaturalist - Settings", () => {
   test("offers to connect an account when none is linked", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
     await page.route("**/api/inat/authorize", (route: Route) =>
-      route.fulfill(json({ url: "http://127.0.0.1:3000/settings?inat-linked=1" })),
+      route.fulfill(json({ url: "/settings?inat-linked=1" })),
     );
     await gotoSettings(page);
 
