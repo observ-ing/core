@@ -15,7 +15,8 @@
   that can't decode them (anything but Safari). Without it the appview's
   `/api/media/heic-to-jpeg` returns 503 and those photos are rejected:
   - macOS: `brew install libheif`
-  - Linux: `libheif-examples` plus the `libheif-plugin-libde265` HEVC decoder
+  - Linux: `libheif-examples`, plus `libheif-plugin-libde265` on distros with
+    libheif 1.16+ (e.g. Debian trixie, Ubuntu 24.04)
 - Go 1.26+, only if you plan to build the upstream `tap` binary locally (see [Tap binary](#tap-binary) below)
 
 > First-time setup downloads ~1.4 GB of BioCLIP models and compiles the full Rust workspace.
