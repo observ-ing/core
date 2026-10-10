@@ -28,7 +28,11 @@ export interface BatchTaxon {
   rank: string;
 }
 
-export type UploadStatus = "idle" | "queued" | "uploading" | "failed";
+/**
+ * "done" observations have been uploaded. They stay in the list, so the grid
+ * doesn't shuffle while others are still going, until `clearDone`.
+ */
+export type UploadStatus = "idle" | "queued" | "uploading" | "failed" | "done";
 
 export interface BatchObservation {
   id: string;
@@ -53,7 +57,7 @@ export interface BatchState {
   observations: BatchObservation[];
   selected: string[];
   nextId: number;
-  /** Observations uploaded so far; they have already left `observations`. */
+  /** Observations uploaded so far, whether or not they have been cleared yet. */
   uploadedCount: number;
 }
 
@@ -87,6 +91,7 @@ export type BatchAction =
   | { type: "removeSelected" }
   | { type: "setStatus"; ids: string[]; status: UploadStatus; error?: string }
   | { type: "uploaded"; id: string }
+  | { type: "clearDone" }
   | { type: "resetQueued" };
 
 const EMPTY_TAXON: BatchTaxon = { name: "", match: null, kingdom: "", rank: "" };
@@ -301,9 +306,16 @@ export function batchReducer(state: BatchState, action: BatchAction): BatchState
     case "uploaded":
       return {
         ...state,
-        observations: state.observations.filter((o) => o.id !== action.id),
+        observations: state.observations.map((o) =>
+          o.id === action.id ? { ...o, status: "done" as const } : o,
+        ),
         selected: state.selected.filter((id) => id !== action.id),
         uploadedCount: state.uploadedCount + 1,
+      };
+    case "clearDone":
+      return {
+        ...state,
+        observations: state.observations.filter((o) => o.status !== "done"),
       };
     case "resetQueued":
       return {

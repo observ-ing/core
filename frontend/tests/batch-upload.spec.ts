@@ -59,11 +59,13 @@ async function dropFiles(
 }
 
 /** Capture POSTed observations and answer each with a fresh uri. */
-async function mockSubmit(page: Page, failNames: string[] = []) {
+async function mockSubmit(page: Page, failNames: string[] = [], slow?: Promise<void>) {
   const bodies: Array<Record<string, unknown>> = [];
-  await page.route("**/api/occurrences", (route) => {
+  await page.route("**/api/occurrences", async (route) => {
     if (route.request().method() !== "POST") return route.continue();
     const body = route.request().postDataJSON();
+    // An observation remarked "slow" waits for the test to let it through.
+    if (body.occurrenceRemarks === "slow") await slow;
     if (failNames.includes(body.occurrenceRemarks)) {
       return route.fulfill({
         status: 500,
@@ -425,6 +427,30 @@ authTest.describe("Batch upload", () => {
       await authExpect(cards(page)).toHaveCount(2);
       await authExpect(cards(page).first()).toContainText("2 photos");
       await authExpect(cards(page).nth(1)).toContainText("Missing date and location");
+    },
+  );
+
+  authTest(
+    "uploaded cards hold their place until the run finishes",
+    async ({ authenticatedPage: page }) => {
+      let release = () => {};
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await mockSubmit(page, [], gate);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await cards(page).nth(1).getByText("No identification").click();
+      await page.getByLabel("Remarks").fill("slow");
+      await page.getByRole("button", { name: "Upload 2 observations" }).click();
+
+      await authExpect(cards(page).first()).toContainText("Uploaded");
+      await authExpect(cards(page).nth(1)).toContainText("Uploading");
+      await authExpect(cards(page)).toHaveCount(2);
+      await authExpect(page.getByText("1 of 2 uploaded")).toBeVisible();
+
+      release();
+      await authExpect(page).toHaveURL(/\/profile\//);
     },
   );
 

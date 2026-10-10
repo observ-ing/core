@@ -319,7 +319,7 @@ describe("reordering", () => {
 });
 
 describe("upload bookkeeping", () => {
-  it("drops an uploaded observation and counts it", () => {
+  it("keeps an uploaded observation in place, marked done, and counts it", () => {
     const state = run(
       [
         { type: "selectAll", ids: ["o1", "o2"] },
@@ -330,10 +330,21 @@ describe("upload bookkeeping", () => {
       batchOf("a", "b"),
     );
 
-    expect(photoIds(state)).toEqual([["b"]]);
+    expect(photoIds(state)).toEqual([["a"], ["b"]]);
+    expect(state.observations[0]?.status).toBe("done");
     expect(state.uploadedCount).toBe(1);
     expect(state.selected).toEqual(["o2"]);
-    expect(state.observations[0]).toMatchObject({ status: "failed", error: "boom" });
+    expect(state.observations[1]).toMatchObject({ status: "failed", error: "boom" });
+  });
+
+  it("clears the done observations in one step", () => {
+    const state = run(
+      [{ type: "uploaded", id: "o1" }, { type: "uploaded", id: "o3" }, { type: "clearDone" }],
+      batchOf("a", "b", "c"),
+    );
+
+    expect(photoIds(state)).toEqual([["b"]]);
+    expect(state.uploadedCount).toBe(2);
   });
 
   it("returns cancelled observations to idle", () => {

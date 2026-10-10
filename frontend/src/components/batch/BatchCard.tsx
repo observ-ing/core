@@ -15,6 +15,7 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import CheckIcon from "@mui/icons-material/Check";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import CloseIcon from "@mui/icons-material/Close";
 import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
@@ -212,7 +213,9 @@ export function BatchCard({
         boxShadow: dropState === "none" ? 1 : 4,
         overflow: "hidden",
         cursor: locked ? "default" : "grab",
-        opacity: status === "queued" ? 0.7 : 1,
+        opacity: status === "queued" || status === "done" ? 0.7 : 1,
+        // Lets the page animate this card on its own when others are cleared.
+        viewTransitionName: `batch-card-${observation.id}`,
       }}
     >
       <Box sx={{ position: "relative" }}>
@@ -467,6 +470,21 @@ export function BatchCard({
         {status === "uploading" && (
           <Typography variant="body2" sx={{ fontWeight: 600, color: "primary.main" }}>
             Uploading
+          </Typography>
+        )}
+        {status === "done" && (
+          <Typography
+            variant="body2"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              fontWeight: 600,
+              color: "success.main",
+            }}
+          >
+            <CheckCircleIcon sx={{ fontSize: 16 }} />
+            Uploaded
           </Typography>
         )}
         {failed && (

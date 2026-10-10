@@ -12,6 +12,7 @@ import {
   type MouseEvent,
   type ReactNode,
 } from "react";
+import { flushSync } from "react-dom";
 import { Link, useBlocker, useNavigate } from "react-router-dom";
 import {
   alpha,
@@ -90,6 +91,22 @@ const plural = (count: number, word: string) => `${count} ${word}${count === 1 ?
 
 let photoSeq = 0;
 
+/**
+ * Apply a state change as one animated step where the browser can: cards that
+ * go fade out and the rest slide to their new places (each card names itself
+ * for this in BatchCard). Elsewhere, or with reduced motion, it just happens.
+ */
+function withViewTransition(update: () => void) {
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reducedMotion || !("startViewTransition" in document)) {
+    update();
+    return;
+  }
+  // The browser snapshots the page after this callback, so React has to have
+  // rendered by the time it returns.
+  document.startViewTransition(() => flushSync(update));
+}
+
 function ToolbarButton({
   icon,
   children,
@@ -133,14 +150,17 @@ export function BatchUploadPage() {
   const cancelledRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { observations, selected, uploadedCount } = state;
+  const { observations: cards, selected, uploadedCount } = state;
+  // Uploaded cards stay on screen until the run ends, so the grid holds still,
+  // but everything below counts and acts on the ones still to be sent.
+  const observations = cards.filter((o) => o.status !== "done");
   const photoCount = observations.reduce((count, o) => count + o.photos.length, 0);
   const picked = observations.filter((o) => selected.includes(o.id));
   const incomplete = observations.filter((o) => !isReading(o) && missingFields(o).length > 0);
   const failedCount = observations.filter((o) => o.status === "failed").length;
   // The filter lapses once nothing is incomplete, so the grid never empties itself.
   const filtering = onlyIncomplete && incomplete.length > 0;
-  const shown = filtering ? incomplete : observations;
+  const shown = filtering ? incomplete : cards;
   const blocked =
     observations.length === 0 || incomplete.length > 0 || observations.some(isReading);
   const total = uploadedCount + observations.length;
@@ -218,6 +238,7 @@ export function BatchUploadPage() {
     dispatch({ type: "clearSelection" });
     dispatch({ type: "setStatus", ids, status: "queued" });
 
+    let failures = 0;
     // Editing is locked while this runs, so `targets` stays accurate.
     await runPool(targets, UPLOAD_CONCURRENCY, async (observation) => {
       if (cancelledRef.current) return;
@@ -258,6 +279,7 @@ export function BatchUploadPage() {
         );
         dispatch({ type: "uploaded", id: observation.id });
       } catch (error) {
+        failures += 1;
         dispatch({
           type: "setStatus",
           ids: [observation.id],
@@ -267,8 +289,17 @@ export function BatchUploadPage() {
       }
     });
 
-    dispatch({ type: "resetQueued" });
-    setUploading(false);
+    // If that was everything, the page is about to leave for the observations
+    // list. Otherwise the uploaded cards go now, all at once.
+    const allDone =
+      failures === 0 && !cancelledRef.current && targets.length === observations.length;
+    const finish = () => {
+      dispatch({ type: "resetQueued" });
+      setUploading(false);
+      if (!allDone) dispatch({ type: "clearDone" });
+    };
+    if (allDone) finish();
+    else withViewTransition(finish);
   };
 
   // A click on the page's background drops the selection. Buttons, cards, and
@@ -613,11 +644,11 @@ export function BatchUploadPage() {
           )}
         </Box>
 
-        {observations.length > 0 && (
+        {cards.length > 0 && (
           <>
             {uploading ? (
               <Typography sx={{ color: "text.secondary", mb: 2 }}>
-                Uploaded observations leave this list. Editing is paused until the upload finishes.
+                Editing is paused until the upload finishes.
               </Typography>
             ) : (
               failedCount > 0 && (
@@ -637,7 +668,7 @@ export function BatchUploadPage() {
       </Box>
 
       <Box ref={bodyRef} sx={{ flex: 1, minHeight: 0, overflow: "auto", px: 3, pb: 2.5 }}>
-        {observations.length === 0 ? (
+        {cards.length === 0 ? (
           <Box sx={[dropZoneSx, { minHeight: 360 }]}>
             <FileUploadIcon fontSize="large" />
             <Typography variant="h6" component="h2" sx={{ color: "text.primary", fontWeight: 700 }}>

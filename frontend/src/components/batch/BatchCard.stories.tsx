@@ -131,6 +131,11 @@ export const Uploading: Story = {
   args: { locked: true, observation: storyObservation({ status: "uploading" }) },
 };
 
+/** Uploaded cards hold their place until the whole run finishes. */
+export const Uploaded: Story = {
+  args: { locked: true, observation: storyObservation({ status: "done" }) },
+};
+
 export const Failed: Story = {
   args: {
     observation: storyObservation({ status: "failed", error: "Failed to submit" }),
