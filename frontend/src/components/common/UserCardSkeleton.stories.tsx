@@ -46,13 +46,24 @@ export const WithEndAdornment: Story = {
   },
 };
 
+export const WithBelowName: Story = {
+  args: {
+    avatarSize: 44,
+    nameWidth: 120,
+    nameHeight: 24,
+    subtitleWidth: 140,
+    subtitleHeight: 20,
+    belowName: <Skeleton variant="text" width={160} height={24} />,
+  },
+};
+
 export const ProfileHeaderSize: Story = {
   args: {
     avatarSize: 80,
     spacing: 2,
     nameWidth: 180,
-    nameHeight: 32,
+    nameHeight: 20,
     subtitleWidth: 120,
-    subtitleHeight: 20,
+    subtitleHeight: 24,
   },
 };

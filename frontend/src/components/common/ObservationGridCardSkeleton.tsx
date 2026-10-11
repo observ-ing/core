@@ -16,7 +16,8 @@ export function ObservationGridCardSkeleton() {
           <Skeleton width="70%" />
         </Typography>
         <Typography variant="caption">
-          <Skeleton width="50%" />
+          {/* Inline like the real timestamp, so it sits on the same (taller) body line box. */}
+          <Skeleton width="50%" sx={{ display: "inline-block" }} />
         </Typography>
       </CardContent>
     </Card>

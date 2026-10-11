@@ -4,6 +4,7 @@ import { ConservationStatus } from "../common/ConservationStatus";
 import { ExternalLinkChip } from "../common/ExternalLinkChip";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
+import { TAXON_HERO_IMAGE_SIZE } from "./taxonLayout";
 
 export interface TaxonHeroCardProps {
   taxon: TaxonDetail;
@@ -32,8 +33,8 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
           alt={taxon.scientificName}
           objectFit="contain"
           sx={{
-            width: 248,
-            height: 248,
+            width: TAXON_HERO_IMAGE_SIZE,
+            height: TAXON_HERO_IMAGE_SIZE,
             maxWidth: "100%",
             flexShrink: 0,
             borderRadius: 1.75,

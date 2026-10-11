@@ -8,6 +8,9 @@ const meta = {
   component: FeedView,
   parameters: {
     layout: "fullscreen",
+    // `useFeed` waits for auth to resolve before fetching; the auth slice
+    // starts out loading, so without this every story sat on the empty state.
+    storeOptions: { preloadedState: { auth: { user: null, isLoading: false } } },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof FeedView>;
