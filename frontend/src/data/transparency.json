@@ -3,24 +3,68 @@
   "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by service. Figures are gross (before Free Tier and promotional credits) and are refreshed from the Cloud Billing export after each month closes.",
   "months": [
     {
+      "month": "2026-09",
+      "services": [
+        { "name": "Cloud Run", "cost": 158.36 },
+        { "name": "Cloud SQL", "cost": 51.6 },
+        { "name": "Artifact Registry", "cost": 28.5 },
+        { "name": "Invoice", "cost": 4.58 },
+        { "name": "Cloud DNS", "cost": 0.21 }
+      ]
+    },
+    {
+      "month": "2026-08",
+      "services": [
+        { "name": "Cloud Run", "cost": 175.17 },
+        { "name": "Cloud SQL", "cost": 59.87 },
+        { "name": "Artifact Registry", "cost": 33.28 },
+        { "name": "Invoice", "cost": 5.31 },
+        { "name": "Cloud DNS", "cost": 0.21 }
+      ]
+    },
+    {
+      "month": "2026-07",
+      "services": [
+        { "name": "Cloud Run", "cost": 179.77 },
+        { "name": "Cloud SQL", "cost": 104.82 },
+        { "name": "Artifact Registry", "cost": 24.1 },
+        { "name": "Invoice", "cost": 9.3 },
+        { "name": "Cloud DNS", "cost": 0.21 }
+      ]
+    },
+    {
+      "month": "2026-06",
+      "services": [
+        { "name": "Cloud Run", "cost": 178.05 },
+        { "name": "Cloud SQL", "cost": 96.14 },
+        { "name": "Artifact Registry", "cost": 52.56 },
+        { "name": "Invoice", "cost": 8.12 },
+        { "name": "Cloud DNS", "cost": 0.21 }
+      ]
+    },
+    {
+      "month": "2026-05",
+      "services": [
+        { "name": "Cloud Run", "cost": 112.48 },
+        { "name": "Artifact Registry", "cost": 32.41 },
+        { "name": "Cloud SQL", "cost": 9.56 },
+        { "name": "Cloud DNS", "cost": 0.21 }
+      ]
+    },
+    {
       "month": "2026-04",
       "services": [
-        { "name": "Cloud Run", "cost": 36.8 },
-        { "name": "Artifact Registry", "cost": 13.93 },
-        { "name": "Cloud SQL", "cost": 4.36 },
-        { "name": "Cloud Logging", "cost": 0 },
-        { "name": "Secret Manager", "cost": 0 }
+        { "name": "Cloud Run", "cost": 88.61 },
+        { "name": "Artifact Registry", "cost": 32.17 },
+        { "name": "Cloud SQL", "cost": 9.24 }
       ]
     },
     {
       "month": "2026-03",
       "services": [
-        { "name": "Cloud SQL", "cost": 0.14 },
-        { "name": "Cloud Run", "cost": 0.13 },
-        { "name": "Artifact Registry", "cost": 0.01 },
-        { "name": "Cloud Logging", "cost": 0 },
-        { "name": "Invoice", "cost": 0 },
-        { "name": "Secret Manager", "cost": 0 }
+        { "name": "Cloud Run", "cost": 0.36 },
+        { "name": "Cloud SQL", "cost": 0.21 },
+        { "name": "Artifact Registry", "cost": 0.05 }
       ]
     }
   ]
