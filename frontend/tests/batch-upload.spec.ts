@@ -121,16 +121,16 @@ authTest.describe("Batch upload", () => {
     await mockTaxaSearchRoute(page);
   });
 
-  authTest("is reachable from the create speed dial", async ({ authenticatedPage: page }) => {
+  authTest("is reachable from the create menu", async ({ authenticatedPage: page }) => {
     await page.goto("/");
-    // It lives in the speed dial, not the top bar.
+    // It lives behind the "Add observation" split button's arrow, not in the
+    // top bar's nav links.
     await authExpect(page.getByRole("link", { name: "Explore" })).toBeVisible();
     await authExpect(page.getByRole("link", { name: "Batch upload" })).toHaveCount(0);
 
-    await page.getByRole("button", { name: "Create actions" }).click();
-    // Every action's label shows as soon as the dial opens, without hovering it.
-    for (const label of ["New Observation", "Live ID", "Batch upload"]) {
-      await authExpect(page.getByText(label, { exact: true })).toBeVisible();
+    await page.getByRole("button", { name: "More create options" }).click();
+    for (const label of ["Live ID", "Batch upload"]) {
+      await authExpect(page.getByRole("menuitem", { name: label })).toBeVisible();
     }
     await page.getByRole("menuitem", { name: "Batch upload" }).click();
     await authExpect(page).toHaveURL(BATCH_URL);

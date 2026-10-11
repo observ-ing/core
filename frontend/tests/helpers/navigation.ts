@@ -1,29 +1,21 @@
 import type { Page } from "@playwright/test";
 
-const FAB = 'button[aria-label="Create actions"]';
-
 /** Steps of the upload modal's vertical stepper, in order. */
 export type UploadStep = "Photos" | "Location" | "Identify" | "Date & details";
 
 /**
- * Opens the upload modal via the FAB menu and waits for it to be ready.
- * Replaces hard-coded `waitForTimeout()` calls with a real readiness check.
+ * Opens the upload modal via the top bar's "Add observation" button and waits
+ * for it to be ready. Needs a wide viewport: narrow ones get the FAB speed dial
+ * instead. Replaces hard-coded `waitForTimeout()` calls with a real readiness
+ * check.
  *
  * The modal opens on the Photos step; Location/Identify/Date fields live in
  * later steps and are collapsed until revealed via {@link gotoUploadStep}.
  */
 export async function openUploadModal(page: Page) {
-  const fab = page.locator(FAB);
-  await fab.waitFor({ state: "visible", timeout: 10_000 });
-  // Hover, don't click. MUI opens the dial on mouseenter via a 0ms timer, and
-  // click() moves the mouse before pressing: if that timer fires in between
-  // (likely under CI load), the click's toggle closes the dial it just opened.
-  await fab.hover();
-  const newObsAction = page.getByRole("menuitem", {
-    name: "New Observation",
-  });
-  await newObsAction.waitFor({ state: "visible", timeout: 5_000 });
-  await newObsAction.click();
+  const button = page.getByRole("button", { name: "Add observation" });
+  await button.waitFor({ state: "visible", timeout: 10_000 });
+  await button.click();
   // Wait for the modal to actually render instead of a fixed delay. The heading
   // is always present regardless of which step is active.
   await page

@@ -1,62 +1,32 @@
 import { useState } from "react";
-import { Backdrop, SpeedDial, SpeedDialAction, SpeedDialIcon } from "@mui/material";
+import {
+  Backdrop,
+  SpeedDial,
+  SpeedDialAction,
+  SpeedDialIcon,
+  useMediaQuery,
+  type Theme,
+} from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
-import CameraAltIcon from "@mui/icons-material/CameraAlt";
-import CenterFocusStrongIcon from "@mui/icons-material/CenterFocusStrong";
-import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
-import { useNavigate } from "react-router-dom";
-import type { Theme } from "@mui/material/styles";
-import { Capacitor } from "@capacitor/core";
-import { useAppDispatch, useAppSelector } from "../../store";
-import { openUploadModal } from "../../store/uiSlice";
-import { useBatchUploadAvailable } from "../../hooks/useBatchUploadAvailable";
-import { BATCH_UPLOAD_PATH } from "../layout/NavConfig";
+import { useAppSelector } from "../../store";
+import { useCreateActions } from "../../hooks/useCreateActions";
 import { cornerPinSx } from "./layoutSx";
 
 export function FAB() {
-  const dispatch = useAppDispatch();
-  const navigate = useNavigate();
   const user = useAppSelector((state) => state.auth.user);
   // Controlled open state so we can force the speed-dial closed when an action
   // opens a modal, and keep it closed when focus returns to the FAB after that
   // modal closes (see onOpen below).
   const [open, setOpen] = useState(false);
-  const batchUpload = useBatchUploadAvailable();
+  // Listed from the dial upward: the ways to create observations sit nearest it.
+  const actions = useCreateActions();
+  // Wide screens get the same actions from the top bar's "Add observation"
+  // split button instead (see CreateMenu).
+  const isDesktop = useMediaQuery((theme: Theme) => theme.breakpoints.up("md"));
 
-  if (!user) {
+  if (!user || isDesktop) {
     return null;
   }
-
-  const handleNewObservation = () => {
-    setOpen(false);
-    dispatch(openUploadModal());
-  };
-
-  // Close before leaving, or the backdrop stays up over the next page.
-  const goTo = (path: string) => {
-    setOpen(false);
-    void navigate(path);
-  };
-
-  // Listed from the dial upward: the ways to create observations sit nearest it.
-  const actions = [
-    { icon: <CameraAltIcon />, name: "New Observation", action: handleNewObservation },
-    ...(batchUpload
-      ? [
-          {
-            icon: <PhotoLibraryIcon />,
-            name: "Batch upload",
-            action: () => goTo(BATCH_UPLOAD_PATH),
-          },
-        ]
-      : []),
-    // Live ID relies on getUserMedia, which only works on web/PWA. Native
-    // builds would open a broken viewfinder, so hide the entry point there
-    // until a Capacitor camera-preview plugin is wired up.
-    ...(Capacitor.isNativePlatform()
-      ? []
-      : [{ icon: <CenterFocusStrongIcon />, name: "Live ID", action: () => goTo("/identify") }]),
-  ];
 
   // The labels stay up while the dial is open, so nobody has to hover or
   // long-press to learn what an icon does. The backdrop keeps them legible over
@@ -85,11 +55,6 @@ export function FAB() {
         sx={[
           cornerPinSx("bottom-right", { size: "lg", position: "fixed" }),
           (theme) => ({ zIndex: open ? raised(theme) + 1 : 100 }),
-          {
-            "@media (min-width: 900px)": {
-              right: "max(16px, calc(50% - 554px))",
-            },
-          },
         ]}
       >
         {actions.map((action) => (
@@ -102,7 +67,11 @@ export function FAB() {
               // the action's width without this.
               staticTooltipLabel: { sx: { whiteSpace: "nowrap" } },
             }}
-            onClick={action.action}
+            // Close first, or the backdrop stays up over the modal or next page.
+            onClick={() => {
+              setOpen(false);
+              action.action();
+            }}
           />
         ))}
       </SpeedDial>

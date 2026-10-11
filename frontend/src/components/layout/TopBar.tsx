@@ -25,6 +25,7 @@ import { BrandLockup } from "../common/BrandLockup";
 import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
+import { CreateMenu } from "./CreateMenu";
 import { PendingIndicator } from "./PendingIndicator";
 import { glassBlurSx } from "../common/layoutSx";
 
@@ -119,6 +120,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1.5 } }}>
+            {/* Narrow screens get the speed dial (FAB) instead. */}
+            {!isMobile && <CreateMenu />}
+
             {!isMobile && (
               <Tooltip title="Docs">
                 <IconButton component={Link} to="/docs" color="inherit" aria-label="Docs">
