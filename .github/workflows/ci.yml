@@ -554,12 +554,15 @@ jobs:
             ${{ matrix.extra_build_args }}
           push: true
           tags: ${{ env.REGISTRY }}/${{ matrix.image }}:latest
-          cache-from: |
-            type=gha,scope=${{ matrix.image }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
-          cache-to: |
-            type=gha,mode=max,scope=${{ matrix.image }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
+          # Registry cache only, no type=gha. Exporting to the GHA cache makes
+          # buildkit download every cached layer it only holds as a lazy
+          # reference to the registry cache, just to re-upload it to GitHub.
+          # Image layers alone overflow the 10 GB GHA cache, so blobs get
+          # evicted and that ~4-5 GB round-trip repeated on every push, even
+          # fully cached builds. It cost ~$0.45/push in Artifact Registry
+          # internet egress and pushed the Rust job caches out of the GHA cache.
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
