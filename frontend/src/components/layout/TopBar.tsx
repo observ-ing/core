@@ -140,11 +140,15 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
               </Tooltip>
             )}
 
-            <Tooltip title="Settings">
-              <IconButton component={Link} to="/settings" color="inherit" aria-label="Settings">
-                <Settings />
-              </IconButton>
-            </Tooltip>
+            {/* Logged-in users reach Settings from the account menu; logged-out
+                users still need a way in for the Appearance setting. */}
+            {!isAuthLoading && !user && (
+              <Tooltip title="Settings">
+                <IconButton component={Link} to="/settings" color="inherit" aria-label="Settings">
+                  <Settings />
+                </IconButton>
+              </Tooltip>
+            )}
 
             <PendingIndicator />
 
