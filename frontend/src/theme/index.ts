@@ -44,6 +44,7 @@ const overlayColors: Record<string, string> = {
 const cardShadowColors: Record<string, string> = {
   hero: "0 2px 10px rgba(60, 50, 30, 0.08)",
   photo: "0 4px 12px rgba(0, 0, 0, 0.15)",
+  selectBox: "0 0 3px rgba(0, 0, 0, 0.5)",
 };
 
 // Official IUCN Red List category colors — standardized by the IUCN,
