@@ -429,6 +429,37 @@ export async function markNotificationRead(id?: number): Promise<{ success: bool
 }
 
 // ============================================================================
+// Service Status API Functions
+// ============================================================================
+
+/**
+ * `awake`/`asleep` for services that scale to zero when unused; `up`/`down`
+ * for always-on ones (the ingester and the database).
+ */
+export type ServiceState = "awake" | "asleep" | "up" | "down";
+
+export interface ServiceStatus {
+  id: string;
+  name: string;
+  description: string;
+  state: ServiceState;
+  /** Instances running. Absent for the database. */
+  instances?: number;
+  /** Of `instances`, how many are handling a request right now. */
+  activeInstances?: number;
+}
+
+export interface ServiceStatusResponse {
+  services: ServiceStatus[];
+  /** When the metrics were read. Instance counts trail this by ~3 minutes. */
+  checkedAt: string;
+}
+
+export async function fetchServiceStatus(): Promise<ServiceStatusResponse> {
+  return fetchApi(`${API_BASE}/api/status`, "Couldn't load service status");
+}
+
+// ============================================================================
 // User Preferences API Functions
 // ============================================================================
 

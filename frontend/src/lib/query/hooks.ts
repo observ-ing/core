@@ -18,6 +18,7 @@ import {
   fetchNotifications,
   fetchUnreadCount,
   fetchUserPreferences,
+  fetchServiceStatus,
 } from "../../services/api";
 import type { FeedFilters, FeedTab } from "../../services/types";
 
@@ -177,6 +178,15 @@ export function useUserPreferences() {
     queryKey: qk.preferences(),
     queryFn: fetchUserPreferences,
     enabled: isAuthenticated,
+  });
+}
+
+/** Public service status. Polls at the server's one-minute cache interval. */
+export function useServiceStatus() {
+  return useQuery({
+    queryKey: qk.serviceStatus(),
+    queryFn: fetchServiceStatus,
+    refetchInterval: 60_000,
   });
 }
 

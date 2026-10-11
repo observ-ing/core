@@ -6,6 +6,7 @@ import {
   AutoStories,
   GitHub,
   AccountBalance,
+  MonitorHeart,
   ChevronRight,
 } from "@mui/icons-material";
 import { usePageTitle } from "../../hooks/usePageTitle";
@@ -39,6 +40,12 @@ const links: DocLink[] = [
     description: "Monthly Google Cloud hosting costs for Observ.ing.",
     icon: <AccountBalance />,
     to: "/transparency",
+  },
+  {
+    label: "Status",
+    description: "Which services are running right now, and which are asleep.",
+    icon: <MonitorHeart />,
+    to: "/status",
   },
   {
     label: "Storybook",

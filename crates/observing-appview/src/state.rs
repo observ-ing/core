@@ -6,6 +6,7 @@ use crate::heic::HeicConverter;
 use crate::media::MediaCache;
 use crate::oauth_store::{PgSessionStore, PgStateStore};
 use crate::resolver::HickoryDnsTxtResolver;
+use crate::service_status::ServiceStatusClient;
 use crate::species_id_client::SpeciesIdClient;
 use crate::taxonomy_client::TaxonomyClient;
 
@@ -99,6 +100,9 @@ pub struct AppState {
     /// Faster ViT-L service for the live camera loop. `None` falls back to
     /// `species_id` so single-service deployments (e.g. local dev) still work.
     pub species_id_live: Option<Arc<SpeciesIdClient>>,
+    /// Reads the public service status from Cloud Monitoring. `None` when no
+    /// GCP project is configured (e.g. local dev), and `/api/status` returns 503.
+    pub service_status: Option<Arc<ServiceStatusClient>>,
     pub oauth_client: Arc<OAuthClientType>,
     /// In-process AT Protocol blob cache + PDS fetcher (formerly the
     /// `observing-media-proxy` service).

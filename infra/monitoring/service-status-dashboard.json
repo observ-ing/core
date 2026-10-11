@@ -1,0 +1,179 @@
+{
+  "displayName": "Service Status",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 12,
+        "height": 2,
+        "widget": {
+          "title": "How to read this",
+          "text": {
+            "format": "MARKDOWN",
+            "content": "**Asleep** = 0 instances: the service has scaled to zero and the next request cold-starts it. **Awake** = 1 or more instances. An awake instance is *active* while it handles a request and *idle* while it waits for one. tap-ingester always shows as active because it runs with always-allocated CPU. Cloud Run samples instance counts every 60s, and they reach this page about 3 minutes later. Min/max instances are set in `.github/workflows/ci.yml`. This dashboard's source is `infra/monitoring/service-status-dashboard.json`."
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 2,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "observing-appview: instances (0 = asleep)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"observing-appview\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 2,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "observing-species-id: instances (0 = asleep)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"observing-species-id\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 2,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "observing-species-id-live: instances (0 = asleep)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"observing-species-id-live\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 5,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "tap-ingester: instances (should always be 1)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" },
+            "thresholds": [{ "label": "down", "value": 1, "color": "RED", "direction": "BELOW" }]
+          }
+        }
+      },
+      {
+        "xPos": 4,
+        "yPos": 5,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "storybook: instances (0 = asleep)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"storybook\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 8,
+        "yPos": 5,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "observing-db (Cloud SQL): 1 = up, 0 = down",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "min(cloudsql_googleapis_com:database_up{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" },
+            "thresholds": [{ "label": "down", "value": 1, "color": "RED", "direction": "BELOW" }]
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Instances by service (active + idle)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (service_name) (run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\"})"
+                }
+              }
+            ],
+            "yAxis": { "label": "instances", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 8,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Active instances (handling a request) by service",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (service_name) (run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",state=\"active\"})"
+                }
+              }
+            ],
+            "yAxis": { "label": "instances", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 12,
+        "width": 12,
+        "height": 3,
+        "widget": {
+          "title": "Running Cloud Run job executions (observing-migrate, observing-task-runner)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "STACKED_BAR",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (job_name) (run_googleapis_com:job_running_executions{monitored_resource=\"cloud_run_job\"})"
+                }
+              }
+            ],
+            "yAxis": { "label": "executions", "scale": "LINEAR" }
+          }
+        }
+      }
+    ]
+  }
+}

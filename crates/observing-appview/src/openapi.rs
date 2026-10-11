@@ -57,6 +57,7 @@ use crate::routes;
         routes::preferences::update_preferences,
         routes::species_id::identify,
         routes::species_id::status,
+        routes::status::get_status,
         routes::taxonomy::search,
         routes::taxonomy::validate,
         routes::taxonomy::get_taxon_by_kingdom_name,

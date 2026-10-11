@@ -16,6 +16,9 @@ pub struct Config {
     /// runtime interface is exposed as `ingester/*` tables in the admin
     /// browser; when unset, those tables are simply not registered.
     pub ingester_url: Option<String>,
+    /// GCP project the services run in (optional). When set, `/api/status`
+    /// reads instance counts from that project's Cloud Monitoring.
+    pub gcp_project_id: Option<String>,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
@@ -62,6 +65,10 @@ impl Config {
             .ok()
             .filter(|s| !s.trim().is_empty());
 
+        let gcp_project_id = env::var("GCP_PROJECT_ID")
+            .ok()
+            .filter(|s| !s.trim().is_empty());
+
         // Treat an empty/whitespace PUBLIC_URL (e.g. `PUBLIC_URL=` in a shell
         // or process-compose) as unset. Otherwise `Some("")` takes the
         // production OAuth path and builds a protocol-less redirect_uri, which
@@ -83,6 +90,7 @@ impl Config {
             species_id_service_url,
             species_id_live_service_url,
             ingester_url,
+            gcp_project_id,
             public_url,
             hidden_dids,
             admin_dids,

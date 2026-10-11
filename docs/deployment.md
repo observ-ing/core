@@ -29,6 +29,21 @@ CI runs the deploy steps in this order to ensure DDL lands before any service st
 2. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
 3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
 
+### Service status dashboard
+
+The [Service Status](https://console.cloud.google.com/monitoring/dashboards/builder/4a03aa0a-e9a4-4f65-8168-b09030aeb432?project=observ-ing) Cloud Monitoring dashboard shows each Cloud Run service's instance count: 0 means asleep (scaled to zero), and 1 or more means awake. It also shows active vs idle instances over time, Cloud SQL up/down, and running job executions. Instance counts arrive about 3 minutes after Cloud Run samples them.
+
+The source is `infra/monitoring/service-status-dashboard.json`. It isn't deployed by CI. After editing the file, push it by hand. The update call needs the live dashboard's current etag:
+
+```bash
+ID=4a03aa0a-e9a4-4f65-8168-b09030aeb432
+ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='value(etag)')
+jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/service-status-dashboard.json > /tmp/dashboard.json
+gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
+```
+
+The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/service_status.rs`) reads the same metrics, so it has its own list of services to show. Adding a Cloud Run service means updating that list and adding a scorecard tile here. The time-series charts group by `service_name`, so they pick up new services automatically. The scorecards use `... or vector(0)` because Cloud Run stops reporting `instance_count` for a service a few minutes after it scales to zero. Without the fallback, a sleeping service would read "No data" instead of 0.
+
 ## Runtime role boundary (one-shot)
 
 Cloud SQL auto-grants `cloudsqlsuperuser` to every built-in user, and that membership confers `arwdDxt` on every table via role inheritance — which nullifies the per-schema grants in the `appview_reader_grants` migration. To actually enforce the boundary, `cloudsqlsuperuser` must be stripped from `appview_runtime` and `ingester_runtime`. This is a one-shot operation tied to user creation, not deploy state, so it lives here as a runbook step rather than a CI step:
@@ -58,6 +73,9 @@ SPECIES_ID_SERVICE_URL=https://observing-species-id-xxx.run.app
 # Optional: faster ViT-L service for the live camera loop. When unset, live
 # requests fall back to SPECIES_ID_SERVICE_URL (the full ViT-H model).
 SPECIES_ID_LIVE_SERVICE_URL=https://observing-species-id-live-xxx.run.app
+# Optional: GCP project whose Cloud Monitoring backs the public /status page.
+# Unset (e.g. local dev) makes /api/status return 503.
+GCP_PROJECT_ID=observ-ing
 
 # Cloud SQL (Unix socket in prod)
 DB_HOST=/cloudsql/<project>:<region>:observing-db

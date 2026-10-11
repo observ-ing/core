@@ -63,6 +63,9 @@ const TransparencyPage = lazy(() =>
     default: m.TransparencyPage,
   })),
 );
+const StatusPage = lazy(() =>
+  import("./components/status/StatusPage").then((m) => ({ default: m.StatusPage })),
+);
 const NotFound = lazy(() =>
   import("./components/common/NotFound").then((m) => ({ default: m.NotFound })),
 );
@@ -161,6 +164,7 @@ function AppContent() {
               <Route path="/identify" element={<LiveIdView />} />
               <Route path={BATCH_UPLOAD_PATH} element={<BatchUploadPage />} />
               <Route path="/transparency" element={<TransparencyPage />} />
+              <Route path="/status" element={<StatusPage />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>
