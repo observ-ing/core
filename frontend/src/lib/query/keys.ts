@@ -32,6 +32,7 @@ export const qk = {
   notifications: () => ["notifications"] as const,
   unreadCount: () => ["unreadCount"] as const,
   preferences: () => ["preferences"] as const,
+  serviceStatus: () => ["serviceStatus"] as const,
 } as const;
 
 // Key tags whose caches contain `occurrences: Occurrence[]` pages.
