@@ -1,70 +1,112 @@
 {
   "currency": "USD",
-  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by service. Figures are gross (before Free Tier and promotional credits) and are refreshed from the Cloud Billing export after each month closes.",
+  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by what the money pays for. Figures are gross (before Free Tier and promotional credits, including tax) and are refreshed from the Cloud Billing export after each month closes.",
+  "categories": [
+    {
+      "name": "Ingestion",
+      "description": "tap-ingester, which runs around the clock to index new observations from the AT Protocol network."
+    },
+    {
+      "name": "Species ID",
+      "description": "Keeping the species identification model loaded so suggestions come back quickly. Before June 2026 the ingester was billed the same way and is counted here."
+    },
+    {
+      "name": "Database",
+      "description": "The PostgreSQL database (Cloud SQL) that stores observations and identifications."
+    },
+    {
+      "name": "Website & API",
+      "description": "The observ.ing website and API, plus smaller on-demand services such as the live camera model, Storybook and database migrations."
+    },
+    {
+      "name": "Images & CI",
+      "description": "Storing the app's container images (Artifact Registry) and downloading them during builds."
+    },
+    {
+      "name": "Tax",
+      "description": "Sales tax on the monthly bill."
+    },
+    {
+      "name": "Other",
+      "description": "Everything else, such as DNS."
+    }
+  ],
   "months": [
     {
       "month": "2026-09",
-      "services": [
-        { "name": "Cloud Run", "cost": 158.36 },
-        { "name": "Cloud SQL", "cost": 51.6 },
-        { "name": "Artifact Registry", "cost": 28.5 },
-        { "name": "Invoice", "cost": 4.58 },
-        { "name": "Cloud DNS", "cost": 0.21 }
+      "items": [
+        { "name": "Ingestion", "cost": 92.15 },
+        { "name": "Species ID", "cost": 64.72 },
+        { "name": "Database", "cost": 51.6 },
+        { "name": "Website & API", "cost": 1.49 },
+        { "name": "Images & CI", "cost": 28.5 },
+        { "name": "Tax", "cost": 4.58 },
+        { "name": "Other", "cost": 0.21 }
       ]
     },
     {
       "month": "2026-08",
-      "services": [
-        { "name": "Cloud Run", "cost": 175.17 },
-        { "name": "Cloud SQL", "cost": 59.87 },
-        { "name": "Artifact Registry", "cost": 33.28 },
-        { "name": "Invoice", "cost": 5.31 },
-        { "name": "Cloud DNS", "cost": 0.21 }
+      "items": [
+        { "name": "Ingestion", "cost": 107.17 },
+        { "name": "Species ID", "cost": 66.96 },
+        { "name": "Database", "cost": 59.87 },
+        { "name": "Website & API", "cost": 1.04 },
+        { "name": "Images & CI", "cost": 33.28 },
+        { "name": "Tax", "cost": 5.31 },
+        { "name": "Other", "cost": 0.22 }
       ]
     },
     {
       "month": "2026-07",
-      "services": [
-        { "name": "Cloud Run", "cost": 179.77 },
-        { "name": "Cloud SQL", "cost": 104.82 },
-        { "name": "Artifact Registry", "cost": 24.1 },
-        { "name": "Invoice", "cost": 9.3 },
-        { "name": "Cloud DNS", "cost": 0.21 }
+      "items": [
+        { "name": "Ingestion", "cost": 107.19 },
+        { "name": "Species ID", "cost": 71.61 },
+        { "name": "Database", "cost": 104.82 },
+        { "name": "Website & API", "cost": 0.97 },
+        { "name": "Images & CI", "cost": 24.1 },
+        { "name": "Tax", "cost": 9.3 },
+        { "name": "Other", "cost": 0.21 }
       ]
     },
     {
       "month": "2026-06",
-      "services": [
-        { "name": "Cloud Run", "cost": 178.05 },
-        { "name": "Cloud SQL", "cost": 96.14 },
-        { "name": "Artifact Registry", "cost": 52.56 },
-        { "name": "Invoice", "cost": 8.12 },
-        { "name": "Cloud DNS", "cost": 0.21 }
+      "items": [
+        { "name": "Ingestion", "cost": 103.83 },
+        { "name": "Species ID", "cost": 72.03 },
+        { "name": "Database", "cost": 96.14 },
+        { "name": "Website & API", "cost": 2.19 },
+        { "name": "Images & CI", "cost": 52.56 },
+        { "name": "Tax", "cost": 8.12 },
+        { "name": "Other", "cost": 0.21 }
       ]
     },
     {
       "month": "2026-05",
-      "services": [
-        { "name": "Cloud Run", "cost": 112.48 },
-        { "name": "Artifact Registry", "cost": 32.41 },
-        { "name": "Cloud SQL", "cost": 9.56 },
-        { "name": "Cloud DNS", "cost": 0.21 }
+      "items": [
+        { "name": "Ingestion", "cost": 1.94 },
+        { "name": "Species ID", "cost": 108.48 },
+        { "name": "Database", "cost": 9.56 },
+        { "name": "Website & API", "cost": 2.06 },
+        { "name": "Images & CI", "cost": 32.41 },
+        { "name": "Other", "cost": 0.21 }
       ]
     },
     {
       "month": "2026-04",
-      "services": [
-        { "name": "Cloud Run", "cost": 88.61 },
-        { "name": "Artifact Registry", "cost": 32.17 },
-        { "name": "Cloud SQL", "cost": 9.24 }
+      "items": [
+        { "name": "Species ID", "cost": 86.25 },
+        { "name": "Database", "cost": 9.24 },
+        { "name": "Website & API", "cost": 2.36 },
+        { "name": "Images & CI", "cost": 32.17 }
       ]
     },
     {
       "month": "2026-03",
-      "services": [
-        { "name": "Cloud Run", "cost": 0.36 },
-        { "name": "Cloud SQL", "cost": 0.21 },
-        { "name": "Artifact Registry", "cost": 0.05 }
+      "items": [
+        { "name": "Species ID", "cost": 0.29 },
+        { "name": "Database", "cost": 0.21 },
+        { "name": "Website & API", "cost": 0.07 },
+        { "name": "Images & CI", "cost": 0.05 }
       ]
     }
   ]
