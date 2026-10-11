@@ -590,6 +590,12 @@ jobs:
       # loads in ~5-10s either way, so the CPU work is not the bottleneck.
       # The startup probe polls every 2s (same 300s budget) so readiness
       # isn't delayed up to 10s after the model finishes loading.
+      #
+      # min-instances=0: identify traffic is a handful of requests a week, and
+      # holding a warm 8 GiB instance cost ~$65/mo for ~$1/mo of actual
+      # inference. The ~20s cold start is covered by the appview's status
+      # probe, which starts the boot when the upload/ID UI opens and drives a
+      # countdown in the frontend (see species_id_client.rs).
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -599,7 +605,7 @@ jobs:
             --cpu=2 \
             --memory=8Gi \
             --cpu-boost \
-            --min-instances=1 \
+            --min-instances=0 \
             --execution-environment=gen2 \
             --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
