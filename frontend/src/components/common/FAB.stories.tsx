@@ -6,6 +6,10 @@ const meta = {
   component: FAB,
   parameters: {
     layout: "fullscreen",
+    // Wide screens get the top bar's CreateMenu instead, and the FAB hides.
+    viewport: {
+      defaultViewport: "mobile1",
+    },
   },
   tags: ["autodocs"],
 } satisfies Meta<typeof FAB>;
