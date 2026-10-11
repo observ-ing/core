@@ -1,0 +1,55 @@
+name: Transparency
+
+# Refreshes the /transparency page's hosting-cost table from the Cloud Billing
+# BigQuery export and opens (or updates) a PR with the result. Runs on the 6th
+# so the previous invoice month has closed; the script rewrites every closed
+# month, so later billing adjustments land in the next run's PR.
+#
+# One-time setup:
+# - The GCP_SA_KEY service account needs roles/bigquery.jobUser on the project
+#   and read access (roles/bigquery.dataViewer) to the observ_ing_billing_export
+#   dataset.
+# - TRANSPARENCY_PR_TOKEN: a fine-grained PAT for observ-ing/core with
+#   Contents + Pull requests read/write. PRs opened with GITHUB_TOKEN don't
+#   trigger CI, so the required checks would never report and the PR could
+#   never enter the merge queue.
+
+on:
+  schedule:
+    - cron: '0 14 6 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Regenerate transparency.json
+        env:
+          GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+        run: node scripts/update-transparency.mjs > "$RUNNER_TEMP/pr-body.md"
+
+      # add-paths matters: the auth step drops a gha-creds-*.json key file into
+      # the workspace, which must never be committed.
+      - uses: peter-evans/create-pull-request@v8
+        with:
+          token: ${{ secrets.TRANSPARENCY_PR_TOKEN }}
+          add-paths: frontend/src/data/transparency.json
+          branch: chore/transparency-costs
+          delete-branch: true
+          commit-message: 'chore(transparency): refresh hosting costs from billing export'
+          title: 'chore(transparency): refresh hosting costs'
+          body-path: ${{ runner.temp }}/pr-body.md

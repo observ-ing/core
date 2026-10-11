@@ -1,6 +1,6 @@
 {
   "currency": "USD",
-  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by service. Figures are gross (before Free Tier and promotional credits) and are updated manually after each month closes.",
+  "notes": "Monthly Google Cloud Platform hosting costs for Observ.ing, broken down by service. Figures are gross (before Free Tier and promotional credits) and are refreshed from the Cloud Billing export after each month closes.",
   "months": [
     {
       "month": "2026-04",
