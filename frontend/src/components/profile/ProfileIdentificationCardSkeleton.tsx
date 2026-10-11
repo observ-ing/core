@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Skeleton } from "@mui/material";
+import { Box, Card, CardContent, Skeleton, Typography } from "@mui/material";
 import { observationGridCardContentSx } from "../common/ObservationGridCard";
 import { PROFILE_ID_CARD_HEADER_SX } from "./profileLayout";
 
@@ -13,7 +13,10 @@ export function ProfileIdentificationCardSkeleton() {
         <Skeleton variant="text" width="60%" height={20} />
       </Box>
       <CardContent sx={observationGridCardContentSx}>
-        <Skeleton variant="text" width="50%" height={16} />
+        <Typography variant="caption">
+          {/* Inline like the real timestamp, so it sits on the same (taller) body line box. */}
+          <Skeleton width="50%" sx={{ display: "inline-block" }} />
+        </Typography>
       </CardContent>
     </Card>
   );

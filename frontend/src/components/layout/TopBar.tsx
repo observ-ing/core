@@ -149,7 +149,8 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
             <PendingIndicator />
 
             {isAuthLoading ? (
-              <Skeleton variant="circular" width={40} height={40} />
+              // Margin stands in for the account button's padding around the avatar.
+              <Skeleton variant="circular" width={40} height={40} sx={{ m: 0.5 }} />
             ) : user ? (
               <>
                 <IconButton

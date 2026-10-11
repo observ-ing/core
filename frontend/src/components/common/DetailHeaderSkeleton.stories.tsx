@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Skeleton } from "@mui/material";
 import { DetailHeaderSkeleton } from "./DetailHeaderSkeleton";
 
 const meta = {
@@ -33,5 +34,12 @@ export const Sticky: Story = {
   args: {
     titleWidth: 60,
     sticky: true,
+  },
+};
+
+export const WithTrailing: Story = {
+  args: {
+    titleWidth: 100,
+    trailing: <Skeleton variant="circular" width={30} height={30} sx={{ ml: "auto" }} />,
   },
 };

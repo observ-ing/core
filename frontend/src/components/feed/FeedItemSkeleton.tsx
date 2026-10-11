@@ -1,4 +1,4 @@
-import { Box, Card, Skeleton } from "@mui/material";
+import { Box, Card, CardContent, Skeleton } from "@mui/material";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
@@ -8,29 +8,37 @@ import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 export function FeedItemSkeleton() {
   return (
     <Card sx={FEED_CARD_SX}>
-      {/* CardHeader: avatar, name/handle, timestamp */}
-      <Box sx={{ p: 2 }}>
+      {/* Header: avatar, name + handle, timestamp, overflow menu */}
+      <Box sx={{ display: "flex", gap: 1, p: 2, alignItems: "flex-start" }}>
         <UserCardSkeleton
           avatarSize={40}
           spacing={1}
           nameWidth="30%"
+          nameHeight={24}
           trailingWidth="20%"
+          trailingHeight={20}
           subtitleWidth="15%"
+          subtitleHeight={20}
+          sx={{ flex: 1 }}
         />
+        <Skeleton variant="circular" width={30} height={30} />
       </Box>
       {/* Image */}
       <Skeleton variant="rectangular" height={FEED_IMAGE_MAX_HEIGHT} />
-      {/* CardContent: species, remarks, location */}
-      <Box sx={{ px: 2, pt: 2, pb: 1 }}>
-        <Skeleton variant="text" width="45%" height={24} />
-        <Skeleton variant="text" width="90%" height={18} sx={{ mt: 0.5 }} />
-        <Skeleton variant="text" width="70%" height={18} />
-        <Skeleton variant="text" width="35%" height={16} sx={{ mt: 0.5 }} />
-      </Box>
-      {/* CardActions: like button */}
-      <Box sx={{ px: 1, pb: 1 }}>
-        <Skeleton variant="circular" width={28} height={28} />
-      </Box>
+      {/* Species name and like button share a row */}
+      <CardContent>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 1,
+          }}
+        >
+          <Skeleton variant="text" width="40%" height={24} />
+          <Skeleton variant="circular" width={30} height={30} />
+        </Box>
+      </CardContent>
     </Card>
   );
 }

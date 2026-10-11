@@ -7,6 +7,7 @@ import { TaxonMediaSection } from "./TaxonMediaSection";
 import { TaxonDescriptionSection } from "./TaxonDescriptionSection";
 import { TaxonReferencesSection } from "./TaxonReferencesSection";
 import { TaxonObservations } from "./TaxonObservations";
+import { TAXON_DETAIL_COLUMN_SX } from "./taxonLayout";
 
 interface TaxonDetailPanelProps {
   taxon: TaxonDetailType;
@@ -53,7 +54,7 @@ export function TaxonDetailPanel({
         }}
       >
         {/* Constrained + centered to match the design's reading width. */}
-        <Box sx={{ maxWidth: 960, mx: "auto", px: { xs: 2, sm: 4 }, pt: 3.5, pb: 7.5 }}>
+        <Box sx={TAXON_DETAIL_COLUMN_SX}>
           <TaxonBreadcrumb ancestors={taxon.ancestors} kingdom={taxon.kingdom} />
 
           <TaxonHeroCard taxon={taxon} heroUrl={heroUrl} />

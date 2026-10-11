@@ -424,8 +424,12 @@ export function BatchCard({
         {reading ? (
           <>
             <Typography sx={{ fontWeight: 600, color: "text.secondary" }}>Reading photo</Typography>
-            <Skeleton width="70%" />
-            <Skeleton width="55%" />
+            <Line>
+              <Skeleton width="70%" />
+            </Line>
+            <Line>
+              <Skeleton width="55%" />
+            </Line>
           </>
         ) : (
           <>
