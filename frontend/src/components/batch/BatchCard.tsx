@@ -104,9 +104,9 @@ function SelectionBox({ checked }: { checked: boolean }) {
         borderRadius: 0.75,
         border: 2,
         borderColor: "common.white",
-        bgcolor: checked ? "primary.main" : "rgba(0, 0, 0, 0.4)",
+        bgcolor: (theme) => (checked ? theme.palette.primary.main : theme.palette.overlay["chip"]),
         color: "primary.contrastText",
-        boxShadow: "0 0 3px rgba(0, 0, 0, 0.5)",
+        boxShadow: (theme) => theme.palette.cardShadow["selectBox"],
       }}
     >
       {checked && <CheckIcon sx={{ fontSize: 18 }} />}
@@ -310,7 +310,7 @@ export function BatchCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              bgcolor: "rgba(0, 0, 0, 0.4)",
+              bgcolor: (theme) => theme.palette.overlay["chip"],
               pointerEvents: "none",
             }}
           >
