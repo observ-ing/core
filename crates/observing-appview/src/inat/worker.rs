@@ -177,7 +177,7 @@ async fn crosspost(state: &AppState, inat: &Inat, job: &CrosspostRow) -> Result<
         let photo = Upload {
             file_name: payload::photo_file_name(cid, &blob.image.mime_type),
             content_type: Some(blob.image.mime_type.clone()),
-            data,
+            data: data.into(),
         };
         inat.client
             .attach_photo(

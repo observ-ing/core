@@ -428,7 +428,7 @@ mod tests {
                 Upload {
                     file_name: "bafkrei1.jpg".into(),
                     content_type: Some("image/jpeg".into()),
-                    data: b"photo bytes".to_vec(),
+                    data: b"photo bytes".as_slice().into(),
                 },
             )
             .await

@@ -2222,9 +2222,11 @@ dependencies = [
 
 [[package]]
 name = "inaturalist"
-version = "0.10.0"
-source = "git+https://tangled.org/kueda.net/rust-inaturalist?rev=c23d32f81dadf9e7a6a47782c8010d8f67598544#c23d32f81dadf9e7a6a47782c8010d8f67598544"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54aa087ed8dec73acc8921526b9d583e75166dc6c32f1c38c4a14a8c1da830f5"
 dependencies = [
+ "bytes",
  "reqwest 0.13.5",
  "serde",
  "serde_json",
@@ -2236,8 +2238,9 @@ dependencies = [
 
 [[package]]
 name = "inaturalist-oauth"
-version = "0.3.0"
-source = "git+https://tangled.org/kueda.net/rust-inaturalist?rev=c23d32f81dadf9e7a6a47782c8010d8f67598544#c23d32f81dadf9e7a6a47782c8010d8f67598544"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5b3f90bd2b2da37145f366c2ea3ae89cb72a0cd1c8334298c12db8cf8d53c580"
 dependencies = [
  "httparse",
  "log",
