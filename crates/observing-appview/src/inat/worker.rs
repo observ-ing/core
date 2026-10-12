@@ -135,6 +135,16 @@ async fn crosspost(state: &AppState, inat: &Inat, job: &CrosspostRow) -> Result<
         Some(url) => url.clone(),
         None => {
             let taxon = choose_taxon(state, inat, &jwt, job).await?;
+            let remarks = observing_db::remarks::get_for_occurrences(
+                &state.pool,
+                std::slice::from_ref(&job.occurrence_uri),
+            )
+            .await
+            .map_err(database)?;
+            let occurrence_remarks = remarks
+                .iter()
+                .find(|remark| remark.dwc_term == observing_db::remarks::OCCURRENCE_REMARKS)
+                .map(|remark| remark.body.as_str());
             let observation = payload::build_observation(
                 observation_uuid,
                 &OccurrenceFields {
@@ -142,6 +152,7 @@ async fn crosspost(state: &AppState, inat: &Inat, job: &CrosspostRow) -> Result<
                     latitude: occurrence.latitude,
                     longitude: occurrence.longitude,
                     coordinate_uncertainty_meters: occurrence.coordinate_uncertainty_meters,
+                    occurrence_remarks,
                 },
                 taxon,
             );

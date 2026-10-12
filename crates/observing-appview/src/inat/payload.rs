@@ -22,6 +22,8 @@ pub struct OccurrenceFields<'a> {
     pub latitude: Option<f64>,
     pub longitude: Option<f64>,
     pub coordinate_uncertainty_meters: Option<i32>,
+    /// dwc:occurrenceRemarks, the observer's notes about the organism.
+    pub occurrence_remarks: Option<&'a str>,
 }
 
 /// The iNaturalist taxon ID named by a Darwin Core `taxonID`, if it is an
@@ -79,6 +81,7 @@ pub fn build_observation(
         positional_accuracy: occurrence.coordinate_uncertainty_meters.map(f64::from),
         taxon_id,
         species_guess,
+        description: occurrence.occurrence_remarks.map(str::to_string),
         ..Default::default()
     }
 }
@@ -192,6 +195,7 @@ mod tests {
                 latitude: Some(37.8),
                 longitude: Some(-122.27),
                 coordinate_uncertainty_meters: Some(25),
+                occurrence_remarks: Some("Feeding on aphids"),
             },
             TaxonChoice::Id(48484),
         );
@@ -204,6 +208,7 @@ mod tests {
                 "longitude": -122.27,
                 "positional_accuracy": 25.0,
                 "taxon_id": 48484,
+                "description": "Feeding on aphids",
             })
         );
     }
