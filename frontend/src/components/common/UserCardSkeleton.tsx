@@ -23,6 +23,11 @@ export interface UserCardSkeletonProps {
   subtitleWidth?: number | string;
   /** Height of the subtitle placeholder line (default 16). */
   subtitleHeight?: number;
+  /**
+   * Content rendered below the subtitle within the text column, matching
+   * `UserCard`'s `belowName` slot when it's used alongside `showHandle`.
+   */
+  belowName?: ReactNode;
   /** Content rendered after the text column, e.g. a trailing action button skeleton. */
   endAdornment?: ReactNode;
   /** Horizontal spacing between avatar and text column (default 1.5, matches `UserCard`). */
@@ -44,6 +49,7 @@ export function UserCardSkeleton({
   trailingHeight,
   subtitleWidth,
   subtitleHeight = 16,
+  belowName,
   endAdornment,
   spacing = 1.5,
   sx,
@@ -65,6 +71,7 @@ export function UserCardSkeleton({
         {subtitleWidth != null && (
           <Skeleton variant="text" width={subtitleWidth} height={subtitleHeight} />
         )}
+        {belowName}
       </Box>
       {endAdornment}
     </Stack>

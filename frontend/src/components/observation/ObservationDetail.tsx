@@ -35,6 +35,12 @@ import { IdentificationHistory } from "../identification/IdentificationHistory";
 import { CommentSection } from "../comment/CommentSection";
 import { TaxonLink } from "../common/TaxonLink";
 import { ObservationDetailSkeleton } from "./ObservationDetailSkeleton";
+import {
+  OBSERVATION_PHOTO_LICENSE_SX,
+  OBSERVATION_PHOTO_MAX_HEIGHT,
+  OBSERVATION_PHOTO_RADIUS,
+  OBSERVATION_PHOTO_STAGE_SX,
+} from "./observationLayout";
 import { PhotoLightbox } from "./PhotoLightbox";
 import { DataQualitySection } from "./DataQualitySection";
 import { ExternalRecordsItem } from "./ExternalRecordsItem";
@@ -234,14 +240,14 @@ export function ObservationDetail() {
 
         {/* Images */}
         {activeImage && (
-          <Box sx={{ bgcolor: (theme) => theme.palette.overlay["backdrop"], p: { xs: 0, sm: 2 } }}>
+          <Box sx={OBSERVATION_PHOTO_STAGE_SX}>
             <ButtonBase
               onClick={() => setLightboxOpen(true)}
               aria-label="Enlarge photo"
               sx={{
                 display: "block",
                 width: "100%",
-                borderRadius: { xs: 0, sm: 2 },
+                borderRadius: OBSERVATION_PHOTO_RADIUS,
                 overflow: "hidden",
                 cursor: "zoom-in",
               }}
@@ -252,7 +258,7 @@ export function ObservationDetail() {
                 alt={species || "Observation photo"}
                 sx={{
                   width: "100%",
-                  maxHeight: 400,
+                  maxHeight: OBSERVATION_PHOTO_MAX_HEIGHT,
                   objectFit: "contain",
                   display: "block",
                   boxShadow: (theme) => ({ xs: "none", sm: theme.palette.cardShadow["photo"] }),
@@ -263,11 +269,8 @@ export function ObservationDetail() {
               <Typography
                 variant="caption"
                 sx={{
-                  display: "block",
-                  textAlign: "center",
+                  ...OBSERVATION_PHOTO_LICENSE_SX,
                   color: (theme) => theme.palette.overlay["caption"],
-                  px: 1,
-                  pt: { xs: 1, sm: 0.5 },
                 }}
               >
                 License: {getLicenseLabel(activeImage.license)}

@@ -1,4 +1,7 @@
 import {
+  List,
+  ListItem,
+  ListItemText,
   Paper,
   Table,
   TableBody,
@@ -14,19 +17,26 @@ import { PageContainer } from "../common/PageContainer";
 import { EmptyState } from "../common/EmptyState";
 import { PageHeader } from "../common/PageHeader";
 
-interface ServiceCost {
+interface Category {
+  name: string;
+  description: string;
+}
+
+interface LineItem {
   name: string;
   cost: number;
 }
 
 interface MonthEntry {
   month: string;
-  services: ServiceCost[];
+  items: LineItem[];
 }
 
 interface TransparencyData {
   currency: string;
   notes: string;
+  /** Line items in display order, as written by scripts/update-transparency.mjs. */
+  categories: Category[];
   months: MonthEntry[];
 }
 
@@ -64,22 +74,14 @@ export function TransparencyPage() {
     currency: data.currency,
   }).format;
 
-  const serviceTotals = new Map<string, number>();
-  for (const month of data.months) {
-    for (const s of month.services) {
-      serviceTotals.set(s.name, (serviceTotals.get(s.name) ?? 0) + s.cost);
-    }
-  }
-  const services = [...serviceTotals.keys()].sort((a, b) => {
-    const diff = (serviceTotals.get(b) ?? 0) - (serviceTotals.get(a) ?? 0);
-    return diff !== 0 ? diff : a.localeCompare(b);
-  });
-
+  const categories = data.categories.map((c) => c.name);
   const sortedMonths = [...data.months].sort((a, b) => b.month.localeCompare(a.month));
 
   const costFor = (m: MonthEntry, name: string) =>
-    m.services.find((s) => s.name === name)?.cost ?? 0;
-  const monthTotal = (m: MonthEntry) => m.services.reduce((sum, s) => sum + s.cost, 0);
+    m.items.find((item) => item.name === name)?.cost ?? 0;
+  const monthTotal = (m: MonthEntry) => m.items.reduce((sum, item) => sum + item.cost, 0);
+  const categoryTotal = (name: string) =>
+    sortedMonths.reduce((sum, m) => sum + costFor(m, name), 0);
   const grandTotal = sortedMonths.reduce((sum, m) => sum + monthTotal(m), 0);
 
   return (
@@ -95,9 +97,9 @@ export function TransparencyPage() {
               <TableHead>
                 <TableRow>
                   <TableCell>Month</TableCell>
-                  {services.map((s) => (
-                    <TableCell key={s} align="right">
-                      {s}
+                  {categories.map((c) => (
+                    <TableCell key={c} align="right">
+                      {c}
                     </TableCell>
                   ))}
                   <TableCell align="right">Total</TableCell>
@@ -107,9 +109,9 @@ export function TransparencyPage() {
                 {sortedMonths.map((m) => (
                   <TableRow key={m.month}>
                     <TableCell>{formatMonth(m.month)}</TableCell>
-                    {services.map((s) => (
-                      <TableCell key={s} align="right">
-                        {formatCurrency(costFor(m, s))}
+                    {categories.map((c) => (
+                      <TableCell key={c} align="right">
+                        {formatCurrency(costFor(m, c))}
                       </TableCell>
                     ))}
                     <TableCell align="right" sx={{ fontWeight: 600 }}>
@@ -121,9 +123,9 @@ export function TransparencyPage() {
               <TableFooter>
                 <TableRow>
                   <TableCell>Total</TableCell>
-                  {services.map((s) => (
-                    <TableCell key={s} align="right">
-                      {formatCurrency(serviceTotals.get(s) ?? 0)}
+                  {categories.map((c) => (
+                    <TableCell key={c} align="right">
+                      {formatCurrency(categoryTotal(c))}
                     </TableCell>
                   ))}
                   <TableCell align="right">{formatCurrency(grandTotal)}</TableCell>
@@ -133,6 +135,16 @@ export function TransparencyPage() {
           </TableContainer>
         )}
       </Paper>
+
+      {data.categories.length > 0 && (
+        <List dense sx={{ mt: 2 }}>
+          {data.categories.map((c) => (
+            <ListItem key={c.name} disableGutters>
+              <ListItemText primary={c.name} secondary={c.description} />
+            </ListItem>
+          ))}
+        </List>
+      )}
     </PageContainer>
   );
 }

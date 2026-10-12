@@ -5,13 +5,24 @@ import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 const FAB = 'button[aria-label="Create actions"]';
+const CREATE_BUTTON = { name: "Add observation" } as const;
+// Below the md breakpoint the top bar's "Add observation" split button gives way
+// to the FAB speed dial.
+const NARROW_VIEWPORT = { width: 390, height: 844 };
 
 test.describe("Upload Modal - Logged Out", () => {
-  // TC-UPLOAD-002: FAB hidden when logged out
+  // TC-UPLOAD-002: create entry points hidden when logged out
+  test("Add observation button is not visible when logged out", async ({ page }) => {
+    await page.goto("/explore");
+    await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
+    await expect(page.getByRole("button", CREATE_BUTTON)).toHaveCount(0);
+  });
+
   test("FAB button is not visible when logged out", async ({ page }) => {
-    await page.goto("/");
-    await page.locator(FAB).waitFor({ state: "hidden", timeout: 5000 });
-    await expect(page.locator(FAB)).not.toBeVisible();
+    await page.setViewportSize(NARROW_VIEWPORT);
+    await page.goto("/explore");
+    await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
+    await expect(page.locator(FAB)).toHaveCount(0);
   });
 });
 
@@ -21,14 +32,19 @@ authTest.describe("Upload Modal - Logged In", () => {
     await mockTaxaSearchRoute(page);
   });
 
-  // TC-UPLOAD-010: FAB visible when logged in
-  authTest("FAB button is visible when logged in", async ({ authenticatedPage: page }) => {
-    await page.goto("/");
-    await authExpect(page.locator(FAB)).toBeVisible();
-  });
+  // TC-UPLOAD-010: create entry point visible when logged in
+  authTest(
+    "Add observation button is visible when logged in",
+    async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await authExpect(page.getByRole("button", CREATE_BUTTON)).toBeVisible();
+      // It replaces the FAB on wide screens rather than joining it.
+      await authExpect(page.locator(FAB)).toHaveCount(0);
+    },
+  );
 
   // TC-UPLOAD-001: Open/close modal
-  authTest("clicking FAB opens upload modal", async ({ authenticatedPage: page }) => {
+  authTest("Add observation button opens upload modal", async ({ authenticatedPage: page }) => {
     await page.goto("/");
     await openUploadModal(page);
   });
@@ -40,22 +56,61 @@ authTest.describe("Upload Modal - Logged In", () => {
     await authExpect(page.getByRole("dialog")).not.toBeVisible();
   });
 
-  // Regression: the create speed-dial must stay closed after an action opens
-  // and then closes the upload modal. The SpeedDial used to re-open when focus
-  // returned to the FAB on modal close (MUI opens the dial on focus).
-  authTest(
-    "create FAB menu stays closed after the modal closes",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      await openUploadModal(page); // opens the dial, picks New Observation, opens modal
-      await page.getByRole("button", { name: "Cancel" }).click();
-      await authExpect(page.getByRole("dialog")).not.toBeVisible();
+  authTest.describe("on a narrow screen", () => {
+    authTest.beforeEach(async ({ authenticatedPage: page }) => {
+      await page.setViewportSize(NARROW_VIEWPORT);
+    });
 
-      // Focus has returned to the FAB; the dial must not have re-opened.
-      await authExpect(page.getByRole("menuitem", { name: "New Observation" })).not.toBeVisible();
-      await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
-    },
-  );
+    authTest("FAB replaces the Add observation button", async ({ authenticatedPage: page }) => {
+      await page.goto("/");
+      await authExpect(page.locator(FAB)).toBeVisible();
+      await authExpect(page.getByRole("button", CREATE_BUTTON)).toHaveCount(0);
+    });
+
+    // Regression: the create speed-dial must stay closed after an action opens
+    // and then closes the upload modal. The SpeedDial used to re-open when focus
+    // returned to the FAB on modal close (MUI opens the dial on focus).
+    authTest(
+      "create FAB menu stays closed after the modal closes",
+      async ({ authenticatedPage: page }) => {
+        await page.goto("/");
+        // Hover, don't click. MUI opens the dial on mouseenter via a 0ms timer,
+        // and click() moves the mouse before pressing: if that timer fires in
+        // between (likely under CI load), the click's toggle closes the dial it
+        // just opened.
+        await page.locator(FAB).hover();
+        await page.getByRole("menuitem", { name: "New Observation" }).click();
+        await authExpect(
+          page.getByRole("dialog").getByRole("heading", { name: "New Observation" }),
+        ).toBeVisible();
+        await page.getByRole("button", { name: "Cancel" }).click();
+        await authExpect(page.getByRole("dialog")).not.toBeVisible();
+
+        // Focus has returned to the FAB; the dial must not have re-opened.
+        await authExpect(page.getByRole("menuitem", { name: "New Observation" })).not.toBeVisible();
+        await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
+      },
+    );
+
+    authTest(
+      "create FAB menu shows its labels over a backdrop that closes it",
+      async ({ authenticatedPage: page }) => {
+        await page.goto("/");
+        await page.locator(FAB).click();
+        // The labels are always shown, not just on hover.
+        await authExpect(page.getByText("New Observation", { exact: true })).toBeVisible();
+
+        // Anywhere away from the dial lands on the backdrop.
+        await page.mouse.click(10, 300);
+        await authExpect(page.locator(FAB)).toHaveAttribute("aria-expanded", "false");
+        // Closed labels fade out rather than leave the DOM.
+        await authExpect(page.getByText("New Observation", { exact: true })).toHaveCSS(
+          "opacity",
+          "0",
+        );
+      },
+    );
+  });
 
   // TC-UPLOAD-003: Authenticated mode banner
   authTest("upload modal shows posting as handle", async ({ authenticatedPage: page }) => {

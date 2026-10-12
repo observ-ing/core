@@ -32,6 +32,7 @@ export const qk = {
   notifications: () => ["notifications"] as const,
   unreadCount: () => ["unreadCount"] as const,
   preferences: () => ["preferences"] as const,
+  serviceStatus: () => ["serviceStatus"] as const,
   inatAccount: () => ["inatAccount"] as const,
   crosspost: (uri: string) => ["crosspost", uri] as const,
 } as const;

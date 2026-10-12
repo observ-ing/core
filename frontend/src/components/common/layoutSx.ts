@@ -12,6 +12,9 @@ export const detailHeaderSx = {
 /** Inline glyph size for icons embedded in chips, small buttons and caption rows. */
 export const miniIconSx = { fontSize: 14 } as const;
 
+/** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
+export const pillButtonSx = { borderRadius: 2 } as const;
+
 /** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
 export const coverImageSx = {
   width: "100%",

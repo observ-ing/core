@@ -12,6 +12,7 @@ mod openapi;
 mod resolver;
 mod responses;
 mod routes;
+mod service_status;
 mod species_id_client;
 mod state;
 mod taxonomy;
@@ -79,6 +80,11 @@ async fn main() {
         .as_deref()
         .map(|url| Arc::new(SpeciesIdClient::new(url, Duration::from_secs(15))));
 
+    let service_status = config
+        .gcp_project_id
+        .as_deref()
+        .map(|project_id| Arc::new(service_status::ServiceStatusClient::new(project_id)));
+
     let media = media::MediaCache::from_env().await;
 
     let inat = config.inat.clone().map(|inat_config| {
@@ -95,6 +101,7 @@ async fn main() {
         taxonomy: Arc::new(TaxonomyClient::new()),
         species_id,
         species_id_live,
+        service_status,
         oauth_client: Arc::new(oauth_client),
         media,
         heic: Arc::new(heic::HeicConverter::from_env()),
@@ -230,6 +237,7 @@ async fn main() {
         // Species identification
         .route("/api/species-id", post(routes::species_id::identify))
         .route("/api/species-id/status", get(routes::species_id::status))
+        .route("/api/status", get(routes::status::get_status))
         // Taxonomy
         .route("/api/taxa/search", get(routes::taxonomy::search))
         .route("/api/taxa/validate", get(routes::taxonomy::validate))

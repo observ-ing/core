@@ -93,7 +93,28 @@ describe("vetImageFiles", () => {
       accepted: [],
       invalidType: [],
       tooLarge: [],
+      overCap: [],
       exceededCap: false,
     });
+  });
+});
+
+describe("vetImageFiles with a custom cap", () => {
+  it("applies the given cap instead of MAX_IMAGES", () => {
+    const result = vetImageFiles(batchOf(MAX_IMAGES + 5), 0, 100);
+
+    expect(result.accepted).toHaveLength(MAX_IMAGES + 5);
+    expect(result.exceededCap).toBe(false);
+  });
+
+  it("lists the valid files that did not fit, and keeps vetting the rest", () => {
+    const files = [...batchOf(3), imageFile("notes.pdf", { type: "application/pdf" })];
+
+    const result = vetImageFiles(files, 0, 2);
+
+    expect(result.accepted.map((f) => f.name)).toEqual(["photo-0.jpg", "photo-1.jpg"]);
+    expect(result.overCap.map((f) => f.name)).toEqual(["photo-2.jpg"]);
+    expect(result.invalidType.map((f) => f.name)).toEqual(["notes.pdf"]);
+    expect(result.exceededCap).toBe(true);
   });
 });

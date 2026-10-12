@@ -10,6 +10,9 @@ import {
 import { Badge } from "@mui/material";
 import type { ThemeMode } from "../../store/uiSlice";
 
+/** The batch uploader, reached from the create speed dial rather than the nav. */
+export const BATCH_UPLOAD_PATH = "/batch-upload";
+
 export const getNavItems = (user: { did: string } | null, unreadCount: number) => [
   { label: "Home", icon: <Home />, path: "/" },
   { label: "Explore", icon: <Explore />, path: "/explore" },

@@ -15,4 +15,5 @@ pub mod occurrences;
 pub mod preferences;
 pub mod profiles;
 pub mod species_id;
+pub mod status;
 pub mod taxonomy;

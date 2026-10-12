@@ -3,6 +3,7 @@ import type { Occurrence } from "../../services/types";
 import { EmptyState } from "../common/EmptyState";
 import { LoadMoreButton } from "../common/LoadMoreButton";
 import { FeedItem } from "../feed/FeedItem";
+import { TAXON_OBSERVATIONS_HEADER_SX } from "./taxonLayout";
 
 interface TaxonObservationsProps {
   observations: Occurrence[];
@@ -26,7 +27,7 @@ export function TaxonObservations({
 }: TaxonObservationsProps) {
   return (
     <>
-      <Box sx={{ mt: 4.25, pt: 3, borderTop: 1, borderColor: "divider" }}>
+      <Box sx={TAXON_OBSERVATIONS_HEADER_SX}>
         <Typography
           variant="subtitle2"
           sx={{

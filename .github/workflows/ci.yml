@@ -554,12 +554,15 @@ jobs:
             ${{ matrix.extra_build_args }}
           push: true
           tags: ${{ env.REGISTRY }}/${{ matrix.image }}:latest
-          cache-from: |
-            type=gha,scope=${{ matrix.image }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
-          cache-to: |
-            type=gha,mode=max,scope=${{ matrix.image }}
-            type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
+          # Registry cache only, no type=gha. Exporting to the GHA cache makes
+          # buildkit download every cached layer it only holds as a lazy
+          # reference to the registry cache, just to re-upload it to GitHub.
+          # Image layers alone overflow the 10 GB GHA cache, so blobs get
+          # evicted and that ~4-5 GB round-trip repeated on every push, even
+          # fully cached builds. It cost ~$0.45/push in Artifact Registry
+          # internet egress and pushed the Rust job caches out of the GHA cache.
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
 
   deploy:
     runs-on: ubuntu-latest
@@ -590,6 +593,12 @@ jobs:
       # loads in ~5-10s either way, so the CPU work is not the bottleneck.
       # The startup probe polls every 2s (same 300s budget) so readiness
       # isn't delayed up to 10s after the model finishes loading.
+      #
+      # min-instances=0: identify traffic is a handful of requests a week, and
+      # holding a warm 8 GiB instance cost ~$65/mo for ~$1/mo of actual
+      # inference. The ~20s cold start is covered by the appview's status
+      # probe, which starts the boot when the upload/ID UI opens and drives a
+      # countdown in the frontend (see species_id_client.rs).
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -599,7 +608,7 @@ jobs:
             --cpu=2 \
             --memory=8Gi \
             --cpu-boost \
-            --min-instances=1 \
+            --min-instances=0 \
             --execution-environment=gen2 \
             --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
@@ -706,7 +715,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|GCP_PROJECT_ID=$PROJECT_ID|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT

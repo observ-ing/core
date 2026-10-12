@@ -10,7 +10,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 |---------|-----------|--------|-----------|---------|-------|
 | observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
 | tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. Runs with `--no-cpu-throttling` (always-allocated CPU) + 1 vCPU / 1 GiB because the firehose consumer is a background loop, not request-driven — under Cloud Run's default request-scoped CPU it gets starved and falls behind the relay's ~72h retention window. |
-| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=1, gen2 execution environment — gen2 reads the ~3.3 GB baked-in model bundle ~6× faster than gen1, cutting cold start from ~95s to ~20s) |
+| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=0, gen2 execution environment — gen2 reads the ~3.3 GB baked-in model bundle ~6× faster than gen1, cutting cold start from ~95s to ~20s). Scales to zero; the appview's `/api/species-id/status` probe pre-warms it when the upload/ID UI opens and the frontend shows a boot countdown |
 | observing-species-id-live | `SERVICE=observing-species-id` + `SPECIES_MODEL_URL=<ViT-L bundle>` + `MODEL_VERSION=bioclip-2-vit-l-14` | Yes | No | — | Same binary as `observing-species-id`, built with the smaller/faster ViT-L model bundle ([`bioclip-models` release `vit-l-v1.0.0`](https://github.com/observ-ing/bioclip-models/releases/tag/vit-l-v1.0.0)). Serves the live camera loop (frontend sends `live: true`; appview routes here via `SPECIES_ID_LIVE_SERVICE_URL`). Built + deployed by CI as its own image alongside `observing-species-id`. Same sizing as above but **4 GiB** (the ViT-L bundle's resident footprint is ~3 GB, vs ViT-H's ~4.4 GB). |
 
 ### Jobs
@@ -28,6 +28,21 @@ CI runs the deploy steps in this order to ensure DDL lands before any service st
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
 2. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
 3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+
+### Service status dashboard
+
+The [Service Status](https://console.cloud.google.com/monitoring/dashboards/builder/4a03aa0a-e9a4-4f65-8168-b09030aeb432?project=observ-ing) Cloud Monitoring dashboard shows each Cloud Run service's instance count: 0 means asleep (scaled to zero), and 1 or more means awake. It also shows active vs idle instances over time, Cloud SQL up/down, and running job executions. Instance counts arrive about 3 minutes after Cloud Run samples them.
+
+The source is `infra/monitoring/service-status-dashboard.json`. It isn't deployed by CI. After editing the file, push it by hand. The update call needs the live dashboard's current etag:
+
+```bash
+ID=4a03aa0a-e9a4-4f65-8168-b09030aeb432
+ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='value(etag)')
+jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/service-status-dashboard.json > /tmp/dashboard.json
+gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
+```
+
+The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/service_status.rs`) reads the same metrics, so it has its own list of services to show. Adding a Cloud Run service means updating that list and adding a scorecard tile here. The time-series charts group by `service_name`, so they pick up new services automatically. The scorecards use `... or vector(0)` because Cloud Run stops reporting `instance_count` for a service a few minutes after it scales to zero. Without the fallback, a sleeping service would read "No data" instead of 0.
 
 ## Runtime role boundary (one-shot)
 
@@ -58,6 +73,9 @@ SPECIES_ID_SERVICE_URL=https://observing-species-id-xxx.run.app
 # Optional: faster ViT-L service for the live camera loop. When unset, live
 # requests fall back to SPECIES_ID_SERVICE_URL (the full ViT-H model).
 SPECIES_ID_LIVE_SERVICE_URL=https://observing-species-id-live-xxx.run.app
+# Optional: GCP project whose Cloud Monitoring backs the public /status page.
+# Unset (e.g. local dev) makes /api/status return 503.
+GCP_PROJECT_ID=observ-ing
 
 # Cloud SQL (Unix socket in prod)
 DB_HOST=/cloudsql/<project>:<region>:observing-db

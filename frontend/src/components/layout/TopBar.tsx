@@ -25,8 +25,9 @@ import { BrandLockup } from "../common/BrandLockup";
 import { UserAvatar } from "../common/UserAvatar";
 import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
+import { CreateMenu } from "./CreateMenu";
 import { PendingIndicator } from "./PendingIndicator";
-import { glassBlurSx } from "../common/layoutSx";
+import { glassBlurSx, pillButtonSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -100,9 +101,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                     to={item.path}
                     startIcon={item.icon}
                     sx={{
+                      ...pillButtonSx,
                       px: 2,
                       py: 1,
-                      borderRadius: 2,
                       color: isActive(item.path) ? "primary.main" : "text.secondary",
                       fontWeight: isActive(item.path) ? 700 : 500,
                       "&:hover": {
@@ -119,6 +120,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
           </Box>
 
           <Box sx={{ display: "flex", alignItems: "center", gap: { xs: 0.5, md: 1.5 } }}>
+            {/* Narrow screens get the speed dial (FAB) instead. */}
+            {!isMobile && <CreateMenu />}
+
             {!isMobile && (
               <Tooltip title="Docs">
                 <IconButton component={Link} to="/docs" color="inherit" aria-label="Docs">
@@ -140,16 +144,21 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
               </Tooltip>
             )}
 
-            <Tooltip title="Settings">
-              <IconButton component={Link} to="/settings" color="inherit" aria-label="Settings">
-                <Settings />
-              </IconButton>
-            </Tooltip>
+            {/* Logged-in users reach Settings from the account menu; logged-out
+                users still need a way in for the Appearance setting. */}
+            {!isAuthLoading && !user && (
+              <Tooltip title="Settings">
+                <IconButton component={Link} to="/settings" color="inherit" aria-label="Settings">
+                  <Settings />
+                </IconButton>
+              </Tooltip>
+            )}
 
             <PendingIndicator />
 
             {isAuthLoading ? (
-              <Skeleton variant="circular" width={40} height={40} />
+              // Margin stands in for the account button's padding around the avatar.
+              <Skeleton variant="circular" width={40} height={40} sx={{ m: 0.5 }} />
             ) : user ? (
               <>
                 <IconButton
@@ -245,7 +254,7 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                 onClick={handleLogin}
                 startIcon={<Login />}
                 sx={{
-                  borderRadius: 2,
+                  ...pillButtonSx,
                   px: 3,
                   fontWeight: 700,
                   boxShadow: "none",
