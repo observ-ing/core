@@ -27,7 +27,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { CreateMenu } from "./CreateMenu";
 import { PendingIndicator } from "./PendingIndicator";
-import { glassBlurSx } from "../common/layoutSx";
+import { glassBlurSx, pillButtonSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -101,9 +101,9 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                     to={item.path}
                     startIcon={item.icon}
                     sx={{
+                      ...pillButtonSx,
                       px: 2,
                       py: 1,
-                      borderRadius: 2,
                       color: isActive(item.path) ? "primary.main" : "text.secondary",
                       fontWeight: isActive(item.path) ? 700 : 500,
                       "&:hover": {
@@ -254,7 +254,7 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                 onClick={handleLogin}
                 startIcon={<Login />}
                 sx={{
-                  borderRadius: 2,
+                  ...pillButtonSx,
                   px: 3,
                   fontWeight: 700,
                   boxShadow: "none",

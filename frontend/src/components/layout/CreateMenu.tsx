@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button, ButtonGroup, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { Add, KeyboardArrowDown } from "@mui/icons-material";
+import { pillButtonSx } from "../common/layoutSx";
 import { useAppSelector } from "../../store";
 import { useCreateActions } from "../../hooks/useCreateActions";
 
@@ -34,7 +35,7 @@ export function CreateMenu() {
         {/* Rounded like the TopBar's "Log in" button. Set per button, not on the
             group, so the group's own rule still squares the corners where the
             two meet. */}
-        <Button startIcon={<Add />} onClick={primary.action} sx={{ borderRadius: 2, px: 2 }}>
+        <Button startIcon={<Add />} onClick={primary.action} sx={{ ...pillButtonSx, px: 2 }}>
           Add observation
         </Button>
         {/* With nothing else on offer (e.g. the native app), skip the arrow. */}
@@ -46,7 +47,7 @@ export function CreateMenu() {
             aria-controls={open ? "create-menu" : undefined}
             aria-expanded={open ? "true" : undefined}
             onClick={() => setOpen((prev) => !prev)}
-            sx={{ borderRadius: 2, px: 0.5, minWidth: 0 }}
+            sx={{ ...pillButtonSx, px: 0.5, minWidth: 0 }}
           >
             <KeyboardArrowDown />
           </Button>
