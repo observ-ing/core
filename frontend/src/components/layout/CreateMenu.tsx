@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, ButtonGroup, ListItemIcon, ListItemText, Menu, MenuItem } from "@mui/material";
 import { Add, KeyboardArrowDown } from "@mui/icons-material";
-import { pillButtonSx } from "../common/layoutSx";
+import { headerMenuPaperSx, pillButtonSx } from "../common/layoutSx";
 import { useAppSelector } from "../../store";
 import { useCreateActions } from "../../hooks/useCreateActions";
 
@@ -64,9 +64,7 @@ export function CreateMenu() {
             elevation: 4,
             sx: {
               mt: 1,
-              minWidth: 200,
-              // Matches the TopBar's account menu.
-              "& .MuiMenuItem-root": { px: 2, py: 1, borderRadius: 1, mx: 1, my: 0.5 },
+              ...headerMenuPaperSx,
             },
           },
         }}
