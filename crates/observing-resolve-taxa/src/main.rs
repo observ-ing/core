@@ -25,8 +25,6 @@
 //!   cargo run --bin resolve_taxa -- --interval-secs 300
 //!   cargo run --bin resolve_taxa -- --rate-limit-ms 200 --limit 1000
 
-mod taxon_uri;
-
 use std::time::Duration;
 
 use clap::Parser;
@@ -38,7 +36,7 @@ use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use wikidata_client::WikidataClient;
 
-use taxon_uri::TaxonRef;
+use observing_db::taxon_uri::{self, TaxonRef};
 
 /// Wikidata property id for an iNaturalist taxon.
 const WIKIDATA_INATURALIST_PROPERTY: &str = "P3151";
