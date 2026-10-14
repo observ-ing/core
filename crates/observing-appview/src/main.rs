@@ -4,6 +4,10 @@ mod constants;
 mod enrichment;
 mod error;
 mod heic;
+// Nothing outside tests calls into this yet; the iNaturalist routes and worker
+// that use it land in later PRs (#878). Remove this allow when they do.
+#[cfg_attr(not(test), allow(dead_code))]
+mod inat;
 mod media;
 mod middleware;
 mod oauth_store;

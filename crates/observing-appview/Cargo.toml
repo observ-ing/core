@@ -69,6 +69,12 @@ atrium-identity = "0.1"
 atrium-oauth = "0.1"
 hickory-resolver = "0.26"
 
+# iNaturalist cross-posting (#878)
+inaturalist = { version = "0.11", default-features = false, features = ["rustls"] }
+# Deterministic IDs for cross-posted records
+uuid = { version = "1", features = ["v5"] }
+url = { workspace = true }
+
 # Async trait support (needed for Store implementations)
 async-trait = "0.1"
 
