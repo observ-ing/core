@@ -87,6 +87,11 @@ DB_PASSWORD=<secret: observing-db-appview-password>
 HIDDEN_DIDS=did:plc:...       # Comma-separated DIDs to hide from feeds
 ADMIN_DIDS=did:plc:...        # Comma-separated DIDs with admin-surface access
 
+# iNaturalist cross-posting (OAuth app at inaturalist.org/oauth/applications;
+# redirect URI {PUBLIC_URL}/api/inat/callback). Feature is off unless both set.
+INAT_CLIENT_ID=<secret: INAT_CLIENT_ID>
+INAT_CLIENT_SECRET=<secret: INAT_CLIENT_SECRET>
+
 # Media cache (in-process, served at /media/{blob,thumb}/{did}/{cid})
 CACHE_DIR=./cache/media
 MAX_CACHE_SIZE=...            # Optional, bytes
