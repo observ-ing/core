@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO crossposts (occurrence_uri, service, did, status)\n        VALUES ($1, $2, $3, 'pending')\n        ON CONFLICT (occurrence_uri, service) DO UPDATE SET\n            status = 'pending',\n            attempts = 0,\n            last_error = NULL,\n            updated_at = NOW()\n        WHERE crossposts.status = 'failed'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f22ae3cae02efab778ad58f30e50578857cb12ffdf42da3856a0773aba6e67fa"
+}

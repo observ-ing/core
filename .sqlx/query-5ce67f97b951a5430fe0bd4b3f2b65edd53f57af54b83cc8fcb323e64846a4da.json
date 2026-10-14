@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT service, external_uri as \"external_uri!\"\n        FROM crossposts\n        WHERE occurrence_uri = $1 AND external_uri IS NOT NULL\n        ORDER BY created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "service"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "external_uri!",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "external_uri"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "5ce67f97b951a5430fe0bd4b3f2b65edd53f57af54b83cc8fcb323e64846a4da"
+}

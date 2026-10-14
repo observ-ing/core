@@ -1,0 +1,113 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts\n        SET attempts = attempts + 1, updated_at = NOW()\n        WHERE (occurrence_uri, service) IN (\n            SELECT occurrence_uri, service\n            FROM crossposts\n            WHERE service = $1\n              AND status = 'pending'\n              AND updated_at <= NOW() - make_interval(secs => 30 * (2 ^ attempts - 1))\n            ORDER BY updated_at\n            LIMIT $2\n            FOR UPDATE SKIP LOCKED\n        )\n        RETURNING occurrence_uri, service, did, external_uri, synced_blob_cids,\n                  status, attempts, last_error\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "occurrence_uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "occurrence_uri"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "service",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "service"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "did",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "did"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "external_uri",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "external_uri"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "synced_blob_cids",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "synced_blob_cids"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "status",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "last_error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "last_error"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "4edcead1257f24a8e5fbb5840a8bc8057cac919b869ae7502025660025e35b21"
+}
