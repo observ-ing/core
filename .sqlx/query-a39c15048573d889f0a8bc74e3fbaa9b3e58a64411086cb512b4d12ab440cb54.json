@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts SET status = 'synced', last_error = NULL, updated_at = NOW()\n        WHERE occurrence_uri = $1 AND service = $2 AND status = 'pending'\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a39c15048573d889f0a8bc74e3fbaa9b3e58a64411086cb512b4d12ab440cb54"
+}

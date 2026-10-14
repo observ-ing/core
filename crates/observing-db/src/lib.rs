@@ -1,5 +1,6 @@
 pub mod comments;
 pub mod community_ids;
+pub mod crossposts;
 pub mod failed_records;
 pub mod feeds;
 pub mod identifications;

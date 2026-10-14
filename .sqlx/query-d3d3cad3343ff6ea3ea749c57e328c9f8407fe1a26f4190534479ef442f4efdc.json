@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        UPDATE crossposts SET external_uri = $3, updated_at = NOW()\n        WHERE occurrence_uri = $1 AND service = $2\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d3d3cad3343ff6ea3ea749c57e328c9f8407fe1a26f4190534479ef442f4efdc"
+}
