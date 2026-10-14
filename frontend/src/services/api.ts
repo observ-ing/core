@@ -16,6 +16,8 @@ import type {
   UpdatePreferencesRequest,
   ExternalRecord,
 } from "./types";
+import type { InatAccountResponse } from "../bindings/InatAccountResponse";
+import type { InatAuthorizeResponse } from "../bindings/InatAuthorizeResponse";
 
 export const API_BASE = import.meta.env["VITE_API_URL"] || "";
 const DEFAULT_PAGE_SIZE = "20";
@@ -478,6 +480,27 @@ export async function updateUserPreferences(
     credentials: "include",
     body: JSON.stringify(prefs),
   });
+}
+
+// ============================================================================
+// iNaturalist API Functions
+// ============================================================================
+
+export async function fetchInatAccount(): Promise<InatAccountResponse> {
+  return fetchApi(`${API_BASE}/api/inat/account`, "Failed to load iNaturalist account", {
+    credentials: "include",
+  });
+}
+
+/** Get the iNaturalist authorize URL to send the user to. */
+export async function startInatLink(): Promise<InatAuthorizeResponse> {
+  return fetchApi(`${API_BASE}/api/inat/authorize`, "Couldn't start connecting to iNaturalist", {
+    credentials: "include",
+  });
+}
+
+export async function unlinkInatAccount(): Promise<{ success: boolean }> {
+  return deleteResource(`${API_BASE}/api/inat/account`, "Couldn't disconnect iNaturalist");
 }
 
 // ============================================================================

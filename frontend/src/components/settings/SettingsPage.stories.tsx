@@ -36,6 +36,40 @@ export const SignedIn: Story = {
   },
 };
 
+const preferencesHandler = http.get("/api/user/preferences", () =>
+  HttpResponse.json({ defaultLicense: null, basemap: null }),
+);
+
+// The iNaturalist section only renders when the server has cross-posting
+// enabled, so the stories above never show it.
+export const SignedInWithInaturalistUnlinked: Story = {
+  parameters: {
+    storeOptions: { preloadedState: signedInState },
+    msw: {
+      handlers: [
+        preferencesHandler,
+        http.get("/api/inat/account", () =>
+          HttpResponse.json({ enabled: true, login: null, linkedAt: null }),
+        ),
+      ],
+    },
+  },
+};
+
+export const SignedInWithInaturalistLinked: Story = {
+  parameters: {
+    storeOptions: { preloadedState: signedInState },
+    msw: {
+      handlers: [
+        preferencesHandler,
+        http.get("/api/inat/account", () =>
+          HttpResponse.json({ enabled: true, login: "alice", linkedAt: "2026-10-07T00:00:00Z" }),
+        ),
+      ],
+    },
+  },
+};
+
 export const SignedInWithDefaultLicense: Story = {
   parameters: {
     storeOptions: { preloadedState: signedInState },
