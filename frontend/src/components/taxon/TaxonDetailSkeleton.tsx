@@ -3,6 +3,7 @@ import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 import {
   TAXON_DETAIL_COLUMN_SX,
+  TAXON_HERO_IMAGE_RADIUS,
   TAXON_HERO_IMAGE_SIZE,
   TAXON_OBSERVATIONS_HEADER_SX,
 } from "./taxonLayout";
@@ -44,7 +45,12 @@ export function TaxonDetailSkeleton() {
             variant="rectangular"
             width={TAXON_HERO_IMAGE_SIZE}
             height={TAXON_HERO_IMAGE_SIZE}
-            sx={{ maxWidth: "100%", flexShrink: 0, borderRadius: 1.75, mx: { xs: "auto", sm: 0 } }}
+            sx={{
+              maxWidth: "100%",
+              flexShrink: 0,
+              borderRadius: TAXON_HERO_IMAGE_RADIUS,
+              mx: { xs: "auto", sm: 0 },
+            }}
           />
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {/* Scientific name */}
