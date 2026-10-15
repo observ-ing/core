@@ -23,6 +23,7 @@ import {
   unlikeObservation,
   markNotificationRead,
   updateUserPreferences,
+  unlinkInatAccount,
   submitComment,
   submitIdentification,
   submitObservation,
@@ -148,6 +149,14 @@ export function useUpdatePreferences() {
     onError: (_err, _vars, context) => {
       if (context?.previous) queryClient.setQueryData(qk.preferences(), context.previous);
     },
+  });
+}
+
+// ── iNaturalist ──────────────────────────────────────────────────────────────
+export function useUnlinkInatAccount() {
+  return useMutation({
+    mutationFn: unlinkInatAccount,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.inatAccount() }),
   });
 }
 

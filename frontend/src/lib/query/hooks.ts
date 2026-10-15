@@ -19,6 +19,7 @@ import {
   fetchUnreadCount,
   fetchUserPreferences,
   fetchServiceStatus,
+  fetchInatAccount,
 } from "../../services/api";
 import type { FeedFilters, FeedTab } from "../../services/types";
 
@@ -187,6 +188,17 @@ export function useServiceStatus() {
     queryKey: qk.serviceStatus(),
     queryFn: fetchServiceStatus,
     refetchInterval: 60_000,
+  });
+}
+
+// ── iNaturalist ──────────────────────────────────────────────────────────────
+
+export function useInatAccount() {
+  const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
+  return useQuery({
+    queryKey: qk.inatAccount(),
+    queryFn: fetchInatAccount,
+    enabled: isAuthenticated,
   });
 }
 
