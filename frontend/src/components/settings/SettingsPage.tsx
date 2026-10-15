@@ -9,6 +9,7 @@ import { useUpdatePreferences } from "../../lib/query/mutations";
 import { PageContainer } from "../common/PageContainer";
 import { LicenseSelect } from "../common/LicenseSelect";
 import { SettingsSection } from "./SettingsSection";
+import { InatSettings } from "./InatSettings";
 
 const NO_DEFAULT = "__none__";
 
@@ -101,6 +102,8 @@ export function SettingsPage() {
           />
         </SettingsSection>
       )}
+
+      {user && <InatSettings />}
     </PageContainer>
   );
 }
