@@ -10,6 +10,22 @@ test.describe("Navigation", () => {
     await expect(page.getByRole("button", { name: "Log in" })).toBeVisible();
   });
 
+  test("the app is sized to the space a mobile address bar leaves", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByText("Observe nature.")).toBeVisible();
+    const height = await page.evaluate(() => {
+      const rules = [...document.styleSheets].flatMap((sheet) => [...sheet.cssRules]);
+      const root = rules.find(
+        (rule): rule is CSSStyleRule =>
+          rule instanceof CSSStyleRule && rule.selectorText === "#root",
+      );
+      return root?.style.height;
+    });
+    // `dvh` follows the address bar as it shows and hides; `vh` would put the
+    // bottom of the app under it.
+    expect(height).toBe("100dvh");
+  });
+
   // TC-NAV-002: 404 page
   test("invalid route shows 404 page", async ({ page }) => {
     await page.goto("/invalid-route-xyz");
