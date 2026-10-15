@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { ListItem, ListItemIcon, ListItemText } from "@mui/material";
 import type { Theme } from "@mui/material";
 import type { SystemStyleObject } from "@mui/system";
+import { rowIconSx } from "./layoutSx";
 
 export interface DetailListItemProps {
   /** Leading icon, already sized/colored by the caller (see {@link detailIconSx}). */
@@ -11,7 +12,7 @@ export interface DetailListItemProps {
 }
 
 /** Shared sizing for a {@link DetailListItem}'s leading icon. */
-export const detailIconSx: SystemStyleObject<Theme> = { fontSize: 18, color: "text.secondary" };
+export const detailIconSx: SystemStyleObject<Theme> = { ...rowIconSx, color: "text.secondary" };
 
 /**
  * Icon + label + value row for the observation Details list (quantity,
