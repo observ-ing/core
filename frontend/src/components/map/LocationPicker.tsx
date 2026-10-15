@@ -44,6 +44,11 @@ interface LocationPickerProps {
   uncertaintyMixed?: boolean;
   /** Show the one-line usage hints under the map and the slider. Defaults to true. */
   showHints?: boolean;
+  /**
+   * Fill the height of the parent, with the map taking what the controls leave.
+   * For a full-screen picker, which has its own heading.
+   */
+  fill?: boolean;
 }
 
 interface NominatimResult {
@@ -82,6 +87,7 @@ export function LocationPicker({
   extraMarkers,
   uncertaintyMixed = false,
   showHints = true,
+  fill = false,
 }: LocationPickerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
@@ -334,16 +340,18 @@ export function LocationPicker({
   const handleLngChange = (value: string) => handleCoordinateChange(value, "lng");
 
   return (
-    <Box sx={{ mt: 2 }}>
-      <Typography
-        variant="body2"
-        sx={{
-          color: "text.secondary",
-          mb: 1,
-        }}
-      >
-        Location
-      </Typography>
+    <Box sx={fill ? { display: "flex", flexDirection: "column", height: "100%" } : { mt: 2 }}>
+      {!fill && (
+        <Typography
+          variant="body2"
+          sx={{
+            color: "text.secondary",
+            mb: 1,
+          }}
+        >
+          Location
+        </Typography>
+      )}
       <Autocomplete
         freeSolo
         options={searchResults}
@@ -390,12 +398,12 @@ export function LocationPicker({
           );
         }}
       />
-      <MapCanvas ref={mapContainer} />
+      <MapCanvas ref={mapContainer} fill={fill} />
       <Button
         size="small"
         onClick={() => setShowCoordinates((v) => !v)}
         endIcon={showCoordinates ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-        sx={{ mt: 1, color: "text.secondary" }}
+        sx={{ mt: 1, color: "text.secondary", alignSelf: "flex-start" }}
       >
         {showCoordinates ? "Hide coordinates" : "Enter coordinates manually"}
       </Button>

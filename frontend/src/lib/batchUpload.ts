@@ -83,10 +83,19 @@ export type BatchAction =
   | { type: "select"; id: string; additive: boolean }
   | { type: "selectAll"; ids: string[] }
   | { type: "clearSelection" }
-  | { type: "edit"; patch: BatchEdit }
+  /** Edits the selection, or the observations in `ids` when given. */
+  | { type: "edit"; patch: BatchEdit; ids?: string[] }
   | { type: "movePhotos"; photoIds: string[]; targetId: string | null }
   | { type: "combineSelected" }
   | { type: "splitSelected" }
+  /** Each photo leaves `observationId` for a new observation of its own. */
+  | { type: "splitPhotos"; observationId: string; photoIds: string[] }
+  | { type: "removePhotos"; observationId: string; photoIds: string[] }
+  /**
+   * Undo for a change to one observation: it goes back as it was, at `index`
+   * if it has since gone, and the observations made from it (`dropIds`) go.
+   */
+  | { type: "restoreObservation"; observation: BatchObservation; index: number; dropIds: string[] }
   | { type: "reorderPhoto"; observationId: string; photoId: string; index: number }
   | { type: "remove"; id: string }
   | { type: "removeSelected" }
@@ -95,7 +104,7 @@ export type BatchAction =
   | { type: "clearDone" }
   | { type: "resetQueued" };
 
-const EMPTY_TAXON: BatchTaxon = { name: "", match: null, kingdom: "", rank: "" };
+export const EMPTY_TAXON: BatchTaxon = { name: "", match: null, kingdom: "", rank: "" };
 
 /** A new observation for `photo`, built from nothing but the photo's own EXIF. */
 function observationFromPhoto(id: string, photo: BatchPhoto): BatchObservation {
@@ -115,7 +124,7 @@ function observationFromPhoto(id: string, photo: BatchPhoto): BatchObservation {
   };
 }
 
-const hasLocation = (o: BatchObservation) => o.latitude !== null && o.longitude !== null;
+export const hasLocation = (o: BatchObservation) => o.latitude !== null && o.longitude !== null;
 
 /** `target` with each blank field filled from `donor`; the target's own values win. */
 function fillBlanks(target: BatchObservation, donor: BatchObservation): BatchObservation {
@@ -199,6 +208,25 @@ function splitSelected(state: BatchState): BatchState {
   return { ...state, observations, selected, nextId };
 }
 
+function splitPhotos(state: BatchState, observationId: string, photoIds: string[]): BatchState {
+  const source = state.observations.find((o) => o.id === observationId);
+  if (!source) return state;
+  // Splitting off everything would leave nothing behind, so the first photo stays.
+  const leaving = source.photos.filter((p, i) => photoIds.includes(p.id) && i > 0);
+  const [first] = source.photos;
+  if (first && photoIds.includes(first.id) && leaving.length < source.photos.length - 1) {
+    leaving.unshift(first);
+  }
+  if (leaving.length === 0) return state;
+
+  // Each starts over from its own EXIF and inherits nothing, as in `movePhotos`.
+  const fresh = leaving.map((p, i) => observationFromPhoto(`o${state.nextId + i}`, p));
+  const observations = state.observations.flatMap((o) =>
+    o === source ? [{ ...o, photos: o.photos.filter((p) => !leaving.includes(p)) }, ...fresh] : [o],
+  );
+  return { ...state, observations, nextId: state.nextId + fresh.length };
+}
+
 function exifLoaded(state: BatchState, photoId: string, exif: PhotoExif): BatchState {
   const observations = state.observations.map((o) => {
     if (!o.photos.some((p) => p.id === photoId)) return o;
@@ -252,8 +280,9 @@ export function batchReducer(state: BatchState, action: BatchAction): BatchState
       return { ...state, selected: [] };
     case "edit": {
       const { taxon, ...fields } = action.patch;
+      const ids = action.ids ?? state.selected;
       const observations = state.observations.map((o) =>
-        state.selected.includes(o.id)
+        ids.includes(o.id)
           ? { ...o, ...fields, ...(taxon ? { taxon: { ...o.taxon, ...taxon } } : {}) }
           : o,
       );
@@ -270,6 +299,30 @@ export function batchReducer(state: BatchState, action: BatchAction): BatchState
     }
     case "splitSelected":
       return splitSelected(state);
+    case "splitPhotos":
+      return splitPhotos(state, action.observationId, action.photoIds);
+    case "removePhotos": {
+      const observations = state.observations
+        .map((o) =>
+          o.id === action.observationId
+            ? { ...o, photos: o.photos.filter((p) => !action.photoIds.includes(p.id)) }
+            : o,
+        )
+        .filter((o) => o.photos.length > 0);
+      const left = new Set(observations.map((o) => o.id));
+      return { ...state, observations, selected: state.selected.filter((id) => left.has(id)) };
+    }
+    case "restoreObservation": {
+      const kept = state.observations.filter((o) => !action.dropIds.includes(o.id));
+      const observations = kept.some((o) => o.id === action.observation.id)
+        ? kept.map((o) => (o.id === action.observation.id ? action.observation : o))
+        : [...kept.slice(0, action.index), action.observation, ...kept.slice(action.index)];
+      return {
+        ...state,
+        observations,
+        selected: state.selected.filter((id) => !action.dropIds.includes(id)),
+      };
+    }
     case "reorderPhoto": {
       const observations = state.observations.map((o) => {
         const photo = o.photos.find((p) => p.id === action.photoId);
@@ -349,6 +402,19 @@ export function missingFields(observation: BatchObservation): MissingField[] {
   )
     missing.push("endDate");
   return missing;
+}
+
+/**
+ * The next observation after `currentId` that can't be uploaded yet, wrapping
+ * round to the start, or `null` when no other one is incomplete.
+ */
+export function nextIncompleteId(
+  observations: BatchObservation[],
+  currentId: string,
+): string | null {
+  const at = observations.findIndex((o) => o.id === currentId);
+  const others = [...observations.slice(at + 1), ...observations.slice(0, Math.max(at, 0))];
+  return others.find((o) => !isReading(o) && missingFields(o).length > 0)?.id ?? null;
 }
 
 /** One sentence for what `missingFields` found, e.g. "Missing date and location". */
