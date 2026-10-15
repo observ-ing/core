@@ -46,6 +46,8 @@ export interface BatchCardProps {
   selected: boolean;
   /** Upload in progress: no selecting, dragging, or dropping. */
   locked: boolean;
+  /** Worked by finger: the checkbox is drawn large enough to hit. */
+  touch?: boolean;
   dropState: CardDropState;
   /** Photos the card would hold after a combine; shown on the drop overlay. */
   combinedPhotoCount: number;
@@ -92,12 +94,12 @@ function Line({ children }: { children: ReactNode }) {
  * This one is opaque: a white rim sets it off from any background and the tick
  * is drawn in a color of its own.
  */
-function SelectionBox({ checked }: { checked: boolean }) {
+export function SelectionBox({ checked, size = 24 }: { checked: boolean; size?: number }) {
   return (
     <Box
       sx={{
-        width: 24,
-        height: 24,
+        width: size,
+        height: size,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -127,6 +129,7 @@ export function BatchCard({
   observation,
   selected,
   locked,
+  touch = false,
   dropState,
   combinedPhotoCount,
   insertionIndex,
@@ -203,7 +206,11 @@ export function BatchCard({
       onDragOver={(event) => onDragOver(event, null)}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
+      // On touch a long press starts a drag, so the system's menu for the photo
+      // stays out of the way.
+      onContextMenu={touch ? (event) => event.preventDefault() : undefined}
       sx={{
+        ...(touch && { userSelect: "none", WebkitTouchCallout: "none" }),
         display: "flex",
         flexDirection: "column",
         bgcolor: "background.paper",
@@ -263,8 +270,8 @@ export function BatchCard({
             checked={selected}
             onChange={() => onSelect(true)}
             slotProps={{ input: { "aria-label": "Select observation" } }}
-            icon={<SelectionBox checked={false} />}
-            checkedIcon={<SelectionBox checked />}
+            icon={<SelectionBox checked={false} size={touch ? 28 : 24} />}
+            checkedIcon={<SelectionBox checked size={touch ? 28 : 24} />}
             sx={{ position: "absolute", top: 0, left: 0 }}
           />
         )}

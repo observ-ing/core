@@ -20,6 +20,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
   LinearProgress,
   Link as MuiLink,
   Typography,
@@ -42,6 +43,7 @@ import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occu
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useToast } from "../../hooks/useToast";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useBatchLayout } from "../../hooks/useBatchLayout";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { EmptyState } from "../common/EmptyState";
 import {
@@ -69,6 +71,7 @@ import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
+import { PhoneLocationStep } from "./phone/PhoneLocationStep";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -119,6 +122,7 @@ function withViewTransition(update: () => void) {
 function ToolbarButton({
   icon,
   children,
+  touch,
   ...props
 }: {
   icon: ReactNode;
@@ -126,9 +130,18 @@ function ToolbarButton({
   onClick: () => void;
   disabled?: boolean;
   color?: "inherit" | "error";
+  /** Worked by finger: a full-size target. */
+  touch: boolean;
 }) {
   return (
-    <Button variant="outlined" color="inherit" size="small" startIcon={icon} {...props}>
+    <Button
+      variant="outlined"
+      color="inherit"
+      size={touch ? "medium" : "small"}
+      startIcon={icon}
+      sx={touch ? { minHeight: 44 } : {}}
+      {...props}
+    >
       {children}
     </Button>
   );
@@ -144,6 +157,7 @@ export function BatchUploadPage() {
   const isAuthLoading = useAppSelector((s) => s.auth.isLoading);
   const preferences = useUserPreferences();
   const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
+  const { touch, touchDrag } = useBatchLayout();
 
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
   const [uploading, setUploading] = useState(false);
@@ -163,6 +177,11 @@ export function BatchUploadPage() {
   const dragRef = useRef<Drag | null>(null);
   const cancelledRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The side panel's map, opened full screen where it is worked by finger.
+  const [mapExpanded, setMapExpanded] = useState(false);
+  // Counts locations set from the full-screen map; the side panel starts over
+  // after each, so a point picked on its small map can't overwrite the new one.
+  const [mapApplied, setMapApplied] = useState(0);
 
   const { observations: cards, selected, uploadedCount } = state;
   // Uploaded cards stay on screen until the run ends, so the grid holds still,
@@ -405,7 +424,8 @@ export function BatchUploadPage() {
 
   const handleMouseDown = (event: MouseEvent) => {
     pressedOnBackground.current = isBackground(event);
-    if (!pressedOnBackground.current || event.button !== 0 || uploading) return;
+    // Not by finger: there, a drag across the background scrolls it.
+    if (!pressedOnBackground.current || event.button !== 0 || uploading || touch) return;
     const additive = event.shiftKey || event.metaKey || event.ctrlKey;
     startMarquee(event, additive ? selected : [], (ids) => {
       // The click that follows the release ends the drag; it isn't a background click.
@@ -780,9 +800,9 @@ export function BatchUploadPage() {
               alignItems: "flex-start",
               gap: 3,
               // Side by side, the grid and the editor each scroll on their own, so
-              // the editor stays in view however long the grid is. Below `lg` the
+              // the editor stays in view however long the grid is. Below `md` the
               // editor may wrap under the grid and the two scroll together.
-              [theme.breakpoints.up("lg")]: { flexWrap: "nowrap", height: "100%" },
+              [theme.breakpoints.up("md")]: { flexWrap: "nowrap", height: "100%" },
             }}
           >
             <Box
@@ -792,7 +812,7 @@ export function BatchUploadPage() {
               sx={{
                 flex: "999 1 560px",
                 minWidth: 0,
-                [theme.breakpoints.up("lg")]: { height: "100%", overflowY: "auto" },
+                [theme.breakpoints.up("md")]: { height: "100%", overflowY: "auto" },
               }}
             >
               {!uploading && (
@@ -819,11 +839,17 @@ export function BatchUploadPage() {
                         {filtering && `Showing ${incomplete.length} incomplete. `}
                         {shownSelection.length > 0
                           ? `${shownSelection.length} selected`
-                          : "Drag cards together to combine them"}
+                          : touch
+                            ? touchDrag
+                              ? "Touch and hold a card, then drag it onto another to combine. " +
+                                "Tap a checkbox to select."
+                              : "Tap a checkbox to select."
+                            : "Drag cards together to combine them"}
                       </>
                     )}
                   </Typography>
                   <ToolbarButton
+                    touch={touch}
                     icon={<FileUploadIcon />}
                     onClick={() => fileInputRef.current?.click()}
                   >
@@ -831,12 +857,14 @@ export function BatchUploadPage() {
                   </ToolbarButton>
                   <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
+                    touch={touch}
                     icon={<SelectAllIcon />}
                     onClick={() => dispatch({ type: "selectAll", ids: shown.map((o) => o.id) })}
                   >
                     Select all
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<DeselectIcon />}
                     disabled={picked.length === 0}
                     onClick={() => dispatch({ type: "clearSelection" })}
@@ -846,6 +874,7 @@ export function BatchUploadPage() {
                   {/* Space, not a rule, between choosing cards and changing them. */}
                   <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
+                    touch={touch}
                     icon={<CallMergeIcon />}
                     disabled={!canCombine(picked)}
                     onClick={() => dispatch({ type: "combineSelected" })}
@@ -853,6 +882,7 @@ export function BatchUploadPage() {
                     Combine
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<CallSplitIcon />}
                     disabled={!picked.some((o) => o.photos.length > 1)}
                     onClick={() => dispatch({ type: "splitSelected" })}
@@ -860,6 +890,7 @@ export function BatchUploadPage() {
                     Split photos
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<DeleteOutlineIcon />}
                     color="error"
                     disabled={picked.length === 0}
@@ -885,6 +916,7 @@ export function BatchUploadPage() {
                     observation={observation}
                     selected={shownSelection.includes(observation.id)}
                     locked={uploading}
+                    touch={touch}
                     dropState={dropStateFor(observation)}
                     combinedPhotoCount={observation.photos.length + incomingCount(observation)}
                     insertionIndex={
@@ -929,7 +961,7 @@ export function BatchUploadPage() {
                 sx={{
                   flex: "1 1 320px",
                   minWidth: 0,
-                  [theme.breakpoints.up("lg")]: {
+                  [theme.breakpoints.up("md")]: {
                     flex: "0 0 360px",
                     height: "100%",
                     overflowY: "auto",
@@ -937,8 +969,13 @@ export function BatchUploadPage() {
                 }}
               >
                 <BatchEditor
+                  key={mapApplied}
                   selected={picked}
                   onEdit={(patch) => dispatch({ type: "edit", patch })}
+                  touch={touch}
+                  touchDrag={touchDrag}
+                  // A small map in a scrolling panel is hard to pan by touch.
+                  {...(touch ? { onExpandMap: () => setMapExpanded(true) } : {})}
                 />
               </Box>
             )}
@@ -946,6 +983,23 @@ export function BatchUploadPage() {
         )}
       </Box>
 
+      <Dialog
+        fullScreen
+        open={mapExpanded && picked.length > 0 && !uploading}
+        onClose={() => setMapExpanded(false)}
+        // The label goes on the dialog itself, not the backdrop around it.
+        slotProps={{ paper: { "aria-label": "Set location" } }}
+      >
+        <PhoneLocationStep
+          observations={picked}
+          onApply={(patch) => {
+            dispatch({ type: "edit", patch });
+            setMapApplied((n) => n + 1);
+            setMapExpanded(false);
+          }}
+          onBack={() => setMapExpanded(false)}
+        />
+      </Dialog>
       <SkippedFilesDialog
         open={skipped.open}
         skipped={skipped.files}

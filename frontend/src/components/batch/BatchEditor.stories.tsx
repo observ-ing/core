@@ -72,3 +72,10 @@ export const MultipleMixed: Story = {
     ],
   },
 };
+
+/** On a touch screen the help names touch gestures and the map can go full screen. */
+export const Touch: Story = {
+  args: { selected: [storyObservation()], touch: true, onExpandMap: () => {} },
+};
+
+export const TouchNothingSelected: Story = { args: { touch: true } };
