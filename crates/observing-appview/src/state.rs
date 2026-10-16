@@ -118,7 +118,7 @@ pub struct AppState {
     /// Base URL of the tap-ingester service, if configured. Enables the
     /// HTTP-backed `ingester/*` tables in the admin browser.
     pub ingester_url: Option<String>,
-    /// iNaturalist account linking, when an iNaturalist application is
+    /// iNaturalist cross-posting, when an iNaturalist application is
     /// configured. `None` turns the feature off.
     pub inat: Option<Arc<Inat>>,
 }

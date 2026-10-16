@@ -45,6 +45,9 @@ processes:
       - SPECIES_ID_SERVICE_URL=http://localhost:${SPECIES_ID_PORT:-3005}
       - VITE_DEV_SERVER_URL=http://localhost:${VITE_PORT:-5173}
       - PUBLIC_URL=${PUBLIC_URL:-}
+      # Locally the one appview both serves the web and carries out queued
+      # iNaturalist cross-posts. Production splits the two (see .env.example).
+      - INAT_CROSSPOST_WORKER=1
     depends_on:
       # migrate must finish first so the schema exists before appview reads it.
       migrate:

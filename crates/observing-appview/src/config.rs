@@ -25,16 +25,23 @@ pub struct Config {
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
     pub admin_dids: Vec<String>,
-    /// iNaturalist account linking. `None` turns the feature off.
+    /// iNaturalist cross-posting. `None` turns the feature off.
     pub inat: Option<InatConfig>,
+    /// Whether this process carries out queued cross-posts
+    /// (`INAT_CROSSPOST_WORKER`). Off by default: the worker needs CPU between
+    /// requests and must be the only one running, neither of which holds for
+    /// an autoscaled web instance. See [`crate::inat::worker`].
+    pub run_inat_worker: bool,
 }
 
-/// Settings for talking to iNaturalist, present when an iNaturalist OAuth
-/// application is configured.
+/// Settings for cross-posting to iNaturalist, present when an iNaturalist
+/// OAuth application is configured.
 #[derive(Clone, PartialEq)]
 pub struct InatConfig {
     pub client_id: String,
     pub client_secret: String,
+    /// Base of observation permalinks, e.g. `https://www.inaturalist.org`.
+    pub site_url: String,
     /// Base of the v2 API, e.g. `https://api.inaturalist.org/v2`.
     pub api_url: String,
 }
@@ -44,20 +51,23 @@ impl std::fmt::Debug for InatConfig {
         f.debug_struct("InatConfig")
             .field("client_id", &self.client_id)
             .field("client_secret", &"<redacted>")
+            .field("site_url", &self.site_url)
             .field("api_url", &self.api_url)
             .finish()
     }
 }
 
 impl InatConfig {
+    const DEFAULT_SITE_URL: &'static str = "https://www.inaturalist.org";
     const DEFAULT_API_URL: &'static str = "https://api.inaturalist.org/v2";
 
-    /// Build from the `INAT_CLIENT_ID`, `INAT_CLIENT_SECRET`, and
-    /// `INAT_API_URL` values. Both the ID and the secret are required; blank
-    /// values count as unset, as they do for `PUBLIC_URL`.
+    /// Build from the `INAT_CLIENT_ID`, `INAT_CLIENT_SECRET`, `INAT_SITE_URL`,
+    /// and `INAT_API_URL` values. Both the ID and the secret are required;
+    /// blank values count as unset, as they do for `PUBLIC_URL`.
     fn from_vars(
         client_id: Option<String>,
         client_secret: Option<String>,
+        site_url: Option<String>,
         api_url: Option<String>,
     ) -> Option<Self> {
         let set = |value: Option<String>| {
@@ -68,6 +78,7 @@ impl InatConfig {
         Some(Self {
             client_id: set(client_id)?,
             client_secret: set(client_secret)?,
+            site_url: set(site_url).unwrap_or_else(|| Self::DEFAULT_SITE_URL.to_string()),
             api_url: set(api_url).unwrap_or_else(|| Self::DEFAULT_API_URL.to_string()),
         })
     }
@@ -132,8 +143,10 @@ impl Config {
         let inat = InatConfig::from_vars(
             env::var("INAT_CLIENT_ID").ok(),
             env::var("INAT_CLIENT_SECRET").ok(),
+            env::var("INAT_SITE_URL").ok(),
             env::var("INAT_API_URL").ok(),
         );
+        let run_inat_worker = is_on(env::var("INAT_CROSSPOST_WORKER").ok());
 
         Self {
             port,
@@ -147,8 +160,18 @@ impl Config {
             hidden_dids,
             admin_dids,
             inat,
+            run_inat_worker,
         }
     }
+}
+
+/// Whether an on/off environment variable is on: `1` or `true`. Unset, blank,
+/// and anything else are off.
+fn is_on(value: Option<String>) -> bool {
+    value.is_some_and(|v| {
+        let v = v.trim();
+        v == "1" || v.eq_ignore_ascii_case("true")
+    })
 }
 
 /// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
@@ -206,35 +229,60 @@ mod tests {
 
     #[test]
     fn inat_is_off_without_both_the_id_and_the_secret() {
-        assert_eq!(InatConfig::from_vars(None, None, None), None);
-        assert_eq!(InatConfig::from_vars(some("id"), None, None), None);
-        assert_eq!(InatConfig::from_vars(None, some("secret"), None), None);
-        assert_eq!(InatConfig::from_vars(some("id"), some("  "), None), None);
+        assert_eq!(InatConfig::from_vars(None, None, None, None), None);
+        assert_eq!(InatConfig::from_vars(some("id"), None, None, None), None);
+        assert_eq!(
+            InatConfig::from_vars(None, some("secret"), None, None),
+            None
+        );
+        assert_eq!(
+            InatConfig::from_vars(some("id"), some("  "), None, None),
+            None
+        );
     }
 
     #[test]
-    fn inat_defaults_to_the_production_api() {
+    fn inat_defaults_to_the_production_urls() {
         let config =
-            InatConfig::from_vars(some("id"), some("secret"), some(" ")).expect("configured");
+            InatConfig::from_vars(some("id"), some("secret"), None, some(" ")).expect("configured");
         assert_eq!(config.client_id, "id");
         assert_eq!(config.client_secret, "secret");
+        assert_eq!(config.site_url, "https://www.inaturalist.org");
         assert_eq!(config.api_url, "https://api.inaturalist.org/v2");
     }
 
     #[test]
-    fn inat_api_url_can_be_overridden_and_loses_a_trailing_slash() {
+    fn inat_urls_can_be_overridden_and_lose_a_trailing_slash() {
         let config = InatConfig::from_vars(
             some("id"),
             some("secret"),
+            some("http://localhost:3000/"),
             some("http://localhost:4000/v2/"),
         )
         .expect("configured");
+        assert_eq!(config.site_url, "http://localhost:3000");
         assert_eq!(config.api_url, "http://localhost:4000/v2");
     }
 
     #[test]
+    fn the_inat_worker_is_off_unless_asked_for() {
+        assert!(!is_on(None));
+        assert!(!is_on(some("")));
+        assert!(!is_on(some("0")));
+        assert!(!is_on(some("false")));
+    }
+
+    #[test]
+    fn the_inat_worker_is_turned_on_by_1_or_true() {
+        assert!(is_on(some("1")));
+        assert!(is_on(some("true")));
+        assert!(is_on(some(" TRUE ")));
+    }
+
+    #[test]
     fn inat_debug_output_hides_the_secret() {
-        let config = InatConfig::from_vars(some("id"), some("hunter2"), None).expect("configured");
+        let config =
+            InatConfig::from_vars(some("id"), some("hunter2"), None, None).expect("configured");
         assert!(!format!("{config:?}").contains("hunter2"));
     }
 }

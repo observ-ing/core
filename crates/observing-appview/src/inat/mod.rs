@@ -1,11 +1,19 @@
-//! iNaturalist (#878). For now, linking a user's iNaturalist account over
-//! OAuth; cross-posting occurrences to it builds on that.
+//! Cross-posting occurrences to iNaturalist (#878).
+//!
+//! An occurrence is pushed once, at its owner's request. Nothing is pulled
+//! back, and later edits here are not pushed.
 
 pub mod client;
+pub mod guard;
+pub mod ids;
+pub mod links;
+pub mod payload;
+pub mod worker;
 
 use std::time::Duration;
 
 use inaturalist_oauth::{Authenticator, AuthorizationInfo, PkceVerifier, TokenDetails};
+use moka::future::Cache;
 
 use crate::config::InatConfig;
 use client::{InatClient, InatError};
@@ -17,15 +25,21 @@ pub const SERVICE: &str = "inaturalist";
 /// iNaturalist asks applications to stay at or under 60 requests a minute.
 const MIN_CALL_INTERVAL: Duration = Duration::from_secs(1);
 
-/// How long to wait on iNaturalist before giving up on a request.
+/// How long to wait on iNaturalist before giving up on a request. Generous,
+/// because a photo upload is one request.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 
-/// Everything talking to iNaturalist needs at runtime. Present in
+/// An API token lasts 24 hours; replace ours well before that.
+const API_TOKEN_TTL: Duration = Duration::from_secs(12 * 60 * 60);
+
+/// Everything cross-posting to iNaturalist needs at runtime. Present in
 /// [`crate::state::AppState`] only when an iNaturalist application is configured.
 pub struct Inat {
     pub client: InatClient,
     config: InatConfig,
     redirect_uri: String,
+    /// API tokens by DID, so a job doesn't mint one per call.
+    api_tokens: Cache<String, String>,
 }
 
 impl Inat {
@@ -34,7 +48,13 @@ impl Inat {
             client: InatClient::new(config.api_url.clone(), MIN_CALL_INTERVAL, REQUEST_TIMEOUT),
             redirect_uri: redirect_uri(public_url, port),
             config,
+            api_tokens: Cache::builder().time_to_live(API_TOKEN_TTL).build(),
         }
+    }
+
+    /// Base of observation permalinks.
+    pub fn site_url(&self) -> &str {
+        &self.config.site_url
     }
 
     fn authenticator(&self) -> Authenticator {
@@ -49,7 +69,7 @@ impl Inat {
     /// verifier to hold on to until they come back.
     pub fn authorization_url(&self) -> Result<AuthorizationInfo, InatError> {
         self.authenticator().authorization_url().map_err(|e| {
-            InatError::new(format!(
+            InatError::transient(format!(
                 "Could not build the iNaturalist authorize URL: {e}"
             ))
         })
@@ -67,13 +87,40 @@ impl Inat {
         tokio::time::timeout(REQUEST_TIMEOUT, exchange)
             .await
             .map_err(|_| unanswered())?
-            .map_err(|e| InatError::new(format!("iNaturalist authorization failed: {e}")))
+            .map_err(|e| InatError::transient(format!("iNaturalist authorization failed: {e}")))
+    }
+
+    /// An API token for the user, minted from their OAuth access token unless
+    /// a recent one is cached.
+    pub async fn api_token(&self, did: &str, access_token: &str) -> Result<String, InatError> {
+        if let Some(token) = self.api_tokens.get(did).await {
+            return Ok(token);
+        }
+        let details =
+            tokio::time::timeout(REQUEST_TIMEOUT, inaturalist_oauth::api_token(access_token))
+                .await
+                .map_err(|_| unanswered())?
+                .map_err(|e| {
+                    InatError::transient(format!("Could not get an iNaturalist API token: {e}"))
+                })?;
+        self.remember_api_token(did, &details.api_token).await;
+        Ok(details.api_token)
+    }
+
+    pub async fn remember_api_token(&self, did: &str, api_token: &str) {
+        self.api_tokens
+            .insert(did.to_string(), api_token.to_string())
+            .await;
+    }
+
+    pub async fn forget_api_token(&self, did: &str) {
+        self.api_tokens.invalidate(did).await;
     }
 }
 
 /// `inaturalist-oauth` sets no timeout of its own.
 fn unanswered() -> InatError {
-    InatError::new("iNaturalist did not respond")
+    InatError::transient("iNaturalist did not respond")
 }
 
 /// Where iNaturalist sends the user back to. Must be registered on the

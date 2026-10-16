@@ -2,8 +2,8 @@
 
 export type InatAccountResponse = {
   /**
-   * Whether this server has iNaturalist enabled at all. When false the
-   * client hides everything to do with it.
+   * Whether this server can cross-post to iNaturalist at all. When false
+   * the client hides everything to do with it.
    */
   enabled: boolean;
   /**

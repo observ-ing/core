@@ -34,6 +34,7 @@ export const qk = {
   preferences: () => ["preferences"] as const,
   serviceStatus: () => ["serviceStatus"] as const,
   inatAccount: () => ["inatAccount"] as const,
+  crosspost: (uri: string) => ["crosspost", uri] as const,
 } as const;
 
 // Key tags whose caches contain `occurrences: Occurrence[]` pages.
