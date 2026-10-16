@@ -514,6 +514,20 @@ mod tests {
         );
     }
 
+    #[tokio::test]
+    async fn me_fails_without_an_account() {
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/users/me"))
+            .respond_with(results(json!([])))
+            .mount(&server)
+            .await;
+
+        let error = client(&server).me("jwt").await.unwrap_err();
+
+        assert!(error.message.contains("no account"), "{error}");
+    }
+
     #[tokio::test(start_paused = true)]
     async fn the_rate_limiter_spaces_calls_out() {
         let limiter = RateLimiter::new(Duration::from_secs(1));

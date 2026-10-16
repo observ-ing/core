@@ -4,7 +4,7 @@ import { ConservationStatus } from "../common/ConservationStatus";
 import { ExternalLinkChip } from "../common/ExternalLinkChip";
 import { ImageWithSkeleton } from "../common/ImageWithSkeleton";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
-import { TAXON_HERO_IMAGE_SIZE } from "./taxonLayout";
+import { TAXON_HERO_IMAGE_RADIUS, TAXON_HERO_IMAGE_SIZE } from "./taxonLayout";
 
 export interface TaxonHeroCardProps {
   taxon: TaxonDetail;
@@ -37,7 +37,7 @@ export function TaxonHeroCard({ taxon, heroUrl }: TaxonHeroCardProps) {
             height: TAXON_HERO_IMAGE_SIZE,
             maxWidth: "100%",
             flexShrink: 0,
-            borderRadius: 1.75,
+            borderRadius: TAXON_HERO_IMAGE_RADIUS,
             border: 1,
             borderColor: "divider",
             boxShadow: (theme) => theme.palette.cardShadow["hero"],

@@ -1,6 +1,7 @@
 import type { KeyboardEvent, ReactNode } from "react";
 import { Box, Paper, Stack, Typography } from "@mui/material";
 import type { SxProps, Theme } from "@mui/material";
+import { rowIconSx } from "./layoutSx";
 
 export interface SectionProps {
   children: ReactNode;
@@ -35,7 +36,7 @@ export function Section({ children, sx }: SectionProps) {
 }
 
 /** Shared sizing for a {@link SectionHeader}'s (or {@link CollapsibleSection}'s) leading icon. */
-export const sectionIconSx: SxProps<Theme> = { fontSize: 18, color: "primary.main" };
+export const sectionIconSx: SxProps<Theme> = { ...rowIconSx, color: "primary.main" };
 
 export interface SectionHeaderProps {
   /** Leading icon, sized/colored via {@link sectionIconSx}. Optional. */

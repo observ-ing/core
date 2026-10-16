@@ -27,7 +27,7 @@ import { useNavigation } from "../../hooks/useNavigation";
 import { getNavItems } from "./NavConfig";
 import { CreateMenu } from "./CreateMenu";
 import { PendingIndicator } from "./PendingIndicator";
-import { glassBlurSx, pillButtonSx } from "../common/layoutSx";
+import { glassBlurSx, headerMenuPaperSx, pillButtonSx } from "../common/layoutSx";
 
 interface TopBarProps {
   onMobileMenuClick: () => void;
@@ -191,14 +191,7 @@ export function TopBar({ onMobileMenuClick, unreadCount }: TopBarProps) {
                       elevation: 4,
                       sx: {
                         mt: 1.5,
-                        minWidth: 200,
-                        "& .MuiMenuItem-root": {
-                          px: 2,
-                          py: 1,
-                          borderRadius: 1,
-                          mx: 1,
-                          my: 0.5,
-                        },
+                        ...headerMenuPaperSx,
                       },
                     },
                   }}
