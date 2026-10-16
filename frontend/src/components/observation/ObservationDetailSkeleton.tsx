@@ -1,5 +1,6 @@
 import { Box, Divider, Skeleton, Stack, Typography } from "@mui/material";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
+import { IconButtonSkeleton } from "../common/IconButtonSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import {
   OBSERVATION_PHOTO_LICENSE_SX,
@@ -21,7 +22,7 @@ export function ObservationDetailSkeleton() {
     <Box>
       <DetailHeaderSkeleton
         titleWidth={100}
-        trailing={<Skeleton variant="circular" width={30} height={30} sx={{ ml: "auto" }} />}
+        trailing={<IconButtonSkeleton sx={{ ml: "auto" }} />}
       />
 
       {/* Species header */}
@@ -43,7 +44,7 @@ export function ObservationDetailSkeleton() {
           belowName={<Skeleton variant="text" width={160} height={24} />}
           sx={{ flex: 1, minWidth: 0 }}
         />
-        <Skeleton variant="circular" width={30} height={30} />
+        <IconButtonSkeleton />
       </Stack>
 
       {/* Image + license caption */}

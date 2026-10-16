@@ -1,4 +1,5 @@
 import { Box, Card, CardContent, Skeleton } from "@mui/material";
+import { IconButtonSkeleton } from "../common/IconButtonSkeleton";
 import { UserCardSkeleton } from "../common/UserCardSkeleton";
 import { FEED_CARD_SX, FEED_IMAGE_MAX_HEIGHT } from "./feedLayout";
 
@@ -21,7 +22,7 @@ export function FeedItemSkeleton() {
           subtitleHeight={20}
           sx={{ flex: 1 }}
         />
-        <Skeleton variant="circular" width={30} height={30} />
+        <IconButtonSkeleton />
       </Box>
       {/* Image */}
       <Skeleton variant="rectangular" height={FEED_IMAGE_MAX_HEIGHT} />
@@ -36,7 +37,7 @@ export function FeedItemSkeleton() {
           }}
         >
           <Skeleton variant="text" width="40%" height={24} />
-          <Skeleton variant="circular" width={30} height={30} />
+          <IconButtonSkeleton />
         </Box>
       </CardContent>
     </Card>
