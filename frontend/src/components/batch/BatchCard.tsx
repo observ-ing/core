@@ -21,7 +21,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { coverImageSx } from "../common/layoutSx";
+import { captionIconSx, coverImageSx, rowIconSx } from "../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import {
   describeMissing,
@@ -109,7 +109,7 @@ function SelectionBox({ checked }: { checked: boolean }) {
         boxShadow: (theme) => theme.palette.cardShadow["selectBox"],
       }}
     >
-      {checked && <CheckIcon sx={{ fontSize: 18 }} />}
+      {checked && <CheckIcon sx={rowIconSx} />}
     </Box>
   );
 }
@@ -417,7 +417,7 @@ export function BatchCard({
               fontWeight: 600,
             }}
           >
-            <WarningAmberIcon sx={{ fontSize: 18 }} />
+            <WarningAmberIcon sx={rowIconSx} />
             {describeMissing(missing)}
           </Typography>
         )}
@@ -467,7 +467,7 @@ export function BatchCard({
             variant="body2"
             sx={{ display: "flex", alignItems: "center", gap: 0.5, fontWeight: 600 }}
           >
-            <ScheduleIcon sx={{ fontSize: 16 }} />
+            <ScheduleIcon sx={captionIconSx} />
             Queued
           </Typography>
         )}
@@ -487,7 +487,7 @@ export function BatchCard({
               color: "success.main",
             }}
           >
-            <CheckCircleIcon sx={{ fontSize: 16 }} />
+            <CheckCircleIcon sx={captionIconSx} />
             Uploaded
           </Typography>
         )}
@@ -503,7 +503,7 @@ export function BatchCard({
                 color: "error.main",
               }}
             >
-              <ErrorIcon sx={{ fontSize: 16 }} />
+              <ErrorIcon sx={captionIconSx} />
               Upload failed
             </Typography>
             {observation.error && (

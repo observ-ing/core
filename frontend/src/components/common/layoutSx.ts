@@ -12,6 +12,12 @@ export const detailHeaderSx = {
 /** Inline glyph size for icons embedded in chips, small buttons and caption rows. */
 export const miniIconSx = { fontSize: 14 } as const;
 
+/** Glyph size for icons in caption/status rows (batch card status lines). */
+export const captionIconSx = { fontSize: 16 } as const;
+
+/** Glyph size for leading icons in section headers, detail rows and badges. */
+export const rowIconSx = { fontSize: 18 } as const;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
