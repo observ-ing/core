@@ -146,19 +146,27 @@ async fn fetch_and_cache(
         return Ok((data, content_type, true));
     }
 
-    let pds_url = media.fetcher.resolve_pds_url(did).await.map_err(|e| {
-        error!(did = %did, error = %e, "Failed to resolve PDS URL");
-        e
-    })?;
-
-    let (data, content_type) = media
-        .fetcher
-        .fetch_blob(&pds_url, did_str, cid)
+    // `try_get_with` also coalesces concurrent misses for the same DID — a
+    // feed page requests several of one account's images at once. Errors
+    // aren't cached.
+    let pds_url = media
+        .pds_urls
+        .try_get_with_by_ref(did_str, media.fetcher.resolve_pds_url(did))
         .await
         .map_err(|e| {
-            error!(did = %did, cid = %cid, error = %e, "Failed to fetch blob from PDS");
+            error!(did = %did, error = %e, "Failed to resolve PDS URL");
             e
         })?;
+
+    let (data, content_type) = match media.fetcher.fetch_blob(&pds_url, did_str, cid).await {
+        Ok(blob) => blob,
+        Err(e) => {
+            error!(did = %did, cid = %cid, error = %e, "Failed to fetch blob from PDS");
+            // The account may have moved PDS; resolve afresh next time.
+            media.pds_urls.invalidate(did_str).await;
+            return Err(e.into());
+        }
+    };
 
     if let Err(e) = media.cache.put(did_str, cid, &data, &content_type).await {
         warn!(did = %did, cid = %cid, error = %e, "Failed to cache blob");

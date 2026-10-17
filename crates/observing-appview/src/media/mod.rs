@@ -7,19 +7,30 @@
 use atproto_blob_resolver::BlobResolver;
 use chrono::{DateTime, Utc};
 use file_blob_cache::BlobCache;
+use moka::future::Cache;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Default cache TTL: 24 hours, matching the previous media-proxy default.
 const DEFAULT_CACHE_TTL_SECS: u64 = 24 * 60 * 60;
 /// Default cache capacity: 1 GB, matching the previous media-proxy default.
 const DEFAULT_MAX_CACHE_SIZE: u64 = 1024 * 1024 * 1024;
+/// How long a DID's resolved PDS URL is reused. Short, so an account that
+/// moves PDS is picked up quickly; a failed blob fetch also drops the entry.
+const PDS_URL_TTL: Duration = Duration::from_secs(10 * 60);
+/// Maximum number of DIDs whose PDS URL is kept.
+const PDS_URL_CAPACITY: u64 = 10_000;
 
 /// Cache + PDS-fetcher pair. Cheap to clone (everything inside is `Arc`-able
 /// or already cheap to share).
 pub struct MediaCache {
     pub cache: BlobCache,
     pub fetcher: BlobResolver,
+    /// DID → PDS URL. Without it every blob cache miss re-resolved the DID
+    /// document (a plc.directory round trip), even for a page of images that
+    /// all belong to the same account.
+    pub pds_urls: Cache<String, String>,
     pub started_at: DateTime<Utc>,
 }
 
@@ -57,6 +68,10 @@ impl MediaCache {
         Arc::new(Self {
             cache,
             fetcher: BlobResolver::new(),
+            pds_urls: Cache::builder()
+                .max_capacity(PDS_URL_CAPACITY)
+                .time_to_live(PDS_URL_TTL)
+                .build(),
             started_at: Utc::now(),
         })
     }
