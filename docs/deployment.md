@@ -4,22 +4,9 @@
 
 Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after CI checks pass.
 
-### Services
+### Services and jobs
 
-| Service | Build arg | Public | Cloud SQL | DB role | Notes |
-|---------|-----------|--------|-----------|---------|-------|
-| observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
-| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. Runs with `--no-cpu-throttling` (always-allocated CPU) + 1 vCPU / 1 GiB because the firehose consumer is a background loop, not request-driven — under Cloud Run's default request-scoped CPU it gets starved and falls behind the relay's ~72h retention window. |
-| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=0, gen2 execution environment — gen2 reads the ~3.3 GB baked-in model bundle ~6× faster than gen1, cutting cold start from ~95s to ~20s). Scales to zero; the appview's `/api/species-id/status` probe pre-warms it when the upload/ID UI opens and the frontend shows a boot countdown |
-| observing-species-id-live | `SERVICE=observing-species-id` + `SPECIES_MODEL_URL=<ViT-L bundle>` + `MODEL_VERSION=bioclip-2-vit-l-14` | Yes | No | — | Same binary as `observing-species-id`, built with the smaller/faster ViT-L model bundle ([`bioclip-models` release `vit-l-v1.0.0`](https://github.com/observ-ing/bioclip-models/releases/tag/vit-l-v1.0.0)). Serves the live camera loop (frontend sends `live: true`; appview routes here via `SPECIES_ID_LIVE_SERVICE_URL`). Built + deployed by CI as its own image alongside `observing-species-id`. Same sizing as above but **4 GiB** (the ViT-L bundle's resident footprint is ~3 GB, vs ViT-H's ~4.4 GB). |
-
-### Jobs
-
-| Job | Build arg | Cloud SQL | DB role | Notes |
-|-----|-----------|-----------|---------|-------|
-| observing-migrate | `SERVICE=observing-migrate` | Yes | `postgres` | One-shot `gcloud run jobs deploy` + `execute --wait` — runs `sqlx` migrations *before* any service deploy. Only thing that ever connects as superuser. |
-
-All services and the migrate Job are Rust binaries built from the shared multi-stage `Dockerfile` at the project root using `--build-arg SERVICE=<name>`.
+[services.md](services.md) lists every service and job: what it does, how it's sized, and why each deploy flag is set the way it is.
 
 ### Deploy order
 
