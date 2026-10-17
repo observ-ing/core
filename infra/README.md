@@ -9,11 +9,12 @@ Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy or
 | Path | What it is |
 |------|------------|
 | [`docker/Dockerfile`](docker/Dockerfile) | Builds every Rust service image, picked with `--build-arg SERVICE=<name>` |
+| [`docker/Dockerfile.dockerignore`](docker/Dockerfile.dockerignore) | Build-context excludes for `docker/Dockerfile` |
 | [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The six production images CI builds and pushes together |
 | [`docker/Dockerfile.storybook`](docker/Dockerfile.storybook) | The Storybook static-site image |
 | [`monitoring/`](monitoring/) | Sources for the Cloud Monitoring dashboards (see [Supporting infrastructure](#supporting-infrastructure)) |
 
-Docker builds use the repo root as their context, so run them from there, for example `docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester .`. The root `.dockerignore` applies.
+Docker builds use the repo root as their context, so run them from there, for example `docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester .`. BuildKit reads `docker/Dockerfile.dockerignore` in place of a root `.dockerignore`, because it sits next to the Dockerfile and has its name. Its patterns are still relative to the repo root.
 
 The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub only reads workflows from `.github/workflows/`.
 
