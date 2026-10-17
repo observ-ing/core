@@ -3,6 +3,12 @@ ignore = [
 # jacquard-common -> postcard -> heapless 0.7 -> atomic-polyfill (no postcard release with heapless 0.8 yet)
     { id = "RUSTSEC-2023-0089", reason = "unmaintained, transitive dep via postcard" },
     { id = "RUSTSEC-2024-0449", reason = "unmaintained, build-time transitive dep via gbif -> progenitor -> serde_yaml" },
+# utoipa-swagger-ui -> zip 8 (build-time only). Its build script extracts the
+# Swagger UI archive vendored in the crate, never an untrusted one, which is what
+# these need. Remove once utoipa-swagger-ui allows zip 9 (juhaku/utoipa#1645).
+    { id = "RUSTSEC-2026-0367", reason = "zip SUID/SGID extraction; build-time only, trusted vendored archive" },
+    { id = "RUSTSEC-2026-0368", reason = "zip symlink extraction; build-time only, trusted vendored archive" },
+    { id = "RUSTSEC-2026-0369", reason = "zip permissions through symlinks; build-time only, trusted vendored archive" },
 ]
 
 [licenses]
