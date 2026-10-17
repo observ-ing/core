@@ -1,12 +1,11 @@
-import { useMediaQuery } from "@mui/material";
 import { Capacitor } from "@capacitor/core";
 
 /**
- * Whether to offer the batch uploader. It is built around drag and drop, so it
- * needs a precise pointer: a narrow desktop window qualifies, a phone or tablet
- * browser does not, and neither does the native app.
+ * Whether to offer the batch uploader. It has a layout for a mouse and one for
+ * touch (#887), so any browser gets it. The native app does not yet: its photo
+ * picker, the only one that keeps a photo's GPS position on Android, hands
+ * over one photo at a time.
  */
 export function useBatchUploadAvailable(): boolean {
-  const finePointer = useMediaQuery("(pointer: fine)");
-  return finePointer && !Capacitor.isNativePlatform();
+  return !Capacitor.isNativePlatform();
 }
