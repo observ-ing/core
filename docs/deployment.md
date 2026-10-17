@@ -46,20 +46,20 @@ The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/s
 
 ### System health dashboard
 
-The System Health Cloud Monitoring dashboard shows resource use over time:
+The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) Cloud Monitoring dashboard shows resource use over time:
 
 - memory and CPU for each Cloud Run service, as a fraction of its limit, with tap-ingester's p50 and p99 charted on their own
 - tap-ingester's firehose bytes received per second, its liveness signal
-- observing-appview's request rate and p95 latency
-- observing-db's CPU, memory, connections, commits per second and disk use
-
-The source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. Create it once:
+- obsThe source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. After editing the file, push it by hand with the same etag steps:
 
 ```bash
-gcloud monitoring dashboards create --project=observ-ing --config-from-file=infra/monitoring/system-health-dashboard.json
+ID=4046b455-644f-4615-99cc-d4eae66aae0d
+ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='value(etag)')
+jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/system-health-dashboard.json > /tmp/dashboard.json
+gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
 ```
 
-After that, update it with the same etag steps as Service Status. Use the dashboard ID that `gcloud monitoring dashboards list --project=observ-ing --filter='displayName="System Health"'` prints.
+ashboard ID that `gcloud monitoring dashboards list --project=observ-ing --filter='displayName="System Health"'` prints.
 
 ## Runtime role boundary (one-shot)
 
