@@ -489,10 +489,14 @@ impl GbifClient {
             None => return Ok(None),
         };
 
-        // Fetch children, descriptions, references, media, Wikidata URL, and
-        // Wikidata's primary image (P18) in parallel.
+        // Fetch children, descriptions, references, media, Wikidata URL,
+        // Wikidata's primary image (P18), and conservation status in parallel.
         let key_u64 = key as u64;
         let key_slice = [key_u64];
+        let status_name = data
+            .canonical_name
+            .as_deref()
+            .unwrap_or(data.scientific_name.as_str());
         let (
             children,
             descriptions,
@@ -501,6 +505,7 @@ impl GbifClient {
             vernacular_names,
             wikidata_url,
             wikidata_images,
+            conservation_status,
         ) = tokio::join!(
             self.get_children(taxon_id, 20),
             async {
@@ -539,6 +544,7 @@ impl GbifClient {
             self.get_name_usage_vernacular_names(key),
             self.wikidata.get_entity_url(key_u64),
             self.wikidata.get_images_for_keys(&key_slice, 600),
+            self.get_conservation_status(status_name),
         );
 
         let children = children.unwrap_or_default();
@@ -578,13 +584,6 @@ impl GbifClient {
 
         // Build ancestors from individual key fields
         let ancestors = self.build_ancestors(&data, numeric_id);
-
-        // Conservation status
-        let conservation_status = if let Some(canonical) = &data.canonical_name {
-            self.get_conservation_status(canonical).await
-        } else {
-            self.get_conservation_status(&data.scientific_name).await
-        };
 
         let resolved_name: &str = data
             .canonical_name
