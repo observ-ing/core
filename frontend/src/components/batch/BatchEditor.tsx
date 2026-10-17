@@ -3,6 +3,7 @@
 // when the whole selection agrees on it.
 import { lazy, Suspense, useState } from "react";
 import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
@@ -29,6 +30,12 @@ const LocationPicker = lazy(() =>
 export interface BatchEditorProps {
   selected: BatchObservation[];
   onEdit: (patch: BatchEdit) => void;
+  /** Worked by finger: the help text names touch gestures. */
+  touch?: boolean;
+  /** A long press can drag a card; when it can't, the help text leaves it out. */
+  touchDrag?: boolean;
+  /** Offers the map full screen, where it is easier to pan by touch than in the panel. */
+  onExpandMap?: () => void;
 }
 
 /** The identification a visual ID suggestion stands for. */
@@ -171,7 +178,7 @@ export function RemarksField({ selected, onEdit }: BatchEditorProps) {
   );
 }
 
-function EditorFields({ selected, onEdit }: BatchEditorProps) {
+function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps) {
   const [first] = selected;
   // The point clicked on the map for a multi-selection, not yet applied.
   const [proposed, setProposed] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -316,6 +323,17 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
             />
           )}
         </Suspense>
+        {onExpandMap && (
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<OpenInFullIcon />}
+            onClick={onExpandMap}
+            sx={{ mt: 1, minHeight: 44 }}
+          >
+            Expand map
+          </Button>
+        )}
         {!single && !proposed && (
           <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1 }}>
             {located.length === 0
@@ -324,7 +342,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
                 ? `The ${selected.length} selected observations share one location, shown in grey.`
                 : `The ${selected.length} selected observations are at different locations, ` +
                   "shown in grey."}{" "}
-            Click the map to choose one location for all of them.
+            {touch ? "Tap" : "Click"} the map to choose one location for all of them.
           </Typography>
         )}
         {!single && proposed && (
@@ -358,7 +376,13 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
   );
 }
 
-export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
+export function BatchEditor({
+  selected,
+  onEdit,
+  touch = false,
+  touchDrag = true,
+  onExpandMap,
+}: BatchEditorProps) {
   return (
     <Paper
       component="aside"
@@ -372,12 +396,20 @@ export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
             Nothing selected
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Click an observation to edit it. Shift-click or use the checkboxes to select several and
-            edit them together.
+            {touch
+              ? "Tap an observation to edit it. Use the checkboxes to select several and edit " +
+                "them together."
+              : "Click an observation to edit it. Shift-click or use the checkboxes to select " +
+                "several and edit them together."}
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Drag one card onto another to combine their photos into a single observation. Drag a
-            photo out of a card to split it off.
+            {touch
+              ? touchDrag
+                ? "Touch and hold a card, then drag it onto another to combine their photos " +
+                  "into a single observation, or select several and tap Combine."
+                : "Select several and tap Combine to put their photos into a single observation."
+              : "Drag one card onto another to combine their photos into a single observation. " +
+                "Drag a photo out of a card to split it off."}
           </Typography>
         </Stack>
       ) : (
@@ -386,6 +418,8 @@ export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
           key={selected.map((o) => o.id).join(",")}
           selected={selected}
           onEdit={onEdit}
+          touch={touch}
+          {...(onExpandMap ? { onExpandMap } : {})}
         />
       )}
     </Paper>
