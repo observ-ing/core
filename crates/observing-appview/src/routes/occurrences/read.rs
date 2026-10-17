@@ -344,28 +344,33 @@ pub async fn get_occurrence(
         .await?
         .ok_or_else(|| AppError::NotFound("Occurrence not found".into()))?;
 
+    // The occurrence's enrichment, its identifications and its comments are
+    // independent of one another, so fetch and enrich all three concurrently.
     let viewer = session_did(&cookies);
-    let enriched = enrichment::enrich_occurrences(
-        &state.pool,
-        &state.resolver,
-        &state.taxonomy,
-        &[row],
-        viewer.as_deref(),
-    )
-    .await;
+    let (enriched, identifications, comments) = tokio::join!(
+        enrichment::enrich_occurrences(
+            &state.pool,
+            &state.resolver,
+            &state.taxonomy,
+            std::slice::from_ref(&row),
+            viewer.as_deref(),
+        ),
+        async {
+            let rows = observing_db::identifications::get_for_occurrence(&state.pool, &uri).await?;
+            Ok::<_, AppError>(enrichment::enrich_identifications(&state.resolver, &rows).await)
+        },
+        async {
+            let rows = observing_db::comments::get_for_occurrence(&state.pool, &uri).await?;
+            Ok::<_, AppError>(enrichment::enrich_comments(&state.resolver, &rows).await)
+        },
+    );
 
     let occurrence = enriched
         .into_iter()
         .next()
         .ok_or_else(|| AppError::Internal("Failed to enrich occurrence".into()))?;
-
-    let identification_rows =
-        observing_db::identifications::get_for_occurrence(&state.pool, &uri).await?;
-    let identifications =
-        enrichment::enrich_identifications(&state.resolver, &identification_rows).await;
-
-    let comment_rows = observing_db::comments::get_for_occurrence(&state.pool, &uri).await?;
-    let comments = enrichment::enrich_comments(&state.resolver, &comment_rows).await;
+    let identifications = identifications?;
+    let comments = comments?;
 
     Ok(Json(OccurrenceDetailResponse {
         occurrence,

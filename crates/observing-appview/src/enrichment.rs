@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use ts_rs::TS;
 use utoipa::ToSchema;
 
-use crate::taxonomy_client::TaxonomyClient;
+use crate::taxonomy_client::{TaxonDetail, TaxonomyClient};
 use crate::validation::normalize_license;
 
 /// Enriched occurrence ready for API response
@@ -256,9 +256,12 @@ pub async fn enrich_occurrences(
     }
 
     let uris: Vec<String> = rows.iter().map(|r| r.uri.clone()).collect();
+    let dids_vec: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
 
-    // Stage 1: Batch-fetch all DB data concurrently
-    let (like_counts, viewer_likes, community_ids, identifications_by_uri, remarks) = tokio::join!(
+    // Stage 1: Batch-fetch all DB data and resolve observer profiles
+    // concurrently — the profile lookup is an outbound HTTP call that doesn't
+    // depend on any of the DB results.
+    let (like_counts, viewer_likes, community_ids, identifications_by_uri, remarks, profiles) = tokio::join!(
         async {
             observing_db::likes::get_counts_for_occurrences(pool, &uris)
                 .await
@@ -288,6 +291,7 @@ pub async fn enrich_occurrences(
                 .await
                 .unwrap_or_default()
         },
+        resolver.get_profiles(&dids_vec),
     );
     let remark_body = |occurrence_uri: &str, dwc_term: &str| {
         remarks
@@ -296,45 +300,66 @@ pub async fn enrich_occurrences(
             .map(|r| r.body.clone())
     };
 
-    // Stage 2: Batch profile resolution
-    let dids_vec: Vec<String> = rows.iter().map(|r| r.did.clone()).collect();
-    let profiles = resolver.get_profiles(&dids_vec).await;
-
-    // Stage 3: Resolve taxonomy for all occurrences (HTTP fallbacks run in parallel)
-    let taxonomy_futures: Vec<_> = rows
+    // Stage 2: Resolve taxonomy. A page often repeats a taxon, and the GBIF
+    // cache doesn't coalesce concurrent misses, so look each distinct
+    // (name, kingdom hint) up once — in parallel — and share the result.
+    let lookups: Vec<Option<(&str, Option<&str>)>> = rows
         .iter()
         .map(|row| {
-            let community_id = community_ids.get(&row.uri).cloned();
             let identifications = identifications_by_uri
                 .get(&row.uri)
-                .cloned()
+                .map(Vec::as_slice)
                 .unwrap_or_default();
-            let kingdom = row.kingdom.clone();
-            async move {
-                resolve_effective_taxonomy(
-                    taxonomy,
-                    community_id.as_deref(),
-                    &identifications,
-                    kingdom.as_deref(),
+            community_ids.get(&row.uri).map(|name| {
+                (
+                    name.as_str(),
+                    taxonomy_kingdom_hint(row.kingdom.as_deref(), identifications),
                 )
-                .await
-            }
+            })
         })
         .collect();
-    let taxonomies: Vec<Option<EffectiveTaxonomy>> =
-        futures::future::join_all(taxonomy_futures).await;
+    let unique_lookups: Vec<(&str, Option<&str>)> = lookups
+        .iter()
+        .flatten()
+        .copied()
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .collect();
+    let gbif_taxonomies =
+        futures::future::join_all(unique_lookups.iter().map(|&(name, kingdom)| async move {
+            // GBIF is the source of truth for vernacular names, so always try
+            // it first. The Moka cache fronting the client keeps repeat
+            // lookups cheap.
+            taxonomy
+                .get_by_name(name, kingdom)
+                .await
+                .unwrap_or(None)
+                .map(EffectiveTaxonomy::from)
+        }))
+        .await;
+    let gbif_taxonomies: HashMap<(&str, Option<&str>), Option<EffectiveTaxonomy>> =
+        unique_lookups.into_iter().zip(gbif_taxonomies).collect();
 
-    // Stage 4: Build responses (pure data assembly, no I/O)
+    // Stage 3: Build responses (pure data assembly, no I/O)
     let mut results = Vec::with_capacity(rows.len());
 
-    for (i, row) in rows.iter().enumerate() {
-        let identification_count = identifications_by_uri
+    for (row, lookup) in rows.iter().zip(&lookups) {
+        let identifications = identifications_by_uri
             .get(&row.uri)
-            .map(|ids| ids.len() as i64)
-            .unwrap_or(0);
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+        let identification_count = identifications.len() as i64;
 
         let community_id = community_ids.get(&row.uri).cloned();
-        let effective_taxonomy = taxonomies[i].clone();
+        let effective_taxonomy = lookup.map(|(name, kingdom)| {
+            effective_taxonomy(
+                name,
+                gbif_taxonomies
+                    .get(&(name, kingdom))
+                    .and_then(Option::as_ref),
+                identifications,
+            )
+        });
 
         let images = extract_images(row);
 
@@ -383,33 +408,23 @@ pub async fn enrich_occurrences(
     results
 }
 
-/// Resolve effective taxonomy using pre-fetched data.
-/// Only makes external HTTP calls (GBIF) when the DB doesn't have taxonomy info.
-async fn resolve_effective_taxonomy(
-    taxonomy: &TaxonomyClient,
-    community_id: Option<&str>,
-    identifications: &[IdentificationRow],
-    occurrence_kingdom: Option<&str>,
-) -> Option<EffectiveTaxonomy> {
-    let effective_name = community_id?;
+/// Kingdom hint for the GBIF lookup of an occurrence's community ID.
+///
+/// GBIF can't disambiguate genus-level names without a kingdom hint
+/// (e.g. "Pinus" in plants vs. unrelated genera in other kingdoms), so
+/// fall back to any identification's kingdom when the occurrence row
+/// doesn't carry one. Identifications all share at least the LCA's
+/// ancestry, so any identification's kingdom is safe to use.
+fn taxonomy_kingdom_hint<'a>(
+    occurrence_kingdom: Option<&'a str>,
+    identifications: &'a [IdentificationRow],
+) -> Option<&'a str> {
+    occurrence_kingdom.or_else(|| identifications.iter().find_map(|id| id.kingdom.as_deref()))
+}
 
-    // GBIF can't disambiguate genus-level names without a kingdom hint
-    // (e.g. "Pinus" in plants vs. unrelated genera in other kingdoms), so
-    // fall back to any identification's kingdom when the occurrence row
-    // doesn't carry one. Identifications all share at least the LCA's
-    // ancestry, so any identification's kingdom is safe to use.
-    let kingdom_hint = occurrence_kingdom
-        .map(str::to_string)
-        .or_else(|| identifications.iter().find_map(|id| id.kingdom.clone()));
-
-    // GBIF is the source of truth for vernacular names, so always try it first.
-    // The Moka cache fronting the client keeps repeat lookups cheap.
-    if let Some(detail) = taxonomy
-        .get_by_name(effective_name, kingdom_hint.as_deref())
-        .await
-        .unwrap_or(None)
-    {
-        return Some(EffectiveTaxonomy {
+impl From<TaxonDetail> for EffectiveTaxonomy {
+    fn from(detail: TaxonDetail) -> Self {
+        EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
             vernacular_name: detail.common_name,
             rank: Some(detail.rank.to_lowercase()),
@@ -419,7 +434,19 @@ async fn resolve_effective_taxonomy(
             order: detail.order,
             family: detail.family,
             genus: detail.genus,
-        });
+        }
+    }
+}
+
+/// Build the effective taxonomy for a community ID, preferring its GBIF
+/// lookup (`None` when GBIF had nothing or was unavailable).
+fn effective_taxonomy(
+    effective_name: &str,
+    gbif: Option<&EffectiveTaxonomy>,
+    identifications: &[IdentificationRow],
+) -> EffectiveTaxonomy {
+    if let Some(taxonomy) = gbif {
+        return taxonomy.clone();
     }
 
     // GBIF unavailable — fall back to whatever taxonomy a matching identification has.
@@ -427,7 +454,7 @@ async fn resolve_effective_taxonomy(
         .iter()
         .find(|id| id.scientific_name == effective_name && id.kingdom.is_some())
     {
-        return Some(EffectiveTaxonomy {
+        return EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
             vernacular_name: None,
             rank: id.taxon_rank.as_deref().map(str::to_lowercase),
@@ -437,11 +464,11 @@ async fn resolve_effective_taxonomy(
             order: id.order_.clone(),
             family: id.family.clone(),
             genus: id.genus.clone(),
-        });
+        };
     }
 
     // Bare minimum: just the name
-    Some(EffectiveTaxonomy {
+    EffectiveTaxonomy {
         scientific_name: effective_name.to_string(),
         vernacular_name: None,
         rank: None,
@@ -451,7 +478,7 @@ async fn resolve_effective_taxonomy(
         order: None,
         family: None,
         genus: None,
-    })
+    }
 }
 
 /// Generic helper: resolve profiles for a slice of rows and map each into an enriched type.

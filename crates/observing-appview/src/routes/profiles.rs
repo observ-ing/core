@@ -70,10 +70,16 @@ pub async fn get_profile_feed(
         feed_type: Some(feed_type),
     };
 
-    let result = observing_db::feeds::get_profile_feed(&state.pool, did.as_str(), &options).await?;
+    // The profile lookup is an outbound HTTP call that doesn't need the feed,
+    // so overlap it with the DB queries rather than waiting for them.
+    let (result, profile) = tokio::join!(
+        observing_db::feeds::get_profile_feed(&state.pool, did.as_str(), &options),
+        state.resolver.get_profile(did.as_str()),
+    );
+    let result = result?;
 
     let viewer = session_did(&cookies);
-    let (occurrences, identifications, profile) = tokio::join!(
+    let (occurrences, identifications) = tokio::join!(
         enrichment::enrich_occurrences(
             &state.pool,
             &state.resolver,
@@ -82,7 +88,6 @@ pub async fn get_profile_feed(
             viewer.as_deref(),
         ),
         enrichment::enrich_identifications(&state.resolver, &result.identifications),
-        state.resolver.get_profile(did.as_str()),
     );
 
     let next_cursor = occurrences
