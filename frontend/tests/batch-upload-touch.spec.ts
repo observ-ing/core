@@ -25,6 +25,7 @@ const openCard = (page: Page, index: number) =>
     .click();
 const row = (page: Page, label: string) =>
   page.getByRole("dialog").getByRole("button", { name: new RegExp(`^${label}`) });
+const photoTiles = (page: Page) => page.getByRole("button", { name: /^Photo \d+$/ });
 // Whether a long press on the card's photo is kept from opening the system's menu.
 const suppressesPhotoMenu = (page: Page, index: number) =>
   cards(page)
@@ -244,6 +245,159 @@ authTest.describe("Batch upload on a phone", () => {
   );
 
   authTest(
+    "splits a photo off its observation, and undoes it",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), barePhoto("c.jpg")]);
+      await check(page, 0);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByRole("button", { name: "Combine" }).click();
+      await page.getByRole("button", { name: "Clear selection" }).click();
+      await openCard(page, 0);
+      await page.getByRole("button", { name: "Manage 3" }).click();
+      await authExpect(page.getByText("3 of 10 in this observation")).toBeVisible();
+
+      await photoTiles(page).nth(2).click();
+      await authExpect(page.getByText("1 photo selected")).toBeVisible();
+      await page.getByRole("button", { name: "Split off" }).click();
+
+      // It stays on the photos screen and says where the new observation went
+      // and what it still needs.
+      await authExpect(photoTiles(page)).toHaveCount(2);
+      const notice = page.getByRole("status");
+      await authExpect(notice).toContainText("Split into a new observation");
+      await authExpect(notice).toContainText("Now observation 2 of 2");
+      await authExpect(notice).toContainText("Missing date and location");
+
+      await page.getByRole("button", { name: "Undo" }).click();
+      await authExpect(photoTiles(page)).toHaveCount(3);
+      await authExpect(page.getByRole("status")).toHaveCount(0);
+
+      await photoTiles(page).nth(2).click();
+      await page.getByRole("button", { name: "Split off" }).click();
+      await page.getByRole("button", { name: "Edit it" }).click();
+      await authExpect(page.getByRole("heading", { name: "Observation 2 of 2" })).toBeVisible();
+      // Its editor takes the place of the one the photo came from, so back is the batch.
+      await page.getByRole("button", { name: "Back to batch" }).click();
+      await authExpect(page.getByRole("dialog")).toHaveCount(0);
+    },
+  );
+
+  authTest(
+    "removes photos with undo, and the observation with its last photo",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+      await check(page, 0);
+      await check(page, 1);
+      await page.getByRole("button", { name: "Combine" }).click();
+      await page.getByRole("button", { name: "Clear selection" }).click();
+      await openCard(page, 0);
+      await page.getByRole("button", { name: "Manage 2" }).click();
+
+      await photoTiles(page).nth(0).click();
+      await page.getByRole("button", { name: "Remove" }).click();
+      await authExpect(page.getByRole("status")).toContainText("1 photo removed");
+      await page.getByRole("button", { name: "Undo" }).click();
+      await authExpect(photoTiles(page)).toHaveCount(2);
+
+      await photoTiles(page).nth(0).click();
+      await page.getByRole("button", { name: "Remove" }).click();
+      await page.getByRole("button", { name: "OK" }).click();
+      await authExpect(photoTiles(page)).toHaveCount(1);
+      // One photo can't be split off, only removed, and it takes the observation along.
+      await photoTiles(page).nth(0).click();
+      await authExpect(page.getByRole("button", { name: "Split off" })).toBeDisabled();
+      await page.getByRole("button", { name: "Remove" }).click();
+      await authExpect(page.getByRole("button", { name: "Choose photos" })).toBeVisible();
+      await authExpect(page.getByRole("dialog")).toHaveCount(0);
+    },
+  );
+
+  authTest(
+    "dragging a photo reorders it or drops it on a target",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+      await check(page, 0);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByRole("button", { name: "Combine" }).click();
+      await page.getByRole("button", { name: "Clear selection" }).click();
+      await openCard(page, 0);
+      await page.getByRole("button", { name: "Manage 3" }).click();
+
+      const sources = () =>
+        photoTiles(page).evaluateAll((tiles) =>
+          tiles.map((tile) => tile.querySelector("img")?.getAttribute("src")),
+        );
+      await authExpect(photoTiles(page)).toHaveCount(3);
+      const [a, b, c] = await sources();
+
+      // Onto the left half of the first photo: in front of it.
+      await photoTiles(page)
+        .nth(2)
+        .dragTo(photoTiles(page).nth(0), { targetPosition: { x: 10, y: 50 } });
+      authExpect(await sources()).toEqual([c, a, b]);
+
+      // While a photo is in the air the bottom bar is two drop targets.
+      await photoTiles(page).nth(0).hover();
+      await page.mouse.down();
+      await photoTiles(page).nth(1).hover();
+      await photoTiles(page)
+        .nth(1)
+        .hover({ position: { x: 20, y: 60 } });
+      await authExpect(page.getByText("Drop at the green bar to reorder")).toBeVisible();
+      await page.getByText("Split off", { exact: true }).hover();
+      await page.getByText("Split off", { exact: true }).hover({ position: { x: 5, y: 5 } });
+      await authExpect(page.getByText("Release to make a new observation")).toBeVisible();
+      await page.mouse.up();
+
+      await authExpect(photoTiles(page)).toHaveCount(2);
+      await authExpect(page.getByRole("status")).toContainText("Split into a new observation");
+    },
+  );
+
+  authTest(
+    "moves a checked photo earlier or later without dragging",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+      await check(page, 0);
+      await page.getByRole("button", { name: "Select all" }).click();
+      await page.getByRole("button", { name: "Combine" }).click();
+      await page.getByRole("button", { name: "Clear selection" }).click();
+      await openCard(page, 0);
+      await page.getByRole("button", { name: "Manage 3" }).click();
+
+      const sources = () =>
+        photoTiles(page).evaluateAll((tiles) =>
+          tiles.map((tile) => tile.querySelector("img")?.getAttribute("src")),
+        );
+      await authExpect(photoTiles(page)).toHaveCount(3);
+      const [a, b, c] = await sources();
+      const earlier = page.getByRole("button", { name: "Move earlier" });
+      const later = page.getByRole("button", { name: "Move later" });
+
+      await photoTiles(page).nth(0).click();
+      await authExpect(earlier).toBeDisabled();
+      await later.click();
+      authExpect(await sources()).toEqual([b, a, c]);
+      // The photo stays checked, so it can keep moving.
+      await authExpect(photoTiles(page).nth(1)).toHaveAttribute("aria-pressed", "true");
+      await later.click();
+      authExpect(await sources()).toEqual([b, c, a]);
+      await authExpect(later).toBeDisabled();
+      await earlier.click();
+      authExpect(await sources()).toEqual([b, a, c]);
+
+      // With two checked there is no one place to move them to.
+      await photoTiles(page).nth(0).click();
+      await authExpect(earlier).toBeDisabled();
+      await authExpect(later).toBeDisabled();
+    },
+  );
+
+  authTest(
     "uploads as a list, and keeps the ones that fail",
     async ({ authenticatedPage: page }) => {
       let release = () => {};
@@ -308,6 +462,26 @@ authTest.describe("Batch upload in an Android browser", () => {
     ).toBeVisible();
     // There is no public app to send anyone to yet.
     await authExpect(page.getByText(/\bapp\b/i)).toHaveCount(0);
+  });
+});
+
+authTest.describe("Batch upload in Firefox on an Android phone", () => {
+  authTest.use({ contextOptions: { ...PHONE, userAgent: FIREFOX_ANDROID("Mobile") } });
+
+  authTest("does not offer touch and hold", async ({ authenticatedPage: page }) => {
+    await mockOwnObservationFeed(page);
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+    await check(page, 0);
+    await page.getByRole("button", { name: "Select all" }).click();
+    await page.getByRole("button", { name: "Combine" }).click();
+    await page.getByRole("button", { name: "Clear selection" }).click();
+    await openCard(page, 0);
+    await page.getByRole("button", { name: "Manage 2" }).click();
+
+    await authExpect(photoTiles(page)).toHaveCount(2);
+    await authExpect(page.getByText("Tap a photo to select it")).toBeVisible();
+    await authExpect(page.getByText(/touch and hold/i)).toHaveCount(0);
   });
 });
 

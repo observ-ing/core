@@ -693,6 +693,7 @@ export function BatchUploadPage() {
           converting={converting}
           blocked={waiting}
           stripsLocation={stripsPhotoLocation()}
+          touchDrag={touchDrag}
           profilePath={profilePath}
           dispatch={dispatch}
           onChoosePhotos={choosePhotos}
