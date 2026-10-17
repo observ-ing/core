@@ -1,0 +1,333 @@
+{
+  "displayName": "System Health",
+  "mosaicLayout": {
+    "columns": 12,
+    "tiles": [
+      {
+        "xPos": 0,
+        "yPos": 0,
+        "width": 12,
+        "height": 2,
+        "widget": {
+          "title": "How to read this",
+          "text": {
+            "format": "MARKDOWN",
+            "content": "Resource use for each Cloud Run service and for observing-db (Cloud SQL). Cloud Run reports memory and CPU as a fraction of the container's limit (1.0 = 100%). Limits are set in `.github/workflows/ci.yml`; tap-ingester runs with 1 vCPU and 512 MiB. Percentiles come from Cloud Run's histogram buckets, so low values move in steps of about 1%. **tap-ingester firehose bytes received** is its liveness signal: it should sit around 2 MB/s, and a drop to 0 means the firehose consumer has stalled. Instance counts and up/down live on the Service Status dashboard. This dashboard's source is `infra/monitoring/system-health-dashboard.json`."
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 2,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "tap-ingester: memory (fraction of limit)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "p99",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.99, sum by (le) (rate(run_googleapis_com:container_memory_utilizations_bucket{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}[5m])))"
+                }
+              },
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "p50",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.50, sum by (le) (rate(run_googleapis_com:container_memory_utilizations_bucket{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}[5m])))"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of limit", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 2,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "tap-ingester: CPU (fraction of 1 vCPU)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "p99",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.99, sum by (le) (rate(run_googleapis_com:container_cpu_utilizations_bucket{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}[5m])))"
+                }
+              },
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "p50",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.50, sum by (le) (rate(run_googleapis_com:container_cpu_utilizations_bucket{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}[5m])))"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of limit", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 6,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "Memory p99 by service (fraction of limit)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.99, sum by (service_name, le) (rate(run_googleapis_com:container_memory_utilizations_bucket{monitored_resource=\"cloud_run_revision\"}[5m])))"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of limit", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 6,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "CPU p99 by service (fraction of limit)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.99, sum by (service_name, le) (rate(run_googleapis_com:container_cpu_utilizations_bucket{monitored_resource=\"cloud_run_revision\"}[5m])))"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of limit", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 10,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "tap-ingester: firehose bytes received per second",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum(rate(run_googleapis_com:container_network_received_bytes_count{monitored_resource=\"cloud_run_revision\",service_name=\"tap-ingester\"}[5m]))"
+                }
+              }
+            ],
+            "yAxis": { "label": "bytes/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 10,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-appview: requests per second by status class",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (response_code_class) (rate(run_googleapis_com:request_count{monitored_resource=\"cloud_run_revision\",service_name=\"observing-appview\"}[5m]))"
+                }
+              }
+            ],
+            "yAxis": { "label": "requests/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 14,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-db: CPU (fraction of 1 vCPU)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "max(cloudsql_googleapis_com:database_cpu_utilization{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\"})"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of limit", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 14,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-db: memory used vs limit (bytes)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "used",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "max(cloudsql_googleapis_com:database_memory_total_usage{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\"})"
+                }
+              },
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "legendTemplate": "limit",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "max(cloudsql_googleapis_com:database_memory_quota{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\"})"
+                }
+              }
+            ],
+            "yAxis": { "label": "bytes", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 18,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-db: open connections by database",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "STACKED_AREA",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (database) (cloudsql_googleapis_com:database_postgresql_num_backends{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\",database!~\"template.*|postgres\"})"
+                }
+              }
+            ],
+            "yAxis": { "label": "connections", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 18,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-db: commits per second by database",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "sum by (database) (rate(cloudsql_googleapis_com:database_postgresql_transaction_count{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\",transaction_type=\"commit\",database!~\"template.*|postgres\"}[5m]))"
+                }
+              }
+            ],
+            "yAxis": { "label": "commits/s", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 22,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-appview: p95 request latency (ms)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "histogram_quantile(0.95, sum by (le) (rate(run_googleapis_com:request_latencies_bucket{monitored_resource=\"cloud_run_revision\",service_name=\"observing-appview\"}[5m])))"
+                }
+              }
+            ],
+            "yAxis": { "label": "ms", "scale": "LINEAR" }
+          }
+        }
+      },
+      {
+        "xPos": 6,
+        "yPos": 22,
+        "width": 6,
+        "height": 4,
+        "widget": {
+          "title": "observing-db: disk used (fraction of provisioned)",
+          "xyChart": {
+            "dataSets": [
+              {
+                "plotType": "LINE",
+                "targetAxis": "Y1",
+                "minAlignmentPeriod": "60s",
+                "timeSeriesQuery": {
+                  "prometheusQuery": "max(cloudsql_googleapis_com:database_disk_utilization{monitored_resource=\"cloudsql_database\",database_id=\"observ-ing:observing-db\"})"
+                }
+              }
+            ],
+            "thresholds": [
+              { "label": "80%", "value": 0.8, "targetAxis": "Y1" }
+            ],
+            "yAxis": { "label": "fraction of disk", "scale": "LINEAR" }
+          }
+        }
+      }
+    ]
+  }
+}

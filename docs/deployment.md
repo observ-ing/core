@@ -4,22 +4,9 @@
 
 Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after CI checks pass.
 
-### Services
+### Services and jobs
 
-| Service | Build arg | Public | Cloud SQL | DB role | Notes |
-|---------|-----------|--------|-----------|---------|-------|
-| observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
-| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. Runs with `--no-cpu-throttling` (always-allocated CPU) + 1 vCPU / 1 GiB because the firehose consumer is a background loop, not request-driven — under Cloud Run's default request-scoped CPU it gets starved and falls behind the relay's ~72h retention window. |
-| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=0, gen2 execution environment — gen2 reads the ~3.3 GB baked-in model bundle ~6× faster than gen1, cutting cold start from ~95s to ~20s). Scales to zero; the appview's `/api/species-id/status` probe pre-warms it when the upload/ID UI opens and the frontend shows a boot countdown |
-| observing-species-id-live | `SERVICE=observing-species-id` + `SPECIES_MODEL_URL=<ViT-L bundle>` + `MODEL_VERSION=bioclip-2-vit-l-14` | Yes | No | — | Same binary as `observing-species-id`, built with the smaller/faster ViT-L model bundle ([`bioclip-models` release `vit-l-v1.0.0`](https://github.com/observ-ing/bioclip-models/releases/tag/vit-l-v1.0.0)). Serves the live camera loop (frontend sends `live: true`; appview routes here via `SPECIES_ID_LIVE_SERVICE_URL`). Built + deployed by CI as its own image alongside `observing-species-id`. Same sizing as above but **4 GiB** (the ViT-L bundle's resident footprint is ~3 GB, vs ViT-H's ~4.4 GB). |
-
-### Jobs
-
-| Job | Build arg | Cloud SQL | DB role | Notes |
-|-----|-----------|-----------|---------|-------|
-| observing-migrate | `SERVICE=observing-migrate` | Yes | `postgres` | One-shot `gcloud run jobs deploy` + `execute --wait` — runs `sqlx` migrations *before* any service deploy. Only thing that ever connects as superuser. |
-
-All services and the migrate Job are Rust binaries built from the shared multi-stage `Dockerfile` at the project root using `--build-arg SERVICE=<name>`.
+[services.md](services.md) lists every service and job: what it does, how it's sized, and why each deploy flag is set the way it is.
 
 ### Deploy order
 
@@ -43,6 +30,24 @@ gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=
 ```
 
 The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/service_status.rs`) reads the same metrics, so it has its own list of services to show. Adding a Cloud Run service means updating that list and adding a scorecard tile here. The time-series charts group by `service_name`, so they pick up new services automatically. The scorecards use `... or vector(0)` because Cloud Run stops reporting `instance_count` for a service a few minutes after it scales to zero. Without the fallback, a sleeping service would read "No data" instead of 0.
+
+### System health dashboard
+
+The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) Cloud Monitoring dashboard shows resource use over time:
+
+- memory and CPU for each Cloud Run service, as a fraction of its limit, with tap-ingester's p50 and p99 charted on their own
+- tap-ingester's firehose bytes received per second, its liveness signal
+- observing-appview's request rate and p95 latency
+- observing-db's CPU, memory, connections, commits per second and disk use
+
+The source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. After editing the file, push it by hand with the same etag steps:
+
+```bash
+ID=4046b455-644f-4615-99cc-d4eae66aae0d
+ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='value(etag)')
+jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/system-health-dashboard.json > /tmp/dashboard.json
+gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
+```
 
 ## Runtime role boundary (one-shot)
 

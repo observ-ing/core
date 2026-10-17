@@ -585,20 +585,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # gen2 is load-bearing for cold starts, not a tuning knob. Startup is
-      # dominated by reading the ~3.3 GB model bundle baked into the image
-      # (ONNX weights + species embeddings). On gen1 those reads run at
-      # ~40 MB/s from the image filesystem (~90-100s to ready); on gen2 they
-      # run at ~260 MB/s (~20s). With files already in page cache the model
-      # loads in ~5-10s either way, so the CPU work is not the bottleneck.
-      # The startup probe polls every 2s (same 300s budget) so readiness
-      # isn't delayed up to 10s after the model finishes loading.
-      #
-      # min-instances=0: identify traffic is a handful of requests a week, and
-      # holding a warm 8 GiB instance cost ~$65/mo for ~$1/mo of actual
-      # inference. The ~20s cold start is covered by the appview's status
-      # probe, which starts the boot when the upload/ID UI opens and drives a
-      # countdown in the frontend (see species_id_client.rs).
+      # gen2 and the 2s startup probe keep cold starts at ~20s instead of
+      # ~95s; min-instances=0 avoids ~$65/mo for a warm 8 GiB instance.
+      # Reasons and sizing: docs/services.md#observing-species-id
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -613,15 +602,9 @@ jobs:
             --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
-      # Faster ViT-L service for the live camera loop. Like observing-species-id
-      # but only 4 GiB — the ViT-L bundle's resident footprint is ~3 GB (vs
-      # ViT-H's ~4.4 GB), so half the memory of the full service is enough.
-      # MODEL_VERSION is already baked into the image.
-      # min-instances=0: the live feature is experimental and sees ~no traffic,
-      # so scale to zero rather than pay to keep a 4 GiB instance warm 24/7.
-      # Flip back to 1 if/when it launches and cold starts hurt UX.
-      # gen2 + 2s startup probe for the same cold-start reasons as species-id
-      # above (~75s -> ~12s to ready for the ViT-L bundle).
+      # Same as species-id with the smaller ViT-L bundle (baked into the
+      # image) and 4 GiB. Reasons and sizing:
+      # docs/services.md#observing-species-id-live
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -677,20 +660,10 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
-      # --no-cpu-throttling is load-bearing here, not a tuning knob. Cloud
-      # Run's default ("CPU only during request processing") throttles the
-      # instance to ~0 CPU whenever no HTTP request is in flight. But the
-      # ingester does all its work in a long-running background loop (consume
-      # the full network firehose via the embedded Tap, filter, upsert) — it
-      # is not request-driven. Under the default the consumer is CPU-starved,
-      # caps at a few hundred events/s, can't keep pace with the live
-      # firehose, and falls irrecoverably behind the relay's ~72h retention
-      # window (see incident 2026-05-31). always-allocated CPU lets the loop
-      # run at full speed. --cpu=1 is enough: throughput is capped by Tap's
-      # internal per-event serialization, not CPU, and over 14 days at cpu=2
-      # the 1-minute p99 peaked at ~0.62 vCPU (memory ~5% of 2 GiB), including
-      # post-deploy catch-up. min/max-instances=1 keeps it a singleton so
-      # there's exactly one consumer per cursor.
+      # --no-cpu-throttling is load-bearing: the firehose loop isn't
+      # request-driven and falls behind the relay without always-on CPU
+      # (incident 2026-05-31). min/max-instances=1 keeps one consumer per
+      # cursor. Reasons and sizing: docs/services.md#tap-ingester
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
@@ -699,7 +672,7 @@ jobs:
             --allow-unauthenticated \
             --cpu=1 \
             --no-cpu-throttling \
-            --memory=1Gi \
+            --memory=512Mi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1 \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
