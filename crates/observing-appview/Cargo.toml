@@ -74,6 +74,8 @@ inaturalist = { version = "0.11", default-features = false, features = ["rustls"
 inaturalist-oauth = "0.4"
 # inaturalist-oauth takes its authorization code as an oauth2 type
 oauth2 = "5"
+# Stable UUIDs for the observations and photos posted to iNaturalist
+uuid = "1"
 
 # Async trait support (needed for Store implementations)
 async-trait = "0.1"

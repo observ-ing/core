@@ -3082,6 +3082,7 @@ dependencies = [
  "urlencoding",
  "utoipa",
  "utoipa-swagger-ui",
+ "uuid",
  "wikidata-client",
  "wiremock",
 ]

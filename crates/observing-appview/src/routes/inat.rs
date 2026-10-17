@@ -149,6 +149,7 @@ async fn link_account(
         &tokens.access_token,
     )
     .await?;
+    inat.remember_api_token(&user.did, &tokens.api_token).await;
 
     Ok(account.login)
 }
@@ -195,5 +196,8 @@ pub async fn delete_account(
     user: AuthUser,
 ) -> Result<Json<SuccessResponse>, AppError> {
     observing_db::crossposts::delete_account(&state.pool, &user.did, SERVICE).await?;
+    if let Some(inat) = &state.inat {
+        inat.forget_api_token(&user.did).await;
+    }
     Ok(Json(SuccessResponse { success: true }))
 }
