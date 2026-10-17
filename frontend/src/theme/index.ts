@@ -170,7 +170,10 @@ const createAppTheme = (mode: PaletteMode): Theme => {
           },
           "#root": {
             width: "100vw",
-            height: "100vh",
+            // `dvh` follows a mobile browser's address bar as it shows and hides;
+            // `vh` there is the height with the bar hidden, which pushes the
+            // bottom of the app under the bar. `vh` stays as the fallback.
+            height: ["100vh", "100dvh"],
             display: "flex",
             flexDirection: "column",
           },
