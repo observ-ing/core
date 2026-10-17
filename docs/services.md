@@ -19,7 +19,7 @@ Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy or
 
 \* Not set in `ci.yml`. Cloud Run keeps a flag's previous value when a deploy leaves it out, so these are the live values as of 2026-10-17. Changing them means a one-off `gcloud run services update`, or adding the flag to the deploy step so it is pinned.
 
-All Rust services and jobs come from the root `Dockerfile`, built with `--build-arg SERVICE=<name>`. Storybook has its own `Dockerfile.storybook`.
+All Rust services and jobs come from the root `Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all six images in one `docker buildx bake` run (`docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `Dockerfile.storybook`.
 
 ## observing-appview
 
@@ -98,7 +98,7 @@ Cloud SQL for PostgreSQL 18, Enterprise edition. It was created by hand and isn'
 
 ## Supporting infrastructure
 
-- **Artifact Registry.** The `observing` repository holds the service images and their `:buildcache` images. Cleanup deletes untagged versions after 30 days and keeps the 15 most recent of each image. The `storybook` repository deletes anything older than 30 days and keeps 5. Most of its ~$23/month is internet egress from GitHub Actions runners pulling `:buildcache`, not storage.
+- **Artifact Registry.** The `observing` repository holds the service images and their `:buildcache` images. Cleanup deletes untagged versions after 30 days and keeps the 15 most recent of each image. The `storybook` repository deletes anything older than 30 days and keeps 5. Most of its cost is internet egress, not storage: the GitHub Actions runner downloads `:buildcache` layers it needs to rebuild. Two things keep that down. The images are built in one bake run, so shared Rust layers are downloaded once per push. The final binary copies use `COPY --link`, so a changed binary doesn't download the image beneath it.
 - **Monitoring.** The [Service Status](https://console.cloud.google.com/monitoring/dashboards/builder/4a03aa0a-e9a4-4f65-8168-b09030aeb432?project=observ-ing) dashboard shows which services are awake. The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) dashboard shows memory, CPU, firehose throughput, appview requests and database load over time. Their sources are in `infra/monitoring/`.
 
 ## Changing a service
@@ -106,3 +106,4 @@ Cloud SQL for PostgreSQL 18, Enterprise edition. It was created by hand and isn'
 1. Change the flag in the deploy step in `.github/workflows/ci.yml`. For a value marked * above, add the flag so it stays pinned.
 2. Update the table and the service's section here.
 3. When adding a Cloud Run service, also add it to the public status page's list (`crates/observing-appview/src/service_status.rs`) and give it a scorecard on the Service Status dashboard (see [deployment.md](deployment.md#service-status-dashboard)).
+4. When adding an image, give it a target in `docker-bake.hcl` and add it to the `default` group. For a new Rust binary, also add its package to `RUST_PACKAGES` in the `Dockerfile` and give it a `runtime-<name>` stage that ends with `COPY --link`.
