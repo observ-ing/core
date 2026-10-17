@@ -689,8 +689,12 @@ jobs:
       # run at full speed. --cpu=1 is enough: throughput is capped by Tap's
       # internal per-event serialization, not CPU, and over 14 days at cpu=2
       # the 1-minute p99 peaked at ~0.62 vCPU (memory ~5% of 2 GiB), including
-      # post-deploy catch-up. min/max-instances=1 keeps it a singleton so
-      # there's exactly one consumer per cursor.
+      # post-deploy catch-up. --memory=512Mi: over 20 days at 1 GiB the
+      # 1-minute p99 memory never passed 9% (~92 MiB), deploys included, and
+      # 512Mi is the floor for always-allocated CPU. Tap keeps its state in
+      # Postgres, so the in-memory /data filesystem stays empty.
+      # min/max-instances=1 keeps it a singleton so there's exactly one
+      # consumer per cursor.
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
@@ -699,7 +703,7 @@ jobs:
             --allow-unauthenticated \
             --cpu=1 \
             --no-cpu-throttling \
-            --memory=1Gi \
+            --memory=512Mi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1 \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \

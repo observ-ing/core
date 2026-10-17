@@ -44,6 +44,23 @@ gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=
 
 The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/service_status.rs`) reads the same metrics, so it has its own list of services to show. Adding a Cloud Run service means updating that list and adding a scorecard tile here. The time-series charts group by `service_name`, so they pick up new services automatically. The scorecards use `... or vector(0)` because Cloud Run stops reporting `instance_count` for a service a few minutes after it scales to zero. Without the fallback, a sleeping service would read "No data" instead of 0.
 
+### System health dashboard
+
+The System Health Cloud Monitoring dashboard shows resource use over time:
+
+- memory and CPU for each Cloud Run service, as a fraction of its limit, with tap-ingester's p50 and p99 charted on their own
+- tap-ingester's firehose bytes received per second, its liveness signal
+- observing-appview's request rate and p95 latency
+- observing-db's CPU, memory, connections, commits per second and disk use
+
+The source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. Create it once:
+
+```bash
+gcloud monitoring dashboards create --project=observ-ing --config-from-file=infra/monitoring/system-health-dashboard.json
+```
+
+After that, update it with the same etag steps as Service Status. Use the dashboard ID that `gcloud monitoring dashboards list --project=observ-ing --filter='displayName="System Health"'` prints.
+
 ## Runtime role boundary (one-shot)
 
 Cloud SQL auto-grants `cloudsqlsuperuser` to every built-in user, and that membership confers `arwdDxt` on every table via role inheritance — which nullifies the per-schema grants in the `appview_reader_grants` migration. To actually enforce the boundary, `cloudsqlsuperuser` must be stripped from `appview_runtime` and `ingester_runtime`. This is a one-shot operation tied to user creation, not deploy state, so it lives here as a runbook step rather than a CI step:
