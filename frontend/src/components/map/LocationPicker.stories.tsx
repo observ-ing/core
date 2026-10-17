@@ -47,3 +47,20 @@ export const SanFranciscoLargeRadius: Story = {
     uncertaintyMeters: 10000,
   },
 };
+
+/** Fills its parent, the map taking what the controls leave: the full-screen picker. */
+export const Fill: Story = {
+  args: {
+    latitude: 51.5074,
+    longitude: -0.1278,
+    fill: true,
+    showHints: false,
+  },
+  decorators: [
+    (Story) => (
+      <Box sx={{ height: 640 }}>
+        <Story />
+      </Box>
+    ),
+  ],
+};

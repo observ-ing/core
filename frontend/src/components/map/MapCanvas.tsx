@@ -7,9 +7,23 @@ import { BasemapSelector } from "./BasemapSelector";
  * Map container shell shared by LocationMap and LocationPicker: the maplibre
  * mount point plus the basemap selector overlay.
  */
-export const MapCanvas = forwardRef<HTMLDivElement>(function MapCanvas(_props, ref) {
+export interface MapCanvasProps {
+  /** Take whatever height a column flex parent has left, not the fixed default. */
+  fill?: boolean;
+}
+
+export const MapCanvas = forwardRef<HTMLDivElement, MapCanvasProps>(function MapCanvas(
+  { fill = false },
+  ref,
+) {
   return (
-    <Box sx={[{ position: "relative" }, mapContainerSx]}>
+    <Box
+      sx={[
+        { position: "relative" },
+        mapContainerSx,
+        fill && { flex: "1 1 0", height: "auto", minHeight: 200 },
+      ]}
+    >
       {/* Fill the parent via width/height, NOT position:absolute+inset — maplibre
           adds `.maplibregl-map { position: relative }`, which ties on specificity
           with emotion's `position:absolute` and wins by load order in the prod CSS
