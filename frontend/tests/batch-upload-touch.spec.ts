@@ -4,13 +4,27 @@ import type { Page } from "@playwright/test";
 import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
-import { BATCH_URL, addPhotos, barePhoto, cards, taggedPhoto } from "./helpers/batch-upload";
+import {
+  BATCH_URL,
+  addPhotos,
+  barePhoto,
+  cards,
+  mockSubmit,
+  taggedPhoto,
+} from "./helpers/batch-upload";
 
 const PHONE = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
 const TABLET = { viewport: { width: 1024, height: 768 }, hasTouch: true, isMobile: true };
 
 const check = (page: Page, index: number) =>
   cards(page).nth(index).getByRole("checkbox", { name: "Select observation" }).check();
+const openCard = (page: Page, index: number) =>
+  cards(page)
+    .nth(index)
+    .getByRole("button", { name: /^Edit / })
+    .click();
+const row = (page: Page, label: string) =>
+  page.getByRole("dialog").getByRole("button", { name: new RegExp(`^${label}`) });
 // Whether a long press on the card's photo is kept from opening the system's menu.
 const suppressesPhotoMenu = (page: Page, index: number) =>
   cards(page)
@@ -84,6 +98,50 @@ authTest.describe("Batch upload on a phone", () => {
     },
   );
 
+  authTest(
+    "tapping a card edits it and its checkbox selects it",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
+
+      await openCard(page, 1);
+      const editor = page.getByRole("dialog");
+      await authExpect(editor.getByRole("heading", { name: "Observation 2 of 2" })).toBeVisible();
+      await authExpect(page.getByRole("status")).toHaveCount(0);
+
+      await row(page, "Remarks").click();
+      await page.getByLabel("Remarks").fill("creek trail");
+      await page.getByRole("button", { name: "Done" }).click();
+      await authExpect(row(page, "Remarks")).toContainText("creek trail");
+
+      await editor.getByRole("button", { name: "Previous observation" }).click();
+      await authExpect(editor.getByRole("heading", { name: "Observation 1 of 2" })).toBeVisible();
+      await authExpect(row(page, "Remarks")).toContainText("Add remarks");
+      await editor.getByRole("button", { name: "Done" }).click();
+
+      await check(page, 0);
+      await authExpect(page.getByRole("status")).toHaveText("1 selected");
+      await authExpect(page.getByRole("dialog")).toHaveCount(0);
+      await page.getByRole("button", { name: "Clear selection" }).click();
+      await authExpect(page.getByRole("button", { name: "Upload 2" })).toBeEnabled();
+    },
+  );
+
+  authTest("the back button closes a step, not the page", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg")]);
+    await openCard(page, 0);
+    await row(page, "Date and time").click();
+    await authExpect(page.getByLabel("Time zone")).toBeVisible();
+
+    await page.goBack();
+    await authExpect(page.getByRole("heading", { name: "Observation 1 of 1" })).toBeVisible();
+    await page.goBack();
+    await authExpect(page.getByRole("dialog")).toHaveCount(0);
+    await authExpect(cards(page)).toHaveCount(1);
+    await authExpect(page).toHaveURL(BATCH_URL);
+  });
+
   authTest("combines and splits the checked observations", async ({ authenticatedPage: page }) => {
     await page.goto(BATCH_URL);
     await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
@@ -103,6 +161,133 @@ authTest.describe("Batch upload on a phone", () => {
     await page.getByRole("button", { name: "Remove" }).click();
     await authExpect(page.getByRole("button", { name: "Choose photos" })).toBeVisible();
   });
+
+  authTest("edits several observations at once", async ({ authenticatedPage: page }) => {
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("a.jpg"), barePhoto("b.jpg"), taggedPhoto("c.jpg")]);
+    await check(page, 0);
+    await check(page, 1);
+    await page.getByRole("button", { name: "Edit", exact: true }).click();
+
+    const editor = page.getByRole("dialog");
+    await authExpect(editor.getByRole("heading", { name: "Editing 2 observations" })).toBeVisible();
+    await authExpect(row(page, "Date and time")).toContainText("Different dates");
+    await authExpect(row(page, "Date and time")).toContainText("1 has no date");
+    await authExpect(editor.getByRole("button", { name: /Manage/ })).toHaveCount(0);
+
+    await row(page, "Identification").click();
+    // Suggestions are for one photo.
+    await authExpect(
+      page.getByRole("button", { name: /Suggest from the first photo/ }),
+    ).toHaveCount(0);
+    await page.getByRole("textbox", { name: "Search species or other taxa" }).fill("quercus");
+    await page.getByRole("button", { name: /Quercus robur/ }).click();
+    await authExpect(row(page, "Identification")).toContainText("Quercus robur");
+    await editor.getByRole("button", { name: "Done" }).click();
+
+    await authExpect(cards(page).nth(0)).toContainText("Quercus robur");
+    await authExpect(cards(page).nth(1)).toContainText("Quercus robur");
+    await authExpect(cards(page).nth(2)).toContainText("Unidentified");
+  });
+
+  authTest(
+    "a name that isn't in the taxonomy asks for a kingdom",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg")]);
+      await openCard(page, 0);
+      await row(page, "Identification").click();
+      await authExpect(
+        page.getByRole("button", { name: /Suggest from the first photo/ }),
+      ).toBeVisible();
+
+      const search = page.getByRole("textbox", { name: "Search species or other taxa" });
+      await search.fill("Mystery beetle");
+      // Typing replaces the offer of suggestions; clearing brings it back.
+      await authExpect(page.getByRole("button", { name: /Suggest from the first/ })).toHaveCount(0);
+      await page.getByRole("button", { name: /Use "Mystery beetle" as a name/ }).click();
+      const use = page.getByRole("button", { name: "Use this name" });
+      await authExpect(use).toBeDisabled();
+      await page.getByLabel("Kingdom").click();
+      await page.getByRole("option", { name: "Animals" }).click();
+      await use.click();
+
+      await authExpect(row(page, "Identification")).toContainText("Mystery beetle");
+      await row(page, "Identification").click();
+      await page.getByRole("button", { name: "Remove identification" }).click();
+      await authExpect(row(page, "Identification")).toContainText("Unidentified");
+    },
+  );
+
+  authTest(
+    "sets a location on the full-screen map and steps to the next incomplete one",
+    async ({ authenticatedPage: page }) => {
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [barePhoto("a.jpg"), taggedPhoto("b.jpg"), barePhoto("c.jpg")]);
+      await openCard(page, 0);
+      await authExpect(row(page, "Location")).toContainText("Required");
+
+      await row(page, "Location").click();
+      const set = page.getByRole("button", { name: "Set location" });
+      await authExpect(set).toBeDisabled();
+      await page.getByRole("button", { name: "Enter coordinates manually" }).click();
+      await page.getByLabel("Latitude").fill("37.9");
+      await page.getByLabel("Longitude").fill("-122.3");
+      // Nothing changes until it is confirmed.
+      await set.click();
+      await authExpect(row(page, "Location")).toContainText("37.9");
+
+      // The complete observation in between is skipped.
+      await page.getByRole("button", { name: "Next (1 left)" }).click();
+      await authExpect(page.getByRole("heading", { name: "Observation 3 of 3" })).toBeVisible();
+    },
+  );
+
+  authTest(
+    "uploads as a list, and keeps the ones that fail",
+    async ({ authenticatedPage: page }) => {
+      let release = () => {};
+      const slow = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const bodies = await mockSubmit(page, ["broken"], slow);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg"), taggedPhoto("c.jpg")]);
+      for (const [index, remarks] of ["slow", "broken", ""].entries()) {
+        if (!remarks) continue;
+        await openCard(page, index);
+        await row(page, "Remarks").click();
+        await page.getByLabel("Remarks").fill(remarks);
+        await page.getByRole("button", { name: "Done" }).click();
+        await page.getByRole("dialog").getByRole("button", { name: "Done" }).click();
+      }
+
+      await page.getByRole("button", { name: "Upload 3" }).click();
+      await authExpect(page.getByRole("heading", { name: "Uploading" })).toBeVisible();
+      await authExpect(page.getByRole("button", { name: "Cancel remaining" })).toBeVisible();
+      await authExpect(cards(page)).toHaveCount(0);
+      // Uploaded rows leave; the slow one and the failed one are still listed.
+      await authExpect(page.getByTestId("batch-row")).toHaveCount(2);
+      release();
+
+      await authExpect(
+        page.getByRole("heading", { name: "1 observation did not upload" }),
+      ).toBeVisible();
+      await authExpect(page.getByText("PDS unavailable")).toBeVisible();
+      await authExpect(page.getByRole("link", { name: "View your observations" })).toBeVisible();
+      authExpect(bodies).toHaveLength(2);
+
+      // Edit it into something the server takes, and send it again.
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      await row(page, "Remarks").click();
+      await page.getByLabel("Remarks").fill("fixed");
+      await page.getByRole("button", { name: "Done" }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Done" }).click();
+      await page.getByRole("button", { name: "Retry all failed" }).click();
+      await authExpect(page).toHaveURL(/\/profile\//);
+      authExpect(bodies).toHaveLength(3);
+    },
+  );
 });
 
 authTest.describe("Batch upload in an Android browser", () => {
