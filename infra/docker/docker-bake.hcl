@@ -4,8 +4,10 @@
 # RUST_PACKAGES in the Dockerfile) are pulled from the registry cache once per
 # push rather than once per image. Each image keeps its own :buildcache.
 #
-# Locally, `docker buildx bake --print` shows the resolved targets, and
-# `docker buildx bake tap-ingester` builds one image.
+# Run it from the repo root, which is the build context. Locally,
+# `docker buildx bake -f infra/docker/docker-bake.hcl --print` shows the
+# resolved targets, and adding a target name (e.g. tap-ingester) builds just
+# that image.
 
 variable "REGISTRY" {
   default = "observing"
@@ -29,7 +31,7 @@ group "default" {
 
 target "_image" {
   context    = "."
-  dockerfile = "Dockerfile"
+  dockerfile = "infra/docker/Dockerfile"
 }
 
 target "observing-appview" {
@@ -49,7 +51,7 @@ target "observing-species-id" {
 }
 
 # Same binary as observing-species-id with the faster ViT-L model bundle baked
-# in. Serves the live camera loop; see docs/services.md.
+# in. Serves the live camera loop; see infra/README.md.
 target "observing-species-id-live" {
   inherits = ["_image"]
   args = {

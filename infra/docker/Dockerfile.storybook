@@ -1,7 +1,7 @@
 # Storybook static-host image, deployed to Cloud Run.
 #
-# Build context expects ./storybook-static/ to already exist (created by
-# `npm run build-storybook` in CI). The image just bundles those files
+# The build context is the repo root, and ./storybook-static/ must already
+# exist there (created by `npm run build-storybook` in CI). The image just bundles those files
 # behind static-web-server, a small Rust HTTP server that handles
 # compression, cache headers, and SPA routing.
 FROM ghcr.io/static-web-server/static-web-server:2-alpine

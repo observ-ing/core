@@ -1,13 +1,13 @@
-# Multi-service Dockerfile
-#
-# Build any service:
-#   docker build --build-arg SERVICE=tap-ingester -t tap-ingester .
-#   docker build --build-arg SERVICE=observing-appview -t observing-appview .
+# Multi-service Dockerfile. The build context is the repo root, so build any
+# service from there:
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester -t tap-ingester .
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-appview -t observing-appview .
 #
 # The builder stage compiles every Rust service in RUST_PACKAGES at once, so
-# CI (docker-bake.hcl) compiles and caches one set of dependencies for all
-# images. To build a single service faster locally, narrow it:
-#   docker build --build-arg SERVICE=tap-ingester \
+# CI (docker-bake.hcl, next to this file) compiles and caches one set of
+# dependencies for all images. To build a single service faster locally,
+# narrow it:
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester \
 #     --build-arg RUST_PACKAGES=tap-ingester -t tap-ingester .
 #
 # For appview (which includes a frontend), the frontend stage runs
@@ -40,7 +40,7 @@ COPY lexicons/ lexicons/
 
 # MapTiler key for the map basemap, baked into the JS bundle at build time.
 # Pass it when building the appview image:
-#   docker build --build-arg SERVICE=observing-appview \
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-appview \
 #     --build-arg VITE_MAPTILER_KEY=<key allowed for https://observ.ing> ...
 # Optional — without it the map falls back to keyless CARTO vector tiles. Lives
 # only in this build stage; the runtime image just copies dist/public.
@@ -229,7 +229,7 @@ RUN apt-get update && apt-get install -y curl && \
 # Model bundle to bake in. Defaults to the full-accuracy ViT-H build used by
 # the upload/capture path. The faster live-loop service (ViT-L) is the same
 # binary built with a different bundle + version, e.g.:
-#   docker build --build-arg SERVICE=observing-species-id \
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-species-id \
 #     --build-arg SPECIES_MODEL_URL=<vit-l bundle .tar.gz> \
 #     --build-arg MODEL_VERSION=bioclip-2-vit-l-14 -t observing-species-id-live .
 # TODO: publish the ViT-L bundle in observ-ing/bioclip-models and set its URL

@@ -242,7 +242,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.storybook
+          file: infra/docker/Dockerfile.storybook
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/storybook:${{ github.sha }},${{ env.REGISTRY }}/storybook:latest
@@ -406,7 +406,7 @@ jobs:
       # `observing_devenv` database on it (and a temp Tap cursor DB) per run.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
       # Upstream `tap` revision; same indigo commit the production Dockerfile
-      # pins. Also keys the tap binary cache below.
+      # (infra/docker/Dockerfile) pins. Also keys the tap binary cache below.
       INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
       TAP_GO_VERSION: '1.26'
     steps:
@@ -497,7 +497,8 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Build and push every image in one BuildKit session (docker-bake.hcl).
+  # Build and push every image in one BuildKit session
+  # (infra/docker/docker-bake.hcl).
   # The Rust images share one compiled build, so a Rust change pulls the
   # toolchain and dependency layers from the registry cache once, not once
   # per image. Each of those pulls is Artifact Registry internet egress.
@@ -541,7 +542,7 @@ jobs:
           # for https://observ.ing. Unset, the map falls back to keyless CARTO
           # tiles.
           VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
-        run: docker buildx bake --file docker-bake.hcl --push
+        run: docker buildx bake --file infra/docker/docker-bake.hcl --push
 
   deploy:
     runs-on: ubuntu-latest
@@ -566,7 +567,7 @@ jobs:
 
       # gen2 and the 2s startup probe keep cold starts at ~20s instead of
       # ~95s; min-instances=0 avoids ~$65/mo for a warm 8 GiB instance.
-      # Reasons and sizing: docs/services.md#observing-species-id
+      # Reasons and sizing: infra/README.md#observing-species-id
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -583,7 +584,7 @@ jobs:
 
       # Same as species-id with the smaller ViT-L bundle (baked into the
       # image) and 4 GiB. Reasons and sizing:
-      # docs/services.md#observing-species-id-live
+      # infra/README.md#observing-species-id-live
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -642,7 +643,7 @@ jobs:
       # --no-cpu-throttling is load-bearing: the firehose loop isn't
       # request-driven and falls behind the relay without always-on CPU
       # (incident 2026-05-31). min/max-instances=1 keeps one consumer per
-      # cursor. Reasons and sizing: docs/services.md#tap-ingester
+      # cursor. Reasons and sizing: infra/README.md#tap-ingester
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \

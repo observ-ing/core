@@ -1,8 +1,21 @@
-# Services
+# Infrastructure
 
 What runs in production, how each piece is sized, and why. The deploy commands in `.github/workflows/ci.yml` hold the flags. This file holds the reasons. When you change a flag, update the matching section here in the same PR.
 
-Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy order and the dashboard runbooks are in [deployment.md](deployment.md).
+Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy order and the dashboard runbooks are in [docs/deployment.md](../docs/deployment.md).
+
+## In this directory
+
+| Path | What it is |
+|------|------------|
+| [`docker/Dockerfile`](docker/Dockerfile) | Builds every Rust service image, picked with `--build-arg SERVICE=<name>` |
+| [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The six production images CI builds and pushes together |
+| [`docker/Dockerfile.storybook`](docker/Dockerfile.storybook) | The Storybook static-site image |
+| [`monitoring/`](monitoring/) | Sources for the Cloud Monitoring dashboards (see [Supporting infrastructure](#supporting-infrastructure)) |
+
+Docker builds use the repo root as their context, so run them from there, for example `docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester .`. The root `.dockerignore` applies.
+
+The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub only reads workflows from `.github/workflows/`.
 
 ## At a glance
 
@@ -19,7 +32,7 @@ Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy or
 
 \* Not set in `ci.yml`. Cloud Run keeps a flag's previous value when a deploy leaves it out, so these are the live values as of 2026-10-17. Changing them means a one-off `gcloud run services update`, or adding the flag to the deploy step so it is pinned.
 
-All Rust services and jobs come from the root `Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all six images in one `docker buildx bake` run (`docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `Dockerfile.storybook`.
+All Rust services and jobs come from `docker/Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all six images in one `docker buildx bake` run (`docker/docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `docker/Dockerfile.storybook`.
 
 ## observing-appview
 
@@ -32,7 +45,7 @@ The public API at `https://observ.ing`. It serves the REST API, OAuth, the media
 
 ## tap-ingester
 
-The only writer for records that come from the network. It bundles the upstream Tap binary (Go, built from the indigo commit pinned in `Dockerfile` as `INDIGO_REV`), runs it as a child process, filters the firehose for our lexicons and upserts records. Code is in `crates/tap-ingester/`. Its stats and dashboard are public at `https://ingester.observ.ing`.
+The only writer for records that come from the network. It bundles the upstream Tap binary (Go, built from the indigo commit pinned in `docker/Dockerfile` as `INDIGO_REV`), runs it as a child process, filters the firehose for our lexicons and upserts records. Code is in `crates/tap-ingester/`. Its stats and dashboard are public at `https://ingester.observ.ing`.
 
 - **Always-on CPU (`--no-cpu-throttling`) is required.** The consumer is a background loop, not request-driven. Under Cloud Run's default, CPU drops to almost nothing between HTTP requests. The ingester then caps at a few hundred events per second and falls behind the relay's ~72-hour retention window for good (incident 2026-05-31).
 - **One instance, exactly (`--min-instances=1 --max-instances=1`).** There is one consumer per cursor.
@@ -99,11 +112,11 @@ Cloud SQL for PostgreSQL 18, Enterprise edition. It was created by hand and isn'
 ## Supporting infrastructure
 
 - **Artifact Registry.** The `observing` repository holds the service images and their `:buildcache` images. Cleanup deletes untagged versions after 30 days and keeps the 15 most recent of each image. The `storybook` repository deletes anything older than 30 days and keeps 5. Most of its cost is internet egress, not storage: the GitHub Actions runner downloads `:buildcache` layers it needs to rebuild. Two things keep that down. The images are built in one bake run, so shared Rust layers are downloaded once per push. The final binary copies use `COPY --link`, so a changed binary doesn't download the image beneath it.
-- **Monitoring.** The [Service Status](https://console.cloud.google.com/monitoring/dashboards/builder/4a03aa0a-e9a4-4f65-8168-b09030aeb432?project=observ-ing) dashboard shows which services are awake. The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) dashboard shows memory, CPU, firehose throughput, appview requests and database load over time. Their sources are in `infra/monitoring/`.
+- **Monitoring.** The [Service Status](https://console.cloud.google.com/monitoring/dashboards/builder/4a03aa0a-e9a4-4f65-8168-b09030aeb432?project=observ-ing) dashboard shows which services are awake. The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) dashboard shows memory, CPU, firehose throughput, appview requests and database load over time. Their sources are in [`monitoring/`](monitoring/).
 
 ## Changing a service
 
 1. Change the flag in the deploy step in `.github/workflows/ci.yml`. For a value marked * above, add the flag so it stays pinned.
 2. Update the table and the service's section here.
-3. When adding a Cloud Run service, also add it to the public status page's list (`crates/observing-appview/src/service_status.rs`) and give it a scorecard on the Service Status dashboard (see [deployment.md](deployment.md#service-status-dashboard)).
-4. When adding an image, give it a target in `docker-bake.hcl` and add it to the `default` group. For a new Rust binary, also add its package to `RUST_PACKAGES` in the `Dockerfile` and give it a `runtime-<name>` stage that ends with `COPY --link`.
+3. When adding a Cloud Run service, also add it to the public status page's list (`crates/observing-appview/src/service_status.rs`) and give it a scorecard on the Service Status dashboard (see [docs/deployment.md](../docs/deployment.md#service-status-dashboard)).
+4. When adding an image, give it a target in `docker/docker-bake.hcl` and add it to the `default` group. For a new Rust binary, also add its package to `RUST_PACKAGES` in `docker/Dockerfile` and give it a `runtime-<name>` stage that ends with `COPY --link`.

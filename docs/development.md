@@ -176,7 +176,7 @@ Go binary as a child process. It must be on `PATH` (or in the working
 directory) when `cargo run -p tap-ingester` starts.
 
 Install it once, pinned to the same revision the production Dockerfile
-and CI use:
+(`infra/docker/Dockerfile`) and CI use:
 
 ```bash
 # Same indigo commit CI builds against (see .github/workflows/ci.yml).
