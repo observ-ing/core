@@ -50,7 +50,10 @@ The [System Health](https://console.cloud.google.com/monitoring/dashboards/build
 
 - memory and CPU for each Cloud Run service, as a fraction of its limit, with tap-ingester's p50 and p99 charted on their own
 - tap-ingester's firehose bytes received per second, its liveness signal
-- obsThe source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. After editing the file, push it by hand with the same etag steps:
+- observing-appview's request rate and p95 latency
+- observing-db's CPU, memory, connections, commits per second and disk use
+
+The source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. After editing the file, push it by hand with the same etag steps:
 
 ```bash
 ID=4046b455-644f-4615-99cc-d4eae66aae0d
@@ -58,8 +61,6 @@ ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='
 jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/system-health-dashboard.json > /tmp/dashboard.json
 gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
 ```
-
-ashboard ID that `gcloud monitoring dashboards list --project=observ-ing --filter='displayName="System Health"'` prints.
 
 ## Runtime role boundary (one-shot)
 
