@@ -6,7 +6,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 
 ### Services and jobs
 
-[services.md](services.md) lists every service and job: what it does, how it's sized, and why each deploy flag is set the way it is.
+[infra/README.md](../infra/README.md) lists every service and job: what it does, how it's sized, and why each deploy flag is set the way it is.
 
 ### Deploy order
 

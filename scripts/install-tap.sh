@@ -7,7 +7,7 @@
 set -euo pipefail
 
 # Keep in sync with .github/workflows/ci.yml (the `Build and install
-# upstream tap` step) and the tap-build stage in Dockerfile.
+# upstream tap` step) and the tap-build stage in infra/docker/Dockerfile.
 INDIGO_REV="ce62b8fce9e01434213a69cb251852b2c9436cb9"
 
 if ! command -v go >/dev/null 2>&1; then
