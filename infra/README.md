@@ -101,13 +101,14 @@ Cloud SQL for PostgreSQL 18, Enterprise edition. It was created by hand and isn'
 | Tier | `db-custom-1-4096` (1 dedicated vCPU, 4 GB) |
 | Availability | Single zone (`us-central1-c`), no high availability |
 | Storage | 10 GB SSD with auto-resize. About 0.2 GB is used. |
-| Backups | **Off**, and point-in-time recovery is off too. Daily backups for a database this size would cost cents a month. |
+| Backups | Daily at 09:00 UTC, last 7 kept (on since 2026-10-17). Point-in-time recovery is off: it would keep the transaction log, which is large at ~370 commits per second. |
+| Query Insights | On since 2026-10-17. Use it to see which queries make up the commit rate and CPU. |
 | Connections | Default limit for the tier. Typical use is about 11 connections, and the 30-day peak was 35. |
 | Databases | `observing` (schemas `ingester`, `tap`, `appview`, `public`) and `quickslice` |
 
 - **Load (30 days to 2026-10-17).** Daily average CPU rose from 21% to 29%. Memory use is about 350 MB, and there are about 370 commits per second.
 - **Cost.** About $51/month: vCPU $30, memory $20, storage $1.70.
-- **Smaller tier.** `db-g1-small` (shared core, 1.7 GB) would cost about $27/month. Its default connection limit is 50, there's no SLA, and the current CPU load would use about 60% of its sustained share. Cut Tap's write rate first.
+- **Smaller tier.** `db-g1-small` (shared core, 1.7 GB) would cost about $27/month. Its default connection limit is 50, there's no SLA, and the current CPU load would use about 60% of its sustained share. Cut Tap's write rate first; Query Insights shows how much of the load is Tap's.
 
 ## Supporting infrastructure
 
