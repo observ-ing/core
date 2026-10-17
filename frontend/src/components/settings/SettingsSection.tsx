@@ -12,7 +12,7 @@ interface SettingsSectionProps {
 export function SettingsSection({ title, description, sx, children }: SettingsSectionProps) {
   return (
     <Paper variant="outlined" sx={{ p: 3, ...sx }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 0.5 }}>
+      <Typography variant="subtitle1" sx={{ mb: 0.5 }}>
         {title}
       </Typography>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 2 }}>

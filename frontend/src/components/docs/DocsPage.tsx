@@ -95,7 +95,7 @@ export function DocsPage() {
             >
               <Box sx={{ color: "primary.main", display: "flex" }}>{link.icon}</Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                <Typography variant="subtitle1">
                   {link.label}
                 </Typography>
                 <Typography variant="body2" sx={{ color: "text.secondary" }}>
