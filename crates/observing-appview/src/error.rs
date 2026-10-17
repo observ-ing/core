@@ -16,6 +16,7 @@ pub enum AppError {
     NotFound(String),
     Unauthorized,
     Forbidden(String),
+    Conflict(String),
     Internal(String),
     Database(sqlx::Error),
     ServiceUnavailable(String),
@@ -28,6 +29,7 @@ impl IntoResponse for AppError {
             AppError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Authentication required".into()),
             AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             AppError::Internal(msg) => {
                 tracing::error!(error = %msg, "Internal server error");
                 (

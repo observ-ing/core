@@ -2,6 +2,15 @@
 //! OAuth; cross-posting occurrences to it builds on that.
 
 pub mod client;
+// Called by the cross-post routes and worker, which land separately (#878).
+// Remove these allows when they do.
+#[allow(dead_code)]
+pub mod guard;
+#[allow(dead_code)]
+pub mod ids;
+#[allow(dead_code)]
+pub mod links;
+#[allow(dead_code)]
 pub mod payload;
 
 use std::time::Duration;
