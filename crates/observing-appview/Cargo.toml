@@ -14,6 +14,8 @@ atproto-identity = { path = "../atproto-identity" }
 observing-lexicons = { path = "../observing-lexicons" }
 # Taxonomy resolver (formerly observing-taxonomy)
 gbif = "0.1"
+# Shared reading of GBIF name matches (higher-rank fallbacks, homonyms)
+observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
 wikidata-client = { path = "../wikidata-client" }
 # Media cache (formerly observing-media-proxy)
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
