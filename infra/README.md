@@ -10,7 +10,7 @@ Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy or
 |------|------------|
 | [`docker/Dockerfile`](docker/Dockerfile) | Builds every Rust service image, picked with `--build-arg SERVICE=<name>` |
 | [`docker/Dockerfile.dockerignore`](docker/Dockerfile.dockerignore) | Build-context excludes for `docker/Dockerfile` |
-| [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The six production images CI builds and pushes together |
+| [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The seven production images CI builds and pushes together |
 | [`docker/Dockerfile.storybook`](docker/Dockerfile.storybook) | The Storybook static-site image |
 | [`monitoring/`](monitoring/) | Sources for the Cloud Monitoring dashboards (see [Supporting infrastructure](#supporting-infrastructure)) |
 
@@ -33,7 +33,7 @@ The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub o
 
 \* Not set in `ci.yml`. Cloud Run keeps a flag's previous value when a deploy leaves it out, so these are the live values as of 2026-10-17. Changing them means a one-off `gcloud run services update`, or adding the flag to the deploy step so it is pinned.
 
-All Rust services and jobs come from `docker/Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all six images in one `docker buildx bake` run (`docker/docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `docker/Dockerfile.storybook`.
+All Rust services and jobs come from `docker/Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all seven images in one `docker buildx bake` run (`docker/docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `docker/Dockerfile.storybook`.
 
 ## observing-appview
 

@@ -8,12 +8,15 @@
 //! and refreshes the `community_ids` materialized view if anything changed
 //! so downstream filters pick up the new keys. See [`pass`].
 //!
-//! Two modes:
+//! Three modes:
 //!
 //! - **One-shot** (default): exits after a single pass. Use this for an
 //!   on-demand backfill.
 //! - **Loop** (with `--interval-secs N`): runs a pass, sleeps `N` seconds,
 //!   repeats.
+//! - **Serve** (with `--serve`): an HTTP server that runs a pass on each
+//!   `POST /run`, meant to run as a private Cloud Run service that Cloud
+//!   Tasks calls. See [`serve`].
 //!
 //! Identification ingest writes `accepted_taxon_key = NULL`; this worker
 //! is the only path that fills it in. Higher-rank filters (taxon-page,
@@ -23,10 +26,13 @@
 //!   cargo run -p observing-resolve-taxa
 //!   cargo run -p observing-resolve-taxa -- --interval-secs 300
 //!   cargo run -p observing-resolve-taxa -- --rate-limit-ms 200 --limit 1000
+//!   cargo run -p observing-resolve-taxa -- --serve
 
 mod pass;
+mod serve;
 
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Duration;
 
 use clap::Parser;
@@ -47,23 +53,30 @@ struct Cli {
 
     /// Cap on the number of distinct (name, kingdom) pairs processed in
     /// one pass. Useful for incremental progress against a large backlog.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "serve")]
     limit: Option<i64>,
 
     /// Print what would be resolved without calling GBIF or writing.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "serve")]
     dry_run: bool,
 
     /// Run continuously: after each pass, sleep this many seconds and
     /// start another. Without this flag, exit after one pass.
-    #[arg(long)]
+    #[arg(long, conflicts_with = "serve")]
     interval_secs: Option<u64>,
+
+    /// Serve `POST /run` on `$PORT` (default 8080) instead of running a pass.
+    /// On Cloud Run, long passes continue on Cloud Tasks (see
+    /// `observing-tasks`).
+    #[arg(long)]
+    serve: bool,
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("observing_resolve_taxa=info,observing_db=info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("observing_resolve_taxa=info,observing_db=info,observing_tasks=info")
+    });
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_stackdriver::layer())
@@ -84,8 +97,14 @@ async fn main() -> ExitCode {
         gbif: GbifUpstream::default(),
         wikidata: WikidataClient::new(),
     };
+    let rate_limit = Duration::from_millis(cli.rate_limit_ms);
+
+    if cli.serve {
+        return serve_forever(clients, rate_limit).await;
+    }
+
     let opts = Options {
-        rate_limit: Duration::from_millis(cli.rate_limit_ms),
+        rate_limit,
         limit: cli.limit,
         dry_run: cli.dry_run,
         deadline: None,
@@ -108,4 +127,25 @@ async fn main() -> ExitCode {
         info!(seconds = interval, "Sleeping until next pass");
         tokio::time::sleep(Duration::from_secs(interval)).await;
     }
+}
+
+async fn serve_forever(clients: Clients, rate_limit: Duration) -> ExitCode {
+    let port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8080);
+    let tasks = match observing_tasks::Tasks::from_env().await {
+        Ok(tasks) => tasks,
+        Err(e) => {
+            error!(error = %e, "Could not set up background tasks");
+            return ExitCode::from(1);
+        }
+    };
+
+    let server = Arc::new(serve::Server::new(clients, rate_limit, tasks));
+    if let Err(e) = observing_bootstrap::serve(serve::router(server), port).await {
+        error!(error = %e, "HTTP server failed");
+        return ExitCode::from(1);
+    }
+    ExitCode::SUCCESS
 }

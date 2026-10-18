@@ -3166,9 +3166,11 @@ dependencies = [
 name = "observing-resolve-taxa"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "clap",
  "observing-bootstrap",
  "observing-db",
+ "observing-tasks",
  "observing-taxonomy-gbif",
  "serde",
  "serde_json",
