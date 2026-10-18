@@ -1,0 +1,25 @@
+[package]
+name = "observing-tasks"
+version = "0.1.0"
+edition = "2021"
+description = "Registry of background tasks, and queuing their runs on Cloud Tasks or locally"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Project, region and access token on Cloud Run
+gcp-metadata = { path = "../gcp-metadata" }
+
+# Cloud Tasks calls, and local runs
+reqwest = { workspace = true }
+
+# Request bodies
+serde_json = { workspace = true }
+base64 = { workspace = true }
+
+# Run times
+chrono = { workspace = true }
+
+# Local runs
+tokio = { workspace = true }
+
+tracing = { workspace = true }
