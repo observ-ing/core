@@ -111,6 +111,21 @@
       {
         "xPos": 0,
         "yPos": 8,
+        "width": 4,
+        "height": 3,
+        "widget": {
+          "title": "observing-resolve-taxa: instances (0 = asleep)",
+          "scorecard": {
+            "timeSeriesQuery": {
+              "prometheusQuery": "sum(run_googleapis_com:container_instance_count{monitored_resource=\"cloud_run_revision\",service_name=\"observing-resolve-taxa\"}) or vector(0)"
+            },
+            "sparkChartView": { "sparkChartType": "SPARK_LINE" }
+          }
+        }
+      },
+      {
+        "xPos": 0,
+        "yPos": 11,
         "width": 6,
         "height": 4,
         "widget": {
@@ -132,7 +147,7 @@
       },
       {
         "xPos": 6,
-        "yPos": 8,
+        "yPos": 11,
         "width": 6,
         "height": 4,
         "widget": {
@@ -154,7 +169,7 @@
       },
       {
         "xPos": 0,
-        "yPos": 12,
+        "yPos": 15,
         "width": 12,
         "height": 3,
         "widget": {

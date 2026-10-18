@@ -26,6 +26,8 @@
 //!                         falls back to `sqlite:///data/tap.db`
 //!                         (instance-ephemeral on Cloud Run).
 //!   PORT                  HTTP server port (default 8080).
+//!   OBSERVING_TASKS       `off` to stop asking observing-resolve-taxa to
+//!                         key new identifications (see `observing-tasks`).
 //!
 //! HTTP routes (see `dashboard` module for handlers):
 //!   GET /                  Combined ingester + Tap status page.
@@ -69,7 +71,9 @@ struct Cli {}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _cli = Cli::parse();
 
-    let env_filter = EnvFilter::from_default_env().add_directive("tap_ingester=info".parse()?);
+    let env_filter = EnvFilter::from_default_env()
+        .add_directive("tap_ingester=info".parse()?)
+        .add_directive("observing_tasks=info".parse()?);
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_stackdriver::layer())

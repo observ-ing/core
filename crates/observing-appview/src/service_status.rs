@@ -65,6 +65,12 @@ const SERVICES: &[ServiceInfo] = &[
         always_on: false,
     },
     ServiceInfo {
+        id: "observing-resolve-taxa",
+        name: "Taxon resolution",
+        description: "Matches new identifications to the GBIF taxonomy, a minute after they arrive.",
+        always_on: false,
+    },
+    ServiceInfo {
         id: "storybook",
         name: "Storybook",
         description: "The interactive component library.",
