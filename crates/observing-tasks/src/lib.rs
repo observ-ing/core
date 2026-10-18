@@ -15,19 +15,65 @@
 mod cloud_tasks;
 mod registry;
 
+use std::fmt;
 use std::sync::atomic::{AtomicI64, Ordering};
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
-use cloud_tasks::{Client, HttpTask};
+use cloud_tasks::HttpTask;
 use serde_json::Value;
 use tracing::{info, warn};
 
-pub use cloud_tasks::Error;
 pub use registry::Task;
 
 /// The account Cloud Tasks calls services as.
 const INVOKER_ACCOUNT: &str = "cloud-tasks-invoker";
+
+#[derive(Debug)]
+pub enum Error {
+    /// The metadata server didn't answer, so there is no project, region or
+    /// access token to queue with.
+    Metadata(gcp_metadata::Error),
+    Http(reqwest::Error),
+    /// Cloud Tasks, or a task's service in local development, answered with
+    /// an error.
+    Api {
+        status: u16,
+        body: String,
+    },
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Error::Metadata(e) => e.fmt(f),
+            Error::Http(e) => write!(f, "request failed: {e}"),
+            Error::Api { status, body } => write!(f, "returned {status}: {body}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Error::Metadata(e) => Some(e),
+            Error::Http(e) => Some(e),
+            Error::Api { .. } => None,
+        }
+    }
+}
+
+impl From<gcp_metadata::Error> for Error {
+    fn from(e: gcp_metadata::Error) -> Self {
+        Error::Metadata(e)
+    }
+}
+
+impl From<reqwest::Error> for Error {
+    fn from(e: reqwest::Error) -> Self {
+        Error::Http(e)
+    }
+}
 
 /// One run to queue.
 #[derive(Debug, Clone, Default)]
@@ -47,7 +93,8 @@ pub struct Tasks {
 
 enum Backend {
     CloudTasks {
-        client: Client,
+        metadata: gcp_metadata::Client,
+        client: cloud_tasks::Client,
         project_id: String,
         project_number: String,
         region: String,
@@ -76,14 +123,15 @@ impl Tasks {
             });
         }
 
-        let client = Client::new();
-        let project_id = client.metadata("project/project-id").await?;
-        let project_number = client.metadata("project/numeric-project-id").await?;
-        let region = region_name(&client.metadata("instance/region").await?).to_string();
+        let metadata = gcp_metadata::Client::new();
+        let project_id = metadata.project_id().await?;
+        let project_number = metadata.project_number().await?;
+        let region = metadata.region().await?;
         info!(project = %project_id, region = %region, "Background tasks go to Cloud Tasks");
         Ok(Self {
             backend: Backend::CloudTasks {
-                client,
+                metadata,
+                client: cloud_tasks::Client::new(),
                 project_id,
                 project_number,
                 region,
@@ -134,6 +182,7 @@ impl Tasks {
         let url = format!("{base}{}", task.path());
         match &self.backend {
             Backend::CloudTasks {
+                metadata,
                 client,
                 project_id,
                 region,
@@ -152,7 +201,10 @@ impl Tasks {
                     schedule_time: run.at,
                     dispatch_deadline: Some(task.dispatch_deadline()),
                 };
-                client.create(&queue, &invoker, &http_task).await
+                let access_token = metadata.access_token().await?;
+                client
+                    .create(&access_token, &queue, &invoker, &http_task)
+                    .await
             }
             Backend::Local { http } => {
                 let http = http.clone();
@@ -247,11 +299,6 @@ fn cloud_run_url(service: &str, project_number: &str, region: &str) -> String {
     format!("https://{service}-{project_number}.{region}.run.app")
 }
 
-/// The metadata server gives the region as `projects/{number}/regions/{region}`.
-fn region_name(metadata: &str) -> &str {
-    metadata.rsplit('/').next().unwrap_or(metadata).trim()
-}
-
 /// A task ID for one window. IDs that sort in sequence, like timestamps, slow
 /// Cloud Tasks down, so it starts with a hash of the window.
 fn window_task_id(name: &str, window: i64) -> String {
@@ -277,15 +324,6 @@ mod tests {
             cloud_run_url("observing-resolve-taxa", "735499857017", "us-central1"),
             "https://observing-resolve-taxa-735499857017.us-central1.run.app"
         );
-    }
-
-    #[test]
-    fn the_region_is_the_last_segment_of_the_metadata_value() {
-        assert_eq!(
-            region_name("projects/735499857017/regions/us-central1"),
-            "us-central1"
-        );
-        assert_eq!(region_name("us-central1\n"), "us-central1");
     }
 
     #[test]

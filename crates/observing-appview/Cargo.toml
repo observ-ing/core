@@ -22,6 +22,8 @@ file-blob-cache = { path = "../file-blob-cache" }
 observing-species-id-protocol = { path = "../observing-species-id-protocol" }
 # Postgres connection URL from env (DATABASE_URL or DB_* / Cloud SQL socket)
 pg-url-env = { path = "../pg-url-env" }
+# Access token for Cloud Monitoring (service status page)
+gcp-metadata = { path = "../gcp-metadata" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.12"
