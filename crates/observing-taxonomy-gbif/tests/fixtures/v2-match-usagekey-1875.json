@@ -1,0 +1,12 @@
+{
+  "diagnostics": {
+    "matchType": "NONE",
+    "confidence": 100,
+    "note": "All provided names were ignored since the usageKey was provided",
+    "timeTaken": 0,
+    "timings": {
+      "usageKeyMatch": 0
+    }
+  },
+  "synonym": false
+}
