@@ -22,5 +22,5 @@ axum = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 sqlx = { workspace = true, optional = true }
 futures = { workspace = true, optional = true }
-clap = { version = "4", features = ["derive"], optional = true }
+clap = { workspace = true, optional = true }
 pg-url-env = { path = "../pg-url-env", optional = true }
