@@ -15,12 +15,14 @@
 //! - **Loop** (with `--interval-secs N`): runs a pass, sleeps `N` seconds,
 //!   repeats.
 //! - **Serve** (with `--serve`): an HTTP server that runs a pass on each
-//!   `POST /run`, meant to run as a private Cloud Run service that Cloud
-//!   Tasks calls. See [`serve`].
+//!   `POST /run`. Production runs this as a private Cloud Run service that
+//!   Cloud Tasks calls, and local development runs it under
+//!   process-compose. See [`serve`].
 //!
 //! Identification ingest writes `accepted_taxon_key = NULL`; this worker
-//! is the only path that fills it in. Higher-rank filters (taxon-page,
-//! explore by kingdom) lag new ingests until its next pass.
+//! is the only path that fills it in. tap-ingester asks for a pass the
+//! minute after it writes one, so higher-rank filters (taxon-page, explore
+//! by kingdom) lag new ingests by about a minute.
 //!
 //! Usage:
 //!   cargo run -p observing-resolve-taxa

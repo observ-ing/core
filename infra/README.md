@@ -27,6 +27,7 @@ The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub o
 | [observing-species-id](#observing-species-id) | Cloud Run service | BioCLIP ViT-H/14 species ID for uploads | 2 vCPU / 8 GiB | 0–10* | Request-based | — |
 | [observing-species-id-live](#observing-species-id-live) | Cloud Run service | BioCLIP ViT-L/14 species ID for the live camera | 2 vCPU / 4 GiB | 0–10* | Request-based | — |
 | [storybook](#storybook) | Cloud Run service | Component library for development | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
+| [observing-resolve-taxa](#observing-resolve-taxa) | Cloud Run service (private) | Fills `accepted_taxon_key` on new identifications, run by Cloud Tasks | 1 vCPU / 512 MiB | 0–1 | Request-based | `ingester_runtime` |
 | [observing-migrate](#observing-migrate) | Cloud Run job | Runs migrations before each deploy | Default | — | — | `postgres` |
 | [observing-task-runner](#observing-task-runner) | Cloud Run job | Backfills and replays, run by hand | Default | — | — | `ingester_runtime` |
 | [observing-db](#observing-db) | Cloud SQL | PostgreSQL 18 for everything above | 1 vCPU / 4 GB | — | — | — |
@@ -77,6 +78,15 @@ The same binary as observing-species-id, built with the smaller, faster ViT-L/14
 ## storybook
 
 The static Storybook build, served by static-web-server. It's built and deployed by the `storybook-deploy` CI job into the separate `storybook` Artifact Registry repository. Cloud Run is cheaper than an HTTPS load balancer in front of Cloud Storage, cold starts are fine for a development tool, and the free tier covers the traffic.
+
+## observing-resolve-taxa
+
+Fills in `accepted_taxon_key` on identifications through GBIF. Code is in `crates/observing-resolve-taxa/`, running with `--serve`.
+
+- **Run by Cloud Tasks.** tap-ingester queues one task per minute in which identifications arrive, through the registry in `crates/observing-tasks`. An hourly Cloud Scheduler job is the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
+- **Private, one pass at a time** (`--no-allow-unauthenticated --max-instances=1 --concurrency=1`). Callers authenticate as `cloud-tasks-invoker`.
+- **10-minute passes.** A longer pass queues a task to carry on from where it stopped. `--timeout=900` matches the tasks' 15-minute deadline.
+- **Setup** was done by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
 
 ## observing-migrate
 

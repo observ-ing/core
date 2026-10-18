@@ -640,6 +640,29 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
+      # Private: only Cloud Tasks and Cloud Scheduler call it, as
+      # cloud-tasks-invoker. max-instances=1 with concurrency=1 keeps it to one
+      # pass at a time, and it scales to zero between passes. --timeout matches
+      # the 15-minute dispatch deadline in crates/observing-tasks. The queue
+      # and invoker account are set up by hand (docs/deployment.md#cloud-tasks);
+      # callers find them, and this service's URL, without configuration.
+      # Reasons and sizing: infra/README.md#observing-resolve-taxa
+      - name: Deploy resolve-taxa
+        run: |
+          gcloud run deploy observing-resolve-taxa \
+            --image=$REGISTRY/observing-resolve-taxa:latest \
+            --region=$REGION \
+            --no-allow-unauthenticated \
+            --cpu=1 \
+            --memory=512Mi \
+            --min-instances=0 \
+            --max-instances=1 \
+            --concurrency=1 \
+            --timeout=900 \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=RUST_LOG=observing_resolve_taxa=info,observing_tasks=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest
+
       # --no-cpu-throttling is load-bearing: the firehose loop isn't
       # request-driven and falls behind the relay without always-on CPU
       # (incident 2026-05-31). min/max-instances=1 keeps one consumer per

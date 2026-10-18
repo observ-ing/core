@@ -37,6 +37,9 @@ tower-http = { workspace = true }
 # HTTP client used by the media resolver
 reqwest = { workspace = true }
 
+# Asks observing-resolve-taxa for a pass after identifications land.
+observing-tasks = { path = "../observing-tasks" }
+
 # Firehose lag probe: a short-lived subscribeRepos connection at the current
 # cursor to read the relay's commit time (heartbeat turns it into lag_seconds).
 # tokio-tungstenite is already in the tree transitively; pin the same 0.28 line.

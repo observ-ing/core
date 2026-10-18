@@ -41,6 +41,7 @@ BASE_SPECIES_ID_PORT=3005
 BASE_VITE_PORT=5173
 # 8080 is process-compose's own REST API port, so tap-ingester sits at 8090.
 BASE_TAP_INGESTER_PORT=8090
+BASE_RESOLVE_TAXA_PORT=3007
 
 # One random offset for the whole stack. Stepped by 10 and capped at 5000 so
 # every derived port stays in a sane, unprivileged, in-range band and the
@@ -54,6 +55,7 @@ export APPVIEW_PORT=$(( BASE_APPVIEW_PORT + DEV_PORT_OFFSET ))
 export SPECIES_ID_PORT=$(( BASE_SPECIES_ID_PORT + DEV_PORT_OFFSET ))
 export VITE_PORT=$(( BASE_VITE_PORT + DEV_PORT_OFFSET ))
 export TAP_INGESTER_PORT=$(( BASE_TAP_INGESTER_PORT + DEV_PORT_OFFSET ))
+export RESOLVE_TAXA_PORT=$(( BASE_RESOLVE_TAXA_PORT + DEV_PORT_OFFSET ))
 
 # Let the appview proxy and any direct `cargo run` find the relocated Vite.
 export VITE_DEV_SERVER_URL="http://localhost:${VITE_PORT}"
@@ -63,6 +65,7 @@ Starting dev stack with port offset ${DEV_PORT_OFFSET}:
   appview        http://localhost:${APPVIEW_PORT}   (front door)
   species-id     http://localhost:${SPECIES_ID_PORT}
   tap-ingester   http://localhost:${TAP_INGESTER_PORT}
+  resolve-taxa   http://localhost:${RESOLVE_TAXA_PORT}
   vite           http://localhost:${VITE_PORT}
   postgres       localhost:5432   (fixed, shared)
 
