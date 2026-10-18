@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use atproto_identity::{IdentityResolver, Profile};
 use observing_db::quality::QualityIssue;
+use observing_db::taxon_uri::{self, TaxonRef};
 use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, OccurrenceRow};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -145,6 +146,12 @@ pub struct LocationResponse {
 #[ts(export, export_to = "bindings/")]
 pub struct EffectiveTaxonomy {
     pub scientific_name: String,
+    /// Stable URI for the taxon (e.g. `https://www.gbif.org/species/{key}`),
+    /// as Darwin Core dwc:taxonID. Lets clients link the exact taxon when the
+    /// name alone is ambiguous.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub taxon_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub vernacular_name: Option<String>,
@@ -402,15 +409,37 @@ async fn resolve_effective_taxonomy(
         .map(str::to_string)
         .or_else(|| identifications.iter().find_map(|id| id.kingdom.clone()));
 
+    // An identification of the winning name with a GBIF taxonID names the
+    // exact usage, which a name lookup can't recover for homonyms (e.g.
+    // "Anisoptera"), so resolve by that key first.
+    let picked_key = identifications
+        .iter()
+        .filter(|id| id.scientific_name == effective_name)
+        .find_map(|id| match taxon_uri::parse(id.taxon_id.as_deref()?) {
+            TaxonRef::Gbif(key) => Some(key),
+            _ => None,
+        });
+    let picked = match picked_key {
+        Some(key) => taxonomy
+            .get_by_id(&format!("gbif:{key}"))
+            .await
+            .unwrap_or(None),
+        None => None,
+    };
+
     // GBIF is the source of truth for vernacular names, so always try it first.
     // The Moka cache fronting the client keeps repeat lookups cheap.
-    if let Some(detail) = taxonomy
-        .get_by_name(effective_name, kingdom_hint.as_deref())
-        .await
-        .unwrap_or(None)
-    {
+    let detail = match picked {
+        Some(detail) => Some(detail),
+        None => taxonomy
+            .get_by_name(effective_name, kingdom_hint.as_deref())
+            .await
+            .unwrap_or(None),
+    };
+    if let Some(detail) = detail {
         return Some(EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
+            taxon_id: detail.gbif_url,
             vernacular_name: detail.common_name,
             rank: Some(detail.rank.to_lowercase()),
             kingdom: detail.kingdom,
@@ -429,6 +458,7 @@ async fn resolve_effective_taxonomy(
     {
         return Some(EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
+            taxon_id: id.taxon_id.clone(),
             vernacular_name: None,
             rank: id.taxon_rank.as_deref().map(str::to_lowercase),
             kingdom: id.kingdom.clone(),
@@ -443,6 +473,7 @@ async fn resolve_effective_taxonomy(
     // Bare minimum: just the name
     Some(EffectiveTaxonomy {
         scientific_name: effective_name.to_string(),
+        taxon_id: None,
         vernacular_name: None,
         rank: None,
         kingdom: None,

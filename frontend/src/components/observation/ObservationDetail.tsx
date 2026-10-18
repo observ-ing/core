@@ -187,7 +187,12 @@ export function ObservationDetail() {
             keeps the taxa title visually distinct from the attribution row. */}
         <Box sx={{ px: 3, pt: 2, pb: 1.5 }}>
           {species ? (
-            <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank={taxonomy?.rank} />
+            <TaxonLink
+              name={species}
+              kingdom={taxonomy?.kingdom}
+              rank={taxonomy?.rank}
+              taxonId={taxonomy?.taxonId}
+            />
           ) : (
             <Typography
               variant="h5"
@@ -434,6 +439,7 @@ export function ObservationDetail() {
                       communityId: observation.communityId,
                       kingdom: taxonomy?.kingdom,
                       rank: taxonomy?.rank,
+                      taxonId: taxonomy?.taxonId,
                     }}
                     imageUrl={
                       observation.images[0] != null

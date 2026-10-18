@@ -1,4 +1,5 @@
-mod auto_id;
+// `pub(crate)` so `routes::identifications` builds its records the same way.
+pub(crate) mod auto_id;
 // `pub(crate)` so `openapi.rs` can reach the `#[utoipa::path]` items, which
 // the re-exports below don't carry.
 pub(crate) mod read;

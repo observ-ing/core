@@ -26,6 +26,7 @@ interface IdentificationPanelProps {
     communityId?: string | undefined;
     kingdom?: string | undefined;
     rank?: string | undefined;
+    taxonId?: string | undefined;
   };
   /** Full URL of the observation's primary image, for visual ID matching */
   imageUrl?: string | undefined;
@@ -60,8 +61,9 @@ export function IdentificationPanel({
         occurrenceUri: observation.uri,
         occurrenceCid: observation.cid,
         scientificName: currentId,
+        ...(observation.taxonId ? { taxonId: observation.taxonId } : {}),
       }),
-    [submitId, observation.uri, observation.cid, currentId],
+    [submitId, observation.uri, observation.cid, currentId, observation.taxonId],
   );
 
   const { isSubmitting: isAgreeing, handleSubmit: handleAgree } = useFormSubmit(agreeFn, {
@@ -79,8 +81,17 @@ export function IdentificationPanel({
         scientificName: taxonName.trim(),
         ...(effectiveKingdom ? { kingdom: effectiveKingdom } : {}),
         ...(effectiveRank ? { taxonRank: effectiveRank } : {}),
+        ...(matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
       }),
-    [submitId, observation.uri, observation.cid, taxonName, effectiveKingdom, effectiveRank],
+    [
+      submitId,
+      observation.uri,
+      observation.cid,
+      taxonName,
+      effectiveKingdom,
+      effectiveRank,
+      matchedTaxon?.taxonId,
+    ],
   );
 
   const { isSubmitting: isSuggesting, handleSubmit: doSuggest } = useFormSubmit(suggestFn, {
@@ -139,7 +150,12 @@ export function IdentificationPanel({
           >
             Community ID
           </Typography>
-          <TaxonLink name={currentId} kingdom={observation.kingdom} rank={observation.rank} />
+          <TaxonLink
+            name={currentId}
+            kingdom={observation.kingdom}
+            rank={observation.rank}
+            taxonId={observation.taxonId}
+          />
         </Box>
       </Stack>
       <Stack

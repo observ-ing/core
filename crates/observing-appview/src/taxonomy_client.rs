@@ -202,69 +202,6 @@ pub struct ValidateResponse {
     pub suggestions: Option<Vec<TaxonResult>>,
 }
 
-/// Extracted taxon fields from a GBIF validation result.
-///
-/// Used when creating identifications or occurrences to avoid duplicating
-/// the field-extraction logic that maps a [`ValidateResponse`] into the
-/// individual optional columns stored alongside records.
-#[derive(Debug, Default)]
-pub struct TaxonFields {
-    pub taxon_id: Option<String>,
-    pub taxon_rank: Option<String>,
-    pub kingdom: Option<String>,
-    pub phylum: Option<String>,
-    pub class: Option<String>,
-    pub order: Option<String>,
-    pub family: Option<String>,
-    pub genus: Option<String>,
-}
-
-impl TaxonFields {
-    /// Validate a scientific name via the taxonomy resolver and extract the
-    /// classification fields from the response.
-    ///
-    /// `rank_override` is an optional caller-supplied rank (e.g. from user
-    /// input). When present it takes priority over the rank returned by GBIF.
-    ///
-    /// `kingdom_hint` is forwarded to GBIF for disambiguation (essential for
-    /// genus-level names that overlap across kingdoms, where a hint-less
-    /// validate often returns no taxon at all). It also acts as a fallback
-    /// when the validation succeeds but doesn't carry a kingdom of its own.
-    pub async fn from_validation(
-        taxonomy: &TaxonomyClient,
-        scientific_name: &str,
-        rank_override: Option<String>,
-        kingdom_hint: Option<&str>,
-    ) -> Self {
-        let mut fields = TaxonFields {
-            taxon_rank: rank_override,
-            ..Default::default()
-        };
-
-        if let Some(validation) = taxonomy.validate(scientific_name, kingdom_hint).await {
-            if let Some(ref t) = validation.taxon {
-                fields.taxon_id = Some(t.id.clone());
-                if fields.taxon_rank.is_none() {
-                    fields.taxon_rank = Some(t.rank.clone());
-                }
-                fields.kingdom = t.kingdom.clone();
-                fields.phylum = t.phylum.clone();
-                fields.class = t.class.clone();
-                fields.order = t.order.clone();
-                fields.family = t.family.clone();
-                fields.genus = t.genus.clone();
-            }
-        }
-
-        // Don't lose the caller's kingdom if validation didn't supply one.
-        if fields.kingdom.is_none() {
-            fields.kingdom = kingdom_hint.map(str::to_string);
-        }
-
-        fields
-    }
-}
-
 impl TaxonomyClient {
     /// Construct a new client backed by an in-memory GBIF + Wikidata stack.
     pub fn new() -> Self {
