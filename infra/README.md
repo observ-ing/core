@@ -81,17 +81,12 @@ The static Storybook build, served by static-web-server. It's built and deployed
 
 ## observing-resolve-taxa
 
-The only thing that fills in `accepted_taxon_key` on identifications. tap-ingester writes them with it NULL; this service resolves each `(scientific_name, kingdom)` pair (and any `taxon_id` URI) through GBIF, stamps the key, and refreshes `community_ids`. Code is in `crates/observing-resolve-taxa/`, running with `--serve`.
+Fills in `accepted_taxon_key` on identifications through GBIF. Code is in `crates/observing-resolve-taxa/`, running with `--serve`.
 
-- **Run by Cloud Tasks, not always on.** After tap-ingester writes an identification, it queues a task on the `resolve-taxa` queue for the start of the next minute (`crates/tap-ingester/src/resolve_taxa_trigger.rs`). The task ID is the minute, so every identification in that minute shares one walk. An always-on worker would cost about as much as tap-ingester (about $50/month) for a few seconds of work an hour. Cloud Tasks and the one Cloud Scheduler job are within their free tiers.
-- **Private (`--no-allow-unauthenticated`).** Cloud Tasks and Cloud Scheduler call it with an OIDC token for `cloud-tasks-invoker`, the only account with `run.invoker` on it. Cloud Run checks the token, so the service has no auth code.
-- **One walk at a time (`--max-instances=1 --concurrency=1`).** Two walks would only repeat lookups, but they would double what GBIF sees.
-- **10-minute walks, 15-minute timeout.** A request walks for up to 10 minutes, then queues a task that carries on from where it stopped (a cursor in the task body), so a large backlog never runs into the dispatch deadline. `--timeout=900` matches the 15-minute deadline on the tasks.
-- **Hourly backstop.** The `resolve-taxa-backstop` Cloud Scheduler job POSTs to `/run` once an hour, in case a task was lost or an identification arrived another way, like a `replay-failed-records` run.
-- **Queue.** `resolve-taxa`: one dispatch at a time, up to 5 attempts with 30 s to 10 min backoff. A walk that fails (a database error, or a failure to queue its continuation) answers 500 and is retried.
-- **Database.** Up to 2 connections (`PoolConfig::worker()`), as `ingester_runtime`, which can write the `ingester` schema (`identifications`, `taxa`) and owns the `community_ids` matview it refreshes.
-- **Setup.** The queue, the invoker account, the IAM bindings and the scheduler job were created by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
-- **Watch.** On the Service Status dashboard it should wake for a minute or so after identifications arrive, then return to 0. `SELECT count(*) FROM identifications WHERE accepted_taxon_key IS NULL` should stay small; names GBIF doesn't know stay NULL for good.
+- **Run by Cloud Tasks.** tap-ingester queues one task per minute in which identifications arrive, and an hourly Cloud Scheduler job is the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
+- **Private, one walk at a time** (`--no-allow-unauthenticated --max-instances=1 --concurrency=1`). Callers authenticate as `cloud-tasks-invoker`.
+- **10-minute walks.** A longer walk queues a task to carry on from where it stopped. `--timeout=900` matches the tasks' 15-minute deadline.
+- **Setup** was done by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
 
 ## observing-migrate
 
