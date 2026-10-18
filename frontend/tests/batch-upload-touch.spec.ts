@@ -37,16 +37,21 @@ const suppressesPhotoMenu = (page: Page, index: number) =>
         !img.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true })),
     );
 
-// Firefox on Android only drags with a mouse, so a long press never starts one.
-const FIREFOX_ANDROID = (device: "Mobile" | "Tablet") =>
-  `Mozilla/5.0 (Android 14; ${device}; rv:131.0) Gecko/131.0 Firefox/131.0`;
-
 authTest.describe("Batch upload on a phone", () => {
   authTest.use({ contextOptions: PHONE });
 
   authTest.beforeEach(async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await mockTaxaSearchRoute(page);
+  });
+
+  authTest("is offered in the create menu", async ({ authenticatedPage: page }) => {
+    await page.goto("/");
+    await page.getByRole("button", { name: "Create actions" }).click();
+    await page.getByRole("menuitem", { name: "Batch upload" }).click();
+    await authExpect(page).toHaveURL(BATCH_URL);
+    await authExpect(page.getByRole("button", { name: "Choose photos" })).toBeVisible();
+    await authExpect(page.getByText("removes location from photos")).toHaveCount(0);
   });
 
   authTest(
@@ -464,6 +469,10 @@ authTest.describe("Batch upload in an Android browser", () => {
     await authExpect(page.getByText(/\bapp\b/i)).toHaveCount(0);
   });
 });
+
+// Firefox on Android only drags with a mouse, so a long press never starts one.
+const FIREFOX_ANDROID = (device: "Mobile" | "Tablet") =>
+  `Mozilla/5.0 (Android 14; ${device}; rv:131.0) Gecko/131.0 Firefox/131.0`;
 
 authTest.describe("Batch upload in Firefox on an Android phone", () => {
   authTest.use({ contextOptions: { ...PHONE, userAgent: FIREFOX_ANDROID("Mobile") } });
