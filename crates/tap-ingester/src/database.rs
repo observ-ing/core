@@ -7,6 +7,7 @@
 
 use crate::error::{IngesterError, Result};
 use crate::media_resolver::MediaResolver;
+use crate::resolve_taxa_trigger::ResolveTaxaTrigger;
 use chrono::{DateTime, Utc};
 use observing_bootstrap::db::PoolConfig;
 use observing_db::identifications::CommunityIdsRefresher;
@@ -75,6 +76,7 @@ pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
     community_ids_refresher: CommunityIdsRefresher,
+    resolve_taxa: ResolveTaxaTrigger,
 }
 
 impl Database {
@@ -88,6 +90,7 @@ impl Database {
             pool,
             media_resolver: MediaResolver::new(),
             community_ids_refresher,
+            resolve_taxa: ResolveTaxaTrigger::from_env(),
         })
     }
 
@@ -145,10 +148,10 @@ impl Database {
         Ok(())
     }
 
-    /// Identifications are written with `accepted_taxon_key = NULL`. The
-    /// `observing-resolve-taxa` background worker picks up unresolved rows
-    /// on its next pass and stamps them — keeping ingest decoupled from
-    /// GBIF availability and ingest latency independent of the upstream's.
+    /// Identifications are written with `accepted_taxon_key = NULL`.
+    /// `observing-resolve-taxa` stamps them on a walk that this asks for at
+    /// the start of the next minute — keeping ingest decoupled from GBIF
+    /// availability and ingest latency independent of the upstream's.
     pub async fn upsert_identification(
         &self,
         did: &str,
@@ -174,6 +177,7 @@ impl Database {
         // Signal post-commit; the background debouncer coalesces the matview
         // refresh so we don't re-aggregate the whole table per firehose event.
         self.community_ids_refresher.request_refresh();
+        self.resolve_taxa.request();
         notify_occurrence_owner(&self.pool, did, "identification", &params.subject_uri, uri).await;
         Ok(())
     }

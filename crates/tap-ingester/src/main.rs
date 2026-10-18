@@ -26,6 +26,10 @@
 //!                         falls back to `sqlite:///data/tap.db`
 //!                         (instance-ephemeral on Cloud Run).
 //!   PORT                  HTTP server port (default 8080).
+//!   RESOLVE_TAXA_URL      observing-resolve-taxa, to ask for a walk after
+//!                         an identification lands. With CLOUD_TASKS_QUEUE
+//!                         and CLOUD_TASKS_INVOKER also set, asks through
+//!                         Cloud Tasks; see `resolve_taxa_trigger`.
 //!
 //! HTTP routes (see `dashboard` module for handlers):
 //!   GET /                  Combined ingester + Tap status page.
@@ -38,6 +42,7 @@ mod database;
 mod error;
 mod lag_probe;
 mod media_resolver;
+mod resolve_taxa_trigger;
 mod server;
 mod subject_resolver;
 mod types;

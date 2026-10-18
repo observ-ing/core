@@ -10,7 +10,7 @@ Everything runs in the `observ-ing` GCP project, region `us-central1`. Deploy or
 |------|------------|
 | [`docker/Dockerfile`](docker/Dockerfile) | Builds every Rust service image, picked with `--build-arg SERVICE=<name>` |
 | [`docker/Dockerfile.dockerignore`](docker/Dockerfile.dockerignore) | Build-context excludes for `docker/Dockerfile` |
-| [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The six production images CI builds and pushes together |
+| [`docker/docker-bake.hcl`](docker/docker-bake.hcl) | The seven production images CI builds and pushes together |
 | [`docker/Dockerfile.storybook`](docker/Dockerfile.storybook) | The Storybook static-site image |
 | [`monitoring/`](monitoring/) | Sources for the Cloud Monitoring dashboards (see [Supporting infrastructure](#supporting-infrastructure)) |
 
@@ -27,13 +27,14 @@ The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub o
 | [observing-species-id](#observing-species-id) | Cloud Run service | BioCLIP ViT-H/14 species ID for uploads | 2 vCPU / 8 GiB | 0–10* | Request-based | — |
 | [observing-species-id-live](#observing-species-id-live) | Cloud Run service | BioCLIP ViT-L/14 species ID for the live camera | 2 vCPU / 4 GiB | 0–10* | Request-based | — |
 | [storybook](#storybook) | Cloud Run service | Component library for development | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
+| [observing-resolve-taxa](#observing-resolve-taxa) | Cloud Run service (private) | Fills `accepted_taxon_key` on new identifications, run by Cloud Tasks | 1 vCPU / 512 MiB | 0–1 | Request-based | `ingester_runtime` |
 | [observing-migrate](#observing-migrate) | Cloud Run job | Runs migrations before each deploy | Default | — | — | `postgres` |
 | [observing-task-runner](#observing-task-runner) | Cloud Run job | Backfills and replays, run by hand | Default | — | — | `ingester_runtime` |
 | [observing-db](#observing-db) | Cloud SQL | PostgreSQL 18 for everything above | 1 vCPU / 4 GB | — | — | — |
 
 \* Not set in `ci.yml`. Cloud Run keeps a flag's previous value when a deploy leaves it out, so these are the live values as of 2026-10-17. Changing them means a one-off `gcloud run services update`, or adding the flag to the deploy step so it is pinned.
 
-All Rust services and jobs come from `docker/Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all six images in one `docker buildx bake` run (`docker/docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `docker/Dockerfile.storybook`.
+All Rust services and jobs come from `docker/Dockerfile`, built with `--build-arg SERVICE=<name>`. CI builds all seven images in one `docker buildx bake` run (`docker/docker-bake.hcl`), and one Rust build stage compiles every service's binary. Storybook has its own `docker/Dockerfile.storybook`.
 
 ## observing-appview
 
@@ -77,6 +78,20 @@ The same binary as observing-species-id, built with the smaller, faster ViT-L/14
 ## storybook
 
 The static Storybook build, served by static-web-server. It's built and deployed by the `storybook-deploy` CI job into the separate `storybook` Artifact Registry repository. Cloud Run is cheaper than an HTTPS load balancer in front of Cloud Storage, cold starts are fine for a development tool, and the free tier covers the traffic.
+
+## observing-resolve-taxa
+
+The only thing that fills in `accepted_taxon_key` on identifications. tap-ingester writes them with it NULL; this service resolves each `(scientific_name, kingdom)` pair (and any `taxon_id` URI) through GBIF, stamps the key, and refreshes `community_ids`. Code is in `crates/observing-resolve-taxa/`, running with `--serve`.
+
+- **Run by Cloud Tasks, not always on.** After tap-ingester writes an identification, it queues a task on the `resolve-taxa` queue for the start of the next minute (`crates/tap-ingester/src/resolve_taxa_trigger.rs`). The task ID is the minute, so every identification in that minute shares one walk. An always-on worker would cost about as much as tap-ingester (about $50/month) for a few seconds of work an hour. Cloud Tasks and the one Cloud Scheduler job are within their free tiers.
+- **Private (`--no-allow-unauthenticated`).** Cloud Tasks and Cloud Scheduler call it with an OIDC token for `cloud-tasks-invoker`, the only account with `run.invoker` on it. Cloud Run checks the token, so the service has no auth code.
+- **One walk at a time (`--max-instances=1 --concurrency=1`).** Two walks would only repeat lookups, but they would double what GBIF sees.
+- **10-minute walks, 15-minute timeout.** A request walks for up to 10 minutes, then queues a task that carries on from where it stopped (a cursor in the task body), so a large backlog never runs into the dispatch deadline. `--timeout=900` matches the 15-minute deadline on the tasks.
+- **Hourly backstop.** The `resolve-taxa-backstop` Cloud Scheduler job POSTs to `/run` once an hour, in case a task was lost or an identification arrived another way, like a `replay-failed-records` run.
+- **Queue.** `resolve-taxa`: one dispatch at a time, up to 5 attempts with 30 s to 10 min backoff. A walk that fails (a database error, or a failure to queue its continuation) answers 500 and is retried.
+- **Database.** Up to 2 connections (`PoolConfig::worker()`), as `ingester_runtime`, which can write the `ingester` schema (`identifications`, `taxa`) and owns the `community_ids` matview it refreshes.
+- **Setup.** The queue, the invoker account, the IAM bindings and the scheduler job were created by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
+- **Watch.** On the Service Status dashboard it should wake for a minute or so after identifications arrive, then return to 0. `SELECT count(*) FROM identifications WHERE accepted_taxon_key IS NULL` should stay small; names GBIF doesn't know stay NULL for good.
 
 ## observing-migrate
 

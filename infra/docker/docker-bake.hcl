@@ -26,6 +26,7 @@ group "default" {
     "observing-migrate",
     "tap-ingester",
     "observing-task-runner",
+    "observing-resolve-taxa",
   ]
 }
 
@@ -86,4 +87,12 @@ target "observing-task-runner" {
   tags       = ["${REGISTRY}/observing-task-runner:latest"]
   cache-from = ["type=registry,ref=${REGISTRY}/observing-task-runner:buildcache"]
   cache-to   = ["type=registry,ref=${REGISTRY}/observing-task-runner:buildcache,mode=max"]
+}
+
+target "observing-resolve-taxa" {
+  inherits   = ["_image"]
+  args       = { SERVICE = "observing-resolve-taxa" }
+  tags       = ["${REGISTRY}/observing-resolve-taxa:latest"]
+  cache-from = ["type=registry,ref=${REGISTRY}/observing-resolve-taxa:buildcache"]
+  cache-to   = ["type=registry,ref=${REGISTRY}/observing-resolve-taxa:buildcache,mode=max"]
 }

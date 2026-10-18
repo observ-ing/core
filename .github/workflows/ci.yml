@@ -558,6 +558,10 @@ jobs:
       # tap-ingester's Cloud Run custom domain; the appview reads its
       # /api/stats + /api/tap-stats to render the ingester/* admin tables.
       INGESTER_URL: https://ingester.observ.ing
+      # Cloud Tasks queue and invoker for observing-resolve-taxa. Both are
+      # created by hand; see docs/deployment.md#cloud-tasks.
+      TASKS_QUEUE: projects/${{ secrets.GCP_PROJECT_ID }}/locations/us-central1/queues/resolve-taxa
+      TASKS_INVOKER: cloud-tasks-invoker@${{ secrets.GCP_PROJECT_ID }}.iam.gserviceaccount.com
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -640,6 +644,31 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
+      # Private: only Cloud Tasks and Cloud Scheduler call it, as
+      # cloud-tasks-invoker. max-instances=1 with concurrency=1 keeps it to one
+      # walk at a time, and it scales to zero between walks. --timeout matches
+      # the 15-minute dispatch deadline its tasks carry. Deployed before
+      # tap-ingester, which needs its URL. Reasons and sizing:
+      # infra/README.md#observing-resolve-taxa
+      - name: Deploy resolve-taxa
+        id: deploy-resolve-taxa
+        run: |
+          URL=$(gcloud run deploy observing-resolve-taxa \
+            --image=$REGISTRY/observing-resolve-taxa:latest \
+            --region=$REGION \
+            --no-allow-unauthenticated \
+            --cpu=1 \
+            --memory=512Mi \
+            --min-instances=0 \
+            --max-instances=1 \
+            --concurrency=1 \
+            --timeout=900 \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=RUST_LOG=observing_resolve_taxa=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,CLOUD_TASKS_QUEUE=$TASKS_QUEUE,CLOUD_TASKS_INVOKER=$TASKS_INVOKER \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
+            --format='value(status.url)')
+          echo "url=$URL" >> $GITHUB_OUTPUT
+
       # --no-cpu-throttling is load-bearing: the firehose loop isn't
       # request-driven and falls behind the relay without always-on CPU
       # (incident 2026-05-31). min/max-instances=1 keeps one consumer per
@@ -654,7 +683,7 @@ jobs:
             --no-cpu-throttling \
             --memory=512Mi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1 \
+            --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1,RESOLVE_TAXA_URL=${{ steps.deploy-resolve-taxa.outputs.url }},CLOUD_TASKS_QUEUE=$TASKS_QUEUE,CLOUD_TASKS_INVOKER=$TASKS_INVOKER \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \
             --min-instances=1 \
             --max-instances=1 \

@@ -1,6 +1,6 @@
 version: "0.5"
 
-# `process-compose up -D` runs migrations and brings up the four app
+# `process-compose up -D` runs migrations and brings up the app
 # services. Postgres lives outside process-compose — start your own
 # (Docker or native) before running this. See docs/development.md.
 
@@ -81,6 +81,9 @@ processes:
       # only cares about records created now, so skipping replay is correct
       # here. Inherited by the spawned `tap` binary via $TAP_NO_REPLAY.
       - TAP_NO_REPLAY=${TAP_NO_REPLAY:-true}
+      # Ask resolve-taxa for a walk after each new identification. Production
+      # goes through Cloud Tasks; locally it's a direct POST.
+      - RESOLVE_TAXA_URL=http://localhost:${RESOLVE_TAXA_PORT:-3007}
     depends_on:
       migrate:
         condition: process_completed_successfully
@@ -93,6 +96,25 @@ processes:
       http_get:
         host: localhost
         port: ${TAP_INGESTER_PORT:-8090}
+        path: /health
+      initial_delay_seconds: 120
+      period_seconds: 5
+
+  # Fills accepted_taxon_key on new identifications, a minute after
+  # tap-ingester writes them. Same --serve mode as the production Cloud Run
+  # service, without the Cloud Tasks queue.
+  resolve-taxa:
+    command: cargo run -p observing-resolve-taxa -- --serve
+    environment:
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
+      - PORT=${RESOLVE_TAXA_PORT:-3007}
+    depends_on:
+      migrate:
+        condition: process_completed_successfully
+    readiness_probe:
+      http_get:
+        host: localhost
+        port: ${RESOLVE_TAXA_PORT:-3007}
         path: /health
       initial_delay_seconds: 120
       period_seconds: 5
