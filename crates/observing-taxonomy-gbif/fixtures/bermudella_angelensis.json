@@ -1,0 +1,67 @@
+{
+  "usage": {
+    "key": "4359855",
+    "name": "Bermudella Odhner, 1941",
+    "canonicalName": "Bermudella",
+    "authorship": "Odhner, 1941",
+    "rank": "GENUS",
+    "code": "ZOOLOGICAL",
+    "status": "SYNONYM",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Bermudella</i> Odhner, 1941"
+  },
+  "acceptedUsage": {
+    "key": "2291989",
+    "name": "Okenia Menke, 1830",
+    "canonicalName": "Okenia",
+    "authorship": "Menke, 1830",
+    "rank": "GENUS",
+    "code": "ZOOLOGICAL",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Okenia</i> Menke, 1830"
+  },
+  "classification": [
+    {
+      "key": "1",
+      "name": "Animalia",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "52",
+      "name": "Mollusca",
+      "rank": "PHYLUM"
+    },
+    {
+      "key": "225",
+      "name": "Gastropoda",
+      "rank": "CLASS"
+    },
+    {
+      "key": "980",
+      "name": "Nudibranchia",
+      "rank": "ORDER"
+    },
+    {
+      "key": "7034",
+      "name": "Goniodorididae",
+      "rank": "FAMILY"
+    },
+    {
+      "key": "2291989",
+      "name": "Okenia",
+      "rank": "GENUS"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "HIGHERRANK",
+    "confidence": 94,
+    "note": "Similarity: name=100; classification=-2; rank=0; status=0; score=98; nextMatch=5",
+    "timeTaken": 10,
+    "timings": {
+      "sciNameMatch": 11
+    }
+  },
+  "synonym": true,
+  "left": 1443221,
+  "right": 1443312
+}

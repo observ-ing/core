@@ -119,6 +119,17 @@ impl TaxonomyUpstream for GbifUpstream {
             .and_then(build_upstream_match))
     }
 
+    async fn match_name_fallback(
+        &self,
+        scientific_name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Result<Option<UpstreamMatch>, ResolveError> {
+        let m = self
+            .request_match(Some(scientific_name), kingdom_hint, None, None)
+            .await?;
+        Ok(m.and_then(|m| higher_rank_fallback(m, scientific_name)))
+    }
+
     async fn get_by_key(&self, taxon_key: i64) -> Result<Option<UpstreamMatch>, ResolveError> {
         // The v2 `/species/match` endpoint accepts a `usageKey` and returns the
         // same `NameUsageMatch` (usage + classification chain) as a name match,
@@ -205,6 +216,16 @@ fn is_reading_of(alt: &NameUsageMatch, name: &str, kingdom_hint: Option<&str>) -
             .and_then(|r| r.name.as_deref())
             .is_some_and(|kingdom| kingdom.eq_ignore_ascii_case(hint))
     })
+}
+
+/// The ancestor GBIF fell back to for `scientific_name`, or `None` when the
+/// match isn't a HIGHERRANK fallback. Not a match for the name itself:
+/// callers decide whether the ancestor is close enough to use.
+pub fn higher_rank_fallback(m: NameUsageMatch, scientific_name: &str) -> Option<UpstreamMatch> {
+    if !is_higher_rank_fallback(&m, scientific_name) {
+        return None;
+    }
+    build_upstream_match(m)
 }
 
 /// Build an [`UpstreamMatch`] from a GBIF v2 match result. Returns `None`
@@ -549,6 +570,34 @@ mod tests {
             }
         }
         assert!(sole_accepted_alternative(m, "Sciurus", Some("Animalia")).is_none());
+    }
+
+    #[test]
+    fn a_species_missing_from_the_backbone_falls_back_to_its_genus() {
+        // No alternatives, so the plain match has nothing to offer; the
+        // genus is only available as the fallback.
+        let m = fixture(include_str!("../fixtures/bermudella_angelensis.json"));
+        assert!(sole_accepted_alternative(m.clone(), "Bermudella angelensis", None).is_none());
+
+        let fallback = higher_rank_fallback(m, "Bermudella angelensis").unwrap();
+        assert_eq!(fallback.target_key, 4359855);
+        let genus = fallback
+            .rows
+            .iter()
+            .find(|r| r.taxon_key == fallback.target_key)
+            .unwrap();
+        assert_eq!(genus.scientific_name, "Bermudella");
+        assert_eq!(genus.rank, "genus");
+    }
+
+    #[test]
+    fn a_direct_match_is_not_a_fallback() {
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "diagnostics": { "matchType": "EXACT" }
+        }));
+        assert!(higher_rank_fallback(m, "Quercus alba").is_none());
     }
 
     #[test]
