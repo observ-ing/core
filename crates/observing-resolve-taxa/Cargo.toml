@@ -13,10 +13,14 @@ wikidata-client = { path = "../wikidata-client" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }
+serde = { workspace = true }
 clap = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-stackdriver = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
 
 [[bin]]
 name = "observing-resolve-taxa"

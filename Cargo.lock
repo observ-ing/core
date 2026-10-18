@@ -3170,6 +3170,8 @@ dependencies = [
  "observing-bootstrap",
  "observing-db",
  "observing-taxonomy-gbif",
+ "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "tracing",
