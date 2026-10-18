@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nameToSlug, slugToName } from "./taxonSlug";
+import { buildTaxonUrl, gbifKeyFromTaxonId, nameToSlug, slugToName } from "./taxonSlug";
 
 describe("nameToSlug", () => {
   it("replaces spaces with hyphens", () => {
@@ -51,5 +51,46 @@ describe("nameToSlug / slugToName round-trip", () => {
     const name = "Foo-bar baz";
     // After encode: "Foo-bar-baz". After decode: "Foo bar baz" — hyphen lost.
     expect(slugToName(nameToSlug(name))).toBe("Foo bar baz");
+  });
+});
+
+describe("gbifKeyFromTaxonId", () => {
+  it("reads the key from a GBIF species URI", () => {
+    expect(gbifKeyFromTaxonId("https://www.gbif.org/species/9747581")).toBe("9747581");
+    expect(gbifKeyFromTaxonId("http://gbif.org/species/9747581/")).toBe("9747581");
+  });
+
+  it("reads the key from the gbif: shorthand", () => {
+    expect(gbifKeyFromTaxonId("gbif:9747581")).toBe("9747581");
+  });
+
+  it("returns null for other sources and missing values", () => {
+    expect(gbifKeyFromTaxonId("https://www.inaturalist.org/taxa/47792")).toBeNull();
+    expect(gbifKeyFromTaxonId(undefined)).toBeNull();
+  });
+});
+
+describe("buildTaxonUrl", () => {
+  it("links by GBIF key when the taxonID has one", () => {
+    expect(
+      buildTaxonUrl("Anisoptera", "Animalia", "genus", "https://www.gbif.org/species/9747581"),
+    ).toBe("/taxon/gbif:9747581");
+  });
+
+  it("falls back to kingdom and name without a GBIF taxonID", () => {
+    expect(buildTaxonUrl("Quercus alba", "Plantae", "species")).toBe("/taxon/Plantae/Quercus-alba");
+    expect(
+      buildTaxonUrl(
+        "Danaus plexippus",
+        "Animalia",
+        "species",
+        "https://www.inaturalist.org/taxa/48662",
+      ),
+    ).toBe("/taxon/Animalia/Danaus-plexippus");
+  });
+
+  it("links kingdoms directly and gives up without a kingdom", () => {
+    expect(buildTaxonUrl("Plantae", undefined, "kingdom")).toBe("/taxon/Plantae");
+    expect(buildTaxonUrl("Quercus alba")).toBeNull();
   });
 });

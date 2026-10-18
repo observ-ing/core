@@ -117,7 +117,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
         >
           <Box sx={{ fontSize: "1.1rem", minWidth: 0 }}>
             {species ? (
-              <TaxonLink name={species} kingdom={taxonomy?.kingdom} rank={taxonomy?.rank} />
+              <TaxonLink
+                name={species}
+                kingdom={taxonomy?.kingdom}
+                rank={taxonomy?.rank}
+                taxonId={taxonomy?.taxonId}
+              />
             ) : (
               <Typography sx={{ fontStyle: "italic", color: "text.secondary" }}>
                 Unidentified

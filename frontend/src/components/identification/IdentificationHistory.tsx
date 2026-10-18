@@ -103,6 +103,7 @@ export function IdentificationHistory({
                       name={id.scientific_name}
                       kingdom={id.kingdom || kingdom}
                       rank={id.taxon_rank}
+                      taxonId={id.taxon_id}
                     />
                   </Box>
                 }

@@ -23,6 +23,8 @@ export interface TaxonLinkProps {
   kingdom?: string | undefined;
   /** Taxonomic rank (e.g., "species", "genus", "family") */
   rank?: string | undefined;
+  /** Darwin Core taxonID; a GBIF one links the exact taxon by key */
+  taxonId?: string | undefined;
   /** Display variant: text (default) or chip */
   variant?: "text" | "chip";
   /** Whether to italicize the name (default: true for species/genus, false otherwise) */
@@ -39,6 +41,7 @@ export function TaxonLink({
   name,
   kingdom,
   rank,
+  taxonId,
   variant = "text",
   italic,
   onClick,
@@ -46,7 +49,7 @@ export function TaxonLink({
   // Default italic behavior: italicize species/genus/subspecies/variety ranks
   const shouldItalicize = italic !== undefined ? italic : shouldItalicizeTaxonName(name, rank);
 
-  const taxonUrl = buildTaxonUrl(name, kingdom, rank);
+  const taxonUrl = buildTaxonUrl(name, kingdom, rank, taxonId);
 
   const handleClick = (e: React.MouseEvent) => {
     // Stop propagation if handler provided (e.g., to prevent parent link activation)

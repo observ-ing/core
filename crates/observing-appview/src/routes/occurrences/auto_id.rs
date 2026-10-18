@@ -1,6 +1,7 @@
 use jacquard_common::deps::smol_str::SmolStr;
 use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::UriValue;
+use observing_db::taxon_uri::{self, TaxonRef};
 use observing_lexicons::bio_lexicons::temp::v0_1::identification::{
     Identification, IdentificationRecord, IdentificationTaxonRank,
 };
@@ -19,7 +20,10 @@ use crate::state::AppState;
 /// validation doesn't return a kingdom (e.g. genus-level names without a
 /// hint). `user_taxon_id` is the stable taxon URI from the user's GBIF
 /// autocomplete pick; it takes priority over the URI validation resolves,
-/// since the user's selection is the authoritative match.
+/// since the user's selection is the authoritative match. A GBIF URI is
+/// resolved by key rather than by name, so homonyms like "Anisoptera" (where
+/// GBIF's name match can only answer with a higher rank) keep the rank and
+/// kingdom of the taxon the user actually picked.
 /// Returns the record JSON value ready to be posted via the agent.
 pub async fn build_identification_record(
     state: &AppState,
@@ -34,7 +38,19 @@ pub async fn build_identification_record(
     let mut kingdom = None;
     let mut taxon_id = user_taxon_id.map(str::to_owned);
 
-    if let Some(validation) = state.taxonomy.validate(scientific_name, user_kingdom).await {
+    let picked = match user_taxon_id.map(taxon_uri::parse) {
+        Some(TaxonRef::Gbif(key)) => state
+            .taxonomy
+            .get_by_id(&format!("gbif:{key}"))
+            .await
+            .unwrap_or(None),
+        _ => None,
+    };
+
+    if let Some(detail) = picked {
+        taxon_rank = Some(detail.rank.to_lowercase());
+        kingdom = detail.kingdom;
+    } else if let Some(validation) = state.taxonomy.validate(scientific_name, user_kingdom).await {
         if let Some(ref t) = validation.taxon {
             taxon_rank = Some(t.rank.clone());
             kingdom = t.kingdom.clone();

@@ -315,7 +315,12 @@ function SpeciesCard({
   onSelect: () => void;
 }) {
   const thumbnailSize = primary ? 48 : 40;
-  const url = buildTaxonUrl(suggestion.scientificName, suggestion.kingdom);
+  const url = buildTaxonUrl(
+    suggestion.scientificName,
+    suggestion.kingdom,
+    undefined,
+    suggestion.taxonMatch?.taxonId,
+  );
   return (
     <ButtonBase
       onClick={onSelect}
