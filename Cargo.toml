@@ -44,6 +44,12 @@ moka = { version = "0.12", features = ["future"] }
 urlencoding = "2"
 url = "2"
 
+# Encoding
+base64 = "0.22"
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
 # Async utilities
 futures = "0.3"
 futures-util = "0.3"

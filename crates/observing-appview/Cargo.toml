@@ -60,7 +60,7 @@ tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
 
 # Base64 for blob uploads
-base64 = "0.22"
+base64 = { workspace = true }
 
 # AT Protocol OAuth + Agent
 atrium-api = "0.25"
