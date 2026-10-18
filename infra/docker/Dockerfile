@@ -212,7 +212,7 @@ FROM runtime-base AS runtime-observing-resolve-taxa
 
 COPY --link --from=builder /app/target/release/observing-resolve-taxa /app/observing-resolve-taxa
 
-ENV RUST_LOG=observing_resolve_taxa=info,observing_db=info
+ENV RUST_LOG=observing_resolve_taxa=info,observing_db=info,observing_tasks=info
 ENV PORT=8080
 EXPOSE 8080
 CMD ["/app/observing-resolve-taxa", "--serve"]

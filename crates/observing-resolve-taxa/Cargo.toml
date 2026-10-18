@@ -10,7 +10,7 @@ observing-bootstrap = { path = "../observing-bootstrap", features = ["db"] }
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
 wikidata-client = { path = "../wikidata-client" }
-gcp-cloud-tasks = { path = "../gcp-cloud-tasks" }
+observing-tasks = { path = "../observing-tasks" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }

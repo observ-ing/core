@@ -13,13 +13,13 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 CI runs the deploy steps in this order to ensure DDL lands before any service starts on the new schema:
 
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
-2. `Deploy resolve-taxa` → before tap-ingester, which is given its URL.
+2. `Deploy resolve-taxa` → before tap-ingester, which starts queuing runs for it.
 3. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
 4. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
 
 ### Cloud Tasks
 
-`observing-resolve-taxa` is a private Cloud Run service that tap-ingester reaches through a Cloud Tasks queue, with an hourly Cloud Scheduler job as a backstop ([infra/README.md](../infra/README.md#observing-resolve-taxa) has the reasons). CI deploys the service and passes the queue and invoker names to it and to tap-ingester (`TASKS_QUEUE` and `TASKS_INVOKER` in `ci.yml`), but the queue, the invoker account, the IAM bindings and the scheduler job are set up once, by hand.
+`observing-resolve-taxa` is a private Cloud Run service that tap-ingester reaches through a Cloud Tasks queue, with an hourly Cloud Scheduler job as a backstop ([infra/README.md](../infra/README.md#observing-resolve-taxa) has the reasons). CI deploys the service. Callers need no configuration: `crates/observing-tasks` holds the registry of tasks, and on Cloud Run it finds the project and region from the metadata server, the queue by the task's name, the invoker as `cloud-tasks-invoker`, and the service by Cloud Run's `https://<service>-<project number>.<region>.run.app` URL. The queue, the invoker account, the IAM bindings and the scheduler job are set up once, by hand.
 
 Until they exist, nothing breaks: tap-ingester logs `Failed to ask for taxon resolution` and identifications stay unresolved, as they were before the service existed.
 
@@ -186,12 +186,10 @@ DB_PASSWORD=<secret: observing-db-ingester-password>
 # override either default.
 # TAP_DATABASE_URL=postgres://...
 
-# Ask observing-resolve-taxa for a walk after each new identification.
-# With the two CLOUD_TASKS_* values, through Cloud Tasks; without them,
-# by POSTing to it directly. Unset, nothing asks.
-RESOLVE_TAXA_URL=<observing-resolve-taxa service URL>
-CLOUD_TASKS_QUEUE=projects/<project>/locations/<region>/queues/resolve-taxa
-CLOUD_TASKS_INVOKER=cloud-tasks-invoker@<project>.iam.gserviceaccount.com
+# Optional: `off` stops it asking observing-resolve-taxa to key new
+# identifications. Otherwise it asks through Cloud Tasks on Cloud Run, and
+# by POSTing to localhost:$RESOLVE_TAXA_PORT (default 3007) elsewhere.
+# OBSERVING_TASKS=off
 ```
 
 Writes the `ingester` schema. Cross-repo identifications referencing
@@ -208,12 +206,9 @@ DB_HOST=/cloudsql/<project>:<region>:observing-db
 DB_NAME=observing
 DB_USER=ingester_runtime
 DB_PASSWORD=<secret: observing-db-ingester-password>
-
-# Where a walk that runs out of time queues the rest. Unset (local dev),
-# each request walks to the end.
-CLOUD_TASKS_QUEUE=projects/<project>/locations/<region>/queues/resolve-taxa
-CLOUD_TASKS_INVOKER=cloud-tasks-invoker@<project>.iam.gserviceaccount.com
 ```
+
+On Cloud Run, a walk that runs out of time queues the rest on Cloud Tasks; elsewhere, each request walks to the end.
 
 Writes `accepted_taxon_key` on `ingester.identifications`, fills the `ingester.taxa` cache and refreshes `ingester.community_ids`.
 

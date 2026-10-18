@@ -68,16 +68,17 @@ struct Cli {
     interval_secs: Option<u64>,
 
     /// Serve `POST /run` on `$PORT` (default 8080) instead of running a pass.
-    /// Continuations go to the Cloud Tasks queue in `CLOUD_TASKS_QUEUE`,
-    /// when set.
+    /// On Cloud Run, long walks continue on Cloud Tasks (see
+    /// `observing-tasks`).
     #[arg(long)]
     serve: bool,
 }
 
 #[tokio::main]
 async fn main() -> ExitCode {
-    let env_filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| EnvFilter::new("observing_resolve_taxa=info,observing_db=info"));
+    let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+        EnvFilter::new("observing_resolve_taxa=info,observing_db=info,observing_tasks=info")
+    });
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_stackdriver::layer())
@@ -135,13 +136,15 @@ async fn serve_forever(clients: Clients, rate_limit: Duration) -> ExitCode {
         .ok()
         .and_then(|s| s.parse().ok())
         .unwrap_or(8080);
-    let queue = gcp_cloud_tasks::Queue::from_env();
-    match &queue {
-        Some(queue) => info!(queue = queue.name(), "Long walks continue on Cloud Tasks"),
-        None => info!("No Cloud Tasks queue; each request walks to the end"),
-    }
+    let tasks = match observing_tasks::Tasks::from_env().await {
+        Ok(tasks) => tasks,
+        Err(e) => {
+            error!(error = %e, "Could not set up background tasks");
+            return ExitCode::from(1);
+        }
+    };
 
-    let server = Arc::new(serve::Server::new(clients, rate_limit, queue));
+    let server = Arc::new(serve::Server::new(clients, rate_limit, tasks));
     if let Err(e) = observing_bootstrap::serve(serve::router(server), port).await {
         error!(error = %e, "HTTP server failed");
         return ExitCode::from(1);

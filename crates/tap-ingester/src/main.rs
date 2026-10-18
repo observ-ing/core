@@ -26,10 +26,8 @@
 //!                         falls back to `sqlite:///data/tap.db`
 //!                         (instance-ephemeral on Cloud Run).
 //!   PORT                  HTTP server port (default 8080).
-//!   RESOLVE_TAXA_URL      observing-resolve-taxa, to ask for a walk after
-//!                         an identification lands. With CLOUD_TASKS_QUEUE
-//!                         and CLOUD_TASKS_INVOKER also set, asks through
-//!                         Cloud Tasks; see `resolve_taxa_trigger`.
+//!   OBSERVING_TASKS       `off` to stop asking observing-resolve-taxa to
+//!                         key new identifications (see `observing-tasks`).
 //!
 //! HTTP routes (see `dashboard` module for handlers):
 //!   GET /                  Combined ingester + Tap status page.
@@ -42,7 +40,6 @@ mod database;
 mod error;
 mod lag_probe;
 mod media_resolver;
-mod resolve_taxa_trigger;
 mod server;
 mod subject_resolver;
 mod types;
@@ -74,7 +71,9 @@ struct Cli {}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _cli = Cli::parse();
 
-    let env_filter = EnvFilter::from_default_env().add_directive("tap_ingester=info".parse()?);
+    let env_filter = EnvFilter::from_default_env()
+        .add_directive("tap_ingester=info".parse()?)
+        .add_directive("observing_tasks=info".parse()?);
     tracing_subscriber::registry()
         .with(env_filter)
         .with(tracing_stackdriver::layer())

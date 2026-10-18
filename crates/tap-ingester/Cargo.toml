@@ -38,7 +38,7 @@ tower-http = { workspace = true }
 reqwest = { workspace = true }
 
 # Queues observing-resolve-taxa walks after identifications land.
-gcp-cloud-tasks = { path = "../gcp-cloud-tasks" }
+observing-tasks = { path = "../observing-tasks" }
 
 # Firehose lag probe: a short-lived subscribeRepos connection at the current
 # cursor to read the relay's commit time (heartbeat turns it into lag_seconds).

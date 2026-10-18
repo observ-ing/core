@@ -7,13 +7,14 @@
 
 use crate::error::{IngesterError, Result};
 use crate::media_resolver::MediaResolver;
-use crate::resolve_taxa_trigger::ResolveTaxaTrigger;
 use chrono::{DateTime, Utc};
 use observing_bootstrap::db::PoolConfig;
 use observing_db::identifications::CommunityIdsRefresher;
 use observing_db::processing;
+use observing_tasks::{Task, Tasks, Trigger};
 use serde_json::Value;
 use sqlx::postgres::PgPool;
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::{debug, info, warn};
 
@@ -76,7 +77,8 @@ pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
     community_ids_refresher: CommunityIdsRefresher,
-    resolve_taxa: ResolveTaxaTrigger,
+    /// Asks observing-resolve-taxa to key new identifications.
+    resolve_taxa: Trigger,
 }
 
 impl Database {
@@ -86,11 +88,15 @@ impl Database {
         info!("Database connection established");
         let community_ids_refresher =
             CommunityIdsRefresher::spawn(pool.clone(), COMMUNITY_IDS_REFRESH_DEBOUNCE);
+        let tasks = Tasks::from_env().await.unwrap_or_else(|e| {
+            warn!(error = %e, "Could not set up background tasks; not queuing any");
+            Tasks::off()
+        });
         Ok(Self {
             pool,
             media_resolver: MediaResolver::new(),
             community_ids_refresher,
-            resolve_taxa: ResolveTaxaTrigger::from_env(),
+            resolve_taxa: Arc::new(tasks).trigger(Task::ResolveTaxa),
         })
     }
 

@@ -1,9 +1,8 @@
-//! Minimal Cloud Tasks client: create HTTP tasks from code running on Cloud
-//! Run.
+//! Minimal Cloud Tasks client, plus the metadata-server lookups it needs.
 //!
 //! Each task is an HTTP POST that Cloud Tasks delivers, retrying with backoff
-//! until the target answers 2xx. It carries an OIDC token for the queue's
-//! invoker account, so the target can be a private Cloud Run service
+//! until the target answers 2xx. It carries an OIDC token for an invoker
+//! account, so the target can be a private Cloud Run service
 //! (`--no-allow-unauthenticated`) whose own IAM check does the
 //! authentication.
 //!
@@ -21,25 +20,19 @@ use serde_json::{json, Value};
 use tokio::sync::Mutex;
 
 const API_BASE: &str = "https://cloudtasks.googleapis.com/v2";
-const METADATA_TOKEN_URL: &str =
-    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
+const METADATA_BASE: &str = "http://metadata.google.internal/computeMetadata/v1";
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 /// Refresh a cached access token this long before it expires.
 const TOKEN_EXPIRY_MARGIN: chrono::Duration = chrono::Duration::seconds(60);
 
-/// A Cloud Tasks queue that this process adds tasks to.
-pub struct Queue {
+pub(crate) struct Client {
     http: reqwest::Client,
-    /// `projects/{project}/locations/{location}/queues/{queue}`.
-    name: String,
-    /// Service account email whose OIDC token each task carries.
-    invoker: String,
     token: Mutex<Option<AccessToken>>,
 }
 
 /// One HTTP POST for Cloud Tasks to deliver.
 #[derive(Debug, Clone, Default)]
-pub struct HttpTask {
+pub(crate) struct HttpTask {
     /// Task ID, unique within the queue. Cloud Tasks refuses a second task
     /// with the same ID for about an hour after the first runs, which makes a
     /// fixed ID a deduplication key. `None` lets Cloud Tasks pick one.
@@ -52,25 +45,17 @@ pub struct HttpTask {
     /// When to deliver. `None` delivers right away.
     pub schedule_time: Option<DateTime<Utc>>,
     /// How long Cloud Tasks waits for a response before counting the attempt
-    /// as failed and retrying. `None` keeps the default of 10 minutes.
+    /// as failed and retrying.
     pub dispatch_deadline: Option<Duration>,
-}
-
-/// Outcome of [`Queue::create`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Created {
-    New,
-    /// A task with this ID exists or ran recently. For a deduplication key
-    /// this counts as success: that task covers the request.
-    AlreadyExists,
 }
 
 #[derive(Debug)]
 pub enum Error {
-    /// The metadata server didn't hand out an access token.
-    Token(String),
+    /// The metadata server didn't answer.
+    Metadata(String),
     Http(reqwest::Error),
-    /// Cloud Tasks answered with an error.
+    /// Cloud Tasks, or a task's target in local development, answered with
+    /// an error.
     Api {
         status: u16,
         body: String,
@@ -80,9 +65,9 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Token(message) => write!(f, "could not get an access token: {message}"),
-            Error::Http(e) => write!(f, "Cloud Tasks request failed: {e}"),
-            Error::Api { status, body } => write!(f, "Cloud Tasks returned {status}: {body}"),
+            Error::Metadata(message) => write!(f, "metadata server: {message}"),
+            Error::Http(e) => write!(f, "request failed: {e}"),
+            Error::Api { status, body } => write!(f, "returned {status}: {body}"),
         }
     }
 }
@@ -106,65 +91,58 @@ struct MetadataToken {
     expires_in: i64,
 }
 
-impl Queue {
-    pub fn new(name: impl Into<String>, invoker: impl Into<String>) -> Self {
+impl Client {
+    pub fn new() -> Self {
         Self {
             http: reqwest::Client::builder()
                 .timeout(REQUEST_TIMEOUT)
                 .build()
                 .expect("reqwest client builds with a timeout"),
-            name: name.into(),
-            invoker: invoker.into(),
             token: Mutex::new(None),
         }
     }
 
-    /// From `CLOUD_TASKS_QUEUE` (the full queue name) and
-    /// `CLOUD_TASKS_INVOKER` (the invoker's email). `None` unless both are
-    /// set; blank values count as unset.
-    pub fn from_env() -> Option<Self> {
-        let (name, invoker) = Self::vars(
-            std::env::var("CLOUD_TASKS_QUEUE").ok(),
-            std::env::var("CLOUD_TASKS_INVOKER").ok(),
-        )?;
-        Some(Self::new(name, invoker))
-    }
-
-    fn vars(name: Option<String>, invoker: Option<String>) -> Option<(String, String)> {
-        let set = |value: Option<String>| {
-            value
-                .map(|v| v.trim().to_string())
-                .filter(|v| !v.is_empty())
-        };
-        Some((set(name)?, set(invoker)?))
-    }
-
-    /// The queue's full name.
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    /// Add a task to the queue.
-    pub async fn create(&self, task: &HttpTask) -> Result<Created, Error> {
+    /// Add a task to `queue` (`projects/{p}/locations/{l}/queues/{q}`),
+    /// carrying an OIDC token for `invoker`. A task whose ID exists or ran
+    /// recently counts as success: that task covers the request.
+    pub async fn create(&self, queue: &str, invoker: &str, task: &HttpTask) -> Result<(), Error> {
         let token = self.access_token().await?;
         let response = self
             .http
-            .post(format!("{API_BASE}/{}/tasks", self.name))
+            .post(format!("{API_BASE}/{queue}/tasks"))
             .bearer_auth(token)
-            .json(&task_json(&self.name, &self.invoker, task))
+            .json(&task_json(queue, invoker, task))
             .send()
             .await?;
         let status = response.status();
-        if status.is_success() {
-            return Ok(Created::New);
-        }
-        if status == reqwest::StatusCode::CONFLICT {
-            return Ok(Created::AlreadyExists);
+        if status.is_success() || status == reqwest::StatusCode::CONFLICT {
+            return Ok(());
         }
         Err(Error::Api {
             status: status.as_u16(),
             body: response.text().await.unwrap_or_default(),
         })
+    }
+
+    /// A value from the metadata server, e.g. `project/project-id`.
+    pub async fn metadata(&self, path: &str) -> Result<String, Error> {
+        let response = self
+            .http
+            .get(format!("{METADATA_BASE}/{path}"))
+            .header("Metadata-Flavor", "Google")
+            .send()
+            .await
+            .map_err(|e| Error::Metadata(e.to_string()))?;
+        if !response.status().is_success() {
+            return Err(Error::Metadata(format!(
+                "{path} returned {}",
+                response.status()
+            )));
+        }
+        response
+            .text()
+            .await
+            .map_err(|e| Error::Metadata(e.to_string()))
     }
 
     async fn access_token(&self) -> Result<String, Error> {
@@ -174,23 +152,11 @@ impl Queue {
                 return Ok(token.value.clone());
             }
         }
-        let response = self
-            .http
-            .get(METADATA_TOKEN_URL)
-            .header("Metadata-Flavor", "Google")
-            .send()
-            .await
-            .map_err(|e| Error::Token(e.to_string()))?;
-        if !response.status().is_success() {
-            return Err(Error::Token(format!(
-                "metadata server returned {}",
-                response.status()
-            )));
-        }
-        let token: MetadataToken = response
-            .json()
-            .await
-            .map_err(|e| Error::Token(e.to_string()))?;
+        let body = self
+            .metadata("instance/service-accounts/default/token")
+            .await?;
+        let token: MetadataToken =
+            serde_json::from_str(&body).map_err(|e| Error::Metadata(e.to_string()))?;
         let value = token.access_token;
         *cached = Some(AccessToken {
             value: value.clone(),
@@ -229,46 +195,11 @@ fn task_json(queue: &str, invoker: &str, task: &HttpTask) -> Value {
     json!({ "task": inner })
 }
 
-/// A task ID shared by every request in the same `bucket` (for example, the
-/// same minute), so Cloud Tasks keeps only the first.
-///
-/// IDs that sort in sequence, like timestamps, slow Cloud Tasks down, so the
-/// ID starts with a hash of the bucket.
-pub fn bucketed_task_id(prefix: &str, bucket: i64) -> String {
-    format!("{:08x}-{prefix}-{bucket}", fnv1a(&bucket.to_le_bytes()))
-}
-
-/// 32-bit FNV-1a. Stable across builds, unlike `DefaultHasher`, so two
-/// processes agree on a bucket's ID.
-fn fnv1a(bytes: &[u8]) -> u32 {
-    bytes.iter().fold(0x811c_9dc5, |hash, byte| {
-        (hash ^ u32::from(*byte)).wrapping_mul(0x0100_0193)
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const QUEUE: &str = "projects/p/locations/us-central1/queues/q";
-
-    fn some(value: &str) -> Option<String> {
-        Some(value.to_string())
-    }
-
-    #[test]
-    fn queue_needs_both_the_name_and_the_invoker() {
-        assert_eq!(Queue::vars(None, None), None);
-        assert_eq!(Queue::vars(some(QUEUE), None), None);
-        assert_eq!(Queue::vars(some(QUEUE), some("  ")), None);
-        assert_eq!(
-            Queue::vars(some(QUEUE), some(" invoker@p.iam.gserviceaccount.com ")),
-            Some((
-                QUEUE.to_string(),
-                "invoker@p.iam.gserviceaccount.com".to_string()
-            ))
-        );
-    }
 
     #[test]
     fn a_bare_task_is_an_immediate_post_with_an_oidc_token() {
@@ -321,17 +252,5 @@ mod tests {
             .decode(inner["httpRequest"]["body"].as_str().unwrap())
             .unwrap();
         assert_eq!(decoded, br#"{"phase":"names"}"#);
-    }
-
-    #[test]
-    fn bucketed_ids_are_stable_and_differ_by_bucket() {
-        let id = bucketed_task_id("resolve-taxa", 29_000_000);
-        assert_eq!(id, bucketed_task_id("resolve-taxa", 29_000_000));
-        assert!(id.ends_with("-resolve-taxa-29000000"));
-        assert_ne!(
-            id[..8],
-            bucketed_task_id("resolve-taxa", 29_000_001)[..8],
-            "neighboring buckets should not share a prefix"
-        );
     }
 }

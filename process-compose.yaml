@@ -81,9 +81,9 @@ processes:
       # only cares about records created now, so skipping replay is correct
       # here. Inherited by the spawned `tap` binary via $TAP_NO_REPLAY.
       - TAP_NO_REPLAY=${TAP_NO_REPLAY:-true}
-      # Ask resolve-taxa for a walk after each new identification. Production
-      # goes through Cloud Tasks; locally it's a direct POST.
-      - RESOLVE_TAXA_URL=http://localhost:${RESOLVE_TAXA_PORT:-3007}
+      # Where to ask resolve-taxa for a walk after each new identification
+      # (crates/observing-tasks). Production goes through Cloud Tasks.
+      - RESOLVE_TAXA_PORT=${RESOLVE_TAXA_PORT:-3007}
     depends_on:
       migrate:
         condition: process_completed_successfully

@@ -293,7 +293,7 @@ It picks one random offset, applies it uniformly to every service, exports
 the derived ports, and prints where each one landed (including the
 `http://127.0.0.1:<appview>` front door to open). Cross-service URLs — the
 Vite `/api` proxy, the appview→Vite dev proxy, `SPECIES_ID_SERVICE_URL`,
-`RESOLVE_TAXA_URL` — all follow the offset automatically. Postgres is left on `5432`; it lives
+`RESOLVE_TAXA_PORT` — all follow the offset automatically. Postgres is left on `5432`; it lives
 outside process-compose and is meant to be shared.
 
 Pin the offset when you want stable, reproducible ports for a checkout:

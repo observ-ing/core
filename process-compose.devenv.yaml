@@ -38,7 +38,7 @@ processes:
       restart: exit_on_failure
     environment:
       # Nothing in the e2e flows reads accepted_taxon_key.
-      - RESOLVE_TAXA_URL=
+      - OBSERVING_TASKS=off
 
   # Would call GBIF for every identification the tests create.
   resolve-taxa:

@@ -1602,18 +1602,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gcp-cloud-tasks"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "reqwest 0.13.5",
- "serde",
- "serde_json",
- "tokio",
-]
-
-[[package]]
 name = "generator"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3167,9 +3155,9 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "clap",
- "gcp-cloud-tasks",
  "observing-bootstrap",
  "observing-db",
+ "observing-tasks",
  "observing-taxonomy-gbif",
  "serde",
  "serde_json",
@@ -3230,6 +3218,19 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "observing-tasks"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -4999,12 +5000,12 @@ dependencies = [
  "ciborium",
  "clap",
  "futures-util",
- "gcp-cloud-tasks",
  "jacquard-common",
  "observing-bootstrap",
  "observing-collections",
  "observing-db",
  "observing-lexicons",
+ "observing-tasks",
  "pg-url-env",
  "reqwest 0.13.5",
  "serde",

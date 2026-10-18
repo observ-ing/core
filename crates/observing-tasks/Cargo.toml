@@ -1,0 +1,23 @@
+[package]
+name = "observing-tasks"
+version = "0.1.0"
+edition = "2021"
+description = "Registry of background tasks, and queuing their runs on Cloud Tasks or locally"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+# Cloud Tasks and metadata-server calls, and local runs
+reqwest = { workspace = true }
+
+# Request and response bodies
+serde = { workspace = true }
+serde_json = { workspace = true }
+base64 = "0.22"
+
+# Run times, and when a cached access token runs out
+chrono = { workspace = true }
+
+# Local runs, and the cached access token's lock
+tokio = { workspace = true }
+
+tracing = { workspace = true }

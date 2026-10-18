@@ -83,7 +83,7 @@ The static Storybook build, served by static-web-server. It's built and deployed
 
 Fills in `accepted_taxon_key` on identifications through GBIF. Code is in `crates/observing-resolve-taxa/`, running with `--serve`.
 
-- **Run by Cloud Tasks.** tap-ingester queues one task per minute in which identifications arrive, and an hourly Cloud Scheduler job is the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
+- **Run by Cloud Tasks.** tap-ingester queues one task per minute in which identifications arrive, through the registry in `crates/observing-tasks`. An hourly Cloud Scheduler job is the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
 - **Private, one walk at a time** (`--no-allow-unauthenticated --max-instances=1 --concurrency=1`). Callers authenticate as `cloud-tasks-invoker`.
 - **10-minute walks.** A longer walk queues a task to carry on from where it stopped. `--timeout=900` matches the tasks' 15-minute deadline.
 - **Setup** was done by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
