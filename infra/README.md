@@ -52,7 +52,7 @@ The only writer for records that come from the network. It bundles the upstream 
 - **1 vCPU.** Throughput is limited by Tap's per-event serialization, not CPU. At 2 vCPU over 14 days, the 1-minute p99 peaked at about 0.62 vCPU, post-deploy catch-up included. At 1 vCPU (20 days to 2026-10-17) it averages about 0.2 vCPU. Its 1-minute p99 reached about 0.74 in the last 7 days and briefly came close to 1.0 once. Always-on CPU can't go below 1 vCPU.
 - **512 MiB.** At 1 GiB, 1-minute p99 memory never passed 9% (about 92 MiB) over 20 days, deploys included. 512 MiB is the minimum for always-on CPU.
 - **State.** Tap keeps its tracked repos and cursors in the Cloud SQL `tap` schema (`search_path=tap`), so they survive deploys. The local `/data` folder is only used when no database is configured, as in early local development.
-- **Database.** Up to 10 connections for the ingester and up to 10 for Tap (`TAP_MAX_DB_CONNS`). Tap's state writes are likely most of the database's ~370 commits per second.
+- **Database.** Up to 10 connections for the ingester and up to 10 for Tap (`TAP_MAX_DB_CONNS`). Tap makes almost all of the database's ~300–380 statements per second, and nearly all are reads: for every commit on the network, Tap looks up the account in its `tap.repos` table, about 280 times a second, and almost none are tracked. Its 5 resync workers (`TAP_RESYNC_PARALLELISM`, default 5) also poll 3 queue states once a second each, another ~15 `UPDATE`s a second that usually find nothing. Measured with Query Insights, 2026-10-18.
 - **Cost.** About $50/month, which is most of the Cloud Run bill, because always-on CPU is billed around the clock.
 - **Watch.** On the System Health dashboard, firehose bytes received should sit around 2 MB/s. Zero means the consumer has stalled.
 
@@ -101,14 +101,14 @@ Cloud SQL for PostgreSQL 18, Enterprise edition. It was created by hand and isn'
 | Tier | `db-custom-1-4096` (1 dedicated vCPU, 4 GB) |
 | Availability | Single zone (`us-central1-c`), no high availability |
 | Storage | 10 GB SSD with auto-resize. About 0.2 GB is used. |
-| Backups | Daily at 09:00 UTC, last 7 kept (on since 2026-10-17). Point-in-time recovery is off: it would keep the transaction log, which is large at ~370 commits per second. |
+| Backups | Daily at 09:00 UTC, last 7 kept (on since 2026-10-17). Point-in-time recovery is off. Writes are light (~300 bytes/s of transaction log, ~26 MB/day), so turning it on would cost cents a month. |
 | Query Insights | On since 2026-10-17. Use it to see which queries make up the commit rate and CPU. |
 | Connections | Default limit for the tier. Typical use is about 11 connections, and the 30-day peak was 35. |
 | Databases | `observing` (schemas `ingester`, `tap`, `appview`, `public`) and `quickslice` |
 
-- **Load (30 days to 2026-10-17).** Daily average CPU rose from 21% to 29%. Memory use is about 350 MB, and there are about 370 commits per second.
+- **Load (30 days to 2026-10-17).** Daily average CPU rose from 21% to 29%. Memory use is about 350 MB. Each standalone statement counts as a commit, so the ~370 commits per second are mostly Tap's lookups (see [tap-ingester](#tap-ingester)). The queries themselves use about 1.4% of a vCPU; most of the CPU goes to handling that many tiny statements, and daily CPU tracks the statement rate (correlation 0.86 over 30 days).
 - **Cost.** About $51/month: vCPU $30, memory $20, storage $1.70.
-- **Smaller tier.** `db-g1-small` (shared core, 1.7 GB) would cost about $27/month. Its default connection limit is 50, there's no SLA, and the current CPU load would use about 60% of its sustained share. Cut Tap's write rate first; Query Insights shows how much of the load is Tap's.
+- **Smaller tier.** `db-g1-small` (shared core, 1.7 GB) would cost about $27/month. Its default connection limit is 50, there's no SLA, and the current CPU load would use about 60% of its sustained share. Cut Tap's per-commit lookups first.
 
 ## Supporting infrastructure
 
