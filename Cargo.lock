@@ -1602,6 +1602,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcp-metadata"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "generator"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3058,6 +3070,7 @@ dependencies = [
  "file-blob-cache",
  "futures",
  "gbif",
+ "gcp-metadata",
  "hickory-resolver",
  "inaturalist",
  "inaturalist-oauth",
