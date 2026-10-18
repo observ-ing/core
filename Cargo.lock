@@ -3232,6 +3232,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "observing-tasks"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "gcp-metadata",
+ "reqwest 0.13.5",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "observing-taxonomy-gbif"
 version = "0.1.0"
 dependencies = [
