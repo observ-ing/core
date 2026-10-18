@@ -8,6 +8,7 @@ import {
   Link as MuiLink,
 } from "@mui/material";
 import { CenteredSpinner } from "./CenteredSpinner";
+import { finePrintFontSize } from "./layoutSx";
 
 interface CommonsImage {
   thumbUrl: string;
@@ -170,7 +171,7 @@ export function WikiCommonsGallery({ taxonName, limit = 12 }: WikiCommonsGallery
                   borderBottomLeftRadius: (theme) => Number(theme.shape.borderRadius) * 0.5,
                   borderBottomRightRadius: (theme) => Number(theme.shape.borderRadius) * 0.5,
                   "& .MuiImageListItemBar-subtitle": {
-                    fontSize: "0.65rem",
+                    fontSize: finePrintFontSize,
                   },
                 }}
               />
