@@ -14,7 +14,7 @@
 
 use chrono::Utc;
 use gbif::checklistbank::{
-    types::{NameUsageMatch, RankedName, Usage},
+    types::{DiagnosticsMatchType, NameUsageMatch, RankedName, Usage},
     Client as GbifClient,
 };
 use observing_db::taxa::TaxonRow;
@@ -88,6 +88,13 @@ impl TaxonomyUpstream for GbifUpstream {
             Err(e) => return Err(ResolveError::Upstream(e.to_string())),
         };
 
+        // Keying an identification to the ancestor GBIF fell back to would
+        // file it under the wrong taxon, so report no match instead; the
+        // resolver's taxonID phase can still key it from the record's URI.
+        if is_higher_rank_fallback(&m, scientific_name) {
+            return Ok(None);
+        }
+
         Ok(build_upstream_match(m))
     }
 
@@ -144,6 +151,21 @@ fn rank_to_string<R: serde::Serialize>(rank: &R) -> Option<String> {
     serde_json::to_value(rank)
         .ok()
         .and_then(|v| v.as_str().map(str::to_string))
+}
+
+/// Whether GBIF answered a name match with an ancestor instead of the name.
+/// GBIF does this when it can't choose between homonyms (e.g. "Anisoptera"
+/// → Insecta, "Sciurus" → Chordata): a HIGHERRANK match whose usage is the
+/// closest rank the candidates share.
+fn is_higher_rank_fallback(m: &NameUsageMatch, scientific_name: &str) -> bool {
+    let higher_rank = m.diagnostics.as_ref().and_then(|d| d.match_type.as_ref())
+        == Some(&DiagnosticsMatchType::Higherrank);
+    let canonical = m
+        .usage
+        .as_ref()
+        .and_then(|u| u.canonical_name.as_deref())
+        .unwrap_or("");
+    higher_rank && !canonical.eq_ignore_ascii_case(scientific_name)
 }
 
 /// Build an [`UpstreamMatch`] from a GBIF v2 match result. Returns `None`
@@ -391,6 +413,35 @@ mod tests {
             "usage": { "name": "Foo", "canonicalName": "Foo", "rank": "SPECIES" }
         }));
         assert!(build_upstream_match(m).is_none());
+    }
+
+    #[test]
+    fn higher_rank_fallback_to_an_ancestor_is_detected() {
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "216", "name": "Insecta", "canonicalName": "Insecta", "rank": "CLASS" },
+            "diagnostics": { "matchType": "HIGHERRANK" }
+        }));
+        assert!(is_higher_rank_fallback(&m, "Anisoptera"));
+    }
+
+    #[test]
+    fn exact_and_same_name_matches_are_not_fallbacks() {
+        let exact = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "diagnostics": { "matchType": "EXACT" }
+        }));
+        assert!(!is_higher_rank_fallback(&exact, "Quercus alba"));
+
+        // A HIGHERRANK usage that is the queried name itself is still the
+        // right taxon. Names compare case-insensitively.
+        let same_name = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "60", "name": "Quercus", "canonicalName": "Quercus", "rank": "GENUS" },
+            "diagnostics": { "matchType": "HIGHERRANK" }
+        }));
+        assert!(!is_higher_rank_fallback(&same_name, "quercus"));
     }
 
     #[test]
