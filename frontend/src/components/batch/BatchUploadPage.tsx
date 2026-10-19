@@ -406,7 +406,13 @@ export function BatchUploadPage() {
         }
         // Quiet: one toast for the whole batch, not one per observation.
         void appDispatch(
-          trackSubmission({ uri: result.uri, cid: result.cid, kind: "create", quiet: true }),
+          trackSubmission({
+            uri: result.uri,
+            cid: result.cid,
+            kind: "create",
+            scientificName: input.scientificName,
+            quiet: true,
+          }),
         );
         dispatch({ type: "uploaded", id: observation.id });
       } catch (error) {

@@ -2,6 +2,8 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "./index";
 import { fetchObservation, pollObservation } from "../services/api";
+import type { OccurrenceDetailResponse } from "../services/types";
+import { parseAtUri } from "../lib/utils";
 import { reconcileOccurrence } from "../lib/query/occurrenceCache";
 import { addToast } from "./uiSlice";
 
@@ -16,6 +18,12 @@ interface PendingSubmission {
   cid: string;
   kind: "create" | "update";
   createdAt: number;
+  /**
+   * The name the submitter identified it as. The appview writes that
+   * identification as its own record after the occurrence, so the ingester
+   * can land the occurrence first; the poll waits for both.
+   */
+  scientificName?: string;
   /** Skip the per-submission toast; the batch uploader reports once for all. */
   quiet?: boolean;
 }
@@ -43,6 +51,7 @@ function loadPersisted(): PendingSubmission[] {
         typeof s.cid === "string" &&
         (s.kind === "create" || s.kind === "update") &&
         typeof s.createdAt === "number" &&
+        (s.scientificName === undefined || typeof s.scientificName === "string") &&
         now - s.createdAt < MAX_AGE_MS,
     );
   } catch {
@@ -60,6 +69,24 @@ function persist(submissions: PendingSubmission[]) {
   }
 }
 
+/**
+ * Whether the ingester has caught up with a submission: the occurrence at the
+ * written cid and, when the submitter named a taxon, their identification of
+ * it. Swapping the tombstone in before the identification lands would show
+ * the row as "Unidentified" until the next refresh.
+ */
+export function isSubmissionIngested(
+  result: OccurrenceDetailResponse | null,
+  { uri, cid, scientificName }: { uri: string; cid: string; scientificName?: string | undefined },
+): boolean {
+  if (result?.occurrence?.cid !== cid) return false;
+  if (!scientificName) return true;
+  const author = parseAtUri(uri)?.did;
+  return result.identifications.some(
+    (id) => id.did === author && id.scientific_name === scientificName,
+  );
+}
+
 // Poll the ingester for a freshly written observation in the background, then
 // notify on completion. The upload modal closes as soon as the PDS write
 // returns; a client-built tombstone row (added by the modal on success) stands
@@ -72,22 +99,32 @@ function persist(submissions: PendingSubmission[]) {
 //
 // pollObservation never throws (network errors resolve to a missed predicate),
 // so this thunk fulfils even on ingester timeout — `processed` just reports
-// whether the row showed up in time. `createdAt` is optional so resumed
-// submissions can preserve their original timestamp (and keep aging out).
+// whether the row (and its identification) showed up in time. If only the
+// occurrence made it — say the identification write failed — that still
+// replaces the tombstone, since the server's row is then the truth.
+// `createdAt` is optional so resumed submissions can preserve their original
+// timestamp (and keep aging out).
 export const trackSubmission = createAsyncThunk<
   void,
-  { uri: string; cid: string; kind: "create" | "update"; createdAt?: number; quiet?: boolean },
+  {
+    uri: string;
+    cid: string;
+    kind: "create" | "update";
+    createdAt?: number;
+    scientificName?: string | undefined;
+    quiet?: boolean;
+  },
   { state: RootState; dispatch: AppDispatch }
->("pending/trackSubmission", async ({ uri, cid, kind, quiet }, { dispatch }) => {
-  const processed = await pollObservation(uri, (r) => r?.occurrence?.cid === cid);
+>("pending/trackSubmission", async ({ uri, cid, kind, scientificName, quiet }, { dispatch }) => {
+  const processed = await pollObservation(uri, (r) =>
+    isSubmissionIngested(r, { uri, cid, scientificName }),
+  );
 
   // Replace the tombstone (or a pre-edit row) with the canonical record now that
   // the ingester has the matching cid. Both create and update benefit: the
   // freshly-resolved taxonomy and real blob URLs land without a feed refetch.
-  if (processed) {
-    const detail = await fetchObservation(uri);
-    if (detail) reconcileOccurrence(detail);
-  }
+  const detail = await fetchObservation(uri);
+  if (detail?.occurrence?.cid === cid) reconcileOccurrence(detail);
 
   if (quiet) return;
 
@@ -134,12 +171,13 @@ const pendingSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(trackSubmission.pending, (state, action) => {
-        const { uri, cid, kind, createdAt, quiet } = action.meta.arg;
+        const { uri, cid, kind, createdAt, scientificName, quiet } = action.meta.arg;
         const entry: PendingSubmission = {
           uri,
           cid,
           kind,
           createdAt: createdAt ?? Date.now(),
+          ...(scientificName ? { scientificName } : {}),
           ...(quiet ? { quiet } : {}),
         };
         const existing = state.submissions.findIndex((s) => s.uri === uri);
