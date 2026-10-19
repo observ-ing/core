@@ -43,7 +43,7 @@ import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
 import type { ExternalRecord } from "../../bindings/ExternalRecord";
 import { ModalOverlay } from "./ModalOverlay";
-import { coverImageSx, cornerPinSx, miniIconSx } from "../common/layoutSx";
+import { coverImageSx, cornerPinSx, miniIconSx, thumbnailFrameSx } from "../common/layoutSx";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { ButtonSpinner } from "../common/ButtonSpinner";
@@ -93,8 +93,7 @@ function ImageThumbnail({ src, alt, onEnlarge, onRemove }: ImageThumbnailProps) 
         position: "relative",
         width: 80,
         height: 80,
-        borderRadius: 1,
-        overflow: "hidden",
+        ...thumbnailFrameSx,
         border: 1,
         borderColor: "divider",
       }}

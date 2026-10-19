@@ -21,7 +21,7 @@ import SearchOffIcon from "@mui/icons-material/SearchOff";
 import { getImageUrl } from "../../services/api";
 import { useAppSelector, useAppDispatch } from "../../store";
 import { usePageTitle } from "../../hooks/usePageTitle";
-import { detailHeaderSx, coverImageSx } from "../common/layoutSx";
+import { detailHeaderSx, coverImageSx, thumbnailFrameSx } from "../common/layoutSx";
 import { DetailHeaderTitle } from "../common/DetailHeaderTitle";
 import { useToast } from "../../hooks/useToast";
 import { useObservation } from "../../lib/query/hooks";
@@ -285,8 +285,7 @@ export function ObservationDetail() {
                       height: 60,
                       border: 2,
                       borderColor: idx === activeImageIndex ? "primary.main" : "divider",
-                      borderRadius: 1,
-                      overflow: "hidden",
+                      ...thumbnailFrameSx,
                     }}
                   >
                     <Box
