@@ -640,28 +640,31 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
-      # Private: only Cloud Tasks and Cloud Scheduler call it, as
-      # cloud-tasks-invoker. max-instances=1 with concurrency=1 keeps it to one
-      # pass at a time, and it scales to zero between passes. --timeout matches
-      # the 15-minute dispatch deadline in crates/observing-tasks. The queue
-      # and invoker account are set up by hand (docs/deployment.md#cloud-tasks);
-      # callers find them, and this service's URL, without configuration.
-      # Reasons and sizing: infra/README.md#observing-resolve-taxa
-      - name: Deploy resolve-taxa
+      # The appview image again, as the private service that runs every
+      # background task (APPVIEW_TASK_ROUTES=1; crates/observing-tasks has the
+      # registry). Cloud Tasks and Cloud Scheduler call it as
+      # cloud-tasks-invoker. One instance, so per-process limits are global;
+      # each task's queue runs one request at a time, so different tasks can
+      # run at once. It scales to zero between runs. It holds two roles:
+      # appview_runtime (DB_*) and ingester_runtime (INGESTER_DB_*), for tasks
+      # that write the ingester schema. --timeout covers the longest dispatch
+      # deadline (15 minutes). Deployed before tap-ingester, which queues runs
+      # for it. Reasons and sizing: infra/README.md#observing-worker
+      - name: Deploy worker
         run: |
-          gcloud run deploy observing-resolve-taxa \
-            --image=$REGISTRY/observing-resolve-taxa:latest \
+          gcloud run deploy observing-worker \
+            --image=$REGISTRY/observing-appview:latest \
             --region=$REGION \
             --no-allow-unauthenticated \
             --cpu=1 \
             --memory=512Mi \
             --min-instances=0 \
             --max-instances=1 \
-            --concurrency=1 \
+            --concurrency=4 \
             --timeout=900 \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars=RUST_LOG=observing_resolve_taxa=info,observing_tasks=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
-            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|INGESTER_DB_USER=ingester_runtime|PUBLIC_URL=$PUBLIC_URL|APPVIEW_TASK_ROUTES=1" \
+            --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INGESTER_DB_PASSWORD=observing-db-ingester-password:latest
 
       # --no-cpu-throttling is load-bearing: the firehose loop isn't
       # request-driven and falls behind the relay without always-on CPU

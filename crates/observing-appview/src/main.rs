@@ -33,7 +33,7 @@ use observing_bootstrap::db::PoolConfig;
 use tower_http::compression::CompressionLayer;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::services::{ServeDir, ServeFile};
-use tracing::info;
+use tracing::{info, warn};
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -48,7 +48,7 @@ async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| "observing_appview=info".into()),
+                .unwrap_or_else(|_| "observing_appview=info,observing_tasks=info".into()),
         )
         .json()
         .init();
@@ -98,6 +98,24 @@ async fn main() {
         info!("iNaturalist account linking enabled");
     }
 
+    let tasks = observing_tasks::Tasks::from_env()
+        .await
+        .unwrap_or_else(|e| {
+            warn!(error = %e, "Could not set up background tasks; not queuing any");
+            observing_tasks::Tasks::off()
+        });
+
+    // Only the worker writes the ingester schema, as its own role.
+    let ingester_pool = match (&config.ingester_database_url, config.task_routes) {
+        (Some(url), true) => Some(
+            PoolConfig::worker()
+                .connect(url)
+                .await
+                .expect("Failed to connect to database as the ingester role"),
+        ),
+        _ => None,
+    };
+
     let state = AppState {
         pool,
         resolver: Arc::new(atproto_identity::IdentityResolver::from_env()),
@@ -113,6 +131,8 @@ async fn main() {
         admin_dids: config.admin_dids.clone(),
         ingester_url: config.ingester_url.clone(),
         inat,
+        tasks: Arc::new(tasks),
+        ingester_pool,
     };
 
     // CORS
@@ -266,6 +286,13 @@ async fn main() {
         .route("/media/thumb/{did}/{cid}", get(routes::media::get_thumb))
         // OpenAPI spec and a Swagger UI to browse it
         .merge(SwaggerUi::new("/api/docs").url("/api/openapi.json", openapi::ApiDoc::openapi()))
+        // What Cloud Tasks calls, on the private worker only
+        .merge(if config.task_routes {
+            info!("Serving task routes");
+            routes::tasks::router()
+        } else {
+            Router::new()
+        })
         .layer(DefaultBodyLimit::max(150 * 1024 * 1024)) // 150MB for base64-encoded images
         .layer(CompressionLayer::new())
         .layer(cors)

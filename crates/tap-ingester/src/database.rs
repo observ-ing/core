@@ -77,7 +77,7 @@ pub struct Database {
     pool: PgPool,
     media_resolver: MediaResolver,
     community_ids_refresher: CommunityIdsRefresher,
-    /// Asks observing-resolve-taxa to key new identifications.
+    /// Asks observing-worker for a resolution pass after new identifications.
     resolve_taxa: Trigger,
 }
 

@@ -273,14 +273,15 @@ process-compose down
 ```
 
 Process names: `migrate`, `species-id`, `appview`, `tap-ingester`,
-`resolve-taxa`, `frontend` (in startup order). `resolve-taxa` fills
-`accepted_taxon_key` on new identifications about a minute after
-tap-ingester writes them; it calls GBIF, so expect `warn` lines when offline.
+`frontend` (in startup order). The appview also runs background tasks on its
+`/tasks/*` routes: it fills `accepted_taxon_key` on new identifications about
+a minute after tap-ingester writes them, and calls GBIF to do it, so expect
+`warn` lines when offline.
 
 #### Running several checkouts at once (randomized ports)
 
 The services default to fixed ports (`appview` 3000, `species-id`
-3005, `resolve-taxa` 3007, `frontend`/Vite 5173, `tap-ingester` 8090 — not
+3005, `frontend`/Vite 5173, `tap-ingester` 8090 — not
 8080, which process-compose itself uses for its REST API), so two checkouts that
 both run `process-compose up` collide. To run them in parallel, start the
 stack through the wrapper instead:
@@ -293,7 +294,7 @@ It picks one random offset, applies it uniformly to every service, exports
 the derived ports, and prints where each one landed (including the
 `http://127.0.0.1:<appview>` front door to open). Cross-service URLs — the
 Vite `/api` proxy, the appview→Vite dev proxy, `SPECIES_ID_SERVICE_URL`,
-`RESOLVE_TAXA_PORT` — all follow the offset automatically. Postgres is left on `5432`; it lives
+the tap-ingester → appview task runs — all follow the offset automatically. Postgres is left on `5432`; it lives
 outside process-compose and is meant to be shared.
 
 Pin the offset when you want stable, reproducible ports for a checkout:

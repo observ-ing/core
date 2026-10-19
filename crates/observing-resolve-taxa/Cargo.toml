@@ -2,19 +2,17 @@
 name = "observing-resolve-taxa"
 version = "0.1.0"
 edition = "2021"
-description = "Fills accepted_taxon_key on identifications, as a one-shot run or a Cloud Tasks target"
+description = "Fills accepted_taxon_key on identifications: the resolution pass, and a CLI to run it by hand"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = ["db", "http"] }
+observing-bootstrap = { path = "../observing-bootstrap", default-features = false, features = ["db"] }
 observing-db = { path = "../observing-db", features = ["processing"] }
 observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
 wikidata-client = { path = "../wikidata-client" }
-observing-tasks = { path = "../observing-tasks" }
 
 tokio = { workspace = true }
 sqlx = { workspace = true }
-axum = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }

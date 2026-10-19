@@ -65,8 +65,8 @@ const SERVICES: &[ServiceInfo] = &[
         always_on: false,
     },
     ServiceInfo {
-        id: "observing-resolve-taxa",
-        name: "Taxon resolution",
+        id: "observing-worker",
+        name: "Background tasks",
         description: "Matches new identifications to the GBIF taxonomy, a minute after they arrive.",
         always_on: false,
     },

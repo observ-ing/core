@@ -71,6 +71,25 @@ pub fn postgres_url_from_db_env(
     ))
 }
 
+/// Like [`postgres_url_from_db_env`], but as a second role, for a process
+/// that holds two roles' credentials: the user and password come from
+/// `{prefix}DB_USER` (default `default_user`) and `{prefix}DB_PASSWORD`, and
+/// the host, database and port are shared. `None` unless `DB_HOST` and the
+/// password are both set.
+pub fn postgres_url_from_db_env_as(
+    prefix: &str,
+    default_db_name: &str,
+    default_user: &str,
+) -> Option<String> {
+    let host = std::env::var("DB_HOST").ok()?;
+    let password = std::env::var(format!("{prefix}DB_PASSWORD")).ok()?;
+    let name = std::env::var("DB_NAME").unwrap_or_else(|_| default_db_name.to_string());
+    let user =
+        std::env::var(format!("{prefix}DB_USER")).unwrap_or_else(|_| default_user.to_string());
+    let port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
+    Some(build_url(&host, &name, &user, &password, &port, None))
+}
+
 /// `DATABASE_URL` if set, otherwise [`postgres_url_from_db_env`] with no
 /// `search_path`. `None` if neither `DATABASE_URL` nor `DB_HOST` is present —
 /// the caller decides the fallback (a default URL, or an error).
