@@ -467,7 +467,14 @@ export function UploadModal() {
         );
       }
       resetForm();
-      void dispatch(trackSubmission({ uri: result.uri, cid: result.cid, kind }));
+      void dispatch(
+        trackSubmission({
+          uri: result.uri,
+          cid: result.cid,
+          kind,
+          scientificName: trimmedSpecies || undefined,
+        }),
+      );
     };
     const onError = (error: Error) => {
       toast.error(`Failed to ${isEditMode ? "update" : "submit"}: ${getErrorMessage(error)}`);
