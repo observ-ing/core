@@ -1,0 +1,73 @@
+{
+  "usage": {
+    "key": "2879737",
+    "name": "Quercus alba L.",
+    "canonicalName": "Quercus alba",
+    "authorship": "L.",
+    "rank": "SPECIES",
+    "status": "ACCEPTED",
+    "genericName": "Quercus",
+    "specificEpithet": "alba",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Quercus</i> <i>alba</i> L."
+  },
+  "classification": [
+    {
+      "key": "6",
+      "name": "Plantae",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "7707728",
+      "name": "Tracheophyta",
+      "rank": "PHYLUM"
+    },
+    {
+      "key": "220",
+      "name": "Magnoliopsida",
+      "rank": "CLASS"
+    },
+    {
+      "key": "1354",
+      "name": "Fagales",
+      "rank": "ORDER"
+    },
+    {
+      "key": "4689",
+      "name": "Fagaceae",
+      "rank": "FAMILY"
+    },
+    {
+      "key": "2877951",
+      "name": "Quercus",
+      "rank": "GENUS"
+    },
+    {
+      "key": "2879737",
+      "name": "Quercus alba",
+      "rank": "SPECIES"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "HIGHERRANK",
+    "confidence": 99,
+    "note": "Similarity: name=110; authorship=0; classification=4; rank=6; status=1; score=121; nextMatch=3",
+    "timeTaken": 16,
+    "timings": {
+      "sciNameMatch": 16
+    }
+  },
+  "additionalStatus": [
+    {
+      "clbDatasetKey": "53131",
+      "datasetAlias": "IUCN",
+      "datasetKey": "19491596-35ae-4a91-9a98-85cf505f1bd3",
+      "status": "LEAST_CONCERN",
+      "statusCode": "LC",
+      "sourceId": "194051"
+    }
+  ],
+  "synonym": false,
+  "left": 647722,
+  "right": 647724
+}

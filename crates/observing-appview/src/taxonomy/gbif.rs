@@ -19,6 +19,7 @@ use gbif::checklistbank::{
 };
 use gbif::Uuid;
 use moka::future::Cache;
+use observing_taxonomy_gbif::{is_higher_rank_fallback, sole_accepted_alternative};
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -233,6 +234,67 @@ impl GbifClient {
         }
         self.misses.fetch_add(1, Ordering::Relaxed);
 
+        // Drop empty matches (parity with the old hand-written client).
+        let resolved = self
+            .request_match(name, kingdom_hint, None)
+            .await?
+            .filter(|m| m.usage.is_some());
+        self.cache
+            .insert(
+                cache_key,
+                CachedValue::Match(resolved.clone().map(Box::new)),
+            )
+            .await;
+        Ok(resolved)
+    }
+
+    /// The match for the taxon `name` names: GBIF's own match, unless GBIF
+    /// fell back to an ancestor, in which case the name's one accepted
+    /// reading among the verbose alternatives (see
+    /// [`sole_accepted_alternative`]). `Ok(None)` when there is neither.
+    ///
+    /// Cached like [`Self::match_name_raw`]. Only the pick is kept, not the
+    /// verbose response, whose alternatives can run to dozens of usages.
+    async fn match_taxon_name(
+        &self,
+        name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Result<Option<NameUsageMatch>, GbifError> {
+        let Some(m) = self.match_name_raw(name, kingdom_hint).await? else {
+            return Ok(None);
+        };
+        if !is_higher_rank_fallback(&m, name) {
+            return Ok(Some(m));
+        }
+
+        let cache_key = format!(
+            "homonym:{}:{}",
+            name.to_lowercase(),
+            kingdom_hint.unwrap_or(""),
+        );
+        if let Some(CachedValue::Match(cached)) = self.cache.get(&cache_key).await {
+            self.hits.fetch_add(1, Ordering::Relaxed);
+            return Ok(cached.map(|b| *b));
+        }
+        self.misses.fetch_add(1, Ordering::Relaxed);
+
+        let pick = self
+            .request_match(name, kingdom_hint, Some(true))
+            .await?
+            .and_then(|verbose| sole_accepted_alternative(verbose, name, kingdom_hint));
+        self.cache
+            .insert(cache_key, CachedValue::Match(pick.clone().map(Box::new)))
+            .await;
+        Ok(pick)
+    }
+
+    /// Uncached v2 `/species/match` by name. Returns `Ok(None)` on 404.
+    async fn request_match(
+        &self,
+        name: &str,
+        kingdom_hint: Option<&str>,
+        verbose: Option<bool>,
+    ) -> Result<Option<NameUsageMatch>, GbifError> {
         // Order matches the generated signature (26 positional args).
         let result = self
             .api
@@ -262,28 +324,15 @@ impl GbifClient {
                 None,         // 23 tribe
                 None,         // 24 usage_key
                 None,         // 25 verbatim_taxon_rank
-                None,         // 26 verbose
+                verbose,      // 26 verbose
             )
             .await;
 
-        let m = match result {
-            Ok(rv) => rv.into_inner(),
-            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => {
-                self.cache.insert(cache_key, CachedValue::Match(None)).await;
-                return Ok(None);
-            }
-            Err(e) => return Err(e.into()),
-        };
-
-        // Drop empty matches (parity with the old hand-written client).
-        let resolved = if m.usage.is_none() { None } else { Some(m) };
-        self.cache
-            .insert(
-                cache_key,
-                CachedValue::Match(resolved.clone().map(Box::new)),
-            )
-            .await;
-        Ok(resolved)
+        match result {
+            Ok(rv) => Ok(Some(rv.into_inner())),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(None),
+            Err(e) => Err(e.into()),
+        }
     }
 
     /// v1 `/species/{key}`. Returns `Ok(None)` on 404.
@@ -386,30 +435,6 @@ impl GbifClient {
             .insert(cache_key, CachedValue::SearchResults(results.clone()))
             .await;
         results
-    }
-
-    /// Whether a HIGHERRANK match is a fallback that doesn't actually match
-    /// the input. e.g. searching "Fakeus speciesus" in Animalia returns
-    /// Animalia itself; searching "Corvus" correctly returns the Corvus genus
-    /// as HIGHERRANK because GBIF expects species-level queries — we want to
-    /// keep that one.
-    fn is_mismatched_higher_rank(
-        gbif_match: &Option<NameUsageMatch>,
-        scientific_name: &str,
-    ) -> bool {
-        let Some(m) = gbif_match else {
-            return false;
-        };
-        let match_type = m.diagnostics.as_ref().and_then(|d| d.match_type.as_ref());
-        if match_type != Some(&DiagnosticsMatchType::Higherrank) {
-            return false;
-        }
-        let canonical = m
-            .usage
-            .as_ref()
-            .and_then(|u| u.canonical_name.as_deref())
-            .unwrap_or("");
-        !canonical.eq_ignore_ascii_case(scientific_name)
     }
 
     /// Validate a scientific name. `kingdom_hint` is forwarded to GBIF's
@@ -660,11 +685,7 @@ impl GbifClient {
         scientific_name: &str,
         kingdom: Option<&str>,
     ) -> Result<Option<TaxonDetail>, GbifError> {
-        let gbif_match = self.match_name_raw(scientific_name, kingdom).await?;
-
-        if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
-            return Ok(None);
-        }
+        let gbif_match = self.match_taxon_name(scientific_name, kingdom).await?;
 
         let usage_key = gbif_match
             .as_ref()
@@ -687,11 +708,7 @@ impl GbifClient {
         kingdom: Option<&str>,
         limit: u32,
     ) -> Result<Vec<TaxonResult>, GbifError> {
-        let gbif_match = self.match_name_raw(scientific_name, kingdom).await?;
-
-        if Self::is_mismatched_higher_rank(&gbif_match, scientific_name) {
-            return Ok(vec![]);
-        }
+        let gbif_match = self.match_taxon_name(scientific_name, kingdom).await?;
 
         let usage_key = gbif_match
             .as_ref()
@@ -1510,7 +1527,7 @@ mod tests {
     // server, point a `GbifClient` at it, and assert the upstream is hit
     // exactly the expected number of times.
 
-    use wiremock::matchers::{method, path, query_param};
+    use wiremock::matchers::{method, path, path_regex, query_param, query_param_is_missing};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
     /// Minimal NameUsageMatch JSON the wire deserializer will accept,
@@ -1638,6 +1655,88 @@ mod tests {
             .match_name_raw("Morus", Some("Animalia"))
             .await
             .unwrap();
+    }
+
+    /// Mount a recorded `verbose=true` match for `name`, answering the plain
+    /// request with the same response minus its alternatives, as GBIF does.
+    async fn mount_homonym_match(server: &MockServer, name: &str, verbose_json: &str) {
+        let verbose: serde_json::Value = serde_json::from_str(verbose_json).unwrap();
+        let mut plain = verbose.clone();
+        plain["diagnostics"]
+            .as_object_mut()
+            .unwrap()
+            .remove("alternatives");
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .and(query_param("scientificName", name))
+            .and(query_param_is_missing("verbose"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(plain))
+            .expect(1)
+            .mount(server)
+            .await;
+        Mock::given(method("GET"))
+            .and(path("/v2/species/match"))
+            .and(query_param("scientificName", name))
+            .and(query_param("verbose", "true"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(verbose))
+            .expect(1)
+            .mount(server)
+            .await;
+    }
+
+    /// GBIF answers "Sciurus" in Animalia with Chordata, since the name has
+    /// two usages. Only one is accepted, so the lookup goes by its key, and
+    /// a repeat is served from the cache.
+    #[tokio::test]
+    async fn a_homonym_with_one_accepted_reading_is_looked_up_by_its_key() {
+        let server = MockServer::start().await;
+        mount_homonym_match(
+            &server,
+            "Sciurus",
+            include_str!("../../../observing-taxonomy-gbif/fixtures/sciurus_animalia.json"),
+        )
+        .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2437489/children"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "results": [] })))
+            .expect(1)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        for _ in 0..2 {
+            client
+                .get_children_by_name("Sciurus", Some("Animalia"), 20)
+                .await
+                .expect("lookup succeeds");
+        }
+        // server.verify() on drop checks each upstream was hit exactly once.
+    }
+
+    /// "Anisoptera" in Animalia has four provisional genera and no accepted
+    /// one, so there is nothing to look up.
+    #[tokio::test]
+    async fn a_homonym_with_no_accepted_reading_is_not_found() {
+        let server = MockServer::start().await;
+        mount_homonym_match(
+            &server,
+            "Anisoptera",
+            include_str!("../../../observing-taxonomy-gbif/fixtures/anisoptera_animalia.json"),
+        )
+        .await;
+        Mock::given(method("GET"))
+            .and(path_regex(r"^/v1/species/\d+/children$"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({ "results": [] })))
+            .expect(0)
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let children = client
+            .get_children_by_name("Anisoptera", Some("Animalia"), 20)
+            .await
+            .expect("lookup succeeds");
+        assert!(children.is_empty());
     }
 
     /// End-to-end through the public `validate` path: an EXACT GBIF match

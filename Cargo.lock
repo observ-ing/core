@@ -3081,6 +3081,7 @@ dependencies = [
  "observing-db",
  "observing-lexicons",
  "observing-species-id-protocol",
+ "observing-taxonomy-gbif",
  "pg-url-env",
  "reqwest 0.13.5",
  "serde",

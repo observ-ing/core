@@ -1,0 +1,439 @@
+{
+  "usage": {
+    "key": "216",
+    "name": "Insecta",
+    "canonicalName": "Insecta",
+    "rank": "CLASS",
+    "status": "ACCEPTED",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Insecta</i>"
+  },
+  "classification": [
+    {
+      "key": "1",
+      "name": "Animalia",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "54",
+      "name": "Arthropoda",
+      "rank": "PHYLUM"
+    },
+    {
+      "key": "216",
+      "name": "Insecta",
+      "rank": "CLASS"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "HIGHERRANK",
+    "confidence": 92,
+    "note": "nextMatch=0",
+    "timeTaken": 33,
+    "alternatives": [
+      {
+        "usage": {
+          "key": "9747581",
+          "name": "Anisoptera",
+          "canonicalName": "Anisoptera",
+          "rank": "GENUS",
+          "status": "PROVISIONALLY_ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i>"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "789",
+            "name": "Odonata",
+            "rank": "ORDER"
+          },
+          {
+            "key": "5936",
+            "name": "Libellulidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "9747581",
+            "name": "Anisoptera",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 92,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=-5; score=99",
+          "timeTaken": 0
+        },
+        "synonym": false
+      },
+      {
+        "usage": {
+          "key": "10452367",
+          "name": "Anisoptera Latreille, 1829",
+          "canonicalName": "Anisoptera",
+          "authorship": "Latreille, 1829",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "PROVISIONALLY_ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> Latreille, 1829"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1458",
+            "name": "Orthoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "3991",
+            "name": "Tettigoniidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "10452367",
+            "name": "Anisoptera",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 92,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=-5; score=99",
+          "timeTaken": 0
+        },
+        "synonym": false
+      },
+      {
+        "usage": {
+          "key": "1687770",
+          "name": "Anisoptera Berthold, 1827",
+          "canonicalName": "Anisoptera",
+          "authorship": "Berthold, 1827",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "PROVISIONALLY_ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> Berthold, 1827"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1458",
+            "name": "Orthoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "3991",
+            "name": "Tettigoniidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "1687770",
+            "name": "Anisoptera",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 92,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=-5; score=99",
+          "timeTaken": 0
+        },
+        "synonym": false
+      },
+      {
+        "usage": {
+          "key": "2108075",
+          "name": "Anisoptera Schneider, 1843",
+          "canonicalName": "Anisoptera",
+          "authorship": "Schneider, 1843",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "PROVISIONALLY_ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> Schneider, 1843"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "787",
+            "name": "Plecoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "2108075",
+            "name": "Anisoptera",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 92,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=-5; score=99",
+          "timeTaken": 0
+        },
+        "synonym": false
+      },
+      {
+        "usage": {
+          "key": "3233915",
+          "name": "Anisoptera Korth.",
+          "canonicalName": "Anisoptera",
+          "authorship": "Korth.",
+          "rank": "GENUS",
+          "status": "ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> Korth."
+        },
+        "classification": [
+          {
+            "key": "6",
+            "name": "Plantae",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "7707728",
+            "name": "Tracheophyta",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "220",
+            "name": "Magnoliopsida",
+            "rank": "CLASS"
+          },
+          {
+            "key": "941",
+            "name": "Malvales",
+            "rank": "ORDER"
+          },
+          {
+            "key": "6645",
+            "name": "Dipterocarpaceae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "3233915",
+            "name": "Anisoptera",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 49,
+          "note": "Similarity: name=100; authorship=0; classification=-52; rank=0; status=1; score=49",
+          "timeTaken": 0
+        },
+        "synonym": false,
+        "left": 761343,
+        "right": 761356
+      },
+      {
+        "usage": {
+          "key": "5095757",
+          "name": "Anisoptera laetum (Redtenbacher, 1891)",
+          "canonicalName": "Anisoptera laetum",
+          "authorship": "(Redtenbacher, 1891)",
+          "rank": "SPECIES",
+          "code": "ZOOLOGICAL",
+          "status": "SYNONYM",
+          "genericName": "Anisoptera",
+          "specificEpithet": "laetum",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> <i>laetum</i> (Redtenbacher, 1891)"
+        },
+        "acceptedUsage": {
+          "key": "5095756",
+          "name": "Conocephalus laetus (Redtenbacher, 1891)",
+          "canonicalName": "Conocephalus laetus",
+          "authorship": "(Redtenbacher, 1891)",
+          "rank": "SPECIES",
+          "code": "ZOOLOGICAL",
+          "genericName": "Conocephalus",
+          "specificEpithet": "laetus",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Conocephalus</i> <i>laetus</i> (Redtenbacher, 1891)"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1458",
+            "name": "Orthoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "3991",
+            "name": "Tettigoniidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "1682933",
+            "name": "Conocephalus",
+            "rank": "GENUS"
+          },
+          {
+            "key": "5095756",
+            "name": "Conocephalus laetus",
+            "rank": "SPECIES"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "VARIANT",
+          "confidence": 9,
+          "note": "Similarity: name=5; authorship=0; classification=4; rank=0; status=0; score=9",
+          "timeTaken": 0
+        },
+        "synonym": true
+      },
+      {
+        "usage": {
+          "key": "12378752",
+          "name": "Anisoptera pictum (Redtenbacher, 1891)",
+          "canonicalName": "Anisoptera pictum",
+          "authorship": "(Redtenbacher, 1891)",
+          "rank": "SPECIES",
+          "code": "ZOOLOGICAL",
+          "status": "SYNONYM",
+          "genericName": "Anisoptera",
+          "specificEpithet": "pictum",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Anisoptera</i> <i>pictum</i> (Redtenbacher, 1891)"
+        },
+        "acceptedUsage": {
+          "key": "5096083",
+          "name": "Conocephalus pictus (Redtenbacher, 1891)",
+          "canonicalName": "Conocephalus pictus",
+          "authorship": "(Redtenbacher, 1891)",
+          "rank": "SPECIES",
+          "code": "ZOOLOGICAL",
+          "genericName": "Conocephalus",
+          "specificEpithet": "pictus",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Conocephalus</i> <i>pictus</i> (Redtenbacher, 1891)"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1458",
+            "name": "Orthoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "3991",
+            "name": "Tettigoniidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "1682933",
+            "name": "Conocephalus",
+            "rank": "GENUS"
+          },
+          {
+            "key": "5096083",
+            "name": "Conocephalus pictus",
+            "rank": "SPECIES"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "VARIANT",
+          "confidence": 9,
+          "note": "Similarity: name=5; authorship=0; classification=4; rank=0; status=0; score=9",
+          "timeTaken": 0
+        },
+        "synonym": true
+      }
+    ],
+    "timings": {
+      "nameNRank": 0,
+      "sciNameMatch": 34,
+      "nameParse": 1,
+      "luceneMatch": 33
+    }
+  },
+  "synonym": false
+}

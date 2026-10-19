@@ -16,10 +16,11 @@
 //! denormalized kingdom…species keys stand in for the classification chain.
 
 use chrono::Utc;
+pub use gbif::checklistbank::types::NameUsageMatch;
 use gbif::checklistbank::{
     types::{
-        DiagnosticsMatchType, NameUsage, NameUsageMatch, NameUsageTaxonomicStatus, RankedName,
-        Usage,
+        DiagnosticsMatchType, NameUsage, NameUsageTaxonomicStatus, RankedName, RankedNameRank,
+        Usage, UsageStatus,
     },
     Client as GbifClient,
 };
@@ -50,6 +51,54 @@ impl GbifUpstream {
             api: GbifClient::new(base_url),
         }
     }
+
+    /// v2 `/species/match` by name or by usage key. Returns `Ok(None)` on 404.
+    async fn request_match(
+        &self,
+        scientific_name: Option<&str>,
+        kingdom_hint: Option<&str>,
+        usage_key: Option<&str>,
+        verbose: Option<bool>,
+    ) -> Result<Option<NameUsageMatch>, ResolveError> {
+        // Order matches the generated 26-arg signature.
+        let result = self
+            .api
+            .match_names(
+                None,            //  1 class
+                None,            //  2 exclude
+                None,            //  3 family
+                None,            //  4 generic_name
+                None,            //  5 genus
+                None,            //  6 infraspecific_epithet
+                kingdom_hint,    //  7 kingdom
+                None,            //  8 order
+                None,            //  9 phylum
+                scientific_name, // 10 scientific_name
+                None,            // 11 scientific_name_authorship
+                None,            // 12 scientific_name_id
+                None,            // 13 species
+                None,            // 14 specific_epithet
+                None,            // 15 strict
+                None,            // 16 subfamily
+                None,            // 17 subgenus
+                None,            // 18 subtribe
+                None,            // 19 superfamily
+                None,            // 20 taxon_concept_id
+                None,            // 21 taxon_id
+                None,            // 22 taxon_rank
+                None,            // 23 tribe
+                usage_key,       // 24 usage_key
+                None,            // 25 verbatim_taxon_rank
+                verbose,         // 26 verbose
+            )
+            .await;
+
+        match result {
+            Ok(rv) => Ok(Some(rv.into_inner())),
+            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => Ok(None),
+            Err(e) => Err(ResolveError::Upstream(e.to_string())),
+        }
+    }
 }
 
 impl Default for GbifUpstream {
@@ -64,54 +113,37 @@ impl TaxonomyUpstream for GbifUpstream {
         scientific_name: &str,
         kingdom_hint: Option<&str>,
     ) -> Result<Option<UpstreamMatch>, ResolveError> {
-        // Order matches the generated 26-arg signature; everything except
-        // kingdom + scientific_name is None.
-        let result = self
-            .api
-            .match_names(
-                None,                  //  1 class
-                None,                  //  2 exclude
-                None,                  //  3 family
-                None,                  //  4 generic_name
-                None,                  //  5 genus
-                None,                  //  6 infraspecific_epithet
-                kingdom_hint,          //  7 kingdom
-                None,                  //  8 order
-                None,                  //  9 phylum
-                Some(scientific_name), // 10 scientific_name
-                None,                  // 11 scientific_name_authorship
-                None,                  // 12 scientific_name_id
-                None,                  // 13 species
-                None,                  // 14 specific_epithet
-                None,                  // 15 strict
-                None,                  // 16 subfamily
-                None,                  // 17 subgenus
-                None,                  // 18 subtribe
-                None,                  // 19 superfamily
-                None,                  // 20 taxon_concept_id
-                None,                  // 21 taxon_id
-                None,                  // 22 taxon_rank
-                None,                  // 23 tribe
-                None,                  // 24 usage_key
-                None,                  // 25 verbatim_taxon_rank
-                None,                  // 26 verbose
-            )
-            .await;
-
-        let m: NameUsageMatch = match result {
-            Ok(rv) => rv.into_inner(),
-            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => return Ok(None),
-            Err(e) => return Err(ResolveError::Upstream(e.to_string())),
-        };
-
-        // Keying an identification to the ancestor GBIF fell back to would
-        // file it under the wrong taxon, so report no match instead; the
-        // resolver's taxonID phase can still key it from the record's URI.
-        if is_higher_rank_fallback(&m, scientific_name) {
+        let Some(m) = self
+            .request_match(Some(scientific_name), kingdom_hint, None, None)
+            .await?
+        else {
             return Ok(None);
+        };
+        if !is_higher_rank_fallback(&m, scientific_name) {
+            return Ok(build_upstream_match(m));
         }
 
-        Ok(build_upstream_match(m))
+        // Keying an identification to the ancestor GBIF fell back to would
+        // file it under the wrong taxon. Take the name's one accepted reading
+        // if it has one, and otherwise report no match; the resolver's
+        // taxonID phase can still key it from the record's URI.
+        let verbose = self
+            .request_match(Some(scientific_name), kingdom_hint, None, Some(true))
+            .await?;
+        Ok(verbose
+            .and_then(|v| sole_accepted_alternative(v, scientific_name, kingdom_hint))
+            .and_then(build_upstream_match))
+    }
+
+    async fn match_name_fallback(
+        &self,
+        scientific_name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Result<Option<UpstreamMatch>, ResolveError> {
+        let m = self
+            .request_match(Some(scientific_name), kingdom_hint, None, None)
+            .await?;
+        Ok(m.and_then(|m| higher_rank_fallback(m, scientific_name)))
     }
 
     async fn get_by_key(&self, taxon_key: i64) -> Result<Option<UpstreamMatch>, ResolveError> {
@@ -119,43 +151,10 @@ impl TaxonomyUpstream for GbifUpstream {
         // same `NameUsageMatch` (usage + classification chain) as a name match,
         // so a by-key lookup reuses the exact response shape `match_name` does.
         let usage_key = taxon_key.to_string();
-        let result = self
-            .api
-            .match_names(
-                None,             //  1 class
-                None,             //  2 exclude
-                None,             //  3 family
-                None,             //  4 generic_name
-                None,             //  5 genus
-                None,             //  6 infraspecific_epithet
-                None,             //  7 kingdom
-                None,             //  8 order
-                None,             //  9 phylum
-                None,             // 10 scientific_name
-                None,             // 11 scientific_name_authorship
-                None,             // 12 scientific_name_id
-                None,             // 13 species
-                None,             // 14 specific_epithet
-                None,             // 15 strict
-                None,             // 16 subfamily
-                None,             // 17 subgenus
-                None,             // 18 subtribe
-                None,             // 19 superfamily
-                None,             // 20 taxon_concept_id
-                None,             // 21 taxon_id
-                None,             // 22 taxon_rank
-                None,             // 23 tribe
-                Some(&usage_key), // 24 usage_key
-                None,             // 25 verbatim_taxon_rank
-                None,             // 26 verbose
-            )
-            .await;
-
-        let v2 = match result {
-            Ok(rv) => build_upstream_match(rv.into_inner()),
-            Err(e) if e.status() == Some(reqwest::StatusCode::NOT_FOUND) => None,
-            Err(e) => return Err(ResolveError::Upstream(e.to_string())),
-        };
+        let v2 = self
+            .request_match(None, None, Some(&usage_key), None)
+            .await?
+            .and_then(build_upstream_match);
         if v2.is_some() {
             return Ok(v2);
         }
@@ -186,9 +185,11 @@ fn rank_to_string<R: serde::Serialize>(rank: &R) -> Option<String> {
 
 /// Whether GBIF answered a name match with an ancestor instead of the name.
 /// GBIF does this when it can't choose between homonyms (e.g. "Anisoptera"
-/// → Insecta, "Sciurus" → Chordata): a HIGHERRANK match whose usage is the
-/// closest rank the candidates share.
-fn is_higher_rank_fallback(m: &NameUsageMatch, scientific_name: &str) -> bool {
+/// → Insecta, "Sciurus" → Chordata), giving the closest rank the candidates
+/// share, and when the name isn't in the backbone (a missing species comes
+/// back as its genus). A HIGHERRANK match whose usage is the queried name
+/// itself ("Corvus" → the genus Corvus) is not a fallback.
+pub fn is_higher_rank_fallback(m: &NameUsageMatch, scientific_name: &str) -> bool {
     let higher_rank = m.diagnostics.as_ref().and_then(|d| d.match_type.as_ref())
         == Some(&DiagnosticsMatchType::Higherrank);
     let canonical = m
@@ -197,6 +198,67 @@ fn is_higher_rank_fallback(m: &NameUsageMatch, scientific_name: &str) -> bool {
         .and_then(|u| u.canonical_name.as_deref())
         .unwrap_or("");
     higher_rank && !canonical.eq_ignore_ascii_case(scientific_name)
+}
+
+/// The one accepted reading of a homonym, from the alternatives of a
+/// HIGHERRANK fallback requested with `verbose=true`.
+///
+/// GBIF falls back to an ancestor whenever a name has more than one usage,
+/// even if only one of them is accepted: "Sciurus" in Animalia lists
+/// *Sciurus* Linnaeus (ACCEPTED) and *Sciurus* d'Orbigny (SYNONYM). The
+/// readings are the alternatives that are this name, ignoring case, in the
+/// hinted kingdom if there is one. GBIF calls a match that differs only in
+/// case VARIANT ("sciurus"), so those count along with EXACT ones. Returns
+/// the reading if exactly one is ACCEPTED, and `None` otherwise, as for
+/// "Anisoptera" in Animalia, whose four readings are all provisional.
+pub fn sole_accepted_alternative(
+    verbose: NameUsageMatch,
+    scientific_name: &str,
+    kingdom_hint: Option<&str>,
+) -> Option<NameUsageMatch> {
+    let mut accepted = verbose
+        .diagnostics?
+        .alternatives
+        .into_iter()
+        .filter(|alt| is_reading_of(alt, scientific_name.trim(), kingdom_hint))
+        .filter(|alt| {
+            alt.usage.as_ref().and_then(|u| u.status.as_ref()) == Some(&UsageStatus::Accepted)
+        });
+    let only = accepted.next()?;
+    accepted.next().is_none().then_some(only)
+}
+
+/// Whether a match alternative is a usage of `name` (in `kingdom_hint`,
+/// when there is one).
+fn is_reading_of(alt: &NameUsageMatch, name: &str, kingdom_hint: Option<&str>) -> bool {
+    let match_type = alt.diagnostics.as_ref().and_then(|d| d.match_type.as_ref());
+    if !matches!(
+        match_type,
+        Some(DiagnosticsMatchType::Exact | DiagnosticsMatchType::Variant)
+    ) {
+        return false;
+    }
+    let canonical = alt.usage.as_ref().and_then(|u| u.canonical_name.as_deref());
+    if !canonical.is_some_and(|c| c.eq_ignore_ascii_case(name)) {
+        return false;
+    }
+    kingdom_hint.is_none_or(|hint| {
+        alt.classification
+            .iter()
+            .find(|r| r.rank == Some(RankedNameRank::Kingdom))
+            .and_then(|r| r.name.as_deref())
+            .is_some_and(|kingdom| kingdom.eq_ignore_ascii_case(hint))
+    })
+}
+
+/// The ancestor GBIF fell back to for `scientific_name`, or `None` when the
+/// match isn't a HIGHERRANK fallback. Not a match for the name itself:
+/// callers decide whether the ancestor is close enough to use.
+pub fn higher_rank_fallback(m: NameUsageMatch, scientific_name: &str) -> Option<UpstreamMatch> {
+    if !is_higher_rank_fallback(&m, scientific_name) {
+        return None;
+    }
+    build_upstream_match(m)
 }
 
 /// Build an [`UpstreamMatch`] from a GBIF v2 match result. Returns `None`
@@ -557,6 +619,102 @@ mod tests {
         assert!(!is_higher_rank_fallback(&same_name, "quercus"));
     }
 
+    /// A recorded `verbose=true` GBIF response from `fixtures/`, trimmed to
+    /// the alternatives that are the queried name plus a couple that aren't.
+    fn fixture(json: &str) -> NameUsageMatch {
+        serde_json::from_str(json).expect("fixture is a valid NameUsageMatch")
+    }
+
+    fn key_of(m: &NameUsageMatch) -> Option<&str> {
+        m.usage.as_ref().and_then(|u| u.key.as_deref())
+    }
+
+    #[test]
+    fn a_homonym_with_one_accepted_reading_resolves_to_it() {
+        // HIGHERRANK → Chordata; the alternatives are Sciurus Linnaeus
+        // (ACCEPTED), Sciurus d'Orbigny (SYNONYM) and a provisional plant.
+        let m = fixture(include_str!("../fixtures/sciurus_animalia.json"));
+        assert!(is_higher_rank_fallback(&m, "Sciurus"));
+        let pick = sole_accepted_alternative(m, "Sciurus", Some("Animalia")).unwrap();
+        assert_eq!(key_of(&pick), Some("2437489"));
+
+        let upstream = build_upstream_match(pick).unwrap();
+        assert_eq!(upstream.target_key, 2437489);
+    }
+
+    #[test]
+    fn a_reading_that_differs_only_in_case_counts() {
+        // GBIF calls the alternatives for "sciurus" VARIANT, not EXACT.
+        let m = fixture(include_str!("../fixtures/sciurus_lowercase_animalia.json"));
+        let pick = sole_accepted_alternative(m, "sciurus", Some("Animalia")).unwrap();
+        assert_eq!(key_of(&pick), Some("2437489"));
+    }
+
+    #[test]
+    fn readings_outside_the_hinted_kingdom_are_ignored() {
+        // The only Plantae reading of Sciurus is provisional.
+        let m = fixture(include_str!("../fixtures/sciurus_animalia.json"));
+        assert!(sole_accepted_alternative(m, "Sciurus", Some("Plantae")).is_none());
+    }
+
+    #[test]
+    fn a_homonym_with_no_accepted_reading_stays_unmatched() {
+        // Four provisional Animalia genera, and an accepted plant genus that
+        // the kingdom hint rules out.
+        let m = fixture(include_str!("../fixtures/anisoptera_animalia.json"));
+        assert!(is_higher_rank_fallback(&m, "Anisoptera"));
+        assert!(sole_accepted_alternative(m, "Anisoptera", Some("Animalia")).is_none());
+    }
+
+    #[test]
+    fn a_lone_synonym_reading_stays_unmatched() {
+        let mut m = fixture(include_str!("../fixtures/sciurus_animalia.json"));
+        m.diagnostics.as_mut().unwrap().alternatives.retain(|alt| {
+            alt.usage.as_ref().and_then(|u| u.status.as_ref()) == Some(&UsageStatus::Synonym)
+        });
+        assert_eq!(m.diagnostics.as_ref().unwrap().alternatives.len(), 1);
+        assert!(sole_accepted_alternative(m, "Sciurus", Some("Animalia")).is_none());
+    }
+
+    #[test]
+    fn two_accepted_readings_stay_unmatched() {
+        let mut m = fixture(include_str!("../fixtures/sciurus_animalia.json"));
+        for alt in &mut m.diagnostics.as_mut().unwrap().alternatives {
+            if let Some(usage) = alt.usage.as_mut() {
+                usage.status = Some(UsageStatus::Accepted);
+            }
+        }
+        assert!(sole_accepted_alternative(m, "Sciurus", Some("Animalia")).is_none());
+    }
+
+    #[test]
+    fn a_species_missing_from_the_backbone_falls_back_to_its_genus() {
+        // No alternatives, so the plain match has nothing to offer; the
+        // genus is only available as the fallback.
+        let m = fixture(include_str!("../fixtures/bermudella_angelensis.json"));
+        assert!(sole_accepted_alternative(m.clone(), "Bermudella angelensis", None).is_none());
+
+        let fallback = higher_rank_fallback(m, "Bermudella angelensis").unwrap();
+        assert_eq!(fallback.target_key, 4359855);
+        let genus = fallback
+            .rows
+            .iter()
+            .find(|r| r.taxon_key == fallback.target_key)
+            .unwrap();
+        assert_eq!(genus.scientific_name, "Bermudella");
+        assert_eq!(genus.rank, "genus");
+    }
+
+    #[test]
+    fn a_direct_match_is_not_a_fallback() {
+        let m = match_from_json(json!({
+            "synonym": false,
+            "usage": { "key": "1", "name": "Quercus alba", "canonicalName": "Quercus alba", "rank": "SPECIES" },
+            "diagnostics": { "matchType": "EXACT" }
+        }));
+        assert!(higher_rank_fallback(m, "Quercus alba").is_none());
+    }
+
     #[test]
     fn ancestors_without_keys_are_skipped() {
         let m = match_from_json(json!({
@@ -575,11 +733,9 @@ mod tests {
         assert!(target.phylum.is_none());
     }
 
-    /// A GBIF response recorded on 2026-10-18, from `tests/fixtures`.
-    fn fixture(name: &str) -> serde_json::Value {
-        let path = format!("{}/tests/fixtures/{name}", env!("CARGO_MANIFEST_DIR"));
-        let body = std::fs::read_to_string(&path).expect("fixture exists");
-        serde_json::from_str(&body).expect("fixture is JSON")
+    /// A GBIF response recorded on 2026-10-18, from `fixtures/`.
+    fn recorded(json: &str) -> serde_json::Value {
+        serde_json::from_str(json).expect("fixture is JSON")
     }
 
     fn usage_from_json(value: serde_json::Value) -> NameUsage {
@@ -588,13 +744,15 @@ mod tests {
 
     #[test]
     fn v2_answers_a_deleted_backbone_key_with_no_usage() {
-        let m = match_from_json(fixture("v2-match-usagekey-1875.json"));
+        let m = match_from_json(recorded(include_str!(
+            "../fixtures/v2_match_usagekey_1875.json"
+        )));
         assert!(build_upstream_match(m).is_none());
     }
 
     #[test]
     fn v1_superfamily_maps_to_its_ancestors_plus_target() {
-        let usage = usage_from_json(fixture("v1-species-1875.json"));
+        let usage = usage_from_json(recorded(include_str!("../fixtures/v1_species_1875.json")));
         let upstream = build_upstream_match_from_usage(&usage).expect("backbone usage");
         assert_eq!(upstream.target_key, 1875);
 
@@ -623,7 +781,9 @@ mod tests {
 
     #[test]
     fn v1_species_fills_its_own_rank_without_an_ancestor_row_for_itself() {
-        let usage = usage_from_json(fixture("v1-species-1934362.json"));
+        let usage = usage_from_json(recorded(include_str!(
+            "../fixtures/v1_species_1934362.json"
+        )));
         let upstream = build_upstream_match_from_usage(&usage).expect("backbone usage");
 
         let keys: Vec<i64> = upstream.rows.iter().map(|r| r.taxon_key).collect();
@@ -695,11 +855,17 @@ mod tests {
         #[tokio::test]
         async fn falls_back_to_v1_when_v2_has_no_usage() {
             let server = MockServer::start().await;
-            mock_v2(&server, "1875", fixture("v2-match-usagekey-1875.json")).await;
+            mock_v2(
+                &server,
+                "1875",
+                recorded(include_str!("../fixtures/v2_match_usagekey_1875.json")),
+            )
+            .await;
             Mock::given(method("GET"))
                 .and(path("/v1/species/1875"))
                 .respond_with(
-                    ResponseTemplate::new(200).set_body_json(fixture("v1-species-1875.json")),
+                    ResponseTemplate::new(200)
+                        .set_body_json(recorded(include_str!("../fixtures/v1_species_1875.json"))),
                 )
                 .expect(1)
                 .mount(&server)
@@ -717,7 +883,7 @@ mod tests {
             mock_v2(
                 &server,
                 "5231190",
-                fixture("v2-match-usagekey-5231190.json"),
+                recorded(include_str!("../fixtures/v2_match_usagekey_5231190.json")),
             )
             .await;
             Mock::given(method("GET"))
@@ -739,7 +905,12 @@ mod tests {
         #[tokio::test]
         async fn no_match_when_v1_does_not_know_the_key_either() {
             let server = MockServer::start().await;
-            mock_v2(&server, "999999999", fixture("v2-match-usagekey-1875.json")).await;
+            mock_v2(
+                &server,
+                "999999999",
+                recorded(include_str!("../fixtures/v2_match_usagekey_1875.json")),
+            )
+            .await;
             Mock::given(method("GET"))
                 .and(path("/v1/species/999999999"))
                 .respond_with(ResponseTemplate::new(404))
@@ -753,7 +924,12 @@ mod tests {
         #[tokio::test]
         async fn v1_server_errors_surface_as_upstream_errors() {
             let server = MockServer::start().await;
-            mock_v2(&server, "1875", fixture("v2-match-usagekey-1875.json")).await;
+            mock_v2(
+                &server,
+                "1875",
+                recorded(include_str!("../fixtures/v2_match_usagekey_1875.json")),
+            )
+            .await;
             Mock::given(method("GET"))
                 .and(path("/v1/species/1875"))
                 .respond_with(ResponseTemplate::new(503))

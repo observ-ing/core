@@ -1,0 +1,74 @@
+{
+  "usage": {
+    "key": "2879297",
+    "name": "Quercus × feketei Simonk.",
+    "canonicalName": "Quercus feketei",
+    "authorship": "Simonk.",
+    "rank": "SPECIES",
+    "status": "SYNONYM",
+    "genericName": "Quercus",
+    "specificEpithet": "feketei",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Quercus</i> × <i>feketei</i> Simonk."
+  },
+  "acceptedUsage": {
+    "key": "2879292",
+    "name": "Quercus × rosacea Bechst.",
+    "canonicalName": "Quercus rosacea",
+    "authorship": "Bechst.",
+    "rank": "SPECIES",
+    "genericName": "Quercus",
+    "specificEpithet": "rosacea",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Quercus</i> × <i>rosacea</i> Bechst."
+  },
+  "classification": [
+    {
+      "key": "6",
+      "name": "Plantae",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "7707728",
+      "name": "Tracheophyta",
+      "rank": "PHYLUM"
+    },
+    {
+      "key": "220",
+      "name": "Magnoliopsida",
+      "rank": "CLASS"
+    },
+    {
+      "key": "1354",
+      "name": "Fagales",
+      "rank": "ORDER"
+    },
+    {
+      "key": "4689",
+      "name": "Fagaceae",
+      "rank": "FAMILY"
+    },
+    {
+      "key": "2877951",
+      "name": "Quercus",
+      "rank": "GENUS"
+    },
+    {
+      "key": "2879292",
+      "name": "Quercus rosacea",
+      "rank": "SPECIES"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "HIGHERRANK",
+    "confidence": 94,
+    "note": "Similarity: name=90; authorship=0; classification=4; rank=6; status=0; score=100; nextMatch=2",
+    "timeTaken": 22,
+    "timings": {
+      "sciNameMatch": 23
+    }
+  },
+  "synonym": true,
+  "left": 647929,
+  "right": 647929
+}

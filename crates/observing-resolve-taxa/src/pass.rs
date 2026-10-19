@@ -1,10 +1,12 @@
 //! One resolution pass over the identifications that still need a key.
 //!
-//! A pass has two phases: resolve by `(scientific_name, kingdom)`, then mop
-//! up rows that carry a `taxon_id` URI. Each phase goes through its work in a
-//! fixed order, so a pass cut short by a deadline returns a [`Cursor`] and a
-//! later call picks up after the last item it handled. Rows resolved in the
-//! meantime simply drop out of the set.
+//! A pass has three phases: resolve by `(scientific_name, kingdom)`, mop up
+//! rows that carry a `taxon_id` URI, then, as a last resort, key what's left
+//! to the genus (or species) its name spells out, when that is where GBIF
+//! falls back to. Each phase goes through its work in a fixed order, so a
+//! pass cut short by a deadline returns a [`Cursor`] and a later call picks
+//! up after the last item it handled. Rows resolved in the meantime simply
+//! drop out of the set.
 
 use std::time::{Duration, Instant};
 
@@ -32,6 +34,11 @@ pub enum Cursor {
     TaxonIds {
         #[serde(default)]
         after: Option<String>,
+    },
+    /// Keying names to the ancestor they spell out, after `after` if set.
+    NamedAncestors {
+        #[serde(default)]
+        after: Option<NameKey>,
     },
 }
 
@@ -113,35 +120,62 @@ impl Clients {
         opts: &Options,
         updated_rows: &mut u64,
     ) -> Result<Outcome, sqlx::Error> {
-        let after_uri = match from {
-            Cursor::Names { after } => {
-                if let Some(stopped) = self
-                    .name_phase(resolver, after.as_ref(), opts, updated_rows)
-                    .await?
-                {
-                    return Ok(Outcome::Paused(Cursor::Names {
-                        after: Some(stopped),
-                    }));
-                }
-                None
+        // A pass starts in the cursor's phase and runs every later phase
+        // from the top.
+        let mut from = from;
+        if let Cursor::Names { after } = &from {
+            if let Some(stopped) = self
+                .name_phase(
+                    NameLookup::Match,
+                    resolver,
+                    after.as_ref(),
+                    opts,
+                    updated_rows,
+                )
+                .await?
+            {
+                return Ok(Outcome::Paused(Cursor::Names {
+                    after: Some(stopped),
+                }));
             }
-            Cursor::TaxonIds { after } => after,
-        };
-        if let Some(stopped) = self
-            .taxon_id_phase(resolver, after_uri.as_deref(), opts, updated_rows)
-            .await?
-        {
-            return Ok(Outcome::Paused(Cursor::TaxonIds {
-                after: Some(stopped),
-            }));
+            from = Cursor::TaxonIds { after: None };
+        }
+        if let Cursor::TaxonIds { after } = &from {
+            if let Some(stopped) = self
+                .taxon_id_phase(resolver, after.as_deref(), opts, updated_rows)
+                .await?
+            {
+                return Ok(Outcome::Paused(Cursor::TaxonIds {
+                    after: Some(stopped),
+                }));
+            }
+            from = Cursor::NamedAncestors { after: None };
+        }
+        if let Cursor::NamedAncestors { after } = &from {
+            if let Some(stopped) = self
+                .name_phase(
+                    NameLookup::NamedAncestor,
+                    resolver,
+                    after.as_ref(),
+                    opts,
+                    updated_rows,
+                )
+                .await?
+            {
+                return Ok(Outcome::Paused(Cursor::NamedAncestors {
+                    after: Some(stopped),
+                }));
+            }
         }
         Ok(Outcome::Complete)
     }
 
-    /// Resolve unresolved identifications by `(scientific_name, kingdom)`.
-    /// Returns the last pair handled if the deadline cut the phase short.
+    /// Resolve unresolved identifications by `(scientific_name, kingdom)`,
+    /// with `lookup` saying how. Returns the last pair handled if the
+    /// deadline cut the phase short.
     async fn name_phase(
         &self,
+        lookup: NameLookup,
         resolver: &Resolver<'_, PgPool, GbifUpstream>,
         after: Option<&NameKey>,
         opts: &Options,
@@ -149,12 +183,14 @@ impl Clients {
     ) -> Result<Option<NameKey>, sqlx::Error> {
         // Distinct pairs that still need a key, in the order the cursor follows.
         // Pulled in one shot; if the backlog ever outgrows memory, page
-        // through the same set instead.
+        // through the same set instead. Only a name of two or more words can
+        // spell out an ancestor.
         let pairs: Vec<NameKey> = sqlx::query(
             r#"SELECT DISTINCT scientific_name, kingdom
                FROM identifications
                WHERE accepted_taxon_key IS NULL
                  AND scientific_name <> ''
+                 AND (NOT $4::bool OR btrim(scientific_name) LIKE '% %')
                  AND ($1::text IS NULL
                       OR scientific_name > $1
                       OR (scientific_name = $1
@@ -166,6 +202,7 @@ impl Clients {
         .bind(after.map(|k| k.scientific_name.as_str()))
         .bind(after.and_then(|k| k.kingdom.as_deref()))
         .bind(opts.limit)
+        .bind(lookup == NameLookup::NamedAncestor)
         .fetch_all(&self.pool)
         .await?
         .into_iter()
@@ -177,12 +214,13 @@ impl Clients {
 
         info!(
             pairs = pairs.len(),
+            phase = lookup.phase(),
             "Discovered (name, kingdom) pairs to resolve"
         );
 
         if opts.dry_run {
             for pair in &pairs {
-                info!(name = %pair.scientific_name, kingdom = ?pair.kingdom, "Would resolve by name");
+                info!(name = %pair.scientific_name, kingdom = ?pair.kingdom, phase = lookup.phase(), "Would resolve by name");
             }
             return Ok(None);
         }
@@ -191,7 +229,16 @@ impl Clients {
         for (i, pair) in pairs.iter().enumerate() {
             let name = &pair.scientific_name;
             let kingdom = pair.kingdom.as_deref();
-            match resolver.resolve_by_name(name, kingdom).await {
+            let resolved = match lookup {
+                NameLookup::Match => resolver.resolve_by_name(name, kingdom).await,
+                NameLookup::NamedAncestor => resolver
+                    .resolve_fallback_by_name(name, kingdom)
+                    .await
+                    .map(|row| {
+                        row.filter(|row| is_named_ancestor(name, &row.rank, &row.scientific_name))
+                    }),
+            };
+            match resolved {
                 Ok(Some(row)) => {
                     tally.resolved += 1;
                     let key = row.accepted_taxon_key.unwrap_or(row.taxon_key);
@@ -226,17 +273,17 @@ impl Clients {
             }
 
             if (i + 1) % 50 == 0 {
-                tally.log_progress("Name-phase progress", i + 1, pairs.len());
+                tally.log_progress(&format!("{} progress", lookup.phase()), i + 1, pairs.len());
             }
             if opts.past_deadline() && i + 1 < pairs.len() {
-                tally.log_done("Name phase paused at deadline");
+                tally.log_done(&format!("{} paused at deadline", lookup.phase()));
                 *updated_rows += tally.updated_rows;
                 return Ok(Some(pair.clone()));
             }
             rate_limit(opts).await;
         }
 
-        tally.log_done("Name phase complete");
+        tally.log_done(&format!("{} complete", lookup.phase()));
         *updated_rows += tally.updated_rows;
         Ok(None)
     }
@@ -329,6 +376,48 @@ impl Clients {
     }
 }
 
+/// How a name phase looks a `(scientific_name, kingdom)` pair up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum NameLookup {
+    /// The taxon the name names.
+    Match,
+    /// The ancestor GBIF falls back to, when the name spells it out (see
+    /// [`is_named_ancestor`]). The last resort, after the taxonID phase.
+    NamedAncestor,
+}
+
+impl NameLookup {
+    fn phase(self) -> &'static str {
+        match self {
+            NameLookup::Match => "Name phase",
+            NameLookup::NamedAncestor => "Named-ancestor phase",
+        }
+    }
+}
+
+/// Whether the taxon GBIF fell back to for `scientific_name`, with
+/// `ancestor_rank` and `ancestor_name`, is one the name itself spells out: the genus named by its first word
+/// (*Bermudella* for "Bermudella angelensis", a species missing from the
+/// backbone), or the species named by its first two words, for an
+/// infraspecific name. Those are ancestors of whatever the name means.
+/// Any other fallback is GBIF's guess: the closest rank homonyms share, a
+/// fuzzy match on the name, or just the kingdom.
+fn is_named_ancestor(scientific_name: &str, ancestor_rank: &str, ancestor_name: &str) -> bool {
+    let words = match ancestor_rank {
+        "genus" => 1,
+        "species" => 2,
+        _ => return false,
+    };
+    let name: Vec<&str> = scientific_name.split_whitespace().collect();
+    let ancestor_name: Vec<&str> = ancestor_name.split_whitespace().collect();
+    name.len() > words
+        && ancestor_name.len() == words
+        && name
+            .iter()
+            .zip(&ancestor_name)
+            .all(|(a, b)| a.eq_ignore_ascii_case(b))
+}
+
 #[derive(Default)]
 struct Tally {
     resolved: u64,
@@ -414,6 +503,9 @@ async fn rate_limit(opts: &Options) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use observing_taxonomy_gbif::{
+        higher_rank_fallback, is_higher_rank_fallback, sole_accepted_alternative, NameUsageMatch,
+    };
     use serde_json::json;
 
     #[test]
@@ -440,6 +532,12 @@ mod tests {
             Cursor::TaxonIds {
                 after: Some("https://www.gbif.org/species/2878688".into()),
             },
+            Cursor::NamedAncestors {
+                after: Some(NameKey {
+                    scientific_name: "Bermudella angelensis".into(),
+                    kingdom: None,
+                }),
+            },
         ] {
             let json = serde_json::to_value(&cursor).unwrap();
             assert_eq!(serde_json::from_value::<Cursor>(json).unwrap(), cursor);
@@ -452,5 +550,96 @@ mod tests {
             serde_json::to_value(Cursor::TaxonIds { after: None }).unwrap(),
             json!({ "phase": "taxon_ids", "after": null })
         );
+    }
+
+    /// What the phases make of a recorded verbose GBIF response for `name`:
+    /// whether the name phase keys it, and the key the named-ancestor phase
+    /// would stamp.
+    fn phases_for(json: &str, name: &str, kingdom: Option<&str>) -> (bool, Option<i64>) {
+        let m: NameUsageMatch = serde_json::from_str(json).unwrap();
+        let by_name = !is_higher_rank_fallback(&m, name)
+            || sole_accepted_alternative(m.clone(), name, kingdom).is_some();
+        let by_ancestor = higher_rank_fallback(m, name).and_then(|fallback| {
+            let row = fallback
+                .rows
+                .into_iter()
+                .find(|r| r.taxon_key == fallback.target_key)?;
+            is_named_ancestor(name, &row.rank, &row.scientific_name)
+                .then(|| row.accepted_taxon_key.unwrap_or(row.taxon_key))
+        });
+        (by_name, by_ancestor)
+    }
+
+    #[test]
+    fn a_species_missing_from_the_backbone_gets_its_genus_as_a_last_resort() {
+        let (by_name, by_ancestor) = phases_for(
+            include_str!("../../observing-taxonomy-gbif/fixtures/bermudella_angelensis.json"),
+            "Bermudella angelensis",
+            None,
+        );
+        assert!(!by_name);
+        assert_eq!(by_ancestor, Some(4359855));
+    }
+
+    #[test]
+    fn a_missing_infraspecific_name_gets_its_species() {
+        let (by_name, by_ancestor) = phases_for(
+            include_str!(
+                "../../observing-taxonomy-gbif/fixtures/quercus_alba_fakeusvar_plantae.json"
+            ),
+            "Quercus alba fakeusvar",
+            Some("Plantae"),
+        );
+        assert!(!by_name);
+        assert_eq!(by_ancestor, Some(2879737));
+    }
+
+    #[test]
+    fn a_fuzzy_fallback_is_not_a_named_ancestor() {
+        // GBIF falls back to Quercus feketei, not anything the name says.
+        let (by_name, by_ancestor) = phases_for(
+            include_str!(
+                "../../observing-taxonomy-gbif/fixtures/quercus_fakeus_fakeusvar_plantae.json"
+            ),
+            "Quercus fakeus fakeusvar",
+            Some("Plantae"),
+        );
+        assert_eq!((by_name, by_ancestor), (false, None));
+    }
+
+    #[test]
+    fn a_homonym_fallback_is_not_a_named_ancestor() {
+        // Insecta, the rank the Anisoptera homonyms share.
+        let (by_name, by_ancestor) = phases_for(
+            include_str!("../../observing-taxonomy-gbif/fixtures/anisoptera_animalia.json"),
+            "Anisoptera",
+            Some("Animalia"),
+        );
+        assert_eq!((by_name, by_ancestor), (false, None));
+    }
+
+    #[test]
+    fn a_genus_is_named_only_by_the_first_word_of_a_longer_name() {
+        assert!(is_named_ancestor(
+            "bermudella  angelensis",
+            "genus",
+            "Bermudella"
+        ));
+        assert!(!is_named_ancestor("Bermudella", "genus", "Bermudella"));
+        assert!(!is_named_ancestor(
+            "Okenia angelensis",
+            "genus",
+            "Bermudella"
+        ));
+        assert!(!is_named_ancestor(
+            "Bermudella angelensis",
+            "family",
+            "Bermudella"
+        ));
+        assert!(!is_named_ancestor(
+            "Quercus alba",
+            "species",
+            "Quercus alba"
+        ));
     }
 }
