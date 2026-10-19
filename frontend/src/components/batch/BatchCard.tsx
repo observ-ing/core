@@ -21,7 +21,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { captionIconSx, coverImageSx, rowIconSx } from "../common/layoutSx";
+import { captionIconSx, coverImageSx, rowIconSx, thumbnailFrameSx } from "../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import {
   describeMissing,
@@ -374,8 +374,7 @@ export function BatchCard({
                 sx={{
                   width: THUMB_SIZE,
                   height: THUMB_SIZE,
-                  borderRadius: 1,
-                  overflow: "hidden",
+                  ...thumbnailFrameSx,
                   bgcolor: "action.hover",
                   opacity: draggingPhotoId === photo.id ? 0.3 : 1,
                 }}

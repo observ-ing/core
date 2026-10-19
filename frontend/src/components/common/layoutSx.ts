@@ -32,6 +32,9 @@ export const coverImageSx = {
   display: "block",
 } as const;
 
+/** Rounded, clipped frame for photo thumbnails (upload previews, photo strips, batch cards). */
+export const thumbnailFrameSx = { borderRadius: 1, overflow: "hidden" } as const;
+
 /**
  * Frosted "glass" backdrop shared by sticky/translucent surfaces (the app's
  * `TopBar` and detail-page `stickyHeaderSx`): a blurred pane with a

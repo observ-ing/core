@@ -9,7 +9,7 @@ import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
-import { coverImageSx } from "../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { AncestorSelection } from "../identification/VisualIdCards";
 import type { SpeciesSuggestion } from "../../services/api";
@@ -249,7 +249,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
             ) : single && cover ? (
               <Box sx={{ mt: 1 }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: "center", mb: 1 }}>
-                  <Box sx={{ width: 40, height: 40, borderRadius: 1, overflow: "hidden" }}>
+                  <Box sx={{ width: 40, height: 40, ...thumbnailFrameSx }}>
                     <Box component="img" src={cover.previewUrl} alt="" sx={coverImageSx} />
                   </Box>
                   <Typography variant="caption" sx={{ color: "text.secondary" }}>
