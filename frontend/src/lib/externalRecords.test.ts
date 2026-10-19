@@ -4,6 +4,7 @@ import {
   getExternalRecordHref,
   detectExternalRecordService,
   parseExternalRecordInput,
+  hasInatRecord,
   MAX_EXTERNAL_RECORD_URI_LENGTH,
 } from "./externalRecords";
 
@@ -111,6 +112,27 @@ describe("parseExternalRecordInput", () => {
     expect(
       parseExternalRecordInput(`https://example.org/${"a".repeat(MAX_EXTERNAL_RECORD_URI_LENGTH)}`)
         .ok,
+    ).toBe(false);
+  });
+});
+
+describe("hasInatRecord", () => {
+  it("recognizes an iNaturalist record by service", () => {
+    expect(hasInatRecord([{ uri: "https://example.org/1", service: "iNaturalist" }])).toBe(true);
+  });
+
+  it("recognizes an iNaturalist record by host, including localized nodes", () => {
+    expect(hasInatRecord([{ uri: "https://www.inaturalist.org/observations/1" }])).toBe(true);
+    expect(hasInatRecord([{ uri: "https://inaturalist.nz/observations/1" }])).toBe(true);
+  });
+
+  it("ignores other services", () => {
+    expect(hasInatRecord([])).toBe(false);
+    expect(
+      hasInatRecord([
+        { uri: "https://bugguide.net/node/view/1", service: "bugguide" },
+        { uri: "https://example.org/inaturalist/1" },
+      ]),
     ).toBe(false);
   });
 });
