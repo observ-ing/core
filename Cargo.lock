@@ -193,6 +193,7 @@ dependencies = [
 name = "atproto-identity"
 version = "0.1.0"
 dependencies = [
+ "futures",
  "jacquard-common",
  "moka",
  "reqwest 0.13.5",

@@ -133,33 +133,36 @@ pub async fn get_profile_feed(
     let limit = options.limit.unwrap_or(20);
     let feed_type = options.feed_type.as_ref().cloned().unwrap_or_default();
 
-    let counts_row: (i64, i64, i64) = sqlx::query_as(
-        r#"
-        SELECT
-            (SELECT COUNT(*) FROM occurrences WHERE did = $1),
-            (SELECT COUNT(*) FROM identifications WHERE did = $1),
-            (SELECT COUNT(DISTINCT (scientific_name, kingdom)) FROM occurrences
-             WHERE did = $1 AND scientific_name IS NOT NULL)
-        "#,
-    )
-    .bind(did)
-    .fetch_one(pool)
-    .await?;
-
-    let counts = ProfileCounts {
-        observations: counts_row.0,
-        identifications: counts_row.1,
-        species: counts_row.2,
+    // The counts and the two pages don't depend on one another, so run them
+    // concurrently, each on its own pool connection.
+    let counts = async {
+        let (observations, identifications, species): (i64, i64, i64) = sqlx::query_as(
+            r#"
+            SELECT
+                (SELECT COUNT(*) FROM occurrences WHERE did = $1),
+                (SELECT COUNT(*) FROM identifications WHERE did = $1),
+                (SELECT COUNT(DISTINCT (scientific_name, kingdom)) FROM occurrences
+                 WHERE did = $1 AND scientific_name IS NOT NULL)
+            "#,
+        )
+        .bind(did)
+        .fetch_one(pool)
+        .await?;
+        Ok(ProfileCounts {
+            observations,
+            identifications,
+            species,
+        })
     };
 
-    let mut occurrences = Vec::new();
-    let mut identifications = Vec::new();
-
-    if matches!(
-        feed_type,
-        ProfileFeedType::Observations | ProfileFeedType::All
-    ) {
-        occurrences = if let Some(ref cursor) = options.cursor {
+    let occurrences = async {
+        if !matches!(
+            feed_type,
+            ProfileFeedType::Observations | ProfileFeedType::All
+        ) {
+            return Ok(Vec::new());
+        }
+        if let Some(ref cursor) = options.cursor {
             sqlx::query_as!(
                 OccurrenceRow,
                 r#"
@@ -185,7 +188,7 @@ pub async fn get_profile_feed(
                 cursor.as_str(),
             )
             .fetch_all(pool)
-            .await?
+            .await
         } else {
             sqlx::query_as!(
                 OccurrenceRow,
@@ -211,15 +214,18 @@ pub async fn get_profile_feed(
                 limit,
             )
             .fetch_all(pool)
-            .await?
-        };
-    }
+            .await
+        }
+    };
 
-    if matches!(
-        feed_type,
-        ProfileFeedType::Identifications | ProfileFeedType::All
-    ) {
-        identifications = if let Some(ref cursor) = options.cursor {
+    let identifications = async {
+        if !matches!(
+            feed_type,
+            ProfileFeedType::Identifications | ProfileFeedType::All
+        ) {
+            return Ok(Vec::new());
+        }
+        if let Some(ref cursor) = options.cursor {
             sqlx::query_as!(
                 IdentificationRow,
                 r#"
@@ -238,7 +244,7 @@ pub async fn get_profile_feed(
                 cursor.as_str(),
             )
             .fetch_all(pool)
-            .await?
+            .await
         } else {
             sqlx::query_as!(
                 IdentificationRow,
@@ -257,9 +263,12 @@ pub async fn get_profile_feed(
                 limit,
             )
             .fetch_all(pool)
-            .await?
-        };
-    }
+            .await
+        }
+    };
+
+    let (counts, occurrences, identifications) =
+        tokio::try_join!(counts, occurrences, identifications)?;
 
     Ok(ProfileFeedResult {
         occurrences,

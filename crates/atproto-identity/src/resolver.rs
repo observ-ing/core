@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -233,53 +233,74 @@ impl IdentityResolver {
     pub async fn get_profiles(&self, actors: &[String]) -> HashMap<String, Arc<Profile>> {
         let mut results = HashMap::new();
         let mut to_fetch = Vec::new();
+        let mut seen = HashSet::new();
 
-        // Check cache first
+        // Check cache first. Callers pass one actor per row, so a page usually
+        // repeats actors; dedupe so each is looked up (and fetched) once.
         for actor in actors {
+            if !seen.insert(actor.as_str()) {
+                continue;
+            }
             if let Some(cached) = self.profile_cache.get(actor).await {
                 results.insert(actor.clone(), cached);
             } else {
-                to_fetch.push(actor.clone());
+                to_fetch.push(actor.as_str());
             }
         }
 
-        // Fetch uncached profiles in batches
-        for batch in to_fetch.chunks(BATCH_SIZE) {
-            let mut url = reqwest::Url::parse(&format!(
-                "{}/xrpc/app.bsky.actor.getProfiles",
-                self.service_url
-            ))
-            .unwrap();
-            {
-                let mut params = url.query_pairs_mut();
-                for actor in batch {
-                    params.append_pair("actors", actor);
-                }
-            }
-
-            match self.client.get(url).send().await {
-                Ok(response) if response.status().is_success() => {
-                    if let Ok(data) = response.json::<ProfilesResponse>().await {
-                        for p in data.profiles {
-                            let did = p.did.clone();
-                            let handle = p.handle.clone();
-                            let profile = Arc::new(Profile::from(p));
-
-                            results.insert(did.clone(), profile.clone());
-                            results.insert(handle.clone(), profile.clone());
-
-                            self.profile_cache.insert(did, profile.clone()).await;
-                            self.profile_cache.insert(handle, profile).await;
-                        }
-                    }
-                }
-                _ => {
-                    error!("Failed to fetch batch of profiles");
-                }
-            }
+        // Fetch uncached profiles, all batches in parallel
+        let batches = futures::future::join_all(
+            to_fetch
+                .chunks(BATCH_SIZE)
+                .map(|batch| self.fetch_profiles_batch(batch)),
+        )
+        .await;
+        for profile in batches.into_iter().flatten() {
+            results.insert(profile.did.clone(), profile.clone());
+            results.insert(profile.handle.clone(), profile);
         }
 
         results
+    }
+
+    /// Fetch one `getProfiles` batch, caching each profile by DID and handle.
+    async fn fetch_profiles_batch(&self, batch: &[&str]) -> Vec<Arc<Profile>> {
+        let mut url = reqwest::Url::parse(&format!(
+            "{}/xrpc/app.bsky.actor.getProfiles",
+            self.service_url
+        ))
+        .unwrap();
+        {
+            let mut params = url.query_pairs_mut();
+            for actor in batch {
+                params.append_pair("actors", actor);
+            }
+        }
+
+        let data = match self.client.get(url).send().await {
+            Ok(response) if response.status().is_success() => {
+                match response.json::<ProfilesResponse>().await {
+                    Ok(data) => data,
+                    Err(_) => return Vec::new(),
+                }
+            }
+            _ => {
+                error!("Failed to fetch batch of profiles");
+                return Vec::new();
+            }
+        };
+
+        let mut profiles = Vec::with_capacity(data.profiles.len());
+        for p in data.profiles {
+            let did = p.did.clone();
+            let handle = p.handle.clone();
+            let profile = Arc::new(Profile::from(p));
+
+            self.profile_cache.insert(did, profile.clone()).await;
+            self.profile_cache.insert(handle, profile.clone()).await;
+            profiles.push(profile);
+        }
+        profiles
     }
 }
 
