@@ -279,6 +279,11 @@ fn build_upstream_match(m: NameUsageMatch) -> Option<UpstreamMatch> {
         let Some(row) = ancestor_row(ancestor, &mut accumulated, parent_key) else {
             continue;
         };
+        // An accepted usage ends its chain with itself: that fills the
+        // target's own column but isn't an ancestor.
+        if row.taxon_key == target_key {
+            continue;
+        }
         parent_key = Some(row.taxon_key);
         rows.push(row);
     }
@@ -748,6 +753,26 @@ mod tests {
             "../fixtures/v2_match_usagekey_1875.json"
         )));
         assert!(build_upstream_match(m).is_none());
+    }
+
+    #[test]
+    fn v2_species_fills_its_own_rank_without_an_ancestor_row_for_itself() {
+        // v2 ends the classification with Passer domesticus itself.
+        let m = match_from_json(recorded(include_str!(
+            "../fixtures/v2_match_usagekey_5231190.json"
+        )));
+        let upstream = build_upstream_match(m).expect("v2 usage");
+
+        let keys: Vec<i64> = upstream.rows.iter().map(|r| r.taxon_key).collect();
+        assert_eq!(keys, vec![1, 44, 212, 729, 5264, 2492321, 5231190]);
+
+        let target = upstream.rows.last().unwrap();
+        assert_eq!(target.scientific_name, "Passer domesticus");
+        assert_eq!(target.rank, "species");
+        assert_eq!(target.parent_key, Some(2492321));
+        assert_eq!(target.genus_key, Some(2492321));
+        assert_eq!(target.species.as_deref(), Some("Passer domesticus"));
+        assert_eq!(target.species_key, Some(5231190));
     }
 
     #[test]
