@@ -24,6 +24,7 @@ import {
   markNotificationRead,
   updateUserPreferences,
   unlinkInatAccount,
+  crosspostObservation,
   submitComment,
   submitIdentification,
   submitObservation,
@@ -152,11 +153,21 @@ export function useUpdatePreferences() {
   });
 }
 
-// ── iNaturalist ──────────────────────────────────────────────────────────────
+// ── iNaturalist cross-posting ────────────────────────────────────────────────
 export function useUnlinkInatAccount() {
   return useMutation({
     mutationFn: unlinkInatAccount,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: qk.inatAccount() }),
+  });
+}
+
+/** Queue an observation for iNaturalist. The response is its new status. */
+export function useCrosspostObservation() {
+  return useMutation({
+    mutationFn: crosspostObservation,
+    onSuccess: (status, uri) => {
+      queryClient.setQueryData(qk.crosspost(uri), status);
+    },
   });
 }
 

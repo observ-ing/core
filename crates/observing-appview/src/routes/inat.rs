@@ -1,19 +1,27 @@
-//! Linking an iNaturalist account (#878).
+//! Linking an iNaturalist account and cross-posting occurrences to it (#878).
 
+use std::str::FromStr;
 use std::sync::Arc;
 
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
 use axum_extra::extract::CookieJar;
 use chrono::{DateTime, Utc};
 use inaturalist_oauth::PkceVerifier;
+use jacquard_common::types::collection::Collection;
+use jacquard_common::types::string::AtUri;
+use observing_db::types::CrosspostRow;
+use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::OccurrenceRecord;
+use observing_tasks::{Run, Task};
 use serde::{Deserialize, Serialize};
 use tracing::{info, warn};
 use ts_rs::TS;
 
 use crate::auth::{self, AuthUser};
 use crate::error::AppError;
+use crate::inat::guard::{self, CrosspostRequest, Refusal};
 use crate::inat::{Inat, SERVICE};
 use crate::responses::SuccessResponse;
 use crate::state::AppState;
@@ -39,7 +47,7 @@ fn inat(state: &AppState) -> Result<&Arc<Inat>, AppError> {
     state
         .inat
         .as_ref()
-        .ok_or_else(|| AppError::NotFound("iNaturalist is not enabled".into()))
+        .ok_or_else(|| AppError::NotFound("iNaturalist cross-posting is not enabled".into()))
 }
 
 #[derive(Serialize, TS)]
@@ -158,8 +166,8 @@ async fn link_account(
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
 pub struct InatAccountResponse {
-    /// Whether this server has iNaturalist enabled at all. When false the
-    /// client hides everything to do with it.
+    /// Whether this server can cross-post to iNaturalist at all. When false
+    /// the client hides everything to do with it.
     pub enabled: bool,
     /// The linked account's iNaturalist login, or null when none is linked.
     #[ts(type = "string | null")]
@@ -190,7 +198,8 @@ pub async fn get_account(
 
 /// DELETE /api/inat/account
 ///
-/// Unlinks the account.
+/// Unlinks the account. Observations already cross-posted, and the links to
+/// them, stay.
 pub async fn delete_account(
     State(state): State<AppState>,
     user: AuthUser,
@@ -200,4 +209,141 @@ pub async fn delete_account(
         inat.forget_api_token(&user.did).await;
     }
     Ok(Json(SuccessResponse { success: true }))
+}
+
+#[derive(Serialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct CrosspostStatusResponse {
+    /// Null when the occurrence has never been queued for cross-posting.
+    #[ts(type = "\"pending\" | \"synced\" | \"failed\" | null")]
+    pub status: Option<String>,
+    /// Why the last attempt failed, if it did.
+    #[ts(type = "string | null")]
+    pub last_error: Option<String>,
+    /// The iNaturalist observation, once it exists. This is the
+    /// `externalRecords` entry that cross-posting owns.
+    #[ts(type = "string | null")]
+    pub inat_url: Option<String>,
+}
+
+impl From<Option<CrosspostRow>> for CrosspostStatusResponse {
+    fn from(row: Option<CrosspostRow>) -> Self {
+        match row {
+            Some(row) => Self {
+                status: Some(row.status),
+                last_error: row.last_error,
+                inat_url: row.external_uri,
+            },
+            None => Self {
+                status: None,
+                last_error: None,
+                inat_url: None,
+            },
+        }
+    }
+}
+
+/// Parse an occurrence AT URI from a route path, returning the DID it
+/// belongs to.
+fn occurrence_did(uri: &str) -> Result<String, AppError> {
+    let at_uri = AtUri::from_str(uri).map_err(|_| AppError::BadRequest("Invalid AT URI".into()))?;
+    if at_uri
+        .collection()
+        .is_none_or(|c| c.as_str() != OccurrenceRecord::NSID)
+    {
+        return Err(AppError::BadRequest(
+            "URI does not reference an occurrence record".into(),
+        ));
+    }
+    Ok(at_uri.authority().as_str().to_string())
+}
+
+/// GET /api/inat/crosspost/{*uri}
+///
+/// Cross-post status of one of the caller's own occurrences.
+pub async fn get_crosspost(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Path(uri): Path<String>,
+) -> Result<Json<CrosspostStatusResponse>, AppError> {
+    if occurrence_did(&uri)? != user.did {
+        return Err(Refusal::NotOwner.into());
+    }
+    let row = observing_db::crossposts::get(&state.pool, &uri, SERVICE).await?;
+    Ok(Json(row.into()))
+}
+
+#[derive(Deserialize, TS)]
+#[serde(rename_all = "camelCase")]
+#[ts(export, export_to = "bindings/")]
+pub struct CreateCrosspostRequest {
+    /// AT URI of the occurrence to cross-post.
+    pub uri: String,
+}
+
+/// POST /api/inat/crosspost
+///
+/// Queue one of the caller's own occurrences for cross-posting, or retry one
+/// whose cross-post failed.
+///
+/// The occurrence is named in a JSON body, like every other write here, and
+/// not in the path: a JSON content type can't be sent cross-site without a
+/// CORS preflight, which is what keeps another site from triggering this with
+/// the caller's session cookie.
+pub async fn create_crosspost(
+    State(state): State<AppState>,
+    user: AuthUser,
+    Json(CreateCrosspostRequest { uri }): Json<CreateCrosspostRequest>,
+) -> Result<(StatusCode, Json<CrosspostStatusResponse>), AppError> {
+    // Only to refuse when cross-posting is off; the worker does the posting.
+    inat(&state)?;
+    let occurrence_did = occurrence_did(&uri)?;
+
+    // Nothing is looked up for someone else's occurrence.
+    let owned = occurrence_did == user.did;
+    let linked = owned
+        && observing_db::crossposts::get_account(&state.pool, &user.did, SERVICE)
+            .await?
+            .is_some();
+    let occurrence = if owned {
+        observing_db::occurrences::get(&state.pool, &uri).await?
+    } else {
+        None
+    };
+    let external_records = occurrence.as_ref().map(|o| o.external_record_entries());
+    let existing = if owned {
+        observing_db::crossposts::get(&state.pool, &uri, SERVICE).await?
+    } else {
+        None
+    };
+
+    guard::check(&CrosspostRequest {
+        user_did: &user.did,
+        occurrence_did: &occurrence_did,
+        linked,
+        external_records: external_records.as_deref(),
+        crosspost_status: existing.as_ref().map(|row| row.status.as_str()),
+        crosspost_uri: existing
+            .as_ref()
+            .and_then(|row| row.external_uri.as_deref()),
+    })?;
+
+    // `enqueue` is the real arbiter: it refuses if another request got in
+    // between the check and here.
+    if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did).await? {
+        return Err(Refusal::AlreadyQueued.into());
+    }
+    info!(uri = %uri, "Queued occurrence for cross-posting to iNaturalist");
+    // Start on it now. If this fails, the hourly backstop run picks it up.
+    if let Err(e) = state
+        .tasks
+        .enqueue(Task::InatCrossposts, Run::default())
+        .await
+    {
+        warn!(uri = %uri, error = %e, "Failed to queue a cross-post run");
+    }
+
+    let row = observing_db::crossposts::get(&state.pool, &uri, SERVICE).await?;
+    Ok((StatusCode::ACCEPTED, Json(row.into())))
 }

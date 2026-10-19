@@ -2,7 +2,6 @@
 //! OAuth; cross-posting occurrences to it builds on that.
 
 pub mod client;
-#[allow(dead_code)] // for the cross-post routes, which land separately (#878)
 pub mod guard;
 pub mod ids;
 pub mod links;

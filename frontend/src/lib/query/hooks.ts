@@ -20,6 +20,7 @@ import {
   fetchUserPreferences,
   fetchServiceStatus,
   fetchInatAccount,
+  fetchCrosspostStatus,
 } from "../../services/api";
 import type { FeedFilters, FeedTab } from "../../services/types";
 
@@ -191,7 +192,7 @@ export function useServiceStatus() {
   });
 }
 
-// ── iNaturalist ──────────────────────────────────────────────────────────────
+// ── iNaturalist cross-posting ────────────────────────────────────────────────
 
 export function useInatAccount() {
   const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
@@ -199,6 +200,23 @@ export function useInatAccount() {
     queryKey: qk.inatAccount(),
     queryFn: fetchInatAccount,
     enabled: isAuthenticated,
+  });
+}
+
+/** How often to check on a cross-post that is under way. */
+const CROSSPOST_POLL_MS = 3000;
+
+/**
+ * Cross-post status of one of the viewer's own observations. Polls while the
+ * cross-post is pending, since the worker finishes it in the background.
+ */
+export function useCrosspostStatus(uri: string | undefined, enabled: boolean) {
+  return useQuery({
+    queryKey: qk.crosspost(uri ?? ""),
+    queryFn: () => fetchCrosspostStatus(uri ?? ""),
+    enabled: !!uri && enabled,
+    refetchInterval: (query) =>
+      query.state.data?.status === "pending" ? CROSSPOST_POLL_MS : false,
   });
 }
 
