@@ -1,7 +1,8 @@
-// Desktop batch uploader (#884): drop many photos, group them into
-// observations by dragging, edit one or many at a time, then upload them all.
-// The state rules live in lib/batchUpload; this file wires them to the grid,
-// the drag-and-drop gestures, and the upload queue.
+// Batch uploader (#884): drop many photos, group them into observations by
+// dragging, edit one or many at a time, then upload them all. The state rules
+// live in lib/batchUpload; this file wires them to the grid, the drag-and-drop
+// gestures, and the upload queue. On a phone the same state is worked through
+// the full-screen steps in ./phone instead (#887).
 import {
   useEffect,
   useLayoutEffect,
@@ -20,6 +21,7 @@ import {
   Box,
   Button,
   CircularProgress,
+  Dialog,
   LinearProgress,
   Link as MuiLink,
   Typography,
@@ -27,6 +29,7 @@ import {
 } from "@mui/material";
 import CallMergeIcon from "@mui/icons-material/CallMerge";
 import CallSplitIcon from "@mui/icons-material/CallSplit";
+import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import DeselectIcon from "@mui/icons-material/Deselect";
@@ -35,6 +38,7 @@ import FileUploadIcon from "@mui/icons-material/FileUpload";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import { Capacitor } from "@capacitor/core";
 import { useAppDispatch, useAppSelector } from "../../store";
 import { trackSubmission } from "../../store/pendingSlice";
 import { submitObservation } from "../../services/api";
@@ -42,6 +46,7 @@ import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occu
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useToast } from "../../hooks/useToast";
 import { usePageTitle } from "../../hooks/usePageTitle";
+import { useBatchLayout } from "../../hooks/useBatchLayout";
 import { ConfirmDialog } from "../common/ConfirmDialog";
 import { EmptyState } from "../common/EmptyState";
 import {
@@ -63,12 +68,15 @@ import { readPhotoExif } from "../../lib/exif";
 import { isHeic } from "../../lib/heic";
 import { IMAGE_INPUT_ACCEPT, MAX_IMAGES } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
+import { pickPhotos } from "../../lib/photoPicker";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
 import { fileToBase64, getErrorMessage, plural } from "../../lib/utils";
 import { BatchCard, KEEPS_SELECTION, type CardDropState } from "./BatchCard";
 import { useMarqueeSelection } from "./useMarqueeSelection";
 import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
+import { PhoneBatch } from "./phone/PhoneBatch";
+import { PhoneLocationStep } from "./phone/PhoneLocationStep";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -93,6 +101,13 @@ const NEW_OBSERVATION = "new";
 /** How many files a drag from outside the page carries. Text and links don't count. */
 const draggedFileCount = (event: DragEvent) =>
   Array.from(event.dataTransfer.items).filter((item) => item.kind === "file").length;
+
+/**
+ * Android browsers hand a picked photo over with its GPS position removed. The
+ * app picks through a plugin that keeps it (see lib/photoPicker).
+ */
+const stripsPhotoLocation = () =>
+  /Android/i.test(navigator.userAgent) && !Capacitor.isNativePlatform();
 
 let photoSeq = 0;
 
@@ -119,6 +134,7 @@ function withViewTransition(update: () => void) {
 function ToolbarButton({
   icon,
   children,
+  touch,
   ...props
 }: {
   icon: ReactNode;
@@ -126,9 +142,18 @@ function ToolbarButton({
   onClick: () => void;
   disabled?: boolean;
   color?: "inherit" | "error";
+  /** Worked by finger: a full-size target. */
+  touch: boolean;
 }) {
   return (
-    <Button variant="outlined" color="inherit" size="small" startIcon={icon} {...props}>
+    <Button
+      variant="outlined"
+      color="inherit"
+      size={touch ? "medium" : "small"}
+      startIcon={icon}
+      sx={touch ? { minHeight: 44 } : {}}
+      {...props}
+    >
       {children}
     </Button>
   );
@@ -144,6 +169,7 @@ export function BatchUploadPage() {
   const isAuthLoading = useAppSelector((s) => s.auth.isLoading);
   const preferences = useUserPreferences();
   const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
+  const { touch, phone, touchDrag } = useBatchLayout();
 
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
   const [uploading, setUploading] = useState(false);
@@ -163,6 +189,13 @@ export function BatchUploadPage() {
   const dragRef = useRef<Drag | null>(null);
   const cancelledRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // The observation the photos being picked are for, if they aren't to start their own.
+  const pickTargetRef = useRef<BatchObservation | undefined>(undefined);
+  // The side panel's map, opened full screen where it is worked by finger.
+  const [mapExpanded, setMapExpanded] = useState(false);
+  // Counts locations set from the full-screen map; the side panel starts over
+  // after each, so a point picked on its small map can't overwrite the new one.
+  const [mapApplied, setMapApplied] = useState(0);
 
   const { observations: cards, selected, uploadedCount } = state;
   // Uploaded cards stay on screen until the run ends, so the grid holds still,
@@ -181,12 +214,9 @@ export function BatchUploadPage() {
     : cards;
   // Nothing here shows the license, so wait for the saved one rather than send
   // the default in its place.
+  const waiting = converting > 0 || preferences.isPending;
   const blocked =
-    observations.length === 0 ||
-    incomplete.length > 0 ||
-    observations.some(isReading) ||
-    converting > 0 ||
-    preferences.isPending;
+    observations.length === 0 || incomplete.length > 0 || observations.some(isReading) || waiting;
   const total = uploadedCount + observations.length;
   const profilePath = user ? `/profile/${encodeURIComponent(user.did)}` : "/";
 
@@ -202,6 +232,22 @@ export function BatchUploadPage() {
     ({ currentLocation, nextLocation }) =>
       guarded && currentLocation.pathname !== nextLocation.pathname,
   );
+  // The phone layout takes no dropped files (it has nowhere to drop them), but a
+  // file dragged in from another app, as in Android split screen, would
+  // otherwise open in the tab and leave the batch.
+  useEffect(() => {
+    if (!phone) return undefined;
+    const claim = (event: globalThis.DragEvent) => {
+      if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+    };
+    window.addEventListener("dragover", claim);
+    window.addEventListener("drop", claim);
+    return () => {
+      window.removeEventListener("dragover", claim);
+      window.removeEventListener("drop", claim);
+    };
+  }, [phone]);
+
   useEffect(() => {
     if (!guarded) return undefined;
     const warn = (event: BeforeUnloadEvent) => event.preventDefault();
@@ -285,13 +331,35 @@ export function BatchUploadPage() {
   };
 
   const handlePickFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    void addFiles(Array.from(event.target.files ?? []));
+    void addFiles(Array.from(event.target.files ?? []), pickTargetRef.current);
+    pickTargetRef.current = undefined;
     event.target.value = "";
+  };
+
+  /** Open the photo picker, for new observations or for more photos of `target`. */
+  const choosePhotos = (target?: BatchObservation) => {
+    if (Capacitor.isNativePlatform()) {
+      // The system picker strips GPS; the app's own keeps it.
+      void pickPhotos({ multiple: true }).then((files) => addFiles(files, target));
+      return;
+    }
+    pickTargetRef.current = target;
+    fileInputRef.current?.click();
+  };
+
+  const remove = (observation: BatchObservation) => {
+    observation.photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    dispatch({ type: "remove", id: observation.id });
   };
 
   const removeSelected = () => {
     picked.forEach((o) => o.photos.forEach((p) => URL.revokeObjectURL(p.previewUrl)));
     dispatch({ type: "removeSelected" });
+  };
+
+  const cancelUpload = () => {
+    cancelledRef.current = true;
+    dispatch({ type: "resetQueued" });
   };
 
   const upload = async (targets: BatchObservation[]) => {
@@ -338,7 +406,13 @@ export function BatchUploadPage() {
         }
         // Quiet: one toast for the whole batch, not one per observation.
         void appDispatch(
-          trackSubmission({ uri: result.uri, cid: result.cid, kind: "create", quiet: true }),
+          trackSubmission({
+            uri: result.uri,
+            cid: result.cid,
+            kind: "create",
+            scientificName: input.scientificName,
+            quiet: true,
+          }),
         );
         dispatch({ type: "uploaded", id: observation.id });
       } catch (error) {
@@ -405,7 +479,8 @@ export function BatchUploadPage() {
 
   const handleMouseDown = (event: MouseEvent) => {
     pressedOnBackground.current = isBackground(event);
-    if (!pressedOnBackground.current || event.button !== 0 || uploading) return;
+    // Not by finger: there, a drag across the background scrolls it.
+    if (!pressedOnBackground.current || event.button !== 0 || uploading || touch) return;
     const additive = event.shiftKey || event.metaKey || event.ctrlKey;
     startMarquee(event, additive ? selected : [], (ids) => {
       // The click that follows the release ends the drag; it isn't a background click.
@@ -587,6 +662,57 @@ export function BatchUploadPage() {
     textAlign: "center",
   } as const;
 
+  const dialogs = (
+    <>
+      <SkippedFilesDialog
+        open={skipped.open}
+        skipped={skipped.files}
+        addedCount={skipped.added}
+        onClose={() => setSkipped((prev) => ({ ...prev, open: false }))}
+      />
+      <ConfirmDialog
+        open={blocker.state === "blocked"}
+        title="Leave batch upload?"
+        message={
+          `${plural(observations.length, "observation")} ` +
+          `${observations.length === 1 ? "hasn't" : "haven't"} been uploaded. Photos and edits ` +
+          "aren't saved, so leaving will lose them."
+        }
+        cancelLabel="Keep editing"
+        confirmLabel="Leave"
+        destructive
+        onCancel={() => blocker.reset?.()}
+        onConfirm={() => blocker.proceed?.()}
+      />
+    </>
+  );
+
+  if (phone) {
+    return (
+      <Box sx={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column" }}>
+        {fileInput}
+        <PhoneBatch
+          observations={observations}
+          selected={selected}
+          uploadedCount={uploadedCount}
+          uploading={uploading}
+          converting={converting}
+          blocked={waiting}
+          stripsLocation={stripsPhotoLocation()}
+          touchDrag={touchDrag}
+          profilePath={profilePath}
+          dispatch={dispatch}
+          onChoosePhotos={choosePhotos}
+          onUpload={(targets) => void upload(targets)}
+          onCancelUpload={cancelUpload}
+          onRemove={remove}
+          onRemoveSelected={removeSelected}
+        />
+        {dialogs}
+      </Box>
+    );
+  }
+
   return (
     <Box
       onDragOver={handlePageDragOver}
@@ -653,10 +779,8 @@ export function BatchUploadPage() {
               <Button
                 variant="outlined"
                 color="inherit"
-                onClick={() => {
-                  cancelledRef.current = true;
-                  dispatch({ type: "resetQueued" });
-                }}
+                startIcon={<CloseIcon />}
+                onClick={cancelUpload}
               >
                 Cancel remaining
               </Button>
@@ -761,11 +885,7 @@ export function BatchUploadPage() {
               Each photo starts as its own observation. Date and location are read from the photo
               when it has them. You can combine photos of the same organism afterward.
             </Typography>
-            <Button
-              variant="outlined"
-              color="inherit"
-              onClick={() => fileInputRef.current?.click()}
-            >
+            <Button variant="outlined" color="inherit" onClick={() => choosePhotos()}>
               Browse files
             </Button>
             <Typography variant="body2">
@@ -780,9 +900,9 @@ export function BatchUploadPage() {
               alignItems: "flex-start",
               gap: 3,
               // Side by side, the grid and the editor each scroll on their own, so
-              // the editor stays in view however long the grid is. Below `lg` the
+              // the editor stays in view however long the grid is. Below `md` the
               // editor may wrap under the grid and the two scroll together.
-              [theme.breakpoints.up("lg")]: { flexWrap: "nowrap", height: "100%" },
+              [theme.breakpoints.up("md")]: { flexWrap: "nowrap", height: "100%" },
             }}
           >
             <Box
@@ -792,7 +912,7 @@ export function BatchUploadPage() {
               sx={{
                 flex: "999 1 560px",
                 minWidth: 0,
-                [theme.breakpoints.up("lg")]: { height: "100%", overflowY: "auto" },
+                [theme.breakpoints.up("md")]: { height: "100%", overflowY: "auto" },
               }}
             >
               {!uploading && (
@@ -819,24 +939,32 @@ export function BatchUploadPage() {
                         {filtering && `Showing ${incomplete.length} incomplete. `}
                         {shownSelection.length > 0
                           ? `${shownSelection.length} selected`
-                          : "Drag cards together to combine them"}
+                          : touch
+                            ? touchDrag
+                              ? "Touch and hold a card, then drag it onto another to combine. " +
+                                "Tap a checkbox to select."
+                              : "Tap a checkbox to select."
+                            : "Drag cards together to combine them"}
                       </>
                     )}
                   </Typography>
                   <ToolbarButton
+                    touch={touch}
                     icon={<FileUploadIcon />}
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => choosePhotos()}
                   >
                     Add photos
                   </ToolbarButton>
                   <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
+                    touch={touch}
                     icon={<SelectAllIcon />}
                     onClick={() => dispatch({ type: "selectAll", ids: shown.map((o) => o.id) })}
                   >
                     Select all
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<DeselectIcon />}
                     disabled={picked.length === 0}
                     onClick={() => dispatch({ type: "clearSelection" })}
@@ -846,6 +974,7 @@ export function BatchUploadPage() {
                   {/* Space, not a rule, between choosing cards and changing them. */}
                   <Box aria-hidden sx={{ width: 16 }} />
                   <ToolbarButton
+                    touch={touch}
                     icon={<CallMergeIcon />}
                     disabled={!canCombine(picked)}
                     onClick={() => dispatch({ type: "combineSelected" })}
@@ -853,6 +982,7 @@ export function BatchUploadPage() {
                     Combine
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<CallSplitIcon />}
                     disabled={!picked.some((o) => o.photos.length > 1)}
                     onClick={() => dispatch({ type: "splitSelected" })}
@@ -860,6 +990,7 @@ export function BatchUploadPage() {
                     Split photos
                   </ToolbarButton>
                   <ToolbarButton
+                    touch={touch}
                     icon={<DeleteOutlineIcon />}
                     color="error"
                     disabled={picked.length === 0}
@@ -885,6 +1016,7 @@ export function BatchUploadPage() {
                     observation={observation}
                     selected={shownSelection.includes(observation.id)}
                     locked={uploading}
+                    touch={touch}
                     dropState={dropStateFor(observation)}
                     combinedPhotoCount={observation.photos.length + incomingCount(observation)}
                     insertionIndex={
@@ -915,10 +1047,7 @@ export function BatchUploadPage() {
                     }}
                     onDrop={(event) => handleCardDrop(event, observation)}
                     onRetry={() => void upload([observation])}
-                    onRemove={() => {
-                      observation.photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
-                      dispatch({ type: "remove", id: observation.id });
-                    }}
+                    onRemove={() => remove(observation)}
                   />
                 ))}
               </Box>
@@ -929,7 +1058,7 @@ export function BatchUploadPage() {
                 sx={{
                   flex: "1 1 320px",
                   minWidth: 0,
-                  [theme.breakpoints.up("lg")]: {
+                  [theme.breakpoints.up("md")]: {
                     flex: "0 0 360px",
                     height: "100%",
                     overflowY: "auto",
@@ -937,8 +1066,13 @@ export function BatchUploadPage() {
                 }}
               >
                 <BatchEditor
+                  key={mapApplied}
                   selected={picked}
                   onEdit={(patch) => dispatch({ type: "edit", patch })}
+                  touch={touch}
+                  touchDrag={touchDrag}
+                  // A small map in a scrolling panel is hard to pan by touch.
+                  {...(touch ? { onExpandMap: () => setMapExpanded(true) } : {})}
                 />
               </Box>
             )}
@@ -946,26 +1080,24 @@ export function BatchUploadPage() {
         )}
       </Box>
 
-      <SkippedFilesDialog
-        open={skipped.open}
-        skipped={skipped.files}
-        addedCount={skipped.added}
-        onClose={() => setSkipped((prev) => ({ ...prev, open: false }))}
-      />
-      <ConfirmDialog
-        open={blocker.state === "blocked"}
-        title="Leave batch upload?"
-        message={
-          `${plural(observations.length, "observation")} ` +
-          `${observations.length === 1 ? "hasn't" : "haven't"} been uploaded. Photos and edits ` +
-          "aren't saved, so leaving will lose them."
-        }
-        cancelLabel="Keep editing"
-        confirmLabel="Leave"
-        destructive
-        onCancel={() => blocker.reset?.()}
-        onConfirm={() => blocker.proceed?.()}
-      />
+      <Dialog
+        fullScreen
+        open={mapExpanded && picked.length > 0 && !uploading}
+        onClose={() => setMapExpanded(false)}
+        // The label goes on the dialog itself, not the backdrop around it.
+        slotProps={{ paper: { "aria-label": "Set location" } }}
+      >
+        <PhoneLocationStep
+          observations={picked}
+          onApply={(patch) => {
+            dispatch({ type: "edit", patch });
+            setMapApplied((n) => n + 1);
+            setMapExpanded(false);
+          }}
+          onBack={() => setMapExpanded(false)}
+        />
+      </Dialog>
+      {dialogs}
     </Box>
   );
 }

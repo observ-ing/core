@@ -4,30 +4,72 @@
 
 Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after CI checks pass.
 
-### Services
+### Services and jobs
 
-| Service | Build arg | Public | Cloud SQL | DB role | Notes |
-|---------|-----------|--------|-----------|---------|-------|
-| observing-appview | `SERVICE=observing-appview` | Yes | Yes | `appview_runtime` | REST API + OAuth + media cache + GBIF taxonomy + serves frontend |
-| tap-ingester | `SERVICE=tap-ingester` | Yes | Yes | `ingester_runtime` | Sole firehose-driven ingester. Bundles the upstream `tap` Go binary (built from a pinned indigo commit) and spawns it as a child process. Tap state is persisted in the Cloud SQL `tap` schema (`search_path=tap`), so tracked-DID lists and cursors survive deploys and instance recycles. min-instances=1 / max-instances=1. Runs with `--no-cpu-throttling` (always-allocated CPU) + 1 vCPU / 1 GiB because the firehose consumer is a background loop, not request-driven — under Cloud Run's default request-scoped CPU it gets starved and falls behind the relay's ~72h retention window. |
-| observing-species-id | `SERVICE=observing-species-id` | Yes | No | — | BioCLIP species identification, full-accuracy ViT-H/14 used by the upload/capture path (2 CPU, 8 GiB, cpu-boost, min-instances=0, gen2 execution environment — gen2 reads the ~3.3 GB baked-in model bundle ~6× faster than gen1, cutting cold start from ~95s to ~20s). Scales to zero; the appview's `/api/species-id/status` probe pre-warms it when the upload/ID UI opens and the frontend shows a boot countdown |
-| observing-species-id-live | `SERVICE=observing-species-id` + `SPECIES_MODEL_URL=<ViT-L bundle>` + `MODEL_VERSION=bioclip-2-vit-l-14` | Yes | No | — | Same binary as `observing-species-id`, built with the smaller/faster ViT-L model bundle ([`bioclip-models` release `vit-l-v1.0.0`](https://github.com/observ-ing/bioclip-models/releases/tag/vit-l-v1.0.0)). Serves the live camera loop (frontend sends `live: true`; appview routes here via `SPECIES_ID_LIVE_SERVICE_URL`). Built + deployed by CI as its own image alongside `observing-species-id`. Same sizing as above but **4 GiB** (the ViT-L bundle's resident footprint is ~3 GB, vs ViT-H's ~4.4 GB). |
-
-### Jobs
-
-| Job | Build arg | Cloud SQL | DB role | Notes |
-|-----|-----------|-----------|---------|-------|
-| observing-migrate | `SERVICE=observing-migrate` | Yes | `postgres` | One-shot `gcloud run jobs deploy` + `execute --wait` — runs `sqlx` migrations *before* any service deploy. Only thing that ever connects as superuser. |
-
-All services and the migrate Job are Rust binaries built from the shared multi-stage `Dockerfile` at the project root using `--build-arg SERVICE=<name>`.
+[infra/README.md](../infra/README.md) lists every service and job: what it does, how it's sized, and why each deploy flag is set the way it is.
 
 ### Deploy order
 
 CI runs the deploy steps in this order to ensure DDL lands before any service starts on the new schema:
 
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
-2. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
-3. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+2. `Deploy resolve-taxa` → before tap-ingester, which starts queuing runs for it.
+3. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
+4. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
+
+### Cloud Tasks
+
+`observing-resolve-taxa` is a private Cloud Run service that tap-ingester reaches through a Cloud Tasks queue, with an hourly Cloud Scheduler job as a backstop ([infra/README.md](../infra/README.md#observing-resolve-taxa) has the reasons). CI deploys the service. Callers need no configuration: `crates/observing-tasks` holds the registry of tasks, and on Cloud Run it finds the project and region from the metadata server, the queue by the task's name, the invoker as `cloud-tasks-invoker`, and the service by Cloud Run's `https://<service>-<project number>.<region>.run.app` URL. The queue, the invoker account, the IAM bindings and the scheduler job are set up once, by hand.
+
+Until they exist, nothing breaks: tap-ingester logs `Failed to ask for taxon resolution` and identifications stay unresolved, as they were before the service existed.
+
+Before the first deploy:
+
+```bash
+PROJECT=observ-ing
+REGION=us-central1
+INVOKER=cloud-tasks-invoker@$PROJECT.iam.gserviceaccount.com
+# The account the Cloud Run services run as.
+RUNTIME_SA=$(gcloud projects describe $PROJECT --format='value(projectNumber)')-compute@developer.gserviceaccount.com
+
+gcloud services enable cloudtasks.googleapis.com cloudscheduler.googleapis.com --project=$PROJECT
+
+# One pass at a time; a failed pass is retried with backoff.
+gcloud tasks queues create resolve-taxa --project=$PROJECT --location=$REGION \
+  --max-concurrent-dispatches=1 --max-dispatches-per-second=1 \
+  --max-attempts=5 --min-backoff=30s --max-backoff=600s
+
+# The identity tasks and the scheduler job call the service as.
+gcloud iam service-accounts create cloud-tasks-invoker --project=$PROJECT \
+  --display-name="Calls private Cloud Run services for Cloud Tasks and Cloud Scheduler"
+
+# tap-ingester and resolve-taxa add tasks, and mint the invoker's OIDC token
+# on each one.
+gcloud tasks queues add-iam-policy-binding resolve-taxa --project=$PROJECT --location=$REGION \
+  --member=serviceAccount:$RUNTIME_SA --role=roles/cloudtasks.enqueuer
+gcloud iam service-accounts add-iam-policy-binding $INVOKER --project=$PROJECT \
+  --member=serviceAccount:$RUNTIME_SA --role=roles/iam.serviceAccountUser
+```
+
+After the first deploy, once `observing-resolve-taxa` exists:
+
+```bash
+URL=$(gcloud run services describe observing-resolve-taxa --project=$PROJECT --region=$REGION --format='value(status.url)')
+
+gcloud run services add-iam-policy-binding observing-resolve-taxa --project=$PROJECT --region=$REGION \
+  --member=serviceAccount:$INVOKER --role=roles/run.invoker
+
+gcloud scheduler jobs create http resolve-taxa-backstop --project=$PROJECT --location=$REGION \
+  --schedule="0 * * * *" --uri=$URL/run --http-method=POST \
+  --oidc-service-account-email=$INVOKER --oidc-token-audience=$URL \
+  --attempt-deadline=900s
+
+# Run the first pass now rather than at the top of the hour. With a backlog
+# it continues on the queue in 10-minute pieces.
+gcloud scheduler jobs run resolve-taxa-backstop --project=$PROJECT --location=$REGION
+```
+
+To check on it, `gcloud tasks list --queue=resolve-taxa --project=$PROJECT --location=$REGION` shows tasks waiting to run, and the service's logs show `Resolution pass finished` with `updated_rows` after each pass.
 
 ### Service status dashboard
 
@@ -43,6 +85,24 @@ gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=
 ```
 
 The public `/status` page (`GET /api/status`, in `crates/observing-appview/src/service_status.rs`) reads the same metrics, so it has its own list of services to show. Adding a Cloud Run service means updating that list and adding a scorecard tile here. The time-series charts group by `service_name`, so they pick up new services automatically. The scorecards use `... or vector(0)` because Cloud Run stops reporting `instance_count` for a service a few minutes after it scales to zero. Without the fallback, a sleeping service would read "No data" instead of 0.
+
+### System health dashboard
+
+The [System Health](https://console.cloud.google.com/monitoring/dashboards/builder/4046b455-644f-4615-99cc-d4eae66aae0d?project=observ-ing) Cloud Monitoring dashboard shows resource use over time:
+
+- memory and CPU for each Cloud Run service, as a fraction of its limit, with tap-ingester's p50 and p99 charted on their own
+- tap-ingester's firehose bytes received per second, its liveness signal
+- observing-appview's request rate and p95 latency
+- observing-db's CPU, memory, connections, commits per second and disk use
+
+The source is `infra/monitoring/system-health-dashboard.json`. Like Service Status, it isn't deployed by CI. After editing the file, push it by hand with the same etag steps:
+
+```bash
+ID=4046b455-644f-4615-99cc-d4eae66aae0d
+ETAG=$(gcloud monitoring dashboards describe $ID --project=observ-ing --format='value(etag)')
+jq --arg etag "$ETAG" '. + {etag: $etag}' infra/monitoring/system-health-dashboard.json > /tmp/dashboard.json
+gcloud monitoring dashboards update $ID --project=observ-ing --config-from-file=/tmp/dashboard.json
+```
 
 ## Runtime role boundary (one-shot)
 
@@ -125,12 +185,32 @@ DB_PASSWORD=<secret: observing-db-ingester-password>
 # `sqlite:///data/tap.db` (instance-ephemeral). Set explicitly to
 # override either default.
 # TAP_DATABASE_URL=postgres://...
+
+# Optional: `off` stops it asking observing-resolve-taxa to key new
+# identifications. Otherwise it asks through Cloud Tasks on Cloud Run, and
+# by POSTing to localhost:$RESOLVE_TAXA_PORT (default 3007) elsewhere.
+# OBSERVING_TASKS=off
 ```
 
 Writes the `ingester` schema. Cross-repo identifications referencing
 occurrences on DIDs Tap hasn't backfilled yet trigger a `/repos/add`
 call to the embedded Tap and skip the ack so the redelivered event
 lands after backfill completes.
+
+### Resolve-Taxa (`ingester_runtime`)
+
+```bash
+PORT=8080
+
+DB_HOST=/cloudsql/<project>:<region>:observing-db
+DB_NAME=observing
+DB_USER=ingester_runtime
+DB_PASSWORD=<secret: observing-db-ingester-password>
+```
+
+On Cloud Run, a pass that runs out of time queues the rest on Cloud Tasks; elsewhere, each request runs its pass to the end.
+
+Writes `accepted_taxon_key` on `ingester.identifications`, fills the `ingester.taxa` cache and refreshes `ingester.community_ids`.
 
 ### Species-ID
 

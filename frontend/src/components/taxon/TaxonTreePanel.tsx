@@ -6,7 +6,7 @@ import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { GradientSwatch } from "../common/GradientSwatch";
-import { coverImageSx } from "../common/layoutSx";
+import { coverImageSx, finePrintFontSize } from "../common/layoutSx";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -99,7 +99,7 @@ function renderTreeItems(
                 overflow: "hidden",
                 whiteSpace: "nowrap",
                 color: "text.disabled",
-                fontSize: "0.65rem",
+                fontSize: finePrintFontSize,
                 letterSpacing: "0.04em",
                 textTransform: "uppercase",
               }}

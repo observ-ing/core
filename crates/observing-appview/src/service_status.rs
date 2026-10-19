@@ -4,6 +4,7 @@
 //! internal dashboard in `infra/monitoring/service-status-dashboard.json`.
 
 use std::collections::HashMap;
+use std::fmt;
 use std::time::{Duration, Instant};
 
 use chrono::{DateTime, Utc};
@@ -17,11 +18,6 @@ use utoipa::ToSchema;
 const CACHE_TTL: Duration = Duration::from_secs(60);
 
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
-
-/// Access token for the service account the appview runs as, from the Cloud
-/// Run metadata server.
-const METADATA_TOKEN_URL: &str =
-    "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token";
 
 /// Instances per service, split into those handling a request (`active`) and
 /// those waiting for one (`idle`). A service that has scaled to zero stops
@@ -66,6 +62,12 @@ const SERVICES: &[ServiceInfo] = &[
         id: "observing-species-id-live",
         name: "Live camera ID",
         description: "Suggests species from the live camera view, using a smaller, faster model.",
+        always_on: false,
+    },
+    ServiceInfo {
+        id: "observing-resolve-taxa",
+        name: "Taxon resolution",
+        description: "Matches new identifications to the GBIF taxonomy, a minute after they arrive.",
         always_on: false,
     },
     ServiceInfo {
@@ -127,7 +129,8 @@ pub struct ServiceStatusResponse {
 /// as the appview's own service account.
 pub struct ServiceStatusClient {
     client: Client,
-    token_url: String,
+    /// Hands out the access token for Cloud Monitoring.
+    metadata: gcp_metadata::Client,
     query_url: String,
     /// The last successful read. Held across the refresh so concurrent
     /// requests wait for one Monitoring call instead of each making their own.
@@ -136,18 +139,18 @@ pub struct ServiceStatusClient {
 
 impl ServiceStatusClient {
     pub fn new(project_id: &str) -> Self {
-        Self::with_urls(
-            METADATA_TOKEN_URL,
+        Self::with_clients(
+            gcp_metadata::Client::new(),
             &format!(
                 "https://monitoring.googleapis.com/v1/projects/{project_id}/location/global/prometheus/api/v1/query"
             ),
         )
     }
 
-    /// Construct a client with arbitrary token and query endpoints.
-    /// Production uses the metadata server and Cloud Monitoring; tests point
-    /// both at a wiremock server.
-    fn with_urls(token_url: &str, query_url: &str) -> Self {
+    /// Construct a client with an arbitrary metadata server and query
+    /// endpoint. Production uses the real metadata server and Cloud
+    /// Monitoring; tests point both at a wiremock server.
+    fn with_clients(metadata: gcp_metadata::Client, query_url: &str) -> Self {
         let client = Client::builder()
             .timeout(REQUEST_TIMEOUT)
             .build()
@@ -155,13 +158,13 @@ impl ServiceStatusClient {
 
         Self {
             client,
-            token_url: token_url.to_string(),
+            metadata,
             query_url: query_url.to_string(),
             cached: Mutex::new(None),
         }
     }
 
-    pub async fn status(&self) -> Result<ServiceStatusResponse, reqwest::Error> {
+    pub async fn status(&self) -> Result<ServiceStatusResponse, StatusError> {
         let mut cached = self.cached.lock().await;
         if let Some((read_at, status)) = cached.as_ref() {
             if read_at.elapsed() < CACHE_TTL {
@@ -174,21 +177,18 @@ impl ServiceStatusClient {
         Ok(status)
     }
 
-    async fn fetch(&self) -> Result<ServiceStatusResponse, reqwest::Error> {
-        let token: AccessToken = self
-            .client
-            .get(&self.token_url)
-            .header("Metadata-Flavor", "Google")
-            .send()
-            .await?
-            .error_for_status()?
-            .json()
-            .await?;
+    async fn fetch(&self) -> Result<ServiceStatusResponse, StatusError> {
+        let token = self
+            .metadata
+            .access_token()
+            .await
+            .map_err(StatusError::Token)?;
 
         let (instances, database_up) = tokio::try_join!(
-            self.query(&token.access_token, INSTANCES_QUERY),
-            self.query(&token.access_token, DATABASE_UP_QUERY),
-        )?;
+            self.query(&token, INSTANCES_QUERY),
+            self.query(&token, DATABASE_UP_QUERY),
+        )
+        .map_err(StatusError::Monitoring)?;
 
         let instances = instances
             .iter()
@@ -220,9 +220,30 @@ impl ServiceStatusClient {
     }
 }
 
-#[derive(Deserialize)]
-struct AccessToken {
-    access_token: String,
+/// Why a status read failed.
+#[derive(Debug)]
+pub enum StatusError {
+    /// The metadata server didn't hand out an access token.
+    Token(gcp_metadata::Error),
+    Monitoring(reqwest::Error),
+}
+
+impl fmt::Display for StatusError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            StatusError::Token(e) => write!(f, "could not get an access token: {e}"),
+            StatusError::Monitoring(e) => write!(f, "Cloud Monitoring request failed: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for StatusError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            StatusError::Token(e) => Some(e),
+            StatusError::Monitoring(e) => Some(e),
+        }
+    }
 }
 
 /// A Prometheus instant-query response.
@@ -398,6 +419,9 @@ mod tests {
         assert_eq!(status.services.len(), SERVICES.len() + 1);
     }
 
+    /// Where the metadata server hands out the access token.
+    const TOKEN_PATH: &str = "/instance/service-accounts/default/token";
+
     fn vector(result: serde_json::Value) -> ResponseTemplate {
         ResponseTemplate::new(200).set_body_json(serde_json::json!({
             "status": "success",
@@ -409,7 +433,7 @@ mod tests {
     async fn reads_monitoring_with_metadata_token_and_caches() {
         let server = MockServer::start().await;
         Mock::given(method("GET"))
-            .and(path("/token"))
+            .and(path(TOKEN_PATH))
             .and(header("Metadata-Flavor", "Google"))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "access_token": "test-token",
@@ -440,8 +464,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ServiceStatusClient::with_urls(
-            &format!("{}/token", server.uri()),
+        let client = ServiceStatusClient::with_clients(
+            gcp_metadata::Client::with_base_url(&server.uri()),
             &format!("{}/query", server.uri()),
         );
         let status = client.status().await.unwrap();
@@ -460,7 +484,7 @@ mod tests {
     #[tokio::test]
     async fn monitoring_error_is_returned() {
         let server = MockServer::start().await;
-        Mock::given(path("/token"))
+        Mock::given(path(TOKEN_PATH))
             .respond_with(ResponseTemplate::new(200).set_body_json(serde_json::json!({
                 "access_token": "test-token",
             })))
@@ -471,8 +495,8 @@ mod tests {
             .mount(&server)
             .await;
 
-        let client = ServiceStatusClient::with_urls(
-            &format!("{}/token", server.uri()),
+        let client = ServiceStatusClient::with_clients(
+            gcp_metadata::Client::with_base_url(&server.uri()),
             &format!("{}/query", server.uri()),
         );
         assert!(client.status().await.is_err());

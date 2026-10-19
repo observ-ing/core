@@ -242,7 +242,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: Dockerfile.storybook
+          file: infra/docker/Dockerfile.storybook
           platforms: linux/amd64
           push: true
           tags: ${{ env.REGISTRY }}/storybook:${{ github.sha }},${{ env.REGISTRY }}/storybook:latest
@@ -406,7 +406,7 @@ jobs:
       # `observing_devenv` database on it (and a temp Tap cursor DB) per run.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
       # Upstream `tap` revision; same indigo commit the production Dockerfile
-      # pins. Also keys the tap binary cache below.
+      # (infra/docker/Dockerfile) pins. Also keys the tap binary cache below.
       INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
       TAP_GO_VERSION: '1.26'
     steps:
@@ -497,32 +497,30 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Build Docker images in parallel with caching
+  # Build and push every image in one BuildKit session
+  # (infra/docker/docker-bake.hcl).
+  # The Rust images share one compiled build, so a Rust change pulls the
+  # toolchain and dependency layers from the registry cache once, not once
+  # per image. Each of those pulls is Artifact Registry internet egress.
+  # Registry cache only, no type=gha: exporting to the GHA cache made
+  # BuildKit download every layer it held only as a lazy registry reference,
+  # and image layers overflow the 10 GB GHA cache.
   build-images:
     runs-on: ubuntu-latest
     needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, integration, e2e]
     if: github.event_name == 'push'
     env:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
-    strategy:
-      matrix:
-        include:
-          - { service: observing-appview, image: observing-appview }
-          - { service: observing-species-id, image: observing-species-id }
-          # Same binary as observing-species-id, but the faster ViT-L model
-          # bundle is baked in via build-args (different SPECIES_MODEL_URL +
-          # MODEL_VERSION). Serves the live camera loop; the appview routes to
-          # it via SPECIES_ID_LIVE_SERVICE_URL.
-          - service: observing-species-id
-            image: observing-species-id-live
-            extra_build_args: |
-              SPECIES_MODEL_URL=https://github.com/observ-ing/bioclip-models/releases/download/vit-l-v1.0.0/bioclip-2-vit-l-models.tar.gz
-              MODEL_VERSION=bioclip-2-vit-l-14
-          - { service: observing-migrate, image: observing-migrate }
-          - { service: tap-ingester, image: tap-ingester }
-          - { service: observing-task-runner, image: observing-task-runner }
     steps:
       - uses: actions/checkout@v4
+
+      # One runner holds every image, including both species-id model bundles
+      # on the rare push that rebuilds their layers. Drop two large
+      # preinstalled toolchains this job never uses.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+          df -h /
 
       - uses: docker/setup-buildx-action@v3
 
@@ -538,31 +536,13 @@ jobs:
           username: oauth2accesstoken
           password: ${{ steps.gcp-auth.outputs.access_token }}
 
-      - name: Build and push ${{ matrix.image }}
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          file: Dockerfile
-          # VITE_MAPTILER_KEY is consumed only by the appview frontend build
-          # (other services prune that stage). Must be a key allowed for
-          # https://observ.ing. Unset → map falls back to keyless CARTO tiles.
-          # extra_build_args is empty for all but observing-species-id-live,
-          # which appends SPECIES_MODEL_URL + MODEL_VERSION.
-          build-args: |
-            SERVICE=${{ matrix.service }}
-            VITE_MAPTILER_KEY=${{ secrets.VITE_MAPTILER_KEY }}
-            ${{ matrix.extra_build_args }}
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ matrix.image }}:latest
-          # Registry cache only, no type=gha. Exporting to the GHA cache makes
-          # buildkit download every cached layer it only holds as a lazy
-          # reference to the registry cache, just to re-upload it to GitHub.
-          # Image layers alone overflow the 10 GB GHA cache, so blobs get
-          # evicted and that ~4-5 GB round-trip repeated on every push, even
-          # fully cached builds. It cost ~$0.45/push in Artifact Registry
-          # internet egress and pushed the Rust job caches out of the GHA cache.
-          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache
-          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ matrix.image }}:buildcache,mode=max
+      - name: Build and push images
+        env:
+          # Consumed only by the appview frontend build. Must be a key allowed
+          # for https://observ.ing. Unset, the map falls back to keyless CARTO
+          # tiles.
+          VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
+        run: docker buildx bake --file infra/docker/docker-bake.hcl --push
 
   deploy:
     runs-on: ubuntu-latest
@@ -585,20 +565,9 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # gen2 is load-bearing for cold starts, not a tuning knob. Startup is
-      # dominated by reading the ~3.3 GB model bundle baked into the image
-      # (ONNX weights + species embeddings). On gen1 those reads run at
-      # ~40 MB/s from the image filesystem (~90-100s to ready); on gen2 they
-      # run at ~260 MB/s (~20s). With files already in page cache the model
-      # loads in ~5-10s either way, so the CPU work is not the bottleneck.
-      # The startup probe polls every 2s (same 300s budget) so readiness
-      # isn't delayed up to 10s after the model finishes loading.
-      #
-      # min-instances=0: identify traffic is a handful of requests a week, and
-      # holding a warm 8 GiB instance cost ~$65/mo for ~$1/mo of actual
-      # inference. The ~20s cold start is covered by the appview's status
-      # probe, which starts the boot when the upload/ID UI opens and drives a
-      # countdown in the frontend (see species_id_client.rs).
+      # gen2 and the 2s startup probe keep cold starts at ~20s instead of
+      # ~95s; min-instances=0 avoids ~$65/mo for a warm 8 GiB instance.
+      # Reasons and sizing: infra/README.md#observing-species-id
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -613,15 +582,9 @@ jobs:
             --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
-      # Faster ViT-L service for the live camera loop. Like observing-species-id
-      # but only 4 GiB — the ViT-L bundle's resident footprint is ~3 GB (vs
-      # ViT-H's ~4.4 GB), so half the memory of the full service is enough.
-      # MODEL_VERSION is already baked into the image.
-      # min-instances=0: the live feature is experimental and sees ~no traffic,
-      # so scale to zero rather than pay to keep a 4 GiB instance warm 24/7.
-      # Flip back to 1 if/when it launches and cold starts hurt UX.
-      # gen2 + 2s startup probe for the same cold-start reasons as species-id
-      # above (~75s -> ~12s to ready for the ViT-L bundle).
+      # Same as species-id with the smaller ViT-L bundle (baked into the
+      # image) and 4 GiB. Reasons and sizing:
+      # infra/README.md#observing-species-id-live
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -677,20 +640,33 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
-      # --no-cpu-throttling is load-bearing here, not a tuning knob. Cloud
-      # Run's default ("CPU only during request processing") throttles the
-      # instance to ~0 CPU whenever no HTTP request is in flight. But the
-      # ingester does all its work in a long-running background loop (consume
-      # the full network firehose via the embedded Tap, filter, upsert) — it
-      # is not request-driven. Under the default the consumer is CPU-starved,
-      # caps at a few hundred events/s, can't keep pace with the live
-      # firehose, and falls irrecoverably behind the relay's ~72h retention
-      # window (see incident 2026-05-31). always-allocated CPU lets the loop
-      # run at full speed. --cpu=1 is enough: throughput is capped by Tap's
-      # internal per-event serialization, not CPU, and over 14 days at cpu=2
-      # the 1-minute p99 peaked at ~0.62 vCPU (memory ~5% of 2 GiB), including
-      # post-deploy catch-up. min/max-instances=1 keeps it a singleton so
-      # there's exactly one consumer per cursor.
+      # Private: only Cloud Tasks and Cloud Scheduler call it, as
+      # cloud-tasks-invoker. max-instances=1 with concurrency=1 keeps it to one
+      # pass at a time, and it scales to zero between passes. --timeout matches
+      # the 15-minute dispatch deadline in crates/observing-tasks. The queue
+      # and invoker account are set up by hand (docs/deployment.md#cloud-tasks);
+      # callers find them, and this service's URL, without configuration.
+      # Reasons and sizing: infra/README.md#observing-resolve-taxa
+      - name: Deploy resolve-taxa
+        run: |
+          gcloud run deploy observing-resolve-taxa \
+            --image=$REGISTRY/observing-resolve-taxa:latest \
+            --region=$REGION \
+            --no-allow-unauthenticated \
+            --cpu=1 \
+            --memory=512Mi \
+            --min-instances=0 \
+            --max-instances=1 \
+            --concurrency=1 \
+            --timeout=900 \
+            --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
+            --set-env-vars=RUST_LOG=observing_resolve_taxa=info,observing_tasks=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime \
+            --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest
+
+      # --no-cpu-throttling is load-bearing: the firehose loop isn't
+      # request-driven and falls behind the relay without always-on CPU
+      # (incident 2026-05-31). min/max-instances=1 keeps one consumer per
+      # cursor. Reasons and sizing: infra/README.md#tap-ingester
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
@@ -699,7 +675,7 @@ jobs:
             --allow-unauthenticated \
             --cpu=1 \
             --no-cpu-throttling \
-            --memory=1Gi \
+            --memory=512Mi \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars=RUST_LOG=tap_ingester=info,DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db,DB_NAME=observing,DB_USER=ingester_runtime,TAP_MAX_DB_CONNS=10,TAP_INHERIT_STDIO=1 \
             --set-secrets=DB_PASSWORD=observing-db-ingester-password:latest \

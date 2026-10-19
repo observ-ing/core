@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use atproto_identity::{IdentityResolver, Profile};
 use observing_db::quality::QualityIssue;
+use observing_db::taxon_uri::{self, TaxonRef};
 use observing_db::types::{CommentRow, IdentificationRow, InteractionRow, OccurrenceRow};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -145,6 +146,12 @@ pub struct LocationResponse {
 #[ts(export, export_to = "bindings/")]
 pub struct EffectiveTaxonomy {
     pub scientific_name: String,
+    /// Stable URI for the taxon (e.g. `https://www.gbif.org/species/{key}`),
+    /// as Darwin Core dwc:taxonID. Lets clients link the exact taxon when the
+    /// name alone is ambiguous.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub taxon_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub vernacular_name: Option<String>,
@@ -302,8 +309,9 @@ pub async fn enrich_occurrences(
 
     // Stage 2: Resolve taxonomy. A page often repeats a taxon, and the GBIF
     // cache doesn't coalesce concurrent misses, so look each distinct
-    // (name, kingdom hint) up once — in parallel — and share the result.
-    let lookups: Vec<Option<(&str, Option<&str>)>> = rows
+    // (name, picked GBIF key, kingdom hint) up once — in parallel — and share
+    // the result.
+    let lookups: Vec<Option<TaxonLookup>> = rows
         .iter()
         .map(|row| {
             let identifications = identifications_by_uri
@@ -313,31 +321,40 @@ pub async fn enrich_occurrences(
             community_ids.get(&row.uri).map(|name| {
                 (
                     name.as_str(),
+                    picked_gbif_key(name, identifications),
                     taxonomy_kingdom_hint(row.kingdom.as_deref(), identifications),
                 )
             })
         })
         .collect();
-    let unique_lookups: Vec<(&str, Option<&str>)> = lookups
+    let unique_lookups: Vec<TaxonLookup> = lookups
         .iter()
         .flatten()
         .copied()
         .collect::<HashSet<_>>()
         .into_iter()
         .collect();
-    let gbif_taxonomies =
-        futures::future::join_all(unique_lookups.iter().map(|&(name, kingdom)| async move {
+    let gbif_taxonomies = futures::future::join_all(unique_lookups.iter().map(
+        |&(name, picked_key, kingdom)| async move {
+            let picked = match picked_key {
+                Some(key) => taxonomy
+                    .get_by_id(&format!("gbif:{key}"))
+                    .await
+                    .unwrap_or(None),
+                None => None,
+            };
             // GBIF is the source of truth for vernacular names, so always try
             // it first. The Moka cache fronting the client keeps repeat
             // lookups cheap.
-            taxonomy
-                .get_by_name(name, kingdom)
-                .await
-                .unwrap_or(None)
-                .map(EffectiveTaxonomy::from)
-        }))
-        .await;
-    let gbif_taxonomies: HashMap<(&str, Option<&str>), Option<EffectiveTaxonomy>> =
+            let detail = match picked {
+                Some(detail) => Some(detail),
+                None => taxonomy.get_by_name(name, kingdom).await.unwrap_or(None),
+            };
+            detail.map(EffectiveTaxonomy::from)
+        },
+    ))
+    .await;
+    let gbif_taxonomies: HashMap<TaxonLookup, Option<EffectiveTaxonomy>> =
         unique_lookups.into_iter().zip(gbif_taxonomies).collect();
 
     // Stage 3: Build responses (pure data assembly, no I/O)
@@ -351,12 +368,10 @@ pub async fn enrich_occurrences(
         let identification_count = identifications.len() as i64;
 
         let community_id = community_ids.get(&row.uri).cloned();
-        let effective_taxonomy = lookup.map(|(name, kingdom)| {
+        let effective_taxonomy = lookup.map(|lookup @ (name, _, _)| {
             effective_taxonomy(
                 name,
-                gbif_taxonomies
-                    .get(&(name, kingdom))
-                    .and_then(Option::as_ref),
+                gbif_taxonomies.get(&lookup).and_then(Option::as_ref),
                 identifications,
             )
         });
@@ -408,6 +423,11 @@ pub async fn enrich_occurrences(
     results
 }
 
+/// What an occurrence's GBIF taxonomy lookup depends on: its community ID
+/// name, the GBIF key an identification picked for that name, and the kingdom
+/// hint.
+type TaxonLookup<'a> = (&'a str, Option<i64>, Option<&'a str>);
+
 /// Kingdom hint for the GBIF lookup of an occurrence's community ID.
 ///
 /// GBIF can't disambiguate genus-level names without a kingdom hint
@@ -422,10 +442,26 @@ fn taxonomy_kingdom_hint<'a>(
     occurrence_kingdom.or_else(|| identifications.iter().find_map(|id| id.kingdom.as_deref()))
 }
 
+/// GBIF usage key named by an identification of the winning name, if any.
+///
+/// An identification's GBIF taxonID names the exact usage, which a name lookup
+/// can't recover for homonyms (e.g. "Anisoptera"), so it's resolved by that
+/// key first.
+fn picked_gbif_key(effective_name: &str, identifications: &[IdentificationRow]) -> Option<i64> {
+    identifications
+        .iter()
+        .filter(|id| id.scientific_name == effective_name)
+        .find_map(|id| match taxon_uri::parse(id.taxon_id.as_deref()?) {
+            TaxonRef::Gbif(key) => Some(key),
+            _ => None,
+        })
+}
+
 impl From<TaxonDetail> for EffectiveTaxonomy {
     fn from(detail: TaxonDetail) -> Self {
         EffectiveTaxonomy {
             scientific_name: detail.scientific_name,
+            taxon_id: detail.gbif_url,
             vernacular_name: detail.common_name,
             rank: Some(detail.rank.to_lowercase()),
             kingdom: detail.kingdom,
@@ -456,6 +492,7 @@ fn effective_taxonomy(
     {
         return EffectiveTaxonomy {
             scientific_name: id.scientific_name.clone(),
+            taxon_id: id.taxon_id.clone(),
             vernacular_name: None,
             rank: id.taxon_rank.as_deref().map(str::to_lowercase),
             kingdom: id.kingdom.clone(),
@@ -470,6 +507,7 @@ fn effective_taxonomy(
     // Bare minimum: just the name
     EffectiveTaxonomy {
         scientific_name: effective_name.to_string(),
+        taxon_id: None,
         vernacular_name: None,
         rank: None,
         kingdom: None,

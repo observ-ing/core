@@ -1,0 +1,18 @@
+[package]
+name = "gcp-metadata"
+version = "0.1.0"
+edition = "2021"
+description = "GCP metadata server client: project, region and the default service account's access token"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+reqwest = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Guards the cached access token
+tokio = { workspace = true }
+# When the cached access token runs out
+chrono = { workspace = true }
+
+[dev-dependencies]
+wiremock = "0.6"

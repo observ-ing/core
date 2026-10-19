@@ -1,8 +1,14 @@
-# Multi-service Dockerfile
+# Multi-service Dockerfile. The build context is the repo root, so build any
+# service from there:
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester -t tap-ingester .
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-appview -t observing-appview .
 #
-# Build any service:
-#   docker build --build-arg SERVICE=tap-ingester -t tap-ingester .
-#   docker build --build-arg SERVICE=observing-appview -t observing-appview .
+# The builder stage compiles every Rust service in RUST_PACKAGES at once, so
+# CI (docker-bake.hcl, next to this file) compiles and caches one set of
+# dependencies for all images. To build a single service faster locally,
+# narrow it:
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=tap-ingester \
+#     --build-arg RUST_PACKAGES=tap-ingester -t tap-ingester .
 #
 # For appview (which includes a frontend), the frontend stage runs
 # automatically but its output is only copied into the final image
@@ -14,9 +20,10 @@
 #
 # Supported SERVICE values:
 #   observing-appview, observing-species-id, observing-migrate, tap-ingester,
-#   observing-task-runner
+#   observing-task-runner, observing-resolve-taxa
 
 ARG SERVICE=observing-appview
+ARG RUST_PACKAGES="observing-appview observing-migrate observing-species-id observing-task-runner tap-ingester observing-resolve-taxa"
 
 # ---------------------------------------------------------------------------
 # Stage: frontend-builder (only meaningful for appview)
@@ -33,7 +40,7 @@ COPY lexicons/ lexicons/
 
 # MapTiler key for the map basemap, baked into the JS bundle at build time.
 # Pass it when building the appview image:
-#   docker build --build-arg SERVICE=observing-appview \
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-appview \
 #     --build-arg VITE_MAPTILER_KEY=<key allowed for https://observ.ing> ...
 # Optional — without it the map falls back to keyless CARTO vector tiles. Lives
 # only in this build stage; the runtime image just copies dist/public.
@@ -74,11 +81,12 @@ FROM chef AS deps
 
 COPY --from=planner /app/recipe.json recipe.json
 
-ARG SERVICE
-RUN cargo chef cook --release --recipe-path recipe.json -p ${SERVICE}
+ARG RUST_PACKAGES
+RUN cargo chef cook --release --recipe-path recipe.json \
+    $(for p in ${RUST_PACKAGES}; do printf -- '-p %s ' "$p"; done)
 
 # ---------------------------------------------------------------------------
-# Stage: builder – compile the real binary
+# Stage: builder – compile the real binaries
 # ---------------------------------------------------------------------------
 FROM deps AS builder
 
@@ -88,8 +96,9 @@ COPY crates/ crates/
 COPY .sqlx ./.sqlx
 
 ENV SQLX_OFFLINE=true
-ARG SERVICE
-RUN cargo build --release -p ${SERVICE}
+ARG RUST_PACKAGES
+RUN cargo build --release \
+    $(for p in ${RUST_PACKAGES}; do printf -- '-p %s ' "$p"; done)
 
 # ---------------------------------------------------------------------------
 # Stage: tap-build – build the upstream `tap` Go binary (only used by
@@ -119,6 +128,12 @@ RUN go build -tags timetzdata -o /tap ./cmd/tap
 # ---------------------------------------------------------------------------
 # Stage: runtime-base – shared runtime setup
 # ---------------------------------------------------------------------------
+#
+# In the runtime stages below, the COPY --link of each built binary or asset
+# stays last. --link builds that layer without the layers under it, so when
+# only the binary changes, BuildKit pushes the new layer without downloading
+# the image beneath it from the registry cache (2+ GB for species-id). A RUN
+# after it would need that whole filesystem and bring the download back.
 FROM debian:bookworm-slim AS runtime-base
 
 RUN apt-get update && apt-get install -y \
@@ -140,8 +155,8 @@ FROM runtime-base AS runtime-observing-appview
 RUN apt-get update && apt-get install -y --no-install-recommends libheif-examples \
     && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/observing-appview /app/observing-appview
-COPY --from=frontend-builder /app/dist/public /app/public
+COPY --link --from=builder /app/target/release/observing-appview /app/observing-appview
+COPY --link --from=frontend-builder /app/dist/public /app/public
 
 ENV RUST_LOG=observing_appview=info
 ENV PORT=3000
@@ -158,10 +173,11 @@ CMD ["/app/observing-appview"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-tap-ingester
 
-COPY --from=builder /app/target/release/tap-ingester /app/tap-ingester
-COPY --from=tap-build /tap /usr/local/bin/tap
-
 RUN mkdir -p /data
+
+COPY --link --from=tap-build /tap /usr/local/bin/tap
+COPY --link --from=builder /app/target/release/tap-ingester /app/tap-ingester
+
 ENV RUST_LOG=tap_ingester=info
 ENV PORT=8080
 EXPOSE 8080
@@ -172,7 +188,7 @@ CMD ["/app/tap-ingester"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-migrate
 
-COPY --from=builder /app/target/release/observing-migrate /app/observing-migrate
+COPY --link --from=builder /app/target/release/observing-migrate /app/observing-migrate
 
 ENV RUST_LOG=observing_migrate=info,sqlx::migrate=info
 CMD ["/app/observing-migrate"]
@@ -182,12 +198,24 @@ CMD ["/app/observing-migrate"]
 # ---------------------------------------------------------------------------
 FROM runtime-base AS runtime-observing-task-runner
 
-COPY --from=builder /app/target/release/observing-task-runner /app/observing-task-runner
+COPY --link --from=builder /app/target/release/observing-task-runner /app/observing-task-runner
 
 ENV RUST_LOG=observing_task_runner=info
 # ENTRYPOINT (not CMD) so the Cloud Run Job's `--args` append the subcommand +
 # flags, e.g. `--args=backfill-occurrences,--dry-run,--all`.
 ENTRYPOINT ["/app/observing-task-runner"]
+
+# ---------------------------------------------------------------------------
+# Stage: runtime for resolve-taxa (private Cloud Run service, run by Cloud Tasks)
+# ---------------------------------------------------------------------------
+FROM runtime-base AS runtime-observing-resolve-taxa
+
+COPY --link --from=builder /app/target/release/observing-resolve-taxa /app/observing-resolve-taxa
+
+ENV RUST_LOG=observing_resolve_taxa=info,observing_db=info,observing_tasks=info
+ENV PORT=8080
+EXPOSE 8080
+CMD ["/app/observing-resolve-taxa", "--serve"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for species-id
@@ -213,7 +241,7 @@ RUN apt-get update && apt-get install -y curl && \
 # Model bundle to bake in. Defaults to the full-accuracy ViT-H build used by
 # the upload/capture path. The faster live-loop service (ViT-L) is the same
 # binary built with a different bundle + version, e.g.:
-#   docker build --build-arg SERVICE=observing-species-id \
+#   docker build -f infra/docker/Dockerfile --build-arg SERVICE=observing-species-id \
 #     --build-arg SPECIES_MODEL_URL=<vit-l bundle .tar.gz> \
 #     --build-arg MODEL_VERSION=bioclip-2-vit-l-14 -t observing-species-id-live .
 # TODO: publish the ViT-L bundle in observ-ing/bioclip-models and set its URL
@@ -232,7 +260,7 @@ RUN mkdir -p /app/models/bioclip && \
 RUN apt-get remove -y curl && apt-get autoremove -y && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /app/target/release/observing-species-id /app/observing-species-id
+COPY --link --from=builder /app/target/release/observing-species-id /app/observing-species-id
 
 ENV RUST_LOG=observing_species_id=info
 ENV PORT=3005

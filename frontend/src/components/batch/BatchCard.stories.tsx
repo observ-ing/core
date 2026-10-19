@@ -49,6 +49,9 @@ export const Selected: Story = {
   args: { selected: true, observation: storyObservation({ taxon: identified }) },
 };
 
+/** On a touch screen the checkbox is drawn large enough to hit. */
+export const Touch: Story = { args: { touch: true } };
+
 export const MultiplePhotos: Story = {
   args: {
     observation: storyObservation({

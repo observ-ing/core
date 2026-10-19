@@ -1,0 +1,315 @@
+{
+  "usage": {
+    "key": "44",
+    "name": "Chordata",
+    "canonicalName": "Chordata",
+    "rank": "PHYLUM",
+    "status": "ACCEPTED",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Chordata</i>"
+  },
+  "classification": [
+    {
+      "key": "1",
+      "name": "Animalia",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "44",
+      "name": "Chordata",
+      "rank": "PHYLUM"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "HIGHERRANK",
+    "confidence": 95,
+    "note": "nextMatch=0",
+    "timeTaken": 28,
+    "alternatives": [
+      {
+        "usage": {
+          "key": "2437489",
+          "name": "Sciurus Linnaeus, 1758",
+          "canonicalName": "Sciurus",
+          "authorship": "Linnaeus, 1758",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Sciurus</i> Linnaeus, 1758"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "44",
+            "name": "Chordata",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "359",
+            "name": "Mammalia",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1459",
+            "name": "Rodentia",
+            "rank": "ORDER"
+          },
+          {
+            "key": "9456",
+            "name": "Sciuridae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "2437489",
+            "name": "Sciurus",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 95,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=1; score=105",
+          "timeTaken": 0
+        },
+        "synonym": false,
+        "left": 1155125,
+        "right": 1155346
+      },
+      {
+        "usage": {
+          "key": "3241525",
+          "name": "Sciurus d'Orbigny, 1839",
+          "canonicalName": "Sciurus",
+          "authorship": "d'Orbigny, 1839",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "SYNONYM",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Sciurus</i> d'Orbigny, 1839"
+        },
+        "acceptedUsage": {
+          "key": "2489584",
+          "name": "Seiurus Swainson, 1827",
+          "canonicalName": "Seiurus",
+          "authorship": "Swainson, 1827",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Seiurus</i> Swainson, 1827"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "44",
+            "name": "Chordata",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "212",
+            "name": "Aves",
+            "rank": "CLASS"
+          },
+          {
+            "key": "729",
+            "name": "Passeriformes",
+            "rank": "ORDER"
+          },
+          {
+            "key": "5263",
+            "name": "Parulidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "2489584",
+            "name": "Seiurus",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 94,
+          "note": "Similarity: name=100; authorship=0; classification=4; rank=0; status=0; score=104",
+          "timeTaken": 0
+        },
+        "synonym": true,
+        "left": 1073281,
+        "right": 1073286
+      },
+      {
+        "usage": {
+          "key": "7459377",
+          "name": "Sciurus D.Dietr.",
+          "canonicalName": "Sciurus",
+          "authorship": "D.Dietr.",
+          "rank": "GENUS",
+          "status": "PROVISIONALLY_ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Sciurus</i> D.Dietr."
+        },
+        "classification": [
+          {
+            "key": "6",
+            "name": "Plantae",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "7707728",
+            "name": "Tracheophyta",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "220",
+            "name": "Magnoliopsida",
+            "rank": "CLASS"
+          },
+          {
+            "key": "933",
+            "name": "Sapindales",
+            "rank": "ORDER"
+          },
+          {
+            "key": "2396",
+            "name": "Rutaceae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "7459377",
+            "name": "Sciurus",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "EXACT",
+          "confidence": 43,
+          "note": "Similarity: name=100; authorship=0; classification=-52; rank=0; status=-5; score=43",
+          "timeTaken": 0
+        },
+        "synonym": false,
+        "left": 840789,
+        "right": 844239
+      },
+      {
+        "usage": {
+          "key": "4405236",
+          "name": "Scaurus Fabricius, 1775",
+          "canonicalName": "Scaurus",
+          "authorship": "Fabricius, 1775",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Scaurus</i> Fabricius, 1775"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1470",
+            "name": "Coleoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "7857",
+            "name": "Tenebrionidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "4405236",
+            "name": "Scaurus",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "VARIANT",
+          "confidence": 80,
+          "note": "Similarity: name=75; authorship=0; classification=4; rank=0; status=1; score=80",
+          "timeTaken": 0
+        },
+        "synonym": false
+      },
+      {
+        "usage": {
+          "key": "1231601",
+          "name": "Scierus J.L.LeConte, 1876",
+          "canonicalName": "Scierus",
+          "authorship": "J.L.LeConte, 1876",
+          "rank": "GENUS",
+          "code": "ZOOLOGICAL",
+          "status": "ACCEPTED",
+          "type": "SCIENTIFIC",
+          "formattedName": "<i>Scierus</i> J.L.LeConte, 1876"
+        },
+        "classification": [
+          {
+            "key": "1",
+            "name": "Animalia",
+            "rank": "KINGDOM"
+          },
+          {
+            "key": "54",
+            "name": "Arthropoda",
+            "rank": "PHYLUM"
+          },
+          {
+            "key": "216",
+            "name": "Insecta",
+            "rank": "CLASS"
+          },
+          {
+            "key": "1470",
+            "name": "Coleoptera",
+            "rank": "ORDER"
+          },
+          {
+            "key": "4239",
+            "name": "Curculionidae",
+            "rank": "FAMILY"
+          },
+          {
+            "key": "1231601",
+            "name": "Scierus",
+            "rank": "GENUS"
+          }
+        ],
+        "diagnostics": {
+          "matchType": "VARIANT",
+          "confidence": 80,
+          "note": "Similarity: name=75; authorship=0; classification=4; rank=0; status=1; score=80",
+          "timeTaken": 0
+        },
+        "synonym": false
+      }
+    ],
+    "timings": {
+      "nameNRank": 0,
+      "sciNameMatch": 29,
+      "nameParse": 0,
+      "luceneMatch": 29
+    }
+  },
+  "synonym": false,
+  "left": 1021672,
+  "right": 1229994
+}

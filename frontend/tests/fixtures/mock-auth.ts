@@ -15,8 +15,11 @@ export function getTestUser() {
  * by the individual tests.
  */
 export const test = base.extend<{ authenticatedPage: Page }>({
-  authenticatedPage: async ({ browser }, use) => {
+  // `contextOptions` lets a spec ask for another device, e.g. a phone's
+  // viewport and touch, with `test.use({ contextOptions: ... })`.
+  authenticatedPage: async ({ browser, contextOptions }, use) => {
     const context = await browser.newContext({
+      ...contextOptions,
       storageState: { cookies: [], origins: [] },
       geolocation: { latitude: 37.7749, longitude: -122.4194 },
       permissions: ["geolocation"],

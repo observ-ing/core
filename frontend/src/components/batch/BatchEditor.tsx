@@ -3,6 +3,7 @@
 // when the whole selection agrees on it.
 import { lazy, Suspense, useState } from "react";
 import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
@@ -10,11 +11,14 @@ import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { coverImageSx } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
+import type { AncestorSelection } from "../identification/VisualIdCards";
+import type { SpeciesSuggestion } from "../../services/api";
 import {
   UTC_OFFSETS,
   browserUtcOffset,
   type BatchEdit,
   type BatchObservation,
+  type BatchTaxon,
 } from "../../lib/batchUpload";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { formatCoordinate, plural } from "../../lib/utils";
@@ -26,6 +30,24 @@ const LocationPicker = lazy(() =>
 export interface BatchEditorProps {
   selected: BatchObservation[];
   onEdit: (patch: BatchEdit) => void;
+  /** Worked by finger: the help text names touch gestures. */
+  touch?: boolean;
+  /** A long press can drag a card; when it can't, the help text leaves it out. */
+  touchDrag?: boolean;
+  /** Offers the map full screen, where it is easier to pan by touch than in the panel. */
+  onExpandMap?: () => void;
+}
+
+/** The identification a visual ID suggestion stands for. */
+export function taxonFromSuggestion(s: SpeciesSuggestion): Partial<BatchTaxon> {
+  return s.taxonMatch
+    ? { name: s.scientificName, match: s.taxonMatch, kingdom: s.taxonMatch.kingdom ?? "", rank: "" }
+    : { name: s.scientificName, match: null, kingdom: s.kingdom ?? "" };
+}
+
+/** The identification for a higher rank offered in place of an uncertain species. */
+export function taxonFromAncestor(ancestor: AncestorSelection): Partial<BatchTaxon> {
+  return { name: ancestor.name, match: null, kingdom: ancestor.kingdom ?? "", rank: ancestor.rank };
 }
 
 const MIXED = "Mixed values";
@@ -40,12 +62,123 @@ function offsetMinutes(offset: string): number {
 }
 
 /** The value every item shares, or `undefined` when they differ. */
-function shared<T>(values: T[]): T | undefined {
+export function shared<T>(values: T[]): T | undefined {
   const [first, ...rest] = values;
   return rest.every((v) => v === first) ? first : undefined;
 }
 
-function EditorFields({ selected, onEdit }: BatchEditorProps) {
+/** Date, optional end date, and time zone for the selection. */
+export function DateFields({ selected, onEdit }: BatchEditorProps) {
+  const [first] = selected;
+  if (!first) return null;
+  const single = selected.length === 1;
+  const date = shared(selected.map((o) => o.date));
+  // `null` is a real value here (the browser's zone), so "mixed" needs its own test.
+  const zoneMixed = new Set(selected.map((o) => o.utcOffset)).size > 1;
+  const zone = zoneMixed ? ZONE_MIXED : (first.utcOffset ?? ZONE_LOCAL);
+
+  return (
+    <>
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, "& > *": { flex: "1 1 200px" } }}>
+        <TextField
+          label={single && first.endDate ? "Start date" : "Observation date"}
+          type="datetime-local"
+          value={date ?? ""}
+          onChange={(e) => onEdit({ date: e.target.value })}
+          // One typed time has to mean one instant, so the selection must
+          // agree on a time zone before its date can be changed.
+          disabled={zoneMixed}
+          error={!zoneMixed && date === ""}
+          helperText={
+            zoneMixed
+              ? "Selected observations are in different time zones. Choose one to edit the date."
+              : date === undefined
+                ? "Selected observations have different dates."
+                : date === ""
+                  ? "Required."
+                  : undefined
+          }
+          slotProps={{ inputLabel: { shrink: true } }}
+        />
+        {single && (
+          <TextField
+            label="End date (optional)"
+            type="date"
+            value={first.endDate}
+            onChange={(e) => onEdit({ endDate: e.target.value })}
+            error={first.endDate !== "" && first.endDate < first.date.slice(0, 10)}
+            helperText={
+              first.endDate !== "" && first.endDate < first.date.slice(0, 10)
+                ? "End date can't be before the start date."
+                : undefined
+            }
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { min: first.date.slice(0, 10) },
+            }}
+          />
+        )}
+      </Box>
+
+      <TextField
+        select
+        fullWidth
+        label="Time zone"
+        value={zone}
+        // Changing the zone keeps the clock time and moves the moment it names.
+        onChange={(e) =>
+          onEdit({ utcOffset: e.target.value === ZONE_LOCAL ? null : e.target.value })
+        }
+        slotProps={{ inputLabel: { shrink: true } }}
+      >
+        {zoneMixed && (
+          <MenuItem value={ZONE_MIXED} disabled>
+            {MIXED}
+          </MenuItem>
+        )}
+        <MenuItem value={ZONE_LOCAL}>Local time (UTC{browserUtcOffset(date ?? "")})</MenuItem>
+        {/* A photo can carry an offset that no zone uses today. */}
+        {[...new Set([...UTC_OFFSETS, ...selected.flatMap((o) => o.utcOffset ?? [])])]
+          .sort((a, b) => offsetMinutes(a) - offsetMinutes(b))
+          .map((offset) => (
+            <MenuItem key={offset} value={offset}>
+              UTC{offset}
+            </MenuItem>
+          ))}
+      </TextField>
+    </>
+  );
+}
+
+export function RemarksField({ selected, onEdit }: BatchEditorProps) {
+  const remarks = shared(selected.map((o) => o.remarks));
+
+  return (
+    <TextField
+      fullWidth
+      multiline
+      minRows={3}
+      label="Remarks"
+      value={remarks ?? ""}
+      onChange={(e) => onEdit({ remarks: e.target.value })}
+      placeholder={
+        remarks === undefined ? MIXED : "e.g. worn wings, feeding on milkweed along the creek trail"
+      }
+      // The count only earns its line once the limit is in sight.
+      helperText={
+        remarks !== undefined && remarks.length >= MAX_REMARK_LENGTH * 0.9
+          ? `${remarks.length} / ${MAX_REMARK_LENGTH}`
+          : undefined
+      }
+      slotProps={{
+        inputLabel: { shrink: true },
+        htmlInput: { maxLength: MAX_REMARK_LENGTH },
+      }}
+    />
+  );
+}
+
+function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps) {
   const [first] = selected;
   // The point clicked on the map for a multi-selection, not yet applied.
   const [proposed, setProposed] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -58,11 +191,6 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
   const unmatched = !!taxonName?.trim() && selected.every((o) => !o.taxon.match);
   const kingdom = shared(selected.map((o) => o.taxon.kingdom)) ?? "";
   const rank = shared(selected.map((o) => o.taxon.rank)) ?? "";
-  const date = shared(selected.map((o) => o.date));
-  // `null` is a real value here (the browser's zone), so "mixed" needs its own test.
-  const zoneMixed = new Set(selected.map((o) => o.utcOffset)).size > 1;
-  const zone = zoneMixed ? ZONE_MIXED : (first.utcOffset ?? ZONE_LOCAL);
-  const remarks = shared(selected.map((o) => o.remarks));
   const uncertainty = shared(selected.map((o) => o.uncertaintyMeters));
   const located = selected.flatMap((o) =>
     o.latitude !== null && o.longitude !== null
@@ -134,28 +262,8 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
                   imageUrl={cover.previewUrl}
                   latitude={first.latitude ?? undefined}
                   longitude={first.longitude ?? undefined}
-                  onSelect={(s) =>
-                    onEdit({
-                      taxon: s.taxonMatch
-                        ? {
-                            name: s.scientificName,
-                            match: s.taxonMatch,
-                            kingdom: s.taxonMatch.kingdom ?? "",
-                            rank: "",
-                          }
-                        : { name: s.scientificName, match: null, kingdom: s.kingdom ?? "" },
-                    })
-                  }
-                  onSelectAncestor={(ancestor) =>
-                    onEdit({
-                      taxon: {
-                        name: ancestor.name,
-                        match: null,
-                        kingdom: ancestor.kingdom ?? "",
-                        rank: ancestor.rank,
-                      },
-                    })
-                  }
+                  onSelect={(s) => onEdit({ taxon: taxonFromSuggestion(s) })}
+                  onSelectAncestor={(ancestor) => onEdit({ taxon: taxonFromAncestor(ancestor) })}
                 />
               </Box>
             ) : undefined
@@ -184,73 +292,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
         )}
       </Box>
 
-      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1.5, "& > *": { flex: "1 1 200px" } }}>
-        <TextField
-          label={single && first.endDate ? "Start date" : "Observation date"}
-          type="datetime-local"
-          value={date ?? ""}
-          onChange={(e) => onEdit({ date: e.target.value })}
-          // One typed time has to mean one instant, so the selection must
-          // agree on a time zone before its date can be changed.
-          disabled={zoneMixed}
-          error={!zoneMixed && date === ""}
-          helperText={
-            zoneMixed
-              ? "Selected observations are in different time zones. Choose one to edit the date."
-              : date === undefined
-                ? "Selected observations have different dates."
-                : date === ""
-                  ? "Required."
-                  : undefined
-          }
-          slotProps={{ inputLabel: { shrink: true } }}
-        />
-        {single && (
-          <TextField
-            label="End date (optional)"
-            type="date"
-            value={first.endDate}
-            onChange={(e) => onEdit({ endDate: e.target.value })}
-            error={first.endDate !== "" && first.endDate < first.date.slice(0, 10)}
-            helperText={
-              first.endDate !== "" && first.endDate < first.date.slice(0, 10)
-                ? "End date can't be before the start date."
-                : undefined
-            }
-            slotProps={{
-              inputLabel: { shrink: true },
-              htmlInput: { min: first.date.slice(0, 10) },
-            }}
-          />
-        )}
-      </Box>
-
-      <TextField
-        select
-        fullWidth
-        label="Time zone"
-        value={zone}
-        // Changing the zone keeps the clock time and moves the moment it names.
-        onChange={(e) =>
-          onEdit({ utcOffset: e.target.value === ZONE_LOCAL ? null : e.target.value })
-        }
-        slotProps={{ inputLabel: { shrink: true } }}
-      >
-        {zoneMixed && (
-          <MenuItem value={ZONE_MIXED} disabled>
-            {MIXED}
-          </MenuItem>
-        )}
-        <MenuItem value={ZONE_LOCAL}>Local time (UTC{browserUtcOffset(date ?? "")})</MenuItem>
-        {/* A photo can carry an offset that no zone uses today. */}
-        {[...new Set([...UTC_OFFSETS, ...selected.flatMap((o) => o.utcOffset ?? [])])]
-          .sort((a, b) => offsetMinutes(a) - offsetMinutes(b))
-          .map((offset) => (
-            <MenuItem key={offset} value={offset}>
-              UTC{offset}
-            </MenuItem>
-          ))}
-      </TextField>
+      <DateFields selected={selected} onEdit={onEdit} />
 
       <Box>
         <Suspense
@@ -281,6 +323,17 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
             />
           )}
         </Suspense>
+        {onExpandMap && (
+          <Button
+            variant="outlined"
+            color="inherit"
+            startIcon={<OpenInFullIcon />}
+            onClick={onExpandMap}
+            sx={{ mt: 1, minHeight: 44 }}
+          >
+            Expand map
+          </Button>
+        )}
         {!single && !proposed && (
           <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mt: 1 }}>
             {located.length === 0
@@ -289,7 +342,7 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
                 ? `The ${selected.length} selected observations share one location, shown in grey.`
                 : `The ${selected.length} selected observations are at different locations, ` +
                   "shown in grey."}{" "}
-            Click the map to choose one location for all of them.
+            {touch ? "Tap" : "Click"} the map to choose one location for all of them.
           </Typography>
         )}
         {!single && proposed && (
@@ -318,34 +371,18 @@ function EditorFields({ selected, onEdit }: BatchEditorProps) {
         )}
       </Box>
 
-      <TextField
-        fullWidth
-        multiline
-        minRows={3}
-        label="Remarks"
-        value={remarks ?? ""}
-        onChange={(e) => onEdit({ remarks: e.target.value })}
-        placeholder={
-          remarks === undefined
-            ? MIXED
-            : "e.g. worn wings, feeding on milkweed along the creek trail"
-        }
-        // The count only earns its line once the limit is in sight.
-        helperText={
-          remarks !== undefined && remarks.length >= MAX_REMARK_LENGTH * 0.9
-            ? `${remarks.length} / ${MAX_REMARK_LENGTH}`
-            : undefined
-        }
-        slotProps={{
-          inputLabel: { shrink: true },
-          htmlInput: { maxLength: MAX_REMARK_LENGTH },
-        }}
-      />
+      <RemarksField selected={selected} onEdit={onEdit} />
     </Stack>
   );
 }
 
-export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
+export function BatchEditor({
+  selected,
+  onEdit,
+  touch = false,
+  touchDrag = true,
+  onExpandMap,
+}: BatchEditorProps) {
   return (
     <Paper
       component="aside"
@@ -359,12 +396,20 @@ export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
             Nothing selected
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Click an observation to edit it. Shift-click or use the checkboxes to select several and
-            edit them together.
+            {touch
+              ? "Tap an observation to edit it. Use the checkboxes to select several and edit " +
+                "them together."
+              : "Click an observation to edit it. Shift-click or use the checkboxes to select " +
+                "several and edit them together."}
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
-            Drag one card onto another to combine their photos into a single observation. Drag a
-            photo out of a card to split it off.
+            {touch
+              ? touchDrag
+                ? "Touch and hold a card, then drag it onto another to combine their photos " +
+                  "into a single observation, or select several and tap Combine."
+                : "Select several and tap Combine to put their photos into a single observation."
+              : "Drag one card onto another to combine their photos into a single observation. " +
+                "Drag a photo out of a card to split it off."}
           </Typography>
         </Stack>
       ) : (
@@ -373,6 +418,8 @@ export function BatchEditor({ selected, onEdit }: BatchEditorProps) {
           key={selected.map((o) => o.id).join(",")}
           selected={selected}
           onEdit={onEdit}
+          touch={touch}
+          {...(onExpandMap ? { onExpandMap } : {})}
         />
       )}
     </Paper>

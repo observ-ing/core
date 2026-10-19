@@ -11,4 +11,11 @@ export type CreateIdentificationRequest = {
    * when validation doesn't return a kingdom of its own.
    */
   kingdom?: string;
+  /**
+   * Stable taxon URI from a GBIF autocomplete pick (e.g.
+   * `https://www.gbif.org/species/9747581`). Written to the record's
+   * `taxonID`, and resolved by key in place of a name match, which can't
+   * tell homonyms apart.
+   */
+  taxonId?: string;
 };

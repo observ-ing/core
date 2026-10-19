@@ -10,6 +10,7 @@ import {
   initialBatchState,
   isReading,
   missingFields,
+  nextIncompleteId,
   runPool,
   toEventDate,
   toObservationInput,
@@ -601,5 +602,155 @@ describe("runPool", () => {
 
     expect(peak).toBe(3);
     expect(done.toSorted((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+});
+
+describe("editing observations by id", () => {
+  it("edits the named observations whatever is selected", () => {
+    const state = run(
+      [
+        { type: "select", id: "o1", additive: false },
+        { type: "edit", ids: ["o2"], patch: { remarks: "creek trail" } },
+      ],
+      batchOf("a", "b"),
+    );
+
+    expect(state.observations.map((o) => o.remarks)).toEqual(["", "creek trail"]);
+    expect(state.selected).toEqual(["o1"]);
+  });
+});
+
+describe("splitting photos off one observation", () => {
+  const combined = () =>
+    run(
+      [
+        { type: "movePhotos", photoIds: ["b", "c", "d"], targetId: "o1" },
+        { type: "clearSelection" },
+      ],
+      batchOf("a", "b", "c", "d", "e"),
+    );
+
+  it("makes one observation per photo, directly after the one they left", () => {
+    const state = run(
+      [{ type: "splitPhotos", observationId: "o1", photoIds: ["d", "b"] }],
+      combined(),
+    );
+
+    expect(photoIds(state)).toEqual([["a", "c"], ["b"], ["d"], ["e"]]);
+  });
+
+  it("starts each new observation over from its photo's own EXIF", () => {
+    const state = run(
+      [
+        { type: "edit", ids: ["o1"], patch: { remarks: "mine", date: "2020-01-01T09:00" } },
+        { type: "splitPhotos", observationId: "o1", photoIds: ["b"] },
+      ],
+      combined(),
+    );
+
+    expect(state.observations[1]).toMatchObject({ remarks: "", date: "2026-10-03T10:42" });
+    expect(state.observations[0]).toMatchObject({ remarks: "mine", date: "2020-01-01T09:00" });
+  });
+
+  it("leaves the selection alone", () => {
+    const state = run(
+      [
+        { type: "select", id: "o5", additive: false },
+        { type: "splitPhotos", observationId: "o1", photoIds: ["b"] },
+      ],
+      combined(),
+    );
+
+    expect(state.selected).toEqual(["o5"]);
+  });
+
+  it("keeps the first photo when every photo is split off", () => {
+    const state = run(
+      [{ type: "splitPhotos", observationId: "o1", photoIds: ["a", "b", "c", "d"] }],
+      combined(),
+    );
+
+    expect(photoIds(state)).toEqual([["a"], ["b"], ["c"], ["d"], ["e"]]);
+    expect(state.observations[0]?.id).toBe("o1");
+  });
+});
+
+describe("removing photos from one observation", () => {
+  it("removes the photos and keeps the observation", () => {
+    const state = run(
+      [
+        { type: "movePhotos", photoIds: ["b", "c"], targetId: "o1" },
+        { type: "removePhotos", observationId: "o1", photoIds: ["a", "c"] },
+      ],
+      batchOf("a", "b", "c"),
+    );
+
+    expect(photoIds(state)).toEqual([["b"]]);
+  });
+
+  it("removes the observation along with its last photo", () => {
+    const state = run(
+      [
+        { type: "select", id: "o1", additive: false },
+        { type: "removePhotos", observationId: "o1", photoIds: ["a"] },
+      ],
+      batchOf("a", "b"),
+    );
+
+    expect(photoIds(state)).toEqual([["b"]]);
+    expect(state.selected).toEqual([]);
+  });
+});
+
+describe("undoing a change to one observation", () => {
+  it("puts a split back together", () => {
+    const before = run(
+      [{ type: "movePhotos", photoIds: ["b", "c"], targetId: "o1" }],
+      batchOf("a", "b", "c", "d"),
+    );
+    const [observation] = before.observations;
+    if (!observation) throw new Error("no observation");
+    const split = run([{ type: "splitPhotos", observationId: "o1", photoIds: ["b", "c"] }], before);
+    const dropIds = split.observations.slice(1, 3).map((o) => o.id);
+
+    const state = run([{ type: "restoreObservation", observation, index: 0, dropIds }], split);
+
+    expect(photoIds(state)).toEqual([["a", "b", "c"], ["d"]]);
+  });
+
+  it("puts a removed observation back where it was", () => {
+    const before = batchOf("a", "b", "c");
+    const observation = before.observations[1];
+    if (!observation) throw new Error("no observation");
+
+    const state = run(
+      [
+        { type: "removePhotos", observationId: "o2", photoIds: ["b"] },
+        { type: "restoreObservation", observation, index: 1, dropIds: [] },
+      ],
+      before,
+    );
+
+    expect(photoIds(state)).toEqual([["a"], ["b"], ["c"]]);
+  });
+});
+
+describe("stepping to the next incomplete observation", () => {
+  const bare = { ...EMPTY_EXIF };
+  const state = run([
+    { type: "addPhotos", photos: [photo("a", bare), photo("b"), photo("c", bare), photo("d")] },
+  ]);
+
+  it("finds the next one after the current, skipping complete ones", () => {
+    expect(nextIncompleteId(state.observations, "o1")).toBe("o3");
+  });
+
+  it("wraps around to the start", () => {
+    expect(nextIncompleteId(state.observations, "o3")).toBe("o1");
+  });
+
+  it("is null when no other observation is incomplete", () => {
+    expect(nextIncompleteId(batchOf("a", "b").observations, "o1")).toBeNull();
+    expect(nextIncompleteId(state.observations.slice(0, 2), "o1")).toBeNull();
   });
 });

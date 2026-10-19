@@ -37,6 +37,7 @@ stack needs and prints what's missing.
 - [Contributing](CONTRIBUTING.md) — PR flow, formatting, CI gates
 - [Architecture](docs/architecture.md) — system design and components
 - [Deployment](docs/deployment.md) — Cloud Run deployment
+- [Infrastructure](infra/README.md) — what runs in production, how it's sized, and why
 - [Darwin Core](docs/darwin-core.md) — lexicon schemas
 
 ## License

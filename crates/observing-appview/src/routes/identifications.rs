@@ -1,9 +1,7 @@
 use axum::extract::{Path, State};
 use axum::Json;
 use jacquard_common::types::collection::Collection;
-use observing_lexicons::bio_lexicons::temp::v0_1::identification::{
-    Identification, IdentificationRecord, IdentificationTaxonRank,
-};
+use observing_lexicons::bio_lexicons::temp::v0_1::identification::IdentificationRecord;
 use serde::Deserialize;
 use tracing::info;
 use ts_rs::TS;
@@ -14,8 +12,8 @@ use crate::constants;
 use crate::enrichment;
 use crate::error::{AppError, ErrorResponse};
 use crate::responses::{IdentificationListResponse, RecordCreatedResponse, SuccessResponse};
+use crate::routes::occurrences::auto_id;
 use crate::state::AppState;
-use crate::taxonomy_client::TaxonFields;
 use crate::validation::validate_string_length;
 use jacquard_common::types::string::AtUri;
 use std::str::FromStr;
@@ -65,12 +63,19 @@ pub struct CreateIdentificationRequest {
     /// when validation doesn't return a kingdom of its own.
     #[ts(optional)]
     kingdom: Option<String>,
+    /// Stable taxon URI from a GBIF autocomplete pick (e.g.
+    /// `https://www.gbif.org/species/9747581`). Written to the record's
+    /// `taxonID`, and resolved by key in place of a name match, which can't
+    /// tell homonyms apart.
+    #[ts(optional)]
+    taxon_id: Option<String>,
 }
 
 /// Identify an occurrence.
 ///
-/// Writes an identification record to the caller's PDS. The name is matched
-/// against GBIF to fill in its rank and higher taxonomy.
+/// Writes an identification record to the caller's PDS. The taxon is resolved
+/// against GBIF, by `taxonId` when given and by name otherwise, to fill in its
+/// rank and kingdom.
 #[utoipa::path(
     post,
     path = "/api/identifications",
@@ -95,38 +100,16 @@ pub async fn create_identification(
         "Scientific name",
     )?;
 
-    // Validate taxonomy via GBIF
-    let fields = TaxonFields::from_validation(
-        &state.taxonomy,
+    let record_value = auto_id::build_identification_record(
+        &state,
         &body.scientific_name,
-        body.taxon_rank.clone(),
+        body.taxon_rank.as_deref(),
         body.kingdom.as_deref(),
+        body.taxon_id.as_deref(),
+        &body.occurrence_uri,
+        &body.occurrence_cid,
     )
-    .await;
-
-    let occurrence = auth::build_strong_ref(&body.occurrence_uri, &body.occurrence_cid)?;
-
-    let record = Identification::new()
-        .occurrence(occurrence)
-        .scientific_name(&*body.scientific_name)
-        .maybe_taxon_rank(
-            fields
-                .taxon_rank
-                .as_deref()
-                .map(|s| IdentificationTaxonRank::from_value(s.into())),
-        )
-        .maybe_kingdom(fields.kingdom.as_deref().map(Into::into))
-        .build();
-
-    let mut record_value = auth::serialize_at_record(&record)?;
-
-    // App-specific fields (not in upstream lexicon, stored as extra data in the AT Protocol record)
-    if let Some(obj) = record_value.as_object_mut() {
-        obj.insert(
-            "createdAt".to_string(),
-            serde_json::json!(chrono::Utc::now().to_rfc3339()),
-        );
-    }
+    .await?;
 
     let (agent, did_parsed) = auth::require_agent(&state.oauth_client, &user.did).await?;
     let resp = auth::create_at_record(&agent, did_parsed, IdentificationRecord::NSID, record_value)

@@ -2,6 +2,12 @@
 
 export type EffectiveTaxonomy = {
   scientificName: string;
+  /**
+   * Stable URI for the taxon (e.g. `https://www.gbif.org/species/{key}`),
+   * as Darwin Core dwc:taxonID. Lets clients link the exact taxon when the
+   * name alone is ambiguous.
+   */
+  taxonId?: string;
   vernacularName?: string;
   /**
    * Lowercase Darwin Core rank of `scientific_name` (e.g. "genus", "species").

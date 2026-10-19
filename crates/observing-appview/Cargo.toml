@@ -14,6 +14,8 @@ atproto-identity = { path = "../atproto-identity" }
 observing-lexicons = { path = "../observing-lexicons" }
 # Taxonomy resolver (formerly observing-taxonomy)
 gbif = "0.1"
+# Shared reading of GBIF name matches (higher-rank fallbacks, homonyms)
+observing-taxonomy-gbif = { path = "../observing-taxonomy-gbif" }
 wikidata-client = { path = "../wikidata-client" }
 # Media cache (formerly observing-media-proxy)
 atproto-blob-resolver = { path = "../atproto-blob-resolver" }
@@ -22,6 +24,8 @@ file-blob-cache = { path = "../file-blob-cache" }
 observing-species-id-protocol = { path = "../observing-species-id-protocol" }
 # Postgres connection URL from env (DATABASE_URL or DB_* / Cloud SQL socket)
 pg-url-env = { path = "../pg-url-env" }
+# Access token for Cloud Monitoring (service status page)
+gcp-metadata = { path = "../gcp-metadata" }
 
 # AT Protocol types (for record construction)
 jacquard-common = "0.12"
@@ -60,7 +64,7 @@ tracing-subscriber = { workspace = true }
 chrono = { workspace = true }
 
 # Base64 for blob uploads
-base64 = "0.22"
+base64 = { workspace = true }
 
 # AT Protocol OAuth + Agent
 atrium-api = "0.25"

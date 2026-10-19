@@ -1,0 +1,74 @@
+{
+  "usage": {
+    "key": "5231190",
+    "name": "Passer domesticus (Linnaeus, 1758)",
+    "canonicalName": "Passer domesticus",
+    "authorship": "(Linnaeus, 1758)",
+    "rank": "SPECIES",
+    "code": "ZOOLOGICAL",
+    "status": "ACCEPTED",
+    "genericName": "Passer",
+    "specificEpithet": "domesticus",
+    "type": "SCIENTIFIC",
+    "formattedName": "<i>Passer</i> <i>domesticus</i> (Linnaeus, 1758)"
+  },
+  "classification": [
+    {
+      "key": "1",
+      "name": "Animalia",
+      "rank": "KINGDOM"
+    },
+    {
+      "key": "44",
+      "name": "Chordata",
+      "rank": "PHYLUM"
+    },
+    {
+      "key": "212",
+      "name": "Aves",
+      "rank": "CLASS"
+    },
+    {
+      "key": "729",
+      "name": "Passeriformes",
+      "rank": "ORDER"
+    },
+    {
+      "key": "5264",
+      "name": "Passeridae",
+      "rank": "FAMILY"
+    },
+    {
+      "key": "2492321",
+      "name": "Passer",
+      "rank": "GENUS"
+    },
+    {
+      "key": "5231190",
+      "name": "Passer domesticus",
+      "rank": "SPECIES"
+    }
+  ],
+  "diagnostics": {
+    "matchType": "EXACT",
+    "confidence": 100,
+    "note": "All provided names were ignored since the usageKey was provided",
+    "timeTaken": 0,
+    "timings": {
+      "usageKeyMatch": 0
+    }
+  },
+  "additionalStatus": [
+    {
+      "clbDatasetKey": "53131",
+      "datasetAlias": "IUCN",
+      "datasetKey": "19491596-35ae-4a91-9a98-85cf505f1bd3",
+      "status": "LEAST_CONCERN",
+      "statusCode": "LC",
+      "sourceId": "103818789"
+    }
+  ],
+  "synonym": false,
+  "left": 1074262,
+  "right": 1074277
+}

@@ -18,6 +18,9 @@ export const captionIconSx = { fontSize: 16 } as const;
 /** Glyph size for leading icons in section headers, detail rows and badges. */
 export const rowIconSx = { fontSize: 18 } as const;
 
+/** Font size for fine print smaller than `caption` (photo license credits, rank labels). */
+export const finePrintFontSize = "0.65rem";
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 

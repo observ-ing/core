@@ -10,7 +10,7 @@ import { TaxonThumbnail } from "./TaxonThumbnail";
 import { labelChipSx } from "./chipSx";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
-  return buildTaxonUrl(option.scientificName, option.kingdom, option.rank);
+  return buildTaxonUrl(option.scientificName, option.kingdom, option.rank, option.taxonId);
 }
 
 interface TaxaAutocompleteViewProps {

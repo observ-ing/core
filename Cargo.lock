@@ -1603,6 +1603,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "gcp-metadata"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reqwest 0.13.5",
+ "serde",
+ "serde_json",
+ "tokio",
+ "wiremock",
+]
+
+[[package]]
 name = "generator"
 version = "0.8.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3059,6 +3071,7 @@ dependencies = [
  "file-blob-cache",
  "futures",
  "gbif",
+ "gcp-metadata",
  "hickory-resolver",
  "inaturalist",
  "inaturalist-oauth",
@@ -3069,6 +3082,7 @@ dependencies = [
  "observing-db",
  "observing-lexicons",
  "observing-species-id-protocol",
+ "observing-taxonomy-gbif",
  "pg-url-env",
  "reqwest 0.13.5",
  "serde",
@@ -3154,10 +3168,14 @@ dependencies = [
 name = "observing-resolve-taxa"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "clap",
  "observing-bootstrap",
  "observing-db",
+ "observing-tasks",
  "observing-taxonomy-gbif",
+ "serde",
+ "serde_json",
  "sqlx",
  "tokio",
  "tracing",
@@ -3218,6 +3236,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "observing-tasks"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "gcp-metadata",
+ "reqwest 0.13.5",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "observing-taxonomy-gbif"
 version = "0.1.0"
 dependencies = [
@@ -3228,6 +3259,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "wiremock",
 ]
 
 [[package]]
@@ -4989,6 +5021,7 @@ dependencies = [
  "observing-collections",
  "observing-db",
  "observing-lexicons",
+ "observing-tasks",
  "pg-url-env",
  "reqwest 0.13.5",
  "serde",

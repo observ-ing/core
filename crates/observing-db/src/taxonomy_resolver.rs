@@ -59,6 +59,16 @@ pub trait TaxonomyUpstream {
         kingdom_hint: Option<&str>,
     ) -> impl std::future::Future<Output = Result<Option<UpstreamMatch>, ResolveError>> + Send;
 
+    /// The ancestor the upstream falls back to when it can't match the name
+    /// itself (e.g. the genus of a species it doesn't have), which
+    /// [`match_name`](Self::match_name) reports as no match. `Ok(None)` when
+    /// the name matches directly or not at all.
+    fn match_name_fallback(
+        &self,
+        scientific_name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> impl std::future::Future<Output = Result<Option<UpstreamMatch>, ResolveError>> + Send;
+
     fn get_by_key(
         &self,
         taxon_key: i64,
@@ -132,6 +142,27 @@ impl<'a, C: TaxonomyCache, U: TaxonomyUpstream> Resolver<'a, C, U> {
         let Some(m) = self
             .upstream
             .match_name(scientific_name, kingdom_hint)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let target_key = m.target_key;
+        self.cache.upsert_many(&m.rows).await?;
+        Ok(m.rows.into_iter().find(|r| r.taxon_key == target_key))
+    }
+
+    /// The ancestor the upstream falls back to for a name it can't match
+    /// (see [`TaxonomyUpstream::match_name_fallback`]), persisted like any
+    /// other match. Always asks the upstream: the cache is keyed by the
+    /// taxon's own name, so it can't answer for a name that isn't one.
+    pub async fn resolve_fallback_by_name(
+        &self,
+        scientific_name: &str,
+        kingdom_hint: Option<&str>,
+    ) -> Result<Option<TaxonRow>, ResolveError> {
+        let Some(m) = self
+            .upstream
+            .match_name_fallback(scientific_name, kingdom_hint)
             .await?
         else {
             return Ok(None);
@@ -260,6 +291,7 @@ mod tests {
     #[derive(Default)]
     struct FakeUpstream {
         by_name: std::collections::HashMap<String, UpstreamMatch>,
+        fallback_by_name: std::collections::HashMap<String, UpstreamMatch>,
         by_key: std::collections::HashMap<i64, UpstreamMatch>,
         name_calls: Mutex<u32>,
         key_calls: Mutex<u32>,
@@ -283,6 +315,18 @@ mod tests {
                 return Err(ResolveError::Upstream(err.clone()));
             }
             Ok(self.by_name.get(&name.to_lowercase()).cloned())
+        }
+
+        async fn match_name_fallback(
+            &self,
+            name: &str,
+            _kingdom_hint: Option<&str>,
+        ) -> Result<Option<UpstreamMatch>, ResolveError> {
+            *self.name_calls.lock().unwrap() += 1;
+            if let Some(err) = &self.upstream_error {
+                return Err(ResolveError::Upstream(err.clone()));
+            }
+            Ok(self.fallback_by_name.get(&name.to_lowercase()).cloned())
         }
 
         async fn get_by_key(&self, taxon_key: i64) -> Result<Option<UpstreamMatch>, ResolveError> {
@@ -382,6 +426,37 @@ mod tests {
         assert!(matches!(result, Ok(None)));
         assert_eq!(upstream.name_calls(), 1);
         assert_eq!(cache.upserts(), 0);
+    }
+
+    #[tokio::test]
+    async fn fallback_lookup_writes_through_the_ancestor() {
+        let cache = FakeCache::default();
+        let mut genus = make_row(4359855, "Bermudella", Some("Animalia"), "SYNONYM");
+        genus.rank = "genus".to_string();
+        let mut upstream = FakeUpstream::default();
+        upstream.fallback_by_name.insert(
+            "bermudella angelensis".to_string(),
+            UpstreamMatch {
+                target_key: 4359855,
+                rows: vec![genus],
+            },
+        );
+        let resolver = Resolver::new(&cache, &upstream);
+
+        // The plain lookup has no match for the species ...
+        assert!(resolver
+            .resolve_by_name("Bermudella angelensis", None)
+            .await
+            .unwrap()
+            .is_none());
+        // ... and the fallback lookup returns and caches the genus.
+        let row = resolver
+            .resolve_fallback_by_name("Bermudella angelensis", None)
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(row.taxon_key, 4359855);
+        assert_eq!(cache.rows.lock().unwrap().len(), 1);
     }
 
     #[tokio::test]

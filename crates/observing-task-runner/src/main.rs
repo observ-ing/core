@@ -4,7 +4,7 @@
 //! These are operator-triggered, run-to-completion-and-exit tasks — *not*
 //! background workers pulling off a queue. Bundling them behind one binary
 //! means a new task is a module + a `Task` arm, rather than a fresh crate,
-//! Dockerfile stage, CI matrix entry, and Cloud Run Job each time. Each task's
+//! Dockerfile stage, bake target, and Cloud Run Job each time. Each task's
 //! per-row logic lives in its module; the shared `observing_bootstrap::job`
 //! harness provides the CLI flags, pool setup, and bounded-concurrency loop.
 //!
