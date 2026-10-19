@@ -26,7 +26,7 @@
 //!                         falls back to `sqlite:///data/tap.db`
 //!                         (instance-ephemeral on Cloud Run).
 //!   PORT                  HTTP server port (default 8080).
-//!   OBSERVING_TASKS       `off` to stop asking observing-resolve-taxa to
+//!   OBSERVING_TASKS       `off` to stop asking observing-worker to
 //!                         key new identifications (see `observing-tasks`).
 //!
 //! HTTP routes (see `dashboard` module for handlers):

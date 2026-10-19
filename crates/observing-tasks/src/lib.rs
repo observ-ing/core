@@ -24,7 +24,7 @@ use cloud_tasks::HttpTask;
 use serde_json::Value;
 use tracing::{info, warn};
 
-pub use registry::Task;
+pub use registry::{Task, WORKER_SERVICE};
 
 /// The account Cloud Tasks calls services as.
 const INVOKER_ACCOUNT: &str = "cloud-tasks-invoker";
@@ -321,8 +321,8 @@ mod tests {
     #[test]
     fn cloud_run_urls_use_the_deterministic_format() {
         assert_eq!(
-            cloud_run_url("observing-resolve-taxa", "735499857017", "us-central1"),
-            "https://observing-resolve-taxa-735499857017.us-central1.run.app"
+            cloud_run_url("observing-worker", "735499857017", "us-central1"),
+            "https://observing-worker-735499857017.us-central1.run.app"
         );
     }
 
@@ -382,6 +382,6 @@ mod tests {
             .write_all(b"HTTP/1.1 200 OK\r\ncontent-length: 0\r\n\r\n")
             .await
             .unwrap();
-        assert!(String::from_utf8_lossy(&request).starts_with("POST /run HTTP/1.1"));
+        assert!(String::from_utf8_lossy(&request).starts_with("POST /tasks/resolve-taxa HTTP/1.1"));
     }
 }

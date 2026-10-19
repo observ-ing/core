@@ -121,6 +121,11 @@ pub struct AppState {
     /// iNaturalist account linking, when an iNaturalist application is
     /// configured. `None` turns the feature off.
     pub inat: Option<Arc<Inat>>,
+    /// Where background task runs are queued.
+    pub tasks: Arc<observing_tasks::Tasks>,
+    /// Pool as `ingester_runtime`, for task routes that write the `ingester`
+    /// schema. Only on the worker.
+    pub ingester_pool: Option<sqlx::PgPool>,
 }
 
 /// Create an OAuthClient.

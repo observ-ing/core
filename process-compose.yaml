@@ -45,6 +45,12 @@ processes:
       - SPECIES_ID_SERVICE_URL=http://localhost:${SPECIES_ID_PORT:-3005}
       - VITE_DEV_SERVER_URL=http://localhost:${VITE_PORT:-5173}
       - PUBLIC_URL=${PUBLIC_URL:-}
+      # Locally the one appview both serves the web and runs background tasks
+      # on its /tasks/* routes; production runs them in observing-worker (see
+      # .env.example). Resolution passes write the ingester schema; locally
+      # the same superuser connection does.
+      - APPVIEW_TASK_ROUTES=1
+      - INGESTER_DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
     depends_on:
       # migrate must finish first so the schema exists before appview reads it.
       migrate:
@@ -81,9 +87,10 @@ processes:
       # only cares about records created now, so skipping replay is correct
       # here. Inherited by the spawned `tap` binary via $TAP_NO_REPLAY.
       - TAP_NO_REPLAY=${TAP_NO_REPLAY:-true}
-      # Where to ask resolve-taxa for a pass after each new identification
-      # (crates/observing-tasks). Production goes through Cloud Tasks.
-      - RESOLVE_TAXA_PORT=${RESOLVE_TAXA_PORT:-3007}
+      # Where to ask for a resolution pass after each new identification: the
+      # dev appview's /tasks/* routes (crates/observing-tasks). Production
+      # goes through Cloud Tasks to observing-worker.
+      - APPVIEW_PORT=${APPVIEW_PORT:-3000}
     depends_on:
       migrate:
         condition: process_completed_successfully
@@ -96,25 +103,6 @@ processes:
       http_get:
         host: localhost
         port: ${TAP_INGESTER_PORT:-8090}
-        path: /health
-      initial_delay_seconds: 120
-      period_seconds: 5
-
-  # Fills accepted_taxon_key on new identifications, a minute after
-  # tap-ingester writes them. Same --serve mode as the production Cloud Run
-  # service, without the Cloud Tasks queue.
-  resolve-taxa:
-    command: cargo run -p observing-resolve-taxa -- --serve
-    environment:
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
-      - PORT=${RESOLVE_TAXA_PORT:-3007}
-    depends_on:
-      migrate:
-        condition: process_completed_successfully
-    readiness_probe:
-      http_get:
-        host: localhost
-        port: ${RESOLVE_TAXA_PORT:-3007}
         path: /health
       initial_delay_seconds: 120
       period_seconds: 5

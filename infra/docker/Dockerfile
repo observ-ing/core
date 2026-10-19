@@ -20,10 +20,10 @@
 #
 # Supported SERVICE values:
 #   observing-appview, observing-species-id, observing-migrate, tap-ingester,
-#   observing-task-runner, observing-resolve-taxa
+#   observing-task-runner
 
 ARG SERVICE=observing-appview
-ARG RUST_PACKAGES="observing-appview observing-migrate observing-species-id observing-task-runner tap-ingester observing-resolve-taxa"
+ARG RUST_PACKAGES="observing-appview observing-migrate observing-species-id observing-task-runner tap-ingester"
 
 # ---------------------------------------------------------------------------
 # Stage: frontend-builder (only meaningful for appview)
@@ -158,7 +158,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libheif-example
 COPY --link --from=builder /app/target/release/observing-appview /app/observing-appview
 COPY --link --from=frontend-builder /app/dist/public /app/public
 
-ENV RUST_LOG=observing_appview=info
+ENV RUST_LOG=observing_appview=info,observing_tasks=info
 ENV PORT=3000
 ENV PUBLIC_PATH=/app/public
 EXPOSE 3000
@@ -204,18 +204,6 @@ ENV RUST_LOG=observing_task_runner=info
 # ENTRYPOINT (not CMD) so the Cloud Run Job's `--args` append the subcommand +
 # flags, e.g. `--args=backfill-occurrences,--dry-run,--all`.
 ENTRYPOINT ["/app/observing-task-runner"]
-
-# ---------------------------------------------------------------------------
-# Stage: runtime for resolve-taxa (private Cloud Run service, run by Cloud Tasks)
-# ---------------------------------------------------------------------------
-FROM runtime-base AS runtime-observing-resolve-taxa
-
-COPY --link --from=builder /app/target/release/observing-resolve-taxa /app/observing-resolve-taxa
-
-ENV RUST_LOG=observing_resolve_taxa=info,observing_db=info,observing_tasks=info
-ENV PORT=8080
-EXPOSE 8080
-CMD ["/app/observing-resolve-taxa", "--serve"]
 
 # ---------------------------------------------------------------------------
 # Stage: runtime for species-id

@@ -37,9 +37,6 @@ processes:
     availability:
       restart: exit_on_failure
     environment:
-      # Nothing in the e2e flows reads accepted_taxon_key.
+      # Nothing in the e2e flows reads accepted_taxon_key, and resolution
+      # passes would call GBIF for every identification the tests create.
       - OBSERVING_TASKS=off
-
-  # Would call GBIF for every identification the tests create.
-  resolve-taxa:
-    disabled: true

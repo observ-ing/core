@@ -27,6 +27,16 @@ pub struct Config {
     pub admin_dids: Vec<String>,
     /// iNaturalist account linking. `None` turns the feature off.
     pub inat: Option<InatConfig>,
+    /// Whether this process serves the `/tasks/*` routes that Cloud Tasks
+    /// calls (`APPVIEW_TASK_ROUTES`). Off on the public appview; on for its
+    /// private, single-instance `observing-worker` deploy and for local
+    /// development. See [`crate::routes::tasks`].
+    pub task_routes: bool,
+    /// Connection as `ingester_runtime`, for tasks that write the `ingester`
+    /// schema (resolve-taxa). `INGESTER_DATABASE_URL`, or the shared `DB_*`
+    /// values with `INGESTER_DB_USER`/`INGESTER_DB_PASSWORD`. Only used with
+    /// [`Self::task_routes`] on.
+    pub ingester_database_url: Option<String>,
 }
 
 /// Settings for talking to iNaturalist, present when an iNaturalist OAuth
@@ -134,6 +144,17 @@ impl Config {
             env::var("INAT_CLIENT_SECRET").ok(),
             env::var("INAT_API_URL").ok(),
         );
+        let task_routes = is_on(env::var("APPVIEW_TASK_ROUTES").ok());
+        let ingester_database_url = env::var("INGESTER_DATABASE_URL")
+            .ok()
+            .filter(|s| !s.trim().is_empty())
+            .or_else(|| {
+                pg_url_env::postgres_url_from_db_env_as(
+                    "INGESTER_",
+                    "observing",
+                    "ingester_runtime",
+                )
+            });
 
         Self {
             port,
@@ -147,8 +168,19 @@ impl Config {
             hidden_dids,
             admin_dids,
             inat,
+            task_routes,
+            ingester_database_url,
         }
     }
+}
+
+/// Whether an on/off environment variable is on: `1` or `true`. Unset, blank,
+/// and anything else are off.
+fn is_on(value: Option<String>) -> bool {
+    value.is_some_and(|v| {
+        let v = v.trim();
+        v == "1" || v.eq_ignore_ascii_case("true")
+    })
 }
 
 /// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
@@ -198,6 +230,21 @@ mod tests {
     fn test_parse_did_list_only_commas() {
         let result = parse_did_list(",,,");
         assert!(result.is_empty());
+    }
+
+    #[test]
+    fn task_routes_are_off_unless_asked_for() {
+        assert!(!is_on(None));
+        assert!(!is_on(some("")));
+        assert!(!is_on(some("0")));
+        assert!(!is_on(some("false")));
+    }
+
+    #[test]
+    fn task_routes_are_turned_on_by_1_or_true() {
+        assert!(is_on(some("1")));
+        assert!(is_on(some("true")));
+        assert!(is_on(some(" TRUE ")));
     }
 
     fn some(value: &str) -> Option<String> {

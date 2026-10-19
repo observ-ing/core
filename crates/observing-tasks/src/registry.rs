@@ -1,15 +1,19 @@
 //! Every background task, and where it runs.
 //!
-//! Adding a task: add a variant and fill in each method, add it to
-//! [`Task::ALL`], give it a Cloud Run service that serves [`Task::path`], and
-//! create its queue (docs/deployment.md#cloud-tasks).
+//! Every task runs in one service, [`WORKER_SERVICE`]: the appview with its
+//! `/tasks/*` routes on, deployed privately. Adding a task: add a variant and
+//! fill in each method, add it to [`Task::ALL`], add its route to the
+//! appview's `routes::tasks`, and create its queue
+//! (docs/deployment.md#cloud-tasks).
 
 use std::time::Duration;
 
+/// The Cloud Run service that runs every task.
+pub const WORKER_SERVICE: &str = "observing-worker";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Task {
-    /// Fill in `accepted_taxon_key` on identifications
-    /// (`observing-resolve-taxa`).
+    /// Fill in `accepted_taxon_key` on identifications.
     ResolveTaxa,
 }
 
@@ -25,36 +29,30 @@ impl Task {
 
     /// The Cloud Run service that runs it.
     pub const fn service(self) -> &'static str {
-        match self {
-            Task::ResolveTaxa => "observing-resolve-taxa",
-        }
+        WORKER_SERVICE
     }
 
     /// The path a run is POSTed to.
     pub const fn path(self) -> &'static str {
         match self {
-            Task::ResolveTaxa => "/run",
+            Task::ResolveTaxa => "/tasks/resolve-taxa",
         }
     }
 
-    /// The service's port in local development, unless [`Self::port_env`]
-    /// says otherwise.
+    /// The worker's port in local development, where the dev appview serves
+    /// the task routes, unless [`Self::port_env`] says otherwise.
     pub const fn local_port(self) -> u16 {
-        match self {
-            Task::ResolveTaxa => 3007,
-        }
+        3000
     }
 
     /// The environment variable that moves [`Self::local_port`], as
     /// `scripts/dev.sh` does for every service.
     pub const fn port_env(self) -> &'static str {
-        match self {
-            Task::ResolveTaxa => "RESOLVE_TAXA_PORT",
-        }
+        "APPVIEW_PORT"
     }
 
-    /// How long Cloud Tasks waits on a run before retrying it. The service's
-    /// `--timeout` should match.
+    /// How long Cloud Tasks waits on a run before retrying it. The worker's
+    /// `--timeout` should be at least the longest of these.
     pub const fn dispatch_deadline(self) -> Duration {
         match self {
             Task::ResolveTaxa => Duration::from_secs(15 * 60),
@@ -76,21 +74,18 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn names_services_and_ports_are_unique() {
+    fn names_and_paths_are_unique() {
         let count = Task::ALL.len();
         let names: HashSet<_> = Task::ALL.iter().map(|t| t.name()).collect();
-        let services: HashSet<_> = Task::ALL.iter().map(|t| t.service()).collect();
-        let ports: HashSet<_> = Task::ALL.iter().map(|t| t.local_port()).collect();
+        let paths: HashSet<_> = Task::ALL.iter().map(|t| t.path()).collect();
         assert_eq!(names.len(), count);
-        assert_eq!(services.len(), count);
-        assert_eq!(ports.len(), count);
+        assert_eq!(paths.len(), count);
     }
 
     #[test]
-    fn port_env_follows_the_name() {
+    fn paths_follow_the_name() {
         for task in Task::ALL {
-            let expected = format!("{}_PORT", task.name().to_uppercase().replace('-', "_"));
-            assert_eq!(task.port_env(), expected);
+            assert_eq!(task.path(), format!("/tasks/{}", task.name()));
         }
     }
 

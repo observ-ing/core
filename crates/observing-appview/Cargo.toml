@@ -24,6 +24,10 @@ file-blob-cache = { path = "../file-blob-cache" }
 observing-species-id-protocol = { path = "../observing-species-id-protocol" }
 # Postgres connection URL from env (DATABASE_URL or DB_* / Cloud SQL socket)
 pg-url-env = { path = "../pg-url-env" }
+# Queues task runs on Cloud Tasks
+observing-tasks = { path = "../observing-tasks" }
+# The resolution pass, run on /tasks/resolve-taxa
+observing-resolve-taxa = { path = "../observing-resolve-taxa" }
 # Access token for Cloud Monitoring (service status page)
 gcp-metadata = { path = "../gcp-metadata" }
 
