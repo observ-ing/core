@@ -276,7 +276,7 @@ impl Trigger {
         let this = self.clone();
         tokio::spawn(async move {
             let run = Run {
-                id: Some(window_task_id(this.task.name(), window)),
+                id: Some(run_id(this.task, window)),
                 body: None,
                 at: DateTime::from_timestamp((window + 1) * window_secs, 0),
             };
@@ -299,10 +299,13 @@ fn cloud_run_url(service: &str, project_number: &str, region: &str) -> String {
     format!("https://{service}-{project_number}.{region}.run.app")
 }
 
-/// A task ID for one window. IDs that sort in sequence, like timestamps, slow
-/// Cloud Tasks down, so it starts with a hash of the window.
-fn window_task_id(name: &str, window: i64) -> String {
-    format!("{:08x}-{name}-{window}", fnv1a(&window.to_le_bytes()))
+/// A [`Run::id`] for `task` that's the same for every run with the same
+/// `key` (a window, or a time), so Cloud Tasks keeps only the first. IDs that
+/// sort in sequence, like timestamps, slow Cloud Tasks down, so it starts
+/// with a hash of the key.
+pub fn run_id(task: Task, key: i64) -> String {
+    let name = task.name();
+    format!("{:08x}-{name}-{key}", fnv1a(&key.to_le_bytes()))
 }
 
 /// 32-bit FNV-1a. Stable across builds, unlike `DefaultHasher`, so two
@@ -328,12 +331,12 @@ mod tests {
 
     #[test]
     fn window_ids_are_stable_and_differ_by_window() {
-        let id = window_task_id("resolve-taxa", 29_000_000);
-        assert_eq!(id, window_task_id("resolve-taxa", 29_000_000));
+        let id = run_id(Task::ResolveTaxa, 29_000_000);
+        assert_eq!(id, run_id(Task::ResolveTaxa, 29_000_000));
         assert!(id.ends_with("-resolve-taxa-29000000"));
         assert_ne!(
             id[..8],
-            window_task_id("resolve-taxa", 29_000_001)[..8],
+            run_id(Task::ResolveTaxa, 29_000_001)[..8],
             "neighboring windows should not share a prefix"
         );
     }

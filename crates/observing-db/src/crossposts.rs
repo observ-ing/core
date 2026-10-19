@@ -170,6 +170,27 @@ pub async fn claim_pending(
     .await
 }
 
+/// When the next pending crosspost's backoff runs out: the earliest time
+/// [`claim_pending`] would hand one out. `None` when nothing is pending.
+///
+/// The backoff is the same expression as `claim_pending`'s; keep them in step.
+/// A runtime query rather than `query!`, so it needs no `.sqlx` entry.
+pub async fn next_due_at(
+    executor: impl sqlx::PgExecutor<'_>,
+    service: &str,
+) -> Result<Option<chrono::DateTime<chrono::Utc>>, sqlx::Error> {
+    sqlx::query_scalar(
+        r#"
+        SELECT MIN(updated_at + make_interval(secs => 30 * (2 ^ attempts - 1)))
+        FROM crossposts
+        WHERE service = $1 AND status = 'pending'
+        "#,
+    )
+    .bind(service)
+    .fetch_one(executor)
+    .await
+}
+
 pub async fn set_external_uri(
     executor: impl sqlx::PgExecutor<'_>,
     occurrence_uri: &str,

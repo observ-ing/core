@@ -15,15 +15,18 @@ pub const WORKER_SERVICE: &str = "observing-worker";
 pub enum Task {
     /// Fill in `accepted_taxon_key` on identifications.
     ResolveTaxa,
+    /// Carry out queued iNaturalist cross-posts.
+    InatCrossposts,
 }
 
 impl Task {
-    pub const ALL: &'static [Task] = &[Task::ResolveTaxa];
+    pub const ALL: &'static [Task] = &[Task::ResolveTaxa, Task::InatCrossposts];
 
     /// The task's Cloud Tasks queue, and the prefix of its task IDs.
     pub const fn name(self) -> &'static str {
         match self {
             Task::ResolveTaxa => "resolve-taxa",
+            Task::InatCrossposts => "inat-crossposts",
         }
     }
 
@@ -36,6 +39,7 @@ impl Task {
     pub const fn path(self) -> &'static str {
         match self {
             Task::ResolveTaxa => "/tasks/resolve-taxa",
+            Task::InatCrossposts => "/tasks/inat-crossposts",
         }
     }
 
@@ -56,6 +60,7 @@ impl Task {
     pub const fn dispatch_deadline(self) -> Duration {
         match self {
             Task::ResolveTaxa => Duration::from_secs(15 * 60),
+            Task::InatCrossposts => Duration::from_secs(10 * 60),
         }
     }
 
@@ -64,6 +69,9 @@ impl Task {
     pub const fn window(self) -> Duration {
         match self {
             Task::ResolveTaxa => Duration::from_secs(60),
+            // Someone is watching for their cross-post, so runs are queued
+            // directly rather than through a trigger.
+            Task::InatCrossposts => Duration::from_secs(1),
         }
     }
 }

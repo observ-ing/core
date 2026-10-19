@@ -174,12 +174,43 @@ pub async fn create_at_record_with_rkey(
         .map_err(|e| map_xrpc_error(e, "create"))
 }
 
-/// Replace the record at `at_uri` via `putRecord`.
+/// Fetch the record at `at_uri` via `getRecord`, with its CID.
+pub async fn get_at_record(
+    agent: &AgentType,
+    did: atrium_api::types::string::Did,
+    at_uri: &AtUri,
+) -> Result<(Value, Option<atrium_api::types::string::Cid>), AppError> {
+    let (collection, rkey) = parse_collection_and_rkey(at_uri)?;
+    let output = agent
+        .api
+        .com
+        .atproto
+        .repo
+        .get_record(
+            atrium_api::com::atproto::repo::get_record::ParametersData {
+                cid: None,
+                collection,
+                repo: atrium_api::types::string::AtIdentifier::Did(did),
+                rkey,
+            }
+            .into(),
+        )
+        .await
+        .map_err(|e| map_xrpc_error(e, "fetch"))?;
+    let value = serde_json::to_value(&output.value)
+        .map_err(|e| AppError::Internal(format!("Failed to serialize record: {e}")))?;
+    Ok((value, output.cid.clone()))
+}
+
+/// Replace the record at `at_uri` via `putRecord`. With a `swap_record`, the
+/// write fails unless that is still the record's CID, so a change made since
+/// it was fetched is not overwritten.
 pub async fn put_at_record(
     agent: &AgentType,
     did: atrium_api::types::string::Did,
     at_uri: &AtUri,
     record_value: Value,
+    swap_record: Option<atrium_api::types::string::Cid>,
 ) -> Result<atrium_api::com::atproto::repo::put_record::Output, AppError> {
     let (collection, rkey) = parse_collection_and_rkey(at_uri)?;
     agent
@@ -195,7 +226,7 @@ pub async fn put_at_record(
                 repo: atrium_api::types::string::AtIdentifier::Did(did),
                 rkey,
                 swap_commit: None,
-                swap_record: None,
+                swap_record,
                 validate: None,
             }
             .into(),
