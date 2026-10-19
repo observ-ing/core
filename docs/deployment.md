@@ -81,7 +81,7 @@ gcloud scheduler jobs run resolve-taxa-backstop --project=$PROJECT --location=$R
 
 Adding a task to an existing setup: run the queue loop and the scheduler loop above with `TASKS` set to just the new task (for cross-posts, `TASKS="inat-crossposts"`).
 
-Moving from `observing-resolve-taxa` (#955): the queue, account and bindings stay. Grant `run.invoker` on the worker as above, point the backstop at it with `gcloud scheduler jobs update http resolve-taxa-backstop --uri=$URL/tasks/resolve-taxa --oidc-token-audience=$URL`, then `gcloud run services delete observing-resolve-taxa`.
+Moving from `observing-resolve-taxa` (#955): the queue, account and bindings stay. Grant `run.invoker` on the worker as above, point the backstop at it with `gcloud scheduler jobs update http resolve-taxa-backstop --uri=$URL/tasks/resolve-taxa --oidc-service-account-email=$INVOKER --oidc-token-audience=$URL` (gcloud refuses the audience without the account), then `gcloud run services delete observing-resolve-taxa`.
 
 To check on it, `gcloud tasks list --queue=<task> --project=$PROJECT --location=$REGION` shows runs waiting, and the worker's logs show `Resolution pass finished` with `updated_rows` after each pass, and `Cross-post run finished` after each cross-post run.
 
