@@ -21,9 +21,9 @@ use tracing::info;
 
 /// Species label metadata loaded from JSON.
 ///
-/// The on-disk labels file may include richer fields (phylum/class/order/
-/// family/genus etc.) — serde silently ignores them. We only deserialize
-/// the fields that the response actually carries.
+/// The on-disk labels file may include fields beyond these — serde silently
+/// ignores them. We only deserialize the fields that the response actually
+/// carries.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SpeciesLabel {
@@ -32,6 +32,16 @@ pub struct SpeciesLabel {
     pub common_name: Option<String>,
     #[serde(default)]
     pub kingdom: Option<String>,
+    #[serde(default)]
+    pub phylum: Option<String>,
+    #[serde(default)]
+    pub class: Option<String>,
+    #[serde(default)]
+    pub order: Option<String>,
+    #[serde(default)]
+    pub family: Option<String>,
+    #[serde(default)]
+    pub genus: Option<String>,
 }
 
 /// Pre-computed species embeddings and their metadata
@@ -163,6 +173,11 @@ impl SpeciesEmbeddings {
                     confidence: score,
                     common_name: label.common_name.clone(),
                     kingdom: label.kingdom.clone(),
+                    phylum: label.phylum.clone(),
+                    class: label.class.clone(),
+                    order: label.order.clone(),
+                    family: label.family.clone(),
+                    genus: label.genus.clone(),
                     in_range,
                 }
             })
@@ -186,6 +201,11 @@ mod tests {
                 scientific_name: format!("Species {}", i),
                 common_name: None,
                 kingdom: None,
+                phylum: None,
+                class: None,
+                order: None,
+                family: None,
+                genus: None,
             })
             .collect();
         SpeciesEmbeddings {
@@ -220,6 +240,25 @@ mod tests {
         assert_eq!(species.len(), 2);
         assert_eq!(species.embed_dim, 3);
         assert_eq!(species.embeddings.row(1).to_vec(), vec![0.0, 0.6, 0.8]);
+    }
+
+    #[test]
+    fn top_k_carries_label_taxonomy() {
+        let bytes: Vec<u8> = [1.0f32, 0.0].iter().flat_map(|f| f.to_le_bytes()).collect();
+        let dir = write_model_dir(
+            r#"[{"scientificName":"Enallagma anna","kingdom":"Animalia","phylum":"Arthropoda",
+                "class":"Insecta","order":"Odonata","family":"Coenagrionidae","genus":"Enallagma"}]"#,
+            &bytes,
+        );
+        let species = SpeciesEmbeddings::load(dir.path()).unwrap();
+
+        let out = species.top_k_from_scores(&[0.9], 1, None);
+
+        assert_eq!(out[0].phylum.as_deref(), Some("Arthropoda"));
+        assert_eq!(out[0].class.as_deref(), Some("Insecta"));
+        assert_eq!(out[0].order.as_deref(), Some("Odonata"));
+        assert_eq!(out[0].family.as_deref(), Some("Coenagrionidae"));
+        assert_eq!(out[0].genus.as_deref(), Some("Enallagma"));
     }
 
     #[test]

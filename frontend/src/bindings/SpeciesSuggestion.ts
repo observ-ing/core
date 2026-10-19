@@ -5,13 +5,21 @@
  *
  * `kingdom` is used by the frontend for the taxon link target and is passed
  * to GBIF's `match_name` as a disambiguator when the appview enriches a
- * missing common name.
+ * missing common name. `kingdom` through `genus` together let the frontend
+ * roll ambiguous candidates up to their shared ancestor (e.g. five bluets →
+ * *Enallagma* sp.); without the lower ranks the rollup can only land on
+ * kingdom.
  */
 export type SpeciesSuggestion = {
   scientificName: string;
   confidence: number;
   commonName?: string;
   kingdom?: string;
+  phylum?: string;
+  class?: string;
+  order?: string;
+  family?: string;
+  genus?: string;
   /**
    * Whether this species' iNat range covers the request lat/lon.
    * `None` when geo lookup wasn't performed (no lat/lon, no geo index)

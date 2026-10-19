@@ -53,6 +53,16 @@ pub struct EnrichedSpeciesSuggestion {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub kingdom: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub phylum: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub class: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub family: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub genus: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub in_range: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub taxon_match: Option<TaxonResult>,
@@ -242,6 +252,11 @@ async fn enrich_suggestions(
                 confidence: s.confidence,
                 common_name,
                 kingdom: s.kingdom,
+                phylum: s.phylum,
+                class: s.class,
+                order: s.order,
+                family: s.family,
+                genus: s.genus,
                 in_range: s.in_range,
                 taxon_match,
             }

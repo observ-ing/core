@@ -31,7 +31,10 @@ fn default_limit() -> usize {
 ///
 /// `kingdom` is used by the frontend for the taxon link target and is passed
 /// to GBIF's `match_name` as a disambiguator when the appview enriches a
-/// missing common name.
+/// missing common name. `kingdom` through `genus` together let the frontend
+/// roll ambiguous candidates up to their shared ancestor (e.g. five bluets →
+/// *Enallagma* sp.); without the lower ranks the rollup can only land on
+/// kingdom.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[serde(rename_all = "camelCase")]
 #[ts(export, export_to = "bindings/")]
@@ -44,6 +47,21 @@ pub struct SpeciesSuggestion {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub kingdom: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub phylum: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub class: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub order: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub family: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub genus: Option<String>,
     /// Whether this species' iNat range covers the request lat/lon.
     /// `None` when geo lookup wasn't performed (no lat/lon, no geo index)
     /// or when the cell at the request point is unknown to the index — i.e.
