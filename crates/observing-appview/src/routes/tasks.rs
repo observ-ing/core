@@ -16,13 +16,15 @@ use axum::http::StatusCode;
 use axum::routing::post;
 use axum::{Json, Router};
 use observing_resolve_taxa::pass::{Clients, Cursor, Options, Outcome};
-use observing_tasks::{Run, Task};
+use observing_tasks::{run_id, Run, Task};
 use observing_taxonomy_gbif::GbifUpstream;
 use serde_json::{json, Value};
 use tokio::sync::Mutex;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 use wikidata_client::WikidataClient;
 
+use crate::inat::worker::{self, Drained};
+use crate::inat::SERVICE;
 use crate::state::AppState;
 
 /// How long one resolution pass runs before handing the rest to a new run.
@@ -33,13 +35,21 @@ const RESOLVE_TAXA_BUDGET: Duration = Duration::from_secs(10 * 60);
 /// Pause between GBIF lookups, to be polite.
 const GBIF_RATE_LIMIT: Duration = Duration::from_millis(100);
 
+/// How long one run works through cross-posts before handing the rest to a
+/// new run. Leaves [`Task::dispatch_deadline`] room for the job in progress,
+/// which can include several photo uploads.
+const CROSSPOST_BUDGET: Duration = Duration::from_secs(5 * 60);
+
 /// One run of each task at a time in this process. The task's queue already
 /// ensures this in production; locally, it keeps overlapping runs from
-/// multiplying the rate GBIF sees.
+/// multiplying the rate GBIF or iNaturalist sees.
 static RESOLVING_TAXA: Mutex<()> = Mutex::const_new(());
+static CROSSPOSTING: Mutex<()> = Mutex::const_new(());
 
 pub fn router() -> Router<AppState> {
-    Router::new().route(Task::ResolveTaxa.path(), post(resolve_taxa))
+    Router::new()
+        .route(Task::ResolveTaxa.path(), post(resolve_taxa))
+        .route(Task::InatCrossposts.path(), post(inat_crossposts))
 }
 
 /// Run a resolution pass, from the [`Cursor`] in the body or from the start,
@@ -113,5 +123,65 @@ async fn resolve_taxa(
     Ok(Json(json!({
         "updated_rows": report.updated_rows,
         "paused": paused,
+    })))
+}
+
+/// Carry out the cross-posts that are due, then queue a run for whatever
+/// comes due next. A 5xx has Cloud Tasks retry the request.
+async fn inat_crossposts(
+    State(state): State<AppState>,
+) -> Result<Json<Value>, (StatusCode, String)> {
+    let Some(inat) = state.inat.clone() else {
+        // A 2xx, so Cloud Tasks doesn't keep retrying a run that can't happen.
+        warn!("Cross-post run requested, but cross-posting is off");
+        return Ok(Json(json!({ "skipped": "cross-posting is off" })));
+    };
+
+    let _running = CROSSPOSTING.lock().await;
+    let deadline = state
+        .tasks
+        .is_cloud_tasks()
+        .then(|| Instant::now() + CROSSPOST_BUDGET);
+    let drained = worker::run_pending(&state, &inat, deadline)
+        .await
+        .map_err(|e| {
+            error!(error = %e, "Cross-post run failed");
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
+
+    // The next run: right away if the deadline cut this one short, otherwise
+    // when the next retry's backoff runs out.
+    let next = match drained {
+        Drained::Deadline => Some(Run::default()),
+        Drained::All => observing_db::crossposts::next_due_at(&state.pool, SERVICE)
+            .await
+            .map_err(|e| {
+                error!(error = %e, "Failed to look up the next cross-post retry");
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            })?
+            .map(|at| Run {
+                // Every run that sees this retry asks for the same one.
+                id: Some(run_id(Task::InatCrossposts, at.timestamp())),
+                at: Some(at),
+                ..Default::default()
+            }),
+    };
+    if let Some(run) = &next {
+        state
+            .tasks
+            .enqueue(Task::InatCrossposts, run.clone())
+            .await
+            .map_err(|e| {
+                // Rerunning this request queues it again.
+                error!(error = %e, "Failed to queue the next cross-post run");
+                (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+            })?;
+    }
+
+    let next_at = next.as_ref().and_then(|run| run.at);
+    info!(drained = ?drained, next_at = ?next_at, "Cross-post run finished");
+    Ok(Json(json!({
+        "paused": drained == Drained::Deadline,
+        "next_at": next_at,
     })))
 }

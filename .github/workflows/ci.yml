@@ -648,8 +648,9 @@ jobs:
       # run at once. It scales to zero between runs. It holds two roles:
       # appview_runtime (DB_*) and ingester_runtime (INGESTER_DB_*), for tasks
       # that write the ingester schema. --timeout covers the longest dispatch
-      # deadline (15 minutes). Deployed before tap-ingester, which queues runs
-      # for it. Reasons and sizing: infra/README.md#observing-worker
+      # deadline (15 minutes). Deployed before tap-ingester and the appview,
+      # which queue runs for it. Reasons and sizing:
+      # infra/README.md#observing-worker
       - name: Deploy worker
         run: |
           gcloud run deploy observing-worker \
@@ -664,7 +665,7 @@ jobs:
             --timeout=900 \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
             --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|INGESTER_DB_USER=ingester_runtime|PUBLIC_URL=$PUBLIC_URL|APPVIEW_TASK_ROUTES=1" \
-            --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INGESTER_DB_PASSWORD=observing-db-ingester-password:latest
+            --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INGESTER_DB_PASSWORD=observing-db-ingester-password:latest,INAT_CLIENT_ID=INAT_CLIENT_ID:latest,INAT_CLIENT_SECRET=INAT_CLIENT_SECRET:latest
 
       # --no-cpu-throttling is load-bearing: the firehose loop isn't
       # request-driven and falls behind the relay without always-on CPU

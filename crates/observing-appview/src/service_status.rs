@@ -67,7 +67,7 @@ const SERVICES: &[ServiceInfo] = &[
     ServiceInfo {
         id: "observing-worker",
         name: "Background tasks",
-        description: "Matches new identifications to the GBIF taxonomy, a minute after they arrive.",
+        description: "Matches new identifications to the GBIF taxonomy, a minute after they arrive, and posts observations to iNaturalist when their owners ask.",
         always_on: false,
     },
     ServiceInfo {

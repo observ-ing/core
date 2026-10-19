@@ -173,7 +173,6 @@ impl InatClient {
 
     /// The ID of the iNaturalist taxon named exactly `name` at `rank`, if
     /// there is exactly one.
-    #[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
     pub async fn find_taxon_id(
         &self,
         jwt: &str,
@@ -206,7 +205,6 @@ impl InatClient {
 
     /// Create the observation, or update the one with the same UUID. Returns
     /// its numeric ID.
-    #[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
     pub async fn upsert_observation(
         &self,
         jwt: &str,
@@ -232,7 +230,6 @@ impl InatClient {
     }
 
     /// Attach a photo to an observation, or replace the one with the same UUID.
-    #[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
     pub async fn attach_photo(
         &self,
         jwt: &str,

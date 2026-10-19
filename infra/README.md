@@ -27,7 +27,7 @@ The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub o
 | [observing-species-id](#observing-species-id) | Cloud Run service | BioCLIP ViT-H/14 species ID for uploads | 2 vCPU / 8 GiB | 0–10* | Request-based | — |
 | [observing-species-id-live](#observing-species-id-live) | Cloud Run service | BioCLIP ViT-L/14 species ID for the live camera | 2 vCPU / 4 GiB | 0–10* | Request-based | — |
 | [storybook](#storybook) | Cloud Run service | Component library for development | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
-| [observing-worker](#observing-worker) | Cloud Run service (private) | Runs every background task (taxon resolution), called by Cloud Tasks | 1 vCPU / 512 MiB | 0–1 | Request-based | `appview_runtime` + `ingester_runtime` |
+| [observing-worker](#observing-worker) | Cloud Run service (private) | Runs every background task (taxon resolution, iNaturalist cross-posts), called by Cloud Tasks | 1 vCPU / 512 MiB | 0–1 | Request-based | `appview_runtime` + `ingester_runtime` |
 | [observing-migrate](#observing-migrate) | Cloud Run job | Runs migrations before each deploy | Default | — | — | `postgres` |
 | [observing-task-runner](#observing-task-runner) | Cloud Run job | Backfills and replays, run by hand | Default | — | — | `ingester_runtime` |
 | [observing-db](#observing-db) | Cloud SQL | PostgreSQL 18 for everything above | 1 vCPU / 4 GB | — | — | — |
@@ -81,12 +81,12 @@ The static Storybook build, served by static-web-server. It's built and deployed
 
 ## observing-worker
 
-The appview image deployed a second time, with `APPVIEW_TASK_ROUTES=1`, to run every background task in the registry in `crates/observing-tasks`, each at `POST /tasks/<task>` (`crates/observing-appview/src/routes/tasks.rs`). Today that's taxon resolution, a library (`crates/observing-resolve-taxa`) it links. One service for every task means a new task is a registry entry, a route and a queue, not another deploy step, IAM binding and status tile.
+The appview image deployed a second time, with `APPVIEW_TASK_ROUTES=1`, to run every background task in the registry in `crates/observing-tasks`, each at `POST /tasks/<task>` (`crates/observing-appview/src/routes/tasks.rs`). Today that's taxon resolution, a library (`crates/observing-resolve-taxa`) it links, and iNaturalist cross-posts, which need the appview's OAuth sessions and media cache. One service for every task means a new task is a registry entry, a route and a queue, not another deploy step, IAM binding and status tile.
 
-- **Run by Cloud Tasks.** Each task has a queue named after it; tap-ingester queues a resolution pass the minute after it writes an identification. Hourly Cloud Scheduler jobs are the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
-- **Private, one instance** (`--no-allow-unauthenticated --max-instances=1`), so per-process limits are global. Each queue dispatches one run at a time, so `--concurrency=4` lets different tasks run side by side without one waiting on another's long run.
+- **Run by Cloud Tasks.** Each task has a queue named after it; tap-ingester queues a resolution pass the minute after it writes an identification, and the appview queues a cross-post run when someone asks to cross-post; each cross-post run queues the next when a retry comes due. Hourly Cloud Scheduler jobs are the backstop. An always-on worker would cost about $50/month; this stays in the free tier.
+- **Private, one instance** (`--no-allow-unauthenticated --max-instances=1`), so per-process limits, like the iNaturalist client's 60 requests a minute, are global. Each queue dispatches one run at a time, so `--concurrency=4` lets different tasks run side by side without one waiting on another's long run.
 - **Two database roles.** `appview_runtime` (`DB_*`), as the appview, and `ingester_runtime` (`INGESTER_DB_*`) in a second pool for the resolution pass, which writes the `ingester` schema. Each task uses only its own role's pool, so the boundary in [docs/deployment.md](../docs/deployment.md#runtime-role-boundary-one-shot) holds per task.
-- **Time-boxed runs.** A pass stops after 10 minutes and queues a run to carry on. `--timeout=900` covers the longest dispatch deadline.
+- **Time-boxed runs.** A resolution pass stops after 10 minutes, and a cross-post run after 5, and queues a run to carry on. `--timeout=900` covers the longest dispatch deadline.
 - **Setup** was done by hand: [docs/deployment.md#cloud-tasks](../docs/deployment.md#cloud-tasks).
 
 ## observing-migrate

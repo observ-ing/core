@@ -13,7 +13,7 @@ Deployed via GitHub Actions (`.github/workflows/ci.yml`) on push to `main` after
 CI runs the deploy steps in this order to ensure DDL lands before any service starts on the new schema:
 
 1. `Run migrations` → deploys + executes the `observing-migrate` Cloud Run Job.
-2. `Deploy worker` → before tap-ingester, which starts queuing runs for it.
+2. `Deploy worker` → before tap-ingester and the appview, which start queuing runs for it.
 3. `Deploy tap-ingester` → single-writer for lexicon-derived tables.
 4. `Deploy appview` → last, so it sees the fully-migrated schema and up-to-date ingester grants.
 
@@ -24,8 +24,9 @@ Background tasks run in `observing-worker`, a private Cloud Run service: the app
 | Task | Queued by | Path |
 |------|-----------|------|
 | `resolve-taxa` | tap-ingester, the minute after it writes an identification | `/tasks/resolve-taxa` |
+| `inat-crossposts` | the appview, when someone asks to cross-post; each run queues the next when a retry comes due | `/tasks/inat-crossposts` |
 
-Until the setup exists, nothing breaks: tap-ingester logs `Failed to queue a task run` and identifications stay unresolved.
+Until the setup exists, nothing breaks: tap-ingester logs `Failed to queue a task run` and identifications stay unresolved, and the appview logs `Failed to queue a cross-post run` and cross-posts stay `pending`.
 
 Before the first deploy:
 
@@ -35,7 +36,7 @@ REGION=us-central1
 INVOKER=cloud-tasks-invoker@$PROJECT.iam.gserviceaccount.com
 # The account the Cloud Run services run as.
 RUNTIME_SA=$(gcloud projects describe $PROJECT --format='value(projectNumber)')-compute@developer.gserviceaccount.com
-TASKS="resolve-taxa"
+TASKS="resolve-taxa inat-crossposts"
 
 gcloud services enable cloudtasks.googleapis.com cloudscheduler.googleapis.com --project=$PROJECT
 
@@ -47,6 +48,8 @@ gcloud iam service-accounts add-iam-policy-binding $INVOKER --project=$PROJECT \
   --member=serviceAccount:$RUNTIME_SA --role=roles/iam.serviceAccountUser
 
 # One queue per task, one run at a time; a failed run is retried with backoff.
+# At most one a second also keeps inat-crossposts within iNaturalist's 60
+# requests a minute.
 for QUEUE in $TASKS; do
   gcloud tasks queues create $QUEUE --project=$PROJECT --location=$REGION \
     --max-concurrent-dispatches=1 --max-dispatches-per-second=1 \
@@ -76,9 +79,11 @@ done
 gcloud scheduler jobs run resolve-taxa-backstop --project=$PROJECT --location=$REGION
 ```
 
+Adding a task to an existing setup: run the queue loop and the scheduler loop above with `TASKS` set to just the new task (for cross-posts, `TASKS="inat-crossposts"`).
+
 Moving from `observing-resolve-taxa` (#955): the queue, account and bindings stay. Grant `run.invoker` on the worker as above, point the backstop at it with `gcloud scheduler jobs update http resolve-taxa-backstop --uri=$URL/tasks/resolve-taxa --oidc-token-audience=$URL`, then `gcloud run services delete observing-resolve-taxa`.
 
-To check on it, `gcloud tasks list --queue=resolve-taxa --project=$PROJECT --location=$REGION` shows runs waiting, and the worker's logs show `Resolution pass finished` with `updated_rows` after each pass.
+To check on it, `gcloud tasks list --queue=<task> --project=$PROJECT --location=$REGION` shows runs waiting, and the worker's logs show `Resolution pass finished` with `updated_rows` after each pass, and `Cross-post run finished` after each cross-post run.
 
 ### Service status dashboard
 
@@ -162,8 +167,8 @@ INAT_CLIENT_ID=<secret: INAT_CLIENT_ID>
 INAT_CLIENT_SECRET=<secret: INAT_CLIENT_SECRET>
 
 # Serve the /tasks/* routes Cloud Tasks calls. Only observing-worker (and
-# local dev) sets it, along with a second role for tasks that write the
-# ingester schema (resolution passes):
+# local dev) sets it, along with the INAT_* secrets above for cross-posts and
+# a second role for tasks that write the ingester schema (resolution passes):
 # APPVIEW_TASK_ROUTES=1
 # INGESTER_DB_USER=ingester_runtime
 # INGESTER_DB_PASSWORD=<secret: observing-db-ingester-password>

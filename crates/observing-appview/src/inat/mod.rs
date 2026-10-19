@@ -4,12 +4,10 @@
 pub mod client;
 #[allow(dead_code)] // for the cross-post routes, which land separately (#878)
 pub mod guard;
-#[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
 pub mod ids;
-#[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
 pub mod links;
-#[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
 pub mod payload;
+pub mod worker;
 
 use std::time::Duration;
 
@@ -53,6 +51,11 @@ impl Inat {
         }
     }
 
+    /// Base of observation permalinks.
+    pub fn site_url(&self) -> &str {
+        &self.config.site_url
+    }
+
     fn authenticator(&self) -> Authenticator {
         Authenticator::new(
             self.config.client_id.clone(),
@@ -88,7 +91,6 @@ impl Inat {
 
     /// An API token for the user, minted from their OAuth access token unless
     /// a recent one is cached.
-    #[allow(dead_code)] // for the cross-post worker, which lands separately (#878)
     pub async fn api_token(&self, did: &str, access_token: &str) -> Result<String, InatError> {
         if let Some(token) = self.api_tokens.get(did).await {
             return Ok(token);

@@ -150,7 +150,7 @@ pub(super) async fn prepare(
     };
     let record = build_record(occurrence_uri, term, text, license)?;
     let at_uri = parse_at_uri(existing)?;
-    auth::put_at_record(agent, did(user_did)?, &at_uri, record).await?;
+    auth::put_at_record(agent, did(user_did)?, &at_uri, record, None).await?;
     info!(uri = %existing, term = term.dwc_term(), "Updated remark (PDS)");
     Ok(PreparedRemark {
         id: Some(existing.to_string()),

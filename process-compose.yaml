@@ -46,9 +46,10 @@ processes:
       - VITE_DEV_SERVER_URL=http://localhost:${VITE_PORT:-5173}
       - PUBLIC_URL=${PUBLIC_URL:-}
       # Locally the one appview both serves the web and runs background tasks
-      # on its /tasks/* routes; production runs them in observing-worker (see
-      # .env.example). Resolution passes write the ingester schema; locally
-      # the same superuser connection does.
+      # (resolution passes, iNaturalist cross-posts) on its /tasks/* routes;
+      # production runs them in observing-worker (see .env.example).
+      # Resolution passes write the ingester schema; locally the same
+      # superuser connection does.
       - APPVIEW_TASK_ROUTES=1
       - INGESTER_DATABASE_URL=${DATABASE_URL:-postgresql://postgres:${DB_PASSWORD:-mysecretpassword}@localhost:5432/observing}
     depends_on:
