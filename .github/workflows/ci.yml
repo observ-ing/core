@@ -547,6 +547,12 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     needs: [build-images]
+    # Cloud Run rejects a service update when another lands mid-deploy
+    # ("Conflict for resource ... version ... was specified"), so queue
+    # production deploys instead of running them side by side.
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
     environment:
       name: production
       url: ${{ steps.deploy-appview.outputs.url }}
