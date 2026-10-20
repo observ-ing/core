@@ -1,3 +1,4 @@
+# Why jobs are set up the way they are: docs/ci.md
 name: CI
 
 on:
@@ -68,10 +69,6 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npx tsc --project tsconfig.json
-      # The Playwright specs build API fixtures typed against the generated
-      # bindings, but live outside the app's tsconfig. Without this, a fixture
-      # that no longer satisfies the type it claims only surfaces as a wall of
-      # failing e2e tests half an hour later.
       - run: npx tsc --project frontend/tests/tsconfig.json
 
   frontend-unit:
@@ -85,10 +82,6 @@ jobs:
       - run: npm ci
       - run: npm run test:unit
 
-  # Mocked Playwright suite. Needs no backend: playwright.config.ts's webServer
-  # builds the SPA and serves it with every backend route answering 404, and
-  # each spec mocks what it uses via page.route. So it runs on its own, in
-  # parallel, instead of behind the dev-env stack the `e2e` job boots.
   integration:
     runs-on: ubuntu-latest
     steps:
@@ -119,10 +112,6 @@ jobs:
       - run: npm ci
       - run: npm run build
 
-  # Spike: assemble a debug Android APK by wrapping the existing web bundle
-  # in a Capacitor shell. Validates that `npm run build` output drops into a
-  # native target without touching web code. The `android/` dir is gitignored
-  # and regenerated each run via `npx cap add android`. See PR #403, #273, #388.
   android-build:
     runs-on: ubuntu-latest
     steps:
@@ -140,8 +129,6 @@ jobs:
           packages: 'platform-tools platforms;android-34 build-tools;34.0.0'
       - uses: gradle/actions/setup-gradle@v4
       - run: npm ci
-      # Match the release workflow so this artifact reflects the same bundle
-      # users would get from a tagged release.
       - run: npm run build
         env:
           VITE_API_URL: https://observ.ing
@@ -156,9 +143,6 @@ jobs:
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 7
 
-  # Enforce that every component in frontend/src/components has a sibling
-  # *.stories.tsx file. Catches new components that ship without a story,
-  # and stories that add their own router on top of the global one.
   storybook-coverage:
     runs-on: ubuntu-latest
     steps:
@@ -168,9 +152,6 @@ jobs:
           node-version: '26'
       - run: npm run check:stories
 
-  # Mount every story in headless Chromium (Vitest browser mode via
-  # @storybook/addon-vitest). `storybook-build` only proves stories compile;
-  # this catches the ones that throw at render time.
   storybook-test:
     runs-on: ubuntu-latest
     steps:
@@ -184,9 +165,6 @@ jobs:
         run: npx playwright install --with-deps chromium
       - run: npm run test:storybook
 
-  # Build Storybook on every PR so a broken story fails the merge gate.
-  # On push to main the static output is uploaded as an artifact for
-  # `storybook-deploy` to publish.
   storybook-build:
     runs-on: ubuntu-latest
     steps:
@@ -204,10 +182,6 @@ jobs:
           path: storybook-static/
           retention-days: 1
 
-  # Bundle the static Storybook output into a small static-web-server image
-  # and deploy it to Cloud Run on push to main. Cheaper than an HTTPS load
-  # balancer in front of GCS — cold starts are fine for a dev tool, and
-  # the free tier covers our traffic.
   storybook-deploy:
     runs-on: ubuntu-latest
     needs: [storybook-build]
@@ -297,10 +271,6 @@ jobs:
 
   rust-sqlx:
     runs-on: ubuntu-latest
-    # sqlx-cli 0.9 `prepare --check` requires a live database connection; the
-    # offline-without-DB mode that 0.8.x supported is gone. Stand up the same
-    # Postgres service the e2e/test jobs use and run migrations first so the
-    # query macros can re-describe against the real schema.
     services:
       postgres:
         image: postgis/postgis:16-3.4
@@ -323,20 +293,13 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - uses: taiki-e/cache-cargo-install-action@v3
         with:
-          # Pinned: sqlx-cli 0.9.0 requires rustc >=1.94, satisfied by the
-          # rust-toolchain.toml pin. Workspace uses sqlx 0.9.x, so 0.9.0
-          # matches. Bump in lockstep when the toolchain pin moves.
-          tool: sqlx-cli@0.9.0
+          tool: sqlx-cli@0.9.0 # bump with rust-toolchain.toml; see docs/ci.md
           no-default-features: true
           features: postgres
       - name: Run database migrations
-        # Sets the database-level search_path (ingester, appview, public) so
-        # the unqualified table names in the query macros resolve.
         run: sqlx migrate run --source crates/observing-db/migrations
       - run: cargo sqlx prepare --workspace --check
 
-  # Database regression tests (crates/observing-db/tests): each test creates,
-  # migrates, and drops its own scratch database on this Postgres.
   rust-db-test:
     runs-on: ubuntu-latest
     services:
@@ -402,11 +365,7 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     env:
-      # The Postgres server the orchestrator uses. It recreates its own
-      # `observing_devenv` database on it (and a temp Tap cursor DB) per run.
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
-      # Upstream `tap` revision; same indigo commit the production Dockerfile
-      # (infra/docker/Dockerfile) pins. Also keys the tap binary cache below.
       INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
       TAP_GO_VERSION: '1.26'
     steps:
@@ -419,25 +378,11 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: npm ci
-      # Build the frontend so appview serves the static bundle from dist/public
-      # instead of proxying to the Vite dev server. Under CI load a cold Vite
-      # compile on the first navigation races the auth-setup's 30s timeout (the
-      # `devenv` e2e then can't run); serving prebuilt assets removes that race.
-      # process-compose still starts Vite for local runs, which appview ignores
-      # once dist/public exists.
       - name: Build frontend
         run: npm run build
-      # Pre-build the binaries process-compose.yaml (+ the devenv overlay,
-      # which disables species-id) launches via
-      # `cargo run` (migrate, appview, tap-ingester) so the stack comes up well
-      # within its readiness probes. Migrations run inside the stack (the
-      # `migrate` process), so no separate sqlx step is needed.
       - name: Build appview, tap-ingester, migrate
         run: cargo build -p observing-appview -p tap-ingester -p observing-migrate
       - name: Cache upstream `tap` binary
-        # Building tap from source takes ~70s and the pinned commit rarely
-        # changes, so cache the binary itself. (setup-go's own cache can't help:
-        # it keys on a go.sum, and this repo has none.)
         id: tap-cache
         uses: actions/cache@v4
         with:
@@ -460,8 +405,6 @@ jobs:
       - name: Add `tap` to PATH
         run: echo "$HOME/.cache/tap-bin" >> "$GITHUB_PATH"
       - name: Install process-compose
-        # The dev-env orchestrator (scripts/e2e-devenv.ts) brings the Rust stack
-        # up via process-compose.yaml + the process-compose.devenv.yaml overlay.
         env:
           PC_VERSION: v1.116.0
         run: |
@@ -472,23 +415,11 @@ jobs:
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Cache @atproto/dev-env install
-        # The harness `npm ci`s its own lockfile (frontend/tests/dev-env/deps)
-        # on demand; restoring node_modules (including the install stamp
-        # network.ts checks) skips that ~780-package install. Keyed on the exact
-        # Node version too, since better-sqlite3 builds a native addon.
         uses: actions/cache@v4
         with:
           path: frontend/tests/dev-env/deps/node_modules
           key: devenv-deps-${{ runner.os }}-node${{ steps.node.outputs.node-version }}-${{ hashFiles('frontend/tests/dev-env/deps/package-lock.json') }}
       - name: Run isolated dev-env e2e tests
-        # Boots a local @atproto/dev-env network (PLC + PDS + firehose), points
-        # the Rust stack at it (process-compose.yaml + devenv overlay), then runs
-        # the dev-env CRUD e2e (playwright.devenv.config.ts); the mocked suite is
-        # the `integration` job. No test data ever reaches the public network, so no
-        # BLUESKY_* credentials are needed. @atproto/dev-env is installed from
-        # its own lockfile rather than the root one — see
-        # frontend/tests/dev-env/network.ts. The orchestrator inherits stdio, so
-        # service logs stream to this job's output on failure.
         run: npm run test:e2e:devenv
       - uses: actions/upload-artifact@v4
         if: always()
@@ -497,14 +428,6 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Build and push every image in one BuildKit session
-  # (infra/docker/docker-bake.hcl).
-  # The Rust images share one compiled build, so a Rust change pulls the
-  # toolchain and dependency layers from the registry cache once, not once
-  # per image. Each of those pulls is Artifact Registry internet egress.
-  # Registry cache only, no type=gha: exporting to the GHA cache made
-  # BuildKit download every layer it held only as a lazy registry reference,
-  # and image layers overflow the 10 GB GHA cache.
   build-images:
     runs-on: ubuntu-latest
     needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, integration, e2e]
@@ -514,9 +437,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # One runner holds every image, including both species-id model bundles
-      # on the rare push that rebuilds their layers. Drop two large
-      # preinstalled toolchains this job never uses.
       - name: Free disk space
         run: |
           sudo rm -rf /opt/hostedtoolcache/CodeQL /usr/share/dotnet
@@ -538,18 +458,12 @@ jobs:
 
       - name: Build and push images
         env:
-          # Consumed only by the appview frontend build. Must be a key allowed
-          # for https://observ.ing. Unset, the map falls back to keyless CARTO
-          # tiles.
           VITE_MAPTILER_KEY: ${{ secrets.VITE_MAPTILER_KEY }}
         run: docker buildx bake --file infra/docker/docker-bake.hcl --push
 
   deploy:
     runs-on: ubuntu-latest
     needs: [build-images]
-    # Cloud Run rejects a service update when another lands mid-deploy
-    # ("Conflict for resource ... version ... was specified"), so queue
-    # production deploys instead of running them side by side.
     concurrency:
       group: deploy-production
       cancel-in-progress: false
@@ -561,8 +475,6 @@ jobs:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
       REGION: us-central1
       PUBLIC_URL: https://observ.ing
-      # tap-ingester's Cloud Run custom domain; the appview reads its
-      # /api/stats + /api/tap-stats to render the ingester/* admin tables.
       INGESTER_URL: https://ingester.observ.ing
     steps:
       - uses: google-github-actions/auth@v2
@@ -571,9 +483,6 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
-      # gen2 and the 2s startup probe keep cold starts at ~20s instead of
-      # ~95s; min-instances=0 avoids ~$65/mo for a warm 8 GiB instance.
-      # Reasons and sizing: infra/README.md#observing-species-id
       - name: Deploy species-id
         run: |
           gcloud run deploy observing-species-id \
@@ -588,9 +497,6 @@ jobs:
             --startup-probe=tcpSocket.port=8080,periodSeconds=2,failureThreshold=150,timeoutSeconds=2 \
             --set-env-vars=RUST_LOG=observing_species_id=info,LOG_FORMAT=json
 
-      # Same as species-id with the smaller ViT-L bundle (baked into the
-      # image) and 4 GiB. Reasons and sizing:
-      # infra/README.md#observing-species-id-live
       - name: Deploy species-id-live
         run: |
           gcloud run deploy observing-species-id-live \
@@ -611,10 +517,6 @@ jobs:
           echo "species_id=$(gcloud run services describe observing-species-id --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
           echo "species_id_live=$(gcloud run services describe observing-species-id-live --region=$REGION --format='value(status.url)')" >> $GITHUB_OUTPUT
 
-      # Apply pending DB migrations as a one-shot Cloud Run Job *before* any
-      # runtime service comes up with the new schema. The job connects as
-      # postgres (superuser) via `observing-db-admin-url`; no long-running
-      # service holds that credential.
       - name: Run migrations
         run: |
           gcloud run jobs deploy observing-migrate \
@@ -628,13 +530,6 @@ jobs:
             --region=$REGION \
             --wait
 
-      # One-shot operational tasks (backfills, ledger replays). Deployed as a
-      # Cloud Run Job but deliberately NOT executed here — an operator triggers
-      # a run on demand, e.g.
-      #   gcloud run jobs execute observing-task-runner --region=us-central1 \
-      #     --wait --args=backfill-occurrences,--dry-run,--all
-      # Runs as the ingester role (same writes as the firehose path), so no
-      # admin credential and no DB URL ever leaves the cluster.
       - name: Deploy task-runner
         run: |
           gcloud run jobs deploy observing-task-runner \
@@ -646,17 +541,6 @@ jobs:
             --max-retries=0 \
             --task-timeout=3600
 
-      # The appview image again, as the private service that runs every
-      # background task (APPVIEW_TASK_ROUTES=1; crates/observing-tasks has the
-      # registry). Cloud Tasks and Cloud Scheduler call it as
-      # cloud-tasks-invoker. One instance, so per-process limits are global;
-      # each task's queue runs one request at a time, so different tasks can
-      # run at once. It scales to zero between runs. It holds two roles:
-      # appview_runtime (DB_*) and ingester_runtime (INGESTER_DB_*), for tasks
-      # that write the ingester schema. --timeout covers the longest dispatch
-      # deadline (15 minutes). Deployed before tap-ingester and the appview,
-      # which queue runs for it. Reasons and sizing:
-      # infra/README.md#observing-worker
       - name: Deploy worker
         run: |
           gcloud run deploy observing-worker \
@@ -673,10 +557,6 @@ jobs:
             --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|INGESTER_DB_USER=ingester_runtime|PUBLIC_URL=$PUBLIC_URL|APPVIEW_TASK_ROUTES=1" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INGESTER_DB_PASSWORD=observing-db-ingester-password:latest,INAT_CLIENT_ID=INAT_CLIENT_ID:latest,INAT_CLIENT_SECRET=INAT_CLIENT_SECRET:latest
 
-      # --no-cpu-throttling is load-bearing: the firehose loop isn't
-      # request-driven and falls behind the relay without always-on CPU
-      # (incident 2026-05-31). min/max-instances=1 keeps one consumer per
-      # cursor. Reasons and sizing: infra/README.md#tap-ingester
       - name: Deploy tap-ingester
         run: |
           gcloud run deploy tap-ingester \
