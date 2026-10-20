@@ -12,7 +12,7 @@ import NotesIcon from "@mui/icons-material/Notes";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
-import { coverImageSx } from "../../common/layoutSx";
+import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   browserUtcOffset,
@@ -265,10 +265,7 @@ export function PhoneEditor({
                     right: 4,
                     bottom: 4,
                     px: 0.75,
-                    borderRadius: 4,
-                    bgcolor: (theme) => theme.palette.overlay["modalChip"],
-                    color: "common.white",
-                    fontWeight: 600,
+                    ...overlayBadgeSx,
                   }}
                 >
                   {o.photos.length}
