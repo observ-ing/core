@@ -24,6 +24,14 @@ export const finePrintFontSize = "0.65rem";
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
+/** Dark pill used for count badges overlaid on photos (batch card, phone grid/editor). Callers add position and padding. */
+export const overlayBadgeSx = {
+  borderRadius: 4,
+  bgcolor: (theme: Theme) => theme.palette.overlay["modalChip"],
+  color: "common.white",
+  fontWeight: 600,
+} as const;
+
 /** Full-bleed `<Box component="img">` fit for fixed-size thumbnails (upload previews, taxon-tree swatches, detail-page photo strips). */
 export const coverImageSx = {
   width: "100%",

@@ -21,7 +21,13 @@ import ErrorIcon from "@mui/icons-material/Error";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import ScheduleIcon from "@mui/icons-material/Schedule";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { captionIconSx, coverImageSx, rowIconSx, thumbnailFrameSx } from "../common/layoutSx";
+import {
+  captionIconSx,
+  coverImageSx,
+  overlayBadgeSx,
+  rowIconSx,
+  thumbnailFrameSx,
+} from "../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import {
   describeMissing,
@@ -300,10 +306,7 @@ export function BatchCard({
               bottom: 8,
               right: 8,
               px: 1,
-              borderRadius: 4,
-              bgcolor: theme.palette.overlay["modalChip"],
-              color: "common.white",
-              fontWeight: 600,
+              ...overlayBadgeSx,
             }}
           >
             {photos.length} photos

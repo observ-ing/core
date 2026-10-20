@@ -26,7 +26,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { coverImageSx } from "../../common/layoutSx";
+import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   canCombine,
@@ -123,10 +123,7 @@ function PhoneCard({
                 alignItems: "center",
                 gap: 0.5,
                 px: 1,
-                borderRadius: 4,
-                bgcolor: (theme) => theme.palette.overlay["modalChip"],
-                color: "common.white",
-                fontWeight: 600,
+                ...overlayBadgeSx,
               }}
             >
               <PhotoLibraryIcon sx={{ fontSize: 14 }} />
