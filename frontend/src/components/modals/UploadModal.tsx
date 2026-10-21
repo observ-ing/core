@@ -52,6 +52,7 @@ import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { LicenseSelect } from "../common/LicenseSelect";
+import { TimeZoneSelect } from "../common/TimeZoneSelect";
 import { ExternalRecordsField } from "./ExternalRecordsField";
 import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
@@ -60,6 +61,7 @@ import { pickPhotos } from "../../lib/photoPicker";
 import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
 import { convertHeicFiles, isHeic } from "../../lib/heic";
 import { readPhotoExif } from "../../lib/exif";
+import { taxonFields, toEventDate } from "../../lib/observationInput";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
@@ -169,6 +171,8 @@ export function UploadModal() {
   const [existingImages, setExistingImages] = useState<string[]>([]);
   const [observationDate, setObservationDate] = useState(() => toDatetimeLocal(new Date()));
   const [observationEndDate, setObservationEndDate] = useState("");
+  /** UTC offset `observationDate` is in; `null` means the browser's own zone. */
+  const [utcOffset, setUtcOffset] = useState<string | null>(null);
   const [uncertaintyMeters, setUncertaintyMeters] = useState(50);
   const [organismQuantity, setOrganismQuantity] = useState("");
   const [organismQuantityType, setOrganismQuantityType] = useState<string>(
@@ -237,6 +241,9 @@ export function UploadModal() {
         setObservationDate(toDatetimeLocal(new Date(start)));
         setObservationEndDate("");
       }
+      // A saved eventDate is an instant with no zone of its own, so it is shown
+      // in local time; choosing another zone re-reads the same clock time in it.
+      setUtcOffset(null);
     }
     if (editingObservation.location) {
       setLat(formatCoordinate(editingObservation.location.latitude));
@@ -284,6 +291,7 @@ export function UploadModal() {
     setExistingImages([]);
     setObservationDate(toDatetimeLocal(new Date()));
     setObservationEndDate("");
+    setUtcOffset(null);
     setUncertaintyMeters(50);
     setOrganismQuantity("");
     setOrganismQuantityType(DEFAULT_ORGANISM_QUANTITY_TYPE);
@@ -374,9 +382,13 @@ export function UploadModal() {
     if (exif.latitude != null && exif.longitude != null) {
       setLat(formatCoordinate(exif.latitude));
       setLng(formatCoordinate(exif.longitude));
+      if (exif.accuracyMeters !== null) setUncertaintyMeters(exif.accuracyMeters);
       toast.success("Location extracted from photo EXIF data");
     }
-    if (exif.date) setObservationDate(exif.date);
+    if (exif.date) {
+      setObservationDate(exif.date);
+      setUtcOffset(exif.utcOffset);
+    }
   };
 
   const handleRemoveImage = (index: number) => {
@@ -406,17 +418,15 @@ export function UploadModal() {
       return;
     }
 
-    const startDay = observationDate.slice(0, 10);
-    let eventDate: string;
-    if (observationEndDate) {
-      if (observationEndDate < startDay) {
-        toast.error("End date can't be before the start date");
-        return;
-      }
-      eventDate = `${startDay}/${observationEndDate}`;
-    } else {
-      eventDate = new Date(observationDate).toISOString();
+    if (observationEndDate && observationEndDate < observationDate.slice(0, 10)) {
+      toast.error("End date can't be before the start date");
+      return;
     }
+    const eventDate = toEventDate({
+      date: observationDate,
+      endDate: observationEndDate,
+      utcOffset,
+    });
 
     const trimmedSpecies = species.trim();
     if (trimmedSpecies && !matchedTaxon && !kingdom) {
@@ -482,10 +492,7 @@ export function UploadModal() {
     };
 
     const commonPayload = {
-      ...(trimmedSpecies ? { scientificName: trimmedSpecies } : {}),
-      ...(trimmedSpecies && kingdom ? { kingdom } : {}),
-      ...(trimmedSpecies && !matchedTaxon && rank ? { taxonRank: rank } : {}),
-      ...(trimmedSpecies && matchedTaxon?.taxonId ? { taxonId: matchedTaxon.taxonId } : {}),
+      ...taxonFields({ name: species, match: matchedTaxon, kingdom, rank }),
       latitude: parseFloat(lat),
       longitude: parseFloat(lng),
       coordinateUncertaintyInMeters: uncertaintyMeters,
@@ -534,7 +541,7 @@ export function UploadModal() {
     [STEP_IDENTIFY]: species.trim() || "Optional — leave blank if unknown",
     [STEP_DETAILS]: observationEndDate
       ? `${observationDate.slice(0, 10)} → ${observationEndDate}`
-      : observationDate.replace("T", " "),
+      : observationDate.replace("T", " ") + (utcOffset ? ` UTC${utcOffset}` : ""),
   };
 
   // Back/Continue control row rendered at the bottom of each non-final step.
@@ -792,6 +799,16 @@ export function UploadModal() {
                   }}
                   margin="normal"
                   slotProps={{ inputLabel: { shrink: true } }}
+                />
+
+                <TimeZoneSelect
+                  value={utcOffset}
+                  date={observationDate}
+                  onChange={(offset) => {
+                    setUtcOffset(offset);
+                    setIsDirty(true);
+                  }}
+                  margin="normal"
                 />
 
                 <TextField

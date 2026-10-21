@@ -5,14 +5,12 @@ import {
   canCombine,
   convertDroppedHeic,
   describeMissing,
-  formatUtcOffset,
   intersectRects,
   initialBatchState,
   isReading,
   missingFields,
   nextIncompleteId,
   runPool,
-  toEventDate,
   toObservationInput,
   vetBatchFiles,
   type BatchAction,
@@ -22,6 +20,7 @@ import {
 import { MAX_FILE_SIZE, MAX_IMAGES } from "./imageSelection";
 import { EMPTY_EXIF, type PhotoExif } from "./exif";
 import { MAX_HEIC_SIZE } from "./heic";
+import { toEventDate } from "./observationInput";
 
 function imageFile(name: string, { type = "image/jpeg", size = 1024 } = {}): File {
   const file = new File([""], name, { type });
@@ -432,12 +431,6 @@ describe("intersectRects", () => {
 });
 
 describe("time zones", () => {
-  it("formats an offset in minutes east of UTC as ±HH:MM", () => {
-    expect(formatUtcOffset(-420)).toBe("-07:00");
-    expect(formatUtcOffset(345)).toBe("+05:45");
-    expect(formatUtcOffset(0)).toBe("+00:00");
-  });
-
   it("re-reads the same wall-clock time when the zone is changed", () => {
     const state = run(
       [
