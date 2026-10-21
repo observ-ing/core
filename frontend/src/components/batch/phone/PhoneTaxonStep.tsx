@@ -24,7 +24,7 @@ import { RankSelect } from "../../common/RankSelect";
 import { SearchAdornment, searchFieldSx } from "../../common/SearchField";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { TaxonThumbnail } from "../../common/TaxonThumbnail";
-import { coverImageSx } from "../../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
 import { VisualId } from "../../identification/VisualId";
 import { useDebouncedTaxaSearch } from "../../../hooks/useDebouncedTaxaSearch";
 import { EMPTY_TAXON, type BatchObservation, type BatchTaxon } from "../../../lib/batchUpload";
@@ -237,7 +237,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
               }}
             >
               <Box
-                sx={{ width: 56, height: 56, flexShrink: 0, borderRadius: 1, overflow: "hidden" }}
+                sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}
               >
                 <Box component="img" src={cover.previewUrl} alt="" sx={coverImageSx} />
               </Box>
