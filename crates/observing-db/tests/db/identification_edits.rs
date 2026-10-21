@@ -2,7 +2,7 @@
 //! sim in #854): edits clear removed fields, and a rename re-queues
 //! taxonomy resolution instead of keeping the old taxon's key.
 
-mod common;
+use crate::common;
 
 use chrono::{TimeZone, Utc};
 use observing_db::identifications;
