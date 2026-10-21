@@ -7,7 +7,9 @@
 
 use serde::Serialize;
 
-pub use observing_species_id_protocol::{IdentifyRequest, IdentifyResponse, SpeciesSuggestion};
+pub use observing_species_id_protocol::{
+    IdentifyRequest, IdentifyResponse, SpeciesInRangeResponse, SpeciesRef, SpeciesSuggestion,
+};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct HealthResponse {
