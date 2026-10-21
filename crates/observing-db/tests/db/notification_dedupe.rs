@@ -1,7 +1,7 @@
 //! Regression tests for notification dedupe (#858, found by the ingester sim
 //! in #854): a redelivered or edited record notifies once.
 
-mod common;
+use crate::common;
 
 use observing_db::notifications;
 
@@ -95,7 +95,7 @@ async fn migration_merges_existing_duplicates_and_keeps_read_state() {
 
     let mut tx = db.pool.begin().await.unwrap();
     sqlx::raw_sql(include_str!(
-        "../migrations/20260928000000_notifications_dedupe.sql"
+        "../../migrations/20260928000000_notifications_dedupe.sql"
     ))
     .execute(&mut *tx)
     .await

@@ -2,7 +2,7 @@
 //! database keeps every like record, so a double tap followed by an unlike of
 //! one record doesn't lose the other, and replays are idempotent.
 
-mod common;
+use crate::common;
 
 use chrono::NaiveDate;
 use observing_db::likes;
