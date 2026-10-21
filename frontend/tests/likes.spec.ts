@@ -1,27 +1,23 @@
-import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { test, expect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail, mockOwnObservationFeed } from "./helpers/mock-observation";
 
 test.describe("Likes - Logged Out", () => {
-  // TC-LIKE-001: Like button visible on detail page
   test("detail page shows a heart icon", async ({ page }) => {
     await navigateToMockedDetail(page);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
-    await expect(likeButton).toBeVisible({ timeout: 15000 });
+    await expect(likeButton).toBeVisible();
   });
 
-  // TC-LIKE-002: Like button disabled when logged out
   test("like button is disabled when not logged in", async ({ page }) => {
     await navigateToMockedDetail(page);
     const likeButton = page.getByRole("button", { name: "Like" }).first();
-    await expect(likeButton).toBeVisible({ timeout: 15000 });
+    await expect(likeButton).toBeVisible();
     await expect(likeButton).toBeDisabled();
   });
 });
 
-authTest.describe("Likes - Logged In", () => {
-  // TC-LIKE-003: Like an observation from feed
-  authTest("clicking like button fills the heart", async ({ authenticatedPage: page }) => {
+test.describe("Likes - Logged In", () => {
+  test("clicking like button fills the heart", async ({ authenticatedPage: page }) => {
     // Mock the like API
     await page.route("**/api/likes", (route) => {
       if (route.request().method() === "POST") {
@@ -38,15 +34,14 @@ authTest.describe("Likes - Logged In", () => {
     await page.goto("/");
     // Wait for real feed cards (not skeletons) by waiting for Like button
     const likeButton = page.getByRole("button", { name: "Like" }).first();
-    await authExpect(likeButton).toBeVisible({ timeout: 15000 });
-    await authExpect(likeButton).toBeEnabled();
+    await expect(likeButton).toBeVisible();
+    await expect(likeButton).toBeEnabled();
     await likeButton.click();
     // After clicking, button should change to "Unlike"
-    await authExpect(page.getByRole("button", { name: "Unlike" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Unlike" }).first()).toBeVisible();
   });
 
-  // TC-LIKE-004: Unlike an observation from feed
-  authTest("clicking unlike button unfills the heart", async ({ authenticatedPage: page }) => {
+  test("clicking unlike button unfills the heart", async ({ authenticatedPage: page }) => {
     // Mock like and unlike APIs
     await page.route("**/api/likes", (route) => {
       if (route.request().method() === "POST" || route.request().method() === "DELETE") {
@@ -62,38 +57,34 @@ authTest.describe("Likes - Logged In", () => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
     const likeButton = page.getByRole("button", { name: "Like" }).first();
-    await authExpect(likeButton).toBeVisible({ timeout: 15000 });
+    await expect(likeButton).toBeVisible();
     await likeButton.click();
     // Now unlike
     const unlikeButton = page.getByRole("button", { name: "Unlike" }).first();
-    await authExpect(unlikeButton).toBeVisible();
+    await expect(unlikeButton).toBeVisible();
     await unlikeButton.click();
     // Should revert to Like
-    await authExpect(page.getByRole("button", { name: "Like" }).first()).toBeVisible();
+    await expect(page.getByRole("button", { name: "Like" }).first()).toBeVisible();
   });
 
-  // TC-LIKE-009: Like button click does not navigate
-  authTest(
-    "clicking like does not navigate away from feed",
-    async ({ authenticatedPage: page }) => {
-      await page.route("**/api/likes", (route) => {
-        if (route.request().method() === "POST") {
-          return route.fulfill({
-            status: 200,
-            contentType: "application/json",
-            body: JSON.stringify({ success: true }),
-          });
-        }
-        return route.continue();
-      });
+  test("clicking like does not navigate away from feed", async ({ authenticatedPage: page }) => {
+    await page.route("**/api/likes", (route) => {
+      if (route.request().method() === "POST") {
+        return route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ success: true }),
+        });
+      }
+      return route.continue();
+    });
 
-      await mockOwnObservationFeed(page);
-      await page.goto("/");
-      const likeButton = page.getByRole("button", { name: "Like" }).first();
-      await authExpect(likeButton).toBeVisible({ timeout: 15000 });
-      await likeButton.click();
-      // Should still be on the home page
-      await authExpect(page).toHaveURL("/");
-    },
-  );
+    await mockOwnObservationFeed(page);
+    await page.goto("/");
+    const likeButton = page.getByRole("button", { name: "Like" }).first();
+    await expect(likeButton).toBeVisible();
+    await likeButton.click();
+    // Should still be on the home page
+    await expect(page).toHaveURL("/");
+  });
 });
