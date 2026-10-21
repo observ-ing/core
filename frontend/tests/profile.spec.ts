@@ -1,42 +1,25 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
+import { MOCK_TEST_USER } from "./helpers/test-users";
+import { openFirstCard } from "./helpers/navigation";
 
 /** Navigate from explore grid to an observation detail page, then to the observer's profile. */
 async function navigateToProfile(page: Page) {
   await mockOwnObservationFeed(page);
   await mockObservationDetailRoute(page);
-  await page.route("**/api/profiles/*", (route: Route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        did: "did:plc:mocktest",
-        handle: "testuser.bsky.social",
-        displayName: "Test User",
-        observationCount: 3,
-        identificationCount: 1,
-      }),
-    }),
-  );
-  await page.route("**/api/feeds/profile/**", (route: Route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ occurrences: [], cursor: null }),
-    }),
-  );
-  await page.route("**/api/identifications/by-observer/**", (route: Route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ identifications: [], cursor: null }),
-    }),
-  );
+  await mockJson(page, "**/api/profiles/*", {
+    ...MOCK_TEST_USER,
+    observationCount: 3,
+    identificationCount: 1,
+  });
+  await mockJson(page, "**/api/feeds/profile/**", { occurrences: [], cursor: null });
+  await mockJson(page, "**/api/identifications/by-observer/**", {
+    identifications: [],
+    cursor: null,
+  });
   await page.goto("/explore");
-  const firstCard = page.locator(".MuiCard-root").first();
-  await expect(firstCard).toBeVisible({ timeout: 10_000 });
-  await firstCard.locator(".MuiCardActionArea-root").click();
-  await expect(page).toHaveURL(/\/observation\//);
+  await openFirstCard(page);
   const profileLink = page.locator('a[href*="/profile/"]').first();
   await expect(profileLink).toBeVisible();
   await profileLink.click();

@@ -1,21 +1,19 @@
-import type { Route } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 import {
   buildMockObservation,
+  mockFeed,
   mockOwnObservationFeed,
   mockObservationDetailRoute,
 } from "./helpers/mock-observation";
-import { gotoUploadStep } from "./helpers/navigation";
+import { gotoUploadStep, openFirstCard, openFirstCardMenu } from "./helpers/navigation";
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Observation Edit - Logged Out", () => {
   test("more menu does not show Edit for non-owned observation", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await mockObservationDetailRoute(page);
     await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible({ timeout: 10_000 });
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
     const moreButton = page.getByLabel("More options").first();
     await expect(moreButton).toBeVisible();
     await moreButton.click();
@@ -28,8 +26,7 @@ test.describe("Observation Edit - Logged In", () => {
   test("more menu shows Edit for own observation", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
   });
 
@@ -43,19 +40,7 @@ test.describe("Observation Edit - Logged In", () => {
         displayName: "Other User",
       },
     });
-    const body = JSON.stringify({
-      occurrences: [otherUserObs],
-      cursor: null,
-    });
-    const handler = (route: Route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body,
-      });
-    await page.route("**/api/feeds/home*", handler);
-    await page.route("**/api/feeds/explore*", handler);
-    await page.route("**/api/occurrences/feed*", handler);
+    await mockFeed(page, [otherUserObs]);
 
     await page.goto("/");
     const moreButton = page.getByLabel("More options").first();
@@ -71,8 +56,7 @@ test.describe("Observation Edit - Logged In", () => {
       eventDate: "2024-06-15",
     });
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Edit" }).click();
 
     // Should see "Edit Observation" title
@@ -84,8 +68,7 @@ test.describe("Observation Edit - Logged In", () => {
       eventDate: "2024-06-15",
     });
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Edit" }).click();
     await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
@@ -101,23 +84,18 @@ test.describe("Observation Edit - Logged In", () => {
       location: { latitude: 37.7749, longitude: -122.4194 },
     });
 
-    await page.route("**/api/occurrences", (route) => {
-      if (route.request().method() === "PUT") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/test123",
-            cid: "bafyupdated",
-          }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(
+      page,
+      "**/api/occurrences",
+      {
+        uri: "at://did:plc:test/bio.lexicons.temp.v0-1.occurrence/test123",
+        cid: "bafyupdated",
+      },
+      { method: "PUT" },
+    );
 
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Edit" }).click();
     await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 

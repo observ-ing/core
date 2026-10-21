@@ -1,5 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { openFirstCard } from "./helpers/navigation";
 
 test.describe("Navigation", () => {
   test("home page loads with landing page for unauthenticated users", async ({ page }) => {
@@ -40,9 +41,6 @@ test.describe("Navigation", () => {
   test("clicking a feed item navigates to observation detail", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/explore");
-    const feedCard = page.locator(".MuiCard-root").first();
-    await expect(feedCard).toBeVisible({ timeout: 10_000 });
-    await feedCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
   });
 });

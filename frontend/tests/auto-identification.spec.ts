@@ -1,5 +1,10 @@
 import { test, expect } from "./fixtures/mock-auth";
-import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
+import {
+  openUploadModal,
+  gotoUploadStep,
+  revealCoordinateInputs,
+  searchTaxa,
+} from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import {
   mockOwnObservationFeed,
@@ -7,6 +12,7 @@ import {
   MOCK_OBS_DID,
   MOCK_OBS_RKEY,
 } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
 
 const AUTO_ID_RKEY = "autoidtest123";
 const AUTO_ID_URI = `at://${MOCK_OBS_DID}/bio.lexicons.temp.v0-1.occurrence/${AUTO_ID_RKEY}`;
@@ -19,16 +25,12 @@ test.describe("Auto-Identification on Upload", () => {
     await mockTaxaSearchRoute(page);
 
     // Mock POST /api/occurrences to return a known URI
-    await page.route("**/api/occurrences", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 201,
-          contentType: "application/json",
-          body: JSON.stringify({ uri: AUTO_ID_URI, cid: "bafytest" }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(
+      page,
+      "**/api/occurrences",
+      { uri: AUTO_ID_URI, cid: "bafytest" },
+      { method: "POST", status: 201 },
+    );
 
     // Mock detail page with an auto-created identification for Quercus alba
     await mockObservationDetailRoute(page, {
@@ -63,11 +65,7 @@ test.describe("Auto-Identification on Upload", () => {
     await gotoUploadStep(page, "Identify");
 
     const speciesInput = page.getByLabel(/Taxon/i);
-    await speciesInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      speciesInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(speciesInput, "quercus");
     const option = page.locator(".MuiAutocomplete-option").first();
     await expect(option).toBeVisible();
     await option.click();

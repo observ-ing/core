@@ -1,6 +1,7 @@
 import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { MOCK_TEST_USER } from "./helpers/test-users";
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Authentication - Logged Out", () => {
   test("clicking Log in opens login modal", async ({ page }) => {
@@ -62,24 +63,12 @@ test.describe("Authentication - Logged In", () => {
   });
 
   test("clicking Log out clears user session", async ({ authenticatedPage: page }) => {
-    await page.route("**/oauth/logout", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ success: true }),
-      }),
-    );
+    await mockJson(page, "**/oauth/logout", { success: true });
     let loggedOut = false;
     await page.unroute("**/oauth/me");
-    await page.route("**/oauth/me", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          user: loggedOut ? null : MOCK_TEST_USER,
-        }),
-      });
-    });
+    await page.route("**/oauth/me", (route) =>
+      route.fulfill({ json: { user: loggedOut ? null : MOCK_TEST_USER } }),
+    );
 
     await page.goto("/");
     // Open profile dropdown and click Log out

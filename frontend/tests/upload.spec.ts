@@ -1,9 +1,15 @@
 import { test, expect } from "./fixtures/mock-auth";
-import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
+import {
+  openUploadModal,
+  gotoUploadStep,
+  revealCoordinateInputs,
+  searchTaxa,
+} from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 import { mockSubmit, taggedPhoto } from "./helpers/batch-upload";
 import { MOCK_TEST_USER } from "./helpers/test-users";
+import { mockJson } from "./helpers/mock-api";
 
 const FAB = 'button[aria-label="Create actions"]';
 const CREATE_BUTTON = { name: "Add observation" } as const;
@@ -129,11 +135,7 @@ test.describe("Upload Modal - Logged In", () => {
     await openUploadModal(page);
     await gotoUploadStep(page, "Identify");
     const speciesInput = page.getByLabel(/Taxon/i);
-    await speciesInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      speciesInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(speciesInput, "quercus");
     await expect(page.locator(".MuiAutocomplete-option").first()).toBeVisible();
   });
 
@@ -214,19 +216,15 @@ test.describe("Upload Modal - Logged In", () => {
   });
 
   test("submit button sends observation to API", async ({ authenticatedPage: page }) => {
-    await page.route("**/api/occurrences", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
-            uri: "at://did:plc:test123/bio.lexicons.temp.v0-1.occurrence/abc123",
-            cid: "bafytest",
-          }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(
+      page,
+      "**/api/occurrences",
+      {
+        uri: "at://did:plc:test123/bio.lexicons.temp.v0-1.occurrence/abc123",
+        cid: "bafytest",
+      },
+      { method: "POST" },
+    );
 
     await page.goto("/");
     await openUploadModal(page);
@@ -268,15 +266,13 @@ test.describe("Upload Modal - Logged In", () => {
       if (route.request().method() === "POST") {
         requestBodySize = route.request().postDataBuffer()?.length ?? 0;
         return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({
+          json: {
             uri: "at://did:plc:test123/bio.lexicons.temp.v0-1.occurrence/large123",
             cid: "bafylarge",
-          }),
+          },
         });
       }
-      return route.continue();
+      return route.fallback();
     });
 
     // Build a ~3MB valid JPEG entirely in Node to avoid OOM from

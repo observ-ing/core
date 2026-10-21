@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Error Handling", () => {
   test("network error shows error state, not blank page", async ({ page }) => {
@@ -14,16 +15,12 @@ test.describe("Error Handling", () => {
 test.describe("Error Handling - Authenticated", () => {
   test("API error on like reverts optimistic update", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
-    await page.route("**/api/likes", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({ error: "Internal server error" }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(
+      page,
+      "**/api/likes",
+      { error: "Internal server error" },
+      { method: "POST", status: 500 },
+    );
 
     await page.goto("/");
     // Wait for real feed content
