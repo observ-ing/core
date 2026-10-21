@@ -2,6 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { SettingsPage } from "./SettingsPage";
 import { ALICE_USER } from "../../../.storybook/fixtures";
+import type { InatAccountResponse } from "../../bindings/InatAccountResponse";
+import type { UserPreferencesResponse } from "../../bindings/UserPreferencesResponse";
 
 const meta = {
   title: "Settings/SettingsPage",
@@ -29,7 +31,10 @@ export const SignedIn: Story = {
     msw: {
       handlers: [
         http.get("/api/user/preferences", () =>
-          HttpResponse.json({ defaultLicense: null, basemap: null }),
+          HttpResponse.json({
+            defaultLicense: null,
+            basemap: null,
+          } satisfies UserPreferencesResponse),
         ),
       ],
     },
@@ -37,7 +42,7 @@ export const SignedIn: Story = {
 };
 
 const preferencesHandler = http.get("/api/user/preferences", () =>
-  HttpResponse.json({ defaultLicense: null, basemap: null }),
+  HttpResponse.json({ defaultLicense: null, basemap: null } satisfies UserPreferencesResponse),
 );
 
 // The iNaturalist section only renders when the server has cross-posting
@@ -49,7 +54,11 @@ export const SignedInWithInaturalistUnlinked: Story = {
       handlers: [
         preferencesHandler,
         http.get("/api/inat/account", () =>
-          HttpResponse.json({ enabled: true, login: null, linkedAt: null }),
+          HttpResponse.json({
+            enabled: true,
+            login: null,
+            linkedAt: null,
+          } satisfies InatAccountResponse),
         ),
       ],
     },
@@ -63,7 +72,11 @@ export const SignedInWithInaturalistLinked: Story = {
       handlers: [
         preferencesHandler,
         http.get("/api/inat/account", () =>
-          HttpResponse.json({ enabled: true, login: "alice", linkedAt: "2026-10-07T00:00:00Z" }),
+          HttpResponse.json({
+            enabled: true,
+            login: "alice",
+            linkedAt: "2026-10-07T00:00:00Z",
+          } satisfies InatAccountResponse),
         ),
       ],
     },
@@ -76,7 +89,10 @@ export const SignedInWithDefaultLicense: Story = {
     msw: {
       handlers: [
         http.get("/api/user/preferences", () =>
-          HttpResponse.json({ defaultLicense: "CC0-1.0", basemap: null }),
+          HttpResponse.json({
+            defaultLicense: "CC0-1.0",
+            basemap: null,
+          } satisfies UserPreferencesResponse),
         ),
       ],
     },

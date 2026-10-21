@@ -8,6 +8,7 @@ import {
   FERN_OBSERVATION,
   OAK_IDENTIFICATION,
 } from "../../../.storybook/fixtures";
+import type { ProfileFeedResponse } from "../../services/types";
 
 const meta = {
   title: "Profile/ProfileView",
@@ -34,14 +35,14 @@ const populatedFeed = {
   counts: { observations: 24, identifications: 51, species: 18 },
   occurrences: [OAK_OBSERVATION, FERN_OBSERVATION],
   identifications: [OAK_IDENTIFICATION],
-};
+} satisfies ProfileFeedResponse;
 
 const emptyFeed = {
   profile: ALICE_PROFILE,
   counts: { observations: 0, identifications: 0, species: 0 },
   occurrences: [],
   identifications: [],
-};
+} satisfies ProfileFeedResponse;
 
 export const Loaded: Story = {
   parameters: {
