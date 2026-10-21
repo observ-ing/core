@@ -1,15 +1,14 @@
 import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
+import { openFirstCard, openFirstCardMenu } from "./helpers/navigation";
 
 test.describe("Delete Observation - Logged Out", () => {
   test("more menu does not show Delete for non-owned observation", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await mockObservationDetailRoute(page);
     await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible({ timeout: 10_000 });
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
     const moreButton = page.getByLabel("More options").first();
     await expect(moreButton).toBeVisible();
     await moreButton.click();
@@ -22,16 +21,14 @@ test.describe("Delete Observation - Logged In", () => {
   test("more menu shows Delete for own observation", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await expect(page.getByRole("menuitem", { name: "Delete" })).toBeVisible();
   });
 
   test("clicking Delete shows confirmation dialog", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Delete" }).click();
 
     const dialog = page.getByRole("dialog");
@@ -43,8 +40,7 @@ test.describe("Delete Observation - Logged In", () => {
   test("clicking Cancel in delete dialog closes it", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await expect(page.getByText("Delete Observation?")).toBeVisible();
 
@@ -54,20 +50,10 @@ test.describe("Delete Observation - Logged In", () => {
 
   test("confirming delete calls DELETE API", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
-    await page.route("**/api/occurrences/**", (route) => {
-      if (route.request().method() === "DELETE") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(page, "**/api/occurrences/**", { success: true }, { method: "DELETE" });
 
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
-    await page.locator(".MuiCard-root").first().getByLabel("More options").click();
+    await openFirstCardMenu(page);
     await page.getByRole("menuitem", { name: "Delete" }).click();
     await expect(page.getByText("Delete Observation?")).toBeVisible();
 

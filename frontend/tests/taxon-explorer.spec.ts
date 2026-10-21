@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import type { TaxonAncestor } from "../src/bindings/TaxonAncestor";
 import type { TaxaResult } from "../src/bindings/TaxaResult";
 
@@ -95,7 +95,7 @@ function mkTaxon(id: string, scientificName: string, rank: string): TaxaResult {
 // ---- Route handler ---------------------------------------------------------
 
 async function mockTaxonomyRoutes(page: Page) {
-  await page.route("**/api/taxa/**", (route: Route) => {
+  await page.route("**/api/taxa/**", (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
 
@@ -104,32 +104,20 @@ async function mockTaxonomyRoutes(page: Page) {
     if (childrenMatch) {
       const name = decodeURIComponent(childrenMatch[1]!);
       const siblings = SIBLING_FIXTURES[name] ?? [];
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(siblings),
-      });
+      return route.fulfill({ json: siblings });
     }
 
     // /api/taxa/:kingdom/:name/occurrences (with optional query string)
     if (/^\/api\/taxa\/[^/]+\/[^/]+\/occurrences$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ occurrences: [], cursor: null }),
-      });
+      return route.fulfill({ json: { occurrences: [], cursor: null } });
     }
 
     // /api/taxa/:kingdom/:name (taxon detail)
     if (/^\/api\/taxa\/[^/]+\/[^/]+$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(QUERCUS_AGRIFOLIA_DETAIL),
-      });
+      return route.fulfill({ json: QUERCUS_AGRIFOLIA_DETAIL });
     }
 
-    return route.continue();
+    return route.fallback();
   });
 }
 

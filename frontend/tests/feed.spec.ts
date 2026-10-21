@@ -1,5 +1,8 @@
 import { test, expect } from "@playwright/test";
 import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
+import { openFirstCard } from "./helpers/navigation";
+import { MOCK_TEST_USER } from "./helpers/test-users";
 
 test.describe("Feed View", () => {
   test.beforeEach(async ({ page }) => {
@@ -15,10 +18,7 @@ test.describe("Feed View", () => {
 
   test("clicking a feed item navigates to observation detail", async ({ page }) => {
     await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible();
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
   });
 
   test("scrolling to bottom loads more items", async ({ page }) => {
@@ -46,31 +46,14 @@ test.describe("Feed View", () => {
 
   test("clicking observer name navigates to their profile", async ({ page }) => {
     await mockObservationDetailRoute(page);
-    await page.route("**/api/profiles/*", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          did: "did:plc:mocktest",
-          handle: "testuser.bsky.social",
-          displayName: "Test User",
-          observationCount: 1,
-          identificationCount: 0,
-        }),
-      }),
-    );
-    await page.route("**/api/feeds/profile/**", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ occurrences: [], cursor: null }),
-      }),
-    );
+    await mockJson(page, "**/api/profiles/*", {
+      ...MOCK_TEST_USER,
+      observationCount: 1,
+      identificationCount: 0,
+    });
+    await mockJson(page, "**/api/feeds/profile/**", { occurrences: [], cursor: null });
     await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible();
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
     // Detail page shows observer info with a profile link
     const profileLink = page.locator('a[href*="/profile/"]').first();
     await expect(profileLink).toBeVisible();
@@ -81,10 +64,7 @@ test.describe("Feed View", () => {
   test("observation detail shows observer avatar", async ({ page }) => {
     await mockObservationDetailRoute(page);
     await page.goto("/explore");
-    const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible();
-    await firstCard.locator(".MuiCardActionArea-root").click();
-    await expect(page).toHaveURL(/\/observation\//);
+    await openFirstCard(page);
     const avatar = page.locator(".MuiAvatar-root").first();
     await expect(avatar).toBeVisible();
   });

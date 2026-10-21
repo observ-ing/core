@@ -1,5 +1,5 @@
 import { test, expect } from "./fixtures/mock-auth";
-import { openUploadModal, gotoUploadStep } from "./helpers/navigation";
+import { openUploadModal, gotoUploadStep, searchTaxa } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
@@ -49,11 +49,7 @@ test.describe("Accessibility - Authenticated", () => {
     await gotoUploadStep(page, "Identify");
 
     const speciesInput = page.getByLabel(/Taxon/i);
-    await speciesInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      speciesInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(speciesInput, "quercus");
     const option = page.locator(".MuiAutocomplete-option").first();
     await expect(option).toBeVisible();
 

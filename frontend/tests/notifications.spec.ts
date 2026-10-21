@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 
 const mockNotifications = [
@@ -47,7 +48,7 @@ const mockNotifications = [
 
 /** Set up route mocks for notification API endpoints */
 async function mockNotificationRoutes(
-  page: import("@playwright/test").Page,
+  page: Page,
   options?: {
     unreadCount?: number;
     notifications?: typeof mockNotifications;
@@ -57,37 +58,23 @@ async function mockNotificationRoutes(
   let unread = options?.unreadCount ?? 2;
 
   // Must register more-specific routes first (Playwright matches in order)
-  await page.route("**/api/notifications/unread-count", (route) => {
-    return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ count: unread }),
-    });
-  });
+  await page.route("**/api/notifications/unread-count", (route) =>
+    route.fulfill({ json: { count: unread } }),
+  );
 
   await page.route("**/api/notifications/read", (route) => {
     if (route.request().method() === "POST") {
       unread = 0;
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ success: true }),
-      });
+      return route.fulfill({ json: { success: true } });
     }
-    return route.continue();
+    return route.fallback();
   });
 
   // Use a function matcher for the list endpoint so we match
   // /api/notifications?limit=20 without colliding with /unread-count or /read
   await page.route(
     (url) => url.pathname.endsWith("/api/notifications") && url.searchParams.has("limit"),
-    (route) => {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ notifications: notifs, cursor: null }),
-      });
-    },
+    (route) => route.fulfill({ json: { notifications: notifs, cursor: null } }),
   );
 }
 

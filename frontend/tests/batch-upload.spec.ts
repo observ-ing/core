@@ -12,6 +12,7 @@ import {
   mockSubmit,
   taggedPhoto,
 } from "./helpers/batch-upload";
+import { mockJson } from "./helpers/mock-api";
 
 /**
  * An iPhone-style HEIC carrying GPS 37°46'30"N 122°25'6"W and a capture date of
@@ -28,7 +29,7 @@ async function mockHeicConversion(page: Page, status = 200) {
   await page.route("**/api/media/heic-to-jpeg", (route) =>
     status === 200
       ? route.fulfill({ status, contentType: "image/jpeg", body: barePhoto("x.jpg").buffer })
-      : route.fulfill({ status, contentType: "application/json", body: "{}" }),
+      : route.fulfill({ status, json: {} }),
   );
 }
 
@@ -656,11 +657,7 @@ test.describe("Batch upload", () => {
     });
     await page.route("**/api/user/preferences", async (route) => {
       await gate;
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ defaultLicense: cc0, basemap: null }),
-      });
+      return route.fulfill({ json: { defaultLicense: cc0, basemap: null } });
     });
     const bodies = await mockSubmit(page);
     await page.goto(BATCH_URL);
@@ -679,24 +676,12 @@ test.describe("Batch upload", () => {
   test("visual ID starts over when a different photo becomes the cover", async ({
     authenticatedPage: page,
   }) => {
-    await page.route("**/api/species-id/status*", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ ready: true }),
-      }),
-    );
-    await page.route("**/api/species-id", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          suggestions: [{ scientificName: "Quercus robur", confidence: 0.9 }],
-          modelVersion: "test",
-          inferenceTimeMs: 1,
-        }),
-      }),
-    );
+    await mockJson(page, "**/api/species-id/status*", { ready: true });
+    await mockJson(page, "**/api/species-id", {
+      suggestions: [{ scientificName: "Quercus robur", confidence: 0.9 }],
+      modelVersion: "test",
+      inferenceTimeMs: 1,
+    });
     await page.goto(BATCH_URL);
     await addPhotos(page, [taggedPhoto("a.jpg"), taggedPhoto("b.jpg")]);
     await page.getByRole("button", { name: "Select all" }).click();

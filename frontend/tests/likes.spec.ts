@@ -1,5 +1,6 @@
 import { test, expect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail, mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Likes - Logged Out", () => {
   test("detail page shows a heart icon", async ({ page }) => {
@@ -19,16 +20,7 @@ test.describe("Likes - Logged Out", () => {
 test.describe("Likes - Logged In", () => {
   test("clicking like button fills the heart", async ({ authenticatedPage: page }) => {
     // Mock the like API
-    await page.route("**/api/likes", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(page, "**/api/likes", { success: true }, { method: "POST" });
 
     await mockOwnObservationFeed(page);
     await page.goto("/");
@@ -43,16 +35,7 @@ test.describe("Likes - Logged In", () => {
 
   test("clicking unlike button unfills the heart", async ({ authenticatedPage: page }) => {
     // Mock like and unlike APIs
-    await page.route("**/api/likes", (route) => {
-      if (route.request().method() === "POST" || route.request().method() === "DELETE") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(page, "**/api/likes", { success: true });
 
     await mockOwnObservationFeed(page);
     await page.goto("/");
@@ -68,16 +51,7 @@ test.describe("Likes - Logged In", () => {
   });
 
   test("clicking like does not navigate away from feed", async ({ authenticatedPage: page }) => {
-    await page.route("**/api/likes", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ success: true }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(page, "**/api/likes", { success: true }, { method: "POST" });
 
     await mockOwnObservationFeed(page);
     await page.goto("/");
