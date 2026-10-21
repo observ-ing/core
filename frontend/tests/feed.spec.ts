@@ -1,8 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { mockOwnObservationFeed, mockObservationDetailRoute } from "./helpers/mock-observation";
-import { mockJson } from "./helpers/mock-api";
 import { openFirstCard } from "./helpers/navigation";
-import { MOCK_TEST_USER } from "./helpers/test-users";
 
 test.describe("Feed View", () => {
   test.beforeEach(async ({ page }) => {
@@ -46,12 +44,6 @@ test.describe("Feed View", () => {
 
   test("clicking observer name navigates to their profile", async ({ page }) => {
     await mockObservationDetailRoute(page);
-    await mockJson(page, "**/api/profiles/*", {
-      ...MOCK_TEST_USER,
-      observationCount: 1,
-      identificationCount: 0,
-    });
-    await mockJson(page, "**/api/feeds/profile/**", { occurrences: [], cursor: null });
     await page.goto("/explore");
     await openFirstCard(page);
     // Detail page shows observer info with a profile link
