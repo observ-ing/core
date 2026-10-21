@@ -6,7 +6,6 @@ test.describe("Feed View", () => {
     await mockOwnObservationFeed(page);
   });
 
-  // TC-FEED-001: Feed loads observations
   test("feed displays observation cards", async ({ page }) => {
     await page.goto("/explore");
     const cards = page.locator(".MuiCard-root");
@@ -14,7 +13,6 @@ test.describe("Feed View", () => {
     expect(await cards.count()).toBeGreaterThan(0);
   });
 
-  // TC-FEED-002: Feed item click
   test("clicking a feed item navigates to observation detail", async ({ page }) => {
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
@@ -23,7 +21,6 @@ test.describe("Feed View", () => {
     await expect(page).toHaveURL(/\/observation\//);
   });
 
-  // TC-FEED-003: Infinite scroll
   test("scrolling to bottom loads more items", async ({ page }) => {
     await page.goto("/explore");
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 15_000 });
@@ -35,21 +32,18 @@ test.describe("Feed View", () => {
     expect(newCount).toBeGreaterThanOrEqual(initialCount);
   });
 
-  // TC-FEED-004: Home vs Explore tabs
   test("explore tab shows observations in grid layout", async ({ page }) => {
     await page.goto("/explore");
     const cards = page.locator(".MuiCard-root");
     await expect(cards.first()).toBeVisible();
   });
 
-  // TC-FEED-006: Explore feed (unauthenticated)
   test("explore feed shows content when logged out", async ({ page }) => {
     await page.goto("/explore");
     const cards = page.locator(".MuiCard-root");
     await expect(cards.first()).toBeVisible();
   });
 
-  // TC-FEED-007: Observer name links to profile (via detail page)
   test("clicking observer name navigates to their profile", async ({ page }) => {
     await mockObservationDetailRoute(page);
     await page.route("**/api/profiles/*", (route) =>
@@ -84,7 +78,6 @@ test.describe("Feed View", () => {
     await expect(page).toHaveURL(/\/profile\//);
   });
 
-  // TC-FEED-008: Observer avatar display (via detail page)
   test("observation detail shows observer avatar", async ({ page }) => {
     await mockObservationDetailRoute(page);
     await page.goto("/explore");

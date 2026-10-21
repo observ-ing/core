@@ -40,7 +40,10 @@ export default defineConfig({
         launchOptions: {
           args: ["--use-gl=angle", "--use-angle=swiftshader"],
         },
+        // Written by devenv-auth.setup.ts, so every test starts signed in.
         storageState: "playwright/.auth/user.json",
+        geolocation: { latitude: 37.7749, longitude: -122.4194 },
+        permissions: ["geolocation"],
       },
     },
   ],

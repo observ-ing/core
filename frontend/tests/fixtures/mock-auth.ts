@@ -1,18 +1,11 @@
 import { test as base, type Page } from "@playwright/test";
 import { MOCK_TEST_USER } from "../helpers/test-users";
 
-export type { TestUser } from "./auth";
-
-export function getTestUser() {
-  return MOCK_TEST_USER;
-}
-
 /**
- * Provides an authenticated page for integration tests with mocked Bluesky auth.
- *
- * Intercepts /oauth/me to return a hardcoded test user so tests can run
- * without real Bluesky credentials. All data API calls must be mocked
- * by the individual tests.
+ * The integration suite's `test`. Its `page` is logged out, as with plain
+ * Playwright; `authenticatedPage` is signed in as MOCK_TEST_USER through a
+ * mocked /oauth/me, so tests run without real Bluesky credentials. All data
+ * API calls must be mocked by the individual tests.
  */
 export const test = base.extend<{ authenticatedPage: Page }>({
   // `contextOptions` lets a spec ask for another device, e.g. a phone's
