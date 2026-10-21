@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse, delay } from "msw";
 import { FeedView } from "./FeedView";
 import { OAK_OBSERVATION, FERN_OBSERVATION } from "../../../.storybook/fixtures";
+import type { ExploreFeedResponse, HomeFeedResponse } from "../../services/types";
 
 const meta = {
   title: "Feed/FeedView",
@@ -22,14 +23,12 @@ const populatedHandlers = [
   http.get("/api/feeds/explore", () =>
     HttpResponse.json({
       occurrences: [OAK_OBSERVATION, FERN_OBSERVATION],
-      cursor: null,
-    }),
+    } satisfies ExploreFeedResponse),
   ),
   http.get("/api/feeds/home", () =>
     HttpResponse.json({
       occurrences: [OAK_OBSERVATION, FERN_OBSERVATION],
-      cursor: null,
-    }),
+    } satisfies HomeFeedResponse),
   ),
 ];
 
@@ -65,11 +64,11 @@ export const Loading: Story = {
       handlers: [
         http.get("/api/feeds/home", async () => {
           await delay("infinite");
-          return HttpResponse.json({ occurrences: [], cursor: null });
+          return HttpResponse.json({ occurrences: [] } satisfies HomeFeedResponse);
         }),
         http.get("/api/feeds/explore", async () => {
           await delay("infinite");
-          return HttpResponse.json({ occurrences: [], cursor: null });
+          return HttpResponse.json({ occurrences: [] } satisfies ExploreFeedResponse);
         }),
       ],
     },

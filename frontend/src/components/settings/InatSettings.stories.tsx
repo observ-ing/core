@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { InatSettings } from "./InatSettings";
 import { ALICE_USER } from "../../../.storybook/fixtures";
+import type { InatAccountResponse } from "../../bindings/InatAccountResponse";
 
 // The section asks the server about the signed-in user's linked account, so
 // every story needs a user and an /api/inat/account response.
@@ -9,7 +10,7 @@ const signedIn = {
   storeOptions: { preloadedState: { auth: { user: ALICE_USER, isLoading: false } } },
 };
 
-const account = (body: { enabled: boolean; login: string | null; linkedAt: string | null }) => ({
+const account = (body: InatAccountResponse) => ({
   handlers: [http.get("/api/inat/account", () => HttpResponse.json(body))],
 });
 

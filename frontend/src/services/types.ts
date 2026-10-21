@@ -51,6 +51,10 @@ export type TaxaResult = GeneratedTaxaResult & {
   acceptedName?: string;
 };
 
+export interface TaxaSearchResponse {
+  results: TaxaResult[];
+}
+
 // ============================================================================
 // Feed Types (frontend-only wrappers around API responses)
 // ============================================================================
