@@ -2,10 +2,10 @@
 // or more photos, plus the selection. Kept as a pure reducer so grouping,
 // splitting, and completeness rules can be tested without mounting the page.
 import type { ObservationInput } from "../services/api";
-import type { TaxaResult } from "../services/types";
 import type { PhotoExif } from "./exif";
 import { convertHeicToJpeg, isHeic, MAX_HEIC_SIZE } from "./heic";
 import { MAX_IMAGES, vetImageFiles } from "./imageSelection";
+import { taxonFields, toEventDate, type FormDate, type FormTaxon } from "./observationInput";
 
 /** Most photos one batch can hold. */
 export const MAX_BATCH_PHOTOS = 100;
@@ -21,13 +21,7 @@ export interface BatchPhoto {
   exif: PhotoExif | null;
 }
 
-export interface BatchTaxon {
-  name: string;
-  /** The taxonomy entry the name was picked from, or `null` for free text. */
-  match: TaxaResult | null;
-  kingdom: string;
-  rank: string;
-}
+export type BatchTaxon = FormTaxon;
 
 /**
  * "done" observations have been uploaded. They stay in the list, so the grid
@@ -35,17 +29,11 @@ export interface BatchTaxon {
  */
 export type UploadStatus = "idle" | "queued" | "uploading" | "failed" | "done";
 
-export interface BatchObservation {
+export interface BatchObservation extends FormDate {
   id: string;
   /** Never empty. The first photo is the cover and the one sent to visual ID. */
   photos: BatchPhoto[];
   taxon: BatchTaxon;
-  /** Wall-clock `datetime-local` value, or "" when unknown. */
-  date: string;
-  /** Optional `YYYY-MM-DD` end of a day range. */
-  endDate: string;
-  /** UTC offset `date` is in; `null` means the browser's own zone. */
-  utcOffset: string | null;
   latitude: number | null;
   longitude: number | null;
   uncertaintyMeters: number;
@@ -434,50 +422,18 @@ export function canCombine(observations: BatchObservation[]): boolean {
   return observations.length > 1 && photos <= MAX_IMAGES;
 }
 
-/** An offset in minutes east of UTC as EXIF and ISO 8601 write it, e.g. "-07:00". */
-export function formatUtcOffset(minutesEast: number): string {
-  const abs = Math.abs(minutesEast);
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${minutesEast < 0 ? "-" : "+"}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
-}
-
-/** The offset the browser's own zone has at `date` (a `datetime-local` value), or now. */
-export function browserUtcOffset(date: string): string {
-  const at = date ? new Date(date) : new Date();
-  return formatUtcOffset(-(isNaN(at.getTime()) ? new Date() : at).getTimezoneOffset());
-}
-
-/** Every UTC offset in civil use, west to east. */
-export const UTC_OFFSETS: readonly string[] = [
-  ...[-720, -660, -600, -570, -540, -480, -420, -360, -300, -240, -210, -180, -120, -60],
-  ...[0, 60, 120, 180, 210, 240, 270, 300, 330, 345, 360, 390, 420, 480, 525, 540, 570],
-  ...[600, 630, 660, 720, 765, 780, 840],
-].map(formatUtcOffset);
-
-export function toEventDate(observation: BatchObservation): string {
-  const { date, endDate, utcOffset } = observation;
-  if (endDate) return `${date.slice(0, 10)}/${endDate}`;
-  // Without an offset the wall-clock time is read in the browser's zone, as
-  // the single-observation form does.
-  return new Date(utcOffset ? `${date}:00${utcOffset}` : date).toISOString();
-}
-
 export function toObservationInput(
   observation: BatchObservation,
   license: string,
   images: NonNullable<ObservationInput["images"]>,
 ): ObservationInput {
-  const { taxon, latitude, longitude } = observation;
+  const { latitude, longitude } = observation;
   if (latitude === null || longitude === null) {
     throw new Error("Observation has no location");
   }
-  const name = taxon.name.trim();
   const remarks = observation.remarks.trim();
   return {
-    ...(name ? { scientificName: name } : {}),
-    ...(name && taxon.kingdom ? { kingdom: taxon.kingdom } : {}),
-    ...(name && !taxon.match && taxon.rank ? { taxonRank: taxon.rank } : {}),
-    ...(name && taxon.match?.taxonId ? { taxonId: taxon.match.taxonId } : {}),
+    ...taxonFields(observation.taxon),
     latitude,
     longitude,
     coordinateUncertaintyInMeters: observation.uncertaintyMeters,

@@ -15,13 +15,13 @@ import SearchIcon from "@mui/icons-material/Search";
 import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
-  browserUtcOffset,
   describeMissing,
   hasLocation,
   isReading,
   missingFields,
   type BatchObservation,
 } from "../../../lib/batchUpload";
+import { browserUtcOffset } from "../../../lib/observationInput";
 import { formatCoordinate } from "../../../lib/utils";
 import { formatBatchDate } from "../BatchCard";
 import { shared } from "../BatchEditor";

@@ -2,24 +2,19 @@
 // remarks on every selected observation at once. A field shows a value only
 // when the whole selection agrees on it.
 import { lazy, Suspense, useState } from "react";
-import { Box, Button, MenuItem, Paper, Stack, TextField, Typography } from "@mui/material";
+import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
 import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
+import { TimeZoneSelect } from "../common/TimeZoneSelect";
 import { coverImageSx, thumbnailFrameSx } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { AncestorSelection } from "../identification/VisualIdCards";
 import type { SpeciesSuggestion } from "../../services/api";
-import {
-  UTC_OFFSETS,
-  browserUtcOffset,
-  type BatchEdit,
-  type BatchObservation,
-  type BatchTaxon,
-} from "../../lib/batchUpload";
+import type { BatchEdit, BatchObservation, BatchTaxon } from "../../lib/batchUpload";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { formatCoordinate, plural } from "../../lib/utils";
 
@@ -51,15 +46,6 @@ export function taxonFromAncestor(ancestor: AncestorSelection): Partial<BatchTax
 }
 
 const MIXED = "Mixed values";
-/** Select values standing for "the browser's zone" and "the selection disagrees". */
-const ZONE_LOCAL = "local";
-const ZONE_MIXED = "mixed";
-
-/** "-07:00" as -420, for sorting offsets west to east. */
-function offsetMinutes(offset: string): number {
-  const [hours = "0", minutes = "0"] = offset.slice(1).split(":");
-  return (offset.startsWith("-") ? -1 : 1) * (Number(hours) * 60 + Number(minutes));
-}
 
 /** The value every item shares, or `undefined` when they differ. */
 export function shared<T>(values: T[]): T | undefined {
@@ -75,7 +61,6 @@ export function DateFields({ selected, onEdit }: BatchEditorProps) {
   const date = shared(selected.map((o) => o.date));
   // `null` is a real value here (the browser's zone), so "mixed" needs its own test.
   const zoneMixed = new Set(selected.map((o) => o.utcOffset)).size > 1;
-  const zone = zoneMixed ? ZONE_MIXED : (first.utcOffset ?? ZONE_LOCAL);
 
   return (
     <>
@@ -120,32 +105,13 @@ export function DateFields({ selected, onEdit }: BatchEditorProps) {
         )}
       </Box>
 
-      <TextField
-        select
-        fullWidth
-        label="Time zone"
-        value={zone}
-        // Changing the zone keeps the clock time and moves the moment it names.
-        onChange={(e) =>
-          onEdit({ utcOffset: e.target.value === ZONE_LOCAL ? null : e.target.value })
-        }
-        slotProps={{ inputLabel: { shrink: true } }}
-      >
-        {zoneMixed && (
-          <MenuItem value={ZONE_MIXED} disabled>
-            {MIXED}
-          </MenuItem>
-        )}
-        <MenuItem value={ZONE_LOCAL}>Local time (UTC{browserUtcOffset(date ?? "")})</MenuItem>
-        {/* A photo can carry an offset that no zone uses today. */}
-        {[...new Set([...UTC_OFFSETS, ...selected.flatMap((o) => o.utcOffset ?? [])])]
-          .sort((a, b) => offsetMinutes(a) - offsetMinutes(b))
-          .map((offset) => (
-            <MenuItem key={offset} value={offset}>
-              UTC{offset}
-            </MenuItem>
-          ))}
-      </TextField>
+      <TimeZoneSelect
+        value={first.utcOffset}
+        date={date ?? ""}
+        onChange={(utcOffset) => onEdit({ utcOffset })}
+        mixed={zoneMixed}
+        extraOffsets={selected.flatMap((o) => o.utcOffset ?? [])}
+      />
     </>
   );
 }

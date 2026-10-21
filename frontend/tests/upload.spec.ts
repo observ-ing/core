@@ -3,6 +3,7 @@ import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/
 import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+import { mockSubmit, taggedPhoto } from "./helpers/batch-upload";
 
 const FAB = 'button[aria-label="Create actions"]';
 const CREATE_BUTTON = { name: "Add observation" } as const;
@@ -167,6 +168,61 @@ authTest.describe("Upload Modal - Logged In", () => {
       authExpect(value.startsWith(today)).toBeTruthy();
     },
   );
+
+  authTest.describe("in a different time zone from the photo", () => {
+    // UTC+2 on the photo's date; the photo was taken at UTC-7.
+    authTest.use({ contextOptions: { timezoneId: "Europe/Berlin" } });
+
+    authTest(
+      "reads a photo's capture time and accuracy as the batch uploader does",
+      async ({ authenticatedPage: page }) => {
+        const bodies = await mockSubmit(page);
+        await page.goto("/");
+        await openUploadModal(page);
+        await page
+          .getByRole("dialog")
+          .locator('input[type="file"]')
+          .setInputFiles(taggedPhoto("IMG_1.jpg"));
+
+        await gotoUploadStep(page, "Date & details");
+        await authExpect(page.getByLabel("Observation date")).toHaveValue("2026-10-03T10:42");
+        await authExpect(page.getByRole("combobox", { name: /Time zone/ })).toHaveText("UTC-07:00");
+
+        await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+        await authExpect.poll(() => bodies.length).toBe(1);
+        // 10:42 at UTC-7, not 10:42 in the browser's zone (08:42Z).
+        authExpect(bodies[0]).toMatchObject({
+          eventDate: "2026-10-03T17:42:00.000Z",
+          latitude: 37.905,
+          longitude: -122.2445,
+          coordinateUncertaintyInMeters: 12,
+        });
+      },
+    );
+
+    authTest(
+      "re-reads the clock time in a zone chosen by hand",
+      async ({ authenticatedPage: page }) => {
+        const bodies = await mockSubmit(page);
+        await page.goto("/");
+        await openUploadModal(page);
+        await revealCoordinateInputs(page);
+        await page.getByLabel("Latitude").fill("37.7749");
+        await page.getByLabel("Longitude").fill("-122.4194");
+
+        await gotoUploadStep(page, "Date & details");
+        await page.getByLabel("Observation date").fill("2026-10-03T10:42");
+        const zone = page.getByRole("combobox", { name: /Time zone/ });
+        await authExpect(zone).toHaveText("Local time (UTC+02:00)");
+        await zone.click();
+        await page.getByRole("option", { name: "UTC+09:00" }).click();
+
+        await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+        await authExpect.poll(() => bodies.length).toBe(1);
+        authExpect(bodies[0]).toMatchObject({ eventDate: "2026-10-03T01:42:00.000Z" });
+      },
+    );
+  });
 
   // TC-UPLOAD-016: Invalid image file type
   authTest("file input only accepts image types", async ({ authenticatedPage: page }) => {
