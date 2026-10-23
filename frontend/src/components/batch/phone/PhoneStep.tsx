@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { Box, Button, IconButton, Typography, type ButtonProps } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { phoneCaptionFontSize } from "../../common/layoutSx";
 
 /** Clears the home indicator on phones that draw one over the page. */
 const SAFE_BOTTOM = "env(safe-area-inset-bottom, 0px)";
@@ -47,7 +48,7 @@ export function StackedAction({ startIcon, children, sx, ...props }: ButtonProps
           flexDirection: "column",
           gap: 0.5,
           px: 0.5,
-          fontSize: 13,
+          fontSize: phoneCaptionFontSize,
           lineHeight: 1.2,
         },
         ...(Array.isArray(sx) ? sx : [sx]),
@@ -118,7 +119,7 @@ export function PhoneStep({
             <Typography
               noWrap
               sx={{
-                fontSize: 13,
+                fontSize: phoneCaptionFontSize,
                 fontWeight: subtitleWarns ? 600 : 400,
                 color: subtitleWarns ? "warning.main" : "text.secondary",
               }}

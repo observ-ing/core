@@ -21,6 +21,9 @@ export const rowIconSx = { fontSize: 18 } as const;
 /** Font size for fine print smaller than `caption` (photo license credits, rank labels). */
 export const finePrintFontSize = "0.65rem";
 
+/** Secondary-line font size on the phone batch screens (row labels, subtitles, tab captions). */
+export const phoneCaptionFontSize = 13;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
