@@ -87,7 +87,7 @@ failing scenario and the difference.
 | Question | Answer |
 |---|---|
 | Source of truth | Records in users' repos (3 users × 3 keys × occurrence / identification / like / remark, with optional fields that edits add and remove) |
-| Expected state | Occurrences, identifications, likes, and remarks mirror the repos; an occurrence's remark reference fills its term only when the remark agrees on author, subject, and term; `community_ids` is the vote winner per occurrence; each notification is sent once |
+| Expected state | Occurrences, identifications, likes, and remarks mirror the repos; an occurrence's remark reference fills its term only when the remark agrees on author, subject, and term; `community_ids` is the vote winner per occurrence; the owner is notified exactly once of each like and identification someone else has on their occurrence |
 | Messy actions | Tap delivers repos in any interleaving, redelivers events, rewinds its cursor; resolve-taxa runs at any point; records are edited, deleted, re-created |
 | Check | Drain every queue, run resolve-taxa, compare against the database |
 
@@ -123,9 +123,9 @@ SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 tests run in the `rust-sim` CI job; the rest run everywhere, including
 `rust-test`.
 
-It found seven problems on main, each shrunk to a 2–7 step scenario. All
-are fixed and the known-bugs list is empty, so any regression fails CI, and
-the mutants keep the sim able to see each of them.
+It found eight problems on main, each shrunk to a 2–7 step scenario. Seven
+are fixed, so any regression fails CI, and the mutants keep the sim able to
+see each of them. The eighth is on the known-bugs list.
 
 | Property | Bug | Shortest scenario | Fix |
 |---|---|---|---|
@@ -136,6 +136,7 @@ the mutants keep the sim able to see each of them.
 | `notifications_at_most_once` | No uniqueness, so a redelivered or edited record notifies again | like → deliver → redeliver | #858 (merged) |
 | `likes_match_repos` | Only one like per user per occurrence is stored, but a double tap creates two records; unliking deletes one and the DB says "not liked" while the repo still likes it | like → like again → delete first | #859 (merged) |
 | `ingest_succeeds` | Replaying an older version of a like (cursor rewind) errors on the primary key instead of being a no-op | like → delete → like again → rewind | #859 (merged) |
+| `notifications_sent` | A like or identification delivered before the occurrence it names never notifies the owner: the ingester looks the owner up in `occurrences` then, finds nothing, and the record ingests without error, so the subject resolver never retries it | alice identifies bob's occurrence → bob puts the occurrence (Tap delivers alice's repo first) | open |
 
 Open question it surfaced, not changed: should deleting a record withdraw
 the notification it caused?
