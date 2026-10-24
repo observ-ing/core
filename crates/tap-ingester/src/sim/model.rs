@@ -646,7 +646,34 @@ impl World {
             }
         }
         s.community_ids = self.expected_community_ids();
+        s.notifications = self.expected_notifications();
         s
+    }
+
+    /// Notifications that must exist once everything drains: the owner of an
+    /// occurrence hears about each like and identification someone else
+    /// still has on it. Notifications are history, never withdrawn, so this
+    /// is a floor; one for a record since deleted is fine.
+    fn expected_notifications(&self) -> BTreeSet<NotificationKey> {
+        self.repos
+            .iter()
+            .filter_map(|(key, record)| {
+                let (kind, subject) = match record {
+                    Record::Like { subject } => ("like", subject),
+                    Record::Identification { subject, .. } => ("identification", subject),
+                    _ => return None,
+                };
+                let live = matches!(self.repos.get(subject), Some(Record::Occurrence { .. }));
+                (live && subject.did != key.did).then(|| {
+                    (
+                        subject.did.to_string(),
+                        key.did.to_string(),
+                        kind.to_string(),
+                        Some(key.uri()),
+                    )
+                })
+            })
+            .collect()
     }
 
     /// The remark `reference` fills `term` on `occurrence` only if it exists
@@ -760,6 +787,9 @@ pub struct IdentificationRow {
     pub kingdom: Option<String>,
 }
 
+/// `(recipient, actor, kind, reference uri)`
+pub type NotificationKey = (String, String, String, Option<String>);
+
 /// The abstract state the properties compare: the model's vocabulary, which
 /// the driver maps real rows into.
 #[derive(Debug, Default)]
@@ -775,10 +805,12 @@ pub struct Snapshot {
     pub resolved_remarks: BTreeMap<(String, String), ResolvedRemark>,
     /// occurrence uri → (winning name, vote count)
     pub community_ids: BTreeMap<String, (String, i64)>,
+    /// Every distinct `(recipient, actor, kind, reference uri)` notified.
+    pub notifications: BTreeSet<NotificationKey>,
     /// `(recipient, actor, kind, reference uri)` → count, only where count > 1.
     /// Keyed by recipient because a deleted record's rkey can be reused for a
     /// record about someone else's occurrence, which rightly notifies them.
-    pub duplicate_notifications: BTreeMap<(String, String, String, Option<String>), i64>,
+    pub duplicate_notifications: BTreeMap<NotificationKey, i64>,
     pub ingest_errors: Vec<String>,
 }
 
