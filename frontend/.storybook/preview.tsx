@@ -40,14 +40,14 @@ const preview: Preview = {
       GlobalStyles: CssBaseline,
     }),
     (Story, context) => {
-      const store = makeMockStore(context.parameters.storeOptions);
+      const store = makeMockStore(context.parameters["storeOptions"]);
       // Fresh client per render so components using query hooks (likes,
       // comments, identifications) have a QueryClient and don't bleed cache
       // between stories.
       const queryClient = new QueryClient({
         defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
       });
-      const initialEntries = context.parameters.routerInitialEntries ?? ["/"];
+      const initialEntries = context.parameters["routerInitialEntries"] ?? ["/"];
       // A data router, like the app's, so components using `useBlocker` render.
       const router = createMemoryRouter([{ path: "*", element: <Story /> }], { initialEntries });
       return (
