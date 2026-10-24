@@ -236,9 +236,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                 justifyContent: "flex-start",
               }}
             >
-              <Box
-                sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}
-              >
+              <Box sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}>
                 <Box component="img" src={cover.previewUrl} alt="" sx={coverImageSx} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
