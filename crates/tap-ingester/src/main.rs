@@ -36,33 +36,28 @@
 //!   GET /api/tap-stats     Tap-side counts, buffers, cursors (JSON).
 
 mod dashboard;
-mod database;
-mod error;
-mod lag_probe;
-mod media_resolver;
-mod server;
 mod subject_resolver;
-mod types;
 
 use std::sync::Arc;
 
 use chrono::Utc;
 use clap::Parser;
 use dashboard::DashboardState;
-use database::Database;
 use observing_collections::{
     COMMENT_COLLECTION, IDENTIFICATION_COLLECTION, INTERACTION_COLLECTION, LIKE_COLLECTION,
     OCCURRENCE_COLLECTION, REMARK_COLLECTION,
 };
 use observing_db::failed_records::FailedRecord;
 use serde_json::Value;
-use server::{ServerState, SharedState};
 use subject_resolver::SubjectResolver;
+use tap_ingester::database::Database;
+use tap_ingester::lag_probe;
+use tap_ingester::records::{self, process_record, Action};
+use tap_ingester::server::{ServerState, SharedState};
 use tapped::{Event, LogLevel, RecordAction, RecordEvent, TapClient, TapConfig, TapProcess};
 use tokio::sync::RwLock;
 use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
-use types::RecentEvent;
 
 #[derive(Parser)]
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]
@@ -206,7 +201,9 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
     while let Ok(received) = channel.recv().await {
         let mut should_ack = true;
         if let Event::Record(record) = &received.event {
-            if let Err(err) = process_record(&db, record, &state).await {
+            let json = record_json(record);
+            let record = to_record(record, json.as_ref());
+            if let Err(err) = process_record(&db, &record, &state).await {
                 // process_record already logged + bumped stats.errors.
                 // Reactively ask the resolver for the subject DID; if it
                 // *added* a new DID to Tap, suppress this event's ack so
@@ -217,7 +214,6 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 // and a future replay job can re-attempt — then ack and
                 // move on. Looping on unresolvable records would
                 // saturate the queue.
-                let json = record_json(record);
                 let added_new_did = match json.as_ref() {
                     Some(j) => subject_resolver.ensure_subject_tracked(j).await.is_some(),
                     None => false,
@@ -225,15 +221,15 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
                 if added_new_did {
                     should_ack = false;
                 } else {
-                    let uri = format_uri(record);
+                    let uri = record.uri();
                     let err_str = err.to_string();
                     if let Err(ledger_err) = db
                         .record_failure(FailedRecord {
                             uri: &uri,
-                            collection: record.collection.as_str(),
-                            did: &record.did,
-                            cid: record.cid.as_deref(),
-                            action: action_to_str(record.action),
+                            collection: record.collection,
+                            did: record.did,
+                            cid: record.cid,
+                            action: record.action.as_str(),
                             record_json: json.as_ref(),
                             error: &err_str,
                         })
@@ -485,137 +481,28 @@ fn resolve_database_url() -> Result<String, Box<dyn std::error::Error>> {
         .ok_or_else(|| "DATABASE_URL or DB_HOST environment variable is required".into())
 }
 
-async fn process_record(
-    db: &Database,
-    record: &RecordEvent,
-    state: &SharedState,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let collection = record.collection.as_str();
-    let action = action_to_str(record.action);
-
-    let event_type = match collection {
-        OCCURRENCE_COLLECTION => "occurrence",
-        IDENTIFICATION_COLLECTION => "identification",
-        REMARK_COLLECTION => "remark",
-        COMMENT_COLLECTION => "comment",
-        INTERACTION_COLLECTION => "interaction",
-        LIKE_COLLECTION => "like",
-        _ => return Ok(()),
+/// Borrow a Tap record event as the source-independent [`records::Record`].
+fn to_record<'a>(record: &'a RecordEvent, value: Option<&'a Value>) -> records::Record<'a> {
+    let action = match record.action {
+        RecordAction::Create => Action::Create,
+        RecordAction::Delete => Action::Delete,
+        // RecordAction is #[non_exhaustive]; future variants are treated as upserts.
+        _ => Action::Update,
     };
-
-    let uri = format_uri(record);
-
-    let result = if matches!(record.action, RecordAction::Delete) {
-        match collection {
-            OCCURRENCE_COLLECTION => db.delete_occurrence(&uri).await,
-            IDENTIFICATION_COLLECTION => db.delete_identification(&uri).await,
-            REMARK_COLLECTION => db.delete_remark(&uri).await,
-            COMMENT_COLLECTION => db.delete_comment(&uri).await,
-            INTERACTION_COLLECTION => db.delete_interaction(&uri).await,
-            LIKE_COLLECTION => db.delete_like(&uri).await,
-            _ => unreachable!(),
-        }
-    } else {
-        let Some(record_value) = record_json(record) else {
-            warn!(%uri, "record event without parseable JSON; skipping");
-            return Ok(());
-        };
-        let cid = record.cid.as_deref().unwrap_or("");
-        let now = Utc::now();
-
-        // Like records are filtered to occurrence-subjects only.
-        if collection == LIKE_COLLECTION && !subject_uri_is_occurrence(&record_value) {
-            return Ok(());
-        }
-
-        match collection {
-            OCCURRENCE_COLLECTION => {
-                db.upsert_occurrence(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            IDENTIFICATION_COLLECTION => {
-                db.upsert_identification(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            REMARK_COLLECTION => {
-                db.upsert_remark(&record.did, &uri, cid, &record_value)
-                    .await
-            }
-            COMMENT_COLLECTION => {
-                db.upsert_comment(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            INTERACTION_COLLECTION => {
-                db.upsert_interaction(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            LIKE_COLLECTION => {
-                db.upsert_like(&record.did, &uri, cid, now, &record_value)
-                    .await
-            }
-            _ => unreachable!(),
-        }
-    };
-
-    let mut s = state.write().await;
-    if let Err(e) = result {
-        error!(%uri, error = %e, "{} {} failed", event_type, action);
-        s.stats.errors += 1;
-        Err(e.into())
-    } else {
-        match event_type {
-            "occurrence" => s.stats.occurrences += 1,
-            "identification" => s.stats.identifications += 1,
-            "remark" => s.stats.remarks += 1,
-            "comment" => s.stats.comments += 1,
-            "interaction" => s.stats.interactions += 1,
-            "like" => s.stats.likes += 1,
-            _ => {}
-        }
-        s.add_recent_event(RecentEvent {
-            event_type: event_type.to_string(),
-            action: action.to_string(),
-            uri,
-            time: Utc::now(),
-        });
-        Ok(())
+    records::Record {
+        did: &record.did,
+        collection: record.collection.as_str(),
+        rkey: &record.rkey,
+        action,
+        cid: record.cid.as_deref(),
+        value,
     }
-}
-
-fn subject_uri_is_occurrence(record: &Value) -> bool {
-    record
-        .get("subject")
-        .and_then(|s| s.get("uri"))
-        .and_then(|u| u.as_str())
-        .is_some_and(|uri| uri.contains(OCCURRENCE_COLLECTION))
-}
-
-fn format_uri(record: &RecordEvent) -> String {
-    let built: Result<jacquard_common::types::string::AtUri, _> =
-        jacquard_common::types::string::AtUri::from_parts_owned(
-            &record.did,
-            &record.collection,
-            &record.rkey,
-        );
-    built
-        .map(|uri| uri.as_str().to_string())
-        .unwrap_or_else(|_| format!("at://{}/{}/{}", record.did, record.collection, record.rkey))
 }
 
 fn record_json(record: &RecordEvent) -> Option<Value> {
     record
         .record_as_str()
         .and_then(|s| serde_json::from_str(s).ok())
-}
-
-fn action_to_str(action: RecordAction) -> &'static str {
-    match action {
-        RecordAction::Create => "create",
-        RecordAction::Update => "update",
-        RecordAction::Delete => "delete",
-        // RecordAction is #[non_exhaustive]; future variants treated as no-op upserts.
-        _ => "unknown",
-    }
 }
 
 #[cfg(test)]

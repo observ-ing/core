@@ -72,11 +72,7 @@ impl SubjectResolver {
 /// Find a strongRef-shaped subject in the record (under either `occurrence`
 /// or `subject`) and return the DID portion of its `uri`.
 fn extract_subject_did(record: &Value) -> Option<String> {
-    let uri = record
-        .get("occurrence")
-        .and_then(|r| r.get("uri"))
-        .or_else(|| record.get("subject").and_then(|r| r.get("uri")))
-        .and_then(|u| u.as_str())?;
+    let uri = tap_ingester::records::subject_uri(record)?;
     let stripped = uri.strip_prefix("at://")?;
     let did = stripped.split('/').next()?;
     if did.is_empty() {
