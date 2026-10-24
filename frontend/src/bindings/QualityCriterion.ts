@@ -15,9 +15,4 @@
  * by [`FromStr`] below, so the UI, the `?quality=` parser, and the generated
  * type can't drift.
  */
-export type QualityCriterion =
-  | "HAS_DATE"
-  | "HAS_LOCATION"
-  | "PRECISE_LOCATION"
-  | "HAS_MEDIA"
-  | "HAS_CONSENSUS_ID";
+export type QualityCriterion = "HAS_DATE" | "HAS_LOCATION" | "PRECISE_LOCATION" | "HAS_MEDIA" | "HAS_CONSENSUS_ID";
