@@ -35,7 +35,12 @@ use model::{Action, Effect, Snapshot, World};
 /// delete the entry in the PR that fixes it. The test fails on any violation
 /// not listed here, and on a listed one that no longer reproduces, so the
 /// list can't silently go stale.
-const KNOWN_VIOLATIONS: &[&str] = &[];
+const KNOWN_VIOLATIONS: &[&str] = &[
+    // A like or identification delivered before the occurrence it names
+    // never notifies the owner: the ingester looks the owner up in
+    // `occurrences` at that moment, finds nothing, and nothing retries.
+    "notifications_sent",
+];
 
 /// Collections the ingester ingests that the sim doesn't generate yet, so
 /// nothing here tests their write path. `generator_covers_every_ingested_collection`
@@ -57,11 +62,12 @@ enum Property {
     Remarks,
     ResolvedRemarks,
     CommunityIds,
+    NotificationsSent,
     NotificationsAtMostOnce,
 }
 
 impl Property {
-    const ALL: [Property; 9] = [
+    const ALL: [Property; 10] = [
         Property::IngestSucceeds,
         Property::Occurrences,
         Property::Identifications,
@@ -70,6 +76,7 @@ impl Property {
         Property::Remarks,
         Property::ResolvedRemarks,
         Property::CommunityIds,
+        Property::NotificationsSent,
         Property::NotificationsAtMostOnce,
     ];
 
@@ -83,6 +90,7 @@ impl Property {
             Property::Remarks => "remarks_match_repos",
             Property::ResolvedRemarks => "remark_references_resolve",
             Property::CommunityIds => "community_ids_match_model",
+            Property::NotificationsSent => "notifications_sent",
             Property::NotificationsAtMostOnce => "notifications_at_most_once",
         }
     }
@@ -105,6 +113,16 @@ impl Property {
                 diff_maps(&expected.resolved_remarks, &actual.resolved_remarks)
             }
             Property::CommunityIds => diff_maps(&expected.community_ids, &actual.community_ids),
+            // Only missing ones: an extra notification is one for a record
+            // since deleted, which stays (notifications are history).
+            Property::NotificationsSent => {
+                let lines: Vec<_> = expected
+                    .notifications
+                    .difference(&actual.notifications)
+                    .map(|n| format!("    never notified: {n:?}"))
+                    .collect();
+                (!lines.is_empty()).then(|| lines.join("\n"))
+            }
             Property::NotificationsAtMostOnce => {
                 diff_maps(&BTreeMap::new(), &actual.duplicate_notifications)
             }

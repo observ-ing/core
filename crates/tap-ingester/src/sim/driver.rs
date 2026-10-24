@@ -228,6 +228,13 @@ impl Driver for PgDriver {
             .into_iter()
             .map(|(uri, name, count)| (uri, (name, count)))
             .collect(),
+            notifications: sqlx::query_as(
+                "SELECT DISTINCT recipient_did, actor_did, kind, reference_uri FROM notifications",
+            )
+            .fetch_all(pool)
+            .await?
+            .into_iter()
+            .collect(),
             duplicate_notifications: sqlx::query_as::<
                 _,
                 (String, String, String, Option<String>, i64),

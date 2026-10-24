@@ -160,6 +160,21 @@ const MUTANTS: &[Mutant] = &[
         uninstall: DROP_TRIGGER_MUTANT,
     },
     Mutant {
+        // Synthetic: identifications never notify the occurrence's owner.
+        name: "identifications_never_notify",
+        catches: &[Property::NotificationsSent],
+        install: "
+            CREATE FUNCTION sim_mutant() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                RETURN NULL;
+            END $$;
+            CREATE TRIGGER sim_mutant BEFORE INSERT ON notifications
+                FOR EACH ROW WHEN (NEW.kind = 'identification')
+                EXECUTE FUNCTION sim_mutant();
+        ",
+        uninstall: DROP_TRIGGER_MUTANT,
+    },
+    Mutant {
         // Synthetic: occurrence deletes silently do nothing.
         name: "occurrence_deletes_ignored",
         catches: &[Property::Occurrences],
