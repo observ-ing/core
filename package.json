@@ -79,6 +79,7 @@
     "vitest": "^4.0.17"
   },
   "overrides": {
+    "zod": "^4.6.6",
     "vite-plugin-pwa": {
       "vite": "$vite"
     },
