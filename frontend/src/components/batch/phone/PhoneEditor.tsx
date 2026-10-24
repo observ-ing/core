@@ -12,7 +12,7 @@ import NotesIcon from "@mui/icons-material/Notes";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
-import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
+import { coverImageSx, overlayBadgeSx, phoneCaptionFontSize } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   describeMissing,
@@ -83,7 +83,9 @@ function Row({
     >
       {icon}
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 13, color: "text.secondary" }}>{label}</Typography>
+        <Typography sx={{ fontSize: phoneCaptionFontSize, color: "text.secondary" }}>
+          {label}
+        </Typography>
         <Typography
           noWrap
           sx={{
