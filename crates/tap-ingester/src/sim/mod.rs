@@ -37,6 +37,16 @@ use model::{Action, Effect, Snapshot, World};
 /// list can't silently go stale.
 const KNOWN_VIOLATIONS: &[&str] = &[];
 
+/// Collections the ingester ingests that the sim doesn't generate yet, so
+/// nothing here tests their write path. `generator_covers_every_ingested_collection`
+/// fails on an ingested collection missing from both the generator and this
+/// list, so a newly ingested collection can't go untested unnoticed, and on a
+/// listed one the generator now produces, so the list can't go stale either.
+const UNMODELED_COLLECTIONS: &[&str] = &[
+    observing_collections::COMMENT_COLLECTION,
+    observing_collections::INTERACTION_COLLECTION,
+];
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 enum Property {
     IngestSucceeds,
@@ -44,17 +54,21 @@ enum Property {
     Identifications,
     AcceptedTaxonKeys,
     Likes,
+    Remarks,
+    ResolvedRemarks,
     CommunityIds,
     NotificationsAtMostOnce,
 }
 
 impl Property {
-    const ALL: [Property; 7] = [
+    const ALL: [Property; 9] = [
         Property::IngestSucceeds,
         Property::Occurrences,
         Property::Identifications,
         Property::AcceptedTaxonKeys,
         Property::Likes,
+        Property::Remarks,
+        Property::ResolvedRemarks,
         Property::CommunityIds,
         Property::NotificationsAtMostOnce,
     ];
@@ -66,6 +80,8 @@ impl Property {
             Property::Identifications => "identifications_match_repos",
             Property::AcceptedTaxonKeys => "accepted_taxon_key_matches_name",
             Property::Likes => "likes_match_repos",
+            Property::Remarks => "remarks_match_repos",
+            Property::ResolvedRemarks => "remark_references_resolve",
             Property::CommunityIds => "community_ids_match_model",
             Property::NotificationsAtMostOnce => "notifications_at_most_once",
         }
@@ -84,6 +100,10 @@ impl Property {
                 diff_maps(&expected.accepted_taxon_keys, &actual.accepted_taxon_keys)
             }
             Property::Likes => diff_sets(&expected.likes, &actual.likes),
+            Property::Remarks => diff_maps(&expected.remarks, &actual.remarks),
+            Property::ResolvedRemarks => {
+                diff_maps(&expected.resolved_remarks, &actual.resolved_remarks)
+            }
             Property::CommunityIds => diff_maps(&expected.community_ids, &actual.community_ids),
             Property::NotificationsAtMostOnce => {
                 diff_maps(&BTreeMap::new(), &actual.duplicate_notifications)

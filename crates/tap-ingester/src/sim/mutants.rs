@@ -126,6 +126,40 @@ const MUTANTS: &[Mutant] = &[
         uninstall: "ALTER TABLE likes DROP CONSTRAINT sim_mutant_one_like_per_user",
     },
     Mutant {
+        // Synthetic, the occurrence bug's shape on remarks: an edit can't
+        // remove the license.
+        name: "remark_edit_keeps_removed_license",
+        catches: &[Property::Remarks],
+        install: "
+            CREATE FUNCTION sim_mutant() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                NEW.license := COALESCE(NEW.license, OLD.license);
+                RETURN NEW;
+            END $$;
+            CREATE TRIGGER sim_mutant BEFORE UPDATE ON remarks
+                FOR EACH ROW EXECUTE FUNCTION sim_mutant();
+        ",
+        uninstall: DROP_TRIGGER_MUTANT,
+    },
+    Mutant {
+        // Synthetic: an occurrence edit can't clear a remark reference, so a
+        // remark the author detached keeps filling the term.
+        name: "occurrence_edit_keeps_remark_reference",
+        catches: &[Property::Occurrences, Property::ResolvedRemarks],
+        install: "
+            CREATE FUNCTION sim_mutant() RETURNS trigger LANGUAGE plpgsql AS $$
+            BEGIN
+                NEW.occurrence_remarks_uri :=
+                    COALESCE(NEW.occurrence_remarks_uri, OLD.occurrence_remarks_uri);
+                NEW.event_remarks_uri := COALESCE(NEW.event_remarks_uri, OLD.event_remarks_uri);
+                RETURN NEW;
+            END $$;
+            CREATE TRIGGER sim_mutant BEFORE UPDATE ON occurrences
+                FOR EACH ROW EXECUTE FUNCTION sim_mutant();
+        ",
+        uninstall: DROP_TRIGGER_MUTANT,
+    },
+    Mutant {
         // Synthetic: occurrence deletes silently do nothing.
         name: "occurrence_deletes_ignored",
         catches: &[Property::Occurrences],
