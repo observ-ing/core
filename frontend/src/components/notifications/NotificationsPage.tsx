@@ -85,7 +85,7 @@ export function NotificationsPage() {
 
       {error && (
         <EmptyState
-          icon={<ErrorOutlineIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />}
+          icon={<ErrorOutlineIcon />}
           message="Unable to load notifications"
           secondary={error instanceof Error ? error.message : "Please try again later."}
           p={0}
