@@ -12,7 +12,9 @@ use sqlx::postgres::{PgConnection, PgPool};
 use sqlx::AssertSqlSafe;
 use sqlx::Connection;
 
-use super::model::{fake_taxon_key, Event, IdentificationRow, OccurrenceRow, Snapshot};
+use super::model::{
+    fake_taxon_key, Event, IdentificationRow, OccurrenceRow, RemarkRow, ResolvedRemark, Snapshot,
+};
 use crate::database::Database;
 
 type Result<T> = std::result::Result<T, Box<dyn Error>>;
@@ -105,7 +107,7 @@ impl PgDriver {
 impl Driver for PgDriver {
     async fn reset(&mut self) -> Result<()> {
         sqlx::query(
-            "TRUNCATE occurrences, identifications, comments, likes, interactions, \
+            "TRUNCATE occurrences, identifications, remarks, comments, likes, interactions, \
              notifications, failed_records CASCADE",
         )
         .execute(self.pool())
@@ -154,26 +156,61 @@ impl Driver for PgDriver {
     }
 
     async fn snapshot(&mut self) -> Result<Snapshot> {
+        type OccurrenceTuple = (
+            String,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+            Option<String>,
+        );
         let pool = self.pool();
         refresh_community_ids(pool).await?;
         let mut s = Snapshot {
-            occurrences: sqlx::query_as::<
-                _,
-                (String, Option<String>, Option<String>, Option<String>),
-            >(
+            occurrences: sqlx::query_as::<_, OccurrenceTuple>(
                 "SELECT uri, organism_quantity, organism_quantity_type, \
-                        external_records->0->>'uri' FROM occurrences",
+                        external_records->0->>'uri', occurrence_remarks_uri, event_remarks_uri \
+                 FROM occurrences",
             )
             .fetch_all(pool)
             .await?
             .into_iter()
-            .map(|(uri, quantity, quantity_type, external_record)| {
+            .map(
+                |(
+                    uri,
+                    quantity,
+                    quantity_type,
+                    external_record,
+                    occurrence_remarks,
+                    event_remarks,
+                )| {
+                    (
+                        uri,
+                        OccurrenceRow {
+                            quantity,
+                            quantity_type,
+                            external_record,
+                            occurrence_remarks,
+                            event_remarks,
+                        },
+                    )
+                },
+            )
+            .collect(),
+            remarks: sqlx::query_as::<_, (String, String, String, String, Option<String>)>(
+                "SELECT uri, subject_uri, dwc_term, body, license FROM remarks",
+            )
+            .fetch_all(pool)
+            .await?
+            .into_iter()
+            .map(|(uri, subject, term, body, license)| {
                 (
                     uri,
-                    OccurrenceRow {
-                        quantity,
-                        quantity_type,
-                        external_record,
+                    RemarkRow {
+                        subject,
+                        term,
+                        body,
+                        license,
                     },
                 )
             })
@@ -232,6 +269,24 @@ impl Driver for PgDriver {
                 },
             );
         }
+
+        // Read through the appview's own resolution query, so the property
+        // covers what readers see, not just what the ingester stored.
+        let occurrence_uris: Vec<String> = s.occurrences.keys().cloned().collect();
+        s.resolved_remarks = observing_db::remarks::get_for_occurrences(pool, &occurrence_uris)
+            .await?
+            .into_iter()
+            .map(|r| {
+                (
+                    (r.occurrence_uri, r.dwc_term),
+                    ResolvedRemark {
+                        uri: r.uri,
+                        body: r.body,
+                        license: r.license,
+                    },
+                )
+            })
+            .collect();
         Ok(s)
     }
 }

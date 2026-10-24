@@ -9,7 +9,10 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 
-use observing_collections::{IDENTIFICATION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION};
+use observing_collections::{
+    IDENTIFICATION_COLLECTION, LIKE_COLLECTION, OCCURRENCE_COLLECTION, REMARK_COLLECTION,
+};
+use observing_db::remarks::{EVENT_REMARKS, OCCURRENCE_REMARKS};
 use serde_json::{json, Value};
 use tapped::RecordAction;
 
@@ -22,6 +25,13 @@ const QUANTITIES: [Option<&str>; 3] = [Some("3"), Some("10-100"), None];
 const EXTERNAL_RECORDS: [Option<&str>; 3] = [
     Some("https://www.inaturalist.org/observations/1"),
     Some("https://www.inaturalist.org/observations/2"),
+    None,
+];
+const REMARK_TERMS: [&str; 2] = [OCCURRENCE_REMARKS, EVENT_REMARKS];
+const REMARK_BODIES: [&str; 3] = ["Two in flower", "By the creek", "Leaves only"];
+const LICENSES: [Option<&str>; 3] = [
+    Some("https://creativecommons.org/publicdomain/zero/1.0/"),
+    Some("https://creativecommons.org/licenses/by/4.0/"),
     None,
 ];
 
@@ -89,6 +99,7 @@ fn short_collection(collection: &str) -> &'static str {
         OCCURRENCE_COLLECTION => "occurrence",
         IDENTIFICATION_COLLECTION => "identification",
         LIKE_COLLECTION => "like",
+        REMARK_COLLECTION => "remark",
         _ => "?",
     }
 }
@@ -100,6 +111,10 @@ pub enum Record {
         quantity: Option<&'static str>,
         /// The single `externalRecords` entry's URI, if any.
         external_record: Option<&'static str>,
+        /// `occurrenceRemarksID`: the remark filling dwc:occurrenceRemarks.
+        occurrence_remarks: Option<Key>,
+        /// `eventRemarksID`: the remark filling dwc:eventRemarks.
+        event_remarks: Option<Key>,
     },
     Identification {
         subject: Key,
@@ -112,6 +127,14 @@ pub enum Record {
     Like {
         subject: Key,
     },
+    Remark {
+        /// Self-declared, so it can name an occurrence that doesn't point
+        /// back, or someone else's.
+        subject: Key,
+        term: &'static str,
+        body: &'static str,
+        license: Option<&'static str>,
+    },
 }
 
 impl Record {
@@ -120,6 +143,8 @@ impl Record {
             Record::Occurrence {
                 quantity,
                 external_record,
+                occurrence_remarks,
+                event_remarks,
             } => {
                 let mut v = json!({
                     "$type": OCCURRENCE_COLLECTION,
@@ -134,6 +159,12 @@ impl Record {
                 }
                 if let Some(uri) = external_record {
                     v["externalRecords"] = json!([{ "uri": uri, "service": "inaturalist" }]);
+                }
+                if let Some(remark) = occurrence_remarks {
+                    v["occurrenceRemarksID"] = json!(remark.uri());
+                }
+                if let Some(remark) = event_remarks {
+                    v["eventRemarksID"] = json!(remark.uri());
                 }
                 v
             }
@@ -163,6 +194,23 @@ impl Record {
                 "subject": { "uri": subject.uri(), "cid": "bafyreioccurrence" },
                 "createdAt": "2024-06-15T08:30:45Z",
             }),
+            Record::Remark {
+                subject,
+                term,
+                body,
+                license,
+            } => {
+                let mut v = json!({
+                    "$type": REMARK_COLLECTION,
+                    "subject": subject.uri(),
+                    "dwcTerm": term,
+                    "body": body,
+                });
+                if let Some(license) = license {
+                    v["license"] = json!(license);
+                }
+                v
+            }
         }
     }
 }
@@ -203,10 +251,21 @@ impl fmt::Display for Action {
                     Record::Occurrence {
                         quantity,
                         external_record,
-                    } => write!(
-                        f,
-                        " {{ quantity: {quantity:?}, external record: {external_record:?} }}"
-                    ),
+                        occurrence_remarks,
+                        event_remarks,
+                    } => {
+                        write!(
+                            f,
+                            " {{ quantity: {quantity:?}, external record: {external_record:?}"
+                        )?;
+                        if let Some(remark) = occurrence_remarks {
+                            write!(f, ", occurrenceRemarks: {remark}")?;
+                        }
+                        if let Some(remark) = event_remarks {
+                            write!(f, ", eventRemarks: {remark}")?;
+                        }
+                        write!(f, " }}")
+                    }
                     Record::Identification {
                         subject,
                         name,
@@ -218,6 +277,15 @@ impl fmt::Display for Action {
                         " {{ {name:?}, rank: {rank:?}, kingdom: {kingdom:?}, on {subject} }}"
                     ),
                     Record::Like { subject } => write!(f, " on {subject}"),
+                    Record::Remark {
+                        subject,
+                        term,
+                        body,
+                        license,
+                    } => write!(
+                        f,
+                        " {{ {term} {body:?}, license: {license:?}, on {subject} }}"
+                    ),
                 }
             }
             Action::Delete { key } => write!(f, "{} deletes {key}", short_did(key.did)),
@@ -314,9 +382,12 @@ impl World {
         };
         let collection = rng.pick(&[
             OCCURRENCE_COLLECTION,
+            OCCURRENCE_COLLECTION,
+            IDENTIFICATION_COLLECTION,
             IDENTIFICATION_COLLECTION,
             IDENTIFICATION_COLLECTION,
             LIKE_COLLECTION,
+            REMARK_COLLECTION,
         ]);
         let key = Key {
             did,
@@ -327,7 +398,29 @@ impl World {
             OCCURRENCE_COLLECTION => Record::Occurrence {
                 quantity: rng.pick(&QUANTITIES),
                 external_record: rng.pick(&EXTERNAL_RECORDS),
+                occurrence_remarks: self.propose_remark_reference(rng, key, OCCURRENCE_REMARKS),
+                event_remarks: self.propose_remark_reference(rng, key, EVENT_REMARKS),
             },
+            REMARK_COLLECTION => {
+                // Mostly about the author's own occurrence, as a client writes
+                // it; sometimes someone else's, which must never fill a term.
+                let own_occurrence = Key {
+                    did,
+                    collection: OCCURRENCE_COLLECTION,
+                    rkey: rng.pick(&RKEYS),
+                };
+                Record::Remark {
+                    subject: rng.pick(&[
+                        own_occurrence,
+                        own_occurrence,
+                        own_occurrence,
+                        any_occurrence,
+                    ]),
+                    term: rng.pick(&REMARK_TERMS),
+                    body: rng.pick(&REMARK_BODIES),
+                    license: rng.pick(&LICENSES),
+                }
+            }
             IDENTIFICATION_COLLECTION => {
                 // Editing an existing identification keeps its subject and
                 // createdAt, like the app's edit flow; a new one gets fresh ones.
@@ -361,6 +454,39 @@ impl World {
             },
         };
         Action::Put { key, record }
+    }
+
+    /// The remark an occurrence put references for `term`: usually one of the
+    /// author's that agrees on subject and term, when there is one (a client
+    /// writes the remark, then the occurrence pointing at it); otherwise none
+    /// (an edit that clears it) or any of the author's remark keys, which may
+    /// be missing or disagree.
+    fn propose_remark_reference(
+        &self,
+        rng: &mut Rng,
+        occurrence: Key,
+        term: &'static str,
+    ) -> Option<Key> {
+        let matching: Vec<Key> = self
+            .repos
+            .iter()
+            .filter(|(key, record)| {
+                key.did == occurrence.did
+                    && matches!(record, Record::Remark { subject, term: t, .. }
+                        if *subject == occurrence && *t == term)
+            })
+            .map(|(key, _)| *key)
+            .collect();
+        match rng.below(4) {
+            0 => None,
+            _ if !matching.is_empty() => Some(rng.pick(&matching)),
+            1 => None,
+            _ => Some(Key {
+                did: occurrence.did,
+                collection: REMARK_COLLECTION,
+                rkey: rng.pick(&RKEYS),
+            }),
+        }
     }
 
     pub fn step(&mut self, action: &Action) -> Effect {
@@ -454,6 +580,8 @@ impl World {
                 Record::Occurrence {
                     quantity,
                     external_record,
+                    occurrence_remarks,
+                    event_remarks,
                 } => {
                     s.occurrences.insert(
                         key.uri(),
@@ -461,8 +589,21 @@ impl World {
                             quantity: quantity.map(str::to_string),
                             quantity_type: quantity.map(|_| "individuals".to_string()),
                             external_record: external_record.map(str::to_string),
+                            occurrence_remarks: occurrence_remarks.map(|k| k.uri()),
+                            event_remarks: event_remarks.map(|k| k.uri()),
                         },
                     );
+                    for (term, reference) in [
+                        (OCCURRENCE_REMARKS, occurrence_remarks),
+                        (EVENT_REMARKS, event_remarks),
+                    ] {
+                        if let Some(row) =
+                            reference.and_then(|r| self.resolve_remark(*key, term, r))
+                        {
+                            s.resolved_remarks
+                                .insert((key.uri(), term.to_string()), row);
+                        }
+                    }
                 }
                 Record::Identification {
                     subject,
@@ -486,10 +627,53 @@ impl World {
                 Record::Like { subject } => {
                     s.likes.insert((key.did.to_string(), subject.uri()));
                 }
+                Record::Remark {
+                    subject,
+                    term,
+                    body,
+                    license,
+                } => {
+                    s.remarks.insert(
+                        key.uri(),
+                        RemarkRow {
+                            subject: subject.uri(),
+                            term: term.to_string(),
+                            body: body.to_string(),
+                            license: license.map(str::to_string),
+                        },
+                    );
+                }
             }
         }
         s.community_ids = self.expected_community_ids();
         s
+    }
+
+    /// The remark `reference` fills `term` on `occurrence` only if it exists
+    /// and agrees: same author, names this occurrence, fills this term. The
+    /// forward reference is authoritative, but a remark that disagrees means
+    /// it points at the wrong record, so it fills nothing.
+    fn resolve_remark(
+        &self,
+        occurrence: Key,
+        term: &str,
+        reference: Key,
+    ) -> Option<ResolvedRemark> {
+        match self.repos.get(&reference)? {
+            Record::Remark {
+                subject,
+                term: t,
+                body,
+                license,
+            } if reference.did == occurrence.did && *subject == occurrence && *t == term => {
+                Some(ResolvedRemark {
+                    uri: reference.uri(),
+                    body: body.to_string(),
+                    license: license.map(str::to_string),
+                })
+            }
+            _ => None,
+        }
     }
 
     /// Intent of the `community_ids` matview: each identifier's latest
@@ -549,6 +733,23 @@ pub struct OccurrenceRow {
     pub quantity: Option<String>,
     pub quantity_type: Option<String>,
     pub external_record: Option<String>,
+    pub occurrence_remarks: Option<String>,
+    pub event_remarks: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct RemarkRow {
+    pub subject: String,
+    pub term: String,
+    pub body: String,
+    pub license: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedRemark {
+    pub uri: String,
+    pub body: String,
+    pub license: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -568,6 +769,10 @@ pub struct Snapshot {
     pub accepted_taxon_keys: BTreeMap<String, Option<i64>>,
     /// `(liker did, subject uri)`
     pub likes: BTreeSet<(String, String)>,
+    pub remarks: BTreeMap<String, RemarkRow>,
+    /// `(occurrence uri, dwc term)` → the remark filling that term, as reads
+    /// see it.
+    pub resolved_remarks: BTreeMap<(String, String), ResolvedRemark>,
     /// occurrence uri → (winning name, vote count)
     pub community_ids: BTreeMap<String, (String, i64)>,
     /// `(recipient, actor, kind, reference uri)` → count, only where count > 1.
@@ -585,9 +790,42 @@ mod tests {
     fn situation(world: &World, action: &Action) -> &'static str {
         match action {
             Action::Put { key, record } => match (world.repos.get(key), record) {
+                (
+                    _,
+                    Record::Occurrence {
+                        occurrence_remarks,
+                        event_remarks,
+                        ..
+                    },
+                ) if [
+                    (OCCURRENCE_REMARKS, occurrence_remarks),
+                    (EVENT_REMARKS, event_remarks),
+                ]
+                .into_iter()
+                .any(|(term, r)| {
+                    r.is_some_and(|r| world.resolve_remark(*key, term, r).is_some())
+                }) =>
+                {
+                    "occurrence references a matching remark"
+                }
+                (
+                    _,
+                    Record::Occurrence {
+                        occurrence_remarks,
+                        event_remarks,
+                        ..
+                    },
+                ) if occurrence_remarks
+                    .iter()
+                    .chain(event_remarks)
+                    .any(|r| world.repos.contains_key(r)) =>
+                {
+                    "occurrence references a disagreeing remark"
+                }
                 (None, Record::Occurrence { .. }) => "create occurrence",
                 (None, Record::Identification { .. }) => "create identification",
                 (None, Record::Like { .. }) => "create like",
+                (None, Record::Remark { .. }) => "create remark",
                 (Some(Record::Occurrence { .. }), _) => "edit occurrence",
                 (
                     Some(Record::Identification { name: old, .. }),
@@ -595,12 +833,14 @@ mod tests {
                 ) if old != new => "rename identification",
                 (Some(Record::Identification { .. }), _) => "edit identification fields",
                 (Some(Record::Like { .. }), _) => "re-put like (no-op)",
+                (Some(Record::Remark { .. }), _) => "edit remark",
             },
             Action::Delete { key } => match world.repos.get(key) {
                 None => "delete missing record (no-op)",
                 Some(Record::Occurrence { .. }) => "delete occurrence",
                 Some(Record::Identification { .. }) => "delete identification",
                 Some(Record::Like { .. }) => "delete like",
+                Some(Record::Remark { .. }) => "delete remark",
             },
             Action::Deliver { did } => {
                 if world.pending.get(did).is_some_and(|q| !q.is_empty()) {
@@ -616,7 +856,7 @@ mod tests {
     }
 
     /// Every situation the properties depend on, with a floor well below
-    /// today's counts (all 177+ over the default seeds). If a generator change
+    /// today's counts (all 77+ over the default seeds). If a generator change
     /// makes one rare, the sim quietly stops testing it; this fails first.
     #[test]
     fn generator_exercises_every_situation() {
@@ -639,6 +879,11 @@ mod tests {
             "delete occurrence",
             "delete identification",
             "delete like",
+            "create remark",
+            "edit remark",
+            "delete remark",
+            "occurrence references a matching remark",
+            "occurrence references a disagreeing remark",
             "deliver",
             "redeliver",
             "rewind cursor",
@@ -649,6 +894,37 @@ mod tests {
                 n >= FLOOR,
                 "generator produced {required:?} only {n} times (floor {FLOOR}): {counts:#?}"
             );
+        }
+    }
+
+    /// Every collection Tap delivers to the ingester is either generated (and
+    /// not rarely) or listed in `UNMODELED_COLLECTIONS`, and nothing listed
+    /// there is generated.
+    #[test]
+    fn generator_covers_every_ingested_collection() {
+        const FLOOR: usize = 50;
+        let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
+        for seed in 0..300 {
+            for action in World::generate(seed, 40) {
+                if let Action::Put { key, .. } = action {
+                    *counts.entry(key.collection).or_default() += 1;
+                }
+            }
+        }
+        for collection in crate::INGESTED_COLLECTIONS {
+            let n = counts.get(collection).copied().unwrap_or(0);
+            if super::super::UNMODELED_COLLECTIONS.contains(&collection) {
+                assert_eq!(
+                    n, 0,
+                    "the sim generates {collection} now; remove it from UNMODELED_COLLECTIONS"
+                );
+            } else {
+                assert!(
+                    n >= FLOOR,
+                    "the ingester ingests {collection} but the sim generated it only {n} times \
+                     (floor {FLOOR}); model it, or list it in UNMODELED_COLLECTIONS"
+                );
+            }
         }
     }
 
@@ -708,6 +984,8 @@ mod tests {
             Record::Occurrence {
                 quantity: None,
                 external_record: None,
+                occurrence_remarks: None,
+                event_remarks: None,
             },
         );
         for &(who, rkey, name, kingdom, created_at) in ids {
