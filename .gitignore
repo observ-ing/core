@@ -16,6 +16,9 @@ cache/
 # Embedded Tap sqlite state (local dev firehose cursors, tracked repos, WAL)
 .tap-ingester/
 
+# hydrant-ingester spike's fjall database
+.hydrant-ingester/
+
 # Environment
 .env
 .env.local
