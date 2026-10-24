@@ -108,8 +108,24 @@ Cloud Run).
 - **Restarts resume cleanly.** On restart it continues from both the
   saved stream cursor and its own saved relay cursor, and SIGTERM closes the
   database before exit.
-- **Catch-up throughput** (the deciding number, against Tap's ~560
-  events/s ceiling in production): measurement in progress.
+- **Catch-up throughput is the same as Tap's when both have local
+  storage.** Both were stopped at the same relay seq, left for 10 minutes,
+  then restarted one at a time, sampling the relay seq every 5 seconds.
+  Release build, M4 Pro, same relay, same filters:
+
+  | | Backlog drain rate | Caught up after | Live CPU / RSS |
+  | --- | --- | --- | --- |
+  | hydrant (fjall) | ~6,800 events/s | ~30 s (208k events) | 3% / 34 MB |
+  | Tap (SQLite) | ~6,450 events/s | ~37 s (235k events) | 7% / 56 MB |
+
+  Both top out around what the relay delivers to one connection (a
+  do-nothing reader measured ~6,700/s in June), so neither hits its own
+  limit here. Production Tap's ~560 events/s ceiling therefore isn't
+  Tap's: it comes from where Tap runs. Most likely that's its state on Cloud
+  SQL (a db-f1-micro reached over the network, one round trip per event;
+  CPU sat near 10% and raising `TAP_MAX_DB_CONNS` from 5 to 10 raised
+  throughput by 39%). So hydrant's speed is really the speed of local storage,
+  and Tap on a local disk would likely get the same.
 
 ## What's missing before it could replace tap-ingester
 
