@@ -67,6 +67,12 @@ failing scenario and the difference.
   assert the test still catches it with the right property, in a readable
   number of steps. Otherwise a generator tweak that makes deletes rare, or a
   property that compares empty to empty, leaves CI silently green.
+- **Fail when the system takes an input the model doesn't generate.** A
+  generator only tests what it produces, so a new record type, endpoint, or
+  event the system starts accepting is silently untested. Read the system's
+  own list of inputs and fail on any the generator never produces, unless
+  it's on an explicit not-yet-modeled list (which also fails once the
+  generator covers an entry, so it can't go stale).
 - **Model what's intended, not what the code does.** Where they differ, it's
   either a bug or a decision nobody wrote down. Both are worth knowing.
 - **When it fails, check the spec before the code.** Some failures are the
@@ -80,15 +86,15 @@ failing scenario and the difference.
 
 | Question | Answer |
 |---|---|
-| Source of truth | Records in users' repos (3 users × 3 keys × occurrence / identification / like, with optional fields that edits add and remove) |
-| Expected state | Occurrences, identifications, and likes mirror the repos; `community_ids` is the vote winner per occurrence; each notification is sent once |
+| Source of truth | Records in users' repos (3 users × 3 keys × occurrence / identification / like / remark, with optional fields that edits add and remove) |
+| Expected state | Occurrences, identifications, likes, and remarks mirror the repos; an occurrence's remark reference fills its term only when the remark agrees on author, subject, and term; `community_ids` is the vote winner per occurrence; each notification is sent once |
 | Messy actions | Tap delivers repos in any interleaving, redelivers events, rewinds its cursor; resolve-taxa runs at any point; records are edited, deleted, re-created |
 | Check | Drain every queue, run resolve-taxa, compare against the database |
 
 - `model.rs`: the source of truth and the expected state
 - `driver.rs`: runs events through the ingester's real write path (`apply_record`) against a throwaway database, and reads the result back
-- `mod.rs`: properties, runner, shrinking, the known-bugs list
-- `mutants.rs`: every bug below, re-injected as a Postgres trigger or constraint, plus a synthetic one; the test fails if the sim misses any of them. A mutant whose property is still failing (its bug is on the known list) is caught trivially, the output says so, and it starts proving something once the fix lands
+- `mod.rs`: properties, runner, shrinking, the known-bugs list, and the collections not modeled yet (comments, interactions)
+- `mutants.rs`: every bug below, re-injected as a Postgres trigger or constraint, plus a few synthetic ones; the test fails if the sim misses any of them. A mutant whose property is still failing (its bug is on the known list) is caught trivially, the output says so, and it starts proving something once the fix lands
 
 The suite checks the sim itself as well as the ingester:
 
@@ -98,6 +104,7 @@ The suite checks the sim itself as well as the ingester:
 | `sim_catches_every_mutant` | yes | the sim losing the ability to find known bug shapes, or shrinking regressing |
 | `every_property_has_a_mutant` | no | a property with no mutant, which could be vacuous |
 | `generator_exercises_every_situation` | no | the generator making some situation (edits, deletes, rewinds, ...) rare |
+| `generator_covers_every_ingested_collection` | no | the ingester taking a collection the sim never generates (checked against the ingester's own Tap filter list) |
 | `any_subsequence_replays` | no | an action that isn't total, which breaks shrinking |
 | `same_seed_same_trace` | no | nondeterminism, which breaks replay |
 | `consensus_*` | no | the expected consensus rules changing unnoticed |
@@ -112,7 +119,7 @@ SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 ```
 
 `SIM_SEED=<n>` replays one scenario; `SIM_CASES`, `SIM_STEPS`, and
-`SIM_BASE_SEED` widen the search. The whole suite takes ~15s. The DB-backed
+`SIM_BASE_SEED` widen the search. The whole suite takes about a minute. The DB-backed
 tests run in the `rust-sim` CI job; the rest run everywhere, including
 `rust-test`.
 

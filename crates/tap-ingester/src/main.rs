@@ -66,6 +66,17 @@ use tracing::{error, info, warn};
 use tracing_subscriber::{prelude::*, EnvFilter};
 use types::RecentEvent;
 
+/// Every collection Tap is asked to deliver. The sim checks that it generates
+/// each one, so a newly ingested collection can't go untested unnoticed.
+const INGESTED_COLLECTIONS: [&str; 6] = [
+    OCCURRENCE_COLLECTION,
+    IDENTIFICATION_COLLECTION,
+    REMARK_COLLECTION,
+    COMMENT_COLLECTION,
+    INTERACTION_COLLECTION,
+    LIKE_COLLECTION,
+];
+
 #[derive(Parser)]
 #[command(about = "Observ.ing AT Protocol Tap-sourced ingester")]
 struct Cli {}
@@ -154,12 +165,7 @@ async fn run() -> Result<(), Box<dyn std::error::Error>> {
             let mut builder = TapConfig::builder()
                 .database_url(tap_database_url)
                 .signal_collection(OCCURRENCE_COLLECTION)
-                .collection_filter(OCCURRENCE_COLLECTION)
-                .collection_filter(IDENTIFICATION_COLLECTION)
-                .collection_filter(REMARK_COLLECTION)
-                .collection_filter(COMMENT_COLLECTION)
-                .collection_filter(INTERACTION_COLLECTION)
-                .collection_filter(LIKE_COLLECTION)
+                .collection_filters(INGESTED_COLLECTIONS.map(String::from).to_vec())
                 .log_level(LogLevel::Info);
             if let Some(pw) = admin_password.as_deref() {
                 builder = builder.admin_password(pw.to_string());
