@@ -1,5 +1,10 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
-import { openUploadModal, gotoUploadStep, revealCoordinateInputs } from "./helpers/navigation";
+import {
+  openUploadModal,
+  gotoUploadStep,
+  revealCoordinateInputs,
+  searchTaxa,
+} from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
 
 async function waitForOccurrenceIndexed(
@@ -55,11 +60,7 @@ test.describe("E2E CRUD flow", () => {
       await gotoUploadStep(page, "Identify");
 
       const speciesInput = page.getByLabel(/Taxon/i);
-      await speciesInput.click();
-      await Promise.all([
-        page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-        speciesInput.pressSequentially("Quercus agrifolia", { delay: 50 }),
-      ]);
+      await searchTaxa(speciesInput, "Quercus agrifolia");
       const option = page.locator(".MuiAutocomplete-option").first();
       await expect(option).toBeVisible();
       await option.click();
@@ -183,11 +184,7 @@ test.describe("E2E CRUD flow", () => {
     await gotoUploadStep(page, "Identify");
 
     const speciesInput = page.getByLabel(/Taxon/i);
-    await speciesInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      speciesInput.pressSequentially("Quercus agrifolia", { delay: 50 }),
-    ]);
+    await searchTaxa(speciesInput, "Quercus agrifolia");
     const option = page.locator(".MuiAutocomplete-option").first();
     await expect(option).toBeVisible();
     await option.click();

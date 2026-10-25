@@ -18,13 +18,7 @@ export const test = base.extend<{ authenticatedPage: Page }>({
       permissions: ["geolocation"],
     });
     const page = await context.newPage();
-    await page.route("**/oauth/me", (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ user: MOCK_TEST_USER }),
-      }),
-    );
+    await page.route("**/oauth/me", (route) => route.fulfill({ json: { user: MOCK_TEST_USER } }));
     await use(page);
     await context.close();
   },

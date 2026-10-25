@@ -1,37 +1,18 @@
-import { type Page, type Request } from "@playwright/test";
+import type { Request } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
 
-/**
- * MUI v7 Select doesn't link labels via aria-labelledby.
- * Find by traversing from the label to the parent FormControl.
- */
-function muiSelect(page: Page, label: string) {
-  return page
-    .locator(".MuiFormControl-root", {
-      has: page.locator("label", { hasText: label }),
-    })
-    .getByRole("combobox");
-}
-
-/** Navigate to the mock observation detail page. */
-async function navigateToDetail(page: Page) {
-  await navigateToMockedDetail(page);
-}
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Identification - Logged In", () => {
   test("Agree button sends POST identification", async ({ authenticatedPage: page }) => {
-    await page.route("**/api/identifications", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ uri: "at://test/id/1", cid: "bafyid" }),
-        });
-      }
-      return route.continue();
-    });
-    await navigateToDetail(page);
+    await mockJson(
+      page,
+      "**/api/identifications",
+      { uri: "at://test/id/1", cid: "bafyid" },
+      { method: "POST" },
+    );
+    await navigateToMockedDetail(page);
     const agreeBtn = page.getByRole("button", { name: "Agree" });
     await expect(agreeBtn).toBeVisible({ timeout: 10_000 });
 
@@ -48,7 +29,7 @@ test.describe("Identification - Logged In", () => {
   test("Suggest Different ID button opens form with species input", async ({
     authenticatedPage: page,
   }) => {
-    await navigateToDetail(page);
+    await navigateToMockedDetail(page);
     const suggestBtn = page.getByRole("button", {
       name: "Suggest Different ID",
     });
@@ -63,17 +44,13 @@ test.describe("Identification - Logged In", () => {
   test("submitting different ID sends POST with new scientificName", async ({
     authenticatedPage: page,
   }) => {
-    await page.route("**/api/identifications", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ uri: "at://test/id/1", cid: "bafyid" }),
-        });
-      }
-      return route.continue();
-    });
-    await navigateToDetail(page);
+    await mockJson(
+      page,
+      "**/api/identifications",
+      { uri: "at://test/id/1", cid: "bafyid" },
+      { method: "POST" },
+    );
+    await navigateToMockedDetail(page);
     const suggestBtn = page.getByRole("button", {
       name: "Suggest Different ID",
     });
@@ -87,7 +64,7 @@ test.describe("Identification - Logged In", () => {
 
     // Free-form names that don't match a known taxon require a Kingdom,
     // matching the new-observation flow.
-    await muiSelect(page, "Kingdom").click();
+    await page.getByRole("combobox", { name: "Kingdom" }).click();
     await page.getByRole("option", { name: "Plants" }).click();
 
     const postRequest = page.waitForRequest(
@@ -101,7 +78,7 @@ test.describe("Identification - Logged In", () => {
   });
 
   test("Cancel closes the suggest form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page);
+    await navigateToMockedDetail(page);
     const suggestBtn = page.getByRole("button", {
       name: "Suggest Different ID",
     });

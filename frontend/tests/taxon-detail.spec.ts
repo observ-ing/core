@@ -1,4 +1,4 @@
-import { test, expect, type Page, type Route } from "@playwright/test";
+import { test, expect, type Page } from "@playwright/test";
 import type { TaxonDetail } from "../src/services/types";
 import type { TaxonAncestor } from "../src/bindings/TaxonAncestor";
 
@@ -61,38 +61,26 @@ const QUERCUS_AGRIFOLIA_DETAIL: TaxonDetail = {
 // ---- Route handler ---------------------------------------------------------
 
 async function mockTaxonDetailRoutes(page: Page) {
-  await page.route("**/api/taxa/**", (route: Route) => {
+  await page.route("**/api/taxa/**", (route) => {
     const path = new URL(route.request().url()).pathname;
 
     // /api/taxa/:kingdom/:name/children — siblings/aunts-uncles are fetched in
     // the background; we don't assert on the tree here, so return none.
     if (/^\/api\/taxa\/[^/]+\/[^/]+\/children$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify([]),
-      });
+      return route.fulfill({ json: [] });
     }
 
     // /api/taxa/:kingdom/:name/occurrences
     if (/^\/api\/taxa\/[^/]+\/[^/]+\/occurrences$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({ occurrences: [], cursor: null }),
-      });
+      return route.fulfill({ json: { occurrences: [], cursor: null } });
     }
 
     // /api/taxa/:kingdom/:name (taxon detail)
     if (/^\/api\/taxa\/[^/]+\/[^/]+$/.test(path)) {
-      return route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify(QUERCUS_AGRIFOLIA_DETAIL),
-      });
+      return route.fulfill({ json: QUERCUS_AGRIFOLIA_DETAIL });
     }
 
-    return route.continue();
+    return route.fallback();
   });
 }
 

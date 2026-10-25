@@ -1,18 +1,7 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
-
-/**
- * MUI v7 Select doesn't link labels via aria-labelledby.
- * Find by traversing from the label to the parent FormControl.
- */
-function muiSelect(page: Page, label: string) {
-  return page
-    .locator(".MuiFormControl-root", {
-      has: page.locator("label", { hasText: label }),
-    })
-    .getByRole("combobox");
-}
+import { searchTaxa } from "./helpers/navigation";
 
 test.describe("Explore Filters", () => {
   test.beforeEach(async ({ page }) => {
@@ -33,17 +22,17 @@ test.describe("Explore Filters", () => {
 
     // Click to expand
     await filtersHeader.click();
-    await expect(muiSelect(page, "Kingdom")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Kingdom" })).toBeVisible();
     await expect(page.getByLabel("Taxon")).toBeVisible();
 
     // Click to collapse
     await filtersHeader.click();
-    await expect(muiSelect(page, "Kingdom")).not.toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Kingdom" })).not.toBeVisible();
   });
 
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     await kingdomSelect.click();
@@ -58,21 +47,14 @@ test.describe("Explore Filters", () => {
     const taxonInput = page.getByLabel("Taxon");
     await expect(taxonInput).toBeVisible();
 
-    // Use pressSequentially to simulate real keystrokes; fill() sets the
-    // value in one shot which can miss the input events that trigger the
-    // debounced search.
-    const searchResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/taxa/search") && r.status() === 200,
-    );
-    await taxonInput.pressSequentially("Quercus", { delay: 50 });
-    await searchResponse;
+    await searchTaxa(taxonInput, "Quercus");
 
     await expect(page.locator(".MuiAutocomplete-popper")).toBeVisible();
   });
 
   test("Apply Filters button dispatches filtered feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select a kingdom
@@ -89,7 +71,7 @@ test.describe("Explore Filters", () => {
 
   test("Clear button resets all filters", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select a kingdom first
@@ -107,7 +89,7 @@ test.describe("Explore Filters", () => {
 
   test("active filter count badge updates", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select kingdom to get 1 active filter

@@ -1,34 +1,15 @@
-import type { Page, Route } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
-import type { InatAccountResponse } from "../src/bindings/InatAccountResponse";
+import { DISABLED, LINKED, UNLINKED, mockAccount } from "./helpers/inat";
+import { mockJson } from "./helpers/mock-api";
 
 // These tests never reach iNaturalist: every /api/inat/* call is mocked.
 
-const LINKED: InatAccountResponse = {
-  enabled: true,
-  login: "kueda",
-  linkedAt: "2026-10-07T00:00:00Z",
-};
-const UNLINKED: InatAccountResponse = { enabled: true, login: null, linkedAt: null };
-const DISABLED: InatAccountResponse = { enabled: false, login: null, linkedAt: null };
-
-const json = (body: unknown, status = 200) => ({
-  status,
-  contentType: "application/json",
-  body: JSON.stringify(body),
-});
-
-async function mockAccount(page: Page, account: InatAccountResponse) {
-  await page.route("**/api/inat/account", (route: Route) => {
-    if (route.request().method() === "GET") return route.fulfill(json(account));
-    return route.fulfill(json({ success: true }));
-  });
-}
+const mockPreferences = (page: Page) =>
+  mockJson(page, "**/api/user/preferences", { defaultLicense: null, basemap: null });
 
 async function gotoSettings(page: Page) {
-  await page.route("**/api/user/preferences", (route: Route) =>
-    route.fulfill(json({ defaultLicense: null, basemap: null })),
-  );
+  await mockPreferences(page);
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
 }
@@ -36,9 +17,7 @@ async function gotoSettings(page: Page) {
 test.describe("iNaturalist - Settings", () => {
   test("offers to connect an account when none is linked", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
-    await page.route("**/api/inat/authorize", (route: Route) =>
-      route.fulfill(json({ url: "/settings?inat-linked=1" })),
-    );
+    await mockJson(page, "**/api/inat/authorize", { url: "/settings?inat-linked=1" });
     await gotoSettings(page);
 
     await page.getByRole("button", { name: "Connect iNaturalist" }).click();
@@ -50,12 +29,12 @@ test.describe("iNaturalist - Settings", () => {
 
   test("shows the linked account and disconnects it", async ({ authenticatedPage: page }) => {
     let deleted = false;
-    await page.route("**/api/inat/account", (route: Route) => {
+    await page.route("**/api/inat/account", (route) => {
       if (route.request().method() === "DELETE") {
         deleted = true;
-        return route.fulfill(json({ success: true }));
+        return route.fulfill({ json: { success: true } });
       }
-      return route.fulfill(json(deleted ? UNLINKED : LINKED));
+      return route.fulfill({ json: deleted ? UNLINKED : LINKED });
     });
     await gotoSettings(page);
 
@@ -68,9 +47,7 @@ test.describe("iNaturalist - Settings", () => {
 
   test("says so when linking failed", async ({ authenticatedPage: page }) => {
     await mockAccount(page, UNLINKED);
-    await page.route("**/api/user/preferences", (route: Route) =>
-      route.fulfill(json({ defaultLicense: null, basemap: null })),
-    );
+    await mockPreferences(page);
     await page.goto("/settings?inat-error=1");
 
     await expect(page.getByText("Couldn't connect your iNaturalist account")).toBeVisible();

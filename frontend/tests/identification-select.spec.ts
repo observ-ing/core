@@ -4,6 +4,7 @@
 import { test, expect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+import { searchTaxa } from "./helpers/navigation";
 
 test.describe("Suggest ID autocomplete options", () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
@@ -17,12 +18,7 @@ test.describe("Suggest ID autocomplete options", () => {
   }) => {
     const taxonInput = page.getByRole("combobox", { name: "Taxon Name" });
     await expect(taxonInput).toBeVisible();
-    await taxonInput.click();
-
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      taxonInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(taxonInput, "quercus");
 
     const option = page.locator(".MuiAutocomplete-option").first();
     await expect(option).toBeVisible();
@@ -36,11 +32,7 @@ test.describe("Suggest ID autocomplete options", () => {
     authenticatedPage: page,
   }) => {
     const taxonInput = page.getByRole("combobox", { name: "Taxon Name" });
-    await taxonInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      taxonInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(taxonInput, "quercus");
 
     const albaLink = page.getByRole("link", { name: /open quercus alba in new tab/i });
     await expect(albaLink).toBeVisible();
@@ -52,11 +44,7 @@ test.describe("Suggest ID autocomplete options", () => {
     authenticatedPage: page,
   }) => {
     const taxonInput = page.getByRole("combobox", { name: "Taxon Name" });
-    await taxonInput.click();
-    await Promise.all([
-      page.waitForResponse((r) => r.url().includes("/api/taxa/search")),
-      taxonInput.pressSequentially("quercus", { delay: 50 }),
-    ]);
+    await searchTaxa(taxonInput, "quercus");
 
     const albaLink = page.getByRole("link", { name: /open quercus alba in new tab/i });
     await expect(albaLink).toBeVisible();

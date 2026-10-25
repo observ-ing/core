@@ -1,22 +1,18 @@
-import type { Page, Request } from "@playwright/test";
+import type { Request } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 import { navigateToMockedDetail } from "./helpers/mock-observation";
-
-/** Navigate to the mock observation detail page. */
-async function navigateToDetail(page: Page) {
-  await navigateToMockedDetail(page);
-}
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Comments - Logged Out", () => {
   test("shows login prompt when logged out", async ({ page }) => {
-    await navigateToDetail(page);
+    await navigateToMockedDetail(page);
     await expect(page.getByText("Log in to add a comment")).toBeVisible();
   });
 });
 
 test.describe("Comments - Logged In", () => {
   test("Add button opens comment form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page);
+    await navigateToMockedDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
@@ -30,7 +26,7 @@ test.describe("Comments - Logged In", () => {
   });
 
   test("Cancel closes comment form", async ({ authenticatedPage: page }) => {
-    await navigateToDetail(page);
+    await navigateToMockedDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
@@ -45,17 +41,13 @@ test.describe("Comments - Logged In", () => {
   });
 
   test("posting comment sends POST with body text", async ({ authenticatedPage: page }) => {
-    await page.route("**/api/comments", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 200,
-          contentType: "application/json",
-          body: JSON.stringify({ uri: "at://test/comment/1", cid: "bafycomment" }),
-        });
-      }
-      return route.continue();
-    });
-    await navigateToDetail(page);
+    await mockJson(
+      page,
+      "**/api/comments",
+      { uri: "at://test/comment/1", cid: "bafycomment" },
+      { method: "POST" },
+    );
+    await navigateToMockedDetail(page);
     const addBtn = page
       .locator("text=Discussion")
       .locator("..")
