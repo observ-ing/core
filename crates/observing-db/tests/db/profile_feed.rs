@@ -1,7 +1,7 @@
 //! The profile feed runs its counts and its two pages as concurrent queries;
 //! check each still returns the right rows and respects the feed type.
 
-mod common;
+use crate::common;
 
 use chrono::{Duration, Utc};
 use observing_db::types::{
