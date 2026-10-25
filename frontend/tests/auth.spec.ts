@@ -1,9 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect, getTestUser } from "./fixtures/mock-auth";
+import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { MOCK_TEST_USER } from "./helpers/test-users";
 
 test.describe("Authentication - Logged Out", () => {
-  // TC-AUTH-001: Login flow - modal opens
   test("clicking Log in opens login modal", async ({ page }) => {
     await page.goto("/");
     await page.getByRole("button", { name: "Log in" }).first().click();
@@ -36,42 +35,33 @@ test.describe("Authentication - Logged Out", () => {
   });
 });
 
-authTest.describe("Authentication - Logged In", () => {
-  authTest.beforeEach(async ({ authenticatedPage: page }) => {
+test.describe("Authentication - Logged In", () => {
+  test.beforeEach(async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
   });
 
-  // TC-AUTH-002: Logout button visible (in profile dropdown)
-  authTest(
-    "logged in user sees their handle and logout button",
-    async ({ authenticatedPage: page }) => {
-      const user = getTestUser();
-      await page.goto("/");
-      // Open profile dropdown in TopBar
-      await authExpect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
-        timeout: 5000,
-      });
-      await page.getByRole("button", { name: "Account menu" }).click();
-      await authExpect(page.getByText(`@${user.handle}`).first()).toBeVisible();
-      await authExpect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
-    },
-  );
+  test("logged in user sees their handle and logout button", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/");
+    // Open profile dropdown in TopBar
+    await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+      timeout: 5000,
+    });
+    await page.getByRole("button", { name: "Account menu" }).click();
+    await expect(page.getByText(`@${MOCK_TEST_USER.handle}`).first()).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Log out" })).toBeVisible();
+  });
 
-  // TC-AUTH-003: User display
-  authTest(
-    "logged in user sees display name or handle in sidebar",
-    async ({ authenticatedPage: page }) => {
-      await page.goto("/");
-      // Sidebar shows displayName if set, otherwise handle
-      const user = getTestUser();
-      const expectedName = user.displayName || user.handle;
-      await authExpect(page.getByText(expectedName).first()).toBeVisible({ timeout: 5000 });
-    },
-  );
+  test("logged in user sees display name or handle in sidebar", async ({
+    authenticatedPage: page,
+  }) => {
+    await page.goto("/");
+    // Sidebar shows displayName if set, otherwise handle
+    await expect(page.getByText(MOCK_TEST_USER.displayName).first()).toBeVisible({ timeout: 5000 });
+  });
 
-  // TC-AUTH-002: Logout flow
-  authTest("clicking Log out clears user session", async ({ authenticatedPage: page }) => {
-    const user = getTestUser();
+  test("clicking Log out clears user session", async ({ authenticatedPage: page }) => {
     await page.route("**/oauth/logout", (route) =>
       route.fulfill({
         status: 200,
@@ -86,32 +76,32 @@ authTest.describe("Authentication - Logged In", () => {
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          user: loggedOut ? null : user,
+          user: loggedOut ? null : MOCK_TEST_USER,
         }),
       });
     });
 
     await page.goto("/");
     // Open profile dropdown and click Log out
-    await authExpect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
       timeout: 5000,
     });
     await page.getByRole("button", { name: "Account menu" }).click();
 
     loggedOut = true;
     await page.getByRole("menuitem", { name: "Log out" }).click();
-    await authExpect(page.getByRole("button", { name: "Log in" }).first()).toBeVisible({
+    await expect(page.getByRole("button", { name: "Log in" }).first()).toBeVisible({
       timeout: 5000,
     });
   });
 
-  authTest("logged in user sees Profile in top bar menu", async ({ authenticatedPage: page }) => {
+  test("logged in user sees Profile in top bar menu", async ({ authenticatedPage: page }) => {
     await page.goto("/");
     // Open profile dropdown in TopBar
-    await authExpect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+    await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
       timeout: 5000,
     });
     await page.getByRole("button", { name: "Account menu" }).click();
-    await authExpect(page.getByRole("menuitem", { name: "Profile" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Profile" })).toBeVisible();
   });
 });

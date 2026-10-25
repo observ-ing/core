@@ -1,5 +1,5 @@
-import { test, expect, type Route } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import type { Route } from "@playwright/test";
+import { test, expect } from "./fixtures/mock-auth";
 import {
   buildMockObservation,
   mockOwnObservationFeed,
@@ -8,35 +8,32 @@ import {
 import { gotoUploadStep } from "./helpers/navigation";
 
 test.describe("Observation Edit - Logged Out", () => {
-  // TC-EDIT-002: Edit menu item hidden for others' observations
   test("more menu does not show Edit for non-owned observation", async ({ page }) => {
     await mockOwnObservationFeed(page);
     await mockObservationDetailRoute(page);
     await page.goto("/explore");
     const firstCard = page.locator(".MuiCard-root").first();
-    await expect(firstCard).toBeVisible({ timeout: 10000 });
+    await expect(firstCard).toBeVisible({ timeout: 10_000 });
     await firstCard.locator(".MuiCardActionArea-root").click();
     await expect(page).toHaveURL(/\/observation\//);
     const moreButton = page.getByLabel("More options").first();
-    await expect(moreButton).toBeVisible({ timeout: 15000 });
+    await expect(moreButton).toBeVisible();
     await moreButton.click();
     await expect(page.getByRole("menuitem", { name: "View on AT Protocol" })).toBeVisible();
     await expect(page.getByRole("menuitem", { name: "Edit" })).not.toBeVisible();
   });
 });
 
-authTest.describe("Observation Edit - Logged In", () => {
-  // TC-EDIT-001: Edit menu item visible for own observation
-  authTest("more menu shows Edit for own observation", async ({ authenticatedPage: page }) => {
+test.describe("Observation Edit - Logged In", () => {
+  test("more menu shows Edit for own observation", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
+    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
     await page.locator(".MuiCard-root").first().getByLabel("More options").click();
-    await authExpect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Edit" })).toBeVisible();
   });
 
-  // TC-EDIT-003: Edit hidden for others' observations in auth context
-  authTest("more menu hides Edit for others' observations", async ({ authenticatedPage: page }) => {
+  test("more menu hides Edit for others' observations", async ({ authenticatedPage: page }) => {
     // Mock a feed with an observation owned by a different user
     const otherUserObs = buildMockObservation({
       uri: "at://did:plc:otheruser/bio.lexicons.temp.v0-1.occurrence/other123",
@@ -62,46 +59,43 @@ authTest.describe("Observation Edit - Logged In", () => {
 
     await page.goto("/");
     const moreButton = page.getByLabel("More options").first();
-    await authExpect(moreButton).toBeVisible({ timeout: 15000 });
+    await expect(moreButton).toBeVisible();
     await moreButton.click();
-    await authExpect(page.getByRole("menuitem", { name: "View on AT Protocol" })).toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "View on AT Protocol" })).toBeVisible();
     // Edit should not appear for others' observations
-    await authExpect(page.getByRole("menuitem", { name: "Edit" })).not.toBeVisible();
+    await expect(page.getByRole("menuitem", { name: "Edit" })).not.toBeVisible();
   });
 
-  // TC-EDIT-004: Clicking Edit opens upload modal in edit mode
-  authTest("clicking Edit opens upload modal in edit mode", async ({ authenticatedPage: page }) => {
+  test("clicking Edit opens upload modal in edit mode", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
       eventDate: "2024-06-15",
     });
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
+    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
     await page.locator(".MuiCard-root").first().getByLabel("More options").click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
 
     // Should see "Edit Observation" title
-    await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
   });
 
-  // TC-EDIT-005: Edit modal pre-populates species
-  authTest("edit modal pre-populates species", async ({ authenticatedPage: page }) => {
+  test("edit modal pre-populates species", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
       eventDate: "2024-06-15",
     });
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
+    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
     await page.locator(".MuiCard-root").first().getByLabel("More options").click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
-    await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
     // Species input lives in the (collapsed) Identify step; reveal it first.
     await gotoUploadStep(page, "Identify");
     const speciesInput = page.getByLabel(/Taxon/i);
-    await authExpect(speciesInput).toHaveValue("Quercus alba");
+    await expect(speciesInput).toHaveValue("Quercus alba");
   });
 
-  // TC-EDIT-006: Submitting edit sends PUT
-  authTest("submitting edit sends PUT request", async ({ authenticatedPage: page }) => {
+  test("submitting edit sends PUT request", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page, {
       eventDate: "2024-06-15",
       location: { latitude: 37.7749, longitude: -122.4194 },
@@ -122,10 +116,10 @@ authTest.describe("Observation Edit - Logged In", () => {
     });
 
     await page.goto("/");
-    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10000 });
+    await page.locator(".MuiCard-root").first().waitFor({ timeout: 10_000 });
     await page.locator(".MuiCard-root").first().getByLabel("More options").click();
     await page.getByRole("menuitem", { name: "Edit" }).click();
-    await authExpect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
+    await expect(page.getByText("Edit Observation")).toBeVisible({ timeout: 5000 });
 
     const putRequest = page.waitForRequest(
       (req) => req.method() === "PUT" && req.url().includes("/api/occurrences"),
@@ -134,6 +128,6 @@ authTest.describe("Observation Edit - Logged In", () => {
     // Click Save Changes
     await page.getByRole("button", { name: "Save Changes" }).click();
     const req = await putRequest;
-    authExpect(req.method()).toBe("PUT");
+    expect(req.method()).toBe("PUT");
   });
 });

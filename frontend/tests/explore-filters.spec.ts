@@ -23,12 +23,10 @@ test.describe("Explore Filters", () => {
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 15_000 });
   });
 
-  // TC-FILTER-001: Filter panel visible
   test("filter panel is visible on explore tab", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Filters" })).toBeVisible();
   });
 
-  // TC-FILTER-002: Expand/collapse
   test("clicking expands and collapses filter panel", async ({ page }) => {
     const filtersHeader = page.getByRole("heading", { name: "Filters" });
     await expect(filtersHeader).toBeVisible();
@@ -43,7 +41,6 @@ test.describe("Explore Filters", () => {
     await expect(muiSelect(page, "Kingdom")).not.toBeVisible();
   });
 
-  // TC-FILTER-003: Kingdom dropdown options
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const kingdomSelect = muiSelect(page, "Kingdom");
@@ -56,7 +53,6 @@ test.describe("Explore Filters", () => {
     await expect(page.getByRole("option", { name: "Fungi" })).toBeVisible();
   });
 
-  // TC-FILTER-004: Taxon search autocomplete shows suggestions
   test("taxon search autocomplete shows suggestions", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const taxonInput = page.getByLabel("Taxon");
@@ -74,7 +70,6 @@ test.describe("Explore Filters", () => {
     await expect(page.locator(".MuiAutocomplete-popper")).toBeVisible();
   });
 
-  // TC-FILTER-005: Apply Filters dispatches filtered request
   test("Apply Filters button dispatches filtered feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const kingdomSelect = muiSelect(page, "Kingdom");
@@ -92,7 +87,6 @@ test.describe("Explore Filters", () => {
     await feedRequest;
   });
 
-  // TC-FILTER-006: Clear button resets filters
   test("Clear button resets all filters", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const kingdomSelect = muiSelect(page, "Kingdom");
@@ -111,7 +105,6 @@ test.describe("Explore Filters", () => {
     await expect(clearBtn).toBeDisabled();
   });
 
-  // TC-FILTER-007: Active filter count badge
   test("active filter count badge updates", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const kingdomSelect = muiSelect(page, "Kingdom");
@@ -128,7 +121,6 @@ test.describe("Explore Filters", () => {
     await expect(page.locator(".MuiChip-root").filter({ hasText: "1" }).first()).toBeVisible();
   });
 
-  // TC-FILTER-008: Data-quality criteria filter the feed request
   test("selecting a data-quality criterion filters the feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
 

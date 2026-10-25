@@ -1,8 +1,8 @@
 // Shared by the batch uploader's specs: photos to feed it and the routes it
 // posts to. The upload modal's spec uses the photos and route too.
 import type { Page } from "@playwright/test";
-import { getTestUser } from "../fixtures/mock-auth";
 import { exifJpeg } from "./exif-jpeg";
+import { MOCK_TEST_USER } from "./test-users";
 
 export const BATCH_URL = "/batch-upload";
 
@@ -55,7 +55,7 @@ export async function mockSubmit(page: Page, failNames: string[] = [], slow?: Pr
       status: 200,
       contentType: "application/json",
       body: JSON.stringify({
-        uri: `at://${getTestUser().did}/bio.lexicons.temp.v0-1.occurrence/batch${bodies.length}`,
+        uri: `at://${MOCK_TEST_USER.did}/bio.lexicons.temp.v0-1.occurrence/batch${bodies.length}`,
         cid: `bafybatch${bodies.length}`,
       }),
     });
