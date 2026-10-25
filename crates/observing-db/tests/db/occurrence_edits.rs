@@ -1,7 +1,7 @@
 //! Regression tests for occurrence edits (#856, found by the ingester sim in
 //! #854): an edit that removes a field must clear it in the database.
 
-mod common;
+use crate::common;
 
 use chrono::Utc;
 use observing_db::occurrences;

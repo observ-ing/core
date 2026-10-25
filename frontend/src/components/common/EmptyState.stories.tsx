@@ -32,6 +32,6 @@ export const NoActivity: Story = {
 export const WithIcon: Story = {
   args: {
     message: "No observations yet. Be the first to post!",
-    icon: <CameraAltIcon sx={{ fontSize: 40, color: "text.disabled", mb: 1 }} />,
+    icon: <CameraAltIcon />,
   },
 };

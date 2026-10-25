@@ -14,7 +14,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { coverImageSx } from "../../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
 import { plural } from "../../../lib/utils";
@@ -39,7 +39,7 @@ export interface PhoneUploadListProps {
 
 function Thumbnail({ observation }: { observation: BatchObservation }) {
   return (
-    <Box sx={{ width: 56, height: 56, flexShrink: 0, borderRadius: 1, overflow: "hidden" }}>
+    <Box sx={{ width: 56, height: 56, flexShrink: 0, ...thumbnailFrameSx }}>
       <Box component="img" src={observation.photos[0]?.previewUrl} alt="" sx={coverImageSx} />
     </Box>
   );

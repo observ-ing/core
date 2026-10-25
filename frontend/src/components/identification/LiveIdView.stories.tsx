@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { http, HttpResponse } from "msw";
 import { LiveIdView } from "./LiveIdView";
-import type { SpeciesSuggestion } from "../../services/api";
+import type { IdentifyResponse, SpeciesSuggestion } from "../../services/api";
 
 const SUGGESTIONS: SpeciesSuggestion[] = [
   {
@@ -33,7 +33,11 @@ const SUGGESTIONS: SpeciesSuggestion[] = [
 ];
 
 const speciesIdHandler = http.post("/api/species-id", () =>
-  HttpResponse.json({ suggestions: SUGGESTIONS, modelVersion: "story", inferenceTimeMs: 120 }),
+  HttpResponse.json({
+    suggestions: SUGGESTIONS,
+    modelVersion: "story",
+    inferenceTimeMs: 120,
+  } satisfies IdentifyResponse),
 );
 
 // --- browser API mocks ------------------------------------------------------
