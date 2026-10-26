@@ -2,7 +2,7 @@
 //! term only while the occurrence's forward reference points at it, and only
 //! when the remark agrees on author, subject and term.
 
-mod common;
+use crate::common;
 
 use chrono::Utc;
 use observing_db::remarks::{self, EVENT_REMARKS, OCCURRENCE_REMARKS};

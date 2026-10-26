@@ -11,7 +11,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import UndoIcon from "@mui/icons-material/Undo";
-import { coverImageSx } from "../../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
@@ -250,7 +250,7 @@ export function PhonePhotos({
   ) : notice ? (
     <>
       <Box role="status" sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-        <Box sx={{ width: 44, height: 44, flexShrink: 0, borderRadius: 0.75, overflow: "hidden" }}>
+        <Box sx={{ width: 44, height: 44, flexShrink: 0, ...thumbnailFrameSx }}>
           <Box component="img" src={notice.thumbnailUrl} alt="" sx={coverImageSx} />
         </Box>
         <Box sx={{ minWidth: 0 }}>

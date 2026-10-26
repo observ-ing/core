@@ -26,7 +26,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { coverImageSx, overlayBadgeSx } from "../../common/layoutSx";
+import { coverImageSx, miniIconSx, overlayBadgeSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   canCombine,
@@ -38,6 +38,9 @@ import {
 import { plural } from "../../../lib/utils";
 import { SelectionBox, formatBatchDate } from "../BatchCard";
 import { BottomBar, StackedAction } from "./PhoneStep";
+
+/** Touch-sized pill for the All / Incomplete filter chips. */
+const filterChipSx = { height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 };
 
 export interface PhoneGridProps {
   /** Every observation still to be sent, in batch order. */
@@ -126,7 +129,7 @@ function PhoneCard({
                 ...overlayBadgeSx,
               }}
             >
-              <PhotoLibraryIcon sx={{ fontSize: 14 }} />
+              <PhotoLibraryIcon sx={miniIconSx} />
               {photos.length}
             </Typography>
           )}
@@ -186,7 +189,7 @@ function PhoneCard({
                     color: "warning.main",
                   }}
                 >
-                  <WarningAmberIcon sx={{ fontSize: 14 }} />
+                  <WarningAmberIcon sx={miniIconSx} />
                   {describeMissing(missing)}
                 </Typography>
               )}
@@ -201,7 +204,7 @@ function PhoneCard({
                     color: "error.main",
                   }}
                 >
-                  <ErrorIcon sx={{ fontSize: 14 }} />
+                  <ErrorIcon sx={miniIconSx} />
                   Upload failed
                 </Typography>
               )}
@@ -304,7 +307,7 @@ export function PhoneGrid({
                 aria-pressed={!filtering}
                 color={filtering ? "default" : "primary"}
                 variant={filtering ? "outlined" : "filled"}
-                sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                sx={filterChipSx}
               />
               {incomplete.length > 0 && (
                 <Chip
@@ -314,7 +317,7 @@ export function PhoneGrid({
                   aria-pressed={filtering}
                   color="warning"
                   variant={filtering ? "filled" : "outlined"}
-                  sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                  sx={filterChipSx}
                 />
               )}
               {converting > 0 && (

@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 /** Steps of the upload modal's vertical stepper, in order. */
 export type UploadStep = "Photos" | "Location" | "Identify" | "Date & details";
@@ -46,4 +46,34 @@ export async function revealCoordinateInputs(page: Page) {
   await toggle.scrollIntoViewIfNeeded();
   await toggle.click();
   await page.getByLabel("Latitude").waitFor({ state: "visible", timeout: 5_000 });
+}
+
+/**
+ * Types `query` into a taxon autocomplete and waits for the search covering
+ * all of it. The search is debounced, so a response for a prefix may arrive
+ * first; waiting on that one would race the options for the full query.
+ */
+export async function searchTaxa(input: Locator, query: string) {
+  await input.click();
+  await Promise.all([
+    input.page().waitForResponse((r) => {
+      const url = new URL(r.url());
+      return (
+        url.pathname.endsWith("/api/taxa/search") &&
+        (url.searchParams.get("q") ?? "").length >= query.length
+      );
+    }),
+    input.pressSequentially(query, { delay: 50 }),
+  ]);
+}
+
+/** Opens the first feed card's observation and waits for its detail page. */
+export async function openFirstCard(page: Page) {
+  await page.locator(".MuiCard-root").first().locator(".MuiCardActionArea-root").click();
+  await page.waitForURL(/\/observation\//);
+}
+
+/** Opens the first feed card's "More options" menu. */
+export async function openFirstCardMenu(page: Page) {
+  await page.locator(".MuiCard-root").first().getByLabel("More options").click();
 }

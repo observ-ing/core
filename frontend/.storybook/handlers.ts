@@ -1,4 +1,15 @@
 import { http, HttpResponse } from "msw";
+import type {
+  AuthResponse,
+  ExploreFeedResponse,
+  FeedResponse,
+  GeoJSONFeatureCollection,
+  HomeFeedResponse,
+  NotificationsResponse,
+  ProfileFeedResponse,
+  TaxaResult,
+  TaxaSearchResponse,
+} from "../src/services/types";
 
 /**
  * Default MSW handlers used as a baseline by every story. Each one returns a
@@ -9,24 +20,24 @@ import { http, HttpResponse } from "msw";
  *   parameters: { msw: { handlers: [http.get(...)] } }
  *
  * (overrides take precedence over defaults inside `msw-storybook-addon`).
+ *
+ * Each body `satisfies` the type the client reads from that endpoint, so a
+ * mock can't drift from the API's shape unnoticed. Overrides should too.
  */
 export const defaultHandlers = [
   // Auth
-  http.get("/oauth/me", () => HttpResponse.json(null)),
+  http.get("/oauth/me", () => HttpResponse.json({} satisfies AuthResponse)),
   http.post("/oauth/logout", () => HttpResponse.json({ success: true })),
-  http.post("/oauth/login/init", () =>
-    HttpResponse.json({ url: "https://example.invalid/oauth" }),
-  ),
 
   // Feeds
   http.get("/api/occurrences/feed", () =>
-    HttpResponse.json({ occurrences: [], cursor: null }),
+    HttpResponse.json({ occurrences: [] } satisfies FeedResponse),
   ),
   http.get("/api/feeds/explore", () =>
-    HttpResponse.json({ occurrences: [], cursor: null }),
+    HttpResponse.json({ occurrences: [] } satisfies ExploreFeedResponse),
   ),
   http.get("/api/feeds/home", () =>
-    HttpResponse.json({ occurrences: [], cursor: null }),
+    HttpResponse.json({ occurrences: [] } satisfies HomeFeedResponse),
   ),
   http.get("/api/profiles/:did/feed", () =>
     HttpResponse.json({
@@ -34,35 +45,36 @@ export const defaultHandlers = [
       counts: { observations: 0, identifications: 0, species: 0 },
       occurrences: [],
       identifications: [],
-    }),
+    } satisfies ProfileFeedResponse),
   ),
 
   // Observations
   http.get("/api/occurrences/geojson", () =>
-    HttpResponse.json({ type: "FeatureCollection", features: [] }),
+    HttpResponse.json({ type: "FeatureCollection", features: [] } satisfies GeoJSONFeatureCollection),
   ),
-  http.get("/api/occurrences/*", () => HttpResponse.json(null)),
+  // No such observation: the client reads any non-2xx as null.
+  http.get("/api/occurrences/*", () => new HttpResponse(null, { status: 404 })),
 
   // Taxa
-  http.get("/api/taxa/search", () => HttpResponse.json([])),
+  http.get("/api/taxa/search", () =>
+    HttpResponse.json({ results: [] } satisfies TaxaSearchResponse),
+  ),
   http.get("/api/taxa/:kingdom/:name/occurrences", () =>
-    HttpResponse.json({ occurrences: [], cursor: null }),
+    HttpResponse.json({ occurrences: [] } satisfies FeedResponse),
   ),
   http.get("/api/taxa/:id/occurrences", () =>
-    HttpResponse.json({ occurrences: [], cursor: null }),
+    HttpResponse.json({ occurrences: [] } satisfies FeedResponse),
   ),
-  http.get("/api/taxa/:kingdom/:name/children", () => HttpResponse.json([])),
-  http.get("/api/taxa/:kingdom/:name", () => HttpResponse.json(null)),
-  http.get("/api/taxa/:id", () => HttpResponse.json(null)),
-
-  // Interactions
-  http.get("/api/interactions/*", () => HttpResponse.json([])),
+  http.get("/api/taxa/:kingdom/:name/children", () =>
+    HttpResponse.json([] satisfies TaxaResult[]),
+  ),
+  // No such taxon: the client reads a 404 as null.
+  http.get("/api/taxa/:kingdom/:name", () => new HttpResponse(null, { status: 404 })),
+  http.get("/api/taxa/:id", () => new HttpResponse(null, { status: 404 })),
 
   // Notifications
   http.get("/api/notifications", () =>
-    HttpResponse.json({ notifications: [], cursor: null }),
+    HttpResponse.json({ notifications: [] } satisfies NotificationsResponse),
   ),
-  http.get("/api/notifications/unread-count", () =>
-    HttpResponse.json({ count: 0 }),
-  ),
+  http.get("/api/notifications/unread-count", () => HttpResponse.json({ count: 0 })),
 ];

@@ -1,18 +1,7 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
-
-/**
- * MUI v7 Select doesn't link labels via aria-labelledby.
- * Find by traversing from the label to the parent FormControl.
- */
-function muiSelect(page: Page, label: string) {
-  return page
-    .locator(".MuiFormControl-root", {
-      has: page.locator("label", { hasText: label }),
-    })
-    .getByRole("combobox");
-}
+import { searchTaxa } from "./helpers/navigation";
 
 test.describe("Explore Filters", () => {
   test.beforeEach(async ({ page }) => {
@@ -23,30 +12,27 @@ test.describe("Explore Filters", () => {
     await page.locator(".MuiCard-root").first().waitFor({ timeout: 15_000 });
   });
 
-  // TC-FILTER-001: Filter panel visible
   test("filter panel is visible on explore tab", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "Filters" })).toBeVisible();
   });
 
-  // TC-FILTER-002: Expand/collapse
   test("clicking expands and collapses filter panel", async ({ page }) => {
     const filtersHeader = page.getByRole("heading", { name: "Filters" });
     await expect(filtersHeader).toBeVisible();
 
     // Click to expand
     await filtersHeader.click();
-    await expect(muiSelect(page, "Kingdom")).toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Kingdom" })).toBeVisible();
     await expect(page.getByLabel("Taxon")).toBeVisible();
 
     // Click to collapse
     await filtersHeader.click();
-    await expect(muiSelect(page, "Kingdom")).not.toBeVisible();
+    await expect(page.getByRole("combobox", { name: "Kingdom" })).not.toBeVisible();
   });
 
-  // TC-FILTER-003: Kingdom dropdown options
   test("kingdom dropdown shows all kingdom options", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     await kingdomSelect.click();
@@ -56,28 +42,19 @@ test.describe("Explore Filters", () => {
     await expect(page.getByRole("option", { name: "Fungi" })).toBeVisible();
   });
 
-  // TC-FILTER-004: Taxon search autocomplete shows suggestions
   test("taxon search autocomplete shows suggestions", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
     const taxonInput = page.getByLabel("Taxon");
     await expect(taxonInput).toBeVisible();
 
-    // Use pressSequentially to simulate real keystrokes; fill() sets the
-    // value in one shot which can miss the input events that trigger the
-    // debounced search.
-    const searchResponse = page.waitForResponse(
-      (r) => r.url().includes("/api/taxa/search") && r.status() === 200,
-    );
-    await taxonInput.pressSequentially("Quercus", { delay: 50 });
-    await searchResponse;
+    await searchTaxa(taxonInput, "Quercus");
 
     await expect(page.locator(".MuiAutocomplete-popper")).toBeVisible();
   });
 
-  // TC-FILTER-005: Apply Filters dispatches filtered request
   test("Apply Filters button dispatches filtered feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select a kingdom
@@ -92,10 +69,9 @@ test.describe("Explore Filters", () => {
     await feedRequest;
   });
 
-  // TC-FILTER-006: Clear button resets filters
   test("Clear button resets all filters", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select a kingdom first
@@ -111,10 +87,9 @@ test.describe("Explore Filters", () => {
     await expect(clearBtn).toBeDisabled();
   });
 
-  // TC-FILTER-007: Active filter count badge
   test("active filter count badge updates", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
-    const kingdomSelect = muiSelect(page, "Kingdom");
+    const kingdomSelect = page.getByRole("combobox", { name: "Kingdom" });
     await expect(kingdomSelect).toBeVisible();
 
     // Select kingdom to get 1 active filter
@@ -128,7 +103,6 @@ test.describe("Explore Filters", () => {
     await expect(page.locator(".MuiChip-root").filter({ hasText: "1" }).first()).toBeVisible();
   });
 
-  // TC-FILTER-008: Data-quality criteria filter the feed request
   test("selecting a data-quality criterion filters the feed request", async ({ page }) => {
     await page.getByRole("heading", { name: "Filters" }).click();
 

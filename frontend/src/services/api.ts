@@ -1,8 +1,10 @@
 import type {
   User,
+  AuthResponse,
   FeedResponse,
   Occurrence,
   TaxaResult,
+  TaxaSearchResponse,
   TaxonDetail,
   GeoJSONFeatureCollection,
   FeedFilters,
@@ -73,7 +75,7 @@ export async function checkAuth(): Promise<User | null> {
       credentials: "include",
     });
     if (response.ok) {
-      const data = await response.json();
+      const data: AuthResponse = await response.json();
       return data.user ?? null;
     }
     return null;
@@ -210,7 +212,7 @@ export async function searchTaxa(query: string): Promise<TaxaResult[]> {
   const response = await fetch(`${API_BASE}/api/taxa/search?q=${encodeURIComponent(query)}`);
   if (!response.ok) return [];
 
-  const data = await response.json();
+  const data: TaxaSearchResponse = await response.json();
   return data.results || [];
 }
 

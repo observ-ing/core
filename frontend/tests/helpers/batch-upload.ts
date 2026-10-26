@@ -1,8 +1,8 @@
 // Shared by the batch uploader's specs: photos to feed it and the routes it
 // posts to. The upload modal's spec uses the photos and route too.
 import type { Page } from "@playwright/test";
-import { getTestUser } from "../fixtures/mock-auth";
 import { exifJpeg } from "./exif-jpeg";
+import { MOCK_TEST_USER } from "./test-users";
 
 export const BATCH_URL = "/batch-upload";
 
@@ -39,25 +39,19 @@ export async function addPhotos(
 export async function mockSubmit(page: Page, failNames: string[] = [], slow?: Promise<void>) {
   const bodies: Array<Record<string, unknown>> = [];
   await page.route("**/api/occurrences", async (route) => {
-    if (route.request().method() !== "POST") return route.continue();
+    if (route.request().method() !== "POST") return route.fallback();
     const body = route.request().postDataJSON();
     // An observation remarked "slow" waits for the test to let it through.
     if (body.occurrenceRemarks === "slow") await slow;
     if (failNames.includes(body.occurrenceRemarks)) {
-      return route.fulfill({
-        status: 500,
-        contentType: "application/json",
-        body: JSON.stringify({ error: "PDS unavailable" }),
-      });
+      return route.fulfill({ status: 500, json: { error: "PDS unavailable" } });
     }
     bodies.push(body);
     return route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({
-        uri: `at://${getTestUser().did}/bio.lexicons.temp.v0-1.occurrence/batch${bodies.length}`,
+      json: {
+        uri: `at://${MOCK_TEST_USER.did}/bio.lexicons.temp.v0-1.occurrence/batch${bodies.length}`,
         cid: `bafybatch${bodies.length}`,
-      }),
+      },
     });
   });
   return bodies;

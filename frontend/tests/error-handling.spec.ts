@@ -1,9 +1,8 @@
-import { test, expect } from "@playwright/test";
-import { test as authTest, expect as authExpect } from "./fixtures/mock-auth";
+import { test, expect } from "./fixtures/mock-auth";
 import { mockOwnObservationFeed } from "./helpers/mock-observation";
+import { mockJson } from "./helpers/mock-api";
 
 test.describe("Error Handling", () => {
-  // TC-ERR-001: Network error on feed load
   test("network error shows error state, not blank page", async ({ page }) => {
     await page.route("**/api/feeds/**", (route) => route.abort());
     await page.route("**/api/occurrences/**", (route) => route.abort());
@@ -13,28 +12,23 @@ test.describe("Error Handling", () => {
   });
 });
 
-authTest.describe("Error Handling - Authenticated", () => {
-  // TC-ERR-002: API error on submission
-  authTest("API error on like reverts optimistic update", async ({ authenticatedPage: page }) => {
+test.describe("Error Handling - Authenticated", () => {
+  test("API error on like reverts optimistic update", async ({ authenticatedPage: page }) => {
     await mockOwnObservationFeed(page);
-    await page.route("**/api/likes", (route) => {
-      if (route.request().method() === "POST") {
-        return route.fulfill({
-          status: 500,
-          contentType: "application/json",
-          body: JSON.stringify({ error: "Internal server error" }),
-        });
-      }
-      return route.continue();
-    });
+    await mockJson(
+      page,
+      "**/api/likes",
+      { error: "Internal server error" },
+      { method: "POST", status: 500 },
+    );
 
     await page.goto("/");
     // Wait for real feed content
     const likeButton = page.getByRole("button", { name: "Like" }).first();
-    await authExpect(likeButton).toBeVisible({ timeout: 15000 });
+    await expect(likeButton).toBeVisible();
     await likeButton.click();
     // Optimistic update should revert
-    await authExpect(page.getByRole("button", { name: "Like" }).first()).toBeVisible({
+    await expect(page.getByRole("button", { name: "Like" }).first()).toBeVisible({
       timeout: 3000,
     });
   });
