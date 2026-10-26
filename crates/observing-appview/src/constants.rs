@@ -62,6 +62,11 @@ pub const MAX_EXTERNAL_RECORD_URI_LENGTH: usize = 512;
 /// lexicon.
 pub const MAX_EXTERNAL_RECORD_SERVICE_LENGTH: usize = 64;
 
+/// Largest photo, in bytes, an occurrence can carry. Mirrors the `maxSize` the
+/// `bio.lexicons.temp.v0-1.media` lexicon puts on its image blob. A user's PDS
+/// may enforce a lower limit of its own.
+pub const MAX_IMAGE_BYTES: usize = 10_000_000;
+
 // --- Interaction defaults ---
 
 /// Default direction value for species interactions.

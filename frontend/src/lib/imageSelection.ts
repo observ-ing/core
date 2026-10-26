@@ -8,8 +8,12 @@ import { HEIC_ACCEPT } from "./heic";
 /** Most photos one observation can carry. */
 export const MAX_IMAGES = 10;
 
-/** Largest accepted size for a single photo. Mirrors the uploader's own check. */
-export const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+/**
+ * Largest accepted size for a single photo, in bytes. Mirrors the `maxSize` on
+ * the media lexicon's image blob (and the appview's `MAX_IMAGE_BYTES`), so it's
+ * 10 MB in decimal, not 10 MiB.
+ */
+export const MAX_FILE_SIZE = 10_000_000;
 
 export const VALID_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 

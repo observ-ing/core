@@ -9,6 +9,7 @@
  */
 
 import type { AtpAgent, BlobRef } from "@atproto/api";
+import { MAX_FILE_SIZE } from "./imageSelection";
 
 const OCCURRENCE_COLLECTION = "bio.lexicons.temp.v0-1.occurrence";
 const MEDIA_COLLECTION = "bio.lexicons.temp.v0-1.media";
@@ -192,7 +193,7 @@ export class OccurrenceUploader {
       if (!validTypes.includes(file.type)) {
         throw new Error(`Invalid image type: ${file.type}`);
       }
-      if (file.size > 10 * 1024 * 1024) {
+      if (file.size > MAX_FILE_SIZE) {
         throw new Error("Image file too large (max 10MB)");
       }
     }
