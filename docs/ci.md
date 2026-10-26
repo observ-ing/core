@@ -20,6 +20,7 @@ Why the jobs in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) are se
 - **`rust-sqlx`** needs a live Postgres: sqlx-cli 0.9's `prepare --check` dropped the offline mode 0.8 had. The job runs migrations first, which also set the database's `search_path` (`ingester, appview, public`) so the unqualified table names in the query macros resolve.
 - **sqlx-cli is pinned to 0.9.0.** It needs rustc 1.94 or later, which the `rust-toolchain.toml` pin satisfies, and it matches the workspace's sqlx 0.9. Bump it in step with the toolchain pin.
 - **`rust-db-test`** runs `crates/observing-db/tests`. Each test creates, migrates and drops its own scratch database on the job's Postgres.
+- **`lexicons-lint`** runs [goat](https://github.com/bluesky-social/goat)'s `goat lex lint` over `lexicons/`. It checks schema syntax and atproto best practices (missing descriptions, invalid NSIDs, unknown fields) before `rust-lexicons-check` turns the schemas into Rust types. Warnings fail the job as well as errors. It downloads a pinned, checksummed release binary rather than `go install`, which would need Go 1.27. To bump it, update `GOAT_VERSION` and `GOAT_SHA256` from the release's `checksums.txt`. Run it locally with `goat lex lint lexicons/` (`brew install goat`).
 
 ## e2e
 
