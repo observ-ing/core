@@ -696,6 +696,10 @@ async fn upload_media_records(
 ) -> Result<(Vec<BlobEntry>, Vec<StrongRef>), AppError> {
     use base64::Engine;
 
+    // Check every photo before uploading any, so one that's too large doesn't
+    // leave the photos ahead of it orphaned on the PDS.
+    check_image_sizes(images)?;
+
     let mut blob_entries = Vec::with_capacity(images.len());
     let mut media_refs = Vec::with_capacity(images.len());
 
@@ -703,6 +707,7 @@ async fn upload_media_records(
         let bytes = base64::engine::general_purpose::STANDARD
             .decode(&img.data)
             .map_err(|e| AppError::BadRequest(format!("Invalid base64 image data: {e}")))?;
+        let size = bytes.len();
         let blob_resp = agent
             .api
             .com
@@ -710,7 +715,7 @@ async fn upload_media_records(
             .repo
             .upload_blob(bytes)
             .await
-            .map_err(|e| AppError::Internal(format!("Failed to upload blob: {e}")))?;
+            .map_err(|e| upload_blob_error(e, user_did, size))?;
 
         // Destructure atrium's BlobRef to build the DB BlobEntry with concrete types.
         let (cid_str, mime_type) = match &blob_resp.blob {
@@ -762,6 +767,58 @@ async fn upload_media_records(
     }
 
     Ok((blob_entries, media_refs))
+}
+
+/// Reject the upload if any photo is over the media lexicon's per-photo cap.
+fn check_image_sizes(images: &[ImageUpload]) -> Result<(), AppError> {
+    for img in images {
+        let size = base64_decoded_len(&img.data);
+        if size > constants::MAX_IMAGE_BYTES {
+            return Err(AppError::BadRequest(format!(
+                "One photo is {}; each photo can be at most {} MB.",
+                format_megabytes(size),
+                constants::MAX_IMAGE_BYTES / 1_000_000,
+            )));
+        }
+    }
+    Ok(())
+}
+
+/// The number of bytes `b64` decodes to, worked out without decoding it.
+/// Assumes the padded standard alphabet the upload decoder requires; anything
+/// malformed is rejected when the data is actually decoded.
+fn base64_decoded_len(b64: &str) -> usize {
+    let padding = b64.bytes().rev().take_while(|&b| b == b'=').count();
+    (b64.len() / 4 * 3).saturating_sub(padding)
+}
+
+/// Map a failed `uploadBlob` call to the error the user sees. A PDS answers a
+/// blob over its own upload limit, which can be lower than ours, with a 413;
+/// that gets a message the user can act on instead of a generic 500.
+fn upload_blob_error(
+    e: atrium_api::xrpc::Error<atrium_api::com::atproto::repo::upload_blob::Error>,
+    user_did: &str,
+    size: usize,
+) -> AppError {
+    match e {
+        atrium_api::xrpc::Error::XrpcResponse(ref xrpc)
+            if xrpc.status == axum::http::StatusCode::PAYLOAD_TOO_LARGE =>
+        {
+            // Worth knowing how often this happens: it's the case a limit
+            // advertised by the PDS (describeServer) would catch earlier.
+            warn!(did = user_did, size, "PDS rejected photo as too large");
+            AppError::BadRequest(format!(
+                "Your PDS rejected a {} photo as too large. Try a smaller photo.",
+                format_megabytes(size),
+            ))
+        }
+        e => AppError::Internal(format!("Failed to upload blob: {e}")),
+    }
+}
+
+/// `bytes` in decimal megabytes to one decimal place, e.g. "6.2 MB".
+fn format_megabytes(bytes: usize) -> String {
+    format!("{:.1} MB", bytes as f64 / 1_000_000.0)
 }
 
 /// The record fields both the create and the edit path assemble before writing.
@@ -1270,5 +1327,75 @@ mod tests {
                 .expect("valid entry")
                 .is_some()
         );
+    }
+
+    fn image_of_size(bytes: usize) -> ImageUpload {
+        use base64::Engine;
+        ImageUpload {
+            data: base64::engine::general_purpose::STANDARD.encode(vec![0u8; bytes]),
+            mime_type: "image/jpeg".to_string(),
+        }
+    }
+
+    /// Every padding case (none, one `=`, two `=`) lands on the exact length.
+    #[test]
+    fn base64_decoded_len_matches_the_decoded_bytes() {
+        for len in 0..=12 {
+            assert_eq!(base64_decoded_len(&image_of_size(len).data), len);
+        }
+    }
+
+    /// The cap is inclusive, matching the lexicon's `maxSize`.
+    #[test]
+    fn accepts_a_photo_exactly_at_the_cap() {
+        assert!(check_image_sizes(&[image_of_size(constants::MAX_IMAGE_BYTES)]).is_ok());
+    }
+
+    /// One oversized photo rejects the whole batch, wherever it sits in it.
+    #[test]
+    fn rejects_a_batch_holding_a_photo_over_the_cap() {
+        let images = [
+            image_of_size(1),
+            image_of_size(constants::MAX_IMAGE_BYTES + 400_000),
+        ];
+        match check_image_sizes(&images) {
+            Err(AppError::BadRequest(msg)) => {
+                assert_eq!(
+                    msg,
+                    "One photo is 10.4 MB; each photo can be at most 10 MB."
+                )
+            }
+            other => panic!("expected BadRequest, got {other:?}"),
+        }
+    }
+
+    fn xrpc_error(
+        status: u16,
+    ) -> atrium_api::xrpc::Error<atrium_api::com::atproto::repo::upload_blob::Error> {
+        atrium_api::xrpc::Error::XrpcResponse(atrium_api::xrpc::error::XrpcError {
+            status: axum::http::StatusCode::from_u16(status).expect("valid status"),
+            error: None,
+        })
+    }
+
+    /// A PDS rejecting a blob over its own limit reaches the user as a
+    /// message they can act on, not a generic server error.
+    #[test]
+    fn surfaces_a_pds_payload_too_large_rejection() {
+        match upload_blob_error(xrpc_error(413), "did:plc:alice", 6_200_000) {
+            AppError::BadRequest(msg) => assert_eq!(
+                msg,
+                "Your PDS rejected a 6.2 MB photo as too large. Try a smaller photo."
+            ),
+            other => panic!("expected BadRequest, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn other_upload_failures_stay_internal() {
+        assert!(matches!(
+            upload_blob_error(xrpc_error(500), "did:plc:alice", 1),
+            AppError::Internal(_)
+        ));
     }
 }

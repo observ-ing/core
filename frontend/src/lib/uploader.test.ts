@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { BlobRef } from "@atproto/api";
 import { OccurrenceUploader, type UploaderAgent } from "./uploader.js";
+import { MAX_FILE_SIZE } from "./imageSelection";
 
 // Helper to create mock files using native File (Node 20+)
 function createMockFile(name: string, type: string, sizeInBytes: number): File {
@@ -271,9 +272,8 @@ describe("OccurrenceUploader", () => {
       });
 
       it("accepts image at exactly 10MB", async () => {
-        const exactSize = 10 * 1024 * 1024; // exactly 10MB
         const data = createValidOccurrence({
-          images: [createMockFile("maxsize.jpg", "image/jpeg", exactSize)],
+          images: [createMockFile("maxsize.jpg", "image/jpeg", MAX_FILE_SIZE)],
         });
 
         await uploader.upload(data);

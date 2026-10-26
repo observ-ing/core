@@ -110,6 +110,9 @@ pub struct AppState {
     pub media: Arc<MediaCache>,
     /// HEIC → JPEG conversion for browsers that can't decode HEIC photos.
     pub heic: Arc<HeicConverter>,
+    /// Each viewer's PDS-advertised blob upload limit, read through
+    /// describeServer.
+    pub pds_upload_limits: crate::routes::upload_limit::PdsUploadLimits,
     pub public_url: Option<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,

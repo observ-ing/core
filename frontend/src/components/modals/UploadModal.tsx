@@ -37,7 +37,7 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
-import { useUserPreferences, useCrosspostStatus } from "../../lib/query/hooks";
+import { useUserPreferences, useCrosspostStatus, useMaxPhotoSize } from "../../lib/query/hooks";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
@@ -58,7 +58,12 @@ import { VisualId } from "../identification/VisualId";
 import { PhotoLightbox } from "../observation/PhotoLightbox";
 import { getErrorMessage, fileToBase64, formatCoordinate } from "../../lib/utils";
 import { pickPhotos } from "../../lib/photoPicker";
-import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, vetImageFiles } from "../../lib/imageSelection";
+import {
+  IMAGE_INPUT_ACCEPT,
+  MAX_IMAGES,
+  formatMegabytes,
+  vetImageFiles,
+} from "../../lib/imageSelection";
 import { convertHeicFiles, isHeic } from "../../lib/heic";
 import { readPhotoExif } from "../../lib/exif";
 import { taxonFields, toEventDate } from "../../lib/observationInput";
@@ -148,6 +153,7 @@ export function UploadModal() {
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
   const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
+  const maxPhotoSize = useMaxPhotoSize();
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -334,13 +340,20 @@ export function UploadModal() {
     }
 
     const currentCount = imageCountRef.current;
-    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, currentCount);
+    const { accepted, invalidType, tooLarge, exceededCap } = vetImageFiles(files, currentCount, {
+      maxFileSize: maxPhotoSize.bytes,
+    });
 
     for (const file of invalidType) {
       toast.error(`Invalid file type: ${file.name}. Use JPG, PNG, WebP, or HEIC.`);
     }
     for (const file of tooLarge) {
-      toast.error(`File too large: ${file.name}. Max size is 10MB.`);
+      const max = formatMegabytes(maxPhotoSize.bytes);
+      toast.error(
+        maxPhotoSize.limitedByPds
+          ? `File too large: ${file.name}. Your PDS accepts photos up to ${max}.`
+          : `File too large: ${file.name}. Max size is ${max}.`,
+      );
     }
     if (exceededCap) {
       toast.error(`Maximum ${MAX_IMAGES} images allowed.`);
@@ -638,7 +651,8 @@ export function UploadModal() {
                   variant="caption"
                   sx={{ color: "text.disabled", display: "block", mt: 0.5 }}
                 >
-                  JPG, PNG, WebP, or HEIC - Max 10MB each - Up to {MAX_IMAGES} photos
+                  JPG, PNG, WebP, or HEIC - Max {formatMegabytes(maxPhotoSize.bytes)} each
+                  {maxPhotoSize.limitedByPds && " (set by your PDS)"} - Up to {MAX_IMAGES} photos
                 </Typography>
 
                 <StepNav step={STEP_PHOTOS} />

@@ -577,6 +577,16 @@ describe("vetBatchFiles", () => {
 
     expect(result.skipped).toEqual([{ name: "IMG_5002.HEIC", reason: "Larger than 10 MB" }]);
   });
+
+  it("measures photos against the viewer's limit when their PDS sets a lower one", () => {
+    const result = vetBatchFiles(
+      [asDropped(imageFile("6mb.jpg", { size: 6_000_000 }))],
+      0,
+      5_242_880,
+    );
+
+    expect(result.skipped).toEqual([{ name: "6mb.jpg", reason: "Larger than 5.2 MB" }]);
+  });
 });
 
 describe("runPool", () => {

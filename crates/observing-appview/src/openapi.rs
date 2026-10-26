@@ -66,6 +66,7 @@ use crate::routes;
         routes::taxonomy::get_taxon_by_id,
         routes::taxonomy::get_taxon_occurrences_by_id,
         routes::heic::heic_to_jpeg,
+        routes::upload_limit::get_upload_limit,
         routes::media::health,
         routes::media::get_blob,
         routes::media::get_thumb,

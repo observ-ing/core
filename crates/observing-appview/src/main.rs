@@ -123,6 +123,7 @@ async fn main() {
         oauth_client: Arc::new(oauth_client),
         media,
         heic: Arc::new(heic::HeicConverter::from_env()),
+        pds_upload_limits: routes::upload_limit::new_pds_upload_limits(),
         public_url: config.public_url.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
@@ -236,6 +237,10 @@ async fn main() {
         .route(
             "/api/user/preferences",
             get(routes::preferences::get_preferences).put(routes::preferences::update_preferences),
+        )
+        .route(
+            "/api/user/upload-limit",
+            get(routes::upload_limit::get_upload_limit),
         )
         // iNaturalist cross-posting
         .route("/api/inat/authorize", get(routes::inat::authorize))

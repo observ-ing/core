@@ -2,6 +2,8 @@
 import { Alert, AlertTitle, Box, Button, CircularProgress, Typography } from "@mui/material";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import { MAX_BATCH_PHOTOS } from "../../../lib/batchUpload";
+import { formatMegabytes } from "../../../lib/imageSelection";
+import { useMaxPhotoSize } from "../../../lib/query/hooks";
 import { plural } from "../../../lib/utils";
 
 export interface PhoneStartProps {
@@ -16,6 +18,7 @@ export interface PhoneStartProps {
 }
 
 export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: PhoneStartProps) {
+  const maxPhotoSize = useMaxPhotoSize();
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, px: 2, py: 3 }}>
       <Box>
@@ -55,7 +58,9 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
           Choose photos
         </Button>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          JPEG, PNG, WebP, or HEIC. 10 MB each, up to {MAX_BATCH_PHOTOS} photos per batch.
+          JPEG, PNG, WebP, or HEIC. {formatMegabytes(maxPhotoSize.bytes)} each
+          {maxPhotoSize.limitedByPds && " (set by your PDS)"}, up to {MAX_BATCH_PHOTOS} photos per
+          batch.
         </Typography>
         {converting > 0 && (
           <Typography
