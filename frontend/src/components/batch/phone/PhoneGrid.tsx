@@ -39,6 +39,9 @@ import { plural } from "../../../lib/utils";
 import { SelectionBox, formatBatchDate } from "../BatchCard";
 import { BottomBar, StackedAction } from "./PhoneStep";
 
+/** Touch-sized pill for the All / Incomplete filter chips. */
+const filterChipSx = { height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 };
+
 export interface PhoneGridProps {
   /** Every observation still to be sent, in batch order. */
   observations: BatchObservation[];
@@ -304,7 +307,7 @@ export function PhoneGrid({
                 aria-pressed={!filtering}
                 color={filtering ? "default" : "primary"}
                 variant={filtering ? "outlined" : "filled"}
-                sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                sx={filterChipSx}
               />
               {incomplete.length > 0 && (
                 <Chip
@@ -314,7 +317,7 @@ export function PhoneGrid({
                   aria-pressed={filtering}
                   color="warning"
                   variant={filtering ? "filled" : "outlined"}
-                  sx={{ height: 40, borderRadius: 5, px: 0.5, fontWeight: 600 }}
+                  sx={filterChipSx}
                 />
               )}
               {converting > 0 && (
