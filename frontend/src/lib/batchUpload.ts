@@ -4,7 +4,7 @@
 import type { ObservationInput } from "../services/api";
 import type { PhotoExif } from "./exif";
 import { convertHeicToJpeg, isHeic, MAX_HEIC_SIZE } from "./heic";
-import { MAX_IMAGES, vetImageFiles } from "./imageSelection";
+import { MAX_FILE_SIZE, MAX_IMAGES, formatMegabytes, vetImageFiles } from "./imageSelection";
 import { taxonFields, toEventDate, type FormDate, type FormTaxon } from "./observationInput";
 
 /** Most photos one batch can hold. */
@@ -484,16 +484,23 @@ export async function convertDroppedHeic(
   return dropped;
 }
 
-/** Split a drop into the files to add and the ones to report as skipped, in drop order. */
+/**
+ * Split a drop into the files to add and the ones to report as skipped, in drop
+ * order. `maxFileSize` is the viewer's per-photo limit.
+ */
 export function vetBatchFiles(
   dropped: DroppedFile[],
   currentPhotoCount: number,
+  maxFileSize = MAX_FILE_SIZE,
 ): { accepted: File[]; skipped: SkippedFile[] } {
   const files = dropped.flatMap((d) => ("file" in d ? [d.file] : []));
-  const vetted = vetImageFiles(files, currentPhotoCount, MAX_BATCH_PHOTOS);
+  const vetted = vetImageFiles(files, currentPhotoCount, {
+    maxPhotos: MAX_BATCH_PHOTOS,
+    maxFileSize,
+  });
   const reasons = new Map<File, string>([
     ...vetted.invalidType.map((f) => [f, "Not a JPEG, PNG, WebP, or HEIC"] as const),
-    ...vetted.tooLarge.map((f) => [f, "Larger than 10 MB"] as const),
+    ...vetted.tooLarge.map((f) => [f, `Larger than ${formatMegabytes(maxFileSize)}`] as const),
     ...vetted.overCap.map((f) => [f, `Over the ${MAX_BATCH_PHOTOS}-photo limit`] as const),
   ]);
   // Listed by the dropped name, so a converted HEIC is still the file the user knows.

@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { BatchUploadPage } from "./BatchUploadPage";
 import { ALICE_USER } from "../../../.storybook/fixtures";
+import { lowPdsUploadLimitHandler } from "../../../.storybook/handlers";
 
 /**
  * The page starts empty and fills from dropped files, so only the empty state
@@ -20,6 +21,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Empty: Story = {};
+
+/** A viewer whose PDS accepts smaller photos than the lexicon allows. */
+export const EmptyOnLowLimitPds: Story = {
+  parameters: { msw: { handlers: [lowPdsUploadLimitHandler] } },
+};
 
 export const SignedOut: Story = {
   parameters: { storeOptions: {} },

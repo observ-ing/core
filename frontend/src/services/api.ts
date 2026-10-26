@@ -15,6 +15,7 @@ import type {
   OccurrenceDetailResponse,
   ValidateResponse,
   UserPreferencesResponse,
+  UploadLimitResponse,
   UpdatePreferencesRequest,
   ExternalRecord,
 } from "./types";
@@ -472,6 +473,12 @@ export async function fetchServiceStatus(): Promise<ServiceStatusResponse> {
 
 export async function fetchUserPreferences(): Promise<UserPreferencesResponse> {
   return fetchApi(`${API_BASE}/api/user/preferences`, "Failed to load preferences", {
+    credentials: "include",
+  });
+}
+
+export async function fetchUploadLimit(): Promise<UploadLimitResponse> {
+  return fetchApi(`${API_BASE}/api/user/upload-limit`, "Failed to load upload limit", {
     credentials: "include",
   });
 }

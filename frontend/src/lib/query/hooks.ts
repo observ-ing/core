@@ -4,6 +4,7 @@
 import { useInfiniteQuery, useQuery, keepPreviousData } from "@tanstack/react-query";
 import { useAppSelector } from "../../store";
 import { qk } from "./keys";
+import { MAX_FILE_SIZE } from "../imageSelection";
 import {
   fetchHomeFeed,
   fetchExploreFeed,
@@ -18,6 +19,7 @@ import {
   fetchNotifications,
   fetchUnreadCount,
   fetchUserPreferences,
+  fetchUploadLimit,
   fetchServiceStatus,
   fetchInatAccount,
   fetchCrosspostStatus,
@@ -181,6 +183,28 @@ export function useUserPreferences() {
     queryFn: fetchUserPreferences,
     enabled: isAuthenticated,
   });
+}
+
+/**
+ * Largest photo the viewer can attach, in bytes: the media lexicon's cap, or
+ * their PDS's own limit where it advertises a lower one (`limitedByPds`).
+ *
+ * Until it loads, and when signed out, this is the lexicon's cap; the server
+ * still surfaces a PDS rejection if a photo slips through. It rarely changes,
+ * so it's read at most once an hour.
+ */
+export function useMaxPhotoSize(): { bytes: number; limitedByPds: boolean } {
+  const isAuthenticated = useAppSelector((s) => s.auth.user !== null);
+  const { data } = useQuery({
+    queryKey: qk.uploadLimit(),
+    queryFn: fetchUploadLimit,
+    enabled: isAuthenticated,
+    staleTime: 60 * 60 * 1000,
+  });
+  return {
+    bytes: data?.maxImageBytes ?? MAX_FILE_SIZE,
+    limitedByPds: data?.limitedByPds ?? false,
+  };
 }
 
 /** Public service status. Polls at the server's one-minute cache interval. */

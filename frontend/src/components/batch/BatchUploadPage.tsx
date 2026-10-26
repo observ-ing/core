@@ -43,7 +43,7 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { trackSubmission } from "../../store/pendingSlice";
 import { submitObservation } from "../../services/api";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
-import { useUserPreferences } from "../../lib/query/hooks";
+import { useMaxPhotoSize, useUserPreferences } from "../../lib/query/hooks";
 import { useToast } from "../../hooks/useToast";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useBatchLayout } from "../../hooks/useBatchLayout";
@@ -66,7 +66,7 @@ import {
 } from "../../lib/batchUpload";
 import { readPhotoExif } from "../../lib/exif";
 import { isHeic } from "../../lib/heic";
-import { IMAGE_INPUT_ACCEPT, MAX_IMAGES } from "../../lib/imageSelection";
+import { IMAGE_INPUT_ACCEPT, MAX_IMAGES, formatMegabytes } from "../../lib/imageSelection";
 import { DEFAULT_LICENSE } from "../../lib/licenses";
 import { pickPhotos } from "../../lib/photoPicker";
 import { warmSpeciesId } from "../../lib/speciesIdWarmup";
@@ -168,6 +168,7 @@ export function BatchUploadPage() {
   const user = useAppSelector((s) => s.auth.user);
   const isAuthLoading = useAppSelector((s) => s.auth.isLoading);
   const preferences = useUserPreferences();
+  const maxPhotoSize = useMaxPhotoSize();
   const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
   const { touch, phone, touchDrag } = useBatchLayout();
 
@@ -306,7 +307,11 @@ export function BatchUploadPage() {
     const cardsNow = latest.current.observations;
     // A card removed in the meantime leaves its photos to start their own.
     const into = target && cardsNow.find((o) => o.id === target.id);
-    const { accepted, skipped: skippedFiles } = vetBatchFiles(dropped, unsentPhotoCount(cardsNow));
+    const { accepted, skipped: skippedFiles } = vetBatchFiles(
+      dropped,
+      unsentPhotoCount(cardsNow),
+      maxPhotoSize.bytes,
+    );
     if (into && into.photos.length + accepted.length > MAX_IMAGES) {
       toast.error(`An observation holds up to ${MAX_IMAGES} photos`);
       return;
@@ -889,7 +894,8 @@ export function BatchUploadPage() {
               Browse files
             </Button>
             <Typography variant="body2">
-              JPEG, PNG, WebP, or HEIC. 10 MB each, up to {MAX_BATCH_PHOTOS} photos.
+              JPEG, PNG, WebP, or HEIC. {formatMegabytes(maxPhotoSize.bytes)} each
+              {maxPhotoSize.limitedByPds && " (set by your PDS)"}, up to {MAX_BATCH_PHOTOS} photos.
             </Typography>
           </Box>
         ) : (

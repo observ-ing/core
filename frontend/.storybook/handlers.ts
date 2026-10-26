@@ -9,6 +9,7 @@ import type {
   ProfileFeedResponse,
   TaxaResult,
   TaxaSearchResponse,
+  UploadLimitResponse,
 } from "../src/services/types";
 
 /**
@@ -77,4 +78,23 @@ export const defaultHandlers = [
     HttpResponse.json({ notifications: [] } satisfies NotificationsResponse),
   ),
   http.get("/api/notifications/unread-count", () => HttpResponse.json({ count: 0 })),
+
+  // Uploads
+  http.get("/api/user/upload-limit", () =>
+    HttpResponse.json({
+      maxImageBytes: 10_000_000,
+      limitedByPds: false,
+    } satisfies UploadLimitResponse),
+  ),
 ];
+
+/**
+ * Override for a viewer whose PDS advertises a blob upload limit below the
+ * media lexicon's 10 MB cap: the reference PDS's 5 MiB default.
+ */
+export const lowPdsUploadLimitHandler = http.get("/api/user/upload-limit", () =>
+  HttpResponse.json({
+    maxImageBytes: 5_242_880,
+    limitedByPds: true,
+  } satisfies UploadLimitResponse),
+);
