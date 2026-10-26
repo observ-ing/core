@@ -9,6 +9,7 @@ import type { BatchEdit, BatchObservation } from "../../../lib/batchUpload";
 import { formatCoordinate, plural } from "../../../lib/utils";
 import { shared } from "../BatchEditor";
 import { PhoneStep } from "./PhoneStep";
+import { touchTargetLarge } from "../../common/layoutSx";
 
 const LocationPicker = lazy(() =>
   import("../../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -81,7 +82,7 @@ export function PhoneLocationStep({ observations, onApply, onBack }: PhoneLocati
                 ...(uncertainty !== null ? { uncertaintyMeters: uncertainty } : {}),
               })
             }
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: touchTargetLarge }}
           >
             {single ? "Set location" : `Set location for ${observations.length} observations`}
           </Button>

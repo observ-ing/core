@@ -24,7 +24,12 @@ import { RankSelect } from "../../common/RankSelect";
 import { SearchAdornment, searchFieldSx } from "../../common/SearchField";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { TaxonThumbnail } from "../../common/TaxonThumbnail";
-import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
+import {
+  coverImageSx,
+  thumbnailFrameSx,
+  touchTarget,
+  touchTargetLarge,
+} from "../../common/layoutSx";
 import { VisualId } from "../../identification/VisualId";
 import { useDebouncedTaxaSearch } from "../../../hooks/useDebouncedTaxaSearch";
 import { EMPTY_TAXON, type BatchObservation, type BatchTaxon } from "../../../lib/batchUpload";
@@ -76,7 +81,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
             startIcon={<CheckIcon />}
             disabled={!kingdom}
             onClick={() => onChoose({ name: unmatched, match: null, kingdom, rank })}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: touchTargetLarge }}
           >
             Use this name
           </Button>
@@ -257,7 +262,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
               color="error"
               startIcon={<DeleteOutlineIcon />}
               onClick={() => onChoose(EMPTY_TAXON)}
-              sx={{ alignSelf: "flex-start", minHeight: 44 }}
+              sx={{ alignSelf: "flex-start", minHeight: touchTarget }}
             >
               Remove identification
             </Button>

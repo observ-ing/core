@@ -12,7 +12,13 @@ import NotesIcon from "@mui/icons-material/Notes";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
-import { coverImageSx, overlayBadgeSx, phoneCaptionFontSize } from "../../common/layoutSx";
+import {
+  coverImageSx,
+  overlayBadgeSx,
+  phoneCaptionFontSize,
+  touchTarget,
+  touchTargetLarge,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   describeMissing,
@@ -205,7 +211,7 @@ export function PhoneEditor({
             color={nextIncomplete ? "inherit" : "primary"}
             startIcon={<CheckIcon />}
             onClick={onBack}
-            sx={{ flex: 1, minHeight: 48 }}
+            sx={{ flex: 1, minHeight: touchTargetLarge }}
           >
             Done
           </Button>
@@ -214,7 +220,7 @@ export function PhoneEditor({
               variant="contained"
               endIcon={<ChevronRightIcon />}
               onClick={() => onGo(nextIncomplete.id)}
-              sx={{ flex: 2, minHeight: 48 }}
+              sx={{ flex: 2, minHeight: touchTargetLarge }}
             >
               Next ({nextIncomplete.left} left)
             </Button>
@@ -369,7 +375,7 @@ export function PhoneEditor({
           color="error"
           startIcon={<DeleteOutlineIcon />}
           onClick={onRemove}
-          sx={{ alignSelf: "flex-start", minHeight: 44 }}
+          sx={{ alignSelf: "flex-start", minHeight: touchTarget }}
         >
           Remove from batch
         </Button>

@@ -10,7 +10,7 @@ import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { TimeZoneSelect } from "../common/TimeZoneSelect";
-import { coverImageSx, thumbnailFrameSx } from "../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx, touchTarget } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { AncestorSelection } from "../identification/VisualIdCards";
 import type { SpeciesSuggestion } from "../../services/api";
@@ -295,7 +295,7 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
             color="inherit"
             startIcon={<OpenInFullIcon />}
             onClick={onExpandMap}
-            sx={{ mt: 1, minHeight: 44 }}
+            sx={{ mt: 1, minHeight: touchTarget }}
           >
             Expand map
           </Button>

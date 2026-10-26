@@ -11,7 +11,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import UndoIcon from "@mui/icons-material/Undo";
-import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
+import { coverImageSx, thumbnailFrameSx, touchTarget } from "../../common/layoutSx";
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
@@ -268,7 +268,7 @@ export function PhonePhotos({
           color="inherit"
           startIcon={<UndoIcon />}
           onClick={onUndo}
-          sx={{ flex: 1, minHeight: 44 }}
+          sx={{ flex: 1, minHeight: touchTarget }}
         >
           Undo
         </Button>
@@ -278,7 +278,7 @@ export function PhonePhotos({
             color="inherit"
             startIcon={<EditIcon />}
             onClick={notice.onEdit}
-            sx={{ flex: 1, minHeight: 44 }}
+            sx={{ flex: 1, minHeight: touchTarget }}
           >
             Edit it
           </Button>
@@ -287,7 +287,7 @@ export function PhonePhotos({
           variant="contained"
           startIcon={<CheckIcon />}
           onClick={onDismissNotice}
-          sx={{ flex: 1, minHeight: 44 }}
+          sx={{ flex: 1, minHeight: touchTarget }}
         >
           OK
         </Button>

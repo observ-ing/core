@@ -77,6 +77,7 @@ import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
+import { touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -151,7 +152,7 @@ function ToolbarButton({
       color="inherit"
       size={touch ? "medium" : "small"}
       startIcon={icon}
-      sx={touch ? { minHeight: 44 } : {}}
+      sx={touch ? { minHeight: touchTarget } : {}}
       {...props}
     >
       {children}

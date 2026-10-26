@@ -14,7 +14,12 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import EditIcon from "@mui/icons-material/Edit";
 import RefreshIcon from "@mui/icons-material/Refresh";
-import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
+import {
+  coverImageSx,
+  thumbnailFrameSx,
+  touchTarget,
+  touchTargetLarge,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
 import { plural } from "../../../lib/utils";
@@ -158,7 +163,7 @@ export function PhoneUploadList({
             color="inherit"
             startIcon={<CloseIcon />}
             onClick={onCancel}
-            sx={{ minHeight: 48 }}
+            sx={{ minHeight: touchTargetLarge }}
           >
             Cancel remaining
           </Button>
@@ -228,7 +233,7 @@ export function PhoneUploadList({
                 color="inherit"
                 startIcon={<EditIcon />}
                 onClick={() => onEdit(o.id)}
-                sx={{ flex: 1, minHeight: 44 }}
+                sx={{ flex: 1, minHeight: touchTarget }}
               >
                 Edit
               </Button>
@@ -239,7 +244,7 @@ export function PhoneUploadList({
                 // An edit since the failure may have left it unfit to send.
                 disabled={blocked || !fit(o)}
                 onClick={() => onRetry(o)}
-                sx={{ flex: 1, minHeight: 44 }}
+                sx={{ flex: 1, minHeight: touchTarget }}
               >
                 Retry
               </Button>
@@ -253,7 +258,7 @@ export function PhoneUploadList({
           startIcon={<RefreshIcon />}
           disabled={blocked || !observations.every(fit)}
           onClick={onRetryAll}
-          sx={{ minHeight: 48 }}
+          sx={{ minHeight: touchTargetLarge }}
         >
           Retry all failed
         </Button>

@@ -165,3 +165,9 @@ export const headerMenuPaperSx = {
   minWidth: 200,
   "& .MuiMenuItem-root": { px: 2, py: 1, borderRadius: 1, mx: 1, my: 0.5 },
 } as const;
+
+/** Minimum height for secondary touch controls on the batch screens (44px, Apple's HIG minimum). */
+export const touchTarget = 44;
+
+/** Minimum height for primary touch controls on the batch screens (48px, Material's touch target). */
+export const touchTargetLarge = 48;
