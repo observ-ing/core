@@ -3,6 +3,7 @@
 //! when the occurrence lands. Tap orders records within a repo, not across
 //! repos, so an identification of bob's occurrence can arrive first.
 
+#[path = "db/common.rs"]
 mod common;
 
 use chrono::{TimeZone, Utc};
