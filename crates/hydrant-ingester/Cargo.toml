@@ -1,0 +1,34 @@
+[package]
+name = "hydrant-ingester"
+version = "0.1.0"
+edition = "2021"
+description = "Spike: tap-ingester's write path fed by an embedded hydrant instead of Tap"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+# hydrant isn't on crates.io; pin a commit. `default-features = false` drops
+# its jemalloc global allocator (the binary's choice, not a library's).
+# `user-keyspace` lets us keep our stream cursor in hydrant's own database;
+# `firehose-diagnostics` exposes the relay seq the heartbeat reports.
+hydrant = { git = "https://tangled.org/ptr.pet/hydrant", rev = "310c4864b1382ef1a6eb3b852ad94b2261a82469", default-features = false, features = ["indexer", "indexer_stream", "user-keyspace", "firehose-diagnostics"] }
+# hydrant's API reports errors as miette diagnostics.
+miette = "7"
+
+# Postgres write path, record dispatch, dashboard counters and the relay lag
+# probe, shared with the Tap consumer.
+tap-ingester = { path = "../tap-ingester" }
+observing-bootstrap = { path = "../observing-bootstrap" }
+observing-collections = { path = "../observing-collections" }
+observing-db = { path = "../observing-db" }
+pg-url-env = { path = "../pg-url-env" }
+
+tokio = { workspace = true }
+axum = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+url = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tracing-stackdriver = { workspace = true }
