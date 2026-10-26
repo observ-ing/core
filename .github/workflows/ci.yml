@@ -339,6 +339,23 @@ jobs:
           cargo check -p observing-lexicons
           git diff --exit-code crates/observing-lexicons/src/
 
+  lexicons-lint:
+    runs-on: ubuntu-latest
+    env:
+      GOAT_VERSION: '0.2.7'
+      GOAT_SHA256: '691edc92ea497e675b8d2c7c7272e9e938abf02c32d800d091adade07983896d'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install goat
+        run: |
+          curl -fsSL -o goat.tar.gz "https://github.com/bluesky-social/goat/releases/download/v${GOAT_VERSION}/goat_Linux_x86_64.tar.gz"
+          echo "${GOAT_SHA256}  goat.tar.gz" | sha256sum -c -
+          tar -xzf goat.tar.gz -C "$RUNNER_TEMP" goat
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
+      # Warnings fail the job too (goat exits non-zero on any lint).
+      - name: Lint lexicon schemas
+        run: goat lex lint lexicons/
+
   rust-test:
     runs-on: ubuntu-latest
     steps:
@@ -430,7 +447,7 @@ jobs:
 
   build-images:
     runs-on: ubuntu-latest
-    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, rust-test, integration, e2e]
+    needs: [frontend-audit, fmt, frontend-lint, ts-bindings-check, ts-typecheck, frontend-build, rust-lockfile, rust-fmt, rust-deny, rust-clippy, rust-sqlx, rust-lexicons-check, lexicons-lint, rust-test, integration, e2e]
     if: github.event_name == 'push'
     env:
       REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
