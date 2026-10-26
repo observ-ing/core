@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
-import authReducer, { checkAuth, logout } from "./authSlice";
+import { makeStore } from "./index";
+import { checkAuth, logout } from "./authSlice";
 
 vi.mock("../services/api", () => ({
   checkAuth: vi.fn(),
@@ -10,18 +10,13 @@ vi.mock("../services/api", () => ({
 import * as api from "../services/api";
 
 describe("authSlice", () => {
-  const createTestStore = () =>
-    configureStore({
-      reducer: { auth: authReducer },
-    });
-
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   describe("initial state", () => {
     it("has correct initial state", () => {
-      const store = createTestStore();
+      const store = makeStore();
       const state = store.getState().auth;
 
       expect(state.user).toBeNull();
@@ -31,7 +26,7 @@ describe("authSlice", () => {
 
   describe("checkAuth thunk", () => {
     it("sets isLoading to true when pending", () => {
-      const store = createTestStore();
+      const store = makeStore();
 
       // Dispatch but don't await - we want to check pending state
       vi.mocked(api.checkAuth).mockReturnValue(new Promise(() => {}));
@@ -50,7 +45,7 @@ describe("authSlice", () => {
       };
       vi.mocked(api.checkAuth).mockResolvedValue(mockUser);
 
-      const store = createTestStore();
+      const store = makeStore();
       await store.dispatch(checkAuth());
 
       const state = store.getState().auth;
@@ -61,7 +56,7 @@ describe("authSlice", () => {
     it("sets user to null and isLoading false when rejected", async () => {
       vi.mocked(api.checkAuth).mockRejectedValue(new Error("Not authenticated"));
 
-      const store = createTestStore();
+      const store = makeStore();
       await store.dispatch(checkAuth());
 
       const state = store.getState().auth;
@@ -72,7 +67,7 @@ describe("authSlice", () => {
     it("handles null user response (not logged in)", async () => {
       vi.mocked(api.checkAuth).mockResolvedValue(null);
 
-      const store = createTestStore();
+      const store = makeStore();
       await store.dispatch(checkAuth());
 
       const state = store.getState().auth;
@@ -92,7 +87,7 @@ describe("authSlice", () => {
       vi.mocked(api.checkAuth).mockResolvedValue(mockUser);
       vi.mocked(api.logout).mockResolvedValue(undefined);
 
-      const store = createTestStore();
+      const store = makeStore();
 
       // First login
       await store.dispatch(checkAuth());
@@ -106,7 +101,7 @@ describe("authSlice", () => {
     it("calls api.logout", async () => {
       vi.mocked(api.logout).mockResolvedValue(undefined);
 
-      const store = createTestStore();
+      const store = makeStore();
       await store.dispatch(logout());
 
       expect(api.logout).toHaveBeenCalled();

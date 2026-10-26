@@ -14,7 +14,6 @@
  * code. Properties that don't hold today are pinned with `it.fails` below.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { configureStore } from "@reduxjs/toolkit";
 import fc from "fast-check";
 import { InfiniteQueryObserver, type InfiniteData } from "@tanstack/react-query";
 import type * as ApiModule from "../services/api";
@@ -54,10 +53,8 @@ vi.mock("../services/api", async (importOriginal) => ({
 }));
 
 // Imported after the mock is registered so the thunks close over the stubs.
-import authReducer from "./authSlice";
-import feedReducer from "./feedSlice";
-import uiReducer from "./uiSlice";
-import pendingReducer, { trackSubmission, resumePendingSubmissions } from "./pendingSlice";
+import { makeStore, type AppStore } from "./index";
+import { trackSubmission, resumePendingSubmissions } from "./pendingSlice";
 import {
   invalidateOccurrenceLists,
   makeTombstoneOccurrence,
@@ -158,13 +155,6 @@ function rowsIn(key: readonly unknown[]): Occurrence[] {
   return data?.pages.flatMap((p) => p.occurrences) ?? [];
 }
 
-function makeStore() {
-  return configureStore({
-    reducer: { auth: authReducer, feed: feedReducer, ui: uiReducer, pending: pendingReducer },
-  });
-}
-type TestStore = ReturnType<typeof makeStore>;
-
 /**
  * Let the thunk's already-resolved promise chain run to completion. Yielding to
  * the macrotask queue drains every microtask queued behind it, so one turn is
@@ -194,7 +184,7 @@ interface Model {
 }
 
 interface Real {
-  store: TestStore;
+  store: AppStore;
 }
 
 /** Must hold after every lifecycle event, whatever the interleaving. */

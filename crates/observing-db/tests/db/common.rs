@@ -1,4 +1,4 @@
-//! Scratch Postgres for the database regression tests in this directory.
+//! Scratch Postgres for the database regression tests in this binary.
 //!
 //! Opt-in: set `TEST_DATABASE_URL` to a Postgres server with PostGIS (any
 //! database on it). Each test creates, migrates, and drops its own database,

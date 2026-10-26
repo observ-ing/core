@@ -3,6 +3,7 @@ import { http, HttpResponse, delay } from "msw";
 import { Routes, Route } from "react-router-dom";
 import { ObservationDetail } from "./ObservationDetail";
 import { OAK_OBSERVATION, OAK_IDENTIFICATION, SAMPLE_COMMENT } from "../../../.storybook/fixtures";
+import type { OccurrenceDetailResponse } from "../../services/types";
 
 const meta = {
   title: "Observation/ObservationDetail",
@@ -33,7 +34,7 @@ export const Loaded: Story = {
             occurrence: OAK_OBSERVATION,
             identifications: [OAK_IDENTIFICATION],
             comments: [SAMPLE_COMMENT],
-          }),
+          } satisfies OccurrenceDetailResponse),
         ),
       ],
     },
@@ -49,7 +50,7 @@ export const NoDiscussion: Story = {
             occurrence: OAK_OBSERVATION,
             identifications: [],
             comments: [],
-          }),
+          } satisfies OccurrenceDetailResponse),
         ),
       ],
     },
@@ -75,7 +76,7 @@ export const WithRemarks: Story = {
             },
             identifications: [OAK_IDENTIFICATION],
             comments: [],
-          }),
+          } satisfies OccurrenceDetailResponse),
         ),
       ],
     },
@@ -107,7 +108,7 @@ export const WithExternalRecords: Story = {
             },
             identifications: [OAK_IDENTIFICATION],
             comments: [],
-          }),
+          } satisfies OccurrenceDetailResponse),
         ),
       ],
     },
@@ -132,7 +133,7 @@ export const Loading: Story = {
             occurrence: OAK_OBSERVATION,
             identifications: [],
             comments: [],
-          });
+          } satisfies OccurrenceDetailResponse);
         }),
       ],
     },
