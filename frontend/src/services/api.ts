@@ -256,6 +256,8 @@ export interface ObservationInput {
   occurrenceRemarks?: string;
   eventRemarks?: string;
   images?: Array<{ data: string; mimeType: string }>;
+  /** Also post a new observation to the user's linked iNaturalist account. */
+  crosspostToInaturalist?: boolean;
   // Taxonomy fields
   taxonId?: string;
   taxonRank?: string;
