@@ -9,3 +9,4 @@ mod notification_dedupe;
 mod occurrence_edits;
 mod profile_feed;
 mod remarks;
+mod user_preferences;

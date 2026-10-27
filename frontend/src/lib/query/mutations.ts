@@ -107,18 +107,14 @@ export function useMarkNotificationRead() {
 
 // ── User preferences ─────────────────────────────────────────────────────────
 /** A partial preferences update: omit a field to leave it unchanged, or pass
- * `null` to clear it. */
-export type PreferencesPatch = Partial<UpdatePreferencesRequest>;
+ * `null` to clear it. The server does the same with what it is sent. */
+export type PreferencesPatch = UpdatePreferencesRequest;
 
-/**
- * Merge a patch over the current cached prefs into a *full* request. The upsert
- * writes every column, so omitting a field would otherwise clear it — sending
- * the merged full object keeps the other preferences intact.
- */
+/** The cached prefs with a patch applied, for the optimistic update. */
 function mergePrefs(
   patch: PreferencesPatch,
   current: UserPreferencesResponse | undefined,
-): UpdatePreferencesRequest {
+): UserPreferencesResponse {
   return {
     defaultLicense:
       patch.defaultLicense !== undefined ? patch.defaultLicense : (current?.defaultLicense ?? null),
@@ -128,16 +124,14 @@ function mergePrefs(
 
 /**
  * Update one or more preferences with an optimistic cache patch + rollback.
- * Accepts a partial and merges it over the cache so untouched fields persist.
- * No refetch: the server echoes what we send, so the optimistic value already
- * matches server truth on success.
+ * Only the patch is sent, so preferences that haven't loaded, or that this
+ * client doesn't know about, are left as they are. No refetch: the server
+ * applies the same patch, so the optimistic value already matches server truth
+ * on success.
  */
 export function useUpdatePreferences() {
   return useMutation({
-    mutationFn: (patch: PreferencesPatch) =>
-      updateUserPreferences(
-        mergePrefs(patch, queryClient.getQueryData<UserPreferencesResponse>(qk.preferences())),
-      ),
+    mutationFn: (patch: PreferencesPatch) => updateUserPreferences(patch),
     onMutate: async (patch: PreferencesPatch) => {
       await queryClient.cancelQueries({ queryKey: qk.preferences() });
       const previous = queryClient.getQueryData<UserPreferencesResponse>(qk.preferences());
