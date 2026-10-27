@@ -1,5 +1,6 @@
 import { Box, Skeleton, Stack, Typography } from "@mui/material";
 import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
+import { ChipSkeleton } from "../common/ChipSkeleton";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 import {
   TAXON_DETAIL_COLUMN_SX,
@@ -59,19 +60,13 @@ export function TaxonDetailSkeleton() {
             <Skeleton variant="text" width="40%" height={31} sx={{ mt: 0.75 }} />
             {/* Conservation status + observation count */}
             <Stack direction="row" spacing={1.5} sx={{ alignItems: "center", mt: 2.5 }}>
-              <Skeleton variant="rectangular" width={130} height={32} sx={{ borderRadius: 4 }} />
+              <ChipSkeleton width={130} height={32} />
               <Skeleton variant="text" width={200} height={20} />
             </Stack>
             {/* External links */}
             <Stack direction="row" spacing={1.25} sx={{ mt: 2 }}>
               {LINK_CHIP_WIDTHS.map((width) => (
-                <Skeleton
-                  key={width}
-                  variant="rectangular"
-                  width={width}
-                  height={24}
-                  sx={{ borderRadius: 4 }}
-                />
+                <ChipSkeleton key={width} width={width} />
               ))}
             </Stack>
           </Box>
