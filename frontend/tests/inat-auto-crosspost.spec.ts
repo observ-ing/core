@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
-import { LINKED, mockAccount } from "./helpers/inat";
+import { LINKED, UNLINKED, mockAccount } from "./helpers/inat";
+import { gotoUploadStep, openUploadModal } from "./helpers/navigation";
+import { mockSubmit, taggedPhoto } from "./helpers/batch-upload";
 import type { UserPreferencesResponse } from "../src/bindings/UserPreferencesResponse";
 
 // Posting new observations to iNaturalist as they are uploaded (#998). These
@@ -13,6 +15,7 @@ const UNSET: UserPreferencesResponse = {
   crosspostInaturalist: null,
   crosspostInaturalistRequirePhotos: null,
 };
+const AUTO_POST: UserPreferencesResponse = { ...UNSET, crosspostInaturalist: true };
 
 /** Answer GET /api/user/preferences with `prefs`, recording each PUT body. */
 async function mockPreferences(page: Page, prefs: UserPreferencesResponse) {
@@ -26,6 +29,105 @@ async function mockPreferences(page: Page, prefs: UserPreferencesResponse) {
   });
   return puts;
 }
+
+const checkbox = (page: Page) => page.getByRole("checkbox", { name: "Also post to iNaturalist" });
+
+async function openModalWithPhoto(page: Page) {
+  await page.goto("/");
+  await openUploadModal(page);
+  await page
+    .getByRole("dialog")
+    .locator('input[type="file"]')
+    .setInputFiles(taggedPhoto("IMG_1.jpg"));
+  await gotoUploadStep(page, "Date & details");
+}
+
+test.describe("iNaturalist - Post new observations from the upload form", () => {
+  test("posts by default when the user turned that on", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await openModalWithPhoto(page);
+
+    await expect(checkbox(page)).toBeChecked();
+    await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(bodies[0]).toMatchObject({ crosspostToInaturalist: true });
+  });
+
+  test("sends the user's own choice over the default", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await openModalWithPhoto(page);
+
+    await checkbox(page).uncheck();
+    await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(bodies[0]).toMatchObject({ crosspostToInaturalist: false });
+  });
+
+  test("starts unticked until the observation has a photo", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    await page.goto("/");
+    await openUploadModal(page);
+    await gotoUploadStep(page, "Date & details");
+
+    await expect(checkbox(page)).not.toBeChecked();
+    await page
+      .getByRole("dialog")
+      .locator('input[type="file"]')
+      .setInputFiles(taggedPhoto("IMG_1.jpg"));
+    await gotoUploadStep(page, "Date & details");
+    await expect(checkbox(page)).toBeChecked();
+  });
+
+  test("starts unticked when the user never turned posting on", async ({
+    authenticatedPage: page,
+  }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, UNSET);
+    await openModalWithPhoto(page);
+
+    await expect(checkbox(page)).not.toBeChecked();
+  });
+
+  test("is not posted when it already links to an iNaturalist observation", async ({
+    authenticatedPage: page,
+  }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await openModalWithPhoto(page);
+
+    await expect(checkbox(page)).toBeChecked();
+    const dialog = page.getByRole("dialog");
+    await dialog
+      .getByLabel("Link to the record")
+      .fill("https://www.inaturalist.org/observations/123456789");
+    await dialog.getByRole("button", { name: "Add", exact: true }).click();
+    await expect(checkbox(page)).not.toBeChecked();
+    await expect(checkbox(page)).toBeDisabled();
+    await expect(dialog).toContainText("Already on iNaturalist");
+    await dialog.getByRole("button", { name: "Submit" }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(bodies[0]).toMatchObject({ crosspostToInaturalist: false });
+  });
+
+  test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, UNLINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await openModalWithPhoto(page);
+
+    await expect(page.getByLabel("Observation date")).toBeVisible();
+    await expect(checkbox(page)).toHaveCount(0);
+    await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(bodies[0]).not.toHaveProperty("crosspostToInaturalist");
+  });
+});
 
 test.describe("iNaturalist - Settings for new observations", () => {
   test("turns posting on, sending only that change", async ({ authenticatedPage: page }) => {
