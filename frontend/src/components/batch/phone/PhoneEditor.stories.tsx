@@ -18,6 +18,7 @@ const meta = {
     onBack: noop,
     onStep: noop,
     onGo: noop,
+    onEdit: noop,
     onRemove: noop,
   },
 } satisfies Meta<typeof PhoneEditor>;
@@ -36,3 +37,6 @@ export const NothingLeft: Story = { args: { editing: pick("o3"), nextIncomplete:
 
 /** Fields the observations disagree on say so; photos are not managed here. */
 export const Several: Story = { args: { editing: pick("o1", "o2", "o4"), nextIncomplete: null } };
+
+/** With an iNaturalist account linked, each observation can be posted there too. */
+export const PostingToInaturalist: Story = { args: { crosspostDefault: true } };
