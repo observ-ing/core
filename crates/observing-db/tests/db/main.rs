@@ -2,6 +2,7 @@
 //! share a single build and link; `common` is the scratch-database harness.
 
 mod common;
+mod crosspost_awaits;
 
 mod identification_edits;
 mod likes_per_record;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        SELECT occurrence_uri, service, did, external_uri, synced_blob_cids,\n               status, attempts, last_error\n        FROM crossposts\n        WHERE occurrence_uri = $1 AND service = $2\n        ",
+  "query": "\n        SELECT occurrence_uri, service, did, external_uri, synced_blob_cids,\n               status, attempts, last_error, awaits_uris, waits\n        FROM crossposts\n        WHERE occurrence_uri = $1 AND service = $2\n        ",
   "describe": {
     "columns": [
       {
@@ -90,6 +90,28 @@
             "name": "last_error"
           }
         }
+      },
+      {
+        "ordinal": 8,
+        "name": "awaits_uris",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "awaits_uris"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "waits",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "waits"
+          }
+        }
       }
     ],
     "parameters": {
@@ -106,8 +128,10 @@
       false,
       false,
       false,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "6675e82a294ce9ef11195e5e4f467420252a8d8bddb01f4a1864e4462ce4457f"
+  "hash": "313984ff15e2229f1831d1ad548387c56324637abca0d92f59bbd3a6490d763f"
 }

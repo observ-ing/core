@@ -331,7 +331,7 @@ pub async fn create_crosspost(
 
     // `enqueue` is the real arbiter: it refuses if another request got in
     // between the check and here.
-    if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did).await? {
+    if !observing_db::crossposts::enqueue(&state.pool, &uri, SERVICE, &user.did, &[], None).await? {
         return Err(Refusal::AlreadyQueued.into());
     }
     info!(uri = %uri, "Queued occurrence for cross-posting to iNaturalist");
