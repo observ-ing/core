@@ -263,6 +263,8 @@ pub struct UserPreferencesRow {
     pub did: String,
     pub default_license: Option<String>,
     pub basemap: Option<String>,
+    pub crosspost_inaturalist: Option<bool>,
+    pub crosspost_inaturalist_require_photos: Option<bool>,
     pub updated_at: DateTime<Utc>,
 }
 

@@ -14,4 +14,12 @@ export type UpdatePreferencesRequest = {
    * Map basemap id ("outdoor" | "topo" | "streets" | "satellite").
    */
   basemap?: string | null;
+  /**
+   * Whether new observations are posted to iNaturalist by default.
+   */
+  crosspostInaturalist?: boolean | null;
+  /**
+   * Whether that default applies only to observations with photos.
+   */
+  crosspostInaturalistRequirePhotos?: boolean | null;
 };

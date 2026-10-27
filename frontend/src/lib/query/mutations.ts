@@ -119,6 +119,14 @@ function mergePrefs(
     defaultLicense:
       patch.defaultLicense !== undefined ? patch.defaultLicense : (current?.defaultLicense ?? null),
     basemap: patch.basemap !== undefined ? patch.basemap : (current?.basemap ?? null),
+    crosspostInaturalist:
+      patch.crosspostInaturalist !== undefined
+        ? patch.crosspostInaturalist
+        : (current?.crosspostInaturalist ?? null),
+    crosspostInaturalistRequirePhotos:
+      patch.crosspostInaturalistRequirePhotos !== undefined
+        ? patch.crosspostInaturalistRequirePhotos
+        : (current?.crosspostInaturalistRequirePhotos ?? null),
   };
 }
 
