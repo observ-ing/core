@@ -1,8 +1,17 @@
-// Side panel of the batch uploader: edits identification, date, location, and
-// remarks on every selected observation at once. A field shows a value only
-// when the whole selection agrees on it.
+// Side panel of the batch uploader: edits identification, date, location,
+// remarks, and posting to iNaturalist on every selected observation at once.
+// A field shows a value only when the whole selection agrees on it.
 import { lazy, Suspense, useState } from "react";
-import { Box, Button, Paper, Stack, TextField, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Checkbox,
+  FormControlLabel,
+  Paper,
+  Stack,
+  TextField,
+  Typography,
+} from "@mui/material";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { TaxaAutocomplete } from "../common/TaxaAutocomplete";
 import { TaxonMatchChip } from "../common/TaxonMatchChip";
@@ -31,6 +40,11 @@ export interface BatchEditorProps {
   touchDrag?: boolean;
   /** Offers the map full screen, where it is easier to pan by touch than in the panel. */
   onExpandMap?: () => void;
+  /**
+   * Set when the user has an iNaturalist account linked: whether an observation
+   * they haven't decided about gets posted there.
+   */
+  crosspostDefault?: boolean | undefined;
 }
 
 /** The identification a visual ID suggestion stands for. */
@@ -144,7 +158,33 @@ export function RemarksField({ selected, onEdit }: BatchEditorProps) {
   );
 }
 
-function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps) {
+/** "Also post to iNaturalist", offered only with an account linked. */
+export function CrosspostField({ selected, onEdit, crosspostDefault }: BatchEditorProps) {
+  if (crosspostDefault === undefined) return null;
+  const checked = shared(selected.map((o) => o.crosspost ?? crosspostDefault));
+
+  return (
+    <FormControlLabel
+      control={
+        <Checkbox
+          checked={checked === true}
+          // A mixed selection is ticked for all on the first click.
+          indeterminate={checked === undefined}
+          onChange={(_, crosspost) => onEdit({ crosspost })}
+        />
+      }
+      label="Also post to iNaturalist"
+    />
+  );
+}
+
+function EditorFields({
+  selected,
+  onEdit,
+  touch,
+  onExpandMap,
+  crosspostDefault,
+}: BatchEditorProps) {
   const [first] = selected;
   // The point clicked on the map for a multi-selection, not yet applied.
   const [proposed, setProposed] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -338,6 +378,8 @@ function EditorFields({ selected, onEdit, touch, onExpandMap }: BatchEditorProps
       </Box>
 
       <RemarksField selected={selected} onEdit={onEdit} />
+
+      <CrosspostField selected={selected} onEdit={onEdit} crosspostDefault={crosspostDefault} />
     </Stack>
   );
 }
@@ -348,6 +390,7 @@ export function BatchEditor({
   touch = false,
   touchDrag = true,
   onExpandMap,
+  crosspostDefault,
 }: BatchEditorProps) {
   return (
     <Paper
@@ -386,6 +429,7 @@ export function BatchEditor({
           onEdit={onEdit}
           touch={touch}
           {...(onExpandMap ? { onExpandMap } : {})}
+          crosspostDefault={crosspostDefault}
         />
       )}
     </Paper>

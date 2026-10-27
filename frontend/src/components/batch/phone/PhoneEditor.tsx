@@ -26,12 +26,13 @@ import {
   hasLocation,
   isReading,
   missingFields,
+  type BatchEdit,
   type BatchObservation,
 } from "../../../lib/batchUpload";
 import { browserUtcOffset } from "../../../lib/observationInput";
 import { formatCoordinate } from "../../../lib/utils";
 import { formatBatchDate } from "../BatchCard";
-import { shared } from "../BatchEditor";
+import { CrosspostField, shared } from "../BatchEditor";
 import { PhoneStep } from "./PhoneStep";
 
 /** The full-screen steps a field of the editor opens. */
@@ -48,6 +49,10 @@ export interface PhoneEditorProps {
   onStep: (step: EditStep) => void;
   /** Edit another observation in place of this one. */
   onGo: (id: string) => void;
+  /** Changes made in place, without a step of their own. */
+  onEdit: (patch: BatchEdit) => void;
+  /** See `BatchEditorProps.crosspostDefault`. */
+  crosspostDefault?: boolean | undefined;
   onRemove: () => void;
 }
 
@@ -121,6 +126,8 @@ export function PhoneEditor({
   onBack,
   onStep,
   onGo,
+  onEdit,
+  crosspostDefault,
   onRemove,
 }: PhoneEditorProps) {
   const [first] = editing;
@@ -370,6 +377,8 @@ export function PhoneEditor({
           onClick={() => onStep("remarks")}
         />
       </Paper>
+
+      <CrosspostField selected={editing} onEdit={onEdit} crosspostDefault={crosspostDefault} />
 
       {single ? (
         <Button
