@@ -26,7 +26,7 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { coverImageSx, miniIconSx, overlayBadgeSx } from "../../common/layoutSx";
+import { cardRadius, coverImageSx, miniIconSx, overlayBadgeSx } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   canCombine,
@@ -98,7 +98,7 @@ function PhoneCard({
         position: "relative",
         minWidth: 0,
         bgcolor: "background.paper",
-        borderRadius: 1.25,
+        borderRadius: cardRadius,
         border: 1,
         borderColor: failed ? "error.main" : "divider",
         outline: checked ? 3 : 0,
