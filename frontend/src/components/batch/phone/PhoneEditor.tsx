@@ -12,7 +12,12 @@ import NotesIcon from "@mui/icons-material/Notes";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
-import { cardRadius, coverImageSx, overlayBadgeSx, phoneCaptionFontSize } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  overlayBadgeSx,
+  phoneCaptionFontSize,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   describeMissing,
