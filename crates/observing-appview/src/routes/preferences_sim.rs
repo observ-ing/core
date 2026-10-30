@@ -1,6 +1,6 @@
 //! State simulation of `PUT /api/user/preferences`, the regression test for
 //! #999: a save changes the preferences it names and leaves the rest alone.
-//! The pattern is the one in `docs/system-tests.md` (added in #854).
+//! The pattern is the one in `docs/system-tests.md`.
 //!
 //! Generates random traces of saves from clients of different releases (an
 //! older one predates the basemap preference, so it never sends it), some of

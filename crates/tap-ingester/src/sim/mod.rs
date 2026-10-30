@@ -35,12 +35,7 @@ use model::{Action, Effect, Snapshot, World};
 /// delete the entry in the PR that fixes it. The test fails on any violation
 /// not listed here, and on a listed one that no longer reproduces, so the
 /// list can't silently go stale.
-const KNOWN_VIOLATIONS: &[&str] = &[
-    // A like or identification delivered before the occurrence it names
-    // never notifies the owner: the ingester looks the owner up in
-    // `occurrences` at that moment, finds nothing, and nothing retries.
-    "notifications_sent",
-];
+const KNOWN_VIOLATIONS: &[&str] = &[];
 
 /// Collections the ingester ingests that the sim doesn't generate yet, so
 /// nothing here tests their write path. `generator_covers_every_ingested_collection`

@@ -123,9 +123,9 @@ SIM_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
 tests run in the `rust-sim` CI job; the rest run everywhere, including
 `rust-test`.
 
-It found eight problems on main, each shrunk to a 2–7 step scenario. Seven
-are fixed, so any regression fails CI, and the mutants keep the sim able to
-see each of them. The eighth is on the known-bugs list.
+It found eight problems on main, each shrunk to a 2–7 step scenario. All
+are fixed and the known-bugs list is empty, so any regression fails CI, and
+the mutants keep the sim able to see each of them.
 
 | Property | Bug | Shortest scenario | Fix |
 |---|---|---|---|
@@ -136,7 +136,32 @@ see each of them. The eighth is on the known-bugs list.
 | `notifications_at_most_once` | No uniqueness, so a redelivered or edited record notifies again | like → deliver → redeliver | #858 (merged) |
 | `likes_match_repos` | Only one like per user per occurrence is stored, but a double tap creates two records; unliking deletes one and the DB says "not liked" while the repo still likes it | like → like again → delete first | #859 (merged) |
 | `ingest_succeeds` | Replaying an older version of a like (cursor rewind) errors on the primary key instead of being a no-op | like → delete → like again → rewind | #859 (merged) |
-| `notifications_sent` | A like or identification delivered before the occurrence it names never notifies the owner: the ingester looks the owner up in `occurrences` then, finds nothing, and the record ingests without error, so the subject resolver never retries it | alice identifies bob's occurrence → bob puts the occurrence (Tap delivers alice's repo first) | open |
+| `notifications_sent` | A like or identification delivered before the occurrence it names never notifies the owner: the ingester looks the owner up in `occurrences` then, finds nothing, and the record ingests without error, so the subject resolver never retries it | alice identifies bob's occurrence → bob puts the occurrence (Tap delivers alice's repo first) | #992 (merged) |
 
 Open question it surfaced, not changed: should deleting a record withdraw
 the notification it caused?
+
+## Example: user preferences
+
+`crates/observing-appview/src/routes/preferences_sim.rs`, the regression test
+for #999 (a save cleared every preference it didn't name).
+
+| Question | Answer |
+|---|---|
+| Source of truth | What each user chose: 2 users × the preferences GET serves |
+| Expected state | A valid save changes exactly the preferences it names; an invalid one changes nothing; two saves at once end as if they ran one after the other, in either order |
+| Messy actions | Saves from a client that predates a preference (so never sends it), saves racing each other, unknown values, legacy license ids |
+| Check | After every step, read each user's preferences back the way GET returns them |
+
+Its mutants sit between parsing a request and applying it: #999's bug
+(an omitted preference is cleared), a preference added without
+`#[serde(with = "present")]` (so `null` can't clear it), and the legacy SPDX
+license ids being rejected. `sim_knows_every_preference` fails when GET serves
+a preference the sim doesn't model.
+
+```sh
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/postgres \
+  cargo test -p observing-appview preferences::sim -- --nocapture
+```
+
+It runs in the `rust-db-test` CI job.
