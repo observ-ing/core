@@ -530,6 +530,8 @@ jobs:
       # The appview's database tests (session auth); the rest of its tests
       # run in rust-test.
       - run: cargo test -p observing-appview -- auth::session_tests
+      # The preferences sim (crates/observing-appview/src/routes/preferences_sim.rs).
+      - run: cargo test -p observing-appview preferences::sim
 
   rust-lexicons-check:
     runs-on: ubuntu-latest
