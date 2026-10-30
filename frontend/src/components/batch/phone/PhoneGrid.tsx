@@ -26,7 +26,14 @@ import ErrorIcon from "@mui/icons-material/Error";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
-import { cardRadius, coverImageSx, miniIconSx, overlayBadgeSx } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  miniIconSx,
+  overlayBadgeSx,
+  touchTarget,
+  touchTargetLarge,
+} from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
   canCombine,
@@ -276,7 +283,7 @@ export function PhoneGrid({
               color="inherit"
               startIcon={<SelectAllIcon />}
               onClick={() => onSelectAll(shown.map((o) => o.id))}
-              sx={{ minHeight: 44 }}
+              sx={{ minHeight: touchTarget }}
             >
               Select all
             </Button>
@@ -399,7 +406,7 @@ export function PhoneGrid({
               color="inherit"
               startIcon={<AddIcon />}
               onClick={onAddPhotos}
-              sx={{ minHeight: 48 }}
+              sx={{ minHeight: touchTargetLarge }}
             >
               Add photos
             </Button>
@@ -408,7 +415,7 @@ export function PhoneGrid({
               startIcon={<CloudUploadIcon />}
               disabled={blocked || incomplete.length > 0 || observations.some(isReading)}
               onClick={onUpload}
-              sx={{ flex: 1, minHeight: 48 }}
+              sx={{ flex: 1, minHeight: touchTargetLarge }}
             >
               Upload {observations.length}
             </Button>
