@@ -5,18 +5,6 @@ import { Skeleton } from "@mui/material";
  * loading. One place for the radius so skeletons stay in step with the real
  * section cards.
  */
-export function SectionCardSkeleton({
-  height,
-  mt,
-}: {
-  height: number;
-  mt?: number;
-}) {
-  return (
-    <Skeleton
-      variant="rectangular"
-      height={height}
-      sx={{ mt, borderRadius: 2 }}
-    />
-  );
+export function SectionCardSkeleton({ height, mt }: { height: number; mt?: number }) {
+  return <Skeleton variant="rectangular" height={height} sx={{ mt, borderRadius: 2 }} />;
 }
