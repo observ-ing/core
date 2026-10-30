@@ -322,6 +322,8 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p observing-db --test '*'
+      # The preferences sim (crates/observing-appview/src/routes/preferences_sim.rs).
+      - run: cargo test -p observing-appview preferences::sim
 
   rust-lexicons-check:
     runs-on: ubuntu-latest
