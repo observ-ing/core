@@ -6,7 +6,7 @@ import type { TaxonTreeItem } from "./TaxonExplorer";
 import { TaxonSearchBox } from "./TaxonSearchBox";
 import { shouldItalicizeTaxonName } from "../common/TaxonLink";
 import { GradientSwatch } from "../common/GradientSwatch";
-import { coverImageSx, finePrintFontSize } from "../common/layoutSx";
+import { cardRadius, coverImageSx, finePrintFontSize } from "../common/layoutSx";
 
 interface TaxonTreePanelProps {
   items: TaxonTreeItem[];
@@ -172,7 +172,7 @@ export function TaxonTreePanel({
           onItemExpansionToggle={(_e, id, isExpanded) => onItemExpansionToggle(id, isExpanded)}
           sx={(theme) => ({
             "& .MuiTreeItem-content": {
-              borderRadius: 1.25,
+              borderRadius: cardRadius,
               "&:hover": { backgroundColor: "action.hover" },
               "&.Mui-selected, &.Mui-selected:hover, &.Mui-selected.Mui-focused": {
                 backgroundColor: alpha(theme.palette.primary.main, 0.1),

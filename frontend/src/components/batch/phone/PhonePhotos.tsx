@@ -11,7 +11,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import UndoIcon from "@mui/icons-material/Undo";
-import { coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
+import { cardRadius, coverImageSx, thumbnailFrameSx } from "../../common/layoutSx";
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
@@ -93,7 +93,7 @@ function DropTarget({
         border: 2,
         borderStyle: active ? "solid" : "dashed",
         borderColor: danger || active ? color : "text.secondary",
-        borderRadius: 1.25,
+        borderRadius: cardRadius,
         bgcolor: active ? color : "background.paper",
         color: active ? "common.white" : danger ? "error.main" : "text.primary",
         fontSize: 14,
