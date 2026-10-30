@@ -8,6 +8,7 @@
 brew "node@26"
 brew "rustup"            # `rustup` manages Rust per rust-toolchain.toml
 brew "go"                # for building the upstream `tap` binary
+brew "goat"              # atproto CLI; the dev-env e2e run validates records with it
 
 # Service orchestration. process-compose ships via the upstream tap,
 # not core homebrew — see https://github.com/F1bonacc1/process-compose.
