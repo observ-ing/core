@@ -385,6 +385,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/observing
       INDIGO_REV: ce62b8fce9e01434213a69cb251852b2c9436cb9
       TAP_GO_VERSION: '1.26'
+      GOAT_VERSION: '0.2.7'
+      GOAT_SHA256: '691edc92ea497e675b8d2c7c7272e9e938abf02c32d800d091adade07983896d'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -429,6 +431,12 @@ jobs:
             | tar -xz -C /tmp process-compose
           sudo install /tmp/process-compose /usr/local/bin/process-compose
           process-compose version
+      - name: Install goat
+        run: |
+          curl -fsSL -o goat.tar.gz "https://github.com/bluesky-social/goat/releases/download/v${GOAT_VERSION}/goat_Linux_x86_64.tar.gz"
+          echo "${GOAT_SHA256}  goat.tar.gz" | sha256sum -c -
+          tar -xzf goat.tar.gz -C "$RUNNER_TEMP" goat
+          echo "$RUNNER_TEMP" >> "$GITHUB_PATH"
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: Cache @atproto/dev-env install

@@ -13,6 +13,7 @@ import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import PlaceIcon from "@mui/icons-material/Place";
 import SearchIcon from "@mui/icons-material/Search";
 import {
+  cardRadius,
   coverImageSx,
   overlayBadgeSx,
   phoneCaptionFontSize,
@@ -230,7 +231,7 @@ export function PhoneEditor({
     >
       {single ? (
         <Box sx={{ display: "flex", gap: 1, height: 150, flexShrink: 0 }}>
-          <Box sx={{ flex: 1, minWidth: 0, borderRadius: 1.25, overflow: "hidden" }}>
+          <Box sx={{ flex: 1, minWidth: 0, borderRadius: cardRadius, overflow: "hidden" }}>
             <Box component="img" src={first.photos[0]?.previewUrl} alt="" sx={coverImageSx} />
           </Box>
           <Box sx={{ width: 96, display: "flex", flexDirection: "column", gap: 1 }}>

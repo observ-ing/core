@@ -27,6 +27,7 @@ import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
 import SelectAllIcon from "@mui/icons-material/SelectAll";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
 import {
+  cardRadius,
   coverImageSx,
   miniIconSx,
   overlayBadgeSx,
@@ -104,7 +105,7 @@ function PhoneCard({
         position: "relative",
         minWidth: 0,
         bgcolor: "background.paper",
-        borderRadius: 1.25,
+        borderRadius: cardRadius,
         border: 1,
         borderColor: failed ? "error.main" : "divider",
         outline: checked ? 3 : 0,
