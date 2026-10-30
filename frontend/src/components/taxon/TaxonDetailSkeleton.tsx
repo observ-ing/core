@@ -1,6 +1,7 @@
 import { Box, Skeleton, Stack, Typography } from "@mui/material";
 import { FeedItemSkeleton } from "../feed/FeedItemSkeleton";
 import { ChipSkeleton } from "../common/ChipSkeleton";
+import { SectionCardSkeleton } from "../common/SectionCardSkeleton";
 import { DetailHeaderSkeleton } from "../common/DetailHeaderSkeleton";
 import {
   TAXON_DETAIL_COLUMN_SX,
@@ -73,7 +74,7 @@ export function TaxonDetailSkeleton() {
         </Stack>
 
         {/* Media section (collapsed) */}
-        <Skeleton variant="rectangular" height={66} sx={{ mt: 3.25, borderRadius: 2 }} />
+        <SectionCardSkeleton height={66} mt={3.25} />
 
         {/* Recent observations */}
         <Box sx={TAXON_OBSERVATIONS_HEADER_SX}>
