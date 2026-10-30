@@ -1,6 +1,8 @@
 use axum::extract::State;
 use axum::Json;
+use observing_db::types::UserPreferencesRow;
 use serde::{Deserialize, Serialize};
+use sqlx::PgPool;
 use ts_rs::TS;
 use utoipa::ToSchema;
 
@@ -87,14 +89,17 @@ pub async fn get_preferences(
     user: AuthUser,
 ) -> Result<Json<UserPreferencesResponse>, AppError> {
     let row = observing_db::user_preferences::get(&state.pool, &user.did).await?;
-    Ok(Json(UserPreferencesResponse {
-        default_license: row.as_ref().and_then(|r| r.default_license.clone()),
-        basemap: row.as_ref().and_then(|r| r.basemap.clone()),
-        crosspost_inaturalist: row.as_ref().and_then(|r| r.crosspost_inaturalist),
+    Ok(Json(response_for(row.as_ref())))
+}
+
+fn response_for(row: Option<&UserPreferencesRow>) -> UserPreferencesResponse {
+    UserPreferencesResponse {
+        default_license: row.and_then(|r| r.default_license.clone()),
+        basemap: row.and_then(|r| r.basemap.clone()),
+        crosspost_inaturalist: row.and_then(|r| r.crosspost_inaturalist),
         crosspost_inaturalist_require_photos: row
-            .as_ref()
             .and_then(|r| r.crosspost_inaturalist_require_photos),
-    }))
+    }
 }
 
 /// Update the viewer's preferences.
@@ -117,6 +122,17 @@ pub async fn update_preferences(
     user: AuthUser,
     Json(body): Json<UpdatePreferencesRequest>,
 ) -> Result<Json<SuccessResponse>, AppError> {
+    apply_update(&state.pool, &user.did, &body).await?;
+    Ok(Json(SuccessResponse { success: true }))
+}
+
+/// Everything PUT does past auth: validate the request, then write the fields
+/// it names. Split out so the preferences sim drives it without an `AppState`.
+async fn apply_update(
+    pool: &PgPool,
+    did: &str,
+    body: &UpdatePreferencesRequest,
+) -> Result<(), AppError> {
     let default_license = match body.default_license {
         Some(Some(ref license)) => Some(Some(validate_license(license)?)),
         Some(None) => Some(None),
@@ -132,10 +148,13 @@ pub async fn update_preferences(
         crosspost_inaturalist: body.crosspost_inaturalist,
         crosspost_inaturalist_require_photos: body.crosspost_inaturalist_require_photos,
     };
-    observing_db::user_preferences::upsert(&state.pool, &user.did, &update).await?;
-
-    Ok(Json(SuccessResponse { success: true }))
+    observing_db::user_preferences::upsert(pool, did, &update).await?;
+    Ok(())
 }
+
+#[cfg(test)]
+#[path = "preferences_sim.rs"]
+mod sim;
 
 #[cfg(test)]
 mod tests {
