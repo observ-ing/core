@@ -46,6 +46,9 @@ export const coverImageSx = {
 /** Corner radius (theme spacing units, 10px) for phone batch cards, tiles and tree rows. */
 export const cardRadius = 1.25;
 
+/** Corner radius (theme spacing units, 12px) for phone panels, outlined paper and option rows. */
+export const panelRadius = 1.5;
+
 /** Rounded, clipped frame for photo thumbnails (upload previews, photo strips, batch cards). */
 export const thumbnailFrameSx = { borderRadius: 1, overflow: "hidden" } as const;
 

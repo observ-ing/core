@@ -29,6 +29,7 @@ import {
   thumbnailFrameSx,
   touchTarget,
   touchTargetLarge,
+  panelRadius,
 } from "../../common/layoutSx";
 import { VisualId } from "../../identification/VisualId";
 import { useDebouncedTaxaSearch } from "../../../hooks/useDebouncedTaxaSearch";
@@ -125,7 +126,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
       {typed ? (
         <>
           {suggestions.length > 0 && (
-            <Paper variant="outlined" sx={{ borderRadius: 1.5, overflow: "hidden" }}>
+            <Paper variant="outlined" sx={{ borderRadius: panelRadius, overflow: "hidden" }}>
               <List disablePadding aria-label="Search results">
                 {suggestions.map((taxon) => (
                   <ListItemButton
@@ -190,7 +191,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
               border: 1,
               borderStyle: "dashed",
               borderColor: "text.secondary",
-              borderRadius: 1.5,
+              borderRadius: panelRadius,
               textAlign: "left",
               justifyContent: "flex-start",
             }}
@@ -235,7 +236,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                 p: 1.5,
                 border: 1,
                 borderColor: "primary.main",
-                borderRadius: 1.5,
+                borderRadius: panelRadius,
                 bgcolor: "background.paper",
                 textAlign: "left",
                 justifyContent: "flex-start",
