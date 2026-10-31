@@ -19,6 +19,7 @@ import {
   thumbnailFrameSx,
   touchTarget,
   touchTargetLarge,
+  panelRadius,
 } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
@@ -206,7 +207,7 @@ export function PhoneUploadList({
             key={o.id}
             variant="outlined"
             data-testid="batch-row"
-            sx={{ flexShrink: 0, p: 1.5, borderRadius: 1.5, borderColor: "error.main" }}
+            sx={{ flexShrink: 0, p: 1.5, borderRadius: panelRadius, borderColor: "error.main" }}
           >
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Thumbnail observation={o} />

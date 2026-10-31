@@ -11,7 +11,13 @@ import CheckIcon from "@mui/icons-material/Check";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/Edit";
 import UndoIcon from "@mui/icons-material/Undo";
-import { cardRadius, coverImageSx, thumbnailFrameSx, touchTarget } from "../../common/layoutSx";
+import {
+  cardRadius,
+  coverImageSx,
+  panelRadius,
+  thumbnailFrameSx,
+  touchTarget,
+} from "../../common/layoutSx";
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
@@ -449,7 +455,13 @@ export function PhonePhotos({
       </Box>
       <Paper
         variant="outlined"
-        sx={{ display: "flex", gap: 1.5, p: 1.75, borderRadius: 1.5, color: "text.secondary" }}
+        sx={{
+          display: "flex",
+          gap: 1.5,
+          p: 1.75,
+          borderRadius: panelRadius,
+          color: "text.secondary",
+        }}
       >
         <CallSplitIcon fontSize="small" />
         <Typography variant="body2">
