@@ -6,7 +6,9 @@ use jacquard_common::types::collection::Collection;
 use jacquard_common::types::string::Datetime;
 use jacquard_common::types::tid::Tid;
 use jacquard_common::types::uri::UriValue;
-use observing_db::types::{BlobEntry, BlobImage, BlobRef as DbBlobRef, CrosspostLink};
+use observing_db::types::{
+    BlobEntry, BlobImage, BlobRef as DbBlobRef, CrosspostLink, ExternalRecordEntry,
+};
 use observing_lexicons::bio_lexicons::temp::v0_1::media::MediaRecord;
 use observing_lexicons::bio_lexicons::temp::v0_1::occurrence::{
     ExternalRecord, ExternalRecordService, Occurrence, OccurrenceOrganismQuantityType,
@@ -22,6 +24,7 @@ use utoipa::ToSchema;
 use crate::auth::{self, AuthUser};
 use crate::constants;
 use crate::error::{AppError, ErrorResponse};
+use crate::inat::guard::{self, CrosspostRequest, Refusal};
 use crate::responses::{RecordCreatedResponse, SuccessResponse};
 use crate::state::{AgentType, AppState};
 use crate::validation::validate_license;
@@ -84,6 +87,12 @@ pub struct CreateOccurrenceRequest {
     /// same way as the occurrence remarks.
     #[ts(optional)]
     event_remarks: Option<String>,
+    /// Also post the occurrence to the user's linked iNaturalist account.
+    /// Clients decide this from the user's preferences; the server doesn't
+    /// fall back to them. Ignored without a linked account, or when
+    /// `externalRecords` already names an iNaturalist observation.
+    #[ts(optional)]
+    crosspost_to_inaturalist: Option<bool>,
 }
 
 impl RemarkTexts for CreateOccurrenceRequest {
@@ -256,6 +265,7 @@ pub async fn create_occurrence(
     let rkey = Tid::now_0();
     let occurrence_uri = format!("at://{}/{}/{}", user.did, OccurrenceRecord::NSID, rkey);
     let mut remark_ids = RemarkIds::default();
+    let mut remark_uris = Vec::new();
     for (term, text) in remark_texts {
         let prepared = remarks::prepare(
             &agent,
@@ -268,6 +278,7 @@ pub async fn create_occurrence(
             license,
         )
         .await?;
+        remark_uris.extend(prepared.id.clone());
         remark_ids.set(term, prepared.id);
     }
 
@@ -311,9 +322,10 @@ pub async fn create_occurrence(
     }
 
     // Auto-create first identification if a scientific name was provided
+    let mut identification_uri = None;
     if let Some(ref scientific_name) = body.scientific_name {
         if !scientific_name.is_empty() {
-            create_auto_identification(
+            identification_uri = create_auto_identification(
                 &state,
                 &agent,
                 &user.did,
@@ -328,11 +340,127 @@ pub async fn create_occurrence(
         }
     }
 
+    if body.crosspost_to_inaturalist == Some(true) {
+        let awaits = written_records(&uri, remark_uris, identification_uri);
+        queue_new_crosspost(
+            &state,
+            &user.did,
+            &uri,
+            &awaits,
+            body.external_records.as_deref(),
+        )
+        .await;
+    }
+
     Ok(Json(RecordCreatedResponse {
         success: true,
         uri,
         cid,
     }))
+}
+
+/// How long after creating an occurrence to start cross-posting it, so the
+/// ingester has usually indexed it by then.
+const NEW_CROSSPOST_DELAY: chrono::Duration = chrono::Duration::seconds(5);
+
+/// The records a create request wrote that a cross-post reads: the
+/// occurrence, its remarks, and the owner's identification, whose taxon is
+/// the one posted. The worker waits for the ingester to index them all, since
+/// it may do so in any order.
+fn written_records(
+    occurrence_uri: &str,
+    remark_uris: Vec<String>,
+    identification_uri: Option<String>,
+) -> Vec<String> {
+    std::iter::once(occurrence_uri.to_string())
+        .chain(remark_uris)
+        .chain(identification_uri)
+        .collect()
+}
+
+/// Whether a new occurrence, with these `externalRecords` from its form, may be
+/// cross-posted to iNaturalist: the rules for posting an existing one, for an
+/// occurrence that is the user's own and has never been queued.
+fn check_new_crosspost(
+    user_did: &str,
+    linked: bool,
+    external_records: Option<&[ExternalRecordInput]>,
+) -> Result<(), Refusal> {
+    let entries: Vec<ExternalRecordEntry> = external_records
+        .unwrap_or_default()
+        .iter()
+        .map(|record| ExternalRecordEntry {
+            uri: record.uri.clone(),
+            service: record.service.clone(),
+        })
+        .collect();
+    guard::check(&CrosspostRequest {
+        user_did,
+        occurrence_did: user_did,
+        linked,
+        external_records: Some(&entries),
+        crosspost_status: None,
+        crosspost_uri: None,
+    })
+}
+
+/// Queue a just-created occurrence for cross-posting to iNaturalist, once the
+/// ingester has indexed `awaits`. Never fails the request: the occurrence is
+/// saved, and the iNaturalist copy is a courtesy.
+async fn queue_new_crosspost(
+    state: &AppState,
+    user_did: &str,
+    occurrence_uri: &str,
+    awaits: &[String],
+    external_records: Option<&[ExternalRecordInput]>,
+) {
+    if state.inat.is_none() {
+        info!(uri = %occurrence_uri, "Not cross-posting: iNaturalist cross-posting is off");
+        return;
+    }
+    let linked =
+        match observing_db::crossposts::get_account(&state.pool, user_did, crate::inat::SERVICE)
+            .await
+        {
+            Ok(account) => account.is_some(),
+            Err(e) => {
+                warn!(uri = %occurrence_uri, error = %e, "Failed to look up iNaturalist account");
+                return;
+            }
+        };
+    if let Err(refusal) = check_new_crosspost(user_did, linked, external_records) {
+        info!(uri = %occurrence_uri, refusal = ?refusal, "Not cross-posting new occurrence");
+        return;
+    }
+    let start = chrono::Utc::now() + NEW_CROSSPOST_DELAY;
+    match observing_db::crossposts::enqueue(
+        &state.pool,
+        occurrence_uri,
+        crate::inat::SERVICE,
+        user_did,
+        awaits,
+        Some(start),
+    )
+    .await
+    {
+        Ok(_) => info!(uri = %occurrence_uri, "Queued new occurrence for cross-posting"),
+        Err(e) => {
+            warn!(uri = %occurrence_uri, error = %e, "Failed to queue cross-post");
+            return;
+        }
+    }
+    let run = observing_tasks::Run {
+        at: Some(start),
+        ..Default::default()
+    };
+    // If this fails, the hourly backstop run picks it up.
+    if let Err(e) = state
+        .tasks
+        .enqueue(observing_tasks::Task::InatCrossposts, run)
+        .await
+    {
+        warn!(uri = %occurrence_uri, error = %e, "Failed to queue a cross-post run");
+    }
 }
 
 /// Delete an occurrence.
@@ -1061,6 +1189,8 @@ fn is_supported_external_record_uri(uri: &str) -> bool {
 /// Jetstream delivers commits in repo order, so the preceding occurrence
 /// upsert (needed to satisfy the FK on `identifications.subject_uri`) is
 /// guaranteed to run first.
+///
+/// Returns the identification's AT URI, or `None` if writing it failed.
 #[allow(clippy::too_many_arguments)]
 async fn create_auto_identification(
     state: &AppState,
@@ -1072,7 +1202,7 @@ async fn create_auto_identification(
     user_taxon_id: Option<&str>,
     occurrence_uri: &str,
     occurrence_cid: &str,
-) -> Result<(), AppError> {
+) -> Result<Option<String>, AppError> {
     let id_value = auto_id::build_identification_record(
         state,
         scientific_name,
@@ -1088,12 +1218,13 @@ async fn create_auto_identification(
     match auth::create_at_record(agent, id_did, auto_id::identification_nsid(), id_value).await {
         Ok(id_resp) => {
             info!(uri = %id_resp.uri, "Auto-created identification (PDS); awaiting ingester");
+            Ok(Some(id_resp.uri.to_string()))
         }
         Err(e) => {
             warn!(error = ?e, "Failed to auto-create identification");
+            Ok(None)
         }
     }
-    Ok(())
 }
 
 #[cfg(test)]
@@ -1397,5 +1528,51 @@ mod tests {
             upload_blob_error(xrpc_error(500), "did:plc:alice", 1),
             AppError::Internal(_)
         ));
+    }
+
+    /// The identification has to be awaited: posting before it is indexed
+    /// posts no taxon, and the observation is only posted once.
+    #[test]
+    fn a_new_crosspost_waits_for_every_record_the_request_wrote() {
+        let occurrence = "at://did:plc:alice/bio.lexicons.temp.v0-1.occurrence/o";
+        let remark = "at://did:plc:alice/bio.lexicons.temp.v0-1.remark/m";
+        let identification = "at://did:plc:alice/bio.lexicons.temp.v0-1.identification/i";
+        assert_eq!(
+            written_records(
+                occurrence,
+                vec![remark.to_string()],
+                Some(identification.to_string())
+            ),
+            [occurrence, remark, identification]
+        );
+        // With no identification written, the occurrence is still awaited.
+        assert_eq!(written_records(occurrence, vec![], None), [occurrence]);
+    }
+
+    #[test]
+    fn a_new_occurrence_may_be_crossposted_by_a_linked_user() {
+        let records = [input("https://bugguide.net/node/view/1", None)];
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", true, Some(&records)),
+            Ok(())
+        );
+        assert_eq!(check_new_crosspost("did:plc:alice", true, None), Ok(()));
+    }
+
+    #[test]
+    fn a_new_occurrence_is_not_crossposted_without_a_linked_account() {
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", false, None),
+            Err(Refusal::NotLinked)
+        );
+    }
+
+    #[test]
+    fn a_new_occurrence_that_names_an_inat_observation_is_not_crossposted() {
+        let records = [input("https://www.inaturalist.org/observations/1", None)];
+        assert_eq!(
+            check_new_crosspost("did:plc:alice", true, Some(&records)),
+            Err(Refusal::AlreadyOnInat)
+        );
     }
 }

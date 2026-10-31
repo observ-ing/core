@@ -55,4 +55,11 @@ export type CreateOccurrenceRequest = {
    * same way as the occurrence remarks.
    */
   eventRemarks?: string;
+  /**
+   * Also post the occurrence to the user's linked iNaturalist account.
+   * Clients decide this from the user's preferences; the server doesn't
+   * fall back to them. Ignored without a linked account, or when
+   * `externalRecords` already names an iNaturalist observation.
+   */
+  crosspostToInaturalist?: boolean;
 };
