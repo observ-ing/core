@@ -3,15 +3,26 @@ import { http, HttpResponse } from "msw";
 import { InatSettings } from "./InatSettings";
 import { ALICE_USER } from "../../../.storybook/fixtures";
 import type { InatAccountResponse } from "../../bindings/InatAccountResponse";
+import type { UserPreferencesResponse } from "../../bindings/UserPreferencesResponse";
 
-// The section asks the server about the signed-in user's linked account, so
-// every story needs a user and an /api/inat/account response.
+// The section asks the server about the signed-in user's linked account and
+// preferences, so every story needs a user and both responses.
 const signedIn = {
   storeOptions: { preloadedState: { auth: { user: ALICE_USER, isLoading: false } } },
 };
 
-const account = (body: InatAccountResponse) => ({
-  handlers: [http.get("/api/inat/account", () => HttpResponse.json(body))],
+const UNSET: UserPreferencesResponse = {
+  defaultLicense: null,
+  basemap: null,
+  crosspostInaturalist: null,
+  crosspostInaturalistRequirePhotos: null,
+};
+
+const account = (body: InatAccountResponse, prefs: UserPreferencesResponse = UNSET) => ({
+  handlers: [
+    http.get("/api/inat/account", () => HttpResponse.json(body)),
+    http.get("/api/user/preferences", () => HttpResponse.json(prefs)),
+  ],
 });
 
 const meta = {
@@ -34,6 +45,16 @@ export const Connected: Story = {
   parameters: {
     ...signedIn,
     msw: account({ enabled: true, login: "alice", linkedAt: "2026-10-07T00:00:00Z" }),
+  },
+};
+
+export const ConnectedPostingNewObservations: Story = {
+  parameters: {
+    ...signedIn,
+    msw: account(
+      { enabled: true, login: "alice", linkedAt: "2026-10-07T00:00:00Z" },
+      { ...UNSET, crosspostInaturalist: true },
+    ),
   },
 };
 
