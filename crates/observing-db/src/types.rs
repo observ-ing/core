@@ -291,6 +291,10 @@ pub struct CrosspostRow {
     pub status: String,
     pub attempts: i32,
     pub last_error: Option<String>,
+    /// Records the ingester must index before this crosspost may run.
+    pub awaits_uris: Vec<String>,
+    /// Times it has found the ingester not done yet.
+    pub waits: i32,
 }
 
 /// A link cross-posting produced: an `externalRecords` entry that is ours.

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n        UPDATE crossposts\n        SET attempts = attempts + 1, updated_at = NOW()\n        WHERE (occurrence_uri, service) IN (\n            SELECT occurrence_uri, service\n            FROM crossposts\n            WHERE service = $1\n              AND status = 'pending'\n              AND updated_at <= NOW() - make_interval(secs => 30 * (2 ^ attempts - 1))\n            ORDER BY updated_at\n            LIMIT $2\n            FOR UPDATE SKIP LOCKED\n        )\n        RETURNING occurrence_uri, service, did, external_uri, synced_blob_cids,\n                  status, attempts, last_error\n        ",
+  "query": "\n        UPDATE crossposts\n        SET attempts = attempts + 1, updated_at = NOW()\n        WHERE (occurrence_uri, service) IN (\n            SELECT occurrence_uri, service\n            FROM crossposts\n            WHERE service = $1\n              AND status = 'pending'\n              AND updated_at <= NOW() - make_interval(secs => 30 * (2 ^ attempts - 1))\n              AND (not_before IS NULL OR not_before <= NOW())\n            ORDER BY updated_at\n            LIMIT $2\n            FOR UPDATE SKIP LOCKED\n        )\n        RETURNING occurrence_uri, service, did, external_uri, synced_blob_cids,\n                  status, attempts, last_error, awaits_uris, waits\n        ",
   "describe": {
     "columns": [
       {
@@ -90,6 +90,28 @@
             "name": "last_error"
           }
         }
+      },
+      {
+        "ordinal": 8,
+        "name": "awaits_uris",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "awaits_uris"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "waits",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "crossposts",
+            "name": "waits"
+          }
+        }
       }
     ],
     "parameters": {
@@ -106,8 +128,10 @@
       false,
       false,
       false,
-      true
+      true,
+      false,
+      false
     ]
   },
-  "hash": "4edcead1257f24a8e5fbb5840a8bc8057cac919b869ae7502025660025e35b21"
+  "hash": "23eae294a6127639bd14b0f46e33811fc80d7778e62ffd8a8e79b0dba7930d76"
 }
