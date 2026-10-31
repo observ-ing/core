@@ -46,6 +46,8 @@ export interface PhoneBatchProps {
   /** Opens the photo picker; the photos join `target` when given. */
   onChoosePhotos: (target?: BatchObservation) => void;
   onUpload: (targets: BatchObservation[]) => void;
+  /** See `BatchEditorProps.crosspostDefault`. */
+  crosspostDefault?: boolean | undefined;
   onCancelUpload: () => void;
   onRemove: (observation: BatchObservation) => void;
   onRemoveSelected: () => void;
@@ -88,6 +90,7 @@ export function PhoneBatch({
   dispatch,
   onChoosePhotos,
   onUpload,
+  crosspostDefault,
   onCancelUpload,
   onRemove,
   onRemoveSelected,
@@ -313,6 +316,8 @@ export function PhoneBatch({
         onBack={back}
         onStep={(next) => open(editIds, { step: next })}
         onGo={(id) => open([id], { replace: true })}
+        onEdit={edit}
+        crosspostDefault={crosspostDefault}
         onRemove={() => {
           back();
           onRemove(first);

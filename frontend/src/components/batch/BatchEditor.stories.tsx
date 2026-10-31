@@ -78,4 +78,18 @@ export const Touch: Story = {
   args: { selected: [storyObservation()], touch: true, onExpandMap: () => {} },
 };
 
+/**
+ * With an iNaturalist account linked. One of the selection was unticked, so
+ * the box is mixed; a click ticks it for both.
+ */
+export const PostingToInaturalist: Story = {
+  args: {
+    selected: [
+      storyObservation(),
+      storyObservation({ id: "o2", photos: [storyPhoto(1)], crosspost: false }),
+    ],
+    crosspostDefault: true,
+  },
+};
+
 export const TouchNothingSelected: Story = { args: { touch: true } };

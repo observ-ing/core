@@ -38,6 +38,8 @@ export interface BatchObservation extends FormDate {
   longitude: number | null;
   uncertaintyMeters: number;
   remarks: string;
+  /** Whether to post it to iNaturalist too, or `null` to follow the user's preferences. */
+  crosspost: boolean | null;
   status: UploadStatus;
   error?: string;
 }
@@ -60,7 +62,14 @@ export const initialBatchState: BatchState = {
 export type BatchEdit = Partial<
   Pick<
     BatchObservation,
-    "date" | "endDate" | "utcOffset" | "latitude" | "longitude" | "uncertaintyMeters" | "remarks"
+    | "date"
+    | "endDate"
+    | "utcOffset"
+    | "latitude"
+    | "longitude"
+    | "uncertaintyMeters"
+    | "remarks"
+    | "crosspost"
   >
 > & { taxon?: Partial<BatchTaxon> };
 
@@ -108,6 +117,7 @@ function observationFromPhoto(id: string, photo: BatchPhoto): BatchObservation {
     longitude: exif?.longitude ?? null,
     uncertaintyMeters: exif?.accuracyMeters ?? DEFAULT_UNCERTAINTY_METERS,
     remarks: "",
+    crosspost: null,
     status: "idle",
   };
 }
@@ -129,6 +139,7 @@ function fillBlanks(target: BatchObservation, donor: BatchObservation): BatchObs
     next.uncertaintyMeters = donor.uncertaintyMeters;
   }
   if (!next.remarks.trim()) next.remarks = donor.remarks;
+  if (next.crosspost === null) next.crosspost = donor.crosspost;
   return next;
 }
 
