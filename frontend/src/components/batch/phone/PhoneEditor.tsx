@@ -19,6 +19,7 @@ import {
   phoneCaptionFontSize,
   touchTarget,
   touchTargetLarge,
+  panelRadius,
 } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import {
@@ -287,7 +288,12 @@ export function PhoneEditor({
 
       <Paper
         variant="outlined"
-        sx={{ display: "flex", flexDirection: "column", borderRadius: 1.5, overflow: "hidden" }}
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: panelRadius,
+          overflow: "hidden",
+        }}
       >
         <Row
           icon={<SearchIcon />}
