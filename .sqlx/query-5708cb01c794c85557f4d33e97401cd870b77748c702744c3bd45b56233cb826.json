@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO user_preferences (\n            did, default_license, basemap, crosspost_inaturalist,\n            crosspost_inaturalist_require_photos\n        )\n        VALUES ($1, $2, $4, $6, $8)\n        ON CONFLICT (did) DO UPDATE SET\n            default_license = CASE WHEN $3 THEN EXCLUDED.default_license\n                ELSE user_preferences.default_license END,\n            basemap = CASE WHEN $5 THEN EXCLUDED.basemap\n                ELSE user_preferences.basemap END,\n            crosspost_inaturalist = CASE WHEN $7 THEN EXCLUDED.crosspost_inaturalist\n                ELSE user_preferences.crosspost_inaturalist END,\n            crosspost_inaturalist_require_photos = CASE WHEN $9\n                THEN EXCLUDED.crosspost_inaturalist_require_photos\n                ELSE user_preferences.crosspost_inaturalist_require_photos END,\n            updated_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5708cb01c794c85557f4d33e97401cd870b77748c702744c3bd45b56233cb826"
+}

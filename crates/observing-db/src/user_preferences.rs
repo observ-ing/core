@@ -7,7 +7,8 @@ pub async fn get(
     sqlx::query_as!(
         UserPreferencesRow,
         r#"
-        SELECT did, default_license, basemap, updated_at
+        SELECT did, default_license, basemap, crosspost_inaturalist,
+               crosspost_inaturalist_require_photos, updated_at
         FROM user_preferences
         WHERE did = $1
         "#,
@@ -23,6 +24,8 @@ pub async fn get(
 pub struct PreferencesUpdate<'a> {
     pub default_license: Option<Option<&'a str>>,
     pub basemap: Option<Option<&'a str>>,
+    pub crosspost_inaturalist: Option<Option<bool>>,
+    pub crosspost_inaturalist_require_photos: Option<Option<bool>>,
 }
 
 pub async fn upsert(
@@ -34,13 +37,21 @@ pub async fn upsert(
     // row starts with NULL in the ones left unset, the same as cleared.
     sqlx::query!(
         r#"
-        INSERT INTO user_preferences (did, default_license, basemap)
-        VALUES ($1, $2, $4)
+        INSERT INTO user_preferences (
+            did, default_license, basemap, crosspost_inaturalist,
+            crosspost_inaturalist_require_photos
+        )
+        VALUES ($1, $2, $4, $6, $8)
         ON CONFLICT (did) DO UPDATE SET
             default_license = CASE WHEN $3 THEN EXCLUDED.default_license
                 ELSE user_preferences.default_license END,
             basemap = CASE WHEN $5 THEN EXCLUDED.basemap
                 ELSE user_preferences.basemap END,
+            crosspost_inaturalist = CASE WHEN $7 THEN EXCLUDED.crosspost_inaturalist
+                ELSE user_preferences.crosspost_inaturalist END,
+            crosspost_inaturalist_require_photos = CASE WHEN $9
+                THEN EXCLUDED.crosspost_inaturalist_require_photos
+                ELSE user_preferences.crosspost_inaturalist_require_photos END,
             updated_at = NOW()
         "#,
         did,
@@ -48,6 +59,10 @@ pub async fn upsert(
         update.default_license.is_some(),
         update.basemap.flatten(),
         update.basemap.is_some(),
+        update.crosspost_inaturalist.flatten(),
+        update.crosspost_inaturalist.is_some(),
+        update.crosspost_inaturalist_require_photos.flatten(),
+        update.crosspost_inaturalist_require_photos.is_some(),
     )
     .execute(executor)
     .await?;

@@ -18,6 +18,14 @@ pub struct UserPreferencesResponse {
     pub default_license: Option<String>,
     #[ts(type = "string | null")]
     pub basemap: Option<String>,
+    /// Whether new observations are posted to iNaturalist by default. Null
+    /// means the user never chose, which clients treat as off.
+    #[ts(type = "boolean | null")]
+    pub crosspost_inaturalist: Option<bool>,
+    /// Whether that default applies only to observations with photos. Null
+    /// means the user never chose, which clients treat as on.
+    #[ts(type = "boolean | null")]
+    pub crosspost_inaturalist_require_photos: Option<bool>,
 }
 
 /// Preferences to change. Omit a field to leave it as it is, or pass `null` to
@@ -37,6 +45,16 @@ pub struct UpdatePreferencesRequest {
     #[ts(as = "Option<Option<String>>", optional)]
     #[schema(value_type = Option<String>)]
     pub basemap: Option<Option<String>>,
+    /// Whether new observations are posted to iNaturalist by default.
+    #[serde(default, with = "present")]
+    #[ts(as = "Option<Option<bool>>", optional)]
+    #[schema(value_type = Option<bool>)]
+    pub crosspost_inaturalist: Option<Option<bool>>,
+    /// Whether that default applies only to observations with photos.
+    #[serde(default, with = "present")]
+    #[ts(as = "Option<Option<bool>>", optional)]
+    #[schema(value_type = Option<bool>)]
+    pub crosspost_inaturalist_require_photos: Option<Option<bool>>,
 }
 
 /// A field that is present, even as `null`, is `Some`: `Some(None)` for
@@ -72,6 +90,10 @@ pub async fn get_preferences(
     Ok(Json(UserPreferencesResponse {
         default_license: row.as_ref().and_then(|r| r.default_license.clone()),
         basemap: row.as_ref().and_then(|r| r.basemap.clone()),
+        crosspost_inaturalist: row.as_ref().and_then(|r| r.crosspost_inaturalist),
+        crosspost_inaturalist_require_photos: row
+            .as_ref()
+            .and_then(|r| r.crosspost_inaturalist_require_photos),
     }))
 }
 
@@ -107,6 +129,8 @@ pub async fn update_preferences(
     let update = observing_db::user_preferences::PreferencesUpdate {
         default_license,
         basemap: body.basemap.as_ref().map(Option::as_deref),
+        crosspost_inaturalist: body.crosspost_inaturalist,
+        crosspost_inaturalist_require_photos: body.crosspost_inaturalist_require_photos,
     };
     observing_db::user_preferences::upsert(&state.pool, &user.did, &update).await?;
 
@@ -120,8 +144,10 @@ mod tests {
     #[test]
     fn an_omitted_preference_is_left_alone_and_a_null_one_cleared() {
         let body: UpdatePreferencesRequest =
-            serde_json::from_str(r#"{"defaultLicense": null}"#).unwrap();
+            serde_json::from_str(r#"{"basemap": "topo", "defaultLicense": null}"#).unwrap();
+        assert_eq!(body.basemap, Some(Some("topo".to_string())));
         assert_eq!(body.default_license, Some(None));
-        assert_eq!(body.basemap, None);
+        assert_eq!(body.crosspost_inaturalist, None);
+        assert_eq!(body.crosspost_inaturalist_require_photos, None);
     }
 }

@@ -34,6 +34,8 @@ export const SignedIn: Story = {
           HttpResponse.json({
             defaultLicense: null,
             basemap: null,
+            crosspostInaturalist: null,
+            crosspostInaturalistRequirePhotos: null,
           } satisfies UserPreferencesResponse),
         ),
       ],
@@ -42,7 +44,12 @@ export const SignedIn: Story = {
 };
 
 const preferencesHandler = http.get("/api/user/preferences", () =>
-  HttpResponse.json({ defaultLicense: null, basemap: null } satisfies UserPreferencesResponse),
+  HttpResponse.json({
+    defaultLicense: null,
+    basemap: null,
+    crosspostInaturalist: null,
+    crosspostInaturalistRequirePhotos: null,
+  } satisfies UserPreferencesResponse),
 );
 
 // The iNaturalist section only renders when the server has cross-posting
@@ -92,6 +99,8 @@ export const SignedInWithDefaultLicense: Story = {
           HttpResponse.json({
             defaultLicense: "CC0-1.0",
             basemap: null,
+            crosspostInaturalist: null,
+            crosspostInaturalistRequirePhotos: null,
           } satisfies UserPreferencesResponse),
         ),
       ],
