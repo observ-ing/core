@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures/mock-auth";
 import { LINKED, UNLINKED, mockAccount } from "./helpers/inat";
 import { gotoUploadStep, openUploadModal } from "./helpers/navigation";
-import { mockSubmit, taggedPhoto } from "./helpers/batch-upload";
+import { BATCH_URL, addPhotos, cards, mockSubmit, taggedPhoto } from "./helpers/batch-upload";
 import type { UserPreferencesResponse } from "../src/bindings/UserPreferencesResponse";
 
 // Posting new observations to iNaturalist as they are uploaded (#998). These
@@ -126,6 +126,107 @@ test.describe("iNaturalist - Post new observations from the upload form", () => 
     await page.getByRole("dialog").getByRole("button", { name: "Submit" }).click();
     await expect.poll(() => bodies.length).toBe(1);
     expect(bodies[0]).not.toHaveProperty("crosspostToInaturalist");
+  });
+});
+
+test.describe("iNaturalist - Post new observations from the batch uploader", () => {
+  const editor = (page: Page) => page.getByRole("complementary", { name: /Edit selected/ });
+  const select = (page: Page, index: number) =>
+    cards(page).nth(index).getByRole("checkbox", { name: "Select observation" }).check();
+  /** Whether each uploaded observation asked to be posted, in no particular order. */
+  const posted = (bodies: Array<Record<string, unknown>>) =>
+    bodies.map((body) => body["crosspostToInaturalist"]).sort();
+
+  test("posts each observation by default when the user turned that on", async ({
+    authenticatedPage: page,
+  }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("IMG_1.jpg"), taggedPhoto("IMG_2.jpg")]);
+
+    await select(page, 0);
+    await expect(checkbox(page)).toBeChecked();
+    await page.getByRole("button", { name: "Upload 2 observations" }).click();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(posted(bodies)).toEqual([true, true]);
+  });
+
+  test("sends each observation's own choice", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("IMG_1.jpg"), taggedPhoto("IMG_2.jpg")]);
+
+    await select(page, 0);
+    await editor(page).getByRole("checkbox", { name: "Also post to iNaturalist" }).uncheck();
+    await page.getByRole("button", { name: "Upload 2 observations" }).click();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(posted(bodies)).toEqual([false, true]);
+  });
+
+  test("posts every selected observation when the user ticks the box", async ({
+    authenticatedPage: page,
+  }) => {
+    await mockAccount(page, LINKED);
+    await mockPreferences(page, UNSET);
+    const bodies = await mockSubmit(page);
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("IMG_1.jpg"), taggedPhoto("IMG_2.jpg")]);
+
+    await select(page, 0);
+    await select(page, 1);
+    await expect(editor(page)).toContainText("Editing 2 observations");
+    await expect(checkbox(page)).not.toBeChecked();
+    await checkbox(page).check();
+    await page.getByRole("button", { name: "Upload 2 observations" }).click();
+    await expect.poll(() => bodies.length).toBe(2);
+    expect(posted(bodies)).toEqual([true, true]);
+  });
+
+  test("is not offered without a linked account", async ({ authenticatedPage: page }) => {
+    await mockAccount(page, UNLINKED);
+    await mockPreferences(page, AUTO_POST);
+    const bodies = await mockSubmit(page);
+    await page.goto(BATCH_URL);
+    await addPhotos(page, [taggedPhoto("IMG_1.jpg")]);
+
+    await select(page, 0);
+    await expect(editor(page)).toContainText("Editing 1 observation");
+    await expect(checkbox(page)).toHaveCount(0);
+    await page.getByRole("button", { name: "Upload 1 observation" }).click();
+    await expect.poll(() => bodies.length).toBe(1);
+    expect(bodies[0]).not.toHaveProperty("crosspostToInaturalist");
+  });
+
+  test.describe("on a phone", () => {
+    test.use({
+      contextOptions: { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
+    });
+
+    test("posts the observations the user ticks", async ({ authenticatedPage: page }) => {
+      await mockAccount(page, LINKED);
+      await mockPreferences(page, UNSET);
+      const bodies = await mockSubmit(page);
+      await page.goto(BATCH_URL);
+      await addPhotos(page, [taggedPhoto("IMG_1.jpg"), taggedPhoto("IMG_2.jpg")]);
+
+      await cards(page)
+        .first()
+        .getByRole("button", { name: /^Edit / })
+        .click();
+      const dialog = page.getByRole("dialog");
+      await expect(
+        dialog.getByRole("checkbox", { name: "Also post to iNaturalist" }),
+      ).not.toBeChecked();
+      await dialog.getByRole("checkbox", { name: "Also post to iNaturalist" }).check();
+      await dialog.getByRole("button", { name: "Done" }).click();
+      await page.getByRole("button", { name: "Upload 2" }).click();
+      await expect.poll(() => bodies.length).toBe(2);
+      expect(posted(bodies)).toEqual([false, true]);
+    });
   });
 });
 

@@ -43,7 +43,8 @@ import { useAppDispatch, useAppSelector } from "../../store";
 import { trackSubmission } from "../../store/pendingSlice";
 import { submitObservation } from "../../services/api";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
-import { useMaxPhotoSize, useUserPreferences } from "../../lib/query/hooks";
+import { useInatAccount, useMaxPhotoSize, useUserPreferences } from "../../lib/query/hooks";
+import { defaultCrosspost } from "../../lib/crosspost";
 import { useToast } from "../../hooks/useToast";
 import { usePageTitle } from "../../hooks/usePageTitle";
 import { useBatchLayout } from "../../hooks/useBatchLayout";
@@ -171,6 +172,13 @@ export function BatchUploadPage() {
   const preferences = useUserPreferences();
   const maxPhotoSize = useMaxPhotoSize();
   const license = preferences.data?.defaultLicense ?? DEFAULT_LICENSE;
+  const inatLogin = useInatAccount().data?.login;
+  // Whether an observation the user hasn't decided about is posted to
+  // iNaturalist, when they have an account linked. Every observation here has
+  // a photo, so one default covers the whole batch.
+  const crosspostDefault = inatLogin
+    ? defaultCrosspost(preferences.data, { photoCount: 1 })
+    : undefined;
   const { touch, phone, touchDrag } = useBatchLayout();
 
   const [state, dispatch] = useReducer(batchReducer, initialBatchState);
@@ -388,7 +396,11 @@ export function BatchUploadPage() {
           })),
         );
         const input = toObservationInput(observation, license, images);
-        const result = await submitObservation(input);
+        const result = await submitObservation(
+          crosspostDefault === undefined
+            ? input
+            : { ...input, crosspostToInaturalist: observation.crosspost ?? crosspostDefault },
+        );
         if (user) {
           prependOccurrence(
             makeTombstoneOccurrence({
@@ -710,6 +722,7 @@ export function BatchUploadPage() {
           dispatch={dispatch}
           onChoosePhotos={choosePhotos}
           onUpload={(targets) => void upload(targets)}
+          crosspostDefault={crosspostDefault}
           onCancelUpload={cancelUpload}
           onRemove={remove}
           onRemoveSelected={removeSelected}
@@ -1080,6 +1093,7 @@ export function BatchUploadPage() {
                   touchDrag={touchDrag}
                   // A small map in a scrolling panel is hard to pan by touch.
                   {...(touch ? { onExpandMap: () => setMapExpanded(true) } : {})}
+                  crosspostDefault={crosspostDefault}
                 />
               </Box>
             )}

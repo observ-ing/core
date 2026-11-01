@@ -36,6 +36,7 @@ export function storyObservation(overrides: Partial<BatchObservation> = {}): Bat
     longitude: EXIF.longitude,
     uncertaintyMeters: EXIF.accuracyMeters,
     remarks: "",
+    crosspost: null,
     status: "idle",
     ...overrides,
   };
