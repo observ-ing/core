@@ -28,6 +28,8 @@ import {
   Step,
   StepButton,
   StepContent,
+  Checkbox,
+  FormControlLabel,
   useTheme,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
@@ -37,7 +39,14 @@ import { closeUploadModal, consumePendingUploadFiles } from "../../store/uiSlice
 import { trackSubmission } from "../../store/pendingSlice";
 import { makeTombstoneOccurrence, prependOccurrence } from "../../lib/query/occurrenceCache";
 import { useToast } from "../../hooks/useToast";
-import { useUserPreferences, useCrosspostStatus, useMaxPhotoSize } from "../../lib/query/hooks";
+import {
+  useUserPreferences,
+  useCrosspostStatus,
+  useMaxPhotoSize,
+  useInatAccount,
+} from "../../lib/query/hooks";
+import { defaultCrosspost } from "../../lib/crosspost";
+import { hasInatRecord } from "../../lib/externalRecords";
 import { useSubmitObservation, useUpdateObservation } from "../../lib/query/mutations";
 import { validateTaxon } from "../../services/api";
 import type { TaxaResult } from "../../services/types";
@@ -152,7 +161,9 @@ export function UploadModal() {
   const toast = useToast();
   const isOpen = useAppSelector((state) => state.ui.uploadModalOpen);
   const editingObservation = useAppSelector((state) => state.ui.editingObservation);
-  const defaultLicense = useUserPreferences().data?.defaultLicense ?? null;
+  const prefs = useUserPreferences().data;
+  const defaultLicense = prefs?.defaultLicense ?? null;
+  const inatLogin = useInatAccount().data?.login;
   const maxPhotoSize = useMaxPhotoSize();
   const currentLocation = useAppSelector((state) => state.ui.currentLocation);
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -171,6 +182,9 @@ export function UploadModal() {
   const [kingdom, setKingdom] = useState("");
   const [rank, setRank] = useState("");
   const [license, setLicense] = useState<string>(DEFAULT_LICENSE);
+  // The user's own choice to post to iNaturalist, or null to follow the
+  // default from their preferences.
+  const [crosspostChoice, setCrosspostChoice] = useState<boolean | null>(null);
   const [lat, setLat] = useState("");
   const [lng, setLng] = useState("");
   const [images, setImages] = useState<ImagePreview[]>([]);
@@ -292,6 +306,7 @@ export function UploadModal() {
     setKingdom("");
     setRank("");
     setLicense(isEditMode ? DEFAULT_LICENSE : (defaultLicense ?? DEFAULT_LICENSE));
+    setCrosspostChoice(null);
     images.forEach((img) => URL.revokeObjectURL(img.preview));
     setImages([]);
     setExistingImages([]);
@@ -534,7 +549,10 @@ export function UploadModal() {
         { onSuccess, onError },
       );
     } else {
-      submitObs.mutate(commonPayload, { onSuccess, onError });
+      submitObs.mutate(
+        { ...commonPayload, ...(offerCrosspost ? { crosspostToInaturalist: crosspost } : {}) },
+        { onSuccess, onError },
+      );
     }
   };
 
@@ -547,6 +565,15 @@ export function UploadModal() {
   // Short summary shown under each step's title once it's been filled in, so the
   // collapsed steps still convey what was entered.
   const photoCount = existingImages.length + images.length;
+
+  // Only for a new observation: an existing one is posted from its details.
+  const offerCrosspost = !isEditMode && !!inatLogin;
+  // An observation that already links to one on iNaturalist isn't posted
+  // there again; the server would skip it anyway.
+  const alreadyOnInat = hasInatRecord(externalRecords);
+  // Follows the preferences, so adding a photo can tick it, until the user
+  // ticks or unticks it themselves.
+  const crosspost = !alreadyOnInat && (crosspostChoice ?? defaultCrosspost(prefs, { photoCount }));
   const stepSummaries: Record<number, string> = {
     [STEP_PHOTOS]:
       photoCount > 0 ? `${photoCount} photo${photoCount === 1 ? "" : "s"}` : "Optional",
@@ -905,6 +932,32 @@ export function UploadModal() {
                   }}
                   lockedUri={crosspostStatus.data?.inatUrl}
                 />
+
+                {offerCrosspost && (
+                  <Box sx={{ mt: 1 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={crosspost}
+                          disabled={alreadyOnInat}
+                          onChange={(_, checked) => {
+                            setCrosspostChoice(checked);
+                            setIsDirty(true);
+                          }}
+                        />
+                      }
+                      label="Also post to iNaturalist"
+                    />
+                    {alreadyOnInat && (
+                      <Typography
+                        variant="caption"
+                        sx={{ display: "block", color: "text.secondary" }}
+                      >
+                        Already on iNaturalist: it links to an observation there.
+                      </Typography>
+                    )}
+                  </Box>
+                )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
                   <Button onClick={() => setActiveStep(STEP_IDENTIFY)} color="inherit" size="small">
