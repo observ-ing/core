@@ -18,6 +18,7 @@ import {
   overlayBadgeSx,
   phoneCaptionFontSize,
   touchTarget,
+  tallRowMinHeight,
   touchTargetLarge,
   panelRadius,
 } from "../../common/layoutSx";
@@ -85,7 +86,7 @@ function Row({
         display: "flex",
         alignItems: "center",
         gap: 1.5,
-        minHeight: 64,
+        minHeight: tallRowMinHeight,
         pl: 2,
         pr: 1.5,
         py: 1.25,

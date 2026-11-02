@@ -28,6 +28,7 @@ import {
   coverImageSx,
   thumbnailFrameSx,
   touchTarget,
+  tallRowMinHeight,
   touchTargetLarge,
   panelRadius,
 } from "../../common/layoutSx";
@@ -140,7 +141,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                         rank: "",
                       })
                     }
-                    sx={{ gap: 1.5, minHeight: 64 }}
+                    sx={{ gap: 1.5, minHeight: tallRowMinHeight }}
                   >
                     <TaxonThumbnail src={taxon.photoUrl} size={44} emptyBgcolor="action.hover" />
                     <Box sx={{ flex: 1, minWidth: 0 }}>

@@ -5,7 +5,7 @@ import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "../common/ExternalLinkIconButton";
 import { InRangeIndicator } from "../common/InRangeIndicator";
 import { TaxonThumbnail } from "../common/TaxonThumbnail";
-import { miniIconSx } from "../common/layoutSx";
+import { miniIconSx, tallRowMinHeight } from "../common/layoutSx";
 
 /**
  * Ranks we'll roll up to, ordered from most specific to most general.
@@ -255,7 +255,7 @@ function AncestorCard({ ancestor, onSelect }: { ancestor: AncestorMatch; onSelec
         borderColor: "primary.main",
         bgcolor: "action.hover",
         p: 1.25,
-        minHeight: 64,
+        minHeight: tallRowMinHeight,
         "&:hover": { bgcolor: "action.selected" },
       }}
     >
