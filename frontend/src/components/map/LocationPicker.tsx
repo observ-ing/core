@@ -488,7 +488,7 @@ export function LocationPicker({
             }}
             sx={{
               "& .MuiSlider-markLabel": {
-                fontSize: "0.75rem",
+                typography: "caption",
               },
               ...(uncertaintyMixed ? { "& .MuiSlider-thumb": { opacity: 0.4 } } : {}),
             }}
