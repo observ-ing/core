@@ -177,3 +177,6 @@ export const touchTarget = 44;
 
 /** Minimum height for primary touch controls on the batch screens (48px, Material's touch target). */
 export const touchTargetLarge = 48;
+
+/** Minimum height for tall tappable rows and phone app bars (64px: two lines of text plus padding). */
+export const tallRowMinHeight = 64;

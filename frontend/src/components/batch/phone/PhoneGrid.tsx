@@ -32,6 +32,7 @@ import {
   miniIconSx,
   overlayBadgeSx,
   touchTarget,
+  tallRowMinHeight,
   touchTargetLarge,
 } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
@@ -272,7 +273,7 @@ export function PhoneGrid({
           elevation={0}
           sx={{ bgcolor: "primary.dark", zIndex: (theme) => theme.zIndex.drawer + 2 }}
         >
-          <Toolbar sx={{ minHeight: 64, gap: 0.5, px: 1 }}>
+          <Toolbar sx={{ minHeight: tallRowMinHeight, gap: 0.5, px: 1 }}>
             <IconButton color="inherit" onClick={onClearSelection} aria-label="Clear selection">
               <CloseIcon />
             </IconButton>
