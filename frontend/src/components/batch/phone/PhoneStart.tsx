@@ -1,6 +1,7 @@
 // Phone layout, before any photos: what the tool does and the way in.
 import { Alert, AlertTitle, Box, Button, CircularProgress, Typography } from "@mui/material";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
+import { heroIconSx } from "../../common/layoutSx";
 import { MAX_BATCH_PHOTOS } from "../../../lib/batchUpload";
 import { formatMegabytes } from "../../../lib/imageSelection";
 import { useMaxPhotoSize } from "../../../lib/query/hooks";
@@ -46,7 +47,7 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
           textAlign: "center",
         }}
       >
-        <PhotoLibraryIcon color="primary" sx={{ fontSize: 48 }} />
+        <PhotoLibraryIcon color="primary" sx={heroIconSx} />
         <Button
           variant="contained"
           size="large"
