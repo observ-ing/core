@@ -16,6 +16,9 @@ import { getNavItems } from "./NavConfig";
 
 export const DRAWER_WIDTH = 240;
 
+// Tighter than MUI's 56px default so the drawer icons sit closer to their labels.
+const navIconSx = { minWidth: 40 } as const;
+
 interface SidebarProps {
   mobileOpen: boolean;
   onMobileClose: () => void;
@@ -61,7 +64,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
                 },
               }}
             >
-              <ListItemIcon sx={{ minWidth: 40 }}>{item.icon}</ListItemIcon>
+              <ListItemIcon sx={navIconSx}>{item.icon}</ListItemIcon>
               <ListItemText
                 primary={item.label}
                 slotProps={{ primary: { sx: { fontWeight: isActive(item.path) ? 700 : 500 } } }}
@@ -77,7 +80,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
         <List dense>
           <ListItem disablePadding>
             <ListItemButton component={Link} to="/docs" onClick={onMobileClose}>
-              <ListItemIcon sx={{ minWidth: 40 }}>
+              <ListItemIcon sx={navIconSx}>
                 <MenuBook fontSize="small" />
               </ListItemIcon>
               <ListItemText primary="Docs" />
@@ -89,7 +92,7 @@ export function Sidebar({ mobileOpen, onMobileClose, unreadCount }: SidebarProps
 
         {user ? (
           <ListItemButton onClick={onLogout}>
-            <ListItemIcon sx={{ minWidth: 40 }}>
+            <ListItemIcon sx={navIconSx}>
               <Logout fontSize="small" />
             </ListItemIcon>
             <ListItemText primary="Log out" />
