@@ -12,6 +12,9 @@ export const detailHeaderSx = {
 /** Inline glyph size for icons embedded in chips, small buttons and caption rows. */
 export const miniIconSx = { fontSize: 14 } as const;
 
+/** Large glyph for full-panel prompts (location permission, empty photo picker). */
+export const heroIconSx = { fontSize: 48 } as const;
+
 /** Glyph size for icons in caption/status rows (batch card status lines). */
 export const captionIconSx = { fontSize: 16 } as const;
 
