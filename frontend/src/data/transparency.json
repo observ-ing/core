@@ -33,6 +33,18 @@
   ],
   "months": [
     {
+      "month": "2026-10",
+      "items": [
+        { "name": "Ingestion", "cost": 52.41 },
+        { "name": "Species ID", "cost": 22.38 },
+        { "name": "Database", "cost": 53.41 },
+        { "name": "Website & API", "cost": 1.46 },
+        { "name": "Images & CI", "cost": 40.99 },
+        { "name": "Tax", "cost": 4.74 },
+        { "name": "Other", "cost": 0.21 }
+      ]
+    },
+    {
       "month": "2026-09",
       "items": [
         { "name": "Ingestion", "cost": 92.15 },
