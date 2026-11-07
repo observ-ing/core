@@ -31,6 +31,7 @@ import {
   coverImageSx,
   miniIconSx,
   overlayBadgeSx,
+  phoneBarTitleSx,
   touchTarget,
   tallRowMinHeight,
   touchTargetLarge,
@@ -277,7 +278,7 @@ export function PhoneGrid({
             <IconButton color="inherit" onClick={onClearSelection} aria-label="Clear selection">
               <CloseIcon />
             </IconButton>
-            <Typography role="status" sx={{ flex: 1, fontWeight: 700, fontSize: 18 }}>
+            <Typography role="status" sx={{ flex: 1, ...phoneBarTitleSx }}>
               {picked.length} selected
             </Typography>
             <Button
