@@ -1,6 +1,12 @@
 import { memo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box, Typography, Card, CardContent, CardActionArea } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Card,
+  CardContent,
+  CardActionArea,
+} from "@mui/material";
 import type { Occurrence } from "../../services/types";
 import { useAppSelector } from "../../store";
 import { useIsPending } from "../../store/pendingSlice";
@@ -22,7 +28,11 @@ interface FeedItemProps {
   onDelete?: (observation: Occurrence) => void;
 }
 
-export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }: FeedItemProps) {
+export const FeedItem = memo(function FeedItem({
+  observation,
+  onEdit,
+  onDelete,
+}: FeedItemProps) {
   // Like state lives in the query cache: the optimistic mutation patches the
   // occurrence in every cache that holds it, so reading the prop is reactive.
   const liked = observation.viewerHasLiked ?? false;
@@ -39,9 +49,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
   const timeAgo = <RelativeTime date={new Date(observation.createdAt)} />;
 
   const taxonomy = observation.effectiveTaxonomy;
-  const species = observation.communityId || taxonomy?.scientificName || undefined;
+  const species =
+    observation.communityId || taxonomy?.scientificName || undefined;
 
-  const imageUrl = observation.images[0] ? getImageUrl(observation.images[0].url) : "";
+  const imageUrl = observation.images[0]
+    ? getImageUrl(observation.images[0].url)
+    : "";
 
   const observationUrl = getObservationUrl(observation.uri);
 
@@ -88,8 +101,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             <RecordOverflowMenu
               atUri={observation.uri}
               stopPropagation
-              {...(isOwnPost && onEdit ? { onEdit: () => onEdit(observation) } : {})}
-              {...(isOwnPost && onDelete ? { onDelete: () => onDelete(observation) } : {})}
+              {...(isOwnPost && onEdit
+                ? { onEdit: () => onEdit(observation) }
+                : {})}
+              {...(isOwnPost && onDelete
+                ? { onDelete: () => onDelete(observation) }
+                : {})}
             />
           </Box>
         </Box>
@@ -115,7 +132,12 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             gap: 1,
           }}
         >
-          <Box sx={{ fontSize: "1.1rem", minWidth: 0 }}>
+          <Box
+            sx={{
+              fontSize: (theme) => theme.typography.h3.fontSize,
+              minWidth: 0,
+            }}
+          >
             {species ? (
               <TaxonLink
                 name={species}
@@ -135,7 +157,11 @@ export const FeedItem = memo(function FeedItem({ observation, onEdit, onDelete }
             disabled={isPending}
             loggedOut={!currentUser}
             onToggle={() =>
-              like.mutate({ uri: observation.uri, cid: observation.cid, liked: !liked })
+              like.mutate({
+                uri: observation.uri,
+                cid: observation.cid,
+                liked: !liked,
+              })
             }
           />
         </Box>
