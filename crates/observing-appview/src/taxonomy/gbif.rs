@@ -771,8 +771,8 @@ impl GbifClient {
     /// Uses the full-text search endpoint over the GBIF Backbone Taxonomy
     /// only, so results have authoritative taxonomic status.
     async fn search_gbif(&self, query: &str, limit: u32) -> Vec<TaxonResult> {
-        let data = match self.search_backbone(query, limit as i32).await {
-            Ok(d) => d,
+        let basic_results = match self.search_backbone_taxa(query, limit).await {
+            Ok(r) => r,
             Err(e) => {
                 warn!(query = %query, error = ?e, "GBIF search failed");
                 return vec![];
@@ -780,21 +780,10 @@ impl GbifClient {
         };
 
         // Extract GBIF keys for Wikidata image lookup.
-        let keys: Vec<u64> = data
-            .iter()
-            .filter_map(|item| item.key.map(|k| k as u64))
-            .collect();
+        let keys: Vec<u64> = basic_results.iter().filter_map(|(_, key)| *key).collect();
 
         // Fetch photos from Wikidata in a single batched SPARQL query.
         let photos = self.wikidata.get_images_for_keys(&keys, 100).await;
-
-        let basic_results: Vec<(TaxonResult, Option<u64>)> = data
-            .iter()
-            .map(|item| {
-                let key = item.key.map(|k| k as u64);
-                (self.search_result_to_taxon(item), key)
-            })
-            .collect();
 
         let enriched_futures = basic_results.into_iter().map(|(result, key)| {
             let photo_url = key.and_then(|k| photos.get(&k).cloned());
@@ -810,6 +799,54 @@ impl GbifClient {
         });
 
         futures::future::join_all(enriched_futures).await
+    }
+
+    /// Backbone search results as taxa, each with its GBIF key, with
+    /// synonyms resolved (#1026). A synonym whose accepted taxon is already
+    /// in the results is dropped. Otherwise the accepted taxon takes the
+    /// synonym's place, unless an earlier synonym already brought it in, in
+    /// which case this one is dropped too, so no taxon is listed twice. A
+    /// synonym whose accepted taxon GBIF can't return stays as it is.
+    async fn search_backbone_taxa(
+        &self,
+        query: &str,
+        limit: u32,
+    ) -> Result<Vec<(TaxonResult, Option<u64>)>, GbifError> {
+        let data = self.search_backbone(query, limit as i32).await?;
+
+        let mut listed: HashSet<i32> = data
+            .iter()
+            .filter(|item| item.accepted_key.is_none())
+            .filter_map(|item| item.key)
+            .collect();
+        let mut slots: Vec<(&NameUsageSearchResult, Option<i32>)> = Vec::new();
+        for item in &data {
+            match item.accepted_key {
+                Some(accepted) if !listed.insert(accepted) => {}
+                accepted => slots.push((item, accepted)),
+            }
+        }
+
+        let resolved = slots.into_iter().map(|(item, accepted)| async move {
+            let accepted_usage = match accepted {
+                Some(key) => match self.get_name_usage(key).await {
+                    Ok(usage) => usage,
+                    Err(e) => {
+                        warn!(key, error = ?e, "GBIF accepted usage lookup failed");
+                        None
+                    }
+                },
+                None => None,
+            };
+            match accepted_usage {
+                Some(usage) => (self.gbif_to_taxon(&usage), Some(usage.key as u64)),
+                None => (
+                    self.search_result_to_taxon(item),
+                    item.key.map(|k| k as u64),
+                ),
+            }
+        });
+        Ok(futures::future::join_all(resolved).await)
     }
 
     /// Build ancestors from a v1 NameUsage's denormalised taxonomy fields.
@@ -1829,5 +1866,199 @@ mod tests {
             .expect("a 404 is not an error");
 
         assert!(names.is_empty());
+    }
+
+    // ---------- synonyms in search results (#1026) ----------
+
+    /// One backbone search hit in the wire format. `accepted_key` makes it a
+    /// synonym of that usage.
+    fn search_hit(
+        key: i32,
+        name: &str,
+        rank: &str,
+        accepted_key: Option<i32>,
+    ) -> serde_json::Value {
+        json!({
+            "key": key,
+            "canonicalName": name,
+            "scientificName": name,
+            "rank": rank,
+            "kingdom": "Animalia",
+            "synonym": accepted_key.is_some(),
+            "taxonomicStatus": if accepted_key.is_some() { "SYNONYM" } else { "ACCEPTED" },
+            "acceptedKey": accepted_key,
+            "descriptions": [],
+            "habitats": [],
+            "nomenclaturalStatus": [],
+            "threatStatuses": [],
+            "vernacularNames": [],
+            "higherClassificationMap": {}
+        })
+    }
+
+    async fn mount_search(server: &MockServer, hits: Vec<serde_json::Value>) {
+        Mock::given(method("GET"))
+            .and(path("/v1/species/search"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "offset": 0,
+                "limit": 10,
+                "endOfRecords": true,
+                "results": hits
+            })))
+            .mount(server)
+            .await;
+    }
+
+    /// `/v1/species/2480873` as GBIF returns it, trimmed.
+    async fn mount_snowy_egret_usage(server: &MockServer, expected_calls: u64) {
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2480873"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(json!({
+                "key": 2480873,
+                "datasetKey": "d7dddbf4-2cf0-4f39-9b2a-bb099caae36c",
+                "kingdom": "Animalia",
+                "phylum": "Chordata",
+                "class": "Aves",
+                "order": "Pelecaniformes",
+                "family": "Ardeidae",
+                "genus": "Egretta",
+                "species": "Egretta thula",
+                "scientificName": "Egretta thula (Molina, 1782)",
+                "canonicalName": "Egretta thula",
+                "vernacularName": "Snowy Egret",
+                "rank": "SPECIES",
+                "origin": "SOURCE",
+                "taxonomicStatus": "ACCEPTED",
+                "nomenclaturalStatus": [],
+                "issues": []
+            })))
+            .expect(expected_calls)
+            .mount(server)
+            .await;
+    }
+
+    fn names(results: &[(TaxonResult, Option<u64>)]) -> Vec<&str> {
+        results
+            .iter()
+            .map(|(t, _)| t.scientific_name.as_str())
+            .collect()
+    }
+
+    /// GBIF's actual order for "snowy egret": the accepted species comes after
+    /// two of its synonyms. The synonyms add nothing, so they go, and GBIF is
+    /// not asked about a taxon the results already hold.
+    #[tokio::test]
+    async fn search_drops_synonyms_of_an_accepted_taxon_in_the_results() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 0).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("snowy egret", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula thula", "Egretta thula"]
+        );
+    }
+
+    /// A synonym whose accepted taxon isn't in the results stands in for it,
+    /// in the synonym's place.
+    #[tokio::test]
+    async fn search_replaces_a_synonym_with_its_missing_accepted_taxon() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula", "Egretta thula thula"]
+        );
+        let (accepted, key) = &results[0];
+        assert_eq!(*key, Some(2480873));
+        assert_eq!(
+            accepted.taxon_id.as_deref(),
+            Some(gbif_taxon_uri(2480873).as_str())
+        );
+        assert_eq!(accepted.common_name.as_deref(), Some("Snowy Egret"));
+        assert_eq!(accepted.rank, "species");
+    }
+
+    /// Two synonyms of the same missing taxon: replacing both would list it
+    /// twice, so only the first is replaced and the second dropped.
+    #[tokio::test]
+    async fn search_replaces_only_the_first_of_several_synonyms_of_one_taxon() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(7190966, "Egretta thula thula", "SUBSPECIES", None),
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+            ],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(
+            names(&results),
+            vec!["Egretta thula", "Egretta thula thula"]
+        );
+    }
+
+    /// If GBIF can't produce the accepted taxon, showing the synonym beats
+    /// showing nothing.
+    #[tokio::test]
+    async fn search_keeps_a_synonym_whose_accepted_taxon_cannot_be_fetched() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873))],
+        )
+        .await;
+        Mock::given(method("GET"))
+            .and(path("/v1/species/2480873"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&server)
+            .await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(names(&results), vec!["Ardea thula"]);
     }
 }
