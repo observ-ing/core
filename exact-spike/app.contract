@@ -1,0 +1,165 @@
+// Observ.ing on Exact: the explore feed and an observation's detail, read-only.
+// app.ts reads the appview's GET /api/feeds/explore and flattens each row into
+// an Observation; server.ts stands in for the appview in development.
+
+routes nav
+  explore "/"
+    observation "/observation/:did/:rkey"
+
+shape Observation
+  did: string
+  rkey: string
+  commonName: string
+  scientificName: string
+  rank: string
+  lineage: string
+  observer: string
+  handle: string
+  observedAt: number
+  photo: string
+  license: string
+  place: string
+  identifications: number
+  likes: number
+  remarks: string
+  needsId: bool
+
+shape Feed
+  items: Observation[]
+  more: bool
+
+shape Time
+  epochAtZero: number
+  utcOffset: number
+
+// A species reads by its common name, else its scientific name; neither is "Unidentified".
+fn titleOf(o: Observation): string = o.commonName != "" ? o.commonName : (o.scientificName != "" ? o.scientificName : "Unidentified")
+fn countOf(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
+
+component App
+  // How many rows the feed asks for; Show More asks for a page more.
+  state limit = 4
+  resource feed = loadFeed(limit) as shape Feed else empty()
+  resource time = exactTime() as shape Time
+  derive now = time.epochAtZero
+  derive feedError = pending(feed) ? "" : match failure(feed) { case some(f) => f.code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : "Couldn’t load the feed. Try again.", case none => "" }
+
+  action back
+    nav = back(nav)
+  action follow(url: string)
+    nav = top(nav).name == "observation" and url.startsWith("/observation/") ? replace(nav, url) : go(nav, url)
+  action reload
+    refresh feed
+  action more
+    limit = limit + 4
+
+  view
+    main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app" width="100%" height="100%"
+      for e in stack(nav) key=e.id
+        if e.name == "explore"
+          column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
+            header display="flex" align-items="center" padding="8px 16px"
+              text "Explore" role="heading" aria-level=1 flex=1
+            if feed.items.length == 0
+              if pending(feed)
+                column flex=1 justify-content="center" align-items="center"
+                  progress aria-label="Loading" testId="feed-loading"
+              else
+                column flex=1 justify-content="center" align-items="center" gap=12 padding=24
+                  text (feedError != "" ? feedError : "No observations yet.") text-align="center" testId="feed-empty"
+                  button press=reload testId="retry"
+                    text "Try Again"
+            else
+              list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                if feedError != ""
+                  section
+                    row
+                      text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
+                      button press=reload testId="retry-feed"
+                        text "Try Again"
+                section
+                  for o in feed.items key=`${o.did}/${o.rkey}`
+                    link href=path("observation", o.did, o.rkey) testId=`obs-${o.rkey}`
+                      row gap=12 align-items="center" flex=1 min-width=0 padding-top=6 padding-bottom=6
+                        if o.photo != ""
+                          image o.photo width=64 height=64 object-fit="cover" border-radius=8 aria-label=titleOf(o)
+                        column flex=1 min-width=0 gap=2
+                          text titleOf(o) font="-exact-headline" testId=`title-${o.rkey}`
+                          if o.commonName != "" and o.scientificName != ""
+                            text o.scientificName font-style="italic" color="-exact-secondary-label"
+                          text `${o.observer} · ${formatDay(o.observedAt, now, time.utcOffset, "day")}`
+                            font="-exact-footnote" color="-exact-secondary-label"
+                      image "symbol:forward-chevron"
+                if feed.more
+                  section
+                    button press=more disabled=pending(feed) testId="more"
+                      text (pending(feed) ? "Loading…" : "Show More")
+        if e.name == "observation"
+          column navigationKey=`${e.id}` navigationScroll="detail" position="absolute" inset=0
+            for o in feed.items.filter(x => x.did == e.params.did and x.rkey == e.params.rkey) key=o.rkey
+              header display="flex" align-items="center" padding="8px 16px"
+                text titleOf(o) role="heading" aria-level=2 testId="detail-title"
+              ObservationDetail(o=o, now=now, offset=time.utcOffset)
+            if feed.items.filter(x => x.did == e.params.did and x.rkey == e.params.rkey).length == 0
+              column flex=1 justify-content="center" align-items="center" padding=24
+                if pending(feed)
+                  progress aria-label="Loading" testId="detail-loading"
+                else
+                  text "This observation isn’t in the feed." testId="detail-missing"
+
+// One observation: its photo, its names, then the record's facts.
+component ObservationDetail
+  props
+    o: Observation
+    now: number
+    offset: number
+  view
+    list id="detail" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+      if o.photo != ""
+        section
+          image o.photo width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10
+            aria-label=`Photo of ${titleOf(o)}` testId="detail-photo"
+          footer
+            text (o.license != "" ? `Photo ${o.license}` : "")
+      section
+        row
+          column flex=1 min-width=0 gap=2
+            text titleOf(o) font="-exact-title2"
+            if o.scientificName != "" and o.commonName != ""
+              text o.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci"
+            if o.rank != ""
+              text o.rank font="-exact-footnote" color="-exact-secondary-label"
+        if o.needsId
+          row
+            text "Needs an identification" color="-exact-system-orange" testId="needs-id"
+      section
+        header
+          text "Observation"
+        row
+          text "Observed" flex=1
+          text formatDay(o.observedAt, now, offset, "day-time") color="-exact-secondary-label" testId="detail-date"
+        row
+          text "By" flex=1
+          text (o.handle != "" ? `${o.observer} (${o.handle})` : o.observer) color="-exact-secondary-label" testId="detail-observer"
+        if o.place != ""
+          row
+            text "Location" flex=1
+            text o.place color="-exact-secondary-label" testId="detail-place"
+        row
+          text "Identifications" flex=1
+          text countOf(o.identifications, "identification", "identifications") color="-exact-secondary-label"
+        row
+          text "Likes" flex=1
+          text countOf(o.likes, "like", "likes") color="-exact-secondary-label"
+      if o.lineage != ""
+        section
+          header
+            text "Taxonomy"
+          row padding-top=8 padding-bottom=8
+            text o.lineage flex=1 min-width=0 testId="detail-lineage"
+      if o.remarks != ""
+        section
+          header
+            text "Remarks"
+          row padding-top=8 padding-bottom=8
+            text o.remarks flex=1 min-width=0 testId="detail-remarks"
