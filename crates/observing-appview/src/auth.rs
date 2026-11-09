@@ -232,7 +232,7 @@ pub async fn put_at_record(
             .into(),
         )
         .await
-        .map_err(|e| map_xrpc_error(e, "put"))
+        .map_err(map_put_error)
 }
 
 /// Delete the record at `at_uri` via `deleteRecord`.
@@ -273,5 +273,61 @@ fn map_xrpc_error<E: std::fmt::Debug + std::fmt::Display>(
         AppError::Unauthorized
     } else {
         AppError::Internal(format!("Failed to {verb} record: {e}"))
+    }
+}
+
+/// Map a `putRecord` error. A lost `swap_record` (the record changed since it
+/// was fetched) is a `Conflict` the caller can retry after reloading; anything
+/// else maps as any other PDS write error.
+fn map_put_error(
+    e: atrium_api::xrpc::Error<atrium_api::com::atproto::repo::put_record::Error>,
+) -> AppError {
+    use atrium_api::com::atproto::repo::put_record::Error::InvalidSwap;
+    use atrium_api::xrpc::error::XrpcErrorKind;
+
+    if let atrium_api::xrpc::Error::XrpcResponse(ref response) = e {
+        if let Some(XrpcErrorKind::Custom(InvalidSwap(_))) = response.error {
+            tracing::info!(error = %e, "putRecord lost its swap: the record changed");
+            return AppError::Conflict(
+                "This record changed while you were editing it. Reload and try again.".into(),
+            );
+        }
+    }
+    map_xrpc_error(e, "put")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use atrium_api::com::atproto::repo::put_record;
+    use atrium_api::xrpc::error::{XrpcError, XrpcErrorKind};
+    use atrium_api::xrpc::http::StatusCode;
+
+    fn put_error(
+        error: Option<XrpcErrorKind<put_record::Error>>,
+    ) -> atrium_api::xrpc::Error<put_record::Error> {
+        atrium_api::xrpc::Error::XrpcResponse(XrpcError {
+            status: StatusCode::BAD_REQUEST,
+            error,
+        })
+    }
+
+    /// A swap that no longer matches means the record changed after it was
+    /// fetched; the caller should reload, not see a server error.
+    #[test]
+    fn a_put_whose_swap_no_longer_matches_is_a_conflict() {
+        let e = put_error(Some(XrpcErrorKind::Custom(put_record::Error::InvalidSwap(
+            Some("Record was at bafyother".into()),
+        ))));
+
+        assert!(matches!(map_put_error(e), AppError::Conflict(_)));
+    }
+
+    #[test]
+    fn other_put_failures_stay_internal() {
+        assert!(matches!(
+            map_put_error(put_error(None)),
+            AppError::Internal(_)
+        ));
     }
 }
