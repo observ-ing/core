@@ -1,0 +1,28 @@
+{
+  "$schema": "../../expo/exact/scripts/app.schema.json",
+  "name": "Observ.ing",
+  "short_name": "Observ.ing",
+  "id": "ing.observ.exactspike",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "ing.observ.exactspike",
+    "name": "Observ.ing"
+  },
+  "host": {
+    "web": {},
+    "linux": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "linux": "0"
+    }
+  },
+  "commands": {
+    "server": [
+      "bun",
+      "server.ts"
+    ]
+  }
+}

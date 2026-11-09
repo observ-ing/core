@@ -1,0 +1,17 @@
+test "the feed shows the first page and pushes a detail"
+  epoch "2026-11-09T15:00:00Z"
+  time-zone "America/New_York"
+  clock data
+  expect text "title-cardinal1" == "Northern Cardinal"
+  tap "obs-cardinal1"
+  clock data
+  expect text "detail-title" == "Northern Cardinal"
+  expect text "detail-sci" == "Cardinalis cardinalis"
+  expect text "detail-lineage" == "Animalia › Chordata › Aves › Passeriformes › Cardinalidae › Cardinalis"
+
+test "Show More asks for the next page"
+  epoch "2026-11-09T15:00:00Z"
+  clock data
+  tap "more"
+  clock data
+  expect text "title-fern1" == "Polypodium"
