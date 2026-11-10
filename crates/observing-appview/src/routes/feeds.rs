@@ -49,7 +49,7 @@ pub struct ExploreParams {
     operation_id = "get_explore_feed",
     tag = "feeds",
     params(ExploreParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = ExploreFeedResponse),
         (status = 400, description = "Unknown `quality` criterion"),
@@ -57,7 +57,7 @@ pub struct ExploreParams {
 )]
 pub async fn get_explore(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Query(params): Query<ExploreParams>,
 ) -> Result<Json<ExploreFeedResponse>, AppError> {
     let limit = params
@@ -78,7 +78,7 @@ pub async fn get_explore(
     let rows =
         observing_db::feeds::get_explore_feed(&state.pool, &options, &state.hidden_dids).await?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let occurrences = enrichment::enrich_occurrences(
         &state.pool,
         &state.resolver,
@@ -131,7 +131,7 @@ pub struct HomeParams {
     operation_id = "get_home_feed",
     tag = "feeds",
     params(HomeParams),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = HomeFeedResponse),
         (status = 400, description = "Unknown `quality` criterion"),
@@ -140,10 +140,12 @@ pub struct HomeParams {
 )]
 pub async fn get_home(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Query(params): Query<HomeParams>,
 ) -> Result<Json<HomeFeedResponse>, AppError> {
-    let viewer = session_did(&cookies).ok_or(AppError::Unauthorized)?;
+    let viewer = session_did(&state.pool, &headers)
+        .await
+        .ok_or(AppError::Unauthorized)?;
     let limit = params
         .limit
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)

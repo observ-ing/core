@@ -1,6 +1,7 @@
 //! Database regression tests. One test binary for all of them, so they
 //! share a single build and link; `common` is the scratch-database harness.
 
+mod app_sessions;
 mod common;
 mod crosspost_awaits;
 

@@ -35,7 +35,7 @@ pub struct ProfileFeedParams {
     path = "/api/profiles/{did}/feed",
     tag = "profiles",
     params(("did" = String, Path, description = "The user's DID"), ProfileFeedParams),
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The profile and a page of activity", body = ProfileFeedResponse),
         (status = 400, description = "Invalid DID", body = ErrorResponse),
@@ -43,7 +43,7 @@ pub struct ProfileFeedParams {
 )]
 pub async fn get_profile_feed(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: axum::http::HeaderMap,
     Path(did): Path<String>,
     Query(params): Query<ProfileFeedParams>,
 ) -> Result<Json<ProfileFeedResponse>, AppError> {
@@ -78,7 +78,7 @@ pub async fn get_profile_feed(
     );
     let result = result?;
 
-    let viewer = session_did(&cookies);
+    let viewer = session_did(&state.pool, &headers).await;
     let (occurrences, identifications) = tokio::join!(
         enrichment::enrich_occurrences(
             &state.pool,

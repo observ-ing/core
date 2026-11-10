@@ -4,10 +4,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use axum::extract::{Path, Query, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::{IntoResponse, Redirect, Response};
 use axum::Json;
-use axum_extra::extract::CookieJar;
 use chrono::{DateTime, Utc};
 use inaturalist_oauth::PkceVerifier;
 use jacquard_common::types::collection::Collection;
@@ -96,10 +95,10 @@ pub struct CallbackParams {
 /// which reads the marker query parameter to say how it went.
 pub async fn callback(
     State(state): State<AppState>,
-    cookies: CookieJar,
+    headers: HeaderMap,
     Query(params): Query<CallbackParams>,
 ) -> Response {
-    match link_account(&state, &cookies, params).await {
+    match link_account(&state, &headers, params).await {
         Ok(login) => {
             info!(login = %login, "Linked iNaturalist account");
             Redirect::to("/settings?inat-linked=1").into_response()
@@ -113,7 +112,7 @@ pub async fn callback(
 
 async fn link_account(
     state: &AppState,
-    cookies: &CookieJar,
+    headers: &HeaderMap,
     params: CallbackParams,
 ) -> Result<String, AppError> {
     let inat = inat(state)?;
@@ -121,7 +120,7 @@ async fn link_account(
     let (Some(code), Some(oauth_state)) = (params.code, params.state) else {
         return Err(AppError::BadRequest("Authorization was not granted".into()));
     };
-    let user = auth::require_auth(&state.pool, cookies)
+    let user = auth::require_auth(&state.pool, headers)
         .await
         .map_err(|_| AppError::Unauthorized)?;
 

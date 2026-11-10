@@ -131,6 +131,14 @@ pub struct AppState {
     pub ingester_pool: Option<sqlx::PgPool>,
 }
 
+/// Lets extractors that only need the database (e.g. [`crate::auth::AuthUser`])
+/// take any state that holds a pool.
+impl axum::extract::FromRef<AppState> for PgPool {
+    fn from_ref(state: &AppState) -> Self {
+        state.pool.clone()
+    }
+}
+
 /// Create an OAuthClient.
 ///
 /// When `public_url` is provided (production), uses `AtprotoClientMetadata`

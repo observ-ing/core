@@ -80,7 +80,7 @@ pub struct NotificationListResponse {
     operation_id = "list_notifications",
     tag = "notifications",
     params(ListParams),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of notifications", body = NotificationListResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),
@@ -131,7 +131,7 @@ pub async fn list(
     path = "/api/notifications/unread-count",
     operation_id = "get_unread_notification_count",
     tag = "notifications",
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The unread count", body = UnreadCountResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),
@@ -159,7 +159,7 @@ pub struct MarkReadBody {
     operation_id = "mark_notifications_read",
     tag = "notifications",
     request_body = MarkReadBody,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The notifications were marked read", body = SuccessResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),

@@ -88,7 +88,7 @@ pub struct EnrichedIdentifyResponse {
     operation_id = "identify_species",
     tag = "species-id",
     request_body = IdentifyRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "Ranked suggestions", body = EnrichedIdentifyResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),
@@ -145,7 +145,7 @@ pub struct StatusQuery {
     operation_id = "get_species_id_status",
     tag = "species-id",
     params(StatusQuery),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "Whether the service is warm, and if not, roughly how long it will take", body = SpeciesIdStatus),
         (status = 401, description = "Not signed in", body = ErrorResponse),

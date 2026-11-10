@@ -54,7 +54,7 @@ pub struct UploadLimitResponse {
     get,
     path = "/api/user/upload-limit",
     tag = "media",
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The viewer's per-photo upload limit", body = UploadLimitResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),
