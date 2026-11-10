@@ -392,7 +392,7 @@ export function LocationPicker({
         renderOption={(props, option) => {
           const { key, ...otherProps } = props;
           return (
-            <Box component="li" key={key} {...otherProps} sx={{ fontSize: "0.875rem" }}>
+            <Box component="li" key={key} {...otherProps} sx={{ typography: "body2" }}>
               {option.display_name}
             </Box>
           );
