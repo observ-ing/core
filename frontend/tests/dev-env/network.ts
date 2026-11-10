@@ -181,6 +181,8 @@ export function devEnvVars(dev: DevEnv): Record<string, string> {
     // The heartbeat's lag probe connects via tokio_tungstenite, which needs a
     // ws:// scheme — point it at the same firehose, ws-form.
     LAG_PROBE_RELAY_URL: dev.endpoints.pdsWsUrl,
+    // Lets specs read and write the test account's repo directly.
+    DEVENV_PDS_URL: dev.endpoints.pdsUrl,
     // Account creds for the Playwright auth setup.
     DEVENV_DID: dev.account.did,
     DEVENV_HANDLE: dev.account.handle,
