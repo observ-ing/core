@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { Box, Button, IconButton, Typography, type ButtonProps } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { phoneCaptionFontSize } from "../../common/layoutSx";
+import { phoneBarTitleSx, phoneCaptionFontSize } from "../../common/layoutSx";
 
 /** Clears the home indicator on phones that draw one over the page. */
 const SAFE_BOTTOM = "env(safe-area-inset-bottom, 0px)";
@@ -112,7 +112,7 @@ export function PhoneStep({
           <ArrowBackIcon />
         </IconButton>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography component="h1" noWrap sx={{ fontWeight: 700, fontSize: 17 }}>
+          <Typography component="h1" noWrap sx={phoneBarTitleSx}>
             {title}
           </Typography>
           {subtitle && (

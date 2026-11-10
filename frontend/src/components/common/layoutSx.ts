@@ -27,6 +27,9 @@ export const finePrintFontSize = "0.65rem";
 /** Secondary-line font size on the phone batch screens (row labels, subtitles, tab captions). */
 export const phoneCaptionFontSize = 13;
 
+/** Title text in the phone batch top bars (step header, selection-mode bar). */
+export const phoneBarTitleSx = { fontWeight: 700, fontSize: 17 } as const;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 
