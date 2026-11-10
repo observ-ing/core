@@ -1,0 +1,4608 @@
+{
+ "/api/feeds/explore?limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzvx3lfxlr22",
+    "cid": "bafyreifp2zppaefj7ylvexj2jan2j6ydotdbtibecmzktqiptvyzsq7aza",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": null,
+    "effectiveTaxonomy": null,
+    "identificationCount": 0,
+    "eventDate": "2026-11-09T22:12:00.000Z",
+    "location": {
+     "latitude": 37.766434,
+     "longitude": -122.280655,
+     "uncertaintyMeters": 50
+    },
+    "occurrenceRemarks": "This is just a test. Let's see if a remark gets saved",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-09T22:12:48.323142+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA",
+     "NO_CONSENSUS_ID"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/4wnkwnbb5h4xk",
+    "cid": "bafyreib4s2viw6kisgrhhm2cfo4w2puvl4qbjrwhvulaznbhv3ds3hqa3m",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Brephidium exilis",
+    "effectiveTaxonomy": {
+     "scientificName": "Brephidium exilis",
+     "taxonId": "https://www.gbif.org/species/1932172",
+     "vernacularName": "Western Pygmy-Blue",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Lycaenidae",
+     "genus": "Brephidium"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T10:57:45-08:00",
+    "location": {
+     "latitude": 37.7665729,
+     "longitude": -122.2804432
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigfjr4sysvzjt4gykge74j4cwszt2lxwblvyzdnxsppwgt3pywaeq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-11-09T06:33:11.825634+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "COORDINATES_IMPRECISE"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjh3jmx22",
+    "cid": "bafyreiahtouz2ejwxwqimjgrv3ygj4vcrvrv2vv3chdp4ldr74oeazkpw4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Urile pelagicus",
+    "effectiveTaxonomy": {
+     "scientificName": "Urile pelagicus",
+     "taxonId": "https://www.gbif.org/species/11042913",
+     "vernacularName": "Pelagic Cormorant",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Suliformes",
+     "family": "Phalacrocoracidae",
+     "genus": "Phalacrocorax"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.76730741094693,
+     "longitude": -122.28219997159268,
+     "uncertaintyMeters": 162
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicsqbxcdodiafkec3o7rmprqumq67yfqnnjxeg3mittxngoxc7vfi",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737478",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.031534+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjgh2r522",
+    "cid": "bafyreibk2avaafcfcznfkbju7poxwo4d5iebicxb7buqzfrchgshagfic4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Uria aalge",
+    "effectiveTaxonomy": {
+     "scientificName": "Uria aalge",
+     "taxonId": "https://www.gbif.org/species/2481342",
+     "vernacularName": "Common Murre",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Alcidae",
+     "genus": "Uria"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:42:00.000Z",
+    "location": {
+     "latitude": 37.76765885095941,
+     "longitude": -122.27737031144872,
+     "uncertaintyMeters": 102
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifcpb6pp5ohtnw5nttnylqkrt4k3dbq5v7b25as2qvtxz2nzhvjve",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737469",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:04.360958+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt5dv2222",
+    "cid": "bafyreihk27maskddukb2o4gjg7mk6znmmjjxeelcbpaljtvpfjjil32v2y",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Haematopus bachmani",
+    "effectiveTaxonomy": {
+     "scientificName": "Haematopus bachmani",
+     "taxonId": "https://www.gbif.org/species/2480272",
+     "vernacularName": "Black Oystercatcher",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Haematopodidae",
+     "genus": "Haematopus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75236838101035,
+     "longitude": -122.24508614711688,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigold7fqanevkop5y5jg53rpkmclexpwp4v64ig7zy4qxcnjchgu4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736304",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:36.622096+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt4llq522",
+    "cid": "bafyreic6w5uwiq4n5bdfl5x7mxosc47u3jt7nyduimbaskrwnqbp2i25qy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Sterna forsteri",
+    "effectiveTaxonomy": {
+     "scientificName": "Sterna forsteri",
+     "taxonId": "https://www.gbif.org/species/5229247",
+     "vernacularName": "Forster's Tern",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Laridae",
+     "genus": "Sterna"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75233201760356,
+     "longitude": -122.24497678191788,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigcujrdkfx73d723wryzgvzdg4ora33cz2oixco4jtrvdg2wudbji",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736286",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:35.826131+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt34l5522",
+    "cid": "bafyreihzwisznu75uljjiihmyzjw5lxav36kvqfklsf6nwj2pgy32dy6wy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Numenius hudsonicus",
+    "effectiveTaxonomy": {
+     "scientificName": "Numenius hudsonicus",
+     "taxonId": "https://www.gbif.org/species/4408523",
+     "vernacularName": "Hudsonian Curlew",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Numenius"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:28:00.000Z",
+    "location": {
+     "latitude": 37.751925571634914,
+     "longitude": -122.24353350411894,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiabxokhrvjwvxnw2n4vkyz656tq7u4mmjfzgbfqmkpzvxg4l5m5lu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736273",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:34.285427+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt2azz222",
+    "cid": "bafyreien5qv52ieguvtb2b6nxre3t5oybujj6apuei2afcupmgspxcy5v4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa semipalmata",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa semipalmata",
+     "taxonId": "https://www.gbif.org/species/5789298",
+     "vernacularName": "Willet",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75233201760356,
+     "longitude": -122.24497678191788,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreihe5b2ogdjbu36qva3kskerypuj5d3scdd2fd2ppjrsbc5gf2baou",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736258",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:33.383153+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsyzel722",
+    "cid": "bafyreifjvw7tzlnvanol527manl456ik5k7aykbl3rid32txenyfgd6fji",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Zenaida macroura",
+    "effectiveTaxonomy": {
+     "scientificName": "Zenaida macroura",
+     "taxonId": "https://www.gbif.org/species/2495347",
+     "vernacularName": "Mourning Dove",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Columbiformes",
+     "family": "Columbidae",
+     "genus": "Zenaida"
+    },
+    "identificationCount": 2,
+    "eventDate": "2026-11-07T17:56:00.000Z",
+    "location": {
+     "latitude": 37.75223355861711,
+     "longitude": -122.2445519106408,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiap3zarqq2lbdvm3ds35kbzvvlskfy5qrmdl2jhbrllrgwhpbtbji",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736249",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:32.083254+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsxqlkr22",
+    "cid": "bafyreib2ozvmuefdoixgnpq6apsudjxy2zxvuv75vlvrv3tjrqx4p2i3kq",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Larus occidentalis",
+    "effectiveTaxonomy": {
+     "scientificName": "Larus occidentalis",
+     "taxonId": "https://www.gbif.org/species/9656686",
+     "vernacularName": "Western Gull",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Laridae",
+     "genus": "Larus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:27:00.000Z",
+    "location": {
+     "latitude": 37.751867405289495,
+     "longitude": -122.2437325100898,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibngogda4ixsrn47pmafj4qjmkuo6q2u2tzebkbvhdkaqkniddtki",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736234",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:30.746920+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsw4mn422",
+    "cid": "bafyreib3vddiro7o5wlsxu6jopi5vcfnioopwpqq5pvxsvo7aodajw5zxu",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Anas acuta",
+    "effectiveTaxonomy": {
+     "scientificName": "Anas acuta",
+     "taxonId": "https://www.gbif.org/species/2498112",
+     "vernacularName": "Northern Pintail",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Anseriformes",
+     "family": "Anatidae",
+     "genus": "Anas"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:13:00.000Z",
+    "location": {
+     "latitude": 37.75242400100431,
+     "longitude": -122.24523719605116,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiduwwaeoosir2z3qrftwdd7hfx55jbkiqzqbfrx2o4vhucmpai67i",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736222",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:29.044084+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsvewmy22",
+    "cid": "bafyreicci3jsgh7m6syuue5ykoiwxnsqljvjp3rovewjzuzifgrcs77gku",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Actitis macularius",
+    "effectiveTaxonomy": {
+     "scientificName": "Actitis macularius",
+     "taxonId": "https://www.gbif.org/species/2481798",
+     "vernacularName": "Spotted Sandpiper",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Actitis"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:16:00.000Z",
+    "location": {
+     "latitude": 37.75228312306835,
+     "longitude": -122.24474742297396,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreihhsudsz3mnzbfmqmxgnlzgdiews5zgv4u7yjf5yukhoyh2qpz5ta",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736210",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:28.267887+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsupnym22",
+    "cid": "bafyreig5apcpyd5jcw5zyg4f2ljjlqm5pd5c2rnpxzjnap24d26nloc5gy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa",
+     "taxonId": "https://www.gbif.org/species/2481709",
+     "vernacularName": "Shanks, Tattlers, And Allies",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:11:00.000Z",
+    "location": {
+     "latitude": 37.75256318739424,
+     "longitude": -122.2455671661409,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiglkayrvf3j3mlygoblldwd47wzhdn3sdzz5ksg2p4bhj4tf2djue",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736190",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:27.570916+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsrehud22",
+    "cid": "bafyreibjxbikyxzpqgnd5p6h75diowe3uiskzxe3od6brx2g3adfjdqw7e",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Limnodromus",
+    "effectiveTaxonomy": {
+     "scientificName": "Limnodromus",
+     "taxonId": "https://www.gbif.org/species/2481669",
+     "vernacularName": "Dowitchers",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Limnodromus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:02:00.000Z",
+    "location": {
+     "latitude": 37.7528022739878,
+     "longitude": -122.24634802490758,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiepfd7lvy2mxxtzivrxshnjehbzlbuj5cthnxoeodwv3eprailxlq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736162",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:24.058458+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsqo2ci22",
+    "cid": "bafyreieie5n4dwstyumnjw5vmspunly5k5vma3cwcjz5fnop2itcwze6ui",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Anas platyrhynchos",
+    "effectiveTaxonomy": {
+     "scientificName": "Anas platyrhynchos",
+     "taxonId": "https://www.gbif.org/species/9761484",
+     "vernacularName": "Mallard",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Anseriformes",
+     "family": "Anatidae",
+     "genus": "Anas"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:11:00.000Z",
+    "location": {
+     "latitude": 37.7526468364003,
+     "longitude": -122.24577414555162,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifiwedzhy5gfyls7vzmqfd7rc6vww2xsxohol6yxfymhxcqwssuii",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736105",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:23.323679+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubspxi7c22",
+    "cid": "bafyreifnnkhjxkl3as63b4qhn6evumnxau47yq37r2uhkzgytv5ljfwqau",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa",
+     "taxonId": "https://www.gbif.org/species/2481709",
+     "vernacularName": "Shanks, Tattlers, And Allies",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:10:00.000Z",
+    "location": {
+     "latitude": 37.752674888110526,
+     "longitude": -122.24585973523725,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreib7ms7xulhazeenmw6zdjmgd2qx5jdd2q756xfmg7c555lme5425m",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigs25egqy34zgmpuiak7g4qopeg6lz76hmw52jzmnhn22sjo4ghui",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736122",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:22.584250+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsnvqny22",
+    "cid": "bafyreiahxmphhfloooh6d5p7pp5uelbk3txguabu6qmwr56hixqdqh6sei",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Psaltriparus minimus",
+    "effectiveTaxonomy": {
+     "scientificName": "Psaltriparus minimus",
+     "taxonId": "https://www.gbif.org/species/2494988",
+     "vernacularName": "American Bushtit",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Passeriformes",
+     "family": "Aegithalidae",
+     "genus": "Psaltriparus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:10:00.000Z",
+    "location": {
+     "latitude": 37.75270292883861,
+     "longitude": -122.24597052954174,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifun37eqmio7pwjti6tfwa4grkjksw3uepqkdsoeyr65mg4cv7nmy",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736090",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:20.430232+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsko6sb22",
+    "cid": "bafyreifchgimovvpx5a2i4soew5lvfkwfkoyo4zgneut3ikizi5w2w5h2i",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Himantopus mexicanus",
+    "effectiveTaxonomy": {
+     "scientificName": "Himantopus mexicanus",
+     "taxonId": "https://www.gbif.org/species/5229128",
+     "vernacularName": "Black-necked Stilt",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Recurvirostridae",
+     "genus": "Himantopus"
+    },
+    "identificationCount": 2,
+    "eventDate": "2026-11-07T16:59:00.000Z",
+    "location": {
+     "latitude": 37.752883034549704,
+     "longitude": -122.24655718367887,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreig4xgz7iorbbfn2sw6awrvh6ulmjtb33xshzvrhhr2obvdycghpiu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736083",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:17.036824+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsjyb4h22",
+    "cid": "bafyreic4e4w6aqbuee6t5bjfuv3gligrv7loez6vmsxgihs4ts6uk3ip6i",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Recurvirostra americana",
+    "effectiveTaxonomy": {
+     "scientificName": "Recurvirostra americana",
+     "taxonId": "https://www.gbif.org/species/2480258",
+     "vernacularName": "American Avocet",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Recurvirostridae",
+     "genus": "Recurvirostra"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:58:00.000Z",
+    "location": {
+     "latitude": 37.75288823805908,
+     "longitude": -122.24677426288372,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigujy6ptbjpexiajmuywbmqfsrk5itqpc6x5r46ifxuzuo5ebgqeu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736054",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:16.318304+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "cursor": "2026-11-09T06:19:16.318304+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsjyb4h22",
+  "meta": {
+   "filters": {
+    "taxon": null,
+    "kingdom": null,
+    "startDate": null,
+    "endDate": null
+   }
+  }
+ },
+ "/api/feeds/explore?cursor=2026-11-09T06:19:16.318304+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsjyb4h22&limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsjar4b22",
+    "cid": "bafyreifondyzijwb7noeadrqxggmvvo4ab4fiy7vnorf55q6v4ewsb3id4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Thalasseus elegans",
+    "effectiveTaxonomy": {
+     "scientificName": "Thalasseus elegans",
+     "taxonId": "https://www.gbif.org/species/2481285",
+     "vernacularName": "Elegant Tern",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Laridae",
+     "genus": "Thalasseus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:57:00.000Z",
+    "location": {
+     "latitude": 37.75289290827001,
+     "longitude": -122.24678415044178,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreie4sijspakdpmvekeklvei6fjlo3qt67eaecucxdo5dslvszurlry",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736074",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:15.548249+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubshe5zd22",
+    "cid": "bafyreiczzp46usn34rwf5btaz6en7chdsgps5zq5tqmtyhcnrxrp2scacy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Egretta thula",
+    "effectiveTaxonomy": {
+     "scientificName": "Egretta thula",
+     "taxonId": "https://www.gbif.org/species/2480873",
+     "vernacularName": "Snowy Egret",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Pelecaniformes",
+     "family": "Ardeidae",
+     "genus": "Egretta"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:52:00.000Z",
+    "location": {
+     "latitude": 37.75307400370799,
+     "longitude": -122.24790224296642,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreidick2otol4ro5ebohauqoctvlfnbptmujrjdwujeifueb5vw2idm",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736034",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:13.562618+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsgdetq22",
+    "cid": "bafyreigei4fj4h4pi2wyryq6wp3wawmlttqkiibvuza5kags2egp5y432q",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Pluvialis squatarola",
+    "effectiveTaxonomy": {
+     "scientificName": "Pluvialis squatarola",
+     "taxonId": "https://www.gbif.org/species/2480327",
+     "vernacularName": "Grey Plover",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Charadriidae",
+     "genus": "Pluvialis"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:38:00.000Z",
+    "location": {
+     "latitude": 37.753021233924656,
+     "longitude": -122.2479110748398,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiguw6bk7bcrfqmogoyjtujmq2d7yr62l4ujntohqhdl54ia766cxa",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736018",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:12.488264+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsfmhly22",
+    "cid": "bafyreie3unxkr6mbxs3erp6ec6v3rlynhqq5lzi2ccp3hcd4b6jyziytiy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Sayornis nigricans",
+    "effectiveTaxonomy": {
+     "scientificName": "Sayornis nigricans",
+     "taxonId": "https://www.gbif.org/species/2483612",
+     "vernacularName": "Black Phoebe",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Passeriformes",
+     "family": "Tyrannidae",
+     "genus": "Sayornis"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:38:00.000Z",
+    "location": {
+     "latitude": 37.753021233924656,
+     "longitude": -122.2479110748398,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibpuxyv3drtrfsyoyfr22tz25dp76obfr7ha3f3vd5chcq2g77s6e",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736009",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:11.737423+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsdohhu22",
+    "cid": "bafyreigblptrj4mfhlf2frnrx5hqmvh4hivruorq7l7hrtu2c23rgkvm2a",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Numenius americanus",
+    "effectiveTaxonomy": {
+     "scientificName": "Numenius americanus",
+     "taxonId": "https://www.gbif.org/species/2481794",
+     "vernacularName": "Long-billed Curlew",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Numenius"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:37:00.000Z",
+    "location": {
+     "latitude": 37.753021233924656,
+     "longitude": -122.2479110748398,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreid73rnsskfesy5j7ifj6rwfu7oprdgaijvlygxtaxkuwp6pkwjxjm",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413735999",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:09.705682+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubscu7pr22",
+    "cid": "bafyreicxauxhnjwio5oanmzxycevwhsfbesd52iiy6yf5rnr4cesdqgrai",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Calidris mauri",
+    "effectiveTaxonomy": {
+     "scientificName": "Calidris mauri",
+     "taxonId": "https://www.gbif.org/species/2481742",
+     "vernacularName": "Western Sandpiper",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Calidris"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:35:00.000Z",
+    "location": {
+     "latitude": 37.753021233924656,
+     "longitude": -122.2479110748398,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreieh5scaw3uo2lkgc6bzjapznbwslnmj4h3aeoo4hyt2ae42rjsjoq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413735939",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:08.845767+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubscbfey22",
+    "cid": "bafyreibp324z2o3jd5uqhydl6gmdh3hcsojb5gznqu7lfpq5vl774ginqq",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Calidris alba",
+    "effectiveTaxonomy": {
+     "scientificName": "Calidris alba",
+     "taxonId": "https://www.gbif.org/species/2481748",
+     "vernacularName": "Sanderling",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Calidris"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:35:00.000Z",
+    "location": {
+     "latitude": 37.753021233924656,
+     "longitude": -122.2479110748398,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibjkr3ciuunuajyjhexfqzz76lm5tazbamcsbp57lrek7efq6exii",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413735967",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:08.229002+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/5rojryozdb54e",
+    "cid": "bafyreie4sowknzkczl7htfgzfqlhnuxwlyhscm345x2cwwfmzgwvvcfpj4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Hermissenda opalescens",
+    "effectiveTaxonomy": {
+     "scientificName": "Hermissenda opalescens",
+     "taxonId": "https://www.gbif.org/species/8542531",
+     "vernacularName": "Opalescent Nudibranch",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Myrrhinidae",
+     "genus": "Hermissenda"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T17:55:10-07:00",
+    "location": {
+     "latitude": 37.2468367,
+     "longitude": -122.4193533
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicgirkwrhks7ej6hlztxhw5hoqz4giexo4ukbglqv4ss6mehzquce",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721323",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:32.226718+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "COORDINATES_IMPRECISE"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/4tf3srqrhg2r3",
+    "cid": "bafyreig2gxureg7rnieq3kraylwysxavnvgfmo7r4s6rkukzkvyr5c3l6a",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Ceratodoris rosacea",
+    "effectiveTaxonomy": {
+     "scientificName": "Ceratodoris rosacea"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T17:07:59-07:00",
+    "location": {
+     "latitude": 37.2468143,
+     "longitude": -122.4190448,
+     "uncertaintyMeters": 188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreif7447vbpohakyva2jhls4w4f3ontd3olyuaid5fdushjjhl4adty",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721308",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:32.118581+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/b4doixustalxd",
+    "cid": "bafyreiar7ueomvhblqv7oe7rw2b4asqx6fgvlna5kqc2odnpwb6suapuee",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Diaulula sandiegensis",
+    "effectiveTaxonomy": {
+     "scientificName": "Diaulula sandiegensis",
+     "taxonId": "https://www.gbif.org/species/2292473",
+     "vernacularName": "ringed doris",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Discodorididae",
+     "genus": "Diaulula"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T16:59:39-07:00",
+    "location": {
+     "latitude": 37.2468143,
+     "longitude": -122.4190448,
+     "uncertaintyMeters": 188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreie5y3ouc45osplojy34psfuukkveqyfdrwj5niudobuvcpoislkfa",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721302",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:32.017546+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/2kfdcvxiqemhf",
+    "cid": "bafyreibbjnglao2x4wedghcou27qwpnrxeaistyrept4t3sin6nsqdctm4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Doris montereyensis",
+    "effectiveTaxonomy": {
+     "scientificName": "Doris montereyensis",
+     "taxonId": "https://www.gbif.org/species/6519876",
+     "vernacularName": "(False) Sea Lemon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Dorididae",
+     "genus": "Doris"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T17:23:46-07:00",
+    "location": {
+     "latitude": 37.2468143,
+     "longitude": -122.4190448,
+     "uncertaintyMeters": 188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibscds2gx5iuqnvnpt5hri3lcy5i4lpu5r2mhctv57um23657myxa",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721288",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:31.922080+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/7nqekijws3kux",
+    "cid": "bafyreiee2nj7aybw5pk2parqt3s77j7ki3rt3qeydjvyrpuymoepbh72ny",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Geitodoris heathi",
+    "effectiveTaxonomy": {
+     "scientificName": "Geitodoris heathi",
+     "taxonId": "https://www.gbif.org/species/2292465",
+     "vernacularName": "gritty doris",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Discodorididae",
+     "genus": "Geitodoris"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T17:23:12-07:00",
+    "location": {
+     "latitude": 37.2468143,
+     "longitude": -122.4190448,
+     "uncertaintyMeters": 188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicgnbth55bbjq2bhh7o4egiusnvqyngx4fxwsxehszm5b3dbqnjdi",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721274",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:31.638987+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/4smlnzlagrkqm",
+    "cid": "bafyreidjthlkpg2r3zmxr62n7yc6z66pqh3orssyzjltluagymkz5bkgm4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Acanthodoris rhodoceras",
+    "effectiveTaxonomy": {
+     "scientificName": "Acanthodoris rhodoceras",
+     "taxonId": "https://www.gbif.org/species/2292109",
+     "vernacularName": "black-tipped spiny doris",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Onchidorididae",
+     "genus": "Acanthodoris"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T17:58:45-07:00",
+    "location": {
+     "latitude": 37.2468383,
+     "longitude": -122.41936
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibh35jqxqxlyjcu3rkfjd76daufk727fl6yxqnhplo2k45tdfebku",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721253",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T04:21:31.548222+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "COORDINATES_IMPRECISE"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/acp523f4qqlyq",
+    "cid": "bafyreigph7c2mmhktqcst26vzow7g2rrovpsiwtucwoj2xgubza6uib65y",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Cadlina modesta",
+    "effectiveTaxonomy": {
+     "scientificName": "Cadlina modesta",
+     "taxonId": "https://www.gbif.org/species/2292412",
+     "vernacularName": "modest cadlina",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Cadlinidae",
+     "genus": "Cadlina"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T18:15:54-07:00",
+    "location": {
+     "latitude": 37.2468143,
+     "longitude": -122.4190448,
+     "uncertaintyMeters": 188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigx3kktbgelsibw4hhpgg4du7ms3ong4ujl34ak4hvsvnvssxisz4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721186",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T03:49:37.610571+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/azkdapjnnewmx",
+    "cid": "bafyreia2jj2sf2z3abnvkas5356mc3fbfmdgwgqyoecyke37qeoia2euke",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Doriopsilla albopunctata",
+    "effectiveTaxonomy": {
+     "scientificName": "Doriopsilla albopunctata",
+     "taxonId": "https://www.gbif.org/species/2292449",
+     "vernacularName": "white-spot porostome",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Mollusca",
+     "class": "Gastropoda",
+     "order": "Nudibranchia",
+     "family": "Dendrodorididae",
+     "genus": "Doriopsilla"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-28T18:17:44-07:00",
+    "location": {
+     "latitude": 37.2465333,
+     "longitude": -122.4193033
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibvfcwfu7p5hcechggdsmu6fkfcbru6bbrmv6gahqwge63g7z5r7e",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413721152",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T03:48:14.287606+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "COORDINATES_IMPRECISE"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mztqge3xyr22",
+    "cid": "bafyreic75uez3we7hjyg43zqofsknfb46vlsoqoidxfhfcx7fxwqehavtq",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Sus scrofa",
+    "effectiveTaxonomy": {
+     "scientificName": "Sus scrofa",
+     "taxonId": "https://www.gbif.org/species/7705930",
+     "vernacularName": "Wild Boar",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Mammalia",
+     "order": "Artiodactyla",
+     "family": "Suidae",
+     "genus": "Sus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-31T23:51:00.000Z",
+    "location": {
+     "latitude": 37.380943,
+     "longitude": -121.7297,
+     "uncertaintyMeters": 6
+    },
+    "organismQuantity": "8",
+    "organismQuantityType": "individuals",
+    "occurrenceRemarks": "More than 8, there were a bunch that ran off and others I couldn't get in frame.",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreib55stvbev2dzz3ea6gdeuau7gdr6efgybg34bp3qarlzq6okrn3a",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiewxnnlcgsl52acelowmaglpryiuc2saw24j4pge5tca5apch57ri",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413691966",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T01:08:13.963343+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/bse5cvsug4mb2",
+    "cid": "bafyreibqvk6qoqqyhvcjlhc27ja43cznxfvj6c56uldc7x2b3hrx43mqme",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Burnsius communis",
+    "effectiveTaxonomy": {
+     "scientificName": "Burnsius communis",
+     "taxonId": "https://www.gbif.org/species/11670842",
+     "vernacularName": "Common Checkered-Skipper",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Hesperiidae",
+     "genus": "Burnsius"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-08",
+    "location": {
+     "latitude": 37.8217854,
+     "longitude": -122.3253044,
+     "uncertaintyMeters": 616
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "occurrenceRemarks": "Being eaten by a Black Phoebe",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-08T23:28:49.210600+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/azunjuu4sxki4",
+    "cid": "bafyreie32ukdq37eqho6ontmylecwdoih2fewczk6c3yi6ii5cv54zk5eu",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Lon melane",
+    "effectiveTaxonomy": {
+     "scientificName": "Lon melane",
+     "taxonId": "https://www.gbif.org/species/11892494",
+     "vernacularName": "Umber Skipper",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Hesperiidae",
+     "genus": "Lon"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-05T00:00:00.000Z",
+    "location": {
+     "latitude": 37.801913,
+     "longitude": -122.247547,
+     "uncertaintyMeters": 362
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "occurrenceRemarks": "I was surprised to see courtship across genera like this.",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreif6vkxnw7xize4lpplsmkt7y6hzfeo4xcpmy46xemyf74qoe6xdcm",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-11-08T21:13:09.315651+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/2j76j4emonzow",
+    "cid": "bafyreidcjk67kwxussnbbnqawln2dpz6zqzcgstmm6mu3d5djcdgomyk34",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Danaus plexippus",
+    "effectiveTaxonomy": {
+     "scientificName": "Danaus plexippus",
+     "taxonId": "https://www.gbif.org/species/5133088",
+     "vernacularName": "Monarch",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Nymphalidae",
+     "genus": "Danaus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07",
+    "location": {
+     "latitude": 37.7676871,
+     "longitude": -122.2780211,
+     "uncertaintyMeters": 278
+    },
+    "organismQuantity": "2",
+    "organismQuantityType": "individuals",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-07T20:44:40.212416+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/bzmjilooe2p6f",
+    "cid": "bafyreigayweypmqtwlu5fgwmo7nqygu2pt2ayajbjakxlnbrpkhekgpuqm",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Brephidium exilis",
+    "effectiveTaxonomy": {
+     "scientificName": "Brephidium exilis",
+     "taxonId": "https://www.gbif.org/species/1932172",
+     "vernacularName": "Western Pygmy-Blue",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Lycaenidae",
+     "genus": "Brephidium"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07",
+    "location": {
+     "latitude": 37.7676871,
+     "longitude": -122.2780211,
+     "uncertaintyMeters": 278
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-07T20:44:40.025675+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA"
+    ]
+   }
+  ],
+  "cursor": "2026-11-07T20:44:40.025675+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/bzmjilooe2p6f",
+  "meta": {
+   "filters": {
+    "taxon": null,
+    "kingdom": null,
+    "startDate": null,
+    "endDate": null
+   }
+  }
+ },
+ "/api/feeds/explore?kingdom=Plantae&limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mytlct22dw22",
+    "cid": "bafyreig2k7l6moqarp3atc3nsz4gbqgfno53mmxlzph366bvqftj46hrry",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Corallorhiza maculata",
+    "effectiveTaxonomy": {
+     "scientificName": "Corallorhiza maculata",
+     "taxonId": "https://www.gbif.org/species/2797273",
+     "vernacularName": "spotted coralroot",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Liliopsida",
+     "order": "Asparagales",
+     "family": "Orchidaceae",
+     "genus": "Corallorhiza"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-24T21:44:00.000Z",
+    "location": {
+     "latitude": 37.78275,
+     "longitude": -122.12915,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreif2i2syymvlya4lzmyu2baaxojdv4d2b5zkozn6tmhz5ioifnd73i",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/411116467",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-10-27T06:11:34.996001+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjpqetx22",
+    "cid": "bafyreigvlzip62sdbm6jwvu7vlukf7cm2lscvcv5oqibgyysobmponr2xe",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Phyla nodiflora",
+    "effectiveTaxonomy": {
+     "scientificName": "Phyla nodiflora",
+     "taxonId": "https://www.gbif.org/species/5341112",
+     "vernacularName": "Frogfruit",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Lamiales",
+     "family": "Verbenaceae",
+     "genus": "Phyla"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:33:00.000Z",
+    "location": {
+     "latitude": 37.921413888888885,
+     "longitude": -122.17305,
+     "uncertaintyMeters": 2
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreidownay6lnksou5bir3zvhgdrbtjkewtjl6nu2akx7u5gnqnrgsoa",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/409561533",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-10-19T04:23:14.228047+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjmcxd322",
+    "cid": "bafyreidgvp3ccetvar6okuizbdw3nt6jggjv623ib6vj46jblj4maelnai",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Arbutus menziesii",
+    "effectiveTaxonomy": {
+     "scientificName": "Arbutus menziesii",
+     "taxonId": "https://www.gbif.org/species/2882802",
+     "vernacularName": "Pacific Madrone",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Ericales",
+     "family": "Ericaceae",
+     "genus": "Arbutus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:45:00.000Z",
+    "location": {
+     "latitude": 37.921438888888886,
+     "longitude": -122.18077222222225,
+     "uncertaintyMeters": 5
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigntjuwruhfz7snb3z3fghjzagbqafcpjouh5adtjaf2fo5k457pi",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/409564605",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-10-19T04:23:10.642482+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjlo3dz22",
+    "cid": "bafyreifw6x3l63lxy537yfjm7i5fpwgbyuom3wquxixz5ge3hpsvllrrpe",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Symphyotrichum",
+    "effectiveTaxonomy": {
+     "scientificName": "Symphyotrichum",
+     "taxonId": "https://www.gbif.org/species/3151391",
+     "vernacularName": "American Asters",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Symphyotrichum"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:17:00.000Z",
+    "location": {
+     "latitude": 37.92153611111111,
+     "longitude": -122.16578611111112,
+     "uncertaintyMeters": 5
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreidvlpd6xingg2mi2h2tceqot7abtp2aajsx2xdhry2qux5u63jfuu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigmejcaovfybmcim54hgr5d7d6voorf7hyadqr6gtjd7pb5hwsy3q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreihci4be4naxzmd2adkq4dwjexq2w5jabs3ctxinnsvpx3emr6mh4q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigmlg2nrqal43xovsdigpk3wm7nhcw65lwqjdnhw7umetqhlcm6we",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigmb7ieoptijytkr2ny77njj37nx77z6rjd2vibren4kgomyf4lru",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/409598996",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-10-19T04:23:09.958484+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjk2pb322",
+    "cid": "bafyreicgdhrc2tqwbpaj535u54gq2aq6p4khb3eyqob3tgncgylkp27vfy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Acer macrophyllum",
+    "effectiveTaxonomy": {
+     "scientificName": "Acer macrophyllum",
+     "taxonId": "https://www.gbif.org/species/3189835",
+     "vernacularName": "Big-leaved Maple",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Sapindales",
+     "family": "Sapindaceae",
+     "genus": "Acer"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:44:00.000Z",
+    "location": {
+     "latitude": 37.92134722222222,
+     "longitude": -122.18033611111112,
+     "uncertaintyMeters": 3
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicjtno7ccjow3kzcolbw2kwbf7qh5nnr7ybxsuw4jl27kjwgjupn4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-10-19T04:23:08.274930+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjgfqlh22",
+    "cid": "bafyreifuwivzffh2qrurktzbyyhvjhnsi2fwnbmdt2h4r6vsccw5t3hcba",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Heteromeles arbutifolia",
+    "effectiveTaxonomy": {
+     "scientificName": "Heteromeles arbutifolia",
+     "taxonId": "https://www.gbif.org/species/5370154",
+     "vernacularName": "California-holly",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Rosales",
+     "family": "Rosaceae",
+     "genus": "Heteromeles"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:48:00.000Z",
+    "location": {
+     "latitude": 37.92088333333333,
+     "longitude": -122.18221944444446,
+     "uncertaintyMeters": 4
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreichwuu6jje4wcbpaxp5j3mxkm3bxth2tp75j3b6pnazqkg6v4zmqa",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-10-19T04:23:04.442430+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjdu7la22",
+    "cid": "bafyreibg2y4nl52tw7fkuv642d7l5ytmwsb4u2r5mls4d6666nvnwtyrea",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Fritillaria affinis",
+    "effectiveTaxonomy": {
+     "scientificName": "Fritillaria affinis",
+     "taxonId": "https://www.gbif.org/species/5300613",
+     "vernacularName": "checker lily",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Liliopsida",
+     "order": "Liliales",
+     "family": "Liliaceae",
+     "genus": "Fritillaria"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T22:33:00.000Z",
+    "location": {
+     "latitude": 37.922275,
+     "longitude": -122.1942138888889,
+     "uncertaintyMeters": 2
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibly4d4ohztqr5p32b7c2scvpinnftfcnrqtldyyoumvdmmvixmom",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-10-19T04:23:01.770808+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bjak7iu22",
+    "cid": "bafyreiahe6f3ismb63ivdovxvdlfay26djy4dt3cgqa4ldlnbhoz5fka64",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Dittrichia graveolens",
+    "effectiveTaxonomy": {
+     "scientificName": "Dittrichia graveolens",
+     "taxonId": "https://www.gbif.org/species/3101193",
+     "vernacularName": "Stinking Fleabane",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Dittrichia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T21:28:00.000Z",
+    "location": {
+     "latitude": 37.920986111111105,
+     "longitude": -122.170425,
+     "uncertaintyMeters": 5
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreib3bx2l7fhavif2a6pkcs6xz43nqjzxrwdkwo4hkqsfwoacdvoxxy",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicg4kdt4rbib7osrdn3243ksnnlnibqhmykkdhstdszmpfwxfyaii",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-10-19T04:22:58.297324+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3my7bj7cbbz22",
+    "cid": "bafyreih66yxzot23l4qyhamrvdirliwfif52ahi46cakk3dgu6lesvoepu",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Verbena",
+    "effectiveTaxonomy": {
+     "scientificName": "Verbena",
+     "taxonId": "https://www.gbif.org/species/2925470",
+     "vernacularName": "vervain",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Lamiales",
+     "family": "Verbenaceae",
+     "genus": "Verbena"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-10-18T23:02:00.000Z",
+    "location": {
+     "latitude": 37.921425,
+     "longitude": -122.17303333333334,
+     "uncertaintyMeters": 5
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigswwvlj4zdrso4bacn442znj3fw7scoztjvoietujkyuzpcgermq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibu4aeo75vyhzwykyxnsnsehj3zzqmelh7g5iu7jtdb6rbdxnvnki",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-10-19T04:22:56.988438+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:vozr2os4b4sxrxr6opde5js5/bio.lexicons.temp.v0-1.occurrence/3mw37zp4max27",
+    "cid": "bafyreiamkfufpko434j57kwdxxbmmw2cfrfgtohxds7bytbi46dmp26lcy",
+    "observer": {
+     "did": "did:plc:vozr2os4b4sxrxr6opde5js5",
+     "handle": "rwell.org",
+     "displayName": "Corey Farwell",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreigo2xe53rg7a7ajx27gwm5vm3kxztjjeo2fvw4f4trxwvaal24pfy"
+    },
+    "communityId": "Hypericum",
+    "effectiveTaxonomy": {
+     "scientificName": "Hypericum",
+     "taxonId": "https://www.gbif.org/species/3189452",
+     "vernacularName": "St. John's-wort",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Malpighiales",
+     "family": "Hypericaceae",
+     "genus": "Hypericum"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-07-31T19:12:00.000Z",
+    "location": {
+     "latitude": 44.255705,
+     "longitude": -74.245974,
+     "uncertaintyMeters": 302
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreiai47efbok4kd5tfuvnzdlube7qk5was3xdkziwfsqk4tcwgl5wfi",
+      "license": "https://creativecommons.org/licenses/by-nc/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-09-22T02:55:20.721795+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mudlmh2eng24",
+    "cid": "bafyreigqoqpkevnskbdlt6yswl746w52p2tlislrymrltd3zjspnhu42ku",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Calycadenia truncata",
+    "effectiveTaxonomy": {
+     "scientificName": "Calycadenia truncata",
+     "taxonId": "https://www.gbif.org/species/3093011",
+     "vernacularName": "Oregon western rosinweed",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Calycadenia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-08-29T20:51:00.000Z",
+    "location": {
+     "latitude": 37.885167,
+     "longitude": -121.911619,
+     "uncertaintyMeters": 11
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifm6ch5tw4gc3ts5wrhp6ztjyj2vrq6hbfo4a5beh7s6j6r337nrm",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-30T23:53:35.597927+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mub6m5rd3b2e",
+    "cid": "bafyreif3lulbkmjjp5k75hvvonksum2e24opra6q22qqyfynpv3tyalcei",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Epilobium canum",
+    "effectiveTaxonomy": {
+     "scientificName": "Epilobium canum",
+     "taxonId": "https://www.gbif.org/species/3189132",
+     "vernacularName": "California-fuchsia",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Myrtales",
+     "family": "Onagraceae",
+     "genus": "Epilobium"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-08-29T20:28:00.000Z",
+    "location": {
+     "latitude": 37.880336,
+     "longitude": -121.908614,
+     "uncertaintyMeters": 14
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibs5eayyikt2wvc5pfonvifink3ur3mii3ojwd3tjdtkgg7am4peu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-30T00:55:27.747876+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mu6kdfidau2a",
+    "cid": "bafyreibmfkdtaowcpurjmpvhpbqrilb4giqyt5xbyykstxbsbsae4nbqsi",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Canna",
+    "effectiveTaxonomy": {
+     "scientificName": "Canna",
+     "taxonId": "https://www.gbif.org/species/2762470",
+     "vernacularName": "Canna",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Liliopsida",
+     "order": "Zingiberales",
+     "family": "Cannaceae",
+     "genus": "Canna"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-08-28T23:14:00.000Z",
+    "location": {
+     "latitude": 37.807976,
+     "longitude": -122.243913,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreif7lromewx6adci4el4glnbsuqpxrolnjhuhkhde2ipwptvfgxrhq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-28T23:47:19.536833+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:vozr2os4b4sxrxr6opde5js5/bio.lexicons.temp.v0-1.occurrence/3mtni65jlcy2l",
+    "cid": "bafyreianifhmlruplncc4nfyempg6rchsy4km3ve45w7pdadlzwfjhubxe",
+    "observer": {
+     "did": "did:plc:vozr2os4b4sxrxr6opde5js5",
+     "handle": "rwell.org",
+     "displayName": "Corey Farwell",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreigo2xe53rg7a7ajx27gwm5vm3kxztjjeo2fvw4f4trxwvaal24pfy"
+    },
+    "communityId": "Heterotheca subaxillaris",
+    "effectiveTaxonomy": {
+     "scientificName": "Heterotheca subaxillaris",
+     "taxonId": "https://www.gbif.org/species/5401971",
+     "vernacularName": "Camphorweed",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Heterotheca"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-08-09T17:40:00.000Z",
+    "location": {
+     "latitude": 40.566545,
+     "longitude": -73.868176,
+     "uncertaintyMeters": 479
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreiht72hztp46dlyghrbvf3jt3q5hbjudyu7guppprsgdxkotiwzbkq",
+      "license": "https://creativecommons.org/licenses/by-nc/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-22T04:53:20.405664+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mtmvtqvgoa2e",
+    "cid": "bafyreifcjcfyflees3qqpjlamessap4tobekj7wzvo5j3cx3bhnk5po2ga",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Paspalum dilatatum",
+    "effectiveTaxonomy": {
+     "scientificName": "Paspalum dilatatum",
+     "taxonId": "https://www.gbif.org/species/2705565",
+     "vernacularName": "Dallis-grass",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Liliopsida",
+     "order": "Poales",
+     "family": "Poaceae",
+     "genus": "Paspalum"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-08-17T21:48:00.000Z",
+    "location": {
+     "latitude": 37.752414,
+     "longitude": -122.210344,
+     "uncertaintyMeters": 14
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiagvn64mmn2cvbhpw7ftzbcjrpqkkuriakze7vwmbilwxh6u4zt54",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreidfsat24orews4fhwu5dcqpbg6m44zsq23ovxtvg257nvpwwnn7k4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-21T23:25:24.238705+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mthw3vd3un2x",
+    "cid": "bafyreifgplfwx6ph2hef54u3uh2gnpyi7irrbr4mslk5cs2ouy6tnqtb7m",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Veronica",
+    "effectiveTaxonomy": {
+     "scientificName": "Veronica",
+     "taxonId": "https://www.gbif.org/species/3172047",
+     "vernacularName": "Speedwell",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Lamiales",
+     "family": "Plantaginaceae",
+     "genus": "Veronica"
+    },
+    "identificationCount": 2,
+    "eventDate": "2026-08-19T21:24:00.000Z",
+    "location": {
+     "latitude": 37.754104,
+     "longitude": -122.145841,
+     "uncertaintyMeters": 8
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiedp75ohamy3tlp5dxuqgnn6biy7xa7v2yewvtbhixx4uhn3xpvu4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-08-19T23:46:38.631929+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:r344gmanssnlrc5c4jpjruh2/bio.lexicons.temp.v0-1.occurrence/auigj4qtmhjoj",
+    "cid": "bafyreib7z2w4be7ccpc6o6tzg2vuapqqjqwuecnxdr4wx2jckp5uzldzze",
+    "observer": {
+     "did": "did:plc:r344gmanssnlrc5c4jpjruh2",
+     "handle": "greenbicycles.eurosky.social"
+    },
+    "communityId": "Anisoptera",
+    "effectiveTaxonomy": {
+     "scientificName": "Anisoptera",
+     "taxonId": "https://www.gbif.org/species/3233915",
+     "vernacularName": "mersawat",
+     "rank": "genus",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Malvales",
+     "family": "Dipterocarpaceae",
+     "genus": "Anisoptera"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-07-29",
+    "location": {
+     "latitude": 33.8266682,
+     "longitude": -118.3424685,
+     "uncertaintyMeters": 273
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-07-29T23:56:16.488581+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA"
+    ]
+   },
+   {
+    "uri": "at://did:plc:vozr2os4b4sxrxr6opde5js5/bio.lexicons.temp.v0-1.occurrence/3mnf6kfuf662s",
+    "cid": "bafyreihwtzsdzoaor77cyqlmx627yokjo3zlbqt3bnjksu7ad4dm5t674u",
+    "observer": {
+     "did": "did:plc:vozr2os4b4sxrxr6opde5js5",
+     "handle": "rwell.org",
+     "displayName": "Corey Farwell",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreigo2xe53rg7a7ajx27gwm5vm3kxztjjeo2fvw4f4trxwvaal24pfy"
+    },
+    "communityId": "Lapsana communis",
+    "effectiveTaxonomy": {
+     "scientificName": "Lapsana communis",
+     "taxonId": "https://www.gbif.org/species/3134857",
+     "vernacularName": "Nipplewort",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Lapsana"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-06-03T13:00:00Z",
+    "location": {
+     "latitude": 40.698088,
+     "longitude": -73.896218,
+     "uncertaintyMeters": 2188
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:vozr2os4b4sxrxr6opde5js5/bafkreibldjbgbxd3dwkoshvji4wxbmqz3x3tdibafgipby3mqmzld6rr6i",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-06-03T13:08:47.017812+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:q63fhp2lll2hvlgj7bgo724r/bio.lexicons.temp.v0-1.occurrence/3mmhydvsoje2u",
+    "cid": "bafyreigopyvwhocrq5oezs2uaaci44ynroesjy3l4wxe7ccks7p24u3dte",
+    "observer": {
+     "did": "did:plc:q63fhp2lll2hvlgj7bgo724r",
+     "handle": "kueda-test.bsky.social",
+     "displayName": "",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:q63fhp2lll2hvlgj7bgo724r/bafkreiby22xpqadoj7olwojf54du26hwf4y4q6u55zyrl65cfk55jino6u"
+    },
+    "communityId": "Trifolium microdon",
+    "effectiveTaxonomy": {
+     "scientificName": "Trifolium microdon",
+     "taxonId": "https://www.gbif.org/species/5358789",
+     "vernacularName": "thimble clover",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Fabales",
+     "family": "Fabaceae",
+     "genus": "Trifolium"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-03-21T21:56:00Z",
+    "location": {
+     "latitude": 37.74645,
+     "longitude": -121.69843,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:q63fhp2lll2hvlgj7bgo724r/bafkreihn5dbdgxjygrnxk56r4ufx6vw24wknij2otdgnqvsi73jcckwkdq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-06-03T02:48:58.948078+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mndpjvxpdu26",
+    "cid": "bafyreiefgpvmbebtdxpwarcusog4r5bk5bjswljpismdo26zey4ndsdmvq",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Sonchus oleraceus",
+    "effectiveTaxonomy": {
+     "scientificName": "Sonchus oleraceus",
+     "taxonId": "https://www.gbif.org/species/8228544",
+     "vernacularName": "Smooth Sow-thistle",
+     "rank": "species",
+     "kingdom": "Plantae",
+     "phylum": "Tracheophyta",
+     "class": "Magnoliopsida",
+     "order": "Asterales",
+     "family": "Asteraceae",
+     "genus": "Sonchus"
+    },
+    "identificationCount": 1,
+    "organismQuantity": "3",
+    "organismQuantityType": "individuals",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-06-03T00:25:10.254407+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_DATE",
+     "MISSING_LOCATION",
+     "MISSING_MEDIA"
+    ]
+   }
+  ],
+  "cursor": "2026-06-03T00:25:10.254407+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mndpjvxpdu26",
+  "meta": {
+   "filters": {
+    "taxon": null,
+    "kingdom": "Plantae",
+    "startDate": null,
+    "endDate": null
+   }
+  }
+ },
+ "/api/occurrences/at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22": {
+  "occurrence": {
+   "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+   "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+   "observer": {
+    "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+    "handle": "kueda.net",
+    "displayName": "Ken-ichi Ueda",
+    "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+   },
+   "communityId": "Gavia immer",
+   "effectiveTaxonomy": {
+    "scientificName": "Gavia immer",
+    "taxonId": "https://www.gbif.org/species/2481962",
+    "vernacularName": "Common Loon",
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia"
+   },
+   "identificationCount": 1,
+   "eventDate": "2026-11-07T18:49:00.000Z",
+   "location": {
+    "latitude": 37.767042044705974,
+    "longitude": -122.28205244943656,
+    "uncertaintyMeters": 141
+   },
+   "images": [
+    {
+     "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+     "license": "https://creativecommons.org/licenses/by/4.0/"
+    }
+   ],
+   "externalRecords": [
+    {
+     "uri": "https://www.inaturalist.org/observations/413737491",
+     "service": "inaturalist"
+    }
+   ],
+   "createdAt": "2026-11-09T06:32:05.689202+00:00",
+   "likeCount": 0,
+   "qualityIssues": []
+  },
+  "identifications": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.identification/3mzucji5vpt2c",
+    "cid": "bafyreidbuoagyw3q3upkpdgpnzn6xtuhwtn4yxl3unckpqy354hmana3xy",
+    "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+    "subject_uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "subject_cid": "bafyreicgmxl6b6cbnqoh27m4gqgzz5etrz5k63bove3o246kosizlfqcdy",
+    "scientific_name": "Gavia immer",
+    "taxon_rank": "species",
+    "identification_qualifier": null,
+    "taxon_id": "https://www.gbif.org/species/2481962",
+    "identification_verification_status": null,
+    "type_status": null,
+    "date_identified": "2026-11-09T06:32:06.122755Z",
+    "kingdom": "Animalia",
+    "phylum": null,
+    "class": null,
+    "order": null,
+    "family": null,
+    "genus": null,
+    "identifier": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    }
+   }
+  ],
+  "comments": []
+ },
+ "/api/occurrences/at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzvx3lfxlr22": {
+  "occurrence": {
+   "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzvx3lfxlr22",
+   "cid": "bafyreifp2zppaefj7ylvexj2jan2j6ydotdbtibecmzktqiptvyzsq7aza",
+   "observer": {
+    "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+    "handle": "kueda.net",
+    "displayName": "Ken-ichi Ueda",
+    "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+   },
+   "communityId": null,
+   "effectiveTaxonomy": null,
+   "identificationCount": 0,
+   "eventDate": "2026-11-09T22:12:00.000Z",
+   "location": {
+    "latitude": 37.766434,
+    "longitude": -122.280655,
+    "uncertaintyMeters": 50
+   },
+   "occurrenceRemarks": "This is just a test. Let's see if a remark gets saved",
+   "images": [],
+   "externalRecords": [],
+   "createdAt": "2026-11-09T22:12:48.323142+00:00",
+   "likeCount": 0,
+   "qualityIssues": [
+    "MISSING_MEDIA",
+    "NO_CONSENSUS_ID"
+   ]
+  },
+  "identifications": [],
+  "comments": []
+ },
+ "/api/profiles/did:plc:jt6xegjm6ba2lt34aztyi2mn/feed?limit=1&type=observations": {
+  "profile": {
+   "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+   "handle": "kueda.net",
+   "displayName": "Ken-ichi Ueda",
+   "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+  },
+  "counts": {
+   "observations": 959,
+   "identifications": 950,
+   "species": 0
+  },
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzvx3lfxlr22",
+    "cid": "bafyreifp2zppaefj7ylvexj2jan2j6ydotdbtibecmzktqiptvyzsq7aza",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": null,
+    "effectiveTaxonomy": null,
+    "identificationCount": 0,
+    "eventDate": "2026-11-09T22:12:00.000Z",
+    "location": {
+     "latitude": 37.766434,
+     "longitude": -122.280655,
+     "uncertaintyMeters": 50
+    },
+    "occurrenceRemarks": "This is just a test. Let's see if a remark gets saved",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-09T22:12:48.323142+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA",
+     "NO_CONSENSUS_ID"
+    ]
+   }
+  ],
+  "identifications": [],
+  "cursor": "2026-11-09T22:12:48.323142+00:00"
+ },
+ "/api/profiles/did:plc:jt6xegjm6ba2lt34aztyi2mn/feed?limit=20&type=observations": {
+  "profile": {
+   "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+   "handle": "kueda.net",
+   "displayName": "Ken-ichi Ueda",
+   "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+  },
+  "counts": {
+   "observations": 959,
+   "identifications": 950,
+   "species": 0
+  },
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzvx3lfxlr22",
+    "cid": "bafyreifp2zppaefj7ylvexj2jan2j6ydotdbtibecmzktqiptvyzsq7aza",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": null,
+    "effectiveTaxonomy": null,
+    "identificationCount": 0,
+    "eventDate": "2026-11-09T22:12:00.000Z",
+    "location": {
+     "latitude": 37.766434,
+     "longitude": -122.280655,
+     "uncertaintyMeters": 50
+    },
+    "occurrenceRemarks": "This is just a test. Let's see if a remark gets saved",
+    "images": [],
+    "externalRecords": [],
+    "createdAt": "2026-11-09T22:12:48.323142+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "MISSING_MEDIA",
+     "NO_CONSENSUS_ID"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/4wnkwnbb5h4xk",
+    "cid": "bafyreib4s2viw6kisgrhhm2cfo4w2puvl4qbjrwhvulaznbhv3ds3hqa3m",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Brephidium exilis",
+    "effectiveTaxonomy": {
+     "scientificName": "Brephidium exilis",
+     "taxonId": "https://www.gbif.org/species/1932172",
+     "vernacularName": "Western Pygmy-Blue",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Arthropoda",
+     "class": "Insecta",
+     "order": "Lepidoptera",
+     "family": "Lycaenidae",
+     "genus": "Brephidium"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T10:57:45-08:00",
+    "location": {
+     "latitude": 37.7665729,
+     "longitude": -122.2804432
+    },
+    "organismQuantity": "1",
+    "organismQuantityType": "individuals",
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigfjr4sysvzjt4gykge74j4cwszt2lxwblvyzdnxsppwgt3pywaeq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [],
+    "createdAt": "2026-11-09T06:33:11.825634+00:00",
+    "likeCount": 0,
+    "qualityIssues": [
+     "COORDINATES_IMPRECISE"
+    ]
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjh3jmx22",
+    "cid": "bafyreiahtouz2ejwxwqimjgrv3ygj4vcrvrv2vv3chdp4ldr74oeazkpw4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Urile pelagicus",
+    "effectiveTaxonomy": {
+     "scientificName": "Urile pelagicus",
+     "taxonId": "https://www.gbif.org/species/11042913",
+     "vernacularName": "Pelagic Cormorant",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Suliformes",
+     "family": "Phalacrocoracidae",
+     "genus": "Phalacrocorax"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.76730741094693,
+     "longitude": -122.28219997159268,
+     "uncertaintyMeters": 162
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreicsqbxcdodiafkec3o7rmprqumq67yfqnnjxeg3mittxngoxc7vfi",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737478",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.031534+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjgh2r522",
+    "cid": "bafyreibk2avaafcfcznfkbju7poxwo4d5iebicxb7buqzfrchgshagfic4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Uria aalge",
+    "effectiveTaxonomy": {
+     "scientificName": "Uria aalge",
+     "taxonId": "https://www.gbif.org/species/2481342",
+     "vernacularName": "Common Murre",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Alcidae",
+     "genus": "Uria"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:42:00.000Z",
+    "location": {
+     "latitude": 37.76765885095941,
+     "longitude": -122.27737031144872,
+     "uncertaintyMeters": 102
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifcpb6pp5ohtnw5nttnylqkrt4k3dbq5v7b25as2qvtxz2nzhvjve",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737469",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:04.360958+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt5dv2222",
+    "cid": "bafyreihk27maskddukb2o4gjg7mk6znmmjjxeelcbpaljtvpfjjil32v2y",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Haematopus bachmani",
+    "effectiveTaxonomy": {
+     "scientificName": "Haematopus bachmani",
+     "taxonId": "https://www.gbif.org/species/2480272",
+     "vernacularName": "Black Oystercatcher",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Haematopodidae",
+     "genus": "Haematopus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75236838101035,
+     "longitude": -122.24508614711688,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigold7fqanevkop5y5jg53rpkmclexpwp4v64ig7zy4qxcnjchgu4",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736304",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:36.622096+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt4llq522",
+    "cid": "bafyreic6w5uwiq4n5bdfl5x7mxosc47u3jt7nyduimbaskrwnqbp2i25qy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Sterna forsteri",
+    "effectiveTaxonomy": {
+     "scientificName": "Sterna forsteri",
+     "taxonId": "https://www.gbif.org/species/5229247",
+     "vernacularName": "Forster's Tern",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Laridae",
+     "genus": "Sterna"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75233201760356,
+     "longitude": -122.24497678191788,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigcujrdkfx73d723wryzgvzdg4ora33cz2oixco4jtrvdg2wudbji",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736286",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:35.826131+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt34l5522",
+    "cid": "bafyreihzwisznu75uljjiihmyzjw5lxav36kvqfklsf6nwj2pgy32dy6wy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Numenius hudsonicus",
+    "effectiveTaxonomy": {
+     "scientificName": "Numenius hudsonicus",
+     "taxonId": "https://www.gbif.org/species/4408523",
+     "vernacularName": "Hudsonian Curlew",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Numenius"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:28:00.000Z",
+    "location": {
+     "latitude": 37.751925571634914,
+     "longitude": -122.24353350411894,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiabxokhrvjwvxnw2n4vkyz656tq7u4mmjfzgbfqmkpzvxg4l5m5lu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736273",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:34.285427+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubt2azz222",
+    "cid": "bafyreien5qv52ieguvtb2b6nxre3t5oybujj6apuei2afcupmgspxcy5v4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa semipalmata",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa semipalmata",
+     "taxonId": "https://www.gbif.org/species/5789298",
+     "vernacularName": "Willet",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:57:00.000Z",
+    "location": {
+     "latitude": 37.75233201760356,
+     "longitude": -122.24497678191788,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreihe5b2ogdjbu36qva3kskerypuj5d3scdd2fd2ppjrsbc5gf2baou",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736258",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:33.383153+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsyzel722",
+    "cid": "bafyreifjvw7tzlnvanol527manl456ik5k7aykbl3rid32txenyfgd6fji",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Zenaida macroura",
+    "effectiveTaxonomy": {
+     "scientificName": "Zenaida macroura",
+     "taxonId": "https://www.gbif.org/species/2495347",
+     "vernacularName": "Mourning Dove",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Columbiformes",
+     "family": "Columbidae",
+     "genus": "Zenaida"
+    },
+    "identificationCount": 2,
+    "eventDate": "2026-11-07T17:56:00.000Z",
+    "location": {
+     "latitude": 37.75223355861711,
+     "longitude": -122.2445519106408,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiap3zarqq2lbdvm3ds35kbzvvlskfy5qrmdl2jhbrllrgwhpbtbji",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736249",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:32.083254+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsxqlkr22",
+    "cid": "bafyreib2ozvmuefdoixgnpq6apsudjxy2zxvuv75vlvrv3tjrqx4p2i3kq",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Larus occidentalis",
+    "effectiveTaxonomy": {
+     "scientificName": "Larus occidentalis",
+     "taxonId": "https://www.gbif.org/species/9656686",
+     "vernacularName": "Western Gull",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Laridae",
+     "genus": "Larus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:27:00.000Z",
+    "location": {
+     "latitude": 37.751867405289495,
+     "longitude": -122.2437325100898,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreibngogda4ixsrn47pmafj4qjmkuo6q2u2tzebkbvhdkaqkniddtki",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736234",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:30.746920+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsw4mn422",
+    "cid": "bafyreib3vddiro7o5wlsxu6jopi5vcfnioopwpqq5pvxsvo7aodajw5zxu",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Anas acuta",
+    "effectiveTaxonomy": {
+     "scientificName": "Anas acuta",
+     "taxonId": "https://www.gbif.org/species/2498112",
+     "vernacularName": "Northern Pintail",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Anseriformes",
+     "family": "Anatidae",
+     "genus": "Anas"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:13:00.000Z",
+    "location": {
+     "latitude": 37.75242400100431,
+     "longitude": -122.24523719605116,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiduwwaeoosir2z3qrftwdd7hfx55jbkiqzqbfrx2o4vhucmpai67i",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736222",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:29.044084+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsvewmy22",
+    "cid": "bafyreicci3jsgh7m6syuue5ykoiwxnsqljvjp3rovewjzuzifgrcs77gku",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Actitis macularius",
+    "effectiveTaxonomy": {
+     "scientificName": "Actitis macularius",
+     "taxonId": "https://www.gbif.org/species/2481798",
+     "vernacularName": "Spotted Sandpiper",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Actitis"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:16:00.000Z",
+    "location": {
+     "latitude": 37.75228312306835,
+     "longitude": -122.24474742297396,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreihhsudsz3mnzbfmqmxgnlzgdiews5zgv4u7yjf5yukhoyh2qpz5ta",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736210",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:28.267887+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsupnym22",
+    "cid": "bafyreig5apcpyd5jcw5zyg4f2ljjlqm5pd5c2rnpxzjnap24d26nloc5gy",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa",
+     "taxonId": "https://www.gbif.org/species/2481709",
+     "vernacularName": "Shanks, Tattlers, And Allies",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:11:00.000Z",
+    "location": {
+     "latitude": 37.75256318739424,
+     "longitude": -122.2455671661409,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiglkayrvf3j3mlygoblldwd47wzhdn3sdzz5ksg2p4bhj4tf2djue",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736190",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:27.570916+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsrehud22",
+    "cid": "bafyreibjxbikyxzpqgnd5p6h75diowe3uiskzxe3od6brx2g3adfjdqw7e",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Limnodromus",
+    "effectiveTaxonomy": {
+     "scientificName": "Limnodromus",
+     "taxonId": "https://www.gbif.org/species/2481669",
+     "vernacularName": "Dowitchers",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Limnodromus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:02:00.000Z",
+    "location": {
+     "latitude": 37.7528022739878,
+     "longitude": -122.24634802490758,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreiepfd7lvy2mxxtzivrxshnjehbzlbuj5cthnxoeodwv3eprailxlq",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736162",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:24.058458+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsqo2ci22",
+    "cid": "bafyreieie5n4dwstyumnjw5vmspunly5k5vma3cwcjz5fnop2itcwze6ui",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Anas platyrhynchos",
+    "effectiveTaxonomy": {
+     "scientificName": "Anas platyrhynchos",
+     "taxonId": "https://www.gbif.org/species/9761484",
+     "vernacularName": "Mallard",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Anseriformes",
+     "family": "Anatidae",
+     "genus": "Anas"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:11:00.000Z",
+    "location": {
+     "latitude": 37.7526468364003,
+     "longitude": -122.24577414555162,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifiwedzhy5gfyls7vzmqfd7rc6vww2xsxohol6yxfymhxcqwssuii",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736105",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:23.323679+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubspxi7c22",
+    "cid": "bafyreifnnkhjxkl3as63b4qhn6evumnxau47yq37r2uhkzgytv5ljfwqau",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Tringa",
+    "effectiveTaxonomy": {
+     "scientificName": "Tringa",
+     "taxonId": "https://www.gbif.org/species/2481709",
+     "vernacularName": "Shanks, Tattlers, And Allies",
+     "rank": "genus",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Scolopacidae",
+     "genus": "Tringa"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:10:00.000Z",
+    "location": {
+     "latitude": 37.752674888110526,
+     "longitude": -122.24585973523725,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreib7ms7xulhazeenmw6zdjmgd2qx5jdd2q756xfmg7c555lme5425m",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     },
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigs25egqy34zgmpuiak7g4qopeg6lz76hmw52jzmnhn22sjo4ghui",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736122",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:22.584250+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsnvqny22",
+    "cid": "bafyreiahxmphhfloooh6d5p7pp5uelbk3txguabu6qmwr56hixqdqh6sei",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Psaltriparus minimus",
+    "effectiveTaxonomy": {
+     "scientificName": "Psaltriparus minimus",
+     "taxonId": "https://www.gbif.org/species/2494988",
+     "vernacularName": "American Bushtit",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Passeriformes",
+     "family": "Aegithalidae",
+     "genus": "Psaltriparus"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T17:10:00.000Z",
+    "location": {
+     "latitude": 37.75270292883861,
+     "longitude": -122.24597052954174,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreifun37eqmio7pwjti6tfwa4grkjksw3uepqkdsoeyr65mg4cv7nmy",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736090",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:20.430232+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsko6sb22",
+    "cid": "bafyreifchgimovvpx5a2i4soew5lvfkwfkoyo4zgneut3ikizi5w2w5h2i",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Himantopus mexicanus",
+    "effectiveTaxonomy": {
+     "scientificName": "Himantopus mexicanus",
+     "taxonId": "https://www.gbif.org/species/5229128",
+     "vernacularName": "Black-necked Stilt",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Recurvirostridae",
+     "genus": "Himantopus"
+    },
+    "identificationCount": 2,
+    "eventDate": "2026-11-07T16:59:00.000Z",
+    "location": {
+     "latitude": 37.752883034549704,
+     "longitude": -122.24655718367887,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreig4xgz7iorbbfn2sw6awrvh6ulmjtb33xshzvrhhr2obvdycghpiu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736083",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:17.036824+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   },
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzubsjyb4h22",
+    "cid": "bafyreic4e4w6aqbuee6t5bjfuv3gligrv7loez6vmsxgihs4ts6uk3ip6i",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Recurvirostra americana",
+    "effectiveTaxonomy": {
+     "scientificName": "Recurvirostra americana",
+     "taxonId": "https://www.gbif.org/species/2480258",
+     "vernacularName": "American Avocet",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Charadriiformes",
+     "family": "Recurvirostridae",
+     "genus": "Recurvirostra"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T16:58:00.000Z",
+    "location": {
+     "latitude": 37.75288823805908,
+     "longitude": -122.24677426288372,
+     "uncertaintyMeters": 50
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreigujy6ptbjpexiajmuywbmqfsrk5itqpc6x5r46ifxuzuo5ebgqeu",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413736054",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:19:16.318304+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "identifications": [],
+  "cursor": "2026-11-09T06:19:16.318304+00:00"
+ },
+ "/api/taxa/Animalia/Gavia immer": {
+  "id": "Animalia/Gavia immer",
+  "scientificName": "Gavia immer",
+  "commonName": "Common Loon",
+  "photoUrl": "http://commons.wikimedia.org/wiki/Special:FilePath/Gavia%20immer%20-Minocqua%2C%20Wisconsin%2C%20USA%20-swimming-8.jpg?width=600",
+  "rank": "species",
+  "kingdom": "Animalia",
+  "phylum": "Chordata",
+  "class": "Aves",
+  "order": "Gaviiformes",
+  "family": "Gaviidae",
+  "genus": "Gavia",
+  "species": "Gavia immer",
+  "source": "gbif",
+  "conservationStatus": {
+   "category": "LC",
+   "source": "IUCN"
+  },
+  "description": null,
+  "wikidataId": null,
+  "ancestors": [
+   {
+    "id": "Animalia",
+    "name": "Animalia",
+    "rank": "kingdom"
+   },
+   {
+    "id": "Animalia/Chordata",
+    "name": "Chordata",
+    "rank": "phylum"
+   },
+   {
+    "id": "Animalia/Aves",
+    "name": "Aves",
+    "rank": "class"
+   },
+   {
+    "id": "Animalia/Gaviiformes",
+    "name": "Gaviiformes",
+    "rank": "order"
+   },
+   {
+    "id": "Animalia/Gaviidae",
+    "name": "Gaviidae",
+    "rank": "family"
+   },
+   {
+    "id": "Animalia/Gavia",
+    "name": "Gavia",
+    "rank": "genus"
+   }
+  ],
+  "children": [],
+  "numDescendants": 0,
+  "extinct": null,
+  "descriptions": [
+   {
+    "description": "breeds in northern North America, southern Greenland, and Iceland; winters from southern Alaska and the Maritime Provinces (Canada) to northerm Mexico, and from Iceland and Scandanavia to the Iberian Peninsula",
+    "type": "Distribution",
+    "source": "The Clements Checklist"
+   },
+   {
+    "description": "COR*; FLO; FAI; PIC; GRA; TER; SMG; SMR",
+    "type": "Distribution",
+    "source": "Birds from the Azores: An updated list with some comments on species distribution"
+   },
+   {
+    "description": "Regular Wintering. Rodrigues et al. (2010)",
+    "type": "Notes",
+    "source": "Birds from the Azores: An updated list with some comments on species distribution"
+   },
+   {
+    "description": "Breeding regions are NA, PAL. Breeding subregions are w, se Greenland, Iceland; subarctic to temperate n North America: w Alaska mainland to n tier of contiguous USA, across subarctic Canada to s Baffin I. and New England. Non breeding regions are inshore waters: to nw Europe; Aleutian Is., s Baja California and Gulf of California (nw Mexico); w North Atlantic coast to Florida, Gulf of Mexico to ne Mexico.",
+    "type": "Distribution",
+    "source": "IOC World Bird List, v"
+   }
+  ],
+  "references": [
+   {
+    "citation": "Banks, R. C., R. W. McDiarmid, and A. L. Gardner, 1987: Checklist of Vertebrates of the United States, the U.S. Territories, and Canada. Resource Publication, no. 166. 79.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Banks, R.C., R.W. McDiarmid, and A.L. Gardner. 1987. Checklist of vertebrates of the United States, the U.S. Territories, and Canada. U.S. Fish and Wildlife Service Resource Publication No. 166. 79 p.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Cattrijsse, A. & M. Vincx. (2001). Biodiversity of the benthos and the avifauna of the Belgian coastal waters: summary of data collected between 1970 and 1998. <em>Federal Office for Scientific, Technical and Cultural Affairs: Brussel, Belgium.</em> 48 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Chans JJ, Garrido S, Calderón J (2006) Informe sobre la biodiversidad de Doñana. Listado de Organismos. En: Máñez M. (IP) Diseño y puesta a punto del programa de seguimiento de procesos y recursos naturales en el Parque Nacional de Doñana. Memoria final. Estación Biológica de Doñana-Organismo Autónomo de Parques Nacionales.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Gallardo, J. C.; Macías, V.; Velarde, E. (2009). Birds (Vertebrata: Aves) of the Gulf of Mexico. <em>In: Felder, D.L. and D.K. Camp (eds.), Gulf of Mexico–Origins, Waters, and Biota. Biodiversity. Texas A&M Press, College Station, Texas.</em> Pp. 1321–1342.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García L, Calderón J, Castroviejo J (1989) Las aves de Doñana y su entorno. Estación Biológica de Doñana (CSIC) - Cooperativa Marismas del Rocío. Sevilla. 136 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García L, Ibáñez F, Garrido H, Arroyo JL, Máñez M, Calderón J (2000) Prontuario de las Aves de Doñana. Anuario Ornitológico de Doñana. Nº0, Diciembre 2000. Estación Biológica de Doñana y Ayuntamiento de Almonte. Almonte (Huelva). 113 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García-Novo F, Martín A, Toja J (2007) La Frontera de Doñana. Secretariado de Publicaciones. Vicerrectorado de Investigación. Universidad de Sevilla. Sevilla. 317 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "García-Novo F, Marín-Cabrera C (2005) Doñana. Agua y Biosfera. Ed. Doñana 2005, Confederación Hidrográfica del Guadalquivir, Ministerio de Medio Ambiente. Madrid. 353 pp",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Garrido H, Arroyo JL, García L, Ibáñez F, Máñez M, Vázquez M (2004) Anuario Ornitológico de Doñana, nº 1. (Sep 1999- ago 2001). Equipo de Seguimiento de Procesos Naturales. Estación Biológica de Doñana-CSIC. 188 pp.",
+    "doi": null,
+    "link": null
+   }
+  ],
+  "media": [
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101157_denhaag_4205.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101155_denhaag_4121.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/150616_gaviidae_ijsduiker_juveniel_12-11-2014_neeltje_jans.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC-ND"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/246050.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC-ND"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/91692_p1070661_ijsduiker_den_haag_2016-01-10_sander_pieterse.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/146794_wvb_6186.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/146795_wvb_6204.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY-NC"
+   },
+   {
+    "type": "StillImage",
+    "url": "https://images.naturalis.nl/original/101156_denhaag_4150.jpg",
+    "title": null,
+    "description": null,
+    "source": "Checklist Dutch Species Register - Nederlands Soortenregister",
+    "creator": null,
+    "license": "CC BY"
+   }
+  ],
+  "gbifUrl": "https://www.gbif.org/species/2481962",
+  "wikidataUrl": "https://www.wikidata.org/wiki/Q190342",
+  "observationCount": 1
+ },
+ "/api/taxa/Animalia/Gavia immer/occurrences?limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "cursor": "2026-11-09T06:32:05.689202+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22"
+ },
+ "/api/taxa/Animalia/Gavia": {
+  "id": "Animalia/Gavia",
+  "scientificName": "Gavia",
+  "commonName": "Loons",
+  "photoUrl": "http://commons.wikimedia.org/wiki/Special:FilePath/PacificLoon24.jpg?width=600",
+  "rank": "genus",
+  "kingdom": "Animalia",
+  "phylum": "Chordata",
+  "class": "Aves",
+  "order": "Gaviiformes",
+  "family": "Gaviidae",
+  "genus": "Gavia",
+  "species": null,
+  "source": "gbif",
+  "conservationStatus": {
+   "category": "NE",
+   "source": "IUCN"
+  },
+  "description": null,
+  "wikidataId": null,
+  "ancestors": [
+   {
+    "id": "Animalia",
+    "name": "Animalia",
+    "rank": "kingdom"
+   },
+   {
+    "id": "Animalia/Chordata",
+    "name": "Chordata",
+    "rank": "phylum"
+   },
+   {
+    "id": "Animalia/Aves",
+    "name": "Aves",
+    "rank": "class"
+   },
+   {
+    "id": "Animalia/Gaviiformes",
+    "name": "Gaviiformes",
+    "rank": "order"
+   },
+   {
+    "id": "Animalia/Gaviidae",
+    "name": "Gaviidae",
+    "rank": "family"
+   }
+  ],
+  "children": [
+   {
+    "id": "Animalia/Gavia adamsii",
+    "taxonId": "https://www.gbif.org/species/2481957",
+    "scientificName": "Gavia adamsii",
+    "commonName": "Yellow-billed Loon",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia adamsii",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia arctica",
+    "taxonId": "https://www.gbif.org/species/2481959",
+    "scientificName": "Gavia arctica",
+    "commonName": "Arctic/Pacific Loon",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia arctica",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia brodkorbi",
+    "taxonId": "https://www.gbif.org/species/8693591",
+    "scientificName": "Gavia brodkorbi",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia brodkorbi",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia concinna",
+    "taxonId": "https://www.gbif.org/species/4966465",
+    "scientificName": "Gavia concinna",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia concinna",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia egeriana",
+    "taxonId": "https://www.gbif.org/species/4966468",
+    "scientificName": "Gavia egeriana",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia egeriana",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia fortis",
+    "taxonId": "https://www.gbif.org/species/4966467",
+    "scientificName": "Gavia fortis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia fortis",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia howardae",
+    "taxonId": "https://www.gbif.org/species/4966464",
+    "scientificName": "Gavia howardae",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia howardae",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia immer",
+    "taxonId": "https://www.gbif.org/species/2481962",
+    "scientificName": "Gavia immer",
+    "commonName": "Common Loon",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia immer",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia immer x arctica",
+    "taxonId": "https://www.gbif.org/species/10023190",
+    "scientificName": "Gavia immer x arctica",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia immer x arctica",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia moldavica",
+    "taxonId": "https://www.gbif.org/species/11177485",
+    "scientificName": "Gavia moldavica",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia moldavica",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia pacifica",
+    "taxonId": "https://www.gbif.org/species/2481955",
+    "scientificName": "Gavia pacifica",
+    "commonName": "Pacific Loon",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia pacifica",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia paradoxa",
+    "taxonId": "https://www.gbif.org/species/11125415",
+    "scientificName": "Gavia paradoxa",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia paradoxa",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia schultzi",
+    "taxonId": "https://www.gbif.org/species/11146076",
+    "scientificName": "Gavia schultzi",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia schultzi",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/Gavia stellata",
+    "taxonId": "https://www.gbif.org/species/2481958",
+    "scientificName": "Gavia stellata",
+    "commonName": "Red-throated Loon",
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia stellata",
+    "source": "gbif",
+    "conservationStatus": null
+   },
+   {
+    "id": "Animalia/BOLD:AAC8620",
+    "taxonId": "https://www.gbif.org/species/9902939",
+    "scientificName": "BOLD:AAC8620",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "unranked",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": null
+   }
+  ],
+  "numDescendants": 20,
+  "extinct": null,
+  "descriptions": null,
+  "references": [
+   {
+    "citation": "Banks, R. C., R. W. McDiarmid, and A. L. Gardner, 1987: Checklist of Vertebrates of the United States, the U.S. Territories, and Canada. Resource Publication, no. 166. 79.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "CoL 2006",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Ench.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Forster, J. R. (1788). Enchiridion historiae naturali inserviens, quo termini et delineationes ad avium, piscium, insectorum et plantarum adumbrationes intelligendas et concinnandas, secundum methodum systematis Linnaeani continentur. 224 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "International Commission on Zoological Nomenclature. Opinion 401 Suppression under the Plenary Powers of the generic name Colymbus Linnaeus, 1758, and addition to the Official List of Generic Names in Zoology of the generic names Gavia Forster, 1788, and Podiceps Latham, 1787 (class Aves).Opinions and declarations rendered by the International Commission on Zoological Nomenclature 13(1), 1-64 (1956)",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "International Commission on Zoological Nomenclature. Opinion 401 Suppression under the Plenary Powers of the generic name Colymbus Linnaeus, 1758, and addition to the Official List of Generic Names in Zoology of the generic names Gavia Forster, 1788, and Podiceps Latham, 1787 (class Aves).Opinions and declarations rendered by the International Commission on Zoological Nomenclature 13(1), 1-64 (1956)",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Jonsson, L. (1993). Vogels van Europa, Noord-Afrika en het Midden-Oosten [Birds of Europe, northern Africa and the Middle East]. Tirion: Baarn, The Netherlands. ISBN 90-5210-187-6. 560 pp.",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Neave, S. A. and successors. (1939-2004). Nomenclator Zoologicus, vols. 1-10 online. [developed by uBio, hosted online at MBLWHOI Library]. Previously at http://ubio.org/NomenclatorZoologicus/ (URL no longer current).",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "Neave, S. A. and successors. (1939-2004). Nomenclator Zoologicus, vols. 1-10 online. [developed by uBio, hosted online at MBLWHOI Library]. Previously at http://ubio.org/NomenclatorZoologicus/ (URL no longer current).",
+    "doi": null,
+    "link": null
+   },
+   {
+    "citation": "SN2000/Monroe Jr. & Sibley, 1993",
+    "doi": null,
+    "link": null
+   }
+  ],
+  "media": null,
+  "gbifUrl": "https://www.gbif.org/species/2481954",
+  "wikidataUrl": "https://www.wikidata.org/wiki/Q3758978",
+  "observationCount": 1
+ },
+ "/api/taxa/Animalia/Gavia/occurrences?limit=20": {
+  "occurrences": [
+   {
+    "uri": "at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22",
+    "cid": "bafyreia2btofpdjo2jrtie4wjjlxef72cfgs33itnacfhff4in2zofzig4",
+    "observer": {
+     "did": "did:plc:jt6xegjm6ba2lt34aztyi2mn",
+     "handle": "kueda.net",
+     "displayName": "Ken-ichi Ueda",
+     "avatar": "https://cdn.bsky.app/img/avatar/plain/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreien7rzhiqy5kvf7srhvs5gydvcsqmakix7eve4jnqprocd7ojupoy"
+    },
+    "communityId": "Gavia immer",
+    "effectiveTaxonomy": {
+     "scientificName": "Gavia immer",
+     "taxonId": "https://www.gbif.org/species/2481962",
+     "vernacularName": "Common Loon",
+     "rank": "species",
+     "kingdom": "Animalia",
+     "phylum": "Chordata",
+     "class": "Aves",
+     "order": "Gaviiformes",
+     "family": "Gaviidae",
+     "genus": "Gavia"
+    },
+    "identificationCount": 1,
+    "eventDate": "2026-11-07T18:49:00.000Z",
+    "location": {
+     "latitude": 37.767042044705974,
+     "longitude": -122.28205244943656,
+     "uncertaintyMeters": 141
+    },
+    "images": [
+     {
+      "url": "/media/blob/did:plc:jt6xegjm6ba2lt34aztyi2mn/bafkreic3hmbwztbqccnvc7bbuig7e5cophalp2arjwr2rdrnjf6625pj5q",
+      "license": "https://creativecommons.org/licenses/by/4.0/"
+     }
+    ],
+    "externalRecords": [
+     {
+      "uri": "https://www.inaturalist.org/observations/413737491",
+      "service": "inaturalist"
+     }
+    ],
+    "createdAt": "2026-11-09T06:32:05.689202+00:00",
+    "likeCount": 0,
+    "qualityIssues": []
+   }
+  ],
+  "cursor": "2026-11-09T06:32:05.689202+00:00|at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22"
+ },
+ "/api/taxa/search?q=gavia": {
+  "results": [
+   {
+    "id": "Animalia/Gavia",
+    "taxonId": "https://www.gbif.org/species/2481954",
+    "scientificName": "Gavia",
+    "commonName": "Loons",
+    "photoUrl": "http://commons.wikimedia.org/wiki/Special:FilePath/PacificLoon24.jpg?width=100",
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia",
+    "taxonId": "https://www.gbif.org/species/7789983",
+    "scientificName": "Gavia",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": null,
+    "class": null,
+    "order": null,
+    "family": null,
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia",
+    "taxonId": "https://www.gbif.org/species/9347763",
+    "scientificName": "Gavia",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": null,
+    "class": null,
+    "order": null,
+    "family": null,
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia",
+    "taxonId": "https://www.gbif.org/species/7792107",
+    "scientificName": "Gavia",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "genus",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia septentrionalis",
+    "taxonId": "https://www.gbif.org/species/7426595",
+    "scientificName": "Gavia septentrionalis",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia stellata",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia immer immer",
+    "taxonId": "https://www.gbif.org/species/11346010",
+    "scientificName": "Gavia immer immer",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "subspecies",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia immer",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/? gavia",
+    "taxonId": "https://www.gbif.org/species/9565001",
+    "scientificName": "? gavia",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "unranked",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Procellariiformes",
+    "family": "Procellariidae",
+    "genus": null,
+    "species": null,
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia arctica arctica",
+    "taxonId": "https://www.gbif.org/species/7059971",
+    "scientificName": "Gavia arctica arctica",
+    "commonName": "Arctic Loon",
+    "photoUrl": null,
+    "rank": "subspecies",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia arctica",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia pusilla",
+    "taxonId": "https://www.gbif.org/species/8510181",
+    "scientificName": "Gavia pusilla",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gaviella",
+    "species": "Gavia pusilla",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   },
+   {
+    "id": "Animalia/Gavia howardae",
+    "taxonId": "https://www.gbif.org/species/4966464",
+    "scientificName": "Gavia howardae",
+    "commonName": null,
+    "photoUrl": null,
+    "rank": "species",
+    "kingdom": "Animalia",
+    "phylum": "Chordata",
+    "class": "Aves",
+    "order": "Gaviiformes",
+    "family": "Gaviidae",
+    "genus": "Gavia",
+    "species": "Gavia howardae",
+    "source": "gbif",
+    "conservationStatus": {
+     "category": "NE",
+     "source": "IUCN"
+    }
+   }
+  ]
+ },
+ "/api/feeds/explore?kingdom=Animalia&limit=20&taxon=Gavia immer": {
+  "occurrences": [],
+  "cursor": null,
+  "meta": {
+   "filters": {
+    "taxon": "Gavia immer",
+    "kingdom": "Animalia",
+    "startDate": null,
+    "endDate": null
+   }
+  }
+ }
+}

@@ -1,27 +1,117 @@
-// Against fixtures/explore.json, recorded from observ.ing by record.ts.
-test "the feed shows the first page and pushes a detail"
+// Against fixtures/api.json, recorded from observ.ing by record.ts.
+test "the feed pushes an observation with its identifications, map and links"
   epoch "2026-11-09T23:00:00Z"
   time-zone "America/Los_Angeles"
   clock data
-  expect text "title-3mzvx3lfxlr22" == "Unidentified"
-  expect text "title-4wnkwnbb5h4xk" == "Western Pygmy-Blue"
-  tap "obs-4wnkwnbb5h4xk"
+  expect text "obs-title-3mzvx3lfxlr22" == "Unidentified"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+  tap "obs-3mzucjhpluy22"
   clock data
-  expect text "detail-title" == "Western Pygmy-Blue"
-  expect text "detail-sci" == "Brephidium exilis"
-  expect text "detail-lineage" == "Animalia › Arthropoda › Insecta › Lepidoptera › Lycaenidae › Brephidium"
+  clock settle
+  expect text "detail-title" == "Common Loon"
+  expect text "detail-sci" == "Gavia immer"
+  expect text "detail-lineage" == "Animalia › Chordata › Aves › Gaviiformes › Gaviidae › Gavia"
+  expect text "detail-observer" == "Ken-ichi Ueda (@kueda.net)"
+  expect tree has "detail-map"
+  expect tree has "ident-0"
+  expect tree has "external-iNaturalist"
+  expect tree missing "data-quality"
 
-test "an unidentified observation asks for an identification"
+test "an unidentified observation shows what it lacks"
   epoch "2026-11-09T23:00:00Z"
   clock data
   tap "obs-3mzvx3lfxlr22"
   clock data
+  clock settle
   expect text "detail-title" == "Unidentified"
   expect text "needs-id" == "Needs an identification"
+  expect tree has "data-quality"
+  expect tree missing "detail-photo"
 
-test "Show More asks for the next page"
+test "a photo opens full size and closes"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-photo"
+  clock settle
+  expect tree has "lightbox-photo"
+  tap "photo-close"
+  clock settle
+  expect text "detail-title" == "Common Loon"
+
+test "Show More reads the next page by its cursor"
   epoch "2026-11-09T23:00:00Z"
   clock data
   tap "more"
   clock data
-  expect text "title-3mzucjgh2r522" == "Common Murre"
+  expect text "obs-title-3mzubsjar4b22" == "Elegant Tern"
+  expect text "obs-title-3mzvx3lfxlr22" == "Unidentified"
+
+test "a kingdom filter narrows the feed"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "toggle-filters"
+  type "filter-kingdom" "Plantae"
+  clock data
+  expect text "obs-title-3mytlct22dw22" == "spotted coralroot"
+  expect tree missing "obs-3mzucjhpluy22"
+  tap "clear-filters"
+  clock data
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "the observer's profile shows their counts and observations"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-observer-link"
+  clock data
+  clock settle
+  expect text "profile-title" == "Ken-ichi Ueda"
+  expect text "profile-handle" == "@kueda.net"
+  expect text "stat-observations" == "959"
+  expect text "pobs-title-3mzucjhpluy22" == "Common Loon"
+
+test "a species page shows its classification and can filter Explore"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-taxon"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Common Loon"
+  expect text "taxon-sci" == "Gavia immer"
+  expect text "taxon-status" == "LC (IUCN)"
+  expect tree has "ancestor-Gaviidae"
+  expect text "taxon-count" == "1 Observation"
+  expect tree missing "more-taxon"
+  tap "taxon-explore"
+  clock data
+  clock settle
+  expect text "filter-taxon" == "Gavia immer"
+  // The appview's taxon filter matches the submitter's own scientific name only
+  // (observing-db feeds.rs), and this observation was named by identification.
+  expect text "feed-empty" == "No observations match these filters."
+  tap "clear-filters"
+  clock data
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "taxon search finds a genus and lists what it includes"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "open-search"
+  clock settle
+  type "search" "gavia"
+  clock data
+  expect text "found-0-name" == "Loons"
+  tap "found-0"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Loons"
+  expect text "taxon-rank" == "Genus"
+  expect tree has "child-0"

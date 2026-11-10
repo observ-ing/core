@@ -1,10 +1,17 @@
-// Observ.ing on Exact: the explore feed and an observation's detail, read-only.
-// app.ts reads the appview's GET /api/feeds/explore and flattens each row into
-// an Observation; server.ts stands in for the appview in development.
+// Observ.ing on Exact: everything a signed-out visitor can browse. Explore
+// (filters, paging), an observation (photos, map, identifications, comments,
+// data quality), a person's profile, a taxon page and taxon search. app.ts reads
+// the appview through server.ts, which proxies a real one or answers from fixtures/.
+
+use MapMarker from "@exact/maps"
 
 routes nav
   explore "/"
     observation "/observation/:did/:rkey"
+      photo "/observation/:did/:rkey/photo/:index"
+    profile "/profile/:did"
+    taxon "/taxon/:kingdom/:name"
+    search "/search"
 
 shape Observation
   did: string
@@ -12,8 +19,10 @@ shape Observation
   commonName: string
   scientificName: string
   rank: string
+  kingdom: string
   lineage: string
   observer: string
+  observerDid: string
   handle: string
   observedAt: number
   photo: string
@@ -28,138 +37,644 @@ shape Feed
   items: Observation[]
   more: bool
 
+shape Photo
+  index: number
+  url: string
+  thumb: string
+  license: string
+
+shape IdRow
+  uri: string
+  who: string
+  whoDid: string
+  scientificName: string
+  rank: string
+  kingdom: string
+  at: number
+
+shape CommentRow
+  uri: string
+  who: string
+  whoDid: string
+  body: string
+  at: number
+
+shape LinkRow
+  url: string
+  label: string
+
+shape Detail
+  did: string
+  rkey: string
+  found: bool
+  obs: Observation
+  photos: Photo[]
+  latitude: number
+  longitude: number
+  hasLocation: bool
+  uncertainty: string
+  eventRemarks: string
+  taxonKingdom: string
+  taxonName: string
+  issues: string[]
+  identifications: IdRow[]
+  comments: CommentRow[]
+  links: LinkRow[]
+
+shape ProfilePage
+  did: string
+  found: bool
+  name: string
+  handle: string
+  avatar: string
+  observations: number
+  identifications: number
+  species: number
+  items: Observation[]
+  more: bool
+
+shape TaxonRow
+  kingdom: string
+  name: string
+  scientificName: string
+  commonName: string
+  rank: string
+  photo: string
+
+shape Crumb
+  kingdom: string
+  name: string
+  scientificName: string
+  rank: string
+
+shape Media
+  index: number
+  url: string
+  credit: string
+
+shape TaxonPage
+  kingdom: string
+  name: string
+  found: bool
+  scientificName: string
+  commonName: string
+  rank: string
+  photo: string
+  status: string
+  extinct: bool
+  description: string
+  descriptionSource: string
+  observationCount: number
+  descendants: number
+  ancestors: Crumb[]
+  children: TaxonRow[]
+  media: Media[]
+  gbifUrl: string
+  wikidataUrl: string
+  items: Observation[]
+  more: bool
+
+shape Choice
+  value: string
+  label: string
+
 shape Time
   epochAtZero: number
   utcOffset: number
 
 // A species reads by its common name, else its scientific name; neither is "Unidentified".
 fn titleOf(o: Observation): string = o.commonName != "" ? o.commonName : (o.scientificName != "" ? o.scientificName : "Unidentified")
-fn countOf(n: number, one: string, many: string): string = `${n} ${n == 1 ? one : many}`
+fn taxonTitle(common: string, scientific: string): string = common != "" ? common : scientific
+fn countOf(n: number, one: string, many: string): string = `${formatNumber(n, "decimal")} ${n == 1 ? one : many}`
+fn capitalized(s: string): string = s == "" ? "" : `${s.slice(0, 1).toUpperCase()}${s.slice(1)}`
+fn problem(code: string, what: string): string = code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : `Couldn’t load ${what}. Try again.`
 
 component App
-  // How many rows the feed asks for; Show More asks for a page more.
-  state limit = 4
-  resource feed = loadFeed(limit) as shape Feed else empty()
+  // Explore's filters and how many pages each list shows.
+  state kingdom = ""
+  state taxon = ""
+  state quality = ""
+  state startDate = ""
+  state endDate = ""
+  state showFilters = false
+  state feedPages = 1
+  state profilePages = 1
+  state taxonPages = 1
+  state query = ""
+
+  // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
+  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo").at(-1) { case some(x) => x.params.rkey, case none => "" }
+  derive profileDid = match stack(nav).filter(x => x.name == "profile").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.kingdom, case none => "" }
+  derive taxonName = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.name, case none => "" }
+
+  resource feed = loadFeed(kingdom, taxon, quality, startDate, endDate, feedPages) as shape Feed else empty()
+  resource detail = loadObservation(obsDid, obsRkey) as shape Detail else empty()
+  resource person = loadProfile(profileDid, profilePages) as shape ProfilePage else empty()
+  resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonPages) as shape TaxonPage else empty()
+  resource found = searchTaxa(query) as shape TaxonRow[] else empty()
   resource time = exactTime() as shape Time
   derive now = time.epochAtZero
-  derive feedError = pending(feed) ? "" : match failure(feed) { case some(f) => f.code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : "Couldn’t load the feed. Try again.", case none => "" }
+  derive offset = time.utcOffset
+
+  derive feedError = pending(feed) ? "" : match failure(feed) { case some(f) => problem(f.code, "the feed"), case none => "" }
+  derive detailError = pending(detail) ? "" : match failure(detail) { case some(f) => problem(f.code, "this observation"), case none => "" }
+  derive personError = pending(person) ? "" : match failure(person) { case some(f) => problem(f.code, "this profile"), case none => "" }
+  derive taxonError = pending(taxonPage) ? "" : match failure(taxonPage) { case some(f) => problem(f.code, "this taxon"), case none => "" }
+
+  derive qualityList = quality == "" ? [] : quality.split(",")
+  derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
+  derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
+  derive criteria = [Choice(value="HAS_DATE", label="Has date"), Choice(value="HAS_LOCATION", label="Has location"), Choice(value="PRECISE_LOCATION", label="Precise location"), Choice(value="HAS_MEDIA", label="Has photo or sound"), Choice(value="HAS_CONSENSUS_ID", label="Community ID")]
 
   action back
     nav = back(nav)
   action follow(url: string)
-    nav = top(nav).name == "observation" and url.startsWith("/observation/") ? replace(nav, url) : go(nav, url)
-  action reload
+    // Beside a wide window's list, a row replaces the detail it shows instead of stacking another.
+    if url.startsWith("/profile/")
+      profilePages = 1
+    if url.startsWith("/taxon/")
+      taxonPages = 1
+    // ("/observation/<did>/<rkey>" only: a photo under it is pushed.)
+    nav = top(nav).name == "observation" and url.startsWith("/observation/") and url.split("/").length == 4 ? replace(nav, url) : go(nav, url)
+  action openSearch
+    nav = push(nav, "/search")
+  action openExternal(url: string)
+    openURL(url)
+
+  action reloadFeed
     refresh feed
-  action more
-    limit = limit + 4
+  action moreFeed
+    feedPages = feedPages + 1
+  action toggleFilters
+    showFilters = not showFilters
+  action setKingdom(v: string)
+    kingdom = v
+    feedPages = 1
+  action setStart(v: string)
+    startDate = v
+    feedPages = 1
+  action setEnd(v: string)
+    endDate = v
+    feedPages = 1
+  action toggleQuality(id: string, on: bool)
+    quality = (on ? qualityList.filter(x => x != id).concat([id]) : qualityList.filter(x => x != id)).join(",")
+    feedPages = 1
+  action clearTaxon
+    taxon = ""
+    feedPages = 1
+  action clearFilters
+    kingdom = ""
+    taxon = ""
+    quality = ""
+    startDate = ""
+    endDate = ""
+    feedPages = 1
+  // A taxon page's "Show in Explore": the feed filtered to it.
+  action exploreTaxon(name: string, k: string)
+    taxon = name
+    kingdom = k
+    feedPages = 1
+    showFilters = true
+    nav = go(nav, "/")
+
+  action reloadDetail
+    refresh detail
+  action reloadPerson
+    refresh person
+  action morePerson
+    profilePages = profilePages + 1
+  action reloadTaxon
+    refresh taxonPage
+  action moreTaxon
+    taxonPages = taxonPages + 1
+  action search(v: string)
+    query = v
 
   view
     main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app" width="100%" height="100%"
       for e in stack(nav) key=e.id
         if e.name == "explore"
           column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
-            header display="flex" align-items="center" padding="8px 16px"
+            header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
               text "Explore" role="heading" aria-level=1 flex=1
-            if feed.items.length == 0
-              if pending(feed)
-                column flex=1 justify-content="center" align-items="center"
-                  progress aria-label="Loading" testId="feed-loading"
+              button press=openSearch aria-label="Search taxa" testId="open-search"
+                image "symbol:search"
+              button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
+                image "symbol:filter"
+            list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+              if showFilters
+                section testId="filters"
+                  header
+                    text "Filters"
+                  if taxon != ""
+                    row
+                      text "Taxon" flex=1
+                      text taxon font-style="italic" color="-exact-secondary-label" testId="filter-taxon"
+                      button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
+                        image "symbol:close"
+                  row
+                    text "Kingdom" flex=1
+                    select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
+                      option "All kingdoms" value=""
+                      for k in kingdoms key=k.value
+                        option k.label value=k.value
+                  row
+                    text "From" flex=1
+                    input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
+                  row
+                    text "To" flex=1
+                    input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
+                  for c in criteria key=c.value
+                    row
+                      text c.label flex=1
+                      input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
+                  if filterCount > 0
+                    row
+                      button press=clearFilters testId="clear-filters"
+                        text "Clear All Filters"
+              if feed.items.length == 0
+                section
+                  if pending(feed)
+                    row justify-content="center"
+                      progress aria-label="Loading" testId="feed-loading"
+                  else
+                    row
+                      column flex=1 gap=12 padding=12 align-items="center"
+                        text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
+                        button press=reloadFeed testId="retry"
+                          text "Try Again"
               else
-                column flex=1 justify-content="center" align-items="center" gap=12 padding=24
-                  text (feedError != "" ? feedError : "No observations yet.") text-align="center" testId="feed-empty"
-                  button press=reload testId="retry"
-                    text "Try Again"
-            else
-              list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
                 if feedError != ""
                   section
                     row
                       text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
-                      button press=reload testId="retry-feed"
+                      button press=reloadFeed testId="retry-feed"
                         text "Try Again"
                 section
                   for o in feed.items key=`${o.did}/${o.rkey}`
-                    link href=path("observation", o.did, o.rkey) testId=`obs-${o.rkey}`
-                      row gap=12 align-items="center" flex=1 min-width=0 padding-top=6 padding-bottom=6
-                        if o.photo != ""
-                          image o.photo width=64 height=64 object-fit="cover" border-radius=8 aria-label=titleOf(o)
-                        column flex=1 min-width=0 gap=2
-                          text titleOf(o) font="-exact-headline" testId=`title-${o.rkey}`
-                          if o.commonName != "" and o.scientificName != ""
-                            text o.scientificName font-style="italic" color="-exact-secondary-label"
-                          text `${o.observer} · ${formatDay(o.observedAt, now, time.utcOffset, "day")}`
-                            font="-exact-footnote" color="-exact-secondary-label"
-                      image "symbol:forward-chevron"
+                    ObservationRow(o=o, now=now, offset=offset, prefix="obs", showObserver=true)
                 if feed.more
                   section
-                    button press=more disabled=pending(feed) testId="more"
+                    button press=moreFeed disabled=pending(feed) testId="more"
                       text (pending(feed) ? "Loading…" : "Show More")
-        if e.name == "observation"
-          column navigationKey=`${e.id}` navigationScroll="detail" position="absolute" inset=0
-            for o in feed.items.filter(x => x.did == e.params.did and x.rkey == e.params.rkey) key=o.rkey
-              header display="flex" align-items="center" padding="8px 16px"
-                text titleOf(o) role="heading" aria-level=2 testId="detail-title"
-              ObservationDetail(o=o, now=now, offset=time.utcOffset)
-            if feed.items.filter(x => x.did == e.params.did and x.rkey == e.params.rkey).length == 0
-              column flex=1 justify-content="center" align-items="center" padding=24
-                if pending(feed)
-                  progress aria-label="Loading" testId="detail-loading"
-                else
-                  text "This observation isn’t in the feed." testId="detail-missing"
 
-// One observation: its photo, its names, then the record's facts.
-component ObservationDetail
+        if e.name == "observation"
+          column navigationKey=`${e.id}` navigationScroll=`detail-${e.id}` position="absolute" inset=0
+            if detail.found and detail.did == e.params.did and detail.rkey == e.params.rkey
+              header display="flex" align-items="center" padding="8px 16px"
+                text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
+              ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal)
+            else
+              header display="flex" align-items="center" padding="8px 16px"
+                text "Observation" role="heading" aria-level=2
+              Waiting(id=`detail-${e.id}`, busy=pending(detail), error=detailError, retry=reloadDetail, testPrefix="detail")
+
+        if e.name == "photo"
+          column navigationKey=`${e.id}` navigationPresentation="modal" position="absolute" inset=0
+            header display="flex" align-items="center" justify-content="space-between" padding="8px 16px"
+              button id="back" press=back aria-label="Close" testId="photo-close"
+                image "symbol:close"
+              text (detail.found ? titleOf(detail.obs) : "Photo") role="heading" aria-level=2
+            column flex=1 min-height=0 justify-content="center" align-items="center" padding=16 gap=8
+              for p in detail.photos.filter(x => x.index.toString() == e.params.index and detail.did == e.params.did and detail.rkey == e.params.rkey) key=p.index
+                image p.url width="100%" flex=1 min-height=0 object-fit="contain" aria-label=`Photo of ${titleOf(detail.obs)}` testId="lightbox-photo"
+                if p.license != ""
+                  text `Photo: ${p.license}` font="-exact-footnote" color="-exact-secondary-label" text-align="center"
+
+        if e.name == "profile"
+          column navigationKey=`${e.id}` navigationScroll=`profile-${e.id}` position="absolute" inset=0
+            header display="flex" align-items="center" padding="8px 16px"
+              text (person.found and person.did == e.params.did ? person.name : "Profile") role="heading" aria-level=2 testId="profile-title"
+            if person.found and person.did == e.params.did
+              list id=`profile-${e.id}` appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                section
+                  row gap=12 align-items="center" padding-top=8 padding-bottom=8
+                    if person.avatar != ""
+                      image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
+                    column flex=1 min-width=0 gap=2
+                      text person.name font="-exact-title2"
+                      if person.handle != ""
+                        text person.handle color="-exact-secondary-label" testId="profile-handle"
+                  row flex-wrap="wrap" justify-content="space-around"
+                    Stat(value=person.observations, label="Observations", testId="stat-observations")
+                    Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
+                    Stat(value=person.species, label="Species", testId="stat-species")
+                section
+                  header
+                    text "Observations"
+                  for o in person.items key=`${o.did}/${o.rkey}`
+                    ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
+                  if person.items.length == 0
+                    row
+                      text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
+                if person.more
+                  section
+                    button press=morePerson disabled=pending(person) testId="more-profile"
+                      text (pending(person) ? "Loading…" : "Show More")
+            else
+              Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
+
+        if e.name == "taxon"
+          column navigationKey=`${e.id}` navigationScroll=`taxon-${e.id}` position="absolute" inset=0
+            header display="flex" align-items="center" padding="8px 16px"
+              text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
+            if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
+              TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon)
+            else
+              Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
+
+        if e.name == "search"
+          column navigationKey=`${e.id}` navigationScroll="search-results" position="absolute" inset=0
+            header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+              text "Search Taxa" role="heading" aria-level=2 flex=1
+              input type="search" value=query input=search placeholder="Species, genus, family…" aria-label="Search taxa" testId="search" width="100%"
+            list id="search-results" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+              section
+                for t, n in found key=`${t.kingdom}/${t.name}`
+                  TaxonLinkRow(t=t, testId=`found-${n}`)
+                if found.length == 0
+                  row
+                    text (query.trim().length < 2 ? "Type at least two letters." : (pending(found) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label" testId="search-empty"
+
+// A feed row: photo, names, observer and day; it pushes the observation.
+component ObservationRow
   props
     o: Observation
     now: number
     offset: number
+    prefix: string
+    showObserver: bool
   view
-    list id="detail" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-      if o.photo != ""
+    link href=path("observation", o.did, o.rkey) testId=`${prefix}-${o.rkey}`
+      row gap=12 align-items="center" flex=1 min-width=0 padding-top=6 padding-bottom=6
+        if o.photo != ""
+          image o.photo width=64 height=64 object-fit="cover" border-radius=8 aria-label=titleOf(o)
+        else
+          column width=64 height=64 border-radius=8 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
+            image "symbol:photo" color="-exact-secondary-label"
+        column flex=1 min-width=0 gap=2
+          text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
+          if o.commonName != "" and o.scientificName != ""
+            text o.scientificName font-style="italic" color="-exact-secondary-label"
+          text (showObserver ? `${o.observer} · ${formatDay(o.observedAt, now, offset, "day")}` : formatDay(o.observedAt, now, offset, "day"))
+            font="-exact-footnote" color="-exact-secondary-label"
+      image "symbol:forward-chevron"
+
+component TaxonLinkRow
+  props
+    t: TaxonRow
+    testId: string
+  view
+    link href=path("taxon", t.kingdom, t.name) testId=testId
+      row gap=12 align-items="center" flex=1 min-width=0
+        if t.photo != ""
+          image t.photo width=40 height=40 object-fit="cover" border-radius=6 aria-label=t.scientificName
+        column flex=1 min-width=0 gap=2
+          text taxonTitle(t.commonName, t.scientificName) testId=`${testId}-name`
+          text (t.commonName != "" ? `${capitalized(t.rank)} · ${t.scientificName}` : capitalized(t.rank)) font="-exact-footnote" color="-exact-secondary-label"
+      image "symbol:forward-chevron"
+
+component Stat
+  props
+    value: number
+    label: string
+    testId: string
+  view
+    column flex=1 flex-basis="7rem" min-width=0 align-items="center" gap=2 padding=8
+      text formatNumber(value, "decimal") font="-exact-title3" testId=testId
+      text label font="-exact-footnote" color="-exact-secondary-label" text-align="center"
+
+// A screen whose data has not arrived: a spinner, or why not and Try Again.
+component Waiting
+  props
+    id: string
+    busy: bool
+    error: string
+    retry: action
+    testPrefix: string
+  view
+    column id=id flex=1 justify-content="center" align-items="center" gap=12 padding=24
+      if error != ""
+        text error text-align="center" testId=`${testPrefix}-error`
+        button press=retry testId=`${testPrefix}-retry`
+          text "Try Again"
+      else
+        progress aria-label="Loading" testId=`${testPrefix}-loading`
+
+// One observation: its photos, names, data quality, facts, map, identifications, comments and links.
+component ObservationDetail
+  props
+    d: Detail
+    now: number
+    offset: number
+    scrollId: string
+    openExternal: action
+  view
+    list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+      if d.photos.length > 0
         section
-          image o.photo width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10
-            aria-label=`Photo of ${titleOf(o)}` testId="detail-photo"
+          for p in d.photos.slice(0, 1) key=p.index
+            link href=path("photo", d.did, d.rkey, p.index.toString()) testId="detail-photo"
+              image p.url width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=`Photo of ${titleOf(d.obs)}`
+          if d.photos.length > 1
+            row gap=8 flex-wrap="wrap"
+              for p in d.photos.slice(1) key=p.index
+                link href=path("photo", d.did, d.rkey, p.index.toString()) testId=`detail-photo-${p.index}`
+                  image p.thumb width=72 height=72 object-fit="cover" border-radius=8 aria-label=`Photo ${p.index + 1} of ${titleOf(d.obs)}`
           footer
-            text (o.license != "" ? `Photo ${o.license}` : "")
+            text (d.photos.length > 1 ? `${d.photos.length} photos` : match first(d.photos) { case some(p) => (p.license != "" ? `Photo ${p.license}` : ""), case none => "" })
       section
-        row
-          column flex=1 min-width=0 gap=2
-            text titleOf(o) font="-exact-title2"
-            if o.scientificName != "" and o.commonName != ""
-              text o.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci"
-            if o.rank != ""
-              text o.rank font="-exact-footnote" color="-exact-secondary-label"
-        if o.needsId
+        if d.taxonName != ""
+          link href=path("taxon", d.taxonKingdom, d.taxonName) testId="detail-taxon"
+            column flex=1 min-width=0 gap=2
+              text titleOf(d.obs) font="-exact-title2"
+              if d.obs.scientificName != "" and d.obs.commonName != ""
+                text d.obs.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci"
+              if d.obs.rank != ""
+                text capitalized(d.obs.rank) font="-exact-footnote" color="-exact-secondary-label"
+            image "symbol:forward-chevron"
+        else
           row
-            text "Needs an identification" color="-exact-system-orange" testId="needs-id"
+            text titleOf(d.obs) font="-exact-title2"
+        if d.obs.needsId
+          row gap=8
+            image "symbol:alert" color="-exact-system-orange"
+            text "Needs an identification" flex=1 min-width=0 testId="needs-id"
       section
         header
           text "Observation"
         row
           text "Observed" flex=1
-          text formatDay(o.observedAt, now, offset, "day-time") color="-exact-secondary-label" testId="detail-date"
-        row
+          text formatDay(d.obs.observedAt, now, offset, "day-time") color="-exact-secondary-label" testId="detail-date"
+        link href=path("profile", d.obs.observerDid) testId="detail-observer-link"
           text "By" flex=1
-          text (o.handle != "" ? `${o.observer} (${o.handle})` : o.observer) color="-exact-secondary-label" testId="detail-observer"
-        if o.place != ""
+          text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) color="-exact-secondary-label" testId="detail-observer"
+          image "symbol:forward-chevron"
+        if d.obs.place != ""
           row
             text "Location" flex=1
-            text o.place color="-exact-secondary-label" testId="detail-place"
-        row
-          text "Identifications" flex=1
-          text countOf(o.identifications, "identification", "identifications") color="-exact-secondary-label"
+            text d.obs.place color="-exact-secondary-label" testId="detail-place"
         row
           text "Likes" flex=1
-          text countOf(o.likes, "like", "likes") color="-exact-secondary-label"
-      if o.lineage != ""
+          text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label"
+      if d.hasLocation
+        section
+          exact-map latitude=d.latitude longitude=d.longitude zoomLevel=some(12)
+            markers=some([MapMarker(id="here", latitude=d.latitude, longitude=d.longitude, title=some(titleOf(d.obs)))])
+            height=220 width="100%" border-radius=10 testId="detail-map" aria-label=`Map: observed at ${d.obs.place}`
+      if d.issues.length > 0
+        section testId="data-quality"
+          header
+            text "Data Quality"
+          for i in d.issues key=i
+            row
+              image "symbol:alert" color="-exact-system-orange"
+              text i flex=1 min-width=0
+      if d.obs.lineage != ""
         section
           header
             text "Taxonomy"
           row padding-top=8 padding-bottom=8
-            text o.lineage flex=1 min-width=0 testId="detail-lineage"
-      if o.remarks != ""
+            text d.obs.lineage flex=1 min-width=0 testId="detail-lineage"
+      section testId="identifications"
+        header
+          text countOf(d.identifications.length, "Identification", "Identifications")
+        for i, n in d.identifications key=i.uri
+          if i.kingdom != ""
+            link href=path("taxon", i.kingdom, i.scientificName) testId=`ident-${n}`
+              IdText(i=i, now=now, offset=offset)
+              image "symbol:forward-chevron"
+          else
+            row testId=`ident-${n}`
+              IdText(i=i, now=now, offset=offset)
+        if d.identifications.length == 0
+          row
+            text "No identifications yet." color="-exact-secondary-label"
+      section testId="comments"
+        header
+          text countOf(d.comments.length, "Comment", "Comments")
+        for c, n in d.comments key=c.uri
+          row padding-top=8 padding-bottom=8
+            column flex=1 min-width=0 gap=4
+              text `${c.who} · ${formatDay(c.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+              text c.body testId=`comment-${n}`
+        if d.comments.length == 0
+          row
+            text "No comments yet." color="-exact-secondary-label"
+      if d.obs.remarks != "" or d.eventRemarks != ""
         section
           header
             text "Remarks"
+          if d.obs.remarks != ""
+            row padding-top=8 padding-bottom=8
+              text d.obs.remarks flex=1 min-width=0 testId="detail-remarks"
+          if d.eventRemarks != ""
+            row padding-top=8 padding-bottom=8
+              text d.eventRemarks flex=1 min-width=0 color="-exact-secondary-label" testId="detail-event-remarks"
+      if d.links.length > 0
+        section
+          header
+            text "Elsewhere"
+          for l in d.links key=l.url
+            row
+              button press=openExternal(l.url) testId=`external-${l.label}`
+                text `View on ${l.label}`
+
+component IdText
+  props
+    i: IdRow
+    now: number
+    offset: number
+  view
+    column flex=1 min-width=0 gap=2 padding-top=4 padding-bottom=4
+      text i.scientificName font-style="italic"
+      text `${i.who} · ${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+
+// A taxon: its picture, names, place in the tree, what it includes, its observations and pictures.
+component TaxonDetail
+  props
+    t: TaxonPage
+    now: number
+    offset: number
+    scrollId: string
+    busy: bool
+    more: action
+    openExternal: action
+    explore: action
+  view
+    list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+      section
+        if t.photo != ""
+          image t.photo width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=t.scientificName testId="taxon-photo"
+        row
+          column flex=1 min-width=0 gap=2
+            text taxonTitle(t.commonName, t.scientificName) font="-exact-title2"
+            if t.commonName != ""
+              text t.scientificName font-style="italic" color="-exact-secondary-label" testId="taxon-sci"
+            text capitalized(t.rank) font="-exact-footnote" color="-exact-secondary-label" testId="taxon-rank"
+        if t.status != ""
+          row
+            text "Conservation status" flex=1
+            text t.status color="-exact-secondary-label" testId="taxon-status"
+        if t.extinct
+          row
+            text "Extinct" color="-exact-system-red"
+        row
+          button press=explore(t.scientificName, t.kingdom) testId="taxon-explore"
+            text "Show in Explore"
+      if t.ancestors.length > 0
+        section testId="taxon-ancestors"
+          header
+            text "Classification"
+          for a in t.ancestors key=`${a.kingdom}/${a.name}`
+            link href=path("taxon", a.kingdom, a.name) testId=`ancestor-${a.name}`
+              text capitalized(a.rank) color="-exact-secondary-label" width=88
+              text a.scientificName flex=1 min-width=0
+              image "symbol:forward-chevron"
+      if t.description != ""
+        section
+          header
+            text "About"
           row padding-top=8 padding-bottom=8
-            text o.remarks flex=1 min-width=0 testId="detail-remarks"
+            text t.description flex=1 min-width=0 testId="taxon-description"
+          footer
+            text (t.descriptionSource != "" ? `Source: ${t.descriptionSource}` : "")
+      if t.children.length > 0
+        section testId="taxon-children"
+          header
+            text (t.descendants > 0 ? `Includes · ${formatNumber(t.descendants, "compact")} taxa` : "Includes")
+          for c, n in t.children.slice(0, 50) key=`${c.kingdom}/${c.name}`
+            TaxonLinkRow(t=c, testId=`child-${n}`)
+      section
+        header
+          text countOf(t.observationCount, "Observation", "Observations") testId="taxon-count"
+        for o in t.items key=`${o.did}/${o.rkey}`
+          ObservationRow(o=o, now=now, offset=offset, prefix="tobs", showObserver=true)
+        if t.items.length == 0
+          row
+            text "No observations yet." color="-exact-secondary-label"
+      if t.more
+        section
+          button press=more disabled=busy testId="more-taxon"
+            text (busy ? "Loading…" : "Show More")
+      if t.media.length > 0
+        section
+          header
+            text "Pictures"
+          row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
+            for m in t.media key=m.index
+              image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
+      if t.gbifUrl != "" or t.wikidataUrl != ""
+        section
+          header
+            text "Elsewhere"
+          if t.gbifUrl != ""
+            row
+              button press=openExternal(t.gbifUrl) testId="taxon-gbif"
+                text "View on GBIF"
+          if t.wikidataUrl != ""
+            row
+              button press=openExternal(t.wikidataUrl) testId="taxon-wikidata"
+                text "View on Wikidata"

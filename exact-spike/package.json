@@ -5,5 +5,7 @@
     "build": "bun exact.mjs web-build --out dist",
     "start": "bun exact.mjs serve dist"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps"
+  }
 }

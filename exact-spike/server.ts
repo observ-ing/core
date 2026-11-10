@@ -3,8 +3,8 @@
 //   bun server.ts                              answer from fixtures/ (recorded by record.ts)
 // The proxy keeps the web host same-origin with something that sends CORS
 // headers, so no appview has to allow Exact's dev origin.
-import type { Occurrence } from './bindings/Occurrence.ts';
-import explore from './fixtures/explore.json' with { type: 'json' };
+import recorded from './fixtures/api.json' with { type: 'json' };
+import { fixtureKey } from './fixture-key.ts';
 import { API } from './app.ts';
 
 // exact's test runner starts the server on an empty database it names in DB; this one keeps no database.
@@ -29,8 +29,8 @@ async function proxy(req: Request): Promise<Response> {
   return new Response(upstream.body, { status: upstream.status, headers });
 }
 
-// Recorded rows, served by `limit` the way the appview pages them.
-const OCCURRENCES = (explore as { occurrences: Occurrence[] }).occurrences;
+// Recorded responses, by the request that asked for them (record.ts).
+const RECORDED = recorded as Record<string, unknown>;
 const PLACEHOLDERS = ['amanita', 'cardinal', 'fern', 'monarch', 'oak', 'redeft'];
 // A recorded photo's URL names its blob CID: answer with a placeholder PNG
 // picked from it, so tests run offline and on hosts with no JPEG decoder.
@@ -42,11 +42,13 @@ function placeholder(cid: string): Response {
 }
 
 const fixtures = {
-  '/api/feeds/explore': (req: Request) => {
-    const limit = Math.max(1, Math.min(50, Number(new URL(req.url).searchParams.get('limit') ?? 20)));
-    const occurrences = OCCURRENCES.slice(0, limit);
-    const cursor = limit < OCCURRENCES.length ? String(limit) : undefined;
-    return Response.json({ occurrences, ...(cursor ? { cursor } : {}) }, { headers: CORS });
+  '/api/*': (req: Request) => {
+    const key = fixtureKey(new URL(req.url));
+    if (!(key in RECORDED)) {
+      console.error(`server.ts: no fixture for ${key}; add it to record.ts`);
+      return Response.json({ error: `No fixture for ${key}` }, { status: 404, headers: CORS });
+    }
+    return Response.json(RECORDED[key], { headers: CORS });
   },
   '/media/blob/:did/:cid': (req: Request & { params: { cid: string } }) => placeholder(req.params.cid),
   '/media/thumb/:did/:cid': (req: Request & { params: { cid: string } }) => placeholder(req.params.cid),

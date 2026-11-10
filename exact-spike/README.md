@@ -1,28 +1,34 @@
-# Exact spike: explore feed and observation detail
+# Exact spike: observ.ing, signed out
 
-A throwaway spike, not a migration: observ.ing's explore feed and an
-observation's detail page rebuilt in [Exact](https://github.com/expo/exact),
-Expo's cross-platform runtime (Contract views, TypeScript data, native
-UIKit/AppKit/Linux hosts, a small DOM runtime on the web).
+observ.ing rebuilt in [Exact](https://github.com/expo/exact), Expo's
+cross-platform runtime (Contract views, TypeScript data, native
+UIKit/AppKit/Linux hosts, a small DOM runtime on the web): everything a
+signed-out visitor can browse.
 
-- `app.contract`: the view. The feed (photo, names, observer, day, Show More
-  paging) pushes `/observation/:did/:rkey`, the detail.
-- `app.ts`: the data module. It reads `GET /api/feeds/explore?limit=N` in the
-  appview's current `Occurrence` JSON shape and flattens each row for the view.
+- **Explore**: the feed, paged by the appview's cursor, with filters (kingdom,
+  dates, data-quality criteria, a taxon from its page's Show in Explore).
+- **Observation**: photos (full size in a sheet), names linking to the taxon,
+  data quality, facts, a map (`@exact/maps`: MapKit on Apple, OpenStreetMap
+  tiles on the web), identifications, comments, remarks, links elsewhere.
+- **Profile**: counts and the person's observations.
+- **Taxon**: picture, names, conservation status, classification, description,
+  what it includes, its observations, pictures, GBIF and Wikidata.
+- **Search**: taxa by name.
+
+Files:
+
+- `app.contract`: the views. `app.ts`: the data module, one source per screen,
+  each answering a flattened shape of the appview's JSON.
 - `server.ts`: the dev server `app.ts` reads. With `APPVIEW=<origin>` it proxies
   `/api/*` and `/media/*` to that appview (no appview has to allow Exact's dev
   origin); without it, it answers from `fixtures/`, swapping each photo for a
   placeholder PNG in `assets/photos` (Exact's Linux host has no JPEG decoder).
-- `fixtures/`: real appview responses, recorded verbatim by `bun record.ts
-  [origin]` (default https://observ.ing).
+- `fixtures/api.json`: real appview responses, recorded verbatim by `bun
+  record.ts [origin]` (default https://observ.ing) and filed by `fixture-key.ts`.
 - `bindings/`: the appview's ts-rs types, copied from `frontend/src/bindings` by
   `bun sync-bindings.ts` (`--check` fails when stale): an Exact build reads only
   files inside this directory.
-- `app.test.contract`: three tests against the recorded fixtures.
-
-![Feed](docs/screenshots/feed.png) ![After Show More](docs/screenshots/feed-more.png) ![Detail](docs/screenshots/detail.png)
-
-Screenshots are from Exact's native Linux host, driven headless by its agent.
+- `app.test.contract`: tests against the recorded fixtures.
 
 ## Running it
 
