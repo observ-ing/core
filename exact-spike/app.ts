@@ -1,11 +1,13 @@
 import type { Answer, Result, Sources } from './app.contract.d.ts';
-import { OCCURRENCES, type Occurrence } from './fixtures.ts';
+// The appview's own response types, generated from its Rust structs by ts-rs.
+import type { Occurrence } from './bindings/Occurrence.ts';
+import explore from './fixtures/explore.json' with { type: 'json' };
 
-// observ.ing's appview. server.ts stands in for it here; point this at a real
-// appview to read the live explore feed.
+// The dev server (server.ts): it proxies a real appview when started with
+// APPVIEW=…, else answers from fixtures/ recorded from one.
 export const API = 'http://127.0.0.1:8787';
 export const grants = `net.fetch ${API}`;
-// true: answer from fixtures.ts with no server (the published demo build).
+// true: answer from fixtures/ with no server (the published demo build).
 const DEMO = false;
 
 const LINEAGE = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus'] as const;
@@ -45,8 +47,8 @@ function toObservation(o: Occurrence, photoBase: string): Observation {
 const sources: Sources = {
   loadFeed: async ([limit]): Promise<Result<'loadFeed'>> => {
     if (DEMO) {
-      const rows = OCCURRENCES.slice(0, limit);
-      return { items: rows.map((o) => toObservation(o, 'assets')), more: limit < OCCURRENCES.length };
+      const all = (explore as { occurrences: Occurrence[] }).occurrences;
+      return { items: all.slice(0, limit).map((o) => toObservation(o, API)), more: limit < all.length };
     }
     const response = await fetch(`${API}/api/feeds/explore?limit=${limit}`, { exactTimeout: 10000 });
     if (!response.ok) throw new Error(`The feed answered ${response.status}.`);
