@@ -36,3 +36,10 @@ export const TighterPadding: Story = {
     p: 3,
   },
 };
+
+/** Suspense-fallback use: a fixed-height slot with the spinner in its middle. */
+export const FillsSlot: Story = {
+  args: {
+    sx: { height: 260, border: 1, borderColor: "divider" },
+  },
+};

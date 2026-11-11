@@ -89,7 +89,7 @@ export function PhoneLocationStep({ observations, onApply, onBack }: PhoneLocati
         </>
       }
     >
-      <Suspense fallback={<CenteredSpinner size={24} sx={{ flex: 1, alignItems: "center" }} />}>
+      <Suspense fallback={<CenteredSpinner sx={{ flex: 1 }} />}>
         <LocationPicker
           fill
           latitude={point?.latitude ?? null}

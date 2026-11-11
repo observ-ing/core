@@ -394,11 +394,7 @@ export function ObservationDetail() {
                 />
                 {observation.location && (
                   <Box sx={{ mt: 1 }}>
-                    <Suspense
-                      fallback={
-                        <CenteredSpinner size={24} sx={{ height: 180, alignItems: "center" }} />
-                      }
-                    >
+                    <Suspense fallback={<CenteredSpinner sx={{ height: 180 }} />}>
                       <LocationMap
                         latitude={observation.location.latitude}
                         longitude={observation.location.longitude}
