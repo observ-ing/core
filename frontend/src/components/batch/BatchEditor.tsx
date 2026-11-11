@@ -301,9 +301,7 @@ function EditorFields({
       <DateFields selected={selected} onEdit={onEdit} />
 
       <Box>
-        <Suspense
-          fallback={<CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />}
-        >
+        <Suspense fallback={<CenteredSpinner sx={{ height: 260 }} />}>
           {single ? (
             <LocationPicker
               latitude={first.latitude}
