@@ -6,6 +6,8 @@ import {
   searchTaxa,
 } from "./helpers/navigation";
 import { mockTaxaSearchRoute } from "./helpers/mock-taxa";
+import { exifJpeg } from "./helpers/exif-jpeg";
+import { AtpAgent } from "@atproto/api";
 
 async function waitForOccurrenceIndexed(
   request: APIRequestContext,
@@ -224,6 +226,89 @@ test.describe("E2E CRUD flow", () => {
     await expect(page.getByText(/May 21, 2024\s*–\s*May 23, 2024/)).toBeVisible({
       timeout: 10_000,
     });
+  });
+
+  // Regression test for #1025: an edit used to rebuild the PDS record from the
+  // form, dropping fields observ.ing doesn't model (cuanto.bio's eventID),
+  // resetting createdAt, and losing the photos the user kept. Reads the record
+  // back from the PDS, since the appview's own view shows none of the three.
+  test("editing an occurrence keeps unmodeled fields, createdAt, and photos", async ({
+    page,
+    request,
+  }) => {
+    const pdsUrl = process.env.DEVENV_PDS_URL;
+    const handle = process.env.DEVENV_HANDLE;
+    const password = process.env.DEVENV_PASSWORD;
+    if (!pdsUrl || !handle || !password) {
+      throw new Error("DEVENV_PDS_URL, DEVENV_HANDLE and DEVENV_PASSWORD must be set");
+    }
+    const agent = new AtpAgent({ service: pdsUrl });
+    await agent.login({ identifier: handle, password });
+
+    // Load the app first so page.request carries the session cookie.
+    await page.goto("/");
+    await expect(page.getByRole("button", { name: "Account menu" })).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const photo = exifJpeg({
+      dateTimeOriginal: "2024:05:21 08:00:00",
+      offsetTimeOriginal: "-07:00",
+      latitude: 37.7749,
+      longitude: -122.4194,
+      accuracyMeters: 10,
+    });
+    const created = await page.request.post("/api/occurrences", {
+      data: {
+        latitude: 37.7749,
+        longitude: -122.4194,
+        eventDate: "2024-05-21",
+        images: [{ data: photo.toString("base64"), mimeType: "image/jpeg" }],
+      },
+    });
+    expect(created.ok(), await created.text()).toBeTruthy();
+    occurrenceUri = (await created.json()).uri as string;
+    const match = occurrenceUri.match(/^at:\/\/([^/]+)\/([^/]+)\/([^/]+)$/);
+    expect(match).toBeTruthy();
+    const [, repo, collection, rkey] = match!;
+    await waitForOccurrenceIndexed(request, occurrenceUri);
+
+    // Add what another app would have written: a Darwin Core term the
+    // lexicon doesn't define, and a createdAt that isn't the edit time.
+    const original = await agent.com.atproto.repo.getRecord({ repo, collection, rkey });
+    const originalRecord = original.data.value as Record<string, unknown>;
+    expect(originalRecord.media).toHaveLength(1);
+    const createdAt = "2024-05-21T15:00:00.000Z";
+    await agent.com.atproto.repo.putRecord({
+      repo,
+      collection,
+      rkey,
+      record: { ...originalRecord, eventID: "cuanto-event-42", createdAt },
+      swapRecord: original.data.cid,
+    });
+
+    // Move the point and keep the photo, as the edit form does.
+    const detail = await page.request.get(`/api/occurrences/${encodeURIComponent(occurrenceUri)}`);
+    expect(detail.ok()).toBeTruthy();
+    const images = (await detail.json()).occurrence.images as { url: string }[];
+    expect(images).toHaveLength(1);
+    const edited = await page.request.put("/api/occurrences", {
+      data: {
+        uri: occurrenceUri,
+        latitude: 37.8,
+        longitude: -122.4194,
+        eventDate: "2024-05-21",
+        retainedBlobCids: images.map((img) => img.url.split("/").at(-1)),
+      },
+    });
+    expect(edited.status(), await edited.text()).toBe(200);
+
+    const after = await agent.com.atproto.repo.getRecord({ repo, collection, rkey });
+    const record = after.data.value as Record<string, unknown>;
+    expect(record.decimalLatitude).toBe("37.8");
+    expect(record.eventID).toBe("cuanto-event-42");
+    expect(record.createdAt).toBe(createdAt);
+    expect(record.media).toEqual(originalRecord.media);
   });
 
   test.afterEach(async ({ page }) => {
