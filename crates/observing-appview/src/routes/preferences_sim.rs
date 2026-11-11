@@ -2,9 +2,9 @@
 //! #999: a save changes the preferences it names and leaves the rest alone.
 //! The pattern is the one in `docs/system-tests.md`.
 //!
-//! Generates random traces of saves from clients of different releases (an
-//! older one predates the basemap preference, so it never sends it), some of
-//! them racing each other, and sends each as the JSON body a client would
+//! Generates random traces of saves from clients of different releases (older
+//! ones predate the basemap or iNaturalist preferences, so they never send
+//! them), some of them racing each other, and sends each as the JSON body a client would
 //! through the real request parsing, validation and write ([`apply_update`])
 //! against a scratch database. After every step it reads each user's
 //! preferences back the way GET does and checks them against a model of what
@@ -39,16 +39,34 @@ const USERS: [&str; 2] = ["did:plc:alice", "did:plc:bob"];
 enum Field {
     DefaultLicense,
     Basemap,
+    CrosspostInaturalist,
+    CrosspostRequirePhotos,
 }
 
 impl Field {
-    const ALL: [Field; 2] = [Field::DefaultLicense, Field::Basemap];
+    const ALL: [Field; 4] = [
+        Field::DefaultLicense,
+        Field::Basemap,
+        Field::CrosspostInaturalist,
+        Field::CrosspostRequirePhotos,
+    ];
 
     fn json_name(self) -> &'static str {
         match self {
             Field::DefaultLicense => "defaultLicense",
             Field::Basemap => "basemap",
+            Field::CrosspostInaturalist => "crosspostInaturalist",
+            Field::CrosspostRequirePhotos => "crosspostInaturalistRequirePhotos",
         }
+    }
+
+    /// Whether the field's JSON value is a boolean rather than a string. Its
+    /// inputs are then spelled `"true"` / `"false"`.
+    fn is_bool(self) -> bool {
+        matches!(
+            self,
+            Field::CrosspostInaturalist | Field::CrosspostRequirePhotos
+        )
     }
 
     /// Values a client may send, each with what should be stored for it, or
@@ -70,6 +88,9 @@ impl Field {
                 ("satellite", Some("satellite")),
                 ("lava", None),
             ],
+            Field::CrosspostInaturalist | Field::CrosspostRequirePhotos => {
+                &[("true", Some("true")), ("false", Some("false"))]
+            }
         }
     }
 
@@ -86,6 +107,8 @@ impl Field {
 enum Client {
     /// An installed Android build or a stale tab from before basemaps.
     PredatesBasemap,
+    /// One from before the iNaturalist cross-posting preferences.
+    PredatesCrosspost,
     Current,
 }
 
@@ -93,6 +116,7 @@ impl Client {
     fn knows(self) -> &'static [Field] {
         match self {
             Client::PredatesBasemap => &[Field::DefaultLicense],
+            Client::PredatesCrosspost => &[Field::DefaultLicense, Field::Basemap],
             Client::Current => &Field::ALL,
         }
     }
@@ -119,6 +143,7 @@ impl Save {
         let mut body = Map::new();
         for (field, change) in &self.changes {
             let value = match change {
+                Change::Set(v) if field.is_bool() => json!(*v == "true"),
                 Change::Set(v) => json!(v),
                 Change::Clear => Value::Null,
             };
@@ -201,7 +226,12 @@ fn generate(seed: u64, steps: usize) -> Vec<Action> {
 }
 
 fn propose_save(rng: &mut Rng) -> Save {
-    let client = rng.pick(&[Client::PredatesBasemap, Client::Current, Client::Current]);
+    let client = rng.pick(&[
+        Client::PredatesBasemap,
+        Client::PredatesCrosspost,
+        Client::Current,
+        Client::Current,
+    ]);
     let mut fields: Vec<Field> = client
         .knows()
         .iter()
@@ -301,6 +331,8 @@ enum Mutant {
     /// A preference added without `#[serde(with = "present")]`: `null`
     /// deserializes to "omitted", so it can't be cleared.
     NullIgnoredForBasemap,
+    /// The same, for a boolean preference.
+    NullIgnoredForCrosspost,
     /// The legacy SPDX license ids stop being accepted.
     LegacyLicenseRejected,
 }
@@ -309,6 +341,10 @@ const MUTANTS: &[(Mutant, &[Property])] = &[
     (Mutant::OmittedClears, &[Property::PreferencesMatchModel]),
     (
         Mutant::NullIgnoredForBasemap,
+        &[Property::PreferencesMatchModel],
+    ),
+    (
+        Mutant::NullIgnoredForCrosspost,
         &[Property::PreferencesMatchModel],
     ),
     (Mutant::LegacyLicenseRejected, &[Property::AcceptedIffValid]),
@@ -320,10 +356,19 @@ impl Mutant {
             Mutant::OmittedClears => {
                 request.default_license.get_or_insert(None);
                 request.basemap.get_or_insert(None);
+                request.crosspost_inaturalist.get_or_insert(None);
+                request
+                    .crosspost_inaturalist_require_photos
+                    .get_or_insert(None);
             }
             Mutant::NullIgnoredForBasemap => {
                 if request.basemap == Some(None) {
                     request.basemap = None;
+                }
+            }
+            Mutant::NullIgnoredForCrosspost => {
+                if request.crosspost_inaturalist == Some(None) {
+                    request.crosspost_inaturalist = None;
                 }
             }
             Mutant::LegacyLicenseRejected => {
@@ -431,7 +476,14 @@ impl Driver {
         let response = serde_json::to_value(response_for(row.as_ref())).expect("serialize");
         Field::ALL
             .into_iter()
-            .map(|f| (f, response[f.json_name()].as_str().map(str::to_string)))
+            .map(|f| {
+                let value = &response[f.json_name()];
+                let shown = match value.as_bool() {
+                    Some(b) => Some(b.to_string()),
+                    None => value.as_str().map(str::to_string),
+                };
+                (f, shown)
+            })
             .collect()
     }
 }
@@ -798,6 +850,14 @@ fn generator_exercises_every_situation() {
                 {
                     tally("older client saves after basemap is set");
                 }
+                if matches!(
+                    save.client,
+                    Client::PredatesBasemap | Client::PredatesCrosspost
+                ) && (before[&Field::CrosspostInaturalist].is_some()
+                    || before[&Field::CrosspostRequirePhotos].is_some())
+                {
+                    tally("older client saves after crossposting is set");
+                }
                 model.apply(save);
             }
         }
@@ -808,6 +868,7 @@ fn generator_exercises_every_situation() {
         "legacy license id",
         "omit a set preference",
         "older client saves after basemap is set",
+        "older client saves after crossposting is set",
         "race on the same preference",
         "race on different preferences",
         "race between users",
