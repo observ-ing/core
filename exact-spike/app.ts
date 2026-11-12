@@ -1,4 +1,4 @@
-import type { Answer, Result, Sources } from './app.contract.d.ts';
+import type { Answer, Result, Sources, Store } from './app.contract.d.ts';
 // The appview's own response types, generated from its Rust structs by ts-rs.
 import type { Occurrence } from './bindings/Occurrence.ts';
 import type { Identification } from './bindings/Identification.ts';
@@ -7,10 +7,22 @@ import type { Profile } from './bindings/Profile.ts';
 import type { TaxaResult } from './bindings/TaxaResult.ts';
 import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
 
+// Exact's host functions for a browser sign-in (as @exact/oauth declares them).
+declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
+declare function authCallback(): string;
+
 // The dev server (server.ts): it proxies a real appview when started with
 // APPVIEW=…, else answers from fixtures/ recorded from one.
 export const API = 'http://127.0.0.1:8787';
-export const grants = `net.fetch ${API}`;
+// Where the system browser signs in: the appview itself, since its atproto
+// OAuth client redirects back to its own origin. The dev server stands in
+// for one in tests; a live build names the appview APPVIEW proxies.
+const AUTH = import.meta.env.OBSERVING_AUTH_ORIGIN ?? 'http://127.0.0.1:8787';
+// The session token the appview issued, kept in the platform's secret store.
+const SESSION = 'observing.session';
+// A native app's sign-in callback (its URL scheme); the web uses its own page's.
+const NATIVE_CALLBACK = 'ing.observ.exactspike:/oauth';
+export const grants = [`net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`].join('\n');
 
 const PAGE = 20;
 const LINEAGE = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus'] as const;
@@ -26,11 +38,40 @@ type ProfileFeedResponse = Paged & {
   counts: { observations: number; identifications: number; species: number };
 };
 
-async function get<T>(path: string): Promise<T> {
-  const response = await fetch(`${API}${path}`, { exactTimeout: 15000 });
-  if (!response.ok) throw new Error(`${path} answered ${response.status}.`);
+type Kept = { token: string; did: string };
+const kept = (store: Store): Kept | null => {
+  try {
+    const raw = store.get(SESSION);
+    return raw ? (JSON.parse(raw) as Kept) : null;
+  } catch {
+    return null;
+  }
+};
+// Every request carries the session's token when there is one, so reads show
+// what the signed-in person may see (their likes, the home feed).
+const authHeaders = (store: Store): Record<string, string> => {
+  const session = kept(store);
+  return session ? { Authorization: `Bearer ${session.token}` } : {};
+};
+
+class ApiError extends Error {
+  constructor(readonly status: number, message: string) {
+    super(message);
+  }
+}
+
+async function get<T>(path: string, store: Store): Promise<T> {
+  const response = await fetch(`${API}${path}`, { headers: authHeaders(store), exactTimeout: 15000 });
+  if (!response.ok) throw new ApiError(response.status, `${path} answered ${response.status}.`);
   return (await response.json()) as T;
 }
+
+const base64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const randomString = (n: number) => base64url(crypto.getRandomValues(new Uint8Array(n)));
+const challengeOf = async (verifier: string) =>
+  base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+const SIGNED_OUT = { signedIn: false, did: '', handle: '', name: '', avatar: '', error: '' };
 
 const absolute = (url: string | null | undefined) => (!url ? '' : url.startsWith('/') ? `${API}${url}` : url);
 // The feed's rows show the appview's thumbnail of a blob, not the blob itself.
@@ -97,15 +138,17 @@ function toObservation(o: Occurrence): Observation {
 // Pages already read, by the query they answer: Show More asks for one more
 // page, not for every page again. A filter change is a new query.
 const pages = new Map<string, Paged[]>();
-async function readPages(path: string, wanted: number): Promise<{ occurrences: Occurrence[]; more: boolean }> {
-  const read = pages.get(path) ?? [];
+async function readPages(path: string, wanted: number, store: Store): Promise<{ occurrences: Occurrence[]; more: boolean }> {
+  // What a page holds depends on who reads it (likes, the home feed): key by the session too.
+  const key = `${kept(store)?.did ?? ''} ${path}`;
+  const read = pages.get(key) ?? [];
   while (read.length < Math.max(1, wanted)) {
     const last = read.at(-1);
     if (last && !hasMore(last)) break;
     const sep = path.includes('?') ? '&' : '?';
     const cursor = last?.cursor ? `&cursor=${encodeURIComponent(last.cursor)}` : '';
-    read.push(await get<Paged>(`${path}${sep}limit=${PAGE}${cursor}`));
-    pages.set(path, read);
+    read.push(await get<Paged>(`${path}${sep}limit=${PAGE}${cursor}`, store));
+    pages.set(key, read);
   }
   const shown = read.slice(0, Math.max(1, wanted));
   const end = shown.at(-1);
@@ -123,7 +166,7 @@ const QUALITY: Record<string, string> = {
 };
 
 const sources: Sources = {
-  loadFeed: async ([kingdom, taxon, quality, startDate, endDate, wanted]) => {
+  loadFeed: async ([kingdom, taxon, quality, startDate, endDate, wanted], store) => {
     const q = new URLSearchParams();
     if (kingdom) q.set('kingdom', kingdom);
     if (taxon) q.set('taxon', taxon);
@@ -131,11 +174,11 @@ const sources: Sources = {
     if (startDate) q.set('startDate', startDate);
     if (endDate) q.set('endDate', endDate);
     const query = q.toString();
-    const { occurrences, more } = await readPages(`/api/feeds/explore${query ? `?${query}` : ''}`, wanted);
+    const { occurrences, more } = await readPages(`/api/feeds/explore${query ? `?${query}` : ''}`, wanted, store);
     return { items: occurrences.map(toObservation), more };
   },
 
-  loadObservation: async ([did, rkey]) => {
+  loadObservation: async ([did, rkey], store) => {
     const empty = {
       did, rkey, found: false, obs: toObservation({ uri: `at://${did}//${rkey}`, cid: '', observer: { did }, identificationCount: 0,
         images: [], externalRecords: [], createdAt: '', qualityIssues: [] }),
@@ -144,7 +187,7 @@ const sources: Sources = {
     };
     if (!did || !rkey) return empty;
     const uri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
-    const d = await get<OccurrenceDetailResponse>(`/api/occurrences/${encodeURIComponent(uri)}`);
+    const d = await get<OccurrenceDetailResponse>(`/api/occurrences/${encodeURIComponent(uri)}`, store);
     const o = d.occurrence;
     const tax = o.effectiveTaxonomy;
     // A taxon page is addressed by kingdom and name (taxonId is a GBIF URL, not a route).
@@ -175,11 +218,11 @@ const sources: Sources = {
     };
   },
 
-  loadProfile: async ([did, wanted]) => {
+  loadProfile: async ([did, wanted], store) => {
     if (!did) return { did, found: false, name: '', handle: '', avatar: '', observations: 0, identifications: 0, species: 0, items: [], more: false };
     const path = `/api/profiles/${encodeURIComponent(did)}/feed?type=observations`;
-    const first = await get<ProfileFeedResponse>(`${path}&limit=1`);
-    const { occurrences, more } = await readPages(path, wanted);
+    const first = await get<ProfileFeedResponse>(`${path}&limit=1`, store);
+    const { occurrences, more } = await readPages(path, wanted, store);
     return {
       did, found: true,
       name: name(first.profile),
@@ -193,14 +236,14 @@ const sources: Sources = {
     };
   },
 
-  loadTaxon: async ([kingdom, taxonName, wanted]) => {
+  loadTaxon: async ([kingdom, taxonName, wanted], store) => {
     const none = { kingdom, name: taxonName, found: false, scientificName: '', commonName: '', rank: '', photo: '', status: '',
       extinct: false, description: '', descriptionSource: '', observationCount: 0, descendants: 0, ancestors: [], children: [],
       media: [], gbifUrl: '', wikidataUrl: '', items: [], more: false };
     if (!kingdom || !taxonName) return none;
     const base = `/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(taxonName)}`;
-    const t = await get<TaxonDetailWithCount>(base);
-    const { occurrences, more } = await readPages(`${base}/occurrences`, wanted);
+    const t = await get<TaxonDetailWithCount>(base, store);
+    const { occurrences, more } = await readPages(`${base}/occurrences`, wanted, store);
     const description = t.descriptions?.find((d) => d.description.trim() !== '');
     return {
       kingdom, name: taxonName, found: true,
@@ -225,9 +268,9 @@ const sources: Sources = {
     };
   },
 
-  searchTaxa: async ([query]) => {
+  searchTaxa: async ([query], store) => {
     if (query.trim().length < 2) return [];
-    const body = await get<{ results: TaxaResult[] }>(`/api/taxa/search?q=${encodeURIComponent(query.trim())}`);
+    const body = await get<{ results: TaxaResult[] }>(`/api/taxa/search?q=${encodeURIComponent(query.trim())}`, store);
     // The appview can list one taxon once per source it found it in: show it once.
     const seen = new Set<string>();
     return body.results.map(toTaxonRow).filter((t) => {
@@ -236,6 +279,90 @@ const sources: Sources = {
       seen.add(key);
       return true;
     });
+  },
+
+  // Who is signed in. The appview answers `user: null` once the session has
+  // ended (expired, signed out elsewhere, or its atproto session lapsed).
+  session: async (_args, store) => {
+    const session = kept(store);
+    if (!session) return SIGNED_OUT;
+    const me = await get<{ user: { did: string; handle: string; displayName?: string; avatar?: string } | null }>('/oauth/me', store);
+    if (!me.user) {
+      store.forget(SESSION);
+      return { ...SIGNED_OUT, error: 'Your session ended. Sign in again.' };
+    }
+    return {
+      signedIn: true,
+      did: me.user.did,
+      handle: `@${me.user.handle}`,
+      name: me.user.displayName || me.user.handle,
+      avatar: me.user.avatar ?? '',
+      error: '',
+    };
+  },
+
+  // Sign in with an atproto handle: the system browser runs the appview's
+  // OAuth flow, which hands back a one-time code; the code and this sign-in's
+  // PKCE verifier buy the session token, so the token never travels in a URL.
+  signIn: async ([handle], store) => {
+    const who = handle.trim().replace(/^@/, '');
+    if (!who) return { ok: false, error: 'Enter your handle, like alice.bsky.social.' };
+    const verifier = randomString(32);
+    const state = randomString(16);
+    const callback = authCallback();
+    const q = new URLSearchParams({
+      handle: who,
+      redirect_uri: callback,
+      state,
+      code_challenge: await challengeOf(verifier),
+      code_challenge_method: 'S256',
+    });
+    let answered: string;
+    try {
+      answered = await openAuthSession(`${AUTH}/oauth/app/login?${q}`, { callback, state });
+    } catch (e) {
+      const code = (e as { code?: string }).code;
+      if (code === 'USER_CANCEL' || code === 'cancelled' || code === 'AbortError') return { ok: false, error: '' };
+      return { ok: false, error: 'Sign-in couldn’t start. Try again.' };
+    }
+    const back = new URL(answered);
+    if (back.searchParams.get('state') !== state) return { ok: false, error: 'Sign-in was interrupted. Try again.' };
+    const failed = back.searchParams.get('error');
+    if (failed) return { ok: false, error: failed === 'access_denied' ? '' : 'Your server didn’t sign you in. Try again.' };
+    const code = back.searchParams.get('code');
+    if (!code) return { ok: false, error: 'Sign-in was interrupted. Try again.' };
+    const response = await fetch(`${API}/oauth/app/token`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, code_verifier: verifier }),
+      exactTimeout: 15000,
+    });
+    if (!response.ok) return { ok: false, error: 'Sign-in didn’t finish. Try again.' };
+    const { token, did } = (await response.json()) as Kept;
+    store.set(SESSION, JSON.stringify({ token, did }));
+    pages.clear();
+    return { ok: true, error: '' };
+  },
+
+  // Sign out: the appview ends the session, so the token stops working even
+  // if a copy of it survives somewhere; the app forgets it either way.
+  signOut: async (_args, store) => {
+    const headers = authHeaders(store);
+    store.forget(SESSION);
+    pages.clear();
+    try {
+      await fetch(`${API}/oauth/logout`, { method: 'POST', headers, exactTimeout: 15000 });
+    } catch {
+      // Offline: the token is forgotten here and expires on the server.
+    }
+    return { ok: true, error: '' };
+  },
+
+  // Observations for the signed-in viewer, complete ones only, as observ.ing's home shows.
+  loadHome: async ([did, wanted], store) => {
+    if (!did) return { items: [], more: false };
+    const { occurrences, more } = await readPages('/api/feeds/home?quality=complete', wanted, store);
+    return { items: occurrences.map(toObservation), more };
   },
 };
 

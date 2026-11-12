@@ -14,6 +14,15 @@ signed-out visitor can browse.
 - **Taxon**: picture, names, conservation status, classification, description,
   what it includes, its observations, pictures, GBIF and Wikidata.
 - **Search**: taxa by name.
+- **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
+  feed. The system browser runs the appview's OAuth flow (`GET
+  /oauth/app/login`), which redirects back to the app with a one-time code;
+  the app trades it with its PKCE verifier for a session token (`POST
+  /oauth/app/token`), keeps the token in the platform's secret store, and sends
+  it as `Authorization: Bearer` (the appview's opaque sessions, observ-ing/core#1034).
+  Sign Out ends the session on the appview. **The appview doesn't serve
+  `/oauth/app/*` yet**: `server.ts` fakes them (one person, `naturalist.test`;
+  `decline.test` declines) for the tests.
 
 Files:
 
@@ -43,6 +52,10 @@ APPVIEW=https://observ.ing bun server.ts  # live data, in another terminal (omit
 bun exact.mjs test                     # stop server.ts first: test starts its own on fixtures/
                                        # (CHROME=<path to Chrome> if Playwright's Chromium isn't installed)
 ```
+
+Sign-in goes to the appview itself (its OAuth client redirects to its own
+origin): build with `OBSERVING_AUTH_ORIGIN=<that appview>` to sign in against a
+real one; it defaults to `server.ts`.
 
 To read a different appview, set `APPVIEW` (a local one is `http://localhost:3000`). Native hosts send no
 cookies, so signed-in endpoints would need token auth.

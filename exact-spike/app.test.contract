@@ -115,3 +115,62 @@ test "taxon search finds a genus and lists what it includes"
   expect text "taxon-title" == "Loons"
   expect text "taxon-rank" == "Genus"
   expect tree has "child-0"
+
+// Sign-in starts on /account: Exact's web host finds the drive's auth fixture
+// (?authFixture=, added to the launch URL) in the page's current URL, which a
+// tab switch replaces.
+test "the home feed asks a signed-out person to sign in"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "tab-home"
+  clock data
+  expect text "home-signed-out" == "Sign in to see your home feed."
+  tap "home-sign-in"
+  clock settle
+  expect tree has "handle"
+
+test "signing in shows the account and the home feed; signing out ends both"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect text "account-name" == "Test Naturalist"
+  expect text "account-handle" == "@naturalist.test"
+  tap "tab-home"
+  clock data
+  expect text "home-title-3mzucjhpluy22" == "Common Loon"
+  tap "tab-account"
+  tap "sign-out"
+  clock data
+  expect tree has "handle"
+  tap "tab-home"
+  clock data
+  expect text "home-signed-out" == "Sign in to see your home feed."
+
+test "a session survives a relaunch"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "@naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  reload
+  clock data
+  tap "tab-account"
+  expect text "account-name" == "Test Naturalist"
+
+test "declining on the server's page signs nothing in"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "decline.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect tree has "handle"
+  expect tree missing "account-name"
+  expect text "handle" == "decline.test"

@@ -1,17 +1,20 @@
-// Observ.ing on Exact: everything a signed-out visitor can browse. Explore
-// (filters, paging), an observation (photos, map, identifications, comments,
-// data quality), a person's profile, a taxon page and taxon search. app.ts reads
-// the appview through server.ts, which proxies a real one or answers from fixtures/.
+// Observ.ing on Exact. Explore (filters, paging), an observation (photos, map,
+// identifications, comments, data quality), a person's profile, a taxon page and
+// taxon search; signing in with an atproto handle, and the signed-in home feed.
+// app.ts reads the appview through server.ts, which proxies a real one or
+// answers from fixtures/.
 
 use MapMarker from "@exact/maps"
 
 routes nav
-  explore "/"
+  tab explore "/"
     observation "/observation/:did/:rkey"
       photo "/observation/:did/:rkey/photo/:index"
     profile "/profile/:did"
     taxon "/taxon/:kingdom/:name"
     search "/search"
+  tab home "/home"
+  tab account "/account"
 
 shape Observation
   did: string
@@ -134,6 +137,18 @@ shape TaxonPage
   items: Observation[]
   more: bool
 
+shape Account
+  signedIn: bool
+  did: string
+  handle: string
+  name: string
+  avatar: string
+  error: string
+
+shape Reply
+  ok: bool
+  error: string
+
 shape Choice
   value: string
   label: string
@@ -161,6 +176,8 @@ component App
   state profilePages = 1
   state taxonPages = 1
   state query = ""
+  state handleDraft = ""
+  state homePages = 1
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
   derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo").at(-1) { case some(x) => x.params.did, case none => "" }
@@ -174,6 +191,11 @@ component App
   resource person = loadProfile(profileDid, profilePages) as shape ProfilePage else empty()
   resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonPages) as shape TaxonPage else empty()
   resource found = searchTaxa(query) as shape TaxonRow[] else empty()
+  resource account = session() as shape Account else empty()
+  resource home = loadHome(account.did, homePages) as shape Feed else empty()
+  // Signing in or out changes what every screen may show (likes, the home feed).
+  mutation signedIn as shape Reply refreshes account, feed, detail, person, taxonPage then afterSignIn
+  mutation signedOut as shape Reply refreshes account, feed, detail, person, taxonPage
   resource time = exactTime() as shape Time
   derive now = time.epochAtZero
   derive offset = time.utcOffset
@@ -183,6 +205,10 @@ component App
   derive personError = pending(person) ? "" : match failure(person) { case some(f) => problem(f.code, "this profile"), case none => "" }
   derive taxonError = pending(taxonPage) ? "" : match failure(taxonPage) { case some(f) => problem(f.code, "this taxon"), case none => "" }
 
+  derive homeError = pending(home) ? "" : match failure(home) { case some(f) => problem(f.code, "your home feed"), case none => "" }
+  derive signInError = match signedIn { case some(r) => r.error, case none => "" }
+  derive signInOk = match signedIn { case some(r) => r.ok, case none => false }
+  derive signInProblem = pending(signedIn) ? "" : (signInError != "" ? signInError : account.error)
   derive qualityList = quality == "" ? [] : quality.split(",")
   derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
   derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
@@ -237,7 +263,7 @@ component App
     kingdom = k
     feedPages = 1
     showFilters = true
-    nav = go(nav, "/")
+    nav = open(nav, "/")
 
   action reloadDetail
     refresh detail
@@ -252,151 +278,248 @@ component App
   action search(v: string)
     query = v
 
+  action pick(name: string)
+    nav = select(nav, name)
+  action goAccount
+    nav = select(nav, "account")
+  action editHandle(v: string)
+    handleDraft = v
+  action signIn
+    if handleDraft.trim() != "" and not pending(signedIn)
+      send signedIn = signIn(handleDraft)
+  // A decline answers no error to show, and isn't a sign-in: keep what was typed.
+  action afterSignIn
+    if signInOk
+      handleDraft = ""
+  action signOut
+    if not pending(signedOut)
+      send signedOut = signOut()
+  action reloadHome
+    refresh home
+  action moreHome
+    homePages = homePages + 1
+
   view
-    main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app" width="100%" height="100%"
-      for e in stack(nav) key=e.id
-        if e.name == "explore"
-          column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
-            header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
-              text "Explore" role="heading" aria-level=1 flex=1
-              button press=openSearch aria-label="Search taxa" testId="open-search"
-                image "symbol:search"
-              button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
-                image "symbol:filter"
-            list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-              if showFilters
-                section testId="filters"
-                  header
-                    text "Filters"
-                  if taxon != ""
-                    row
-                      text "Taxon" flex=1
-                      text taxon font-style="italic" color="-exact-secondary-label" testId="filter-taxon"
-                      button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
-                        image "symbol:close"
-                  row
-                    text "Kingdom" flex=1
-                    select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
-                      option "All kingdoms" value=""
-                      for k in kingdoms key=k.value
-                        option k.label value=k.value
-                  row
-                    text "From" flex=1
-                    input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
-                  row
-                    text "To" flex=1
-                    input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
-                  for c in criteria key=c.value
-                    row
-                      text c.label flex=1
-                      input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
-                  if filterCount > 0
-                    row
-                      button press=clearFilters testId="clear-filters"
-                        text "Clear All Filters"
-              if feed.items.length == 0
-                section
-                  if pending(feed)
-                    row justify-content="center"
-                      progress aria-label="Loading" testId="feed-loading"
+    main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
+      width="100%" height="100%" display="flex" flex-direction="column"
+      column flex=1 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
+            for e in t.stack key=e.id
+              if e.name == "explore"
+                column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
+                    text "Explore" role="heading" aria-level=1 flex=1
+                    button press=openSearch aria-label="Search taxa" testId="open-search"
+                      image "symbol:search"
+                    button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
+                      image "symbol:filter"
+                  list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if showFilters
+                      section testId="filters"
+                        header
+                          text "Filters"
+                        if taxon != ""
+                          row
+                            text "Taxon" flex=1
+                            text taxon font-style="italic" color="-exact-secondary-label" testId="filter-taxon"
+                            button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
+                              image "symbol:close"
+                        row
+                          text "Kingdom" flex=1
+                          select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
+                            option "All kingdoms" value=""
+                            for k in kingdoms key=k.value
+                              option k.label value=k.value
+                        row
+                          text "From" flex=1
+                          input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
+                        row
+                          text "To" flex=1
+                          input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
+                        for c in criteria key=c.value
+                          row
+                            text c.label flex=1
+                            input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
+                        if filterCount > 0
+                          row
+                            button press=clearFilters testId="clear-filters"
+                              text "Clear All Filters"
+                    if feed.items.length == 0
+                      section
+                        if pending(feed)
+                          row justify-content="center"
+                            progress aria-label="Loading" testId="feed-loading"
+                        else
+                          row
+                            column flex=1 gap=12 padding=12 align-items="center"
+                              text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
+                              button press=reloadFeed testId="retry"
+                                text "Try Again"
+                    else
+                      if feedError != ""
+                        section
+                          row
+                            text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
+                            button press=reloadFeed testId="retry-feed"
+                              text "Try Again"
+                      section
+                        for o in feed.items key=`${o.did}/${o.rkey}`
+                          ObservationRow(o=o, now=now, offset=offset, prefix="obs", showObserver=true)
+                      if feed.more
+                        section
+                          button press=moreFeed disabled=pending(feed) testId="more"
+                            text (pending(feed) ? "Loading…" : "Show More")
+
+              if e.name == "observation"
+                column navigationKey=`${e.id}` navigationScroll=`detail-${e.id}` position="absolute" inset=0
+                  if detail.found and detail.did == e.params.did and detail.rkey == e.params.rkey
+                    header display="flex" align-items="center" padding="8px 16px"
+                      text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
+                    ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal)
                   else
-                    row
-                      column flex=1 gap=12 padding=12 align-items="center"
-                        text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
-                        button press=reloadFeed testId="retry"
-                          text "Try Again"
-              else
-                if feedError != ""
-                  section
-                    row
-                      text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
-                      button press=reloadFeed testId="retry-feed"
-                        text "Try Again"
-                section
-                  for o in feed.items key=`${o.did}/${o.rkey}`
-                    ObservationRow(o=o, now=now, offset=offset, prefix="obs", showObserver=true)
-                if feed.more
-                  section
-                    button press=moreFeed disabled=pending(feed) testId="more"
-                      text (pending(feed) ? "Loading…" : "Show More")
+                    header display="flex" align-items="center" padding="8px 16px"
+                      text "Observation" role="heading" aria-level=2
+                    Waiting(id=`detail-${e.id}`, busy=pending(detail), error=detailError, retry=reloadDetail, testPrefix="detail")
 
-        if e.name == "observation"
-          column navigationKey=`${e.id}` navigationScroll=`detail-${e.id}` position="absolute" inset=0
-            if detail.found and detail.did == e.params.did and detail.rkey == e.params.rkey
-              header display="flex" align-items="center" padding="8px 16px"
-                text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
-              ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal)
-            else
-              header display="flex" align-items="center" padding="8px 16px"
-                text "Observation" role="heading" aria-level=2
-              Waiting(id=`detail-${e.id}`, busy=pending(detail), error=detailError, retry=reloadDetail, testPrefix="detail")
+              if e.name == "photo"
+                column navigationKey=`${e.id}` navigationPresentation="modal" position="absolute" inset=0
+                  header display="flex" align-items="center" justify-content="space-between" padding="8px 16px"
+                    button id="back" press=back aria-label="Close" testId="photo-close"
+                      image "symbol:close"
+                    text (detail.found ? titleOf(detail.obs) : "Photo") role="heading" aria-level=2
+                  column flex=1 min-height=0 justify-content="center" align-items="center" padding=16 gap=8
+                    for p in detail.photos.filter(x => x.index.toString() == e.params.index and detail.did == e.params.did and detail.rkey == e.params.rkey) key=p.index
+                      image p.url width="100%" flex=1 min-height=0 object-fit="contain" aria-label=`Photo of ${titleOf(detail.obs)}` testId="lightbox-photo"
+                      if p.license != ""
+                        text `Photo: ${p.license}` font="-exact-footnote" color="-exact-secondary-label" text-align="center"
 
-        if e.name == "photo"
-          column navigationKey=`${e.id}` navigationPresentation="modal" position="absolute" inset=0
-            header display="flex" align-items="center" justify-content="space-between" padding="8px 16px"
-              button id="back" press=back aria-label="Close" testId="photo-close"
-                image "symbol:close"
-              text (detail.found ? titleOf(detail.obs) : "Photo") role="heading" aria-level=2
-            column flex=1 min-height=0 justify-content="center" align-items="center" padding=16 gap=8
-              for p in detail.photos.filter(x => x.index.toString() == e.params.index and detail.did == e.params.did and detail.rkey == e.params.rkey) key=p.index
-                image p.url width="100%" flex=1 min-height=0 object-fit="contain" aria-label=`Photo of ${titleOf(detail.obs)}` testId="lightbox-photo"
-                if p.license != ""
-                  text `Photo: ${p.license}` font="-exact-footnote" color="-exact-secondary-label" text-align="center"
+              if e.name == "profile"
+                column navigationKey=`${e.id}` navigationScroll=`profile-${e.id}` position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text (person.found and person.did == e.params.did ? person.name : "Profile") role="heading" aria-level=2 testId="profile-title"
+                  if person.found and person.did == e.params.did
+                    list id=`profile-${e.id}` appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                      section
+                        row gap=12 align-items="center" padding-top=8 padding-bottom=8
+                          if person.avatar != ""
+                            image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
+                          column flex=1 min-width=0 gap=2
+                            text person.name font="-exact-title2"
+                            if person.handle != ""
+                              text person.handle color="-exact-secondary-label" testId="profile-handle"
+                        row flex-wrap="wrap" justify-content="space-around"
+                          Stat(value=person.observations, label="Observations", testId="stat-observations")
+                          Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
+                          Stat(value=person.species, label="Species", testId="stat-species")
+                      section
+                        header
+                          text "Observations"
+                        for o in person.items key=`${o.did}/${o.rkey}`
+                          ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
+                        if person.items.length == 0
+                          row
+                            text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
+                      if person.more
+                        section
+                          button press=morePerson disabled=pending(person) testId="more-profile"
+                            text (pending(person) ? "Loading…" : "Show More")
+                  else
+                    Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
 
-        if e.name == "profile"
-          column navigationKey=`${e.id}` navigationScroll=`profile-${e.id}` position="absolute" inset=0
-            header display="flex" align-items="center" padding="8px 16px"
-              text (person.found and person.did == e.params.did ? person.name : "Profile") role="heading" aria-level=2 testId="profile-title"
-            if person.found and person.did == e.params.did
-              list id=`profile-${e.id}` appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-                section
-                  row gap=12 align-items="center" padding-top=8 padding-bottom=8
-                    if person.avatar != ""
-                      image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
-                    column flex=1 min-width=0 gap=2
-                      text person.name font="-exact-title2"
-                      if person.handle != ""
-                        text person.handle color="-exact-secondary-label" testId="profile-handle"
-                  row flex-wrap="wrap" justify-content="space-around"
-                    Stat(value=person.observations, label="Observations", testId="stat-observations")
-                    Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
-                    Stat(value=person.species, label="Species", testId="stat-species")
-                section
-                  header
-                    text "Observations"
-                  for o in person.items key=`${o.did}/${o.rkey}`
-                    ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
-                  if person.items.length == 0
-                    row
-                      text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
-                if person.more
-                  section
-                    button press=morePerson disabled=pending(person) testId="more-profile"
-                      text (pending(person) ? "Loading…" : "Show More")
-            else
-              Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
+              if e.name == "taxon"
+                column navigationKey=`${e.id}` navigationScroll=`taxon-${e.id}` position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
+                  if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
+                    TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon)
+                  else
+                    Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
 
-        if e.name == "taxon"
-          column navigationKey=`${e.id}` navigationScroll=`taxon-${e.id}` position="absolute" inset=0
-            header display="flex" align-items="center" padding="8px 16px"
-              text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
-            if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
-              TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon)
-            else
-              Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
+              if e.name == "search"
+                column navigationKey=`${e.id}` navigationScroll="search-results" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Search Taxa" role="heading" aria-level=2 flex=1
+                    input type="search" value=query input=search placeholder="Species, genus, family…" aria-label="Search taxa" testId="search" width="100%"
+                  list id="search-results" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      for t, n in found key=`${t.kingdom}/${t.name}`
+                        TaxonLinkRow(t=t, testId=`found-${n}`)
+                      if found.length == 0
+                        row
+                          text (query.trim().length < 2 ? "Type at least two letters." : (pending(found) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label" testId="search-empty"
 
-        if e.name == "search"
-          column navigationKey=`${e.id}` navigationScroll="search-results" position="absolute" inset=0
-            header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
-              text "Search Taxa" role="heading" aria-level=2 flex=1
-              input type="search" value=query input=search placeholder="Species, genus, family…" aria-label="Search taxa" testId="search" width="100%"
-            list id="search-results" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-              section
-                for t, n in found key=`${t.kingdom}/${t.name}`
-                  TaxonLinkRow(t=t, testId=`found-${n}`)
-                if found.length == 0
-                  row
-                    text (query.trim().length < 2 ? "Type at least two letters." : (pending(found) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label" testId="search-empty"
+              if e.name == "home"
+                column navigationKey=`${e.id}` navigationScroll="home-feed" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Home" role="heading" aria-level=1 flex=1
+                  list id="home-feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if not account.signedIn
+                      section
+                        row
+                          column flex=1 gap=12 padding=12 align-items="center"
+                            text (pending(account) ? "Loading…" : "Sign in to see your home feed.") text-align="center" testId="home-signed-out"
+                            if not pending(account)
+                              button press=goAccount buttonStyle="filled" testId="home-sign-in"
+                                text "Sign In"
+                    else
+                      if home.items.length == 0
+                        section
+                          row
+                            column flex=1 gap=12 padding=12 align-items="center"
+                              text (pending(home) ? "Loading…" : (homeError != "" ? homeError : "Nothing here yet.")) text-align="center" testId="home-empty"
+                              if homeError != ""
+                                button press=reloadHome testId="retry-home"
+                                  text "Try Again"
+                      section
+                        for o in home.items key=`${o.did}/${o.rkey}`
+                          ObservationRow(o=o, now=now, offset=offset, prefix="home", showObserver=true)
+                      if home.more
+                        section
+                          button press=moreHome disabled=pending(home) testId="more-home"
+                            text (pending(home) ? "Loading…" : "Show More")
+
+              if e.name == "account"
+                column navigationKey=`${e.id}` navigationScroll="account-list" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Account" role="heading" aria-level=1 flex=1
+                  list id="account-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if account.signedIn
+                      section
+                        link href=path("profile", account.did) testId="account-profile"
+                          row gap=12 align-items="center" flex=1 min-width=0
+                            if account.avatar != ""
+                              image account.avatar width=48 height=48 border-radius=24 object-fit="cover" aria-label=`${account.name}’s avatar`
+                            column flex=1 min-width=0 gap=2
+                              text account.name font="-exact-headline" testId="account-name"
+                              text account.handle color="-exact-secondary-label" testId="account-handle"
+                          image "symbol:forward-chevron"
+                      section
+                        button press=signOut destructive=true disabled=pending(signedOut) testId="sign-out"
+                          text "Sign Out"
+                    else
+                      section
+                        header
+                          text "Your atproto handle"
+                        row
+                          input value=handleDraft input=editHandle submit=signIn placeholder="alice.bsky.social" aria-label="Handle"
+                            autocapitalize="none" autocomplete="username" enterkeyhint="go" flex=1 min-width=0 testId="handle"
+                        footer
+                          text (signInProblem != "" ? signInProblem : "You’ll finish signing in on your account’s own page, then come back here.") testId="sign-in-note"
+                      section
+                        button press=signIn disabled=(handleDraft.trim() == "" or pending(signedIn)) testId="sign-in"
+                          text (pending(signedIn) ? "Signing In…" : "Sign In")
+      row role="tablist"
+        button role="tab" aria-controls="panel-explore" aria-selected=(nav.tab == "explore") press=pick("explore") testId="tab-explore" flex=1
+          image "symbol:feeds"
+          text "Explore"
+        button role="tab" aria-controls="panel-home" aria-selected=(nav.tab == "home") press=pick("home") testId="tab-home" flex=1
+          image "symbol:home"
+          text "Home"
+        button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") testId="tab-account" flex=1
+          image "symbol:person"
+          text (account.signedIn ? "You" : "Sign In")
+
 
 // A feed row: photo, names, observer and day; it pushes the observation.
 component ObservationRow
