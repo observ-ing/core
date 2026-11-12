@@ -322,6 +322,9 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: Swatinem/rust-cache@v2
       - run: cargo test -p observing-db --test '*'
+      # The appview's database tests (session auth); the rest of its tests
+      # run in rust-test.
+      - run: cargo test -p observing-appview -- auth::session_tests
 
   rust-lexicons-check:
     runs-on: ubuntu-latest

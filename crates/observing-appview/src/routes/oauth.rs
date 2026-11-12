@@ -1,17 +1,17 @@
 use axum::extract::{Query, State};
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Redirect, Response};
+use axum::http::header::SET_COOKIE;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{AppendHeaders, IntoResponse, Redirect, Response};
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tracing::{error, info};
 use utoipa::{IntoParams, ToSchema};
 
+use crate::auth::{self, LEGACY_SESSION_COOKIE, SESSION_COOKIE};
 use crate::error::{AppError, ErrorResponse};
 use crate::responses::SuccessResponse;
 use crate::state::AppState;
-
-const SESSION_MAX_AGE_SECS: i64 = 14 * 24 * 60 * 60;
 
 #[derive(Deserialize, IntoParams)]
 #[into_params(parameter_in = Query)]
@@ -31,7 +31,7 @@ pub struct LoginResponse {
 ///
 /// Returns the authorization URL to send the user's browser to. After the user
 /// approves, their PDS redirects back to `/oauth/callback`, which sets the
-/// session cookie.
+/// `session` cookie.
 #[utoipa::path(
     get,
     path = "/oauth/login",
@@ -91,8 +91,9 @@ pub struct CallbackParams {
 
 /// Finish signing in.
 ///
-/// The OAuth redirect target: completes the flow, sets the session cookie,
-/// and redirects to the app. Not called directly.
+/// The OAuth redirect target: completes the flow, starts a session, sets the
+/// `session` cookie to its opaque token, and redirects to the app. Not called
+/// directly.
 #[utoipa::path(
     get,
     path = "/oauth/callback",
@@ -100,7 +101,7 @@ pub struct CallbackParams {
     tag = "auth",
     params(CallbackParams),
     responses(
-        (status = 303, description = "Signed in; the `session_did` cookie is set"),
+        (status = 303, description = "Signed in; the `session` cookie is set"),
         (status = 500, description = "The authorization could not be completed", content_type = "text/plain"),
     )
 )]
@@ -124,24 +125,23 @@ pub async fn callback(
                     let did_str = did.to_string();
                     info!(did = %did_str, "OAuth callback successful");
 
-                    // SameSite=None lets the cookie be sent on cross-site
-                    // requests, which is required when the Capacitor mobile
-                    // app (origin https://localhost) calls the appview at
-                    // observ.ing. Browsers require Secure for SameSite=None,
-                    // so we only set both in production (HTTPS). In local
-                    // dev we omit both — the browser then treats the cookie
-                    // as default Lax, which is fine for same-origin use.
-                    let attrs = if state.public_url.is_some() {
-                        "; Secure; SameSite=None"
-                    } else {
-                        ""
+                    let token = match auth::create_session(&state.pool, &did_str).await {
+                        Ok(token) => token,
+                        Err(e) => {
+                            error!(error = %e, "Failed to store session");
+                            return (StatusCode::INTERNAL_SERVER_ERROR, "Authentication failed")
+                                .into_response();
+                        }
                     };
-                    let cookie = format!(
-                        "session_did={}; HttpOnly; Path=/; Max-Age={}{}",
-                        did_str, SESSION_MAX_AGE_SECS, attrs,
-                    );
+                    let secure = state.public_url.is_some();
                     (
-                        [(axum::http::header::SET_COOKIE, cookie)],
+                        AppendHeaders([
+                            (SET_COOKIE, auth::session_cookie(&token, secure)),
+                            (
+                                SET_COOKIE,
+                                auth::clear_cookie(LEGACY_SESSION_COOKIE, secure),
+                            ),
+                        ]),
                         Redirect::to("/?just-authed=1"),
                     )
                         .into_response()
@@ -169,27 +169,39 @@ pub async fn callback(
 
 /// Sign out.
 ///
-/// Clears the session cookie.
+/// Ends the presented session server-side, so its token stops working, and
+/// clears the session cookie.
 #[utoipa::path(
     post,
     path = "/oauth/logout",
     operation_id = "oauth_logout",
     tag = "auth",
-    responses((status = 200, description = "Signed out", body = SuccessResponse))
+    security((), ("session" = []), ("bearer" = [])),
+    responses(
+        (status = 200, description = "Signed out", body = SuccessResponse),
+        (status = 500, description = "The session could not be ended", body = ErrorResponse),
+    )
 )]
-pub async fn logout(cookies: axum_extra::extract::CookieJar) -> Response {
-    let did = cookies.get("session_did").map(|c| c.value().to_string());
-    if let Some(ref did) = did {
+pub async fn logout(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Response, AppError> {
+    if let Some(did) = auth::end_session(&state.pool, &headers).await? {
         info!(did = %did, "Logout");
     }
 
-    // Clear the cookie
-    let cookie = "session_did=; HttpOnly; Path=/; Max-Age=0";
-    (
-        [(axum::http::header::SET_COOKIE, cookie)],
+    let secure = state.public_url.is_some();
+    Ok((
+        AppendHeaders([
+            (SET_COOKIE, auth::clear_cookie(SESSION_COOKIE, secure)),
+            (
+                SET_COOKIE,
+                auth::clear_cookie(LEGACY_SESSION_COOKIE, secure),
+            ),
+        ]),
         Json(SuccessResponse { success: true }),
     )
-        .into_response()
+        .into_response())
 }
 
 /// OAuth client metadata.
@@ -249,16 +261,15 @@ pub struct MeResponse {
     path = "/oauth/me",
     operation_id = "get_current_user",
     tag = "auth",
-    security((), ("session" = [])),
+    security((), ("session" = []), ("bearer" = [])),
     responses((status = 200, description = "The signed-in user, or `null`", body = MeResponse))
 )]
 pub async fn me(
     State(state): State<AppState>,
-    cookies: axum_extra::extract::CookieJar,
+    headers: HeaderMap,
 ) -> Result<Json<MeResponse>, AppError> {
-    let did = match cookies.get("session_did") {
-        Some(c) => c.value().to_string(),
-        None => return Ok(Json(MeResponse { user: None })),
+    let Some(did) = auth::session_did(&state.pool, &headers).await else {
+        return Ok(Json(MeResponse { user: None }));
     };
 
     let did_parsed = match atrium_api::types::string::Did::new(did.clone()) {
@@ -281,7 +292,7 @@ pub async fn me(
         ),
         None => {
             // Fall back to DID document for handle (works even if Bluesky API is down).
-            // The session_did cookie has already been validated as a Did above
+            // The session's DID has already been validated as a Did above
             // (atrium's validator), so re-parsing through our newtype should
             // succeed; if it doesn't, just fall back to the raw string.
             let handle = match atproto_identity::Did::new_owned(&did) {

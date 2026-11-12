@@ -33,7 +33,7 @@ pub struct CreateLikeRequest {
     path = "/api/likes",
     tag = "likes",
     request_body = CreateLikeRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "Invalid URI or CID", body = ErrorResponse),
@@ -87,7 +87,7 @@ pub struct DeleteLikeRequest {
     path = "/api/likes",
     tag = "likes",
     request_body = DeleteLikeRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The caller no longer likes the occurrence", body = SuccessResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),

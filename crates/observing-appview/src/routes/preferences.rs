@@ -76,7 +76,7 @@ mod present {
     get,
     path = "/api/user/preferences",
     tag = "preferences",
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The viewer's preferences; unset values are null", body = UserPreferencesResponse),
         (status = 401, description = "Not signed in", body = ErrorResponse),
@@ -105,7 +105,7 @@ pub async fn get_preferences(
     path = "/api/user/preferences",
     tag = "preferences",
     request_body = UpdatePreferencesRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The preferences were saved", body = SuccessResponse),
         (status = 400, description = "Unknown license or basemap", body = ErrorResponse),

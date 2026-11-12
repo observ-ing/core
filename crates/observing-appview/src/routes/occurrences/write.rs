@@ -221,7 +221,7 @@ trait RemarkTexts {
     path = "/api/occurrences",
     tag = "occurrences",
     request_body = CreateOccurrenceRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),
@@ -473,7 +473,7 @@ async fn queue_new_crosspost(
     path = "/api/occurrences/{uri}",
     tag = "occurrences",
     params(("uri" = String, Path, description = "AT URI of the occurrence (`at://...`), percent-encoded")),
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was deleted", body = SuccessResponse),
         (status = 400, description = "Invalid AT URI", body = ErrorResponse),
@@ -551,7 +551,7 @@ pub async fn delete_occurrence(
     path = "/api/occurrences",
     tag = "occurrences",
     request_body = UpdateOccurrenceRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was replaced", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),

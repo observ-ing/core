@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM appview.app_sessions WHERE expires_at <= NOW()",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "06521a5f0ca3d1c87fd1d8b01ecfdc3397c9eee77abfbcda9589a7a375704d51"
+}

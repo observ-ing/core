@@ -103,7 +103,7 @@ fn build_interaction_subject(
     path = "/api/interactions",
     tag = "interactions",
     request_body = CreateInteractionRequest,
-    security(("session" = [])),
+    security(("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "The record was written to the caller's PDS", body = RecordCreatedResponse),
         (status = 400, description = "A field failed validation", body = ErrorResponse),

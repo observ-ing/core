@@ -17,6 +17,8 @@ mod species_id_client;
 mod state;
 mod taxonomy;
 mod taxonomy_client;
+#[cfg(test)]
+mod test_db;
 mod validation;
 
 use std::path::PathBuf;

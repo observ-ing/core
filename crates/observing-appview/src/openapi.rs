@@ -6,7 +6,7 @@
 //! A new route needs its handler annotated and listed in `paths(...)` below.
 //! The admin browser (`/admin/*`) is deliberately left out.
 
-use utoipa::openapi::security::{ApiKey, ApiKeyValue, SecurityScheme};
+use utoipa::openapi::security::{ApiKey, ApiKeyValue, HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::{Modify, OpenApi};
 
 use crate::routes;
@@ -20,9 +20,11 @@ use crate::routes;
             Reads come from the appview's index of the network. Writes go to the \
             signed-in user's PDS as AT Protocol records, then reach the index via the \
             firehose, so a newly written record can take a moment to appear in reads.\n\n\
-            Authentication is the `session_did` cookie set by the OAuth flow \
-            (`/oauth/login`). Endpoints that accept it optionally use it to fill in \
-            viewer-specific fields such as `viewerHasLiked`.",
+            Authentication is an opaque session token, issued when the OAuth flow \
+            (`/oauth/login`) completes. Browsers send it as the `session` cookie; \
+            clients without cookies send it as `Authorization: Bearer <token>`. \
+            Endpoints that accept it optionally use it to fill in viewer-specific \
+            fields such as `viewerHasLiked`. `/oauth/logout` ends the session.",
     ),
     paths(
         routes::health::health,
@@ -91,7 +93,8 @@ use crate::routes;
 )]
 pub struct ApiDoc;
 
-/// Registers the `session` security scheme that handlers reference.
+/// Registers the `session` (cookie) and `bearer` security schemes that
+/// handlers reference. Both carry the same session token.
 struct SessionCookie;
 
 impl Modify for SessionCookie {
@@ -100,9 +103,22 @@ impl Modify for SessionCookie {
         components.add_security_scheme(
             "session",
             SecurityScheme::ApiKey(ApiKey::Cookie(ApiKeyValue::with_description(
-                "session_did",
-                "Set by the OAuth callback after signing in via `/oauth/login`.",
+                crate::auth::SESSION_COOKIE,
+                "Opaque session token, set by the OAuth callback after signing in \
+                 via `/oauth/login`. Cleared, and the session ended, by `/oauth/logout`.",
             ))),
+        );
+        components.add_security_scheme(
+            "bearer",
+            SecurityScheme::Http(
+                HttpBuilder::new()
+                    .scheme(HttpAuthScheme::Bearer)
+                    .description(Some(
+                        "The same opaque session token as the `session` cookie, for \
+                         clients that don't send cookies.",
+                    ))
+                    .build(),
+            ),
         );
     }
 }

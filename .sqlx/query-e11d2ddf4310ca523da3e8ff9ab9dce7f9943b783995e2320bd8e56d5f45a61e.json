@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM appview.app_sessions WHERE did = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e11d2ddf4310ca523da3e8ff9ab9dce7f9943b783995e2320bd8e56d5f45a61e"
+}
