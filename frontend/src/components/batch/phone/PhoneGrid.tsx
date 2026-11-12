@@ -31,6 +31,7 @@ import {
   coverImageSx,
   miniIconSx,
   overlayBadgeSx,
+  pageTitleSx,
   phoneBarTitleSx,
   touchTarget,
   tallRowMinHeight,
@@ -301,7 +302,7 @@ export function PhoneGrid({
         ) : (
           <>
             <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1.5 }}>
-              <Typography variant="h5" component="h1" sx={{ flex: 1, fontWeight: 700 }}>
+              <Typography variant="h5" component="h1" sx={{ flex: 1, ...pageTitleSx }}>
                 Batch upload
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary" }}>

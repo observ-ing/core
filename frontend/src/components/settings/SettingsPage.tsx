@@ -7,6 +7,7 @@ import { setThemeMode, type ThemeMode } from "../../store/uiSlice";
 import { useUserPreferences } from "../../lib/query/hooks";
 import { useUpdatePreferences } from "../../lib/query/mutations";
 import { PageContainer } from "../common/PageContainer";
+import { pageTitleSx } from "../common/layoutSx";
 import { LicenseSelect } from "../common/LicenseSelect";
 import { SettingsSection } from "./SettingsSection";
 import { InatSettings } from "./InatSettings";
@@ -44,7 +45,7 @@ export function SettingsPage() {
       <Typography
         variant="h5"
         sx={{
-          fontWeight: 700,
+          ...pageTitleSx,
           mb: 3,
         }}
       >

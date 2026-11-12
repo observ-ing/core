@@ -20,6 +20,7 @@ import {
   touchTarget,
   touchTargetLarge,
   panelRadius,
+  pageTitleSx,
 } from "../../common/layoutSx";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
 import { isReading, missingFields, type BatchObservation } from "../../../lib/batchUpload";
@@ -89,7 +90,7 @@ export function PhoneUploadList({
       <>
         <Box sx={{ flexShrink: 0, px: 2, pt: 2, pb: 1.5 }}>
           <Box sx={{ display: "flex", alignItems: "baseline", gap: 1.5, mb: 1 }}>
-            <Typography variant="h5" component="h1" sx={{ flex: 1, fontWeight: 700 }}>
+            <Typography variant="h5" component="h1" sx={{ flex: 1, ...pageTitleSx }}>
               Uploading
             </Typography>
             <Typography sx={{ color: "text.secondary" }}>
@@ -176,7 +177,7 @@ export function PhoneUploadList({
   return (
     <>
       <Box sx={{ flexShrink: 0, px: 2, pt: 2, pb: 1.5 }}>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 0.5 }}>
+        <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, mb: 0.5 }}>
           {plural(observations.length, "observation")} did not upload
         </Typography>
         {uploadedCount > 0 && (

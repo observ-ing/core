@@ -11,6 +11,7 @@ import { UserCard } from "../common/UserCard";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { EmptyState } from "../common/EmptyState";
 import { PageContainer } from "../common/PageContainer";
+import { pageTitleSx } from "../common/layoutSx";
 import { useNotifications } from "../../lib/query/hooks";
 import { useMarkNotificationRead } from "../../lib/query/mutations";
 
@@ -68,12 +69,7 @@ export function NotificationsPage() {
           mb: 2,
         }}
       >
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-          }}
-        >
+        <Typography variant="h5" sx={pageTitleSx}>
           Notifications
         </Typography>
         {hasUnread && (
