@@ -1,7 +1,7 @@
 // Phone layout, before any photos: what the tool does and the way in.
 import { Alert, AlertTitle, Box, Button, CircularProgress, Typography } from "@mui/material";
 import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
-import { heroIconSx } from "../../common/layoutSx";
+import { heroIconSx, pageTitleSx } from "../../common/layoutSx";
 import { MAX_BATCH_PHOTOS } from "../../../lib/batchUpload";
 import { formatMegabytes } from "../../../lib/imageSelection";
 import { useMaxPhotoSize } from "../../../lib/query/hooks";
@@ -23,7 +23,7 @@ export function PhoneStart({ onChoosePhotos, converting, stripsLocation }: Phone
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5, px: 2, py: 3 }}>
       <Box>
-        <Typography variant="h5" component="h1" sx={{ fontWeight: 700, mb: 1 }}>
+        <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, mb: 1 }}>
           Batch upload
         </Typography>
         <Typography sx={{ color: "text.secondary" }}>
