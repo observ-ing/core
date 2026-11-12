@@ -20,9 +20,9 @@ signed-out visitor can browse.
   the app trades it with its PKCE verifier for a session token (`POST
   /oauth/app/token`), keeps the token in the platform's secret store, and sends
   it as `Authorization: Bearer` (the appview's opaque sessions, observ-ing/core#1034).
-  Sign Out ends the session on the appview. **The appview doesn't serve
-  `/oauth/app/*` yet**: `server.ts` fakes them (one person, `naturalist.test`;
-  `decline.test` declines) for the tests.
+  Sign Out ends the session on the appview. The appview on this branch serves
+  `/oauth/app/*`; observ.ing doesn't yet. In tests `server.ts` fakes them (one
+  person, `naturalist.test`; `decline.test` declines).
 
 Files:
 
@@ -55,7 +55,16 @@ bun exact.mjs test                     # stop server.ts first: test starts its o
 
 Sign-in goes to the appview itself (its OAuth client redirects to its own
 origin): build with `OBSERVING_AUTH_ORIGIN=<that appview>` to sign in against a
-real one; it defaults to `server.ts`.
+real one; it defaults to `server.ts`. Against a local appview from this branch
+(`cargo run -p observing-appview` with `PORT=3100`, `PUBLIC_URL` unset):
+
+```sh
+APPVIEW=http://127.0.0.1:3100 bun server.ts
+OBSERVING_AUTH_ORIGIN=http://127.0.0.1:3100 bun exact.mjs web
+```
+
+Use `127.0.0.1`, not `localhost`: the appview's sign-in cookie and its atproto
+callback are both on `127.0.0.1`.
 
 To read a different appview, set `APPVIEW` (a local one is `http://localhost:3000`). Native hosts send no
 cookies, so signed-in endpoints would need token auth.
