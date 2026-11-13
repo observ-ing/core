@@ -80,6 +80,10 @@ const sharedConfig = {
     body1: { fontSize: "1rem" },
     body2: { fontSize: "0.875rem" },
     caption: { fontSize: "0.75rem" },
+    // Uppercase eyebrow label for small section headings (e.g. the taxon
+    // tree's "Classification"). Caption-sized with caption's line height
+    // rather than MUI's tall 2.66 default, so it sits in normal flow.
+    overline: { fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em", lineHeight: 1.66 },
   },
   shape: {
     borderRadius: 8,
