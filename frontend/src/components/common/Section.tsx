@@ -103,9 +103,7 @@ export function SectionHeader({
       }}
     >
       {icon}
-      <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
-        {title}
-      </Typography>
+      <Typography variant="subtitle2">{title}</Typography>
       {trailing != null && (
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 1 }}>{trailing}</Box>
       )}
