@@ -68,11 +68,11 @@ Files:
 ## Running it
 
 It needs an Exact checkout, found at `../../expo/exact` relative to this
-directory, or wherever `EXACT2` points:
+directory, or wherever `EXACT` points:
 
 ```sh
 git clone https://github.com/expo/exact ~/src/exact
-export EXACT2=~/src/exact
+export EXACT=~/src/exact
 bun exact.mjs web                      # the web dev loop, at http://127.0.0.1:8765/
 APPVIEW=https://observ.ing bun server.ts  # live data, in another terminal (omit APPVIEW for fixtures)
 bun exact.mjs test                     # stop server.ts first: test starts its own on fixtures/
