@@ -10,10 +10,12 @@ routes nav
   tab explore "/"
     observation "/observation/:did/:rkey"
       photo "/observation/:did/:rkey/photo/:index"
+      identify "/observation/:did/:rkey/identify"
     profile "/profile/:did"
     taxon "/taxon/:kingdom/:name"
     search "/search"
   tab home "/home"
+  tab notifications "/notifications"
   tab account "/account"
 
 shape Observation
@@ -54,6 +56,7 @@ shape IdRow
   rank: string
   kingdom: string
   at: number
+  mine: bool
 
 shape CommentRow
   uri: string
@@ -67,6 +70,10 @@ shape LinkRow
   label: string
 
 shape Detail
+  uri: string
+  cid: string
+  liked: bool
+  mine: bool
   did: string
   rkey: string
   found: bool
@@ -137,6 +144,28 @@ shape TaxonPage
   items: Observation[]
   more: bool
 
+shape NoteRow
+  id: number
+  kind: string
+  who: string
+  whoDid: string
+  avatar: string
+  read: bool
+  at: number
+  did: string
+  rkey: string
+  text: string
+
+shape NotesPage
+  items: NoteRow[]
+  more: bool
+
+shape Count
+  count: number
+
+shape Prefs
+  license: string
+
 shape Account
   signedIn: bool
   did: string
@@ -178,10 +207,13 @@ component App
   state query = ""
   state handleDraft = ""
   state homePages = 1
+  state commentDraft = ""
+  state idQuery = ""
+  state notePages = 1
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
-  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo").at(-1) { case some(x) => x.params.did, case none => "" }
-  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo").at(-1) { case some(x) => x.params.rkey, case none => "" }
+  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.rkey, case none => "" }
   derive profileDid = match stack(nav).filter(x => x.name == "profile").at(-1) { case some(x) => x.params.did, case none => "" }
   derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.kingdom, case none => "" }
   derive taxonName = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.name, case none => "" }
@@ -196,6 +228,17 @@ component App
   // Signing in or out changes what every screen may show (likes, the home feed).
   mutation signedIn as shape Reply refreshes account, feed, detail, person, taxonPage then afterSignIn
   mutation signedOut as shape Reply refreshes account, feed, detail, person, taxonPage
+  resource notes = loadNotifications(account.did, notePages) as shape NotesPage else empty()
+  resource unread = unreadCount(account.did) as shape Count else empty()
+  resource prefs = loadPreferences(account.did) as shape Prefs else empty()
+  resource idFound = searchTaxa(idQuery) as shape TaxonRow[] else empty()
+  mutation liked as shape Reply refreshes detail
+  mutation commented as shape Reply refreshes detail then afterComment
+  mutation identified as shape Reply refreshes detail, feed, home then afterIdentify
+  mutation unidentified as shape Reply refreshes detail, feed, home
+  mutation removed as shape Reply refreshes feed, home, person, taxonPage then afterRemove
+  mutation marked as shape Reply refreshes notes, unread
+  mutation licensed as shape Reply refreshes prefs
   resource time = exactTime() as shape Time
   derive now = time.epochAtZero
   derive offset = time.utcOffset
@@ -209,6 +252,18 @@ component App
   derive signInError = match signedIn { case some(r) => r.error, case none => "" }
   derive signInOk = match signedIn { case some(r) => r.ok, case none => false }
   derive signInProblem = pending(signedIn) ? "" : (signInError != "" ? signInError : account.error)
+  derive likeError = match liked { case some(r) => r.error, case none => "" }
+  derive commentError = match commented { case some(r) => r.error, case none => "" }
+  derive commentOk = match commented { case some(r) => r.ok, case none => false }
+  derive identifyError = match identified { case some(r) => r.error, case none => "" }
+  derive identifyOk = match identified { case some(r) => r.ok, case none => false }
+  derive withdrawError = match unidentified { case some(r) => r.error, case none => "" }
+  derive removeError = match removed { case some(r) => r.error, case none => "" }
+  derive removeOk = match removed { case some(r) => r.ok, case none => false }
+  derive licenseError = match licensed { case some(r) => r.error, case none => "" }
+  derive myIdentification = match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.uri, case none => "" }
+  derive notesError = pending(notes) ? "" : match failure(notes) { case some(f) => problem(f.code, "your notifications"), case none => "" }
+  derive licenses = [Choice(value="https://creativecommons.org/publicdomain/zero/1.0/", label="CC0 (Public Domain)"), Choice(value="https://creativecommons.org/licenses/by/4.0/", label="CC BY (Attribution)"), Choice(value="https://creativecommons.org/licenses/by-nc/4.0/", label="CC BY-NC (Attribution, Non-Commercial)"), Choice(value="https://creativecommons.org/licenses/by-sa/4.0/", label="CC BY-SA (Attribution, Share-Alike)"), Choice(value="https://creativecommons.org/licenses/by-nc-sa/4.0/", label="CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)")]
   derive qualityList = quality == "" ? [] : quality.split(",")
   derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
   derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
@@ -299,6 +354,55 @@ component App
   action moreHome
     homePages = homePages + 1
 
+  // A write needs a session: signed out, each one opens Account instead.
+  action toggleLike
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      if not pending(liked)
+        send liked = setLiked(detail.uri, detail.cid, not detail.liked)
+  action editComment(v: string)
+    commentDraft = v
+  action postComment
+    if commentDraft.trim() != "" and not pending(commented)
+      send commented = addComment(detail.uri, detail.cid, commentDraft)
+  action afterComment
+    if commentOk
+      commentDraft = ""
+  action openIdentify
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      idQuery = ""
+      nav = push(nav, path("identify", detail.did, detail.rkey))
+  action searchId(v: string)
+    idQuery = v
+  action pickId(scientificName: string, rank: string, kingdom: string)
+    if not pending(identified)
+      send identified = addIdentification(detail.uri, detail.cid, scientificName, rank, kingdom)
+  action afterIdentify
+    if identifyOk and top(nav).name == "identify"
+      nav = back(nav)
+  action withdraw
+    if myIdentification != ""
+      send unidentified = removeIdentification(myIdentification)
+  action deleteObservation
+    send removed = removeObservation(detail.uri)
+  action afterRemove
+    if removeOk and top(nav).name == "observation"
+      nav = back(nav)
+  // A link's own press runs instead of following it: open the observation here.
+  action readNote(id: number, read: bool, url: string)
+    if not read
+      send marked = markRead(id)
+    nav = go(nav, url)
+  action markAllRead
+    send marked = markRead(0)
+  action moreNotes
+    notePages = notePages + 1
+  action pickLicense(v: string)
+    send licensed = setLicense(v)
+
   view
     main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
       width="100%" height="100%" display="flex" flex-direction="column"
@@ -376,7 +480,10 @@ component App
                   if detail.found and detail.did == e.params.did and detail.rkey == e.params.rkey
                     header display="flex" align-items="center" padding="8px 16px"
                       text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
-                    ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal)
+                    ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal,
+                      signedIn=account.signedIn, toggleLike=toggleLike, likeBusy=pending(liked), likeError=likeError,
+                      openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError,
+                      commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError)
                   else
                     header display="flex" align-items="center" padding="8px 16px"
                       text "Observation" role="heading" aria-level=2
@@ -479,6 +586,59 @@ component App
                           button press=moreHome disabled=pending(home) testId="more-home"
                             text (pending(home) ? "Loading…" : "Show More")
 
+              if e.name == "identify"
+                column navigationKey=`${e.id}` navigationPresentation="modal" navigationScroll="identify-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    button id="back" press=back aria-label="Cancel" testId="identify-cancel"
+                      image "symbol:close"
+                    text "Suggest an Identification" role="heading" aria-level=2 flex=1
+                    input type="search" value=idQuery input=searchId placeholder="Species, genus, family…" aria-label="Search taxa to identify"
+                      testId="identify-search" width="100%"
+                  list id="identify-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      for t, n in idFound key=`${t.kingdom}/${t.name}`
+                        button press=pickId(t.scientificName, t.rank, t.kingdom) disabled=pending(identified) testId=`identify-${n}`
+                          text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) flex=1 min-width=0
+                      if idFound.length == 0
+                        row
+                          text (idQuery.trim().length < 2 ? "Type at least two letters." : (pending(idFound) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label"
+                      footer
+                        text (identifyError != "" ? identifyError : (pending(identified) ? "Saving your identification…" : "Your identification is saved to your own account.")) testId="identify-note"
+
+              if e.name == "notifications"
+                column navigationKey=`${e.id}` navigationScroll="notes-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
+                    text "Notifications" role="heading" aria-level=1 flex=1
+                    if account.signedIn and unread.count > 0
+                      button press=markAllRead disabled=pending(marked) testId="mark-all-read"
+                        text "Mark All Read"
+                  list id="notes-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if not account.signedIn
+                      section
+                        row
+                          column flex=1 gap=12 padding=12 align-items="center"
+                            text "Sign in to see who identified, commented on or liked your observations." text-align="center" testId="notes-signed-out"
+                            button press=goAccount buttonStyle="filled" testId="notes-sign-in"
+                              text "Sign In"
+                    else
+                      section
+                        for n in notes.items key=n.id
+                          link href=path("observation", n.did, n.rkey) press=readNote(n.id, n.read, path("observation", n.did, n.rkey)) testId=`note-${n.id}`
+                            row gap=12 align-items="center" flex=1 min-width=0
+                              if not n.read
+                                image "symbol:circle" color="-exact-system-blue" aria-label="Unread" testId=`unread-${n.id}`
+                              column flex=1 min-width=0 gap=2
+                                text n.text testId=`note-text-${n.id}`
+                                text formatDay(n.at, now, offset, "day") font="-exact-footnote" color="-exact-secondary-label"
+                            image "symbol:forward-chevron"
+                        if notes.items.length == 0
+                          row
+                            text (pending(notes) ? "Loading…" : (notesError != "" ? notesError : "Nothing yet.")) color="-exact-secondary-label" testId="notes-empty"
+                      if notes.more
+                        section
+                          button press=moreNotes disabled=pending(notes) testId="more-notes"
+                            text (pending(notes) ? "Loading…" : "Show More")
+
               if e.name == "account"
                 column navigationKey=`${e.id}` navigationScroll="account-list" position="absolute" inset=0
                   header display="flex" align-items="center" padding="8px 16px"
@@ -495,6 +655,17 @@ component App
                               text account.handle color="-exact-secondary-label" testId="account-handle"
                           image "symbol:forward-chevron"
                       section
+                        header
+                          text "Preferences"
+                        row
+                          text "Default license" flex=1
+                          select value=prefs.license change=pickLicense disabled=pending(licensed) aria-label="Default license for new observations" testId="default-license"
+                            option "None" value=""
+                            for l in licenses key=l.value
+                              option l.label value=l.value
+                        footer
+                          text (licenseError != "" ? licenseError : "New observations get this license unless you choose another.") testId="license-note"
+                      section
                         button press=signOut destructive=true disabled=pending(signedOut) testId="sign-out"
                           text "Sign Out"
                     else
@@ -509,16 +680,31 @@ component App
                       section
                         button press=signIn disabled=(handleDraft.trim() == "" or pending(signedIn)) testId="sign-in"
                           text (pending(signedIn) ? "Signing In…" : "Sign In")
+      dialog id="withdraw" role="alertdialog" aria-label="Withdraw your identification?"
+        text "It’s removed from this observation and from your account."
+        button press=withdraw destructive=true commandfor="withdraw" command="close" testId="withdraw-confirm"
+          text "Withdraw"
+        button commandfor="withdraw" command="close"
+          text "Cancel"
+      dialog id="delete-observation" role="alertdialog" aria-label="Delete this observation?"
+        text "It’s deleted from your account, with its photos. This can’t be undone."
+        button press=deleteObservation destructive=true commandfor="delete-observation" command="close" testId="delete-confirm"
+          text "Delete"
+        button commandfor="delete-observation" command="close"
+          text "Cancel"
       row role="tablist"
         button role="tab" aria-controls="panel-explore" aria-selected=(nav.tab == "explore") press=pick("explore") testId="tab-explore" flex=1
           image "symbol:feeds"
-          text "Explore"
+          text "Explore" font-size="min(-exact-caption2, 12px)"
         button role="tab" aria-controls="panel-home" aria-selected=(nav.tab == "home") press=pick("home") testId="tab-home" flex=1
           image "symbol:home"
-          text "Home"
+          text "Home" font-size="min(-exact-caption2, 12px)"
+        button role="tab" aria-controls="panel-notifications" aria-selected=(nav.tab == "notifications") press=pick("notifications") testId="tab-notifications" flex=1
+          image "symbol:notifications"
+          text (unread.count > 0 ? `Notifications (${unread.count})` : "Notifications") font-size="min(-exact-caption2, 12px)"
         button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") testId="tab-account" flex=1
           image "symbol:person"
-          text (account.signedIn ? "You" : "Sign In")
+          text (account.signedIn ? "You" : "Sign In") font-size="min(-exact-caption2, 12px)"
 
 
 // A feed row: photo, names, observer and day; it pushes the observation.
@@ -594,6 +780,18 @@ component ObservationDetail
     offset: number
     scrollId: string
     openExternal: action
+    signedIn: bool
+    toggleLike: action
+    likeBusy: bool
+    likeError: string
+    openIdentify: action
+    withdrawError: string
+    removeError: string
+    commentDraft: string
+    editComment: action
+    postComment: action
+    commentBusy: bool
+    commentError: string
   view
     list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
       if d.photos.length > 0
@@ -641,7 +839,12 @@ component ObservationDetail
             text d.obs.place color="-exact-secondary-label" testId="detail-place"
         row
           text "Likes" flex=1
-          text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label"
+          text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label" testId="like-count"
+          button press=toggleLike disabled=likeBusy aria-label=(d.liked ? "Unlike" : "Like") aria-pressed=d.liked testId="like"
+            image (d.liked ? "symbol:heart-fill" : "symbol:heart")
+        if likeError != ""
+          row
+            text likeError color="-exact-system-red" flex=1 min-width=0 testId="like-error"
       if d.hasLocation
         section
           exact-map latitude=d.latitude longitude=d.longitude zoomLevel=some(12)
@@ -675,6 +878,16 @@ component ObservationDetail
         if d.identifications.length == 0
           row
             text "No identifications yet." color="-exact-secondary-label"
+        row
+          button press=openIdentify testId="suggest-id"
+            text (signedIn ? "Suggest an Identification" : "Sign In to Suggest an Identification")
+        if d.identifications.filter(i => i.mine).length > 0
+          row
+            button commandfor="withdraw" command="show-modal" destructive=true testId="withdraw-id"
+              text "Withdraw Your Identification"
+        if withdrawError != ""
+          row
+            text withdrawError color="-exact-system-red" flex=1 min-width=0 testId="withdraw-error"
       section testId="comments"
         header
           text countOf(d.comments.length, "Comment", "Comments")
@@ -686,6 +899,15 @@ component ObservationDetail
         if d.comments.length == 0
           row
             text "No comments yet." color="-exact-secondary-label"
+        if signedIn
+          row
+            textarea value=commentDraft input=editComment placeholder="Add a comment" aria-label="Comment" flex=1 min-width=0 testId="comment-draft"
+          row
+            button press=postComment disabled=(commentDraft.trim() == "" or commentBusy) testId="post-comment"
+              text (commentBusy ? "Posting…" : "Post Comment")
+          if commentError != ""
+            row
+              text commentError color="-exact-system-red" flex=1 min-width=0 testId="comment-error"
       if d.obs.remarks != "" or d.eventRemarks != ""
         section
           header
@@ -704,6 +926,13 @@ component ObservationDetail
             row
               button press=openExternal(l.url) testId=`external-${l.label}`
                 text `View on ${l.label}`
+      if d.mine
+        section
+          button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"
+            text "Delete Observation"
+          if removeError != ""
+            row
+              text removeError color="-exact-system-red" flex=1 min-width=0 testId="delete-error"
 
 component IdText
   props

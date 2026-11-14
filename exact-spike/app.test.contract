@@ -174,3 +174,146 @@ test "declining on the server's page signs nothing in"
   expect tree has "handle"
   expect tree missing "account-name"
   expect text "handle" == "decline.test"
+
+// Phase 3: writes against server.ts's fake appview, as naturalist.test.
+test "signed out, Like opens Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "like"
+  clock settle
+  expect tree has "handle"
+
+test "a like counts, and unliking takes it back"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect text "like-count" == "0 likes"
+  tap "like"
+  clock data
+  expect text "like-count" == "1 like"
+  tap "like"
+  clock data
+  expect text "like-count" == "0 likes"
+
+test "a comment is posted and the field clears"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  type "comment-draft" "Calling across the bay at dusk."
+  tap "post-comment"
+  clock data
+  expect text "comment-0" == "Calling across the bay at dusk."
+  expect text "comment-draft" == ""
+
+test "an identification is suggested from search, then withdrawn"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "ident-1"
+  tap "suggest-id"
+  clock settle
+  type "identify-search" "gavia"
+  clock data
+  tap "identify-0"
+  clock data
+  clock settle
+  expect tree has "ident-1"
+  tap "withdraw-id"
+  clock settle
+  tap "withdraw-confirm"
+  clock data
+  expect tree missing "ident-1"
+  expect tree missing "withdraw-id"
+
+test "notifications open their observation and can all be marked read"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-notifications"
+  clock data
+  expect text "note-text-2" == "Another Naturalist commented on your observation"
+  expect tree has "unread-2"
+  tap "mark-all-read"
+  clock data
+  expect tree missing "unread-2"
+  expect tree missing "mark-all-read"
+  tap "note-1"
+  clock data
+  clock settle
+  expect text "detail-title" == "Common Loon"
+
+test "your own observation can be deleted after asking"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "delete-observation"
+  back
+  clock settle
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  tap "delete-observation"
+  clock settle
+  tap "delete-confirm"
+  clock data
+  clock settle
+  expect tree missing "delete-observation"
+  expect tree has "toggle-filters"
+
+test "the default license is saved"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  type "default-license" "https://creativecommons.org/licenses/by-nc/4.0/"
+  clock data
+  expect state prefs.license == "https://creativecommons.org/licenses/by-nc/4.0/"
+  reload
+  clock data
+  expect state prefs.license == "https://creativecommons.org/licenses/by-nc/4.0/"

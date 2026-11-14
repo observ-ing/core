@@ -58,6 +58,37 @@ const signedIn = (req: Request) => sessions.has(bearer(req));
 // Where the appview may send a code: the web host's callback page, or the native app's scheme.
 const allowedRedirect = (uri: string) => /^http:\/\/127\.0\.0\.1:\d+\/\.exact\/auth\/callback$/.test(uri) || uri === 'ing.observ.exactspike:/oauth';
 
+// What the fake person has done, laid over the recorded observations.
+type Detail = { occurrence: { uri: string; observer: unknown; likeCount?: number; viewerHasLiked?: boolean; identificationCount: number };
+  identifications: { uri: string }[]; comments: unknown[] };
+const likes = new Set<string>();
+const deleted = new Set<string>();
+const overlays = new Map<string, { identifications: { uri: string }[]; comments: unknown[] }>();
+const added = (uri: string) => overlays.get(uri) ?? overlays.set(uri, { identifications: [], comments: [] }).get(uri)!;
+// The fake person owns this recorded observation, so deleting it can be tested.
+const OWN = '3mzvx3lfxlr22';
+function overlay(d: Detail, viewer: boolean): Detail {
+  const o = d.occurrence;
+  const extra = overlays.get(o.uri) ?? { identifications: [], comments: [] };
+  const liked = viewer && likes.has(o.uri);
+  const identifications = [...d.identifications, ...extra.identifications];
+  return {
+    occurrence: { ...o, ...(o.uri.endsWith(`/${OWN}`) ? { observer: PERSON } : {}), viewerHasLiked: liked,
+      likeCount: (o.likeCount ?? 0) + (liked ? 1 : 0), identificationCount: identifications.length },
+    identifications,
+    comments: [...d.comments, ...extra.comments],
+  };
+}
+const OTHER = { did: 'did:plc:fixtureother', handle: 'another.test', displayName: 'Another Naturalist' };
+const LOON = 'at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22';
+const NOTIFICATIONS = [
+  { id: 2, actorDid: OTHER.did, kind: 'comment', subjectUri: LOON, createdAt: '2026-11-09T20:00:00Z', actor: OTHER },
+  { id: 1, actorDid: OTHER.did, kind: 'identification', subjectUri: LOON, createdAt: '2026-11-08T20:00:00Z', actor: OTHER },
+];
+const read = new Set<number>();
+const preferences = { defaultLicense: null as string | null, basemap: null, crosspostInaturalist: null, crosspostInaturalistRequirePhotos: null };
+const unauthorized = () => Response.json({ error: 'Not signed in' }, { status: 401, headers: CORS });
+
 const fixtures: Record<string, (req: Request & { params: Record<string, string> }) => Response | Promise<Response>> = {
   '/oauth/app/login': (req) => {
     const q = new URL(req.url).searchParams;
@@ -92,6 +123,69 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
   '/oauth/logout': (req) => {
     sessions.delete(bearer(req));
     return Response.json({ success: true }, { headers: CORS });
+  },
+  // Writes, kept in memory for the fake person (see `overlay`).
+  '/api/likes': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { occurrenceUri } = (await req.json()) as { occurrenceUri: string };
+    if (req.method === 'POST') likes.add(occurrenceUri); else likes.delete(occurrenceUri);
+    return Response.json({ success: true }, { headers: CORS });
+  },
+  '/api/comments': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { occurrenceUri, occurrenceCid, body } = (await req.json()) as { occurrenceUri: string; occurrenceCid: string; body: string };
+    const uri = `at://${PERSON.did}/bio.lexicons.temp.v0-1.comment/${random()}`;
+    added(occurrenceUri).comments.push({ commenter: PERSON, uri, cid: 'bafyfixture', did: PERSON.did, subject_uri: occurrenceUri,
+      subject_cid: occurrenceCid, body, created_at: new Date().toISOString() });
+    return Response.json({ success: true, uri, cid: 'bafyfixture' }, { headers: CORS });
+  },
+  '/api/identifications': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const r = (await req.json()) as { occurrenceUri: string; occurrenceCid: string; scientificName: string; taxonRank?: string; kingdom?: string };
+    const uri = `at://${PERSON.did}/bio.lexicons.temp.v0-1.identification/${random()}`;
+    added(r.occurrenceUri).identifications.push({ identifier: PERSON, uri, cid: 'bafyfixture', did: PERSON.did, subject_uri: r.occurrenceUri,
+      subject_cid: r.occurrenceCid, scientific_name: r.scientificName, taxon_rank: r.taxonRank, kingdom: r.kingdom,
+      date_identified: new Date().toISOString() });
+    return Response.json({ success: true, uri, cid: 'bafyfixture' }, { headers: CORS });
+  },
+  '/api/identifications/*': (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const uri = decodeURIComponent(new URL(req.url).pathname.slice('/api/identifications/'.length));
+    for (const a of overlays.values()) a.identifications = a.identifications.filter((i) => i.uri !== uri);
+    return Response.json({ success: true }, { headers: CORS });
+  },
+  '/api/occurrences/*': (req) => {
+    const uri = decodeURIComponent(new URL(req.url).pathname.slice('/api/occurrences/'.length));
+    if (req.method === 'DELETE') {
+      if (!signedIn(req)) return unauthorized();
+      if (!uri.endsWith(`/${OWN}`)) return Response.json({ error: 'You can only delete your own observations' }, { status: 403, headers: CORS });
+      deleted.add(uri);
+      return Response.json({ success: true }, { headers: CORS });
+    }
+    if (deleted.has(uri)) return Response.json({ error: 'Occurrence not found' }, { status: 404, headers: CORS });
+    const key = fixtureKey(new URL(req.url));
+    if (!(key in RECORDED)) return Response.json({ error: `No fixture for ${key}` }, { status: 404, headers: CORS });
+    return Response.json(overlay(RECORDED[key] as Detail, signedIn(req)), { headers: CORS });
+  },
+  '/api/notifications': (req) => signedIn(req)
+    ? Response.json({ notifications: NOTIFICATIONS.map((n) => ({ ...n, read: read.has(n.id) })) }, { headers: CORS })
+    : unauthorized(),
+  '/api/notifications/unread-count': (req) => signedIn(req)
+    ? Response.json({ count: NOTIFICATIONS.filter((n) => !read.has(n.id)).length }, { headers: CORS })
+    : unauthorized(),
+  '/api/notifications/read': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { id } = (await req.json()) as { id?: number };
+    for (const n of NOTIFICATIONS) if (id === undefined || n.id === id) read.add(n.id);
+    return Response.json({ success: true }, { headers: CORS });
+  },
+  '/api/user/preferences': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    if (req.method === 'PUT') {
+      const body = (await req.json()) as { defaultLicense?: string | null };
+      if ('defaultLicense' in body) preferences.defaultLicense = body.defaultLicense ?? null;
+    }
+    return Response.json(preferences, { headers: CORS });
   },
   // The home feed needs a session; its rows stand in from Explore's first recorded page.
   '/api/feeds/home': (req) => signedIn(req)

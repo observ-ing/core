@@ -14,6 +14,12 @@ signed-out visitor can browse.
 - **Taxon**: picture, names, conservation status, classification, description,
   what it includes, its observations, pictures, GBIF and Wikidata.
 - **Search**: taxa by name.
+- **Signed in**: like and unlike, comment, suggest an identification from a
+  taxon search (and withdraw your own), delete your own observation after a
+  confirmation, a Notifications tab (unread marks, mark all read), and the
+  default license for new observations. Signed out, each of these opens
+  Account. In tests `server.ts` keeps the fake person's writes in memory and
+  lets them own one recorded observation (`OWN`) so deleting can be tested.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;

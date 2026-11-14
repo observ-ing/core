@@ -71,6 +71,51 @@ const base64url = (bytes: Uint8Array) =>
 const randomString = (n: number) => base64url(crypto.getRandomValues(new Uint8Array(n)));
 const challengeOf = async (verifier: string) =>
   base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))));
+// A write's answer: done, or why not, in words to show beside what was tried.
+type Reply = { ok: boolean; error: string };
+async function send(method: string, path: string, store: Store, body?: unknown): Promise<Reply> {
+  if (!kept(store)) return { ok: false, error: 'Sign in first.' };
+  let response: Response;
+  try {
+    response = await fetch(`${API}${path}`, {
+      method,
+      headers: { ...authHeaders(store), ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      exactTimeout: 30000,
+    });
+  } catch {
+    return { ok: false, error: 'Can’t reach observ.ing. Check your connection and try again.' };
+  }
+  if (response.ok) {
+    // What was read before may now be stale (counts, likes, the feeds).
+    pages.clear();
+    return { ok: true, error: '' };
+  }
+  if (response.status === 401) return { ok: false, error: 'Your session ended. Sign in again.' };
+  let message = '';
+  try {
+    message = ((await response.json()) as { error?: string }).error ?? '';
+  } catch {
+    // Not JSON: say what failed by its status.
+  }
+  return { ok: false, error: message || `That didn’t work (${response.status}). Try again.` };
+}
+
+const NOTICE: Record<string, string> = {
+  identification: 'identified your observation',
+  comment: 'commented on your observation',
+  like: 'liked your observation',
+};
+type NotificationJson = {
+  id: number;
+  actorDid: string;
+  kind: string;
+  subjectUri: string;
+  read: boolean;
+  createdAt: string;
+  actor?: { did: string; handle?: string; displayName?: string; avatar?: string };
+};
+
 const SIGNED_OUT = { signedIn: false, did: '', handle: '', name: '', avatar: '', error: '' };
 
 const absolute = (url: string | null | undefined) => (!url ? '' : url.startsWith('/') ? `${API}${url}` : url);
@@ -183,7 +228,7 @@ const sources: Sources = {
       did, rkey, found: false, obs: toObservation({ uri: `at://${did}//${rkey}`, cid: '', observer: { did }, identificationCount: 0,
         images: [], externalRecords: [], createdAt: '', qualityIssues: [] }),
       photos: [], latitude: 0, longitude: 0, hasLocation: false, uncertainty: '', eventRemarks: '', taxonKingdom: '', taxonName: '',
-      issues: [], identifications: [], comments: [], links: [],
+      issues: [], identifications: [], comments: [], links: [], uri: '', cid: '', liked: false, mine: false,
     };
     if (!did || !rkey) return empty;
     const uri = `at://${did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
@@ -194,6 +239,10 @@ const sources: Sources = {
     const route = tax?.kingdom && tax.scientificName ? { kingdom: tax.kingdom, name: tax.scientificName } : null;
     return {
       did, rkey, found: true,
+      uri: o.uri,
+      cid: o.cid,
+      liked: !!o.viewerHasLiked,
+      mine: o.observer.did === kept(store)?.did,
       obs: toObservation(o),
       photos: o.images.map((img, index) => ({ index, url: absolute(img.url), thumb: thumb(img.url), license: licenseLabel(img.license) })),
       latitude: o.location?.latitude ?? 0,
@@ -212,6 +261,7 @@ const sources: Sources = {
         rank: i.taxon_rank ?? '',
         kingdom: i.kingdom ?? '',
         at: instant(i.date_identified),
+        mine: i.identifier.did === kept(store)?.did,
       })),
       comments: d.comments.map((c) => ({ uri: c.uri, who: name(c.commenter), whoDid: c.commenter.did, body: c.body, at: instant(c.created_at) })),
       links: o.externalRecords.map((r) => ({ url: r.uri, label: r.service === 'inaturalist' ? 'iNaturalist' : (r.service ?? new URL(r.uri).host) })),
@@ -364,6 +414,68 @@ const sources: Sources = {
     const { occurrences, more } = await readPages('/api/feeds/home?quality=complete', wanted, store);
     return { items: occurrences.map(toObservation), more };
   },
+
+  // --- Writes: each answers ok, or why not (a refusal is a reply, not a throw).
+  setLiked: ([uri, cid, liked], store) =>
+    liked
+      ? send('POST', '/api/likes', store, { occurrenceUri: uri, occurrenceCid: cid })
+      : send('DELETE', '/api/likes', store, { occurrenceUri: uri }),
+  addComment: ([uri, cid, body], store) => {
+    const text = body.trim();
+    if (!text) return { ok: false, error: 'Write a comment first.' };
+    return send('POST', '/api/comments', store, { occurrenceUri: uri, occurrenceCid: cid, body: text });
+  },
+  addIdentification: ([uri, cid, scientificName, rank, kingdom], store) =>
+    send('POST', '/api/identifications', store, {
+      occurrenceUri: uri,
+      occurrenceCid: cid,
+      scientificName,
+      ...(rank ? { taxonRank: rank } : {}),
+      ...(kingdom ? { kingdom } : {}),
+    }),
+  removeIdentification: ([uri], store) => send('DELETE', `/api/identifications/${encodeURIComponent(uri)}`, store),
+  removeObservation: ([uri], store) => send('DELETE', `/api/occurrences/${encodeURIComponent(uri)}`, store),
+
+  // --- Notifications: the signed-in person's, newest first.
+  loadNotifications: async ([did, wanted], store) => {
+    if (!did) return { items: [], more: false };
+    // The appview pages up to 50 at a time; Show More widens the one page.
+    const limit = Math.min(50, PAGE * Math.max(1, wanted));
+    const body = await get<{ notifications: NotificationJson[]; cursor?: string | null }>(`/api/notifications?limit=${limit}`, store);
+    return {
+      items: body.notifications.map((n) => {
+        const { did: subjectDid, rkey } = parts(n.subjectUri);
+        const who = n.actor ? name({ did: n.actor.did, handle: n.actor.handle, displayName: n.actor.displayName }) : n.actorDid;
+        return {
+          id: n.id,
+          kind: n.kind,
+          who,
+          whoDid: n.actorDid,
+          avatar: n.actor?.avatar ?? '',
+          read: n.read,
+          at: instant(n.createdAt),
+          did: subjectDid,
+          rkey,
+          text: `${who} ${NOTICE[n.kind] ?? 'acted on your observation'}`,
+        };
+      }),
+      more: !!body.cursor && limit < 50,
+    };
+  },
+  unreadCount: async ([did], store) => {
+    if (!did) return { count: 0 };
+    return get<{ count: number }>('/api/notifications/unread-count', store);
+  },
+  // 0 marks every notification read.
+  markRead: ([id], store) => send('POST', '/api/notifications/read', store, id > 0 ? { id } : {}),
+
+  // --- Preferences: the license new observations get by default.
+  loadPreferences: async ([did], store) => {
+    if (!did) return { license: '' };
+    const p = await get<{ defaultLicense: string | null }>('/api/user/preferences', store);
+    return { license: p.defaultLicense ?? '' };
+  },
+  setLicense: ([license], store) => send('PUT', '/api/user/preferences', store, { defaultLicense: license || null }),
 };
 
 function toTaxonRow(t: TaxaResult): TaxonRow {
