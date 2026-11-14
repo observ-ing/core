@@ -11,7 +11,12 @@
   },
   "host": {
     "web": {},
-    "linux": {}
+    "linux": {},
+    "ios": {
+      "associatedDomains": [
+        "applinks:observ.ing"
+      ]
+    }
   },
   "deploy": {
     "store": {

@@ -27,6 +27,7 @@ await record(`/api/occurrences/${encodeURIComponent(OCCURRENCE('3mzucjhpluy22'))
 await record(`/api/occurrences/${encodeURIComponent(OCCURRENCE('3mzvx3lfxlr22'))}`); // unidentified, no photo
 await record(`/api/profiles/${encodeURIComponent(DID)}/feed?type=observations&limit=1`);
 await record(`/api/profiles/${encodeURIComponent(DID)}/feed?type=observations&limit=${PAGE}`);
+await record(`/api/profiles/${encodeURIComponent(DID)}/feed?type=identifications&limit=${PAGE}`);
 await record(`/api/taxa/Animalia/Gavia%20immer`);
 await record(`/api/taxa/Animalia/Gavia%20immer/occurrences?limit=${PAGE}`);
 await record(`/api/taxa/Animalia/Gavia`);

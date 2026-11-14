@@ -46,6 +46,14 @@ signed-out visitor can browse.
   cross-post preferences; "Also post to iNaturalist" on New Observation and
   Batch Upload (your preference until changed); on your own observations, its
   cross-post status, View on iNaturalist, and Post (or Try Again).
+- **Polish**: observ.ing's green as the accent (`app.tamber`); a welcome card
+  at the top of Explore on a signed-out first visit (Sign In or Just Browse,
+  remembered); an offline banner with Try Again; a profile's Identifications
+  beside its Observations. Its routes are observ.ing's own
+  (`/observation/:did/:rkey`, `/profile/:did`, `/taxon/:kingdom/:name`), so
+  observ.ing links open the same screens; on iOS, `applinks:observ.ing` is
+  declared, which needs observ.ing to serve an apple-app-site-association
+  naming the app.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;

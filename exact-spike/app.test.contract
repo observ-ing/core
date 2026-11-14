@@ -550,3 +550,50 @@ test "one of your observations can be posted to iNaturalist"
   clock data
   expect text "crosspost-status" == "Posting to iNaturalist…"
   expect tree missing "crosspost-post"
+
+// Phase 7: polish.
+test "the welcome card shows on a first visit until it's dismissed, then never again"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree has "welcome"
+  tap "welcome-dismiss"
+  expect tree missing "welcome"
+  reload
+  clock data
+  expect tree missing "welcome"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "the welcome card's Sign In opens Account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "welcome-sign-in"
+  clock settle
+  expect tree has "handle"
+
+test "offline, a banner says so, and Try Again recovers"
+  fail fetch "http://127.0.0.1:8787/api/feeds/explore"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree has "offline-banner"
+  pass fetch "http://127.0.0.1:8787/api/feeds/explore"
+  tap "offline-retry"
+  clock data
+  expect tree missing "offline-banner"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "a profile lists the person's identifications too"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-observer-link"
+  clock data
+  clock settle
+  tap "profile-tab-identifications"
+  clock data
+  expect text "pid-name-0" == "Baccharis pilularis"
+  expect tree missing "pobs-3mzucjhpluy22"
+  tap "profile-tab-observations"
+  clock data
+  expect text "pobs-title-3mzucjhpluy22" == "Common Loon"

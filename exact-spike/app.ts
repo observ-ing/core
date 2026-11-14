@@ -819,6 +819,24 @@ const sources: Sources = {
     return { uri, status: c.status ?? '', error: c.lastError ?? '', url: c.inatUrl ?? '' };
   },
   crosspostNow: ([uri], store) => send('POST', '/api/inat/crosspost', store, { uri }),
+
+  // A person's identifications, newest first, each linking to its observation.
+  loadProfileIds: async ([did, wanted], store) => {
+    if (!did) return { items: [], more: false };
+    const limit = Math.min(50, PAGE * Math.max(1, wanted));
+    const body = await get<{ identifications: Identification[]; cursor?: string | null }>(
+      `/api/profiles/${encodeURIComponent(did)}/feed?type=identifications&limit=${limit}`, store);
+    return {
+      items: body.identifications.map((i) => ({
+        uri: i.uri,
+        scientificName: i.scientific_name,
+        rank: i.taxon_rank ?? '',
+        at: instant(i.date_identified),
+        ...parts(i.subject_uri),
+      })),
+      more: !!body.cursor && body.identifications.length >= limit && limit < 50,
+    };
+  },
 };
 
 function toTaxonRow(t: TaxaResult): TaxonRow {

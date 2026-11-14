@@ -174,6 +174,18 @@ shape Created
   did: string
   rkey: string
 
+shape ProfileId
+  uri: string
+  scientificName: string
+  rank: string
+  at: number
+  did: string
+  rkey: string
+
+shape ProfileIds
+  items: ProfileId[]
+  more: bool
+
 shape InatState
   enabled: bool
   linked: bool
@@ -308,6 +320,10 @@ component App
   state batchUncertainty = 0
   // Live ID: the camera's track and its latest frame.
   state liveTrack = ""
+  // The welcome card at the top of Explore, until it's dismissed or someone signs in.
+  state welcomed = false persist
+  state profileTab = "observations"
+  state profileIdPages = 1
   // Whether this new observation (or batch) also goes to iNaturalist: your preference until you change it here.
   state newCrosspostTouched = false
   state newCrosspostOn = false
@@ -349,6 +365,7 @@ component App
   mutation located as shape GeolocationPosition then arrivedHere
   mutation created as shape Created refreshes feed, home then afterCreate
   resource inat = loadInat(account.did) as shape InatState else empty()
+  resource personIds = loadProfileIds(profileTab == "identifications" ? profileDid : "", profileIdPages) as shape ProfileIds else empty()
   resource crosspost = crosspostStatus(detail.mine ? detail.uri : "") as shape Crosspost else empty()
   mutation inatLinked as shape Reply refreshes inat
   mutation inatUnlinked as shape Reply refreshes inat
@@ -417,6 +434,8 @@ component App
   derive inatError = pending(inatLinked) ? "" : match inatLinked { case some(r) => r.error, case none => "" }
   derive crosspostError = match crossposted { case some(r) => r.error, case none => "" }
   derive crosspostShown = crosspost.uri == detail.uri ? crosspost : Crosspost(uri=detail.uri, status="", error="", url="")
+  // Offline: whichever read the person is looking at failed for want of a connection.
+  derive offline = (match failure(feed) { case some(f) => f.code == "offline", case none => false }) or (match failure(home) { case some(f) => f.code == "offline", case none => false }) or (match failure(detail) { case some(f) => f.code == "offline", case none => false }) or (match failure(notes) { case some(f) => f.code == "offline", case none => false })
   derive queueWaiting = queue.filter(q => q.status == "waiting").length
   derive sendNote = pending(sent) ? "" : match sent { case some(r) => (r.error != "" ? r.error : (r.offline ? "You’re offline. These upload when you’re back." : (r.sent > 0 ? `${countOf(r.sent, "observation", "observations")} uploaded.` : ""))), case none => "" }
   derive batchMissing = batchFacts.filter(f => not f.hasPlace).length
@@ -564,6 +583,22 @@ component App
     notePages = notePages + 1
   action pickLicense(v: string)
     send licensed = setLicense(v)
+
+  action dismissWelcome
+    welcomed = true
+  action welcomeSignIn
+    welcomed = true
+    nav = select(nav, "account")
+  action retryAll
+    refresh feed
+    refresh home
+    refresh detail
+    refresh notes
+  action showProfileTab(tab: string)
+    profileTab = tab
+    profileIdPages = 1
+  action moreProfileIds
+    profileIdPages = profileIdPages + 1
 
   // --- iNaturalist
   action startInatLink
@@ -774,6 +809,12 @@ component App
   view
     main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
       width="100%" height="100%" display="flex" flex-direction="column"
+      if offline
+        row role="status" gap=8 align-items="center" flex-wrap="wrap" padding="8px 16px" background-color="-exact-secondary-background" testId="offline-banner"
+          image "symbol:alert" color="-exact-system-orange"
+          text "You’re offline. What’s here was loaded earlier." flex=1 min-width=0
+          button press=retryAll testId="offline-retry"
+            text "Try Again"
       column flex=1 min-height=0 position="relative"
         for t in nav.tabs key=t.name
           column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
@@ -789,6 +830,18 @@ component App
                     button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
                       image "symbol:filter"
                   list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if not welcomed and not account.signedIn and not pending(account)
+                      section testId="welcome"
+                        row
+                          column flex=1 min-width=0 gap=8 padding-top=8 padding-bottom=8
+                            text "Welcome to observ.ing" role="heading" aria-level=2 font="-exact-title2"
+                            text "Share what you see in nature. Your observations live in your own atproto account, so they go with you to any app." color="-exact-secondary-label"
+                            text "Open source, Darwin Core records for science, and yours to export." font="-exact-footnote" color="-exact-secondary-label"
+                        row gap=8 flex-wrap="wrap"
+                          button press=welcomeSignIn buttonStyle="filled" testId="welcome-sign-in"
+                            text "Sign In"
+                          button press=dismissWelcome testId="welcome-dismiss"
+                            text "Just Browse"
                     if showFilters
                       section testId="filters"
                         header
@@ -891,17 +944,39 @@ component App
                           Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
                           Stat(value=person.species, label="Species", testId="stat-species")
                       section
-                        header
-                          text "Observations"
-                        for o in person.items key=`${o.did}/${o.rkey}`
-                          ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
-                        if person.items.length == 0
-                          row
-                            text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
-                      if person.more
+                        row role="radiogroup" aria-label="Show" gap=8 flex-wrap="wrap"
+                          button role="radio" aria-checked=(profileTab == "observations") press=showProfileTab("observations") flex=1 flex-basis="8rem" testId="profile-tab-observations"
+                            text "Observations"
+                          button role="radio" aria-checked=(profileTab == "identifications") press=showProfileTab("identifications") flex=1 flex-basis="8rem" aria-label="Identifications" testId="profile-tab-identifications"
+                            text "IDs"
+                      if profileTab == "identifications"
                         section
-                          button press=morePerson disabled=pending(person) testId="more-profile"
-                            text (pending(person) ? "Loading…" : "Show More")
+                          for i, n in personIds.items key=i.uri
+                            link href=path("observation", i.did, i.rkey) testId=`pid-${n}`
+                              column flex=1 min-width=0 gap=2
+                                text i.scientificName font-style="italic" testId=`pid-name-${n}`
+                                text `${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+                              image "symbol:forward-chevron"
+                          if personIds.items.length == 0
+                            row
+                              text (pending(personIds) ? "Loading…" : "No identifications yet.") color="-exact-secondary-label"
+                        if personIds.more
+                          section
+                            button press=moreProfileIds disabled=pending(personIds) testId="more-profile-ids"
+                              text (pending(personIds) ? "Loading…" : "Show More")
+                      if profileTab == "observations"
+                        section
+                          header
+                            text "Observations"
+                          for o in person.items key=`${o.did}/${o.rkey}`
+                            ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
+                          if person.items.length == 0
+                            row
+                              text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
+                        if person.more
+                          section
+                            button press=morePerson disabled=pending(person) testId="more-profile"
+                              text (pending(person) ? "Loading…" : "Show More")
                   else
                     Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
 

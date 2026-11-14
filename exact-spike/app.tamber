@@ -1,0 +1,7 @@
+tamber observing
+
+// observ.ing's green (frontend/src/theme: primary.main), as the app's tint.
+theme
+  AccentColor = light-dark(#3a7d44, #5e9d5a)
+  brand.fill = light-dark(#3a7d44, #2f6b38)
+  ink.on-brand = #ffffff  scheme=fixed
