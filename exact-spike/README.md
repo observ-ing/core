@@ -106,5 +106,11 @@ OBSERVING_AUTH_ORIGIN=http://127.0.0.1:3100 bun exact.mjs web
 Use `127.0.0.1`, not `localhost`: the appview's sign-in cookie and its atproto
 callback are both on `127.0.0.1`.
 
+A local appview's database starts empty, so every observation answers 404 until
+something fills it: run `cargo run -p tap-ingester` beside it on the same
+`DATABASE_URL` (with `PORT=8091 APPVIEW_PORT=3100`, and `tap` on `PATH`). Its
+first minute backfills everything posted to observ.ing; what the app posts shows
+up a moment later, as on observ.ing.
+
 To read a different appview, set `APPVIEW` (a local one is `http://localhost:3000`). Native hosts send no
 cookies, so signed-in endpoints would need token auth.

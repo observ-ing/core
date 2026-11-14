@@ -23,16 +23,18 @@ async function proxy(req: Request): Promise<Response> {
   const upstream = await fetch(`${UPSTREAM}${url.pathname}${url.search}`, {
     method: req.method,
     headers: Object.fromEntries(
-      ['accept', 'authorization', 'content-type'].flatMap((h) => (req.headers.get(h) ? [[h, req.headers.get(h)!]] : [])),
+      ['accept', 'authorization', 'content-type', 'cookie'].flatMap((h) => (req.headers.get(h) ? [[h, req.headers.get(h)!]] : [])),
     ),
     body: req.method === 'GET' || req.method === 'HEAD' ? undefined : await req.arrayBuffer(),
-    redirect: 'follow',
+    // Sign-in answers with redirects and cookies the browser must see itself.
+    redirect: 'manual',
   });
   const headers = new Headers(CORS);
-  for (const h of ['content-type', 'cache-control', 'etag', 'last-modified']) {
+  for (const h of ['content-type', 'cache-control', 'etag', 'last-modified', 'location']) {
     const v = upstream.headers.get(h);
     if (v) headers.set(h, v);
   }
+  for (const c of upstream.headers.getSetCookie()) headers.append('set-cookie', c);
   return new Response(upstream.body, { status: upstream.status, headers });
 }
 
