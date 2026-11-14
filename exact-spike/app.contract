@@ -36,6 +36,7 @@ shape Observation
   observerDid: string
   handle: string
   observedAt: number
+  observedOffset: number
   photo: string
   license: string
   place: string
@@ -1146,7 +1147,7 @@ component App
                           link href=path("observation", n.did, n.rkey) press=readNote(n.id, n.read, path("observation", n.did, n.rkey)) testId=`note-${n.id}`
                             row gap=12 align-items="center" flex=1 min-width=0
                               if not n.read
-                                image "symbol:circle" color="-exact-system-blue" aria-label="Unread" testId=`unread-${n.id}`
+                                view width=10 height=10 border-radius=5 background-color="-exact-system-blue" aria-label="Unread" testId=`unread-${n.id}`
                               column flex=1 min-width=0 gap=2
                                 text n.text testId=`note-text-${n.id}`
                                 text formatDay(n.at, now, offset, "day") font="-exact-footnote" color="-exact-secondary-label"
@@ -1247,7 +1248,7 @@ component ObservationRow
           text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
           if o.commonName != "" and o.scientificName != ""
             text o.scientificName font-style="italic" color="-exact-secondary-label"
-          text (showObserver ? `${o.observer} · ${formatDay(o.observedAt, now, offset, "day")}` : formatDay(o.observedAt, now, offset, "day"))
+          text (showObserver ? `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` : formatDay(o.observedAt, now, o.observedOffset, "day"))
             font="-exact-footnote" color="-exact-secondary-label"
       image "symbol:forward-chevron"
 
@@ -1348,7 +1349,7 @@ component ObservationDetail
           text "Observation"
         row
           text "Observed" flex=1
-          text formatDay(d.obs.observedAt, now, offset, "day-time") color="-exact-secondary-label" testId="detail-date"
+          text formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time") color="-exact-secondary-label" testId="detail-date"
         link href=path("profile", d.obs.observerDid) testId="detail-observer-link"
           text "By" flex=1
           text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) color="-exact-secondary-label" testId="detail-observer"

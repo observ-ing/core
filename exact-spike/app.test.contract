@@ -356,6 +356,8 @@ test "a photo's EXIF fills in when and where, the model suggests, and it saves"
   clock data
   clock settle
   expect text "detail-title" == "Notophthalmus viridescens"
+  // Taken 08:30 in May (daylight time), shown in November (standard time): still 8:30.
+  expect text "detail-date" == "May 4, 2026 at 8:30 AM"
   expect text "detail-remarks" == "Under a log by the creek."
   expect tree has "detail-photo"
   expect tree has "delete-observation"

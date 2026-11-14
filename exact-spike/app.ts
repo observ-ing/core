@@ -301,6 +301,9 @@ function toObservation(o: Occurrence): Observation {
     observerDid: o.observer.did,
     handle: o.observer.handle ? `@${o.observer.handle}` : '',
     observedAt: instant(o.eventDate ?? o.createdAt, instant(o.createdAt)),
+    // Minutes east of UTC on that day: a date across a clock change from today
+    // shows in its own offset, not today's.
+    observedOffset: -new Date(instant(o.eventDate ?? o.createdAt, instant(o.createdAt))).getTimezoneOffset(),
     photo: image === '' ? '' : thumb(image),
     license: licenseLabel(o.images[0]?.license),
     place: loc
