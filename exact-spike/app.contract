@@ -4,7 +4,8 @@
 // app.ts reads the appview through server.ts, which proxies a real one or
 // answers from fixtures/.
 
-use MapMarker from "@exact/maps"
+use MapMarker, MapCamera from "@exact/maps"
+use getCurrentPosition, GeolocationPosition from "@exact/geolocation"
 
 routes nav
   tab explore "/"
@@ -14,6 +15,7 @@ routes nav
     profile "/profile/:did"
     taxon "/taxon/:kingdom/:name"
     search "/search"
+    new "/new"
   tab home "/home"
   tab notifications "/notifications"
   tab account "/account"
@@ -144,6 +146,29 @@ shape TaxonPage
   items: Observation[]
   more: bool
 
+shape PhotoFact
+  path: string
+  thumb: string
+  takenAt: string
+  hasPlace: bool
+  latitude: number
+  longitude: number
+  uncertainty: number
+
+shape Suggestion
+  scientificName: string
+  commonName: string
+  rank: string
+  kingdom: string
+  confidence: number
+  inRange: bool
+
+shape Created
+  ok: bool
+  error: string
+  did: string
+  rkey: string
+
 shape NoteRow
   id: number
   kind: string
@@ -210,6 +235,21 @@ component App
   state commentDraft = ""
   state idQuery = ""
   state notePages = 1
+  // The new observation being made: what the person set; the photo fills in the rest.
+  state newPhotos = []
+  state newDate = ""
+  state newTime = ""
+  state newPlaced = false
+  state newLat = 0
+  state newLng = 0
+  state newUncertainty = 0
+  state newTaxonQuery = ""
+  state newTaxonName = ""
+  state newTaxonRank = ""
+  state newTaxonKingdom = ""
+  state newTaxonLabel = ""
+  state newNotes = ""
+  state newLicense = ""
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
   derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.did, case none => "" }
@@ -239,6 +279,11 @@ component App
   mutation removed as shape Reply refreshes feed, home, person, taxonPage then afterRemove
   mutation marked as shape Reply refreshes notes, unread
   mutation licensed as shape Reply refreshes prefs
+  resource newFacts = describePhotos(newPhotos) as shape PhotoFact[] else empty()
+  resource newSuggestions = suggestSpecies(firstPhoto, newLatShown, newLngShown, newHasPlace) as shape Suggestion[] else empty()
+  resource newFound = searchTaxa(newTaxonQuery) as shape TaxonRow[] else empty()
+  mutation located as shape GeolocationPosition then arrivedHere
+  mutation created as shape Created refreshes feed, home then afterCreate
   resource time = exactTime() as shape Time
   derive now = time.epochAtZero
   derive offset = time.utcOffset
@@ -264,6 +309,22 @@ component App
   derive myIdentification = match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.uri, case none => "" }
   derive notesError = pending(notes) ? "" : match failure(notes) { case some(f) => problem(f.code, "your notifications"), case none => "" }
   derive licenses = [Choice(value="https://creativecommons.org/publicdomain/zero/1.0/", label="CC0 (Public Domain)"), Choice(value="https://creativecommons.org/licenses/by/4.0/", label="CC BY (Attribution)"), Choice(value="https://creativecommons.org/licenses/by-nc/4.0/", label="CC BY-NC (Attribution, Non-Commercial)"), Choice(value="https://creativecommons.org/licenses/by-sa/4.0/", label="CC BY-SA (Attribution, Share-Alike)"), Choice(value="https://creativecommons.org/licenses/by-nc-sa/4.0/", label="CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)")]
+  derive firstPhoto = match first(newPhotos) { case some(p) => p, case none => "" }
+  derive photoTakenAt = match first(newFacts) { case some(f) => f.takenAt, case none => "" }
+  derive photoPlace = first(newFacts.filter(f => f.hasPlace))
+  derive photoHasPlace = match photoPlace { case some(f) => true, case none => false }
+  // The photo's "YYYY-MM-DDTHH:mm" until the person sets the day or the time.
+  derive newDayShown = newDate != "" ? newDate : photoTakenAt.slice(0, 10)
+  derive newTimeShown = newTime != "" ? newTime : photoTakenAt.slice(11, 16)
+  derive newDateShown = newDayShown == "" ? "" : `${newDayShown}T${newTimeShown != "" ? newTimeShown : "12:00"}`
+  derive newHasPlace = newPlaced or photoHasPlace
+  derive newLatShown = newPlaced ? newLat : match photoPlace { case some(f) => f.latitude, case none => 0 }
+  derive newLngShown = newPlaced ? newLng : match photoPlace { case some(f) => f.longitude, case none => 0 }
+  derive newUncertaintyShown = newPlaced ? newUncertainty : match photoPlace { case some(f) => f.uncertainty, case none => 0 }
+  derive newLicenseShown = newLicense != "" ? newLicense : prefs.license
+  derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
+  derive createError = match created { case some(r) => r.error, case none => "" }
+  derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
   derive qualityList = quality == "" ? [] : quality.split(",")
   derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
   derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
@@ -403,6 +464,87 @@ component App
   action pickLicense(v: string)
     send licensed = setLicense(v)
 
+  action openNew
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      newPhotos = []
+      newDate = ""
+      newTime = ""
+      newPlaced = false
+      newUncertainty = 0
+      newTaxonQuery = ""
+      newTaxonName = ""
+      newTaxonRank = ""
+      newTaxonKingdom = ""
+      newTaxonLabel = ""
+      newNotes = ""
+      newLicense = ""
+      nav = push(nav, "/new")
+  action choosePhotos
+    showPicker("new-photos")
+  action addPhotos(files: Picked[])
+    newPhotos = newPhotos.concat(files.map(f => f.path))
+  action removePhoto(path: string)
+    newPhotos = newPhotos.filter(p => p != path)
+  action setNewDate(v: string)
+    newDate = v
+  action setNewTime(v: string)
+    newTime = v
+  action useMyLocation
+    if not pending(located)
+      send located = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
+  action arrivedHere
+    match located
+      case some(p)
+        newLat = p.coords.latitude
+        newLng = p.coords.longitude
+        newUncertainty = round(p.coords.accuracy)
+        newPlaced = true
+      case none
+        newPlaced = newPlaced
+  // With nowhere yet, the pin starts on a view of the world.
+  action placeOnMap
+    newLat = 20
+    newLng = 0
+    newUncertainty = 0
+    newPlaced = true
+  action movedMap(camera: MapCamera)
+    if newHasPlace
+      newLat = camera.latitude
+      newLng = camera.longitude
+      newPlaced = true
+  action searchNewTaxon(v: string)
+    newTaxonQuery = v
+  action pickTaxon(scientificName: string, rank: string, kingdom: string, label: string)
+    newTaxonName = scientificName
+    newTaxonRank = rank
+    newTaxonKingdom = kingdom
+    newTaxonLabel = label
+    newTaxonQuery = ""
+  action clearNewTaxon
+    newTaxonName = ""
+    newTaxonRank = ""
+    newTaxonKingdom = ""
+    newTaxonLabel = ""
+  action editNotes(v: string)
+    newNotes = v
+  action pickNewLicense(v: string)
+    newLicense = v
+  action saveNew
+    if canSave
+      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown)
+  // Saved: close the sheet and open the new observation.
+  action afterCreate
+    match created
+      case some(r)
+        if r.ok and top(nav).name == "new"
+          let closed = back(nav)
+          nav = go(closed, path("observation", r.did, r.rkey))
+          newPhotos = []
+      case none
+        newPhotos = newPhotos
+
   view
     main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
       width="100%" height="100%" display="flex" flex-direction="column"
@@ -414,6 +556,8 @@ component App
                 column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
                   header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
                     text "Explore" role="heading" aria-level=1 flex=1
+                    button press=openNew aria-label="New observation" testId="new-observation"
+                      image "symbol:add"
                     button press=openSearch aria-label="Search taxa" testId="open-search"
                       image "symbol:search"
                     button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
@@ -560,6 +704,8 @@ component App
                 column navigationKey=`${e.id}` navigationScroll="home-feed" position="absolute" inset=0
                   header display="flex" align-items="center" padding="8px 16px"
                     text "Home" role="heading" aria-level=1 flex=1
+                    button press=openNew aria-label="New observation" testId="home-new-observation"
+                      image "symbol:add"
                   list id="home-feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
                     if not account.signedIn
                       section
@@ -585,6 +731,107 @@ component App
                         section
                           button press=moreHome disabled=pending(home) testId="more-home"
                             text (pending(home) ? "Loading…" : "Show More")
+
+              if e.name == "new"
+                // A pushed screen, not a sheet: Exact's web sheet grows with its content instead
+                // of scrolling, which would put Save off a short window. Back cancels.
+                column navigationKey=`${e.id}` navigationScroll="new-form" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "New Observation" role="heading" aria-level=2 flex=1
+                    button press=saveNew buttonStyle="bordered-prominent" disabled=(not canSave) testId="new-save"
+                      text (pending(created) ? "Saving…" : "Save")
+                  list id="new-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if createError != "" and not pending(created)
+                      section
+                        row
+                          text createError color="-exact-system-red" flex=1 min-width=0 testId="new-error"
+                    section
+                      header
+                        text "Photos"
+                      if newFacts.length > 0
+                        row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
+                          for f, n in newFacts key=f.path
+                            button press=removePhoto(f.path) aria-label=`Remove photo ${n + 1}` appearance="none" testId=`new-photo-${n}`
+                              if f.thumb != ""
+                                image f.thumb width=72 height=72 object-fit="cover" border-radius=8
+                              else
+                                column width=72 height=72 border-radius=8 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
+                                  image "symbol:photo" color="-exact-secondary-label"
+                      row
+                        button press=choosePhotos testId="new-add-photos"
+                          text (newPhotos.length > 0 ? "Add More Photos" : "Add Photos")
+                        input type="file" accept="image/*" multiple=true id="new-photos" testId="new-photos" display="none" change=addPhotos
+                      footer
+                        text (pending(newFacts) ? "Reading your photos…" : (newPhotos.length > 0 ? "Tap a photo to remove it." : "The first photo’s date and place fill in below.")) testId="new-photos-note"
+                    section
+                      header
+                        text "Species"
+                      if newTaxonName != ""
+                        row
+                          column flex=1 min-width=0 gap=2
+                            text newTaxonLabel testId="new-taxon"
+                            text capitalized(newTaxonRank) font="-exact-footnote" color="-exact-secondary-label"
+                          button press=clearNewTaxon aria-label="Change species" testId="new-taxon-clear"
+                            image "symbol:close"
+                      else
+                        for sg, n in newSuggestions key=sg.scientificName
+                          row press=pickTaxon(sg.scientificName, sg.rank, sg.kingdom, (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName))
+                            role="button" tabindex=0 flex-wrap="wrap" gap=8 testId=`suggestion-${n}`
+                            text (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName) color="-exact-link" flex=1 min-width=0
+                            text (sg.inRange ? `${sg.confidence}%` : `${sg.confidence}% · out of range`) color="-exact-secondary-label"
+                        row
+                          input type="search" value=newTaxonQuery input=searchNewTaxon placeholder="Search for a species" aria-label="Search for a species"
+                            flex=1 min-width=0 testId="new-taxon-search"
+                        for t, n in newFound key=`${t.kingdom}/${t.name}`
+                          row press=pickTaxon(t.scientificName, t.rank, t.kingdom, (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName))
+                            role="button" tabindex=0 testId=`new-found-${n}`
+                            text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) color="-exact-link" flex=1 min-width=0
+                      footer
+                        text (newTaxonName != "" ? "" : (pending(newSuggestions) ? "Looking at your photo…" : (newSuggestions.length > 0 ? "Suggestions from your first photo." : "Leave it empty if you don’t know: others can identify it.")))
+                    section
+                      header
+                        text "When"
+                      row flex-wrap="wrap" gap=8
+                        text "Day" flex=1
+                        input type="date" value=newDayShown change=setNewDate aria-label="Day observed" testId="new-date"
+                      row flex-wrap="wrap" gap=8
+                        text "Time" flex=1
+                        input type="time" value=newTimeShown change=setNewTime aria-label="Time observed" testId="new-time"
+                      footer
+                        text (newDate == "" and newTime == "" and photoTakenAt != "" ? "From the photo." : "") testId="new-date-note"
+                    section
+                      header
+                        text "Where"
+                      if newHasPlace
+                        exact-map latitude=newLatShown longitude=newLngShown zoomLevel=some(newPlaced and newLat == 20 and newLng == 0 ? 2 : 14)
+                          markers=some([MapMarker(id="new", latitude=newLatShown, longitude=newLngShown, title=none)]) moveend=movedMap
+                          height=220 width="100%" border-radius=10 testId="new-map" aria-label="Map: drag to place the observation"
+                        row flex-wrap="wrap" gap=8
+                          text "Location" flex=1
+                          text `${newLatShown.toFixed(4)}, ${newLngShown.toFixed(4)}${newUncertaintyShown > 0 ? ` (±${newUncertaintyShown} m)` : ""}` color="-exact-secondary-label" testId="new-place"
+                      row
+                        button press=useMyLocation disabled=pending(located) testId="new-locate"
+                          text (pending(located) ? "Finding You…" : "Use My Location")
+                      if not newHasPlace
+                        row
+                          button press=placeOnMap testId="new-place-on-map"
+                            text "Place on a Map"
+                      footer
+                        text (locateError != "" ? locateError : (newPlaced ? "Move the map to put the pin where you saw it." : (photoHasPlace ? "From the photo. Move the map to change it." : "A place is required."))) testId="new-place-note"
+                    section
+                      header
+                        text "Notes"
+                      row
+                        textarea value=newNotes input=editNotes placeholder="What you noticed" aria-label="Notes" flex=1 min-width=0 testId="new-notes"
+                    section
+                      header
+                        text "License"
+                      row flex-wrap="wrap" gap=8
+                        text "Photos and record" flex=1
+                        select value=newLicenseShown change=pickNewLicense aria-label="License" testId="new-license"
+                          option "None" value=""
+                          for l in licenses key=l.value
+                            option l.label value=l.value
 
               if e.name == "identify"
                 column navigationKey=`${e.id}` navigationPresentation="modal" navigationScroll="identify-list" position="absolute" inset=0

@@ -79,6 +79,27 @@ function overlay(d: Detail, viewer: boolean): Detail {
     comments: [...d.comments, ...extra.comments],
   };
 }
+type CreateBody = { latitude?: number; longitude?: number; coordinateUncertaintyInMeters?: number; eventDate?: string;
+  images?: { data: string; mimeType: string }[]; license?: string; scientificName?: string; taxonRank?: string; kingdom?: string;
+  occurrenceRemarks?: string };
+const createdOnes = new Map<string, CreateBody>();
+let lastCreate: CreateBody | null = null;
+const isJpeg = (base64: string) => { try { const b = Buffer.from(base64, 'base64'); return b[0] === 0xff && b[1] === 0xd8; } catch { return false; } };
+// A made observation, answered the way the appview answers a recorded one.
+function createdDetail(uri: string, r: CreateBody) {
+  return {
+    occurrence: {
+      uri, cid: 'bafyfixture', observer: PERSON, identificationCount: 0,
+      effectiveTaxonomy: r.scientificName ? { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } : undefined,
+      eventDate: r.eventDate, location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters },
+      occurrenceRemarks: r.occurrenceRemarks,
+      images: (r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafynew${i}`, license: r.license })),
+      externalRecords: [], createdAt: new Date().toISOString(), likeCount: 0,
+      qualityIssues: r.scientificName ? [] : ['NO_CONSENSUS_ID'],
+    },
+    identifications: [], comments: [],
+  };
+}
 const OTHER = { did: 'did:plc:fixtureother', handle: 'another.test', displayName: 'Another Naturalist' };
 const LOON = 'at://did:plc:jt6xegjm6ba2lt34aztyi2mn/bio.lexicons.temp.v0-1.occurrence/3mzucjhpluy22';
 const NOTIFICATIONS = [
@@ -154,8 +175,29 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     for (const a of overlays.values()) a.identifications = a.identifications.filter((i) => i.uri !== uri);
     return Response.json({ success: true }, { headers: CORS });
   },
+  // A new observation: refused unless it has what the appview requires and
+  // every photo is a JPEG, so the tests see what the app really sent.
+  '/api/occurrences': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const r = (await req.json()) as CreateBody;
+    const problem =
+      typeof r.latitude !== 'number' || typeof r.longitude !== 'number' ? 'latitude and longitude are required'
+      : (r.images ?? []).some((i) => i.mimeType !== 'image/jpeg' || !isJpeg(i.data)) ? 'every image must be a JPEG'
+      : r.eventDate && Number.isNaN(Date.parse(r.eventDate)) ? 'eventDate must be a date'
+      : '';
+    if (problem) return Response.json({ error: problem }, { status: 400, headers: CORS });
+    const rkey = `new${createdOnes.size + 1}`;
+    const uri = `at://${PERSON.did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
+    lastCreate = r;
+    createdOnes.set(uri, r);
+    return Response.json({ success: true, uri, cid: 'bafyfixture' }, { headers: CORS });
+  },
+  // What the test made last, for a test to read back (`request GET "/__fixture/last-create"`).
+  '/__fixture/last-create': () => Response.json(lastCreate ? { ...lastCreate, images: (lastCreate.images ?? []).length } : null, { headers: CORS }),
   '/api/occurrences/*': (req) => {
     const uri = decodeURIComponent(new URL(req.url).pathname.slice('/api/occurrences/'.length));
+    const made = createdOnes.get(uri);
+    if (made && req.method === 'GET') return Response.json(createdDetail(uri, made), { headers: CORS });
     if (req.method === 'DELETE') {
       if (!signedIn(req)) return unauthorized();
       if (!uri.endsWith(`/${OWN}`)) return Response.json({ error: 'You can only delete your own observations' }, { status: 403, headers: CORS });
@@ -178,6 +220,21 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     const { id } = (await req.json()) as { id?: number };
     for (const n of NOTIFICATIONS) if (id === undefined || n.id === id) read.add(n.id);
     return Response.json({ success: true }, { headers: CORS });
+  },
+  '/api/user/upload-limit': (req) => signedIn(req)
+    ? Response.json({ maxImageBytes: 1_000_000, limitedByPds: false }, { headers: CORS })
+    : unauthorized(),
+  // The model's answer, the same for any photo.
+  '/api/species-id': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { image } = (await req.json()) as { image?: string };
+    if (!image || !isJpeg(image)) return Response.json({ error: 'image must be a base64 JPEG' }, { status: 400, headers: CORS });
+    return Response.json({ modelVersion: 'fixture', inferenceTimeMs: 1, suggestions: [
+      { scientificName: 'Notophthalmus viridescens', commonName: 'Eastern Newt', confidence: 0.91, kingdom: 'Animalia', inRange: false,
+        taxonMatch: { id: 'Animalia/Notophthalmus viridescens', scientificName: 'Notophthalmus viridescens', commonName: 'Eastern Newt',
+          rank: 'species', kingdom: 'Animalia', source: 'gbif' } },
+      { scientificName: 'Taricha torosa', commonName: 'California Newt', confidence: 0.06, kingdom: 'Animalia', inRange: true },
+    ] }, { headers: CORS });
   },
   '/api/user/preferences': async (req) => {
     if (!signedIn(req)) return unauthorized();

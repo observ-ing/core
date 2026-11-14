@@ -20,6 +20,16 @@ signed-out visitor can browse.
   default license for new observations. Signed out, each of these opens
   Account. In tests `server.ts` keeps the fake person's writes in memory and
   lets them own one recorded observation (`OWN`) so deleting can be tested.
+- **New observation** (+ in Explore and Home): photos from a file picker, with
+  previews; the first photo's EXIF fills in the day, time and place (`exif.ts`,
+  no dependency; HEIC goes through the appview's `/api/media/heic-to-jpeg`);
+  species suggestions from the appview's model (`/api/species-id`) or a taxon
+  search; a map pin you can move, Use My Location (`@exact/geolocation`), or a
+  pin placed on a world map; notes; the license, defaulting to your
+  preference. Photos are shrunk to the person's server's upload limit
+  (`storage.fs.compressImage`) and sent as JPEGs. It's a pushed screen, not a
+  sheet: Exact's web sheet grows with its content instead of scrolling.
+  `tools/make-exif-fixture.ts` writes the EXIF test photo.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;

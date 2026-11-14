@@ -6,6 +6,7 @@
     "start": "bun exact.mjs serve dist"
   },
   "dependencies": {
-    "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps"
+    "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps",
+    "@exact/geolocation": "file:/Users/coreyf/src/exact/packages/geolocation"
   }
 }

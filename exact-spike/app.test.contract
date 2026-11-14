@@ -317,3 +317,85 @@ test "the default license is saved"
   reload
   clock data
   expect state prefs.license == "https://creativecommons.org/licenses/by-nc/4.0/"
+
+// Phase 4: a new observation, as naturalist.test.
+test "signed out, New Observation opens Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "new-observation"
+  clock settle
+  expect tree has "handle"
+
+test "a photo's EXIF fills in when and where, the model suggests, and it saves"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  time-zone "America/Los_Angeles"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  expect disabled "new-save"
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  expect tree has "new-photo-0"
+  expect text "new-date" == "2026-05-04"
+  expect text "new-time" == "08:30"
+  expect text "new-date-note" == "From the photo."
+  expect text "new-place" == "37.7700, -122.2800 (±12 m)"
+  expect enabled "new-save"
+  tap "suggestion-0"
+  expect text "new-taxon" == "Eastern Newt · Notophthalmus viridescens"
+  type "new-notes" "Under a log by the creek."
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-title" == "Notophthalmus viridescens"
+  expect text "detail-remarks" == "Under a log by the creek."
+  expect tree has "detail-photo"
+  expect tree has "delete-observation"
+
+test "without a photo, a place on the map is enough to save"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  expect disabled "new-save"
+  expect text "new-place-note" == "A place is required."
+  tap "new-place-on-map"
+  expect tree has "new-map"
+  expect enabled "new-save"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-title" == "Unidentified"
+  expect text "needs-id" == "Needs an identification"
+
+test "the sheet shows a picked photo's preview, date, place and suggestions"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  expect tree has "suggestion-1"

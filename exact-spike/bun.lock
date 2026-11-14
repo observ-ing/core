@@ -5,11 +5,14 @@
     "": {
       "name": "observing-exact",
       "dependencies": {
+        "@exact/geolocation": "file:/Users/coreyf/src/exact/packages/geolocation",
         "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps",
       },
     },
   },
   "packages": {
+    "@exact/geolocation": ["@exact/geolocation@file:../../../../../../../src/exact/packages/geolocation", {}],
+
     "@exact/maps": ["@exact/maps@file:../../../../../../../src/exact/packages/maps", {}],
   }
 }

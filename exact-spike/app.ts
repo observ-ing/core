@@ -1,4 +1,4 @@
-import type { Answer, Result, Sources, Store } from './app.contract.d.ts';
+import type { Answer, Result, Sources, Storage, Store } from './app.contract.d.ts';
 // The appview's own response types, generated from its Rust structs by ts-rs.
 import type { Occurrence } from './bindings/Occurrence.ts';
 import type { Identification } from './bindings/Identification.ts';
@@ -6,6 +6,9 @@ import type { Comment } from './bindings/Comment.ts';
 import type { Profile } from './bindings/Profile.ts';
 import type { TaxaResult } from './bindings/TaxaResult.ts';
 import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
+import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest.ts';
+import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
+import { readExif } from './exif.ts';
 
 // Exact's host functions for a browser sign-in (as @exact/oauth declares them).
 declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
@@ -22,7 +25,12 @@ const AUTH = import.meta.env.OBSERVING_AUTH_ORIGIN ?? 'http://127.0.0.1:8787';
 const SESSION = 'observing.session';
 // A native app's sign-in callback (its URL scheme); the web uses its own page's.
 const NATIVE_CALLBACK = 'ing.observ.exactspike:/oauth';
-export const grants = [`net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`].join('\n');
+export const grants = [
+  `net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`,
+  // Photos for a new observation: the picked copies, and the JPEGs made from them for preview and upload.
+  'fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
+  'device.geolocation locationPurpose',
+].join('\n');
 
 const PAGE = 20;
 const LINEAGE = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus'] as const;
@@ -100,6 +108,101 @@ async function send(method: string, path: string, store: Store, body?: unknown):
   }
   return { ok: false, error: message || `That didn’t work (${response.status}). Try again.` };
 }
+
+// --- New observations' photos -------------------------------------------
+
+// Bytes as base64, in chunks (a photo is too big for one apply).
+function toBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+const readBytes = async (storage: Storage, path: string) => new Uint8Array(await storage.fs.readFile(path));
+// Where previews and uploads are written; made on first use.
+let uploadDir: Promise<void> | null = null;
+const ensureUploadDir = (storage: Storage) =>
+  (uploadDir ??= storage.fs.mkdir('app:/tmp/upload').catch((e: { code?: string }) => {
+    if (e.code !== 'EEXIST') {
+      uploadDir = null;
+      throw e;
+    }
+  }));
+const stem = (path: string) => (path.split('/').pop() ?? path).replace(/\.[^.]*$/, '');
+// HEIC/HEIF: an ISO-BMFF "ftyp" box naming a HEIF brand.
+const isHeic = (b: Uint8Array) =>
+  b.length > 12 && String.fromCharCode(...b.subarray(4, 8)) === 'ftyp' &&
+  /^(heic|heix|hevc|heim|heis|mif1|msf1)$/.test(String.fromCharCode(...b.subarray(8, 12)));
+
+// A picked photo as a JPEG path: itself, or (HEIC, which no browser canvas
+// decodes) the appview's conversion, which keeps the EXIF.
+const jpegs = new Map<string, Promise<string>>();
+function asJpeg(path: string, store: Store, storage: Storage): Promise<string> {
+  let done = jpegs.get(path);
+  if (!done) {
+    done = (async () => {
+      const bytes = await readBytes(storage, path);
+      if (!isHeic(bytes)) return path;
+      const response = await fetch(`${API}/api/media/heic-to-jpeg`, {
+        method: 'POST', headers: { ...authHeaders(store), 'Content-Type': 'image/heic' }, body: bytes, exactTimeout: 60000,
+      });
+      if (!response.ok) throw new ApiError(response.status, 'This HEIC photo couldn’t be converted.');
+      const out = `app:/tmp/upload/${stem(path)}.jpg`;
+      await ensureUploadDir(storage);
+      await storage.fs.atomicWriteFile(out, new Uint8Array(await response.arrayBuffer()));
+      return out;
+    })();
+    done.catch(() => jpegs.delete(path));
+    jpegs.set(path, done);
+  }
+  return done;
+}
+
+// A JPEG of at most `maxBytes` (and `maxDimension` px) from a photo; where the
+// host has no encoder (Linux, Windows, Android), the photo itself if it fits.
+async function shrunk(path: string, tag: string, maxDimension: number, maxBytes: number, storage: Storage): Promise<Uint8Array> {
+  await ensureUploadDir(storage);
+  try {
+    const out = await storage.fs.compressImage(path, `app:/tmp/upload/${stem(path)}-${tag}.jpg`, { maxDimension, maxBytes });
+    return await readBytes(storage, out.path);
+  } catch (e) {
+    if ((e as { code?: string }).code !== 'unsupported') throw e;
+    const bytes = await readBytes(storage, path);
+    if (bytes.length > maxBytes) throw new Error('This photo is too large to upload from this device.');
+    return bytes;
+  }
+}
+
+type PhotoFact = Result<'describePhotos'>[number];
+const described = new Map<string, Promise<PhotoFact>>();
+function describe(path: string, store: Store, storage: Storage): Promise<PhotoFact> {
+  let done = described.get(path);
+  if (!done) {
+    done = (async () => {
+      const jpeg = await asJpeg(path, store, storage);
+      const exif = readExif(await readBytes(storage, jpeg));
+      let thumb = '';
+      try {
+        thumb = `data:image/jpeg;base64,${toBase64(await shrunk(jpeg, 'thumb', 240, 40_000, storage))}`;
+      } catch {
+        // No preview on this host: the photo still uploads.
+      }
+      return {
+        path,
+        thumb,
+        takenAt: exif.takenAt,
+        hasPlace: exif.latitude !== null && exif.longitude !== null,
+        latitude: exif.latitude ?? 0,
+        longitude: exif.longitude ?? 0,
+        uncertainty: exif.uncertainty ?? 0,
+      };
+    })();
+    done.catch(() => described.delete(path));
+    described.set(path, done);
+  }
+  return done;
+}
+
+type EnrichedSuggestion = SpeciesSuggestion & { taxonMatch?: TaxaResult | null };
 
 const NOTICE: Record<string, string> = {
   identification: 'identified your observation',
@@ -476,6 +579,83 @@ const sources: Sources = {
     return { license: p.defaultLicense ?? '' };
   },
   setLicense: ([license], store) => send('PUT', '/api/user/preferences', store, { defaultLicense: license || null }),
+
+  // --- A new observation ---------------------------------------------------
+  // Each picked photo: a small preview and what its EXIF says (when, where).
+  describePhotos: ([paths], store, storage) => Promise.all(paths.map((p) => describe(p, store, storage))),
+
+  // What the appview's model sees in the first photo, near where it was taken.
+  suggestSpecies: async ([path, latitude, longitude, placed], store, storage) => {
+    if (!path || !kept(store)) return [];
+    const image = toBase64(await shrunk(await asJpeg(path, store, storage), 'id', 1024, 600_000, storage));
+    const response = await fetch(`${API}/api/species-id`, {
+      method: 'POST',
+      headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image, limit: 5, ...(placed ? { latitude, longitude } : {}) }),
+      exactTimeout: 60000,
+    });
+    // No model on this appview (or it's busy): no suggestions, not an error.
+    if (!response.ok) return [];
+    const body = (await response.json()) as { suggestions: EnrichedSuggestion[] };
+    return body.suggestions.map((s) => ({
+      scientificName: s.taxonMatch?.scientificName ?? s.scientificName,
+      commonName: s.taxonMatch?.commonName ?? s.commonName ?? '',
+      rank: s.taxonMatch?.rank ?? 'species',
+      kingdom: s.taxonMatch?.kingdom ?? s.kingdom ?? '',
+      confidence: Math.round(s.confidence * 100),
+      inRange: s.inRange ?? true,
+    }));
+  },
+
+  createObservation: async (
+    [paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license], store, storage,
+  ) => {
+    const fail = (error: string) => ({ ok: false, error, did: '', rkey: '' });
+    if (!kept(store)) return fail('Sign in first.');
+    let request: CreateOccurrenceRequest;
+    try {
+      // The appview says how big a photo the person's own server takes.
+      const limit = await get<{ maxImageBytes: number }>('/api/user/upload-limit', store).then(
+        (l) => l.maxImageBytes, () => 1_000_000);
+      const images = [];
+      for (const path of paths) {
+        const bytes = await shrunk(await asJpeg(path, store, storage), 'upload', 4000, limit, storage);
+        images.push({ data: toBase64(bytes), mimeType: 'image/jpeg' });
+      }
+      request = {
+        latitude,
+        longitude,
+        ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
+        // The form's local date and time, as an instant in this device's zone.
+        ...(eventDate ? { eventDate: new Date(eventDate).toISOString() } : {}),
+        images,
+        ...(license ? { license } : {}),
+        ...(scientificName ? { scientificName, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
+        ...(notes.trim() ? { occurrenceRemarks: notes.trim() } : {}),
+      };
+    } catch (e) {
+      return fail((e as Error).message || 'A photo couldn’t be prepared. Try another.');
+    }
+    let response: Response;
+    try {
+      response = await fetch(`${API}/api/occurrences`, {
+        method: 'POST',
+        headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        exactTimeout: 120000,
+      });
+    } catch {
+      return fail('Can’t reach observ.ing. Check your connection and try again.');
+    }
+    if (response.status === 401) return fail('Your session ended. Sign in again.');
+    if (!response.ok) {
+      const message = await response.json().then((b: { error?: string }) => b.error ?? '', () => '');
+      return fail(message || `The observation wasn’t saved (${response.status}). Try again.`);
+    }
+    const created = (await response.json()) as { uri: string };
+    pages.clear();
+    return { ok: true, error: '', ...parts(created.uri) };
+  },
 };
 
 function toTaxonRow(t: TaxaResult): TaxonRow {
