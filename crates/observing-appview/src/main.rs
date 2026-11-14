@@ -250,6 +250,7 @@ async fn main() {
         // iNaturalist cross-posting
         .route("/api/inat/authorize", get(routes::inat::authorize))
         .route("/api/inat/callback", get(routes::inat::callback))
+        .route("/api/inat/link", post(routes::inat::link_from_app))
         .route(
             "/api/inat/account",
             get(routes::inat::get_account).delete(routes::inat::delete_account),
