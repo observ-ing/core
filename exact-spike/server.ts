@@ -107,7 +107,12 @@ const NOTIFICATIONS = [
   { id: 1, actorDid: OTHER.did, kind: 'identification', subjectUri: LOON, createdAt: '2026-11-08T20:00:00Z', actor: OTHER },
 ];
 const read = new Set<number>();
-const preferences = { defaultLicense: null as string | null, basemap: null, crosspostInaturalist: null, crosspostInaturalistRequirePhotos: null };
+const preferences = { defaultLicense: null as string | null, basemap: null,
+  crosspostInaturalist: null as boolean | null, crosspostInaturalistRequirePhotos: null as boolean | null };
+// iNaturalist: the linked account, links in progress and each observation's cross-post.
+let inatLogin: string | null = null;
+const inatLinks = new Map<string, string>(); // state → the app's callback
+const crossposts = new Map<string, { status: string; inatUrl: string | null }>();
 const unauthorized = () => Response.json({ error: 'Not signed in' }, { status: 401, headers: CORS });
 
 const fixtures: Record<string, (req: Request & { params: Record<string, string> }) => Response | Promise<Response>> = {
@@ -190,6 +195,7 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     const uri = `at://${PERSON.did}/bio.lexicons.temp.v0-1.occurrence/${rkey}`;
     lastCreate = r;
     createdOnes.set(uri, r);
+    if ((r as { crosspostToInaturalist?: boolean }).crosspostToInaturalist && inatLogin) crossposts.set(uri, { status: 'pending', inatUrl: null });
     return Response.json({ success: true, uri, cid: 'bafyfixture' }, { headers: CORS });
   },
   // What the test made last, for a test to read back (`request GET "/__fixture/last-create"`).
@@ -239,10 +245,59 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
   '/api/user/preferences': async (req) => {
     if (!signedIn(req)) return unauthorized();
     if (req.method === 'PUT') {
-      const body = (await req.json()) as { defaultLicense?: string | null };
-      if ('defaultLicense' in body) preferences.defaultLicense = body.defaultLicense ?? null;
+      const body = (await req.json()) as Partial<typeof preferences>;
+      for (const k of ['defaultLicense', 'crosspostInaturalist', 'crosspostInaturalistRequirePhotos'] as const) {
+        if (k in body) (preferences as Record<string, unknown>)[k] = body[k] ?? null;
+      }
     }
     return Response.json(preferences, { headers: CORS });
+  },
+  '/api/inat/account': (req) => {
+    if (!signedIn(req)) return unauthorized();
+    if (req.method === 'DELETE') inatLogin = null;
+    return Response.json({ enabled: true, login: inatLogin, linkedAt: inatLogin ? new Date().toISOString() : null }, { headers: CORS });
+  },
+  // Its authorize page stands in for iNaturalist's: it approves at once, as the
+  // appview's callback then hands an app's link back to the app.
+  '/api/inat/authorize': (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const redirect = new URL(req.url).searchParams.get('redirect_uri') ?? '';
+    if (!allowedRedirect(redirect)) return Response.json({ error: 'This app isn’t allowed to link an account here' }, { status: 400, headers: CORS });
+    const state = random();
+    inatLinks.set(state, redirect);
+    return Response.json({ url: `http://127.0.0.1:8787/__inat/authorize?client_id=fixture&state=${state}` }, { headers: CORS });
+  },
+  '/__inat/authorize': (req) => {
+    const state = new URL(req.url).searchParams.get('state') ?? '';
+    const redirect = inatLinks.get(state);
+    if (!redirect) return new Response('Unknown state', { status: 400 });
+    const back = new URL(redirect);
+    back.searchParams.set('code', `inat-${state}`);
+    back.searchParams.set('state', state);
+    return Response.redirect(back.toString(), 303);
+  },
+  '/api/inat/link': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { code, state } = (await req.json()) as { code: string; state: string };
+    if (!inatLinks.has(state) || code !== `inat-${state}`) return Response.json({ error: 'Unknown or expired authorization' }, { status: 400, headers: CORS });
+    inatLinks.delete(state);
+    inatLogin = 'naturalist_on_inat';
+    return Response.json({ enabled: true, login: inatLogin, linkedAt: new Date().toISOString() }, { headers: CORS });
+  },
+  '/api/inat/crosspost': async (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const { uri } = (await req.json()) as { uri: string };
+    if (!inatLogin) return Response.json({ error: 'Link an iNaturalist account first' }, { status: 409, headers: CORS });
+    crossposts.set(uri, { status: 'pending', inatUrl: null });
+    return Response.json({ status: 'pending', lastError: null, inatUrl: null }, { status: 202, headers: CORS });
+  },
+  // A pending cross-post is synced by the next time anyone asks.
+  '/api/inat/crosspost/*': (req) => {
+    if (!signedIn(req)) return unauthorized();
+    const uri = decodeURIComponent(new URL(req.url).pathname.slice('/api/inat/crosspost/'.length));
+    const c = crossposts.get(uri);
+    if (c?.status === 'pending') crossposts.set(uri, { status: 'synced', inatUrl: 'https://www.inaturalist.org/observations/1' });
+    return Response.json({ status: c?.status ?? null, lastError: null, inatUrl: c?.inatUrl ?? null }, { headers: CORS });
   },
   // The home feed needs a session; its rows stand in from Explore's first recorded page.
   '/api/feeds/home': (req) => signedIn(req)

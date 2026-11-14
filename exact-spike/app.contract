@@ -174,6 +174,19 @@ shape Created
   did: string
   rkey: string
 
+shape InatState
+  enabled: bool
+  linked: bool
+  login: string
+  crosspost: bool
+  requirePhotos: bool
+
+shape Crosspost
+  uri: string
+  status: string
+  error: string
+  url: string
+
 shape QueueItem
   id: string
   title: string
@@ -295,6 +308,11 @@ component App
   state batchUncertainty = 0
   // Live ID: the camera's track and its latest frame.
   state liveTrack = ""
+  // Whether this new observation (or batch) also goes to iNaturalist: your preference until you change it here.
+  state newCrosspostTouched = false
+  state newCrosspostOn = false
+  state batchCrosspostTouched = false
+  state batchCrosspostOn = false
   state livePath = ""
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
@@ -330,6 +348,12 @@ component App
   resource newFound = searchTaxa(newTaxonQuery) as shape TaxonRow[] else empty()
   mutation located as shape GeolocationPosition then arrivedHere
   mutation created as shape Created refreshes feed, home then afterCreate
+  resource inat = loadInat(account.did) as shape InatState else empty()
+  resource crosspost = crosspostStatus(detail.mine ? detail.uri : "") as shape Crosspost else empty()
+  mutation inatLinked as shape Reply refreshes inat
+  mutation inatUnlinked as shape Reply refreshes inat
+  mutation crosspostPrefs as shape Reply refreshes inat
+  mutation crossposted as shape Reply refreshes crosspost
   resource queue = loadQueue() as shape QueueItem[] else empty()
   mutation sent as shape SendResult refreshes queue, feed, home, person
   mutation requeued as shape Reply refreshes queue
@@ -388,6 +412,11 @@ component App
   derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
   derive createError = match created { case some(r) => r.error, case none => "" }
   derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
+  derive newCrosspost = inat.linked and (newCrosspostTouched ? newCrosspostOn : inat.crosspost)
+  derive batchCrosspost = inat.linked and (batchCrosspostTouched ? batchCrosspostOn : inat.crosspost)
+  derive inatError = pending(inatLinked) ? "" : match inatLinked { case some(r) => r.error, case none => "" }
+  derive crosspostError = match crossposted { case some(r) => r.error, case none => "" }
+  derive crosspostShown = crosspost.uri == detail.uri ? crosspost : Crosspost(uri=detail.uri, status="", error="", url="")
   derive queueWaiting = queue.filter(q => q.status == "waiting").length
   derive sendNote = pending(sent) ? "" : match sent { case some(r) => (r.error != "" ? r.error : (r.offline ? "You’re offline. These upload when you’re back." : (r.sent > 0 ? `${countOf(r.sent, "observation", "observations")} uploaded.` : ""))), case none => "" }
   derive batchMissing = batchFacts.filter(f => not f.hasPlace).length
@@ -536,6 +565,26 @@ component App
   action pickLicense(v: string)
     send licensed = setLicense(v)
 
+  // --- iNaturalist
+  action startInatLink
+    if not pending(inatLinked)
+      send inatLinked = linkInat()
+  action unlinkInat
+    send inatUnlinked = unlinkInat()
+  action toggleCrosspost(on: bool)
+    send crosspostPrefs = setCrosspost(on, inat.requirePhotos)
+  action toggleRequirePhotos(on: bool)
+    send crosspostPrefs = setCrosspost(inat.crosspost, on)
+  action postToInat
+    if not pending(crossposted)
+      send crossposted = crosspostNow(detail.uri)
+  action setNewCrosspost(on: bool)
+    newCrosspostTouched = true
+    newCrosspostOn = on
+  action setBatchCrosspost(on: bool)
+    batchCrosspostTouched = true
+    batchCrosspostOn = on
+
   // --- The upload queue
   action flushQueue
     if account.signedIn and queueWaiting > 0 and not pending(sent)
@@ -556,6 +605,7 @@ component App
       batchPhotos = []
       batchTaxa = []
       batchHere = false
+      batchCrosspostTouched = false
       nav = push(nav, "/batch")
   action chooseBatch
     showPicker("batch-photos")
@@ -582,7 +632,7 @@ component App
         batchHere = batchHere
   action uploadBatch
     if batchReady > 0 and not pending(enqueued)
-      send enqueued = enqueueBatch(batchPhotos, batchTaxa, batchLat, batchLng, batchUncertainty, batchHere, prefs.license)
+      send enqueued = enqueueBatch(batchPhotos, batchTaxa, batchLat, batchLng, batchUncertainty, batchHere, prefs.license, batchCrosspost)
   // Queued: leave the batch and start sending.
   action afterEnqueue
     match enqueued
@@ -655,6 +705,7 @@ component App
       newTaxonLabel = ""
       newNotes = ""
       newLicense = ""
+      newCrosspostTouched = false
       nav = push(nav, "/new")
   action choosePhotos
     showPicker("new-photos")
@@ -708,7 +759,7 @@ component App
     newLicense = v
   action saveNew
     if canSave
-      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown)
+      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown, newCrosspost)
   // Saved: close the sheet and open the new observation.
   action afterCreate
     match created
@@ -802,7 +853,8 @@ component App
                     ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal,
                       signedIn=account.signedIn, toggleLike=toggleLike, likeBusy=pending(liked), likeError=likeError,
                       openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError,
-                      commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError)
+                      commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError,
+                      inatLinked=inat.linked, crosspost=crosspostShown, postToInat=postToInat, crosspostBusy=pending(crossposted), crosspostError=crosspostError)
                   else
                     header display="flex" align-items="center" padding="8px 16px"
                       text "Observation" role="heading" aria-level=2
@@ -953,6 +1005,10 @@ component App
                         button press=chooseBatch testId="batch-add"
                           text (batchPhotos.length > 0 ? "Add More Photos" : "Add Photos")
                         input type="file" accept="image/*" multiple=true id="batch-photos" testId="batch-photos" display="none" change=addBatch
+                      if inat.linked
+                        row
+                          text "Also post them to iNaturalist" flex=1 min-width=0
+                          input type="checkbox" checked=batchCrosspost change=setBatchCrosspost aria-label="Also post them to iNaturalist" testId="batch-crosspost"
                       footer
                         text (pending(batchFacts) ? "Reading your photos…" : "Each photo becomes its own observation, dated and placed from the photo.")
                     if batchFacts.length > 0
@@ -1097,6 +1153,11 @@ component App
                         text "Notes"
                       row
                         textarea value=newNotes input=editNotes placeholder="What you noticed" aria-label="Notes" flex=1 min-width=0 testId="new-notes"
+                    if inat.linked
+                      section
+                        row
+                          text "Also post to iNaturalist" flex=1 min-width=0
+                          input type="checkbox" checked=newCrosspost change=setNewCrosspost aria-label="Also post to iNaturalist" testId="new-crosspost"
                     section
                       header
                         text "License"
@@ -1186,6 +1247,31 @@ component App
                               option l.label value=l.value
                         footer
                           text (licenseError != "" ? licenseError : "New observations get this license unless you choose another.") testId="license-note"
+                      if inat.enabled
+                        section testId="inat"
+                          header
+                            text "iNaturalist"
+                          if inat.linked
+                            row flex-wrap="wrap" gap=8
+                              text "Linked account" flex=1
+                              text `@${inat.login}` color="-exact-secondary-label" testId="inat-login"
+                            row
+                              text "Post new observations to iNaturalist" flex=1 min-width=0
+                              input type="checkbox" checked=inat.crosspost change=toggleCrosspost disabled=pending(crosspostPrefs)
+                                aria-label="Post new observations to iNaturalist" testId="inat-crosspost"
+                            row
+                              text "Only ones with photos" flex=1 min-width=0
+                              input type="checkbox" checked=inat.requirePhotos change=toggleRequirePhotos disabled=(not inat.crosspost or pending(crosspostPrefs))
+                                aria-label="Only post ones with photos" testId="inat-require-photos"
+                            row
+                              button commandfor="unlink-inat" command="show-modal" destructive=true testId="inat-unlink"
+                                text "Unlink iNaturalist"
+                          else
+                            row
+                              button press=startInatLink disabled=pending(inatLinked) testId="inat-link"
+                                text (pending(inatLinked) ? "Linking…" : "Link iNaturalist Account")
+                          footer
+                            text (inatError != "" ? inatError : (inat.linked ? "Cross-posts go to your iNaturalist account, linked back to here." : "Post your observations to iNaturalist too.")) testId="inat-note"
                       section
                         button press=signOut destructive=true disabled=pending(signedOut) testId="sign-out"
                           text "Sign Out"
@@ -1206,6 +1292,12 @@ component App
         button press=withdraw destructive=true commandfor="withdraw" command="close" testId="withdraw-confirm"
           text "Withdraw"
         button commandfor="withdraw" command="close"
+          text "Cancel"
+      dialog id="unlink-inat" role="alertdialog" aria-label="Unlink iNaturalist?"
+        text "New observations stop going to iNaturalist. What’s already there stays."
+        button press=unlinkInat destructive=true commandfor="unlink-inat" command="close" testId="unlink-confirm"
+          text "Unlink"
+        button commandfor="unlink-inat" command="close"
           text "Cancel"
       dialog id="delete-observation" role="alertdialog" aria-label="Delete this observation?"
         text "It’s deleted from your account, with its photos. This can’t be undone."
@@ -1313,6 +1405,11 @@ component ObservationDetail
     postComment: action
     commentBusy: bool
     commentError: string
+    inatLinked: bool
+    crosspost: Crosspost
+    postToInat: action
+    crosspostBusy: bool
+    crosspostError: string
   view
     list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
       if d.photos.length > 0
@@ -1447,6 +1544,24 @@ component ObservationDetail
             row
               button press=openExternal(l.url) testId=`external-${l.label}`
                 text `View on ${l.label}`
+      if d.mine and inatLinked
+        section testId="crosspost"
+          header
+            text "iNaturalist"
+          row
+            text (crosspost.status == "synced" ? "Posted to iNaturalist." : (crosspost.status == "pending" ? "Posting to iNaturalist…" : (crosspost.status == "failed" ? `Couldn’t post: ${crosspost.error}` : "Not on iNaturalist yet.")))
+              color=(crosspost.status == "failed" ? "-exact-system-red" : "-exact-label") flex=1 min-width=0 testId="crosspost-status"
+          if crosspost.url != ""
+            row
+              button press=openExternal(crosspost.url) testId="crosspost-view"
+                text "View on iNaturalist"
+          if crosspost.status == "" or crosspost.status == "failed"
+            row
+              button press=postToInat disabled=crosspostBusy testId="crosspost-post"
+                text (crosspostBusy ? "Posting…" : (crosspost.status == "failed" ? "Try Posting Again" : "Post to iNaturalist"))
+          if crosspostError != ""
+            row
+              text crosspostError color="-exact-system-red" flex=1 min-width=0 testId="crosspost-error"
       if d.mine
         section
           button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"

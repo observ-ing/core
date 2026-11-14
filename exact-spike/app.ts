@@ -33,6 +33,8 @@ export const grants = [
   'device.geolocation locationPurpose',
   // Live ID: the camera, and the photos it takes.
   'device.camera cameraPurpose', 'fs.read app:/tmp/camera',
+  // Linking iNaturalist runs its authorize page in the system browser.
+  'auth.session https://www.inaturalist.org',
   // The upload queue (queue.ts).
   'fs.read app:/data', 'fs.write app:/data',
 ].join('\n');
@@ -624,7 +626,7 @@ const sources: Sources = {
   },
 
   createObservation: async (
-    [paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license], store, storage,
+    [paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license, crosspost], store, storage,
   ) => {
     const fail = (error: string) => ({ ok: false, error, did: '', rkey: '' });
     if (!kept(store)) return fail('Sign in first.');
@@ -648,6 +650,7 @@ const sources: Sources = {
         ...(license ? { license } : {}),
         ...(scientificName ? { scientificName, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
         ...(notes.trim() ? { occurrenceRemarks: notes.trim() } : {}),
+        ...(crosspost ? { crosspostToInaturalist: true } : {}),
       };
     } catch (e) {
       return fail((e as Error).message || 'A photo couldn’t be prepared. Try another.');
@@ -713,7 +716,7 @@ const sources: Sources = {
 
   // Queue one observation per photo with a place: its own GPS, else `here`
   // when the person gave one. `taxa` entries are "path|name|rank|kingdom|label".
-  enqueueBatch: async ([paths, taxa, hereLat, hereLng, hereUncertainty, useHere, license], store, storage) => {
+  enqueueBatch: async ([paths, taxa, hereLat, hereLng, hereUncertainty, useHere, license, crosspost], store, storage) => {
     if (!kept(store)) return { ok: false, error: 'Sign in first.', queued: 0, skipped: 0 };
     const limit = await get<{ maxImageBytes: number }>('/api/user/upload-limit', store).then((l) => l.maxImageBytes, () => 1_000_000);
     const drafts = [];
@@ -738,6 +741,7 @@ const sources: Sources = {
               ? { coordinateUncertaintyInMeters: Math.round(fact.hasPlace ? fact.uncertainty : hereUncertainty) } : {}),
             ...(fact.takenAt ? { eventDate: new Date(fact.takenAt).toISOString() } : {}),
             ...(license ? { license } : {}),
+            ...(crosspost ? { crosspostToInaturalist: true } : {}),
             ...(name ? { scientificName: name, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
           },
         });
@@ -754,6 +758,67 @@ const sources: Sources = {
     if (!path || !kept(store)) return [];
     return (await suggest(path, null, store, storage, 3, true)).map((s) => ({ ...s }));
   },
+
+  // --- iNaturalist -----------------------------------------------------------
+  // Whether this appview cross-posts at all, the linked account, and the
+  // person's cross-post preferences.
+  loadInat: async ([did], store) => {
+    const off = { enabled: false, linked: false, login: '', crosspost: false, requirePhotos: false };
+    if (!did) return off;
+    const response = await fetch(`${API}/api/inat/account`, { headers: authHeaders(store), exactTimeout: 15000 });
+    // 404: this appview has no iNaturalist application configured.
+    if (response.status === 404) return off;
+    if (!response.ok) throw new ApiError(response.status, `/api/inat/account answered ${response.status}.`);
+    const account = (await response.json()) as { enabled: boolean; login: string | null };
+    const prefs = await get<{ crosspostInaturalist: boolean | null; crosspostInaturalistRequirePhotos: boolean | null }>(
+      '/api/user/preferences', store);
+    return {
+      enabled: account.enabled,
+      linked: !!account.login,
+      login: account.login ?? '',
+      crosspost: !!prefs.crosspostInaturalist,
+      requirePhotos: !!prefs.crosspostInaturalistRequirePhotos,
+    };
+  },
+
+  // Link an iNaturalist account: its authorize page in the system browser;
+  // the appview hands the answer back here, and this session finishes it.
+  linkInat: async (_args, store) => {
+    if (!kept(store)) return { ok: false, error: 'Sign in first.' };
+    const callback = authCallback();
+    let url: string;
+    try {
+      ({ url } = await get<{ url: string }>(`/api/inat/authorize?redirect_uri=${encodeURIComponent(callback)}`, store));
+    } catch {
+      return { ok: false, error: 'Linking couldn’t start. Try again.' };
+    }
+    const state = new URL(url).searchParams.get('state') ?? '';
+    let answered: string;
+    try {
+      answered = await openAuthSession(url, { callback, state });
+    } catch {
+      return { ok: false, error: '' };
+    }
+    const back = new URL(answered);
+    if (back.searchParams.get('error')) {
+      return { ok: false, error: back.searchParams.get('error') === 'access_denied' ? '' : 'iNaturalist didn’t link your account. Try again.' };
+    }
+    return send('POST', '/api/inat/link', store, { code: back.searchParams.get('code') ?? '', state: back.searchParams.get('state') ?? '' });
+  },
+  unlinkInat: (_args, store) => send('DELETE', '/api/inat/account', store),
+  setCrosspost: ([on, requirePhotos], store) =>
+    send('PUT', '/api/user/preferences', store, { crosspostInaturalist: on, crosspostInaturalistRequirePhotos: requirePhotos }),
+
+  // One of your observations on iNaturalist: not posted (""), pending, synced or failed.
+  crosspostStatus: async ([uri], store) => {
+    const none = { uri, status: '', error: '', url: '' };
+    if (!uri || !kept(store)) return none;
+    const response = await fetch(`${API}/api/inat/crosspost/${encodeURIComponent(uri)}`, { headers: authHeaders(store), exactTimeout: 15000 });
+    if (!response.ok) return none;
+    const c = (await response.json()) as { status: string | null; lastError: string | null; inatUrl: string | null };
+    return { uri, status: c.status ?? '', error: c.lastError ?? '', url: c.inatUrl ?? '' };
+  },
+  crosspostNow: ([uri], store) => send('POST', '/api/inat/crosspost', store, { uri }),
 };
 
 function toTaxonRow(t: TaxaResult): TaxonRow {

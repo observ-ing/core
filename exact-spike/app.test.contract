@@ -478,3 +478,75 @@ test "signed out, Live ID and Batch Upload open Account instead"
   tap "home-batch"
   clock settle
   expect tree has "handle"
+
+// Phase 6: iNaturalist, against server.ts's fake (it approves at once).
+test "an iNaturalist account links, sets cross-posting, and unlinks after asking"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect text "inat-note" == "Post your observations to iNaturalist too."
+  tap "inat-link"
+  authorize
+  clock data
+  expect text "inat-login" == "@naturalist_on_inat"
+  expect disabled "inat-require-photos"
+  tap "inat-crosspost"
+  clock data
+  expect state inat.crosspost == true
+  expect enabled "inat-require-photos"
+  tap "inat-unlink"
+  clock settle
+  tap "unlink-confirm"
+  clock data
+  expect tree has "inat-link"
+  expect tree missing "inat-login"
+
+test "with cross-posting on, a new observation goes to iNaturalist too"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "inat-link"
+  authorize
+  clock data
+  tap "inat-crosspost"
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  expect state newCrosspost == true
+  tap "new-place-on-map"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "crosspost-status" == "Posting to iNaturalist…"
+
+test "one of your observations can be posted to iNaturalist"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "inat-link"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  expect text "crosspost-status" == "Not on iNaturalist yet."
+  tap "crosspost-post"
+  clock data
+  expect text "crosspost-status" == "Posting to iNaturalist…"
+  expect tree missing "crosspost-post"

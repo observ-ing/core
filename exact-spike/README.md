@@ -40,6 +40,12 @@ signed-out visitor can browse.
   takes a frame every 4 s for the appview's fast model; Use starts a new
   observation from that frame and species. Exact's test driver holds the
   camera as a device prompt a test can't answer, so only its way in is tested.
+- **iNaturalist** (Account, when the appview cross-posts): link an account in
+  the system browser (the appview hands the answer back and this session
+  finishes it at `POST /api/inat/link`), unlink after asking, and the
+  cross-post preferences; "Also post to iNaturalist" on New Observation and
+  Batch Upload (your preference until changed); on your own observations, its
+  cross-post status, View on iNaturalist, and Post (or Try Again).
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;
