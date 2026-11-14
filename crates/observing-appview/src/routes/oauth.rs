@@ -55,13 +55,19 @@ pub async fn login(
         .handle
         .ok_or_else(|| AppError::BadRequest("Handle is required".into()))?;
     info!(handle = %handle, "OAuth login initiated");
-    let url = authorize_url(&state, handle).await?;
+    let url = authorize_url(&state, handle, None).await?;
     Ok(Json(LoginResponse { url }))
 }
 
 /// The authorization URL on `handle`'s PDS that starts an atproto OAuth flow
-/// ending at `/oauth/callback`.
-async fn authorize_url(state: &AppState, handle: String) -> Result<String, AppError> {
+/// ending at `/oauth/callback`. `app_state` is kept with the flow and handed
+/// back by the callback (atproto sends the request by PAR, so the URL carries
+/// no `state` of its own to read).
+async fn authorize_url(
+    state: &AppState,
+    handle: String,
+    app_state: Option<String>,
+) -> Result<String, AppError> {
     let handle = atrium_api::types::string::Handle::new(handle)
         .map_err(|e| AppError::BadRequest(format!("Invalid handle: {e}")))?;
 
@@ -74,6 +80,7 @@ async fn authorize_url(state: &AppState, handle: String) -> Result<String, AppEr
                     atrium_oauth::Scope::Known(atrium_oauth::KnownScope::Atproto),
                     atrium_oauth::Scope::Known(atrium_oauth::KnownScope::TransitionGeneric),
                 ],
+                state: app_state,
                 ..Default::default()
             },
         )
@@ -124,16 +131,17 @@ pub async fn callback(
 
     // An app's sign-in (started at /oauth/app/login in this browser) is handed
     // back to the app, not finished with a cookie.
-    let app = pending_app_login(&headers).filter(|a| {
-        a.oauth_state == params.state && state.app_redirect_uris.contains(&a.redirect_uri)
-    });
+    let pending =
+        pending_app_login(&headers).filter(|a| state.app_redirect_uris.contains(&a.redirect_uri));
     let secure = state.public_url.is_some();
 
     let code = match (params.code, params.error) {
         (Some(code), None) => code,
         (_, error) => {
+            // A refusal carries no app state to check; at worst it tells an
+            // app this browser was signing in that its sign-in didn't happen.
             info!(error = ?error, "OAuth callback without a code");
-            return match app {
+            return match pending {
                 Some(app) => back_to_app(&app, &[("error", app_error(error.as_deref()))], secure),
                 None => (StatusCode::BAD_REQUEST, "Authentication failed").into_response(),
             };
@@ -147,7 +155,10 @@ pub async fn callback(
     };
 
     match state.oauth_client.callback(callback_params).await {
-        Ok((session, _)) => {
+        Ok((session, app_state)) => {
+            // Only the sign-in this browser started for the app, by the
+            // binding it carried through the OAuth flow; a web sign-in has none.
+            let app = pending.filter(|a| app_state.as_deref() == Some(a.binding.as_str()));
             let agent = atrium_api::agent::Agent::new(session);
             match agent.did().await {
                 Some(did) => {
@@ -199,7 +210,7 @@ pub async fn callback(
         }
         Err(e) => {
             error!(error = %e, "OAuth callback failed");
-            match app {
+            match pending {
                 Some(app) => back_to_app(&app, &[("error", "server_error")], secure),
                 None => (
                     axum::http::StatusCode::INTERNAL_SERVER_ERROR,
@@ -230,13 +241,14 @@ const APP_LOGIN_MAX_AGE_SECS: i64 = 600;
 const APP_CODE_TTL_SECS: i64 = 120;
 
 /// An app's sign-in in progress: where to hand it back, the app's own
-/// `state`, its PKCE challenge, and the atproto OAuth `state` it rides on.
+/// `state`, its PKCE challenge, and a random binding the atproto OAuth flow
+/// carries as its app state, so the callback finishes only this sign-in.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 struct AppLogin {
     redirect_uri: String,
     state: String,
     code_challenge: String,
-    oauth_state: String,
+    binding: String,
 }
 
 #[derive(Deserialize, IntoParams)]
@@ -288,23 +300,13 @@ pub async fn app_login(
     }
     info!(handle = %params.handle, redirect_uri = %params.redirect_uri, "App sign-in initiated");
 
-    let url = authorize_url(&state, params.handle).await?;
-    let oauth_state = url::Url::parse(&url)
-        .ok()
-        .and_then(|u| {
-            u.query_pairs()
-                .find(|(k, _)| k == "state")
-                .map(|(_, v)| v.into_owned())
-        })
-        .ok_or_else(|| {
-            error!("Authorization URL carries no state");
-            AppError::BadRequest("Could not initiate login".into())
-        })?;
+    let binding = auth::new_session_token();
+    let url = authorize_url(&state, params.handle, Some(binding.clone())).await?;
     let app = AppLogin {
         redirect_uri: params.redirect_uri,
         state: params.state,
         code_challenge: params.code_challenge,
-        oauth_state,
+        binding,
     };
     Ok((
         AppendHeaders([(
@@ -635,7 +637,7 @@ mod app_sign_in_tests {
             redirect_uri: redirect_uri.into(),
             state: "app state/with=chars".into(),
             code_challenge: CHALLENGE.into(),
-            oauth_state: "oauth-state".into(),
+            binding: "binding".into(),
         }
     }
 
