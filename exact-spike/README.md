@@ -30,6 +30,16 @@ signed-out visitor can browse.
   (`storage.fs.compressImage`) and sent as JPEGs. It's a pushed screen, not a
   sheet: Exact's web sheet grows with its content instead of scrolling.
   `tools/make-exif-fixture.ts` writes the EXIF test photo.
+- **Batch upload** (Home): many photos, one observation each, dated and placed
+  from EXIF; one tap takes the model's guess per photo; photos without GPS can
+  go at your location. **Uploads queue on the device** (`queue.ts`:
+  `app:/data/queue.json` and the shrunk JPEGs beside it), so they survive
+  going offline and relaunching; Home shows what's waiting, sends it every 20
+  s and on Upload Now, and lets a refused one be retried or discarded.
+- **Live ID** (Home): the camera (`@exact/media-capture`, `@exact/camera`)
+  takes a frame every 4 s for the appview's fast model; Use starts a new
+  observation from that frame and species. Exact's test driver holds the
+  camera as a device prompt a test can't answer, so only its way in is tested.
 - **Sign in** (Account tab) with an atproto handle, and the signed-in **Home**
   feed. The system browser runs the appview's OAuth flow (`GET
   /oauth/app/login`), which redirects back to the app with a one-time code;

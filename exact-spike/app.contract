@@ -6,6 +6,8 @@
 
 use MapMarker, MapCamera from "@exact/maps"
 use getCurrentPosition, GeolocationPosition from "@exact/geolocation"
+use getUserMedia, stopTrack, MediaStream, MediaStreamTrack from "@exact/media-capture"
+use takePhoto, Photo as CameraPhoto from "@exact/camera"
 
 routes nav
   tab explore "/"
@@ -16,6 +18,8 @@ routes nav
     taxon "/taxon/:kingdom/:name"
     search "/search"
     new "/new"
+    batch "/batch"
+    live "/live"
   tab home "/home"
   tab notifications "/notifications"
   tab account "/account"
@@ -169,6 +173,35 @@ shape Created
   did: string
   rkey: string
 
+shape QueueItem
+  id: string
+  title: string
+  thumb: string
+  status: string
+  error: string
+  photos: number
+
+shape SendResult
+  sent: number
+  failed: number
+  waiting: number
+  offline: bool
+  error: string
+
+shape BatchGuess
+  path: string
+  scientificName: string
+  rank: string
+  kingdom: string
+  label: string
+  confidence: number
+
+shape Enqueued
+  ok: bool
+  error: string
+  queued: number
+  skipped: number
+
 shape NoteRow
   id: number
   kind: string
@@ -216,6 +249,8 @@ fn titleOf(o: Observation): string = o.commonName != "" ? o.commonName : (o.scie
 fn taxonTitle(common: string, scientific: string): string = common != "" ? common : scientific
 fn countOf(n: number, one: string, many: string): string = `${formatNumber(n, "decimal")} ${n == 1 ? one : many}`
 fn capitalized(s: string): string = s == "" ? "" : `${s.slice(0, 1).toUpperCase()}${s.slice(1)}`
+// A batch photo's chosen species is "path|name|rank|kingdom|label"; its label, or "".
+fn chosenLabel(taxa: string[], path: string): string = match first(taxa.filter(t => t.startsWith(`${path}|`))) { case some(t) => (match t.split("|").at(4) { case some(l) => l, case none => "" }), case none => "" }
 fn problem(code: string, what: string): string = code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : `Couldn’t load ${what}. Try again.`
 
 component App
@@ -250,6 +285,16 @@ component App
   state newTaxonLabel = ""
   state newNotes = ""
   state newLicense = ""
+  // Batch upload: the picked photos and each one's chosen species; a place for those without GPS.
+  state batchPhotos: string[] = []
+  state batchTaxa: string[] = []
+  state batchHere = false
+  state batchLat = 0
+  state batchLng = 0
+  state batchUncertainty = 0
+  // Live ID: the camera's track and its latest frame.
+  state liveTrack = ""
+  state livePath = ""
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
   derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.did, case none => "" }
@@ -284,6 +329,23 @@ component App
   resource newFound = searchTaxa(newTaxonQuery) as shape TaxonRow[] else empty()
   mutation located as shape GeolocationPosition then arrivedHere
   mutation created as shape Created refreshes feed, home then afterCreate
+  resource queue = loadQueue() as shape QueueItem[] else empty()
+  mutation sent as shape SendResult refreshes queue, feed, home, person
+  mutation requeued as shape Reply refreshes queue
+  mutation dropped as shape Reply refreshes queue
+  resource batchFacts = describePhotos(batchPhotos) as shape PhotoFact[] else empty()
+  resource batchGuesses = batchSuggestions(batchPhotos) as shape BatchGuess[] else empty()
+  mutation enqueued as shape Enqueued refreshes queue then afterEnqueue
+  mutation locatedBatch as shape GeolocationPosition then batchArrived
+  resource liveGuesses = liveSuggest(livePath) as shape Suggestion[] else empty()
+  mutation cameraOpened as shape MediaStream then cameraArmed
+  mutation cameraStopped as shape MediaStreamTrack
+  mutation shot as shape CameraPhoto then shotTaken
+  // Uploads go out on their own while there's something waiting; a live camera looks every few seconds.
+  task flush mount
+    every(20000, flushQueue)
+  task liveLoop mount
+    every(4000, liveTick)
   resource time = exactTime() as shape Time
   derive now = time.epochAtZero
   derive offset = time.utcOffset
@@ -325,12 +387,21 @@ component App
   derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
   derive createError = match created { case some(r) => r.error, case none => "" }
   derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
+  derive queueWaiting = queue.filter(q => q.status == "waiting").length
+  derive sendNote = pending(sent) ? "" : match sent { case some(r) => (r.error != "" ? r.error : (r.offline ? "You’re offline. These upload when you’re back." : (r.sent > 0 ? `${countOf(r.sent, "observation", "observations")} uploaded.` : ""))), case none => "" }
+  derive batchMissing = batchFacts.filter(f => not f.hasPlace).length
+  derive batchReady = batchFacts.length - (batchHere ? 0 : batchMissing)
+  derive batchError = match enqueued { case some(r) => r.error, case none => "" }
+  derive batchLocateError = pending(locatedBatch) ? "" : match failure(locatedBatch) { case some(f) => "Your location isn’t available.", case none => "" }
+  derive cameraError = pending(cameraOpened) ? "" : match failure(cameraOpened) { case some(f) => (f.code == "NotAllowedError" ? "The camera is off for observ.ing. Turn it on in Settings." : "The camera couldn’t start."), case none => "" }
   derive qualityList = quality == "" ? [] : quality.split(",")
   derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
   derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
   derive criteria = [Choice(value="HAS_DATE", label="Has date"), Choice(value="HAS_LOCATION", label="Has location"), Choice(value="PRECISE_LOCATION", label="Precise location"), Choice(value="HAS_MEDIA", label="Has photo or sound"), Choice(value="HAS_CONSENSUS_ID", label="Community ID")]
 
   action back
+    if top(nav).name == "live"
+      stopCamera()
     nav = back(nav)
   action follow(url: string)
     // Beside a wide window's list, a row replaces the detail it shows instead of stacking another.
@@ -463,6 +534,109 @@ component App
     notePages = notePages + 1
   action pickLicense(v: string)
     send licensed = setLicense(v)
+
+  // --- The upload queue
+  action flushQueue
+    if account.signedIn and queueWaiting > 0 and not pending(sent)
+      send sent = sendQueue()
+  action sendNow
+    if not pending(sent)
+      send sent = sendQueue()
+  action retryItem(id: string)
+    send requeued = retryQueued(id)
+  action discardItem(id: string)
+    send dropped = discardQueued(id)
+
+  // --- Batch upload
+  action openBatch
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      batchPhotos = []
+      batchTaxa = []
+      batchHere = false
+      nav = push(nav, "/batch")
+  action chooseBatch
+    showPicker("batch-photos")
+  action addBatch(files: Picked[])
+    batchPhotos = batchPhotos.concat(files.map(f => f.path))
+  action removeBatch(path: string)
+    batchPhotos = batchPhotos.filter(p => p != path)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`))
+  action useGuess(path: string, name: string, rank: string, kingdom: string, label: string)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`)).concat([`${path}|${name}|${rank}|${kingdom}|${label}`])
+  action clearGuess(path: string)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`))
+  action batchUseLocation
+    if not pending(locatedBatch)
+      send locatedBatch = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
+  action batchArrived
+    match locatedBatch
+      case some(p)
+        batchLat = p.coords.latitude
+        batchLng = p.coords.longitude
+        batchUncertainty = round(p.coords.accuracy)
+        batchHere = true
+      case none
+        batchHere = batchHere
+  action uploadBatch
+    if batchReady > 0 and not pending(enqueued)
+      send enqueued = enqueueBatch(batchPhotos, batchTaxa, batchLat, batchLng, batchUncertainty, batchHere, prefs.license)
+  // Queued: leave the batch and start sending.
+  action afterEnqueue
+    match enqueued
+      case some(r)
+        if r.ok and top(nav).name == "batch"
+          batchPhotos = []
+          batchTaxa = []
+          nav = back(nav)
+          send sent = sendQueue()
+      case none
+        batchPhotos = batchPhotos
+
+  // --- Live ID
+  action openLive
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      livePath = ""
+      nav = push(nav, "/live")
+      send cameraOpened = getUserMedia(video=true)
+  action cameraArmed
+    match cameraOpened
+      case some(s)
+        liveTrack = match s.tracks.at(0) { case some(t) => t.id, case none => "" }
+      case none
+        liveTrack = ""
+  action liveTick
+    if top(nav).name == "live" and liveTrack != "" and not pending(shot)
+      send shot = takePhoto(track=liveTrack)
+  action shotTaken
+    match shot
+      case some(p)
+        livePath = p.path
+      case none
+        livePath = livePath
+  action stopCamera
+    if liveTrack != ""
+      send cameraStopped = stopTrack(track=liveTrack)
+      liveTrack = ""
+  // The live frame becomes a new observation's photo, with the species picked.
+  action useLiveGuess(scientificName: string, rank: string, kingdom: string, label: string)
+    if livePath != ""
+      stopCamera()
+      newPhotos = [livePath]
+      newDate = ""
+      newTime = ""
+      newPlaced = false
+      newNotes = ""
+      newLicense = ""
+      newTaxonQuery = ""
+      newTaxonName = scientificName
+      newTaxonRank = rank
+      newTaxonKingdom = kingdom
+      newTaxonLabel = label
+      nav = replace(nav, "/new")
 
   action openNew
     if not account.signedIn
@@ -702,11 +876,41 @@ component App
 
               if e.name == "home"
                 column navigationKey=`${e.id}` navigationScroll="home-feed" position="absolute" inset=0
-                  header display="flex" align-items="center" padding="8px 16px"
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
                     text "Home" role="heading" aria-level=1 flex=1
+                    button press=openLive aria-label="Live ID" testId="home-live"
+                      image "symbol:camera"
+                    button press=openBatch aria-label="Batch upload" testId="home-batch"
+                      image "symbol:layers"
                     button press=openNew aria-label="New observation" testId="home-new-observation"
                       image "symbol:add"
                   list id="home-feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if queue.length > 0
+                      section testId="pending"
+                        header
+                          text "Waiting to Upload"
+                        for q, n in queue key=q.id
+                          row gap=12 align-items="center" flex-wrap="wrap" delete=discardItem(q.id)
+                            if q.thumb != ""
+                              image q.thumb width=40 height=40 object-fit="cover" border-radius=6 aria-label=q.title
+                            column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                              text q.title testId=`queued-${n}`
+                              text (q.status == "failed" ? `Refused: ${q.error}` : (pending(sent) ? "Uploading…" : "Waiting")) font="-exact-footnote"
+                                color=(q.status == "failed" ? "-exact-system-red" : "-exact-secondary-label") testId=`queued-status-${n}`
+                            if q.status == "failed"
+                              button press=retryItem(q.id) testId=`queued-retry-${n}`
+                                text "Retry"
+                              button press=discardItem(q.id) destructive=true testId=`queued-discard-${n}`
+                                text "Discard"
+                        row
+                          button press=sendNow disabled=(pending(sent) or queueWaiting == 0) testId="send-now"
+                            text (pending(sent) ? "Uploading…" : "Upload Now")
+                        footer
+                          text sendNote testId="send-note"
+                    if queue.length == 0 and sendNote != ""
+                      section
+                        row
+                          text sendNote flex=1 min-width=0 testId="sent-note"
                     if not account.signedIn
                       section
                         row
@@ -731,6 +935,75 @@ component App
                         section
                           button press=moreHome disabled=pending(home) testId="more-home"
                             text (pending(home) ? "Loading…" : "Show More")
+
+              if e.name == "batch"
+                column navigationKey=`${e.id}` navigationScroll="batch-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Batch Upload" role="heading" aria-level=2 flex=1
+                    button press=uploadBatch buttonStyle="bordered-prominent" disabled=(batchReady == 0 or pending(enqueued) or pending(batchFacts)) testId="batch-upload"
+                      text (pending(enqueued) ? "Preparing…" : `Upload ${batchReady}`)
+                  list id="batch-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if batchError != "" and not pending(enqueued)
+                      section
+                        row
+                          text batchError color="-exact-system-red" flex=1 min-width=0 testId="batch-error"
+                    section
+                      row
+                        button press=chooseBatch testId="batch-add"
+                          text (batchPhotos.length > 0 ? "Add More Photos" : "Add Photos")
+                        input type="file" accept="image/*" multiple=true id="batch-photos" testId="batch-photos" display="none" change=addBatch
+                      footer
+                        text (pending(batchFacts) ? "Reading your photos…" : "Each photo becomes its own observation, dated and placed from the photo.")
+                    if batchFacts.length > 0
+                      section
+                        for f, n in batchFacts key=f.path
+                          row gap=12 align-items="center" flex-wrap="wrap" padding-top=6 padding-bottom=6 delete=removeBatch(f.path)
+                            if f.thumb != ""
+                              image f.thumb width=56 height=56 object-fit="cover" border-radius=8 aria-label=`Photo ${n + 1}`
+                            column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                              text (chosenLabel(batchTaxa, f.path) != "" ? chosenLabel(batchTaxa, f.path) : "Unidentified") testId=`batch-title-${n}`
+                              text `${f.takenAt != "" ? f.takenAt.replaceAll("T", " ") : "No date"} · ${f.hasPlace ? "placed" : (batchHere ? "at your location" : "no place")}`
+                                font="-exact-footnote" color="-exact-secondary-label" testId=`batch-facts-${n}`
+                              if chosenLabel(batchTaxa, f.path) == ""
+                                for g in batchGuesses.filter(x => x.path == f.path and x.scientificName != "") key=g.path
+                                  button press=useGuess(f.path, g.scientificName, g.rank, g.kingdom, g.label) testId=`batch-use-${n}`
+                                    text `Use ${g.label} (${g.confidence}%)`
+                              else
+                                button press=clearGuess(f.path) testId=`batch-clear-${n}`
+                                  text "Change to Unidentified"
+                            button press=removeBatch(f.path) aria-label=`Remove photo ${n + 1}` testId=`batch-remove-${n}`
+                              image "symbol:close"
+                    if batchMissing > 0
+                      section
+                        row
+                          text (batchHere ? `${countOf(batchMissing, "photo without a place goes", "photos without a place go")} at your location.` : `${countOf(batchMissing, "photo has", "photos have")} no place and won’t upload.`) flex=1 min-width=0 testId="batch-missing"
+                        if not batchHere
+                          row
+                            button press=batchUseLocation disabled=pending(locatedBatch) testId="batch-locate"
+                              text (pending(locatedBatch) ? "Finding You…" : "Place Them at My Location")
+                        footer
+                          text batchLocateError
+
+              if e.name == "live"
+                column navigationKey=`${e.id}` position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Live ID" role="heading" aria-level=2 flex=1
+                  column flex=1 min-height=0 position="relative" background-color="-exact-secondary-background"
+                    if liveTrack != ""
+                      exact-camera srcObject=liveTrack object-fit="cover" width="100%" height="100%" aria-label="Camera" testId="live-camera"
+                    else
+                      column flex=1 justify-content="center" align-items="center" padding=24
+                        text (cameraError != "" ? cameraError : "Opening the camera…") text-align="center" testId="live-status"
+                  column padding=16 gap=8
+                    for g, n in liveGuesses key=g.scientificName
+                      row gap=8 align-items="center" flex-wrap="wrap"
+                        column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                          text (g.commonName != "" ? `${g.commonName} · ${g.scientificName}` : g.scientificName) testId=`live-name-${n}`
+                          text `${g.confidence}%${g.inRange ? "" : " · out of range"}` font="-exact-footnote" color="-exact-secondary-label"
+                        button press=useLiveGuess(g.scientificName, g.rank, g.kingdom, (g.commonName != "" ? `${g.commonName} · ${g.scientificName}` : g.scientificName)) testId=`live-use-${n}`
+                          text "Use"
+                    if liveGuesses.length == 0
+                      text (livePath == "" ? "Point the camera at what you see." : (pending(liveGuesses) ? "Looking…" : "Nothing recognised yet.")) color="-exact-secondary-label" testId="live-hint"
 
               if e.name == "new"
                 // A pushed screen, not a sheet: Exact's web sheet grows with its content instead

@@ -9,6 +9,7 @@ import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
 import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest.ts';
 import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
 import { readExif } from './exif.ts';
+import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
 
 // Exact's host functions for a browser sign-in (as @exact/oauth declares them).
 declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
@@ -30,6 +31,10 @@ export const grants = [
   // Photos for a new observation: the picked copies, and the JPEGs made from them for preview and upload.
   'fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'device.geolocation locationPurpose',
+  // Live ID: the camera, and the photos it takes.
+  'device.camera cameraPurpose', 'fs.read app:/tmp/camera',
+  // The upload queue (queue.ts).
+  'fs.read app:/data', 'fs.write app:/data',
 ].join('\n');
 
 const PAGE = 20;
@@ -203,6 +208,31 @@ function describe(path: string, store: Store, storage: Storage): Promise<PhotoFa
 }
 
 type EnrichedSuggestion = SpeciesSuggestion & { taxonMatch?: TaxaResult | null };
+type Suggestion = Result<'suggestSpecies'>[number];
+
+// The appview's model on a photo, near `place` when given. `live` asks for the
+// faster model the camera loop uses. No model (or a busy one): none.
+async function suggest(
+  path: string, place: { latitude: number; longitude: number } | null, store: Store, storage: Storage, limit: number, live = false,
+): Promise<Suggestion[]> {
+  const image = toBase64(await shrunk(await asJpeg(path, store, storage), 'id', 1024, 600_000, storage));
+  const response = await fetch(`${API}/api/species-id`, {
+    method: 'POST',
+    headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, limit, ...(place ?? {}), ...(live ? { live: true } : {}) }),
+    exactTimeout: 60000,
+  });
+  if (!response.ok) return [];
+  const body = (await response.json()) as { suggestions: EnrichedSuggestion[] };
+  return body.suggestions.map((s) => ({
+    scientificName: s.taxonMatch?.scientificName ?? s.scientificName,
+    commonName: s.taxonMatch?.commonName ?? s.commonName ?? '',
+    rank: s.taxonMatch?.rank ?? 'species',
+    kingdom: s.taxonMatch?.kingdom ?? s.kingdom ?? '',
+    confidence: Math.round(s.confidence * 100),
+    inRange: s.inRange ?? true,
+  }));
+}
 
 const NOTICE: Record<string, string> = {
   identification: 'identified your observation',
@@ -587,24 +617,7 @@ const sources: Sources = {
   // What the appview's model sees in the first photo, near where it was taken.
   suggestSpecies: async ([path, latitude, longitude, placed], store, storage) => {
     if (!path || !kept(store)) return [];
-    const image = toBase64(await shrunk(await asJpeg(path, store, storage), 'id', 1024, 600_000, storage));
-    const response = await fetch(`${API}/api/species-id`, {
-      method: 'POST',
-      headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image, limit: 5, ...(placed ? { latitude, longitude } : {}) }),
-      exactTimeout: 60000,
-    });
-    // No model on this appview (or it's busy): no suggestions, not an error.
-    if (!response.ok) return [];
-    const body = (await response.json()) as { suggestions: EnrichedSuggestion[] };
-    return body.suggestions.map((s) => ({
-      scientificName: s.taxonMatch?.scientificName ?? s.scientificName,
-      commonName: s.taxonMatch?.commonName ?? s.commonName ?? '',
-      rank: s.taxonMatch?.rank ?? 'species',
-      kingdom: s.taxonMatch?.kingdom ?? s.kingdom ?? '',
-      confidence: Math.round(s.confidence * 100),
-      inRange: s.inRange ?? true,
-    }));
+    return suggest(path, placed ? { latitude, longitude } : null, store, storage, 5);
   },
 
   createObservation: async (
@@ -655,6 +668,88 @@ const sources: Sources = {
     const created = (await response.json()) as { uri: string };
     pages.clear();
     return { ok: true, error: '', ...parts(created.uri) };
+  },
+
+  // --- The upload queue ------------------------------------------------------
+  loadQueue: async (_args, _store, storage) =>
+    (await readQueue(storage)).map((q) => ({ id: q.id, title: q.title, thumb: q.thumb, status: q.status, error: q.error, photos: q.photos.length })),
+
+  // Send what's waiting. Signed out, nothing is sent and the queue keeps it.
+  sendQueue: async (_args, store, storage) => {
+    if (!kept(store)) return { sent: 0, failed: 0, waiting: (await readQueue(storage)).filter((q) => q.status === 'waiting').length, offline: false, error: 'Sign in to upload.' };
+    const result = await sendWaiting(storage, (body) => fetch(`${API}/api/occurrences`, {
+      method: 'POST',
+      headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      exactTimeout: 120000,
+    }), toBase64);
+    if (result.sent > 0) pages.clear();
+    return result;
+  },
+  retryQueued: async ([id], _store, storage) => {
+    await retry(storage, id);
+    return { ok: true, error: '' };
+  },
+  discardQueued: async ([id], _store, storage) => {
+    await discard(storage, id);
+    return { ok: true, error: '' };
+  },
+
+  // --- Batch upload: one observation per photo -------------------------------
+  // The model's best guess for each photo, for a one-tap species.
+  batchSuggestions: ([paths], store, storage) => Promise.all(paths.map(async (path) => {
+    const none = { path, scientificName: '', rank: '', kingdom: '', label: '', confidence: 0 };
+    try {
+      const [top] = await suggest(path, null, store, storage, 1);
+      return top ? { path, scientificName: top.scientificName, rank: top.rank, kingdom: top.kingdom,
+        label: top.commonName ? `${top.commonName} · ${top.scientificName}` : top.scientificName, confidence: top.confidence } : none;
+    } catch {
+      return none;
+    }
+  })),
+
+  // Queue one observation per photo with a place: its own GPS, else `here`
+  // when the person gave one. `taxa` entries are "path|name|rank|kingdom|label".
+  enqueueBatch: async ([paths, taxa, hereLat, hereLng, hereUncertainty, useHere, license], store, storage) => {
+    if (!kept(store)) return { ok: false, error: 'Sign in first.', queued: 0, skipped: 0 };
+    const limit = await get<{ maxImageBytes: number }>('/api/user/upload-limit', store).then((l) => l.maxImageBytes, () => 1_000_000);
+    const drafts = [];
+    let skipped = 0;
+    try {
+      for (const path of paths) {
+        const fact = await describe(path, store, storage);
+        const placed = fact.hasPlace || useHere;
+        if (!placed) {
+          skipped += 1;
+          continue;
+        }
+        const [, name = '', rank = '', kingdom = '', label = ''] = (taxa.find((t) => t.startsWith(`${path}|`)) ?? '').split('|');
+        drafts.push({
+          title: label || name || 'Unidentified',
+          thumb: fact.thumb,
+          jpegs: [await shrunk(await asJpeg(path, store, storage), 'upload', 4000, limit, storage)],
+          body: {
+            latitude: fact.hasPlace ? fact.latitude : hereLat,
+            longitude: fact.hasPlace ? fact.longitude : hereLng,
+            ...((fact.hasPlace ? fact.uncertainty : hereUncertainty) > 0
+              ? { coordinateUncertaintyInMeters: Math.round(fact.hasPlace ? fact.uncertainty : hereUncertainty) } : {}),
+            ...(fact.takenAt ? { eventDate: new Date(fact.takenAt).toISOString() } : {}),
+            ...(license ? { license } : {}),
+            ...(name ? { scientificName: name, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
+          },
+        });
+      }
+    } catch (e) {
+      return { ok: false, error: (e as Error).message || 'A photo couldn’t be prepared.', queued: 0, skipped };
+    }
+    const queued = await enqueue(storage, drafts);
+    return { ok: true, error: '', queued, skipped };
+  },
+
+  // --- Live ID: what the appview's fast model sees in the camera's last frame.
+  liveSuggest: async ([path], store, storage) => {
+    if (!path || !kept(store)) return [];
+    return (await suggest(path, null, store, storage, 3, true)).map((s) => ({ ...s }));
   },
 };
 

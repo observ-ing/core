@@ -7,6 +7,8 @@
   },
   "dependencies": {
     "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps",
-    "@exact/geolocation": "file:/Users/coreyf/src/exact/packages/geolocation"
+    "@exact/geolocation": "file:/Users/coreyf/src/exact/packages/geolocation",
+    "@exact/camera": "file:/Users/coreyf/src/exact/packages/camera",
+    "@exact/media-capture": "file:/Users/coreyf/src/exact/packages/media-capture"
   }
 }

@@ -399,3 +399,80 @@ test "the sheet shows a picked photo's preview, date, place and suggestions"
   pick "new-photos" "fixtures/photo-with-exif.jpg"
   clock data
   expect tree has "suggestion-1"
+
+// Phase 5: batch upload, the upload queue, Live ID.
+test "a batch uploads one observation per placed photo"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  tap "batch-add"
+  pick "batch-photos" "assets/photos/oak.png"
+  clock data
+  expect text "batch-missing" == "1 photo has no place and won’t upload."
+  expect text "batch-upload" == "Upload 1"
+  tap "batch-use-0"
+  expect text "batch-title-0" == "Eastern Newt · Notophthalmus viridescens"
+  tap "batch-remove-1"
+  expect tree missing "batch-missing"
+  tap "batch-upload"
+  clock data
+  clock settle
+  expect text "sent-note" == "1 observation uploaded."
+  expect tree missing "pending"
+
+test "offline, a batch waits in the queue, survives a relaunch and uploads later"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  fail fetch "http://127.0.0.1:8787/api/occurrences"
+  tap "batch-upload"
+  clock data
+  clock settle
+  expect text "queued-0" == "Unidentified"
+  expect text "queued-status-0" == "Waiting"
+  expect text "send-note" == "You’re offline. These upload when you’re back."
+  reload
+  clock data
+  expect text "queued-0" == "Unidentified"
+  pass fetch "http://127.0.0.1:8787/api/occurrences"
+  tap "send-now"
+  clock data
+  expect text "sent-note" == "1 observation uploaded."
+  expect tree missing "pending"
+
+// Live ID's camera is a held device request under Exact's test driver, which a
+// test can't answer, so only the way in is tested here.
+test "signed out, Live ID and Batch Upload open Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-live"
+  clock settle
+  expect tree has "handle"
+  tap "tab-home"
+  tap "home-batch"
+  clock settle
+  expect tree has "handle"
