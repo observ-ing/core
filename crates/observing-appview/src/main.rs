@@ -127,6 +127,7 @@ async fn main() {
         heic: Arc::new(heic::HeicConverter::from_env()),
         pds_upload_limits: routes::upload_limit::new_pds_upload_limits(),
         public_url: config.public_url.clone(),
+        app_redirect_uris: config.app_redirect_uris.clone(),
         hidden_dids: config.hidden_dids.clone(),
         admin_dids: config.admin_dids.clone(),
         ingester_url: config.ingester_url.clone(),
@@ -167,6 +168,8 @@ async fn main() {
             get(routes::oauth::client_metadata),
         )
         .route("/oauth/login", get(routes::oauth::login))
+        .route("/oauth/app/login", get(routes::oauth::app_login))
+        .route("/oauth/app/token", post(routes::oauth::app_token))
         .route("/oauth/callback", get(routes::oauth::callback))
         .route("/oauth/logout", post(routes::oauth::logout))
         .route("/oauth/me", get(routes::oauth::me))
@@ -247,6 +250,7 @@ async fn main() {
         // iNaturalist cross-posting
         .route("/api/inat/authorize", get(routes::inat::authorize))
         .route("/api/inat/callback", get(routes::inat::callback))
+        .route("/api/inat/link", post(routes::inat::link_from_app))
         .route(
             "/api/inat/account",
             get(routes::inat::get_account).delete(routes::inat::delete_account),

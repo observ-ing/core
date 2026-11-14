@@ -21,6 +21,11 @@ pub struct Config {
     pub gcp_project_id: Option<String>,
     /// Public URL for production OAuth (e.g. "https://observ.ing")
     pub public_url: Option<String>,
+    /// Callbacks an app may ask `/oauth/app/login` to hand its sign-in back
+    /// to (`APP_REDIRECT_URIS`, comma-separated, matched exactly). Without the
+    /// variable: none in production, and the Exact spike's (its web dev page
+    /// and its native scheme) in local development.
+    pub app_redirect_uris: Vec<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.
@@ -137,6 +142,11 @@ impl Config {
         // the PDS rejects with a cryptic 400 invalid_request in local dev.
         let public_url = env::var("PUBLIC_URL").ok().filter(|s| !s.trim().is_empty());
 
+        let app_redirect_uris = app_redirect_uris(
+            env::var("APP_REDIRECT_URIS").ok().as_deref(),
+            public_url.is_some(),
+        );
+
         let hidden_dids = env::var("HIDDEN_DIDS")
             .map(|s| parse_did_list(&s))
             .unwrap_or_default();
@@ -172,6 +182,7 @@ impl Config {
             ingester_url,
             gcp_project_id,
             public_url,
+            app_redirect_uris,
             hidden_dids,
             admin_dids,
             inat,
@@ -190,6 +201,25 @@ fn is_on(value: Option<String>) -> bool {
     })
 }
 
+/// The app callbacks `/oauth/app/login` accepts. An explicit list wins (an
+/// empty one allows none); otherwise production allows none and local
+/// development allows the Exact spike's.
+fn app_redirect_uris(var: Option<&str>, production: bool) -> Vec<String> {
+    match var {
+        Some(list) => list
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect(),
+        None if production => Vec::new(),
+        None => vec![
+            "http://127.0.0.1:8765/.exact/auth/callback".to_string(),
+            "ing.observ.exactspike:/oauth".to_string(),
+        ],
+    }
+}
+
 /// Parse a comma-separated list of DIDs, trimming whitespace and filtering empties.
 fn parse_did_list(input: &str) -> Vec<String> {
     input
@@ -202,6 +232,27 @@ fn parse_did_list(input: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_redirect_uris_default_to_the_spike_in_dev_and_none_in_production() {
+        assert_eq!(
+            app_redirect_uris(None, false),
+            vec![
+                "http://127.0.0.1:8765/.exact/auth/callback".to_string(),
+                "ing.observ.exactspike:/oauth".to_string(),
+            ]
+        );
+        assert!(app_redirect_uris(None, true).is_empty());
+    }
+
+    #[test]
+    fn app_redirect_uris_take_an_explicit_list_even_an_empty_one() {
+        assert_eq!(
+            app_redirect_uris(Some(" a:/x , https://b.example/cb ,"), true),
+            vec!["a:/x".to_string(), "https://b.example/cb".to_string()]
+        );
+        assert!(app_redirect_uris(Some(""), false).is_empty());
+    }
 
     #[test]
     fn test_parse_did_list_single() {

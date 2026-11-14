@@ -29,6 +29,8 @@ use crate::routes;
     paths(
         routes::health::health,
         routes::oauth::login,
+        routes::oauth::app_login,
+        routes::oauth::app_token,
         routes::oauth::callback,
         routes::oauth::logout,
         routes::oauth::me,

@@ -114,6 +114,8 @@ pub struct AppState {
     /// describeServer.
     pub pds_upload_limits: crate::routes::upload_limit::PdsUploadLimits,
     pub public_url: Option<String>,
+    /// Callbacks an app may have its sign-in handed back to (`Config::app_redirect_uris`).
+    pub app_redirect_uris: Vec<String>,
     /// DIDs to hide from all feeds (e.g. test accounts)
     pub hidden_dids: Vec<String>,
     /// DIDs allowed to access admin routes. When empty, admin routes return 503.

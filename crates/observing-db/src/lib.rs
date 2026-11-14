@@ -1,3 +1,4 @@
+pub mod app_login_codes;
 pub mod app_sessions;
 pub mod comments;
 pub mod community_ids;
