@@ -114,3 +114,13 @@ up a moment later, as on observ.ing.
 
 To read a different appview, set `APPVIEW` (a local one is `http://localhost:3000`). Native hosts send no
 cookies, so signed-in endpoints would need token auth.
+
+## Deployed
+
+`PROJECT=observing-exact-spike deploy/deploy.sh` builds the site with its Cloud Run URL
+as `OBSERVING_API` and observ.ing as `OBSERVING_AUTH_ORIGIN`, builds `deploy/Dockerfile`
+here (Docker, `linux/amd64`), pushes it to the project's Artifact Registry and deploys
+it as the `observing-exact` service: `server.ts` serving the site and proxying
+observ.ing. It is at https://observing-exact-997474541328.us-central1.run.app.
+Signing in there also needs its `/.exact/auth/callback` in observ.ing's
+`APP_REDIRECT_URIS`.

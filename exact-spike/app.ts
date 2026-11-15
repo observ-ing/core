@@ -15,9 +15,10 @@ import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
 declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
 declare function authCallback(): string;
 
-// The dev server (server.ts): it proxies a real appview when started with
-// APPVIEW=…, else answers from fixtures/ recorded from one.
-export const API = 'http://127.0.0.1:8787';
+// server.ts: it proxies a real appview when started with APPVIEW=…, else
+// answers from fixtures/ recorded from one. A deployed build names where its
+// server.ts runs (OBSERVING_API).
+export const API = import.meta.env.OBSERVING_API ?? 'http://127.0.0.1:8787';
 // Where the system browser signs in: the appview itself, since its atproto
 // OAuth client redirects back to its own origin. The dev server stands in
 // for one in tests; a live build names the appview APPVIEW proxies.
