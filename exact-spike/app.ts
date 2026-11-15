@@ -27,8 +27,12 @@ const AUTH = import.meta.env.OBSERVING_AUTH_ORIGIN ?? 'http://127.0.0.1:8787';
 const SESSION = 'observing.session';
 // A native app's sign-in callback (its URL scheme); the web uses its own page's.
 const NATIVE_CALLBACK = 'ing.observ.exactspike:/oauth';
+// A deployed site's own callback page needs a grant; a loopback dev page's
+// doesn't, so the dev loop's origin stands in when no site is named.
+const WEB = import.meta.env.OBSERVING_WEB_ORIGIN ?? 'http://127.0.0.1:8765';
 export const grants = [
   `net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`,
+  `auth.callback ${WEB}/.exact/auth/callback`,
   // Photos for a new observation: the picked copies, and the JPEGs made from them for preview and upload.
   'fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
   'device.geolocation locationPurpose',

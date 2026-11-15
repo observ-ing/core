@@ -2,7 +2,8 @@
 # Deploy the web app to Cloud Run, reading APPVIEW (default https://observ.ing).
 #   PROJECT=<gcp project> [REGION=us-central1] [SERVICE=observing-exact] deploy/deploy.sh
 # The site is built with its own URL as OBSERVING_API (server.ts there proxies
-# the appview) and the appview as OBSERVING_AUTH_ORIGIN. Sign-in also needs
+# the appview), the appview as OBSERVING_AUTH_ORIGIN, and its own URL as
+# OBSERVING_WEB_ORIGIN (granting its callback page). Sign-in also needs
 # <url>/.exact/auth/callback in the appview's APP_REDIRECT_URIS.
 set -eu
 : "${PROJECT:?set PROJECT}"
@@ -17,7 +18,7 @@ stage=$(mktemp -d)
 trap 'rm -rf "$stage"' EXIT
 
 cd "$here"
-OBSERVING_API="$url" OBSERVING_AUTH_ORIGIN="$APPVIEW" "$BUN" exact.mjs web-build --out "$stage/dist"
+OBSERVING_API="$url" OBSERVING_AUTH_ORIGIN="$APPVIEW" OBSERVING_WEB_ORIGIN="$url" "$BUN" exact.mjs web-build --out "$stage/dist"
 mkdir -p "$stage/fixtures"
 cp server.ts app.ts exif.ts queue.ts fixture-key.ts "$stage/"
 cp fixtures/api.json "$stage/fixtures/"

@@ -118,7 +118,9 @@ cookies, so signed-in endpoints would need token auth.
 ## Deployed
 
 `PROJECT=observing-exact-spike deploy/deploy.sh` builds the site with its Cloud Run URL
-as `OBSERVING_API` and observ.ing as `OBSERVING_AUTH_ORIGIN`, builds `deploy/Dockerfile`
+as `OBSERVING_API` and `OBSERVING_WEB_ORIGIN` (Exact grants a deployed site's
+`/.exact/auth/callback` only by an `auth.callback` line; a loopback dev page needs none)
+and observ.ing as `OBSERVING_AUTH_ORIGIN`, builds `deploy/Dockerfile`
 here (Docker, `linux/amd64`), pushes it to the project's Artifact Registry and deploys
 it as the `observing-exact` service: `server.ts` serving the site and proxying
 observ.ing. It is at https://observing-exact-997474541328.us-central1.run.app.
