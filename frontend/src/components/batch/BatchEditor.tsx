@@ -26,6 +26,7 @@ import type { SpeciesSuggestion } from "../../services/api";
 import type { BatchEdit, BatchObservation, BatchTaxon } from "../../lib/batchUpload";
 import { MAX_REMARK_LENGTH } from "../../lib/remarks";
 import { formatCoordinate, plural } from "../../lib/utils";
+import { monoStack } from "../../theme";
 
 const LocationPicker = lazy(() =>
   import("../map/LocationPicker").then((m) => ({ default: m.LocationPicker })),
@@ -356,7 +357,7 @@ function EditorFields({
             <Stack spacing={1}>
               <Stack direction="row" sx={{ justifyContent: "space-between", gap: 1 }}>
                 <Typography sx={{ fontWeight: 600 }}>New location</Typography>
-                <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+                <Typography variant="body2" sx={{ fontFamily: monoStack }}>
                   {formatCoordinate(proposed.latitude)}, {formatCoordinate(proposed.longitude)}
                 </Typography>
               </Stack>
