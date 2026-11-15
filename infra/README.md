@@ -44,6 +44,7 @@ The public API at `https://observ.ing`. It serves the REST API, OAuth, the media
 - **Database.** Each instance opens a pool of up to 50 connections (`PoolConfig::service()` in `crates/observing-bootstrap/src/db.rs`). At 20 instances that could exceed Cloud SQL's connection limit, so lower the pool or the max instances before traffic grows. Over 30 days the whole `observing` database peaked at 35 connections.
 - **Calls out to.** observing-species-id and observing-species-id-live (URLs set at deploy), and tap-ingester at `https://ingester.observ.ing` for the admin stats tables.
 - **Secrets.** `observing-db-appview-password`, `INAT_CLIENT_ID`, `INAT_CLIENT_SECRET`.
+- **App sign-in callbacks (`APP_REDIRECT_URIS`).** The exact URLs an app may get a sign-in code back at (`/oauth/app/login`). Production allows only the Exact spike's web build, deployed separately in the `observing-exact-spike` project. Without the variable, production allows none.
 
 ## tap-ingester
 
