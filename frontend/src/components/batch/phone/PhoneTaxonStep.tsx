@@ -20,6 +20,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlined";
 import EditNoteIcon from "@mui/icons-material/EditNote";
 import { KingdomSelect } from "../../common/KingdomSelect";
+import { MatchedSynonym } from "../../common/MatchedSynonym";
 import { RankSelect } from "../../common/RankSelect";
 import { SearchAdornment, searchFieldSx } from "../../common/SearchField";
 import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
@@ -156,18 +157,18 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                       >
                         {taxon.scientificName}
                       </Typography>
-                      {/* As in TaxaAutocompleteView: a synonym names what it stands for. */}
-                      {taxon.isSynonym ? (
+                      {taxon.commonName && (
                         <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
-                          Synonym{taxon.acceptedName ? ` of ${taxon.acceptedName}` : ""}
+                          {taxon.commonName}
                         </Typography>
-                      ) : (
-                        taxon.commonName && (
-                          <Typography variant="body2" noWrap sx={{ color: "text.secondary" }}>
-                            {taxon.commonName}
-                          </Typography>
-                        )
                       )}
+                      {/* As in TaxaAutocompleteView: say why a search for a synonym found this. */}
+                      <MatchedSynonym
+                        taxon={taxon}
+                        variant="body2"
+                        noWrap
+                        sx={{ color: "text.secondary" }}
+                      />
                     </Box>
                     <Typography
                       variant="caption"

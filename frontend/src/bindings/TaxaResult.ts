@@ -23,4 +23,11 @@ export type TaxaResult = {
   species?: string;
   source: string;
   conservationStatus?: ConservationStatus;
+  /**
+   * In search results, the name of a synonym of this taxon that matched
+   * the query better than the taxon's own names did, so the result can
+   * say why it's there (e.g. "Eriobotrya japonica" for *Rhaphiolepis
+   * bibas*).
+   */
+  matchedSynonym?: string;
 };
