@@ -892,9 +892,7 @@ component App
                             text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
                             button press=reloadFeed testId="retry-feed"
                               text "Try Again"
-                        view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16 testId="feed-grid"
-                          for o in feed.items key=`${o.did}/${o.rkey}`
-                            ObservationCard(o=o, now=now, prefix="obs")
+                        ObservationGrid(items=feed.items, now=now, prefix="obs", showObserver=true)
                         if feed.more
                           row justify-content="center"
                             button press=moreFeed disabled=pending(feed) testId="more"
@@ -970,9 +968,9 @@ component App
                         section
                           header
                             text "Observations"
-                          for o in person.items key=`${o.did}/${o.rkey}`
-                            ObservationRow(o=o, now=now, offset=offset, prefix="pobs", showObserver=false)
-                          if person.items.length == 0
+                          if person.items.length > 0
+                            ObservationGrid(items=person.items, now=now, prefix="pobs", showObserver=false)
+                          else
                             row
                               text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
                         if person.more
@@ -1058,9 +1056,9 @@ component App
                               if homeError != ""
                                 button press=reloadHome testId="retry-home"
                                   text "Try Again"
-                      section
-                        for o in home.items key=`${o.did}/${o.rkey}`
-                          ObservationRow(o=o, now=now, offset=offset, prefix="home", showObserver=true)
+                      else
+                        section
+                          ObservationGrid(items=home.items, now=now, prefix="home", showObserver=true)
                       if home.more
                         section
                           button press=moreHome disabled=pending(home) testId="more-home"
@@ -1397,14 +1395,27 @@ component App
           text (account.signedIn ? "You" : "Sign In")
 
 
-// A feed row: photo, names, observer and day; it pushes the observation.
-// An observation as a card in a grid: the photo square across the card's
-// width, its names and who saw it when under it. The whole card opens it.
+// Observations as a grid of cards that fills the width: two across on a phone,
+// more on a wide window. Each card opens its observation.
+component ObservationGrid
+  props
+    items: Observation[]
+    now: number
+    prefix: string
+    showObserver: bool
+  view
+    view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16 width="100%" testId=`${prefix}-grid`
+      for o in items key=`${o.did}/${o.rkey}`
+        ObservationCard(o=o, now=now, prefix=prefix, showObserver=showObserver)
+
+// An observation as a card: the photo square across the card's width, its
+// names and who saw it when under it. The whole card opens it.
 component ObservationCard
   props
     o: Observation
     now: number
     prefix: string
+    showObserver: bool
   view
     link href=path("observation", o.did, o.rkey) testId=`${prefix}-${o.rkey}` display="flex" flex-direction="column" gap=6 min-width=0
       if o.photo != ""
@@ -1416,30 +1427,8 @@ component ObservationCard
         text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
         if o.commonName != "" and o.scientificName != ""
           text o.scientificName font-style="italic" color="-exact-secondary-label"
-        text `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
-
-component ObservationRow
-  props
-    o: Observation
-    now: number
-    offset: number
-    prefix: string
-    showObserver: bool
-  view
-    link href=path("observation", o.did, o.rkey) testId=`${prefix}-${o.rkey}`
-      row gap=12 align-items="center" flex=1 min-width=0 padding-top=6 padding-bottom=6
-        if o.photo != ""
-          image o.photo width=64 height=64 object-fit="cover" border-radius=8 aria-label=titleOf(o)
-        else
-          column width=64 height=64 border-radius=8 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
-            image "symbol:photo" color="-exact-secondary-label"
-        column flex=1 min-width=0 gap=2
-          text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
-          if o.commonName != "" and o.scientificName != ""
-            text o.scientificName font-style="italic" color="-exact-secondary-label"
-          text (showObserver ? `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` : formatDay(o.observedAt, now, o.observedOffset, "day"))
-            font="-exact-footnote" color="-exact-secondary-label"
-      image "symbol:forward-chevron"
+        text (showObserver ? `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` : formatDay(o.observedAt, now, o.observedOffset, "day"))
+          font="-exact-footnote" color="-exact-secondary-label"
 
 component TaxonLinkRow
   props
@@ -1735,9 +1724,9 @@ component TaxonDetail
       section
         header
           text countOf(t.observationCount, "Observation", "Observations") testId="taxon-count"
-        for o in t.items key=`${o.did}/${o.rkey}`
-          ObservationRow(o=o, now=now, offset=offset, prefix="tobs", showObserver=true)
-        if t.items.length == 0
+        if t.items.length > 0
+          ObservationGrid(items=t.items, now=now, prefix="tobs", showObserver=true)
+        else
           row
             text "No observations yet." color="-exact-secondary-label"
       if t.more
