@@ -5,10 +5,10 @@
     "": {
       "name": "observing-exact",
       "dependencies": {
-        "@exact/camera": "file:/Users/coreyf/src/exact/packages/camera",
-        "@exact/geolocation": "file:/Users/coreyf/src/exact/packages/geolocation",
-        "@exact/maps": "file:/Users/coreyf/src/exact/packages/maps",
-        "@exact/media-capture": "file:/Users/coreyf/src/exact/packages/media-capture",
+        "@exact/camera": "file:../../../../../../../src/exact/packages/camera",
+        "@exact/geolocation": "file:../../../../../../../src/exact/packages/geolocation",
+        "@exact/maps": "file:../../../../../../../src/exact/packages/maps",
+        "@exact/media-capture": "file:../../../../../../../src/exact/packages/media-capture",
       },
     },
   },
