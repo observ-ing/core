@@ -1,16 +1,17 @@
+import type { ReactNode } from "react";
 import { Typography } from "@mui/material";
 import { pageTitleSx } from "./layoutSx";
 
 export interface PageHeaderProps {
   title: string;
   /** Short description shown below the title. Omit for a title-only header. */
-  subtitle?: string;
+  subtitle?: ReactNode;
 }
 
 /**
  * Title + optional description for a simple content page, shared by
- * DocsPage/TransparencyPage so their headers can't drift apart in
- * size/weight/spacing the way they previously did.
+ * DocsPage/TransparencyPage/StatusPage/LexiconView so their headers can't
+ * drift apart in size/weight/spacing the way they previously did.
  */
 export function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
