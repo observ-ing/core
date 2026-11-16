@@ -1404,7 +1404,7 @@ component ObservationGrid
     prefix: string
     showObserver: bool
   view
-    view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 9rem), 1fr))" gap=12 width="100%" testId=`${prefix}-grid`
+    view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 9rem), 1fr))" gap=12 width="100%" padding-top=8 padding-bottom=12 box-sizing="border-box" testId=`${prefix}-grid`
       for o in items key=`${o.did}/${o.rkey}`
         ObservationCard(o=o, now=now, prefix=prefix, showObserver=showObserver)
 
