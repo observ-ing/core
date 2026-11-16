@@ -279,6 +279,11 @@ fn capitalized(s: string): string = s == "" ? "" : `${s.slice(0, 1).toUpperCase(
 fn chosenLabel(taxa: string[], path: string): string = match first(taxa.filter(t => t.startsWith(`${path}|`))) { case some(t) => (match t.split("|").at(4) { case some(l) => l, case none => "" }), case none => "" }
 fn problem(code: string, what: string): string = code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : `Couldn’t load ${what}. Try again.`
 
+// A panel on a content screen (the welcome, the filters).
+style Card
+  padding=16 border-radius=12
+  background-color="-exact-secondary-background"
+
 component App
   // Explore's filters and how many pages each list shows.
   state kingdom = ""
@@ -829,74 +834,71 @@ component App
                       image "symbol:search"
                     button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
                       image "symbol:filter"
-                  list id="feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-                    if not welcomed and not account.signedIn and not pending(account)
-                      section testId="welcome"
-                        row
-                          column flex=1 min-width=0 gap=8 padding-top=8 padding-bottom=8
-                            text "Welcome to observ.ing" role="heading" aria-level=2 font="-exact-title2"
-                            text "Share what you see in nature. Your observations live in your own atproto account, so they go with you to any app." color="-exact-secondary-label"
-                            text "Open source, Darwin Core records for science, and yours to export." font="-exact-footnote" color="-exact-secondary-label"
-                        row gap=8 flex-wrap="wrap"
-                          button press=welcomeSignIn buttonStyle="filled" testId="welcome-sign-in"
-                            text "Sign In"
-                          button press=dismissWelcome testId="welcome-dismiss"
-                            text "Just Browse"
-                    if showFilters
-                      section testId="filters"
-                        header
-                          text "Filters"
-                        if taxon != ""
-                          row
-                            text "Taxon" flex=1
-                            text taxon font-style="italic" color="-exact-secondary-label" testId="filter-taxon"
-                            button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
-                              image "symbol:close"
-                        row
-                          text "Kingdom" flex=1
-                          select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
-                            option "All kingdoms" value=""
-                            for k in kingdoms key=k.value
-                              option k.label value=k.value
-                        row
-                          text "From" flex=1
-                          input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
-                        row
-                          text "To" flex=1
-                          input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
-                        for c in criteria key=c.value
-                          row
-                            text c.label flex=1
-                            input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
-                        if filterCount > 0
-                          row
-                            button press=clearFilters testId="clear-filters"
-                              text "Clear All Filters"
-                    if feed.items.length == 0
-                      section
+                  // A content screen is a scroll of cards, not a grouped list (those are for
+                  // forms): the photos in a grid that fills the width, two across on a phone.
+                  scroll id="feed" flex=1 min-height=0 overflow-x="hidden" testId="feed"
+                    column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                      if not welcomed and not account.signedIn and not pending(account)
+                        column class=Card gap=8 testId="welcome"
+                          text "Welcome to observ.ing" role="heading" aria-level=2 font="-exact-title2"
+                          text "Share what you see in nature. Your observations live in your own atproto account, so they go with you to any app." color="-exact-secondary-label"
+                          text "Open source, Darwin Core records for science, and yours to export." font="-exact-footnote" color="-exact-secondary-label"
+                          row gap=8 flex-wrap="wrap" padding-top=4
+                            button press=welcomeSignIn buttonStyle="filled" testId="welcome-sign-in"
+                              text "Sign In"
+                            button press=dismissWelcome testId="welcome-dismiss"
+                              text "Just Browse"
+                      if showFilters
+                        column class=Card gap=12 testId="filters"
+                          text "Filters" role="heading" aria-level=2 font="-exact-headline"
+                          if taxon != ""
+                            row align-items="center" gap=8 flex-wrap="wrap"
+                              text "Taxon" flex="1 1 8rem"
+                              text taxon font-style="italic" min-width=0 color="-exact-secondary-label" testId="filter-taxon"
+                              button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
+                                image "symbol:close"
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "Kingdom" flex="1 1 8rem"
+                            select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
+                              option "All kingdoms" value=""
+                              for k in kingdoms key=k.value
+                                option k.label value=k.value
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "From" flex="1 1 8rem"
+                            input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "To" flex="1 1 8rem"
+                            input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
+                          for c in criteria key=c.value
+                            row align-items="center" gap=8 flex-wrap="wrap"
+                              text c.label flex="1 1 8rem"
+                              input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
+                          if filterCount > 0
+                            row
+                              button press=clearFilters testId="clear-filters"
+                                text "Clear All Filters"
+                      if feed.items.length == 0
                         if pending(feed)
-                          row justify-content="center"
+                          row justify-content="center" padding=24
                             progress aria-label="Loading" testId="feed-loading"
                         else
-                          row
-                            column flex=1 gap=12 padding=12 align-items="center"
-                              text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
-                              button press=reloadFeed testId="retry"
-                                text "Try Again"
-                    else
-                      if feedError != ""
-                        section
-                          row
+                          column gap=12 padding=24 align-items="center"
+                            text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
+                            button press=reloadFeed testId="retry"
+                              text "Try Again"
+                      else
+                        if feedError != ""
+                          row align-items="center" gap=8
                             text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
                             button press=reloadFeed testId="retry-feed"
                               text "Try Again"
-                      section
-                        for o in feed.items key=`${o.did}/${o.rkey}`
-                          ObservationRow(o=o, now=now, offset=offset, prefix="obs", showObserver=true)
-                      if feed.more
-                        section
-                          button press=moreFeed disabled=pending(feed) testId="more"
-                            text (pending(feed) ? "Loading…" : "Show More")
+                        view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 10rem), 1fr))" gap=16 testId="feed-grid"
+                          for o in feed.items key=`${o.did}/${o.rkey}`
+                            ObservationCard(o=o, now=now, prefix="obs")
+                        if feed.more
+                          row justify-content="center"
+                            button press=moreFeed disabled=pending(feed) testId="more"
+                              text (pending(feed) ? "Loading…" : "Show More")
 
               if e.name == "observation"
                 column navigationKey=`${e.id}` navigationScroll=`detail-${e.id}` position="absolute" inset=0
@@ -1383,19 +1385,39 @@ component App
       row role="tablist"
         button role="tab" aria-controls="panel-explore" aria-selected=(nav.tab == "explore") press=pick("explore") testId="tab-explore" flex=1
           image "symbol:feeds"
-          text "Explore" font-size="min(-exact-caption2, 12px)"
+          text "Explore"
         button role="tab" aria-controls="panel-home" aria-selected=(nav.tab == "home") press=pick("home") testId="tab-home" flex=1
           image "symbol:home"
-          text "Home" font-size="min(-exact-caption2, 12px)"
+          text "Home"
         button role="tab" aria-controls="panel-notifications" aria-selected=(nav.tab == "notifications") press=pick("notifications") testId="tab-notifications" flex=1
           image "symbol:notifications"
-          text (unread.count > 0 ? `Notifications (${unread.count})` : "Notifications") font-size="min(-exact-caption2, 12px)"
+          text (unread.count > 0 ? `Notifications (${unread.count})` : "Notifications")
         button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") testId="tab-account" flex=1
           image "symbol:person"
-          text (account.signedIn ? "You" : "Sign In") font-size="min(-exact-caption2, 12px)"
+          text (account.signedIn ? "You" : "Sign In")
 
 
 // A feed row: photo, names, observer and day; it pushes the observation.
+// An observation as a card in a grid: the photo square across the card's
+// width, its names and who saw it when under it. The whole card opens it.
+component ObservationCard
+  props
+    o: Observation
+    now: number
+    prefix: string
+  view
+    link href=path("observation", o.did, o.rkey) testId=`${prefix}-${o.rkey}` display="flex" flex-direction="column" gap=6 min-width=0
+      if o.photo != ""
+        image o.photo alt="" width="100%" aspect-ratio=1 object-fit="cover" border-radius=12 background-color="-exact-secondary-fill"
+      else
+        column width="100%" aspect-ratio=1 border-radius=12 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
+          image "symbol:photo" color="-exact-secondary-label"
+      column gap=2 min-width=0
+        text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
+        if o.commonName != "" and o.scientificName != ""
+          text o.scientificName font-style="italic" font="-exact-subheadline" color="-exact-secondary-label"
+        text `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+
 component ObservationRow
   props
     o: Observation
