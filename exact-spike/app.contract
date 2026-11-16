@@ -1415,7 +1415,7 @@ component ObservationCard
       column gap=2 min-width=0
         text titleOf(o) font="-exact-headline" testId=`${prefix}-title-${o.rkey}`
         if o.commonName != "" and o.scientificName != ""
-          text o.scientificName font-style="italic" font="-exact-subheadline" color="-exact-secondary-label"
+          text o.scientificName font-style="italic" color="-exact-secondary-label"
         text `${o.observer} · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
 
 component ObservationRow
