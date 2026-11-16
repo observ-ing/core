@@ -466,6 +466,8 @@ pub struct ExploreFeedOptions {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    /// Only occurrences recorded by this DID.
+    pub observer: Option<String>,
     /// Data-quality criteria every returned row must meet. Empty applies no
     /// filter; see [`crate::quality::QualitySelection`].
     pub quality: QualitySelection,

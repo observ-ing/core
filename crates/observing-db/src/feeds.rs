@@ -51,6 +51,11 @@ pub async fn get_explore_feed(
         qb.push(")");
     }
 
+    if let Some(observer) = options.observer.as_deref() {
+        qb.push(" AND did = ");
+        qb.push_bind(observer.to_string());
+    }
+
     if let Some(ref taxon) = options.taxon {
         qb.push(" AND scientific_name ILIKE ");
         qb.push_bind(format!("{taxon}%"));
