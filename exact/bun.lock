@@ -1,0 +1,24 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "observing-exact",
+      "dependencies": {
+        "@exact/camera": "file:../../../../../../../src/exact/packages/camera",
+        "@exact/geolocation": "file:../../../../../../../src/exact/packages/geolocation",
+        "@exact/maps": "file:../../../../../../../src/exact/packages/maps",
+        "@exact/media-capture": "file:../../../../../../../src/exact/packages/media-capture",
+      },
+    },
+  },
+  "packages": {
+    "@exact/camera": ["@exact/camera@file:../../../../../../../src/exact/packages/camera", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
+
+    "@exact/geolocation": ["@exact/geolocation@file:../../../../../../../src/exact/packages/geolocation", {}],
+
+    "@exact/maps": ["@exact/maps@file:../../../../../../../src/exact/packages/maps", {}],
+
+    "@exact/media-capture": ["@exact/media-capture@file:../../../../../../../src/exact/packages/media-capture", {}],
+  }
+}

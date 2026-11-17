@@ -1,0 +1,48 @@
+{
+  "host": {
+    "web": {},
+    "linux": {},
+    "ios": {
+      "associatedDomains": [
+        "applinks:observ.ing"
+      ]
+    },
+    "android": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "linux": "0"
+    }
+  },
+  "$schema": "../../../../src/exact/scripts/app.schema.json",
+  "name": "Observ.ing",
+  "short_name": "Observ.ing",
+  "id": "ing.observ.exactspike",
+  "start_url": "/",
+  "display": "standalone",
+  "app": {
+    "id": "ing.observ.exactspike",
+    "name": "Observ.ing"
+  },
+  "commands": {
+    "server": [
+      "bun",
+      "server.ts"
+    ]
+  },
+  "packages": {
+    "@exact/maps": {
+      "web": {
+        "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+        "attribution": "© OpenStreetMap contributors",
+        "maxZoom": 19
+      }
+    }
+  },
+  "env": [
+    "OBSERVING_API",
+    "OBSERVING_AUTH_ORIGIN",
+    "OBSERVING_WEB_ORIGIN"
+  ]
+}

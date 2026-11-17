@@ -15,6 +15,11 @@ Why the jobs in [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) are se
 - **`storybook-build`** runs on every PR so a broken story fails the merge gate. On push it uploads the static output for `storybook-deploy`.
 - **`storybook-deploy`** puts that output in a static-web-server image and deploys it to Cloud Run. Why Cloud Run: [infra/README.md#storybook](../infra/README.md#storybook).
 
+## Exact app
+
+- **`exact-test`** runs the Exact app's tests (`exact/app.test.contract`) in headless Chromium against `exact/server.ts`, which answers from recorded fixtures, so no appview is involved. `exact/deploy/setup-exact.sh` first checks out Exact at `exact/EXACT_REV`, applies `exact/deploy/exact-patches/` (fixes reported upstream but not yet landed) and installs Exact's pinned Rust, wasm-bindgen, Binaryen and Chromium. The cache is keyed on the pin and the patches, so moving the pin starts it cold.
+- **`exact-deploy`** builds the site for `https://next.observ.ing` (`exact/deploy/stage.sh`) and deploys it as the `observing-exact` service. It waits only for `exact-test`: the site calls the deployed appview, so it doesn't need this push's appview first.
+
 ## Rust
 
 - **`rust-sqlx`** needs a live Postgres: sqlx-cli 0.9's `prepare --check` dropped the offline mode 0.8 had. The job runs migrations first, which also set the database's `search_path` (`ingester, appview, public`) so the unqualified table names in the query macros resolve.
