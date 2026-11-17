@@ -24,4 +24,18 @@ done
 bun "$EXACT/scripts/exact.mjs" setup --platform web
 cd "$app"
 EXACT="$EXACT" bun exact.mjs update
+# package.json names the @exact packages by a path from the main author's
+# checkout; where that path doesn't exist (CI), name them in $EXACT instead.
+EXACT="$EXACT" bun -e '
+const file = "package.json";
+const pkg = await Bun.file(file).json();
+let moved = false;
+for (const [name, spec] of Object.entries(pkg.dependencies ?? {})) {
+  if (!name.startsWith("@exact/") || !spec.startsWith("file:")) continue;
+  if (await Bun.file(`${spec.slice(5)}/package.json`).exists()) continue;
+  pkg.dependencies[name] = `file:${process.env.EXACT}/packages/${name.slice(7)}`;
+  moved = true;
+}
+if (moved) await Bun.write(file, JSON.stringify(pkg, null, 2) + "\n");
+'
 bun install
