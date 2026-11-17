@@ -1,4 +1,20 @@
 {
+  "host": {
+    "web": {},
+    "linux": {},
+    "ios": {
+      "associatedDomains": [
+        "applinks:observ.ing"
+      ]
+    },
+    "android": {}
+  },
+  "deploy": {
+    "store": {
+      "web": "0",
+      "linux": "0"
+    }
+  },
   "$schema": "../../../../src/exact/scripts/app.schema.json",
   "name": "Observ.ing",
   "short_name": "Observ.ing",
@@ -8,21 +24,6 @@
   "app": {
     "id": "ing.observ.exactspike",
     "name": "Observ.ing"
-  },
-  "host": {
-    "web": {},
-    "linux": {},
-    "ios": {
-      "associatedDomains": [
-        "applinks:observ.ing"
-      ]
-    }
-  },
-  "deploy": {
-    "store": {
-      "web": "0",
-      "linux": "0"
-    }
   },
   "commands": {
     "server": [
@@ -40,6 +41,8 @@
     }
   },
   "env": [
-    "OBSERVING_API", "OBSERVING_AUTH_ORIGIN", "OBSERVING_WEB_ORIGIN"
+    "OBSERVING_API",
+    "OBSERVING_AUTH_ORIGIN",
+    "OBSERVING_WEB_ORIGIN"
   ]
 }
