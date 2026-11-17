@@ -42,6 +42,7 @@ pub struct ExploreFilters {
     pub kingdom: Option<String>,
     pub start_date: Option<String>,
     pub end_date: Option<String>,
+    pub observer: Option<String>,
 }
 
 #[derive(Serialize, ToSchema)]

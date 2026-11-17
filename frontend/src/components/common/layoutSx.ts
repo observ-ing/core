@@ -30,6 +30,9 @@ export const phoneCaptionFontSize = 13;
 /** Title text in the phone batch top bars (step header, selection-mode bar). */
 export const phoneBarTitleSx = { fontWeight: 700, fontSize: 17 } as const;
 
+/** Bold weight for top-level page titles (`h5` headings that name the page: Settings, Notifications, batch uploader steps). */
+export const pageTitleSx = { fontWeight: 700 } as const;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 

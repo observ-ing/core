@@ -77,9 +77,16 @@ const sharedConfig = {
     h5: { fontSize: "0.95rem", fontWeight: 600 },
     h6: { fontSize: "0.875rem", fontWeight: 600 },
     subtitle1: { fontWeight: 600 },
+    // Section headings (Section titles, "Recent Observations") sit in the
+    // h4–h6 weight family rather than MUI's default 500.
+    subtitle2: { fontWeight: 600 },
     body1: { fontSize: "1rem" },
     body2: { fontSize: "0.875rem" },
     caption: { fontSize: "0.75rem" },
+    // Uppercase eyebrow label for small section headings (e.g. the taxon
+    // tree's "Classification"). Caption-sized with caption's line height
+    // rather than MUI's tall 2.66 default, so it sits in normal flow.
+    overline: { fontSize: "0.75rem", fontWeight: 600, letterSpacing: "0.06em", lineHeight: 1.66 },
   },
   shape: {
     borderRadius: 8,

@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import type { SkippedFile } from "../../lib/batchUpload";
 import { plural } from "../../lib/utils";
+import { monoStack } from "../../theme";
 
 export interface SkippedFilesDialogProps {
   /**
@@ -51,7 +52,7 @@ export function SkippedFilesDialog({
               disableGutters
               sx={{ justifyContent: "space-between", gap: 2 }}
             >
-              <Typography variant="body2" noWrap sx={{ fontFamily: "monospace" }}>
+              <Typography variant="body2" noWrap sx={{ fontFamily: monoStack }}>
                 {file.name}
               </Typography>
               <Typography variant="body2" sx={{ color: "text.secondary", flexShrink: 0 }}>

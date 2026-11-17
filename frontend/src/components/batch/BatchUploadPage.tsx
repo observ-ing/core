@@ -78,7 +78,7 @@ import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
-import { touchTarget } from "../common/layoutSx";
+import { pageTitleSx, touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -777,7 +777,7 @@ export function BatchUploadPage() {
             mb: 2,
           }}
         >
-          <Typography variant="h5" component="h1" sx={{ fontWeight: 700, flex: "1 1 240px" }}>
+          <Typography variant="h5" component="h1" sx={{ ...pageTitleSx, flex: "1 1 240px" }}>
             Batch upload
           </Typography>
           {uploading ? (

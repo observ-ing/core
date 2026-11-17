@@ -21,6 +21,7 @@ import {
 import { isReading, type BatchObservation } from "../../../lib/batchUpload";
 import { MAX_IMAGES } from "../../../lib/imageSelection";
 import { plural } from "../../../lib/utils";
+import { monoStack } from "../../../theme";
 import { SelectionBox } from "../BatchCard";
 import { setPhotoDragImage } from "../photoDragImage";
 import { PhoneStep, StackedAction } from "./PhoneStep";
@@ -417,7 +418,7 @@ export function PhonePhotos({
                     borderRadius: 3,
                     bgcolor: theme.palette.overlay["modalChip"],
                     color: "common.white",
-                    fontFamily: "monospace",
+                    fontFamily: monoStack,
                     fontWeight: 600,
                   }}
                 >

@@ -703,11 +703,7 @@ export function UploadModal() {
                 Location
               </StepButton>
               <StepContent>
-                <Suspense
-                  fallback={
-                    <CenteredSpinner size={24} sx={{ height: 260, alignItems: "center" }} />
-                  }
-                >
+                <Suspense fallback={<CenteredSpinner sx={{ height: 260 }} />}>
                   <LocationPicker
                     latitude={lat ? parseFloat(lat) : null}
                     longitude={lng ? parseFloat(lng) : null}

@@ -1,4 +1,5 @@
 import { Typography } from "@mui/material";
+import { pageTitleSx } from "./layoutSx";
 
 export interface PageHeaderProps {
   title: string;
@@ -14,7 +15,7 @@ export interface PageHeaderProps {
 export function PageHeader({ title, subtitle }: PageHeaderProps) {
   return (
     <>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 1 }}>
+      <Typography variant="h5" sx={{ ...pageTitleSx, mb: 1 }}>
         {title}
       </Typography>
       {subtitle && (

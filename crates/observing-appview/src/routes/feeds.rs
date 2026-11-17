@@ -1,3 +1,4 @@
+use atproto_identity::Did;
 use axum::extract::{Query, State};
 use axum::Json;
 use observing_db::quality::QualitySelection;
@@ -33,6 +34,9 @@ pub struct ExploreParams {
     /// day, inclusive (`YYYY-MM-DD`).
     #[serde(rename = "endDate")]
     end_date: Option<String>,
+    /// Only occurrences recorded by the user with this DID.
+    #[param(example = "did:plc:abc123")]
+    observer: Option<String>,
     /// Comma-separated data-quality criteria every returned occurrence must
     /// meet: `HAS_DATE`, `HAS_LOCATION`, `PRECISE_LOCATION`, `HAS_MEDIA`,
     /// `HAS_CONSENSUS_ID`, or `complete` for all of them.
@@ -52,7 +56,7 @@ pub struct ExploreParams {
     security((), ("session" = []), ("bearer" = [])),
     responses(
         (status = 200, description = "A page of occurrences", body = ExploreFeedResponse),
-        (status = 400, description = "Unknown `quality` criterion"),
+        (status = 400, description = "Unknown `quality` criterion or invalid `observer` DID"),
     )
 )]
 pub async fn get_explore(
@@ -65,6 +69,17 @@ pub async fn get_explore(
         .unwrap_or(constants::DEFAULT_FEED_LIMIT)
         .min(constants::MAX_FEED_LIMIT);
 
+    // Reject a malformed DID with 400, as the profile feed does for its path
+    // DID, rather than silently returning an empty page.
+    let observer = params
+        .observer
+        .map(|did| {
+            Did::new_owned(&did)
+                .map(|did| did.as_str().to_string())
+                .map_err(|e| AppError::BadRequest(format!("Invalid DID: {e}")))
+        })
+        .transpose()?;
+
     let options = ExploreFeedOptions {
         limit: Some(limit),
         cursor: params.cursor,
@@ -72,6 +87,7 @@ pub async fn get_explore(
         kingdom: params.kingdom.clone(),
         start_date: params.start_date.clone(),
         end_date: params.end_date.clone(),
+        observer: observer.clone(),
         quality: params.quality.unwrap_or_default(),
     };
 
@@ -103,6 +119,7 @@ pub async fn get_explore(
                 kingdom: params.kingdom,
                 start_date: params.start_date,
                 end_date: params.end_date,
+                observer,
             },
         },
     }))

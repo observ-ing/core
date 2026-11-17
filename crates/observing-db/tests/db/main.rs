@@ -5,6 +5,7 @@ mod app_login_codes;
 mod app_sessions;
 mod common;
 mod crosspost_awaits;
+mod explore_feed;
 
 mod identification_edits;
 mod likes_per_record;

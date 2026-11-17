@@ -7,6 +7,7 @@ import PlaceIcon from "@mui/icons-material/Place";
 import { CenteredSpinner } from "../../common/CenteredSpinner";
 import type { BatchEdit, BatchObservation } from "../../../lib/batchUpload";
 import { formatCoordinate, plural } from "../../../lib/utils";
+import { monoStack } from "../../../theme";
 import { shared } from "../BatchEditor";
 import { PhoneStep } from "./PhoneStep";
 import { touchTargetLarge } from "../../common/layoutSx";
@@ -56,7 +57,7 @@ export function PhoneLocationStep({ observations, onApply, onBack }: PhoneLocati
               <Typography sx={{ fontWeight: 600 }}>
                 {single && located.length > 0 ? "Location" : "New location"}
               </Typography>
-              <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
+              <Typography variant="body2" sx={{ fontFamily: monoStack }}>
                 {formatCoordinate(point.latitude)}, {formatCoordinate(point.longitude)}
               </Typography>
             </Box>
@@ -89,7 +90,7 @@ export function PhoneLocationStep({ observations, onApply, onBack }: PhoneLocati
         </>
       }
     >
-      <Suspense fallback={<CenteredSpinner size={24} sx={{ flex: 1, alignItems: "center" }} />}>
+      <Suspense fallback={<CenteredSpinner sx={{ flex: 1 }} />}>
         <LocationPicker
           fill
           latitude={point?.latitude ?? null}

@@ -148,16 +148,9 @@ export function TaxonTreePanel({
         }}
       >
         <Typography
-          variant="caption"
+          variant="overline"
           component="div"
-          sx={{
-            color: "text.disabled",
-            fontWeight: 600,
-            letterSpacing: "0.06em",
-            textTransform: "uppercase",
-            px: 1,
-            py: 1,
-          }}
+          sx={{ color: "text.disabled", px: 1, py: 1 }}
         >
           Classification
         </Typography>
