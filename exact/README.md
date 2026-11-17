@@ -1,9 +1,10 @@
-# Exact spike: observ.ing, signed out
+# observ.ing in Exact
 
 observ.ing rebuilt in [Exact](https://github.com/expo/exact), Expo's
 cross-platform runtime (Contract views, TypeScript data, native
-UIKit/AppKit/Linux hosts, a small DOM runtime on the web): everything a
-signed-out visitor can browse.
+UIKit/AppKit/Android/Linux hosts, a small DOM runtime on the web). Its web
+build is served at https://next.observ.ing, beside the existing frontend,
+against the same appview.
 
 - **Explore**: the feed, paged by the appview's cursor, with filters (kingdom,
   dates, data-quality criteria, a taxon from its page's Show in Explore).
@@ -60,8 +61,7 @@ signed-out visitor can browse.
   the app trades it with its PKCE verifier for a session token (`POST
   /oauth/app/token`), keeps the token in the platform's secret store, and sends
   it as `Authorization: Bearer` (the appview's opaque sessions, observ-ing/core#1034).
-  Sign Out ends the session on the appview. The appview on this branch serves
-  `/oauth/app/*`; observ.ing doesn't yet. In tests `server.ts` fakes them (one
+  Sign Out ends the session on the appview. In tests `server.ts` fakes them (one
   person, `naturalist.test`; `decline.test` declines).
 
 Files:
@@ -81,17 +81,22 @@ Files:
 
 ## Running it
 
-It needs an Exact checkout, found at `../../expo/exact` relative to this
-directory, or wherever `EXACT` points:
+It builds against the Exact commit in `EXACT_REV`, with the not-yet-landed
+fixes in `deploy/exact-patches/`. `deploy/setup-exact.sh` checks that commit
+out at `~/src/exact` (or wherever `EXACT` points), applies the patches,
+installs what a web build needs and points this app at it:
 
 ```sh
-git clone https://github.com/expo/exact ~/src/exact
-export EXACT=~/src/exact
+exact/deploy/setup-exact.sh            # from the repo root; moves the checkout to EXACT_REV
+cd exact
 bun exact.mjs web                      # the web dev loop, at http://127.0.0.1:8765/
 APPVIEW=https://observ.ing bun server.ts  # live data, in another terminal (omit APPVIEW for fixtures)
 bun exact.mjs test                     # stop server.ts first: test starts its own on fixtures/
                                        # (CHROME=<path to Chrome> if Playwright's Chromium isn't installed)
 ```
+
+To move to a newer Exact, change `EXACT_REV`, drop any patch that has landed,
+run `setup-exact.sh`, then `bun exact.mjs verify`.
 
 Sign-in goes to the appview itself (its OAuth client redirects to its own
 origin): build with `OBSERVING_AUTH_ORIGIN=<that appview>` to sign in against a
@@ -117,12 +122,14 @@ cookies, so signed-in endpoints would need token auth.
 
 ## Deployed
 
-`PROJECT=observing-exact-spike deploy/deploy.sh` builds the site with its Cloud Run URL
-as `OBSERVING_API` and `OBSERVING_WEB_ORIGIN` (Exact grants a deployed site's
-`/.exact/auth/callback` only by an `auth.callback` line; a loopback dev page needs none)
-and observ.ing as `OBSERVING_AUTH_ORIGIN`, builds `deploy/Dockerfile`
-here (Docker, `linux/amd64`), pushes it to the project's Artifact Registry and deploys
-it as the `observing-exact` service: `server.ts` serving the site and proxying
-observ.ing. It is at https://observing-exact-997474541328.us-central1.run.app.
-Signing in there also needs its `/.exact/auth/callback` in observ.ing's
-`APP_REDIRECT_URIS`.
+CI (`exact-deploy`, on every push to main) builds the site for
+`https://next.observ.ing` with `deploy/stage.sh` and deploys it to Cloud Run
+as `observing-exact` in the `observ-ing` project: `deploy/site.ts` serving the
+static build. The page calls `https://observ.ing` directly and signs in
+there, which needs the appview's `CORS_ORIGINS` to name
+`https://next.observ.ing` and its `APP_REDIRECT_URIS` to name
+`https://next.observ.ing/.exact/auth/callback` (both set in `ci.yml`).
+
+`PROJECT=<project> WEB_ORIGIN=<url> deploy/deploy.sh` deploys a build by hand,
+for example a preview in another project; that origin needs the same two
+appview settings.

@@ -4,7 +4,6 @@
 //                                              sign in one fake person, as the appview's app
 //                                              sign-in would (GET /oauth/app/login, POST /oauth/app/token)
 // The proxy sends CORS headers of its own, so no appview has to allow Exact's dev origin.
-// Deployed (Dockerfile), it also serves the built site: SITE=<web-build --out dir>, on PORT.
 import recorded from './fixtures/api.json' with { type: 'json' };
 import { fixtureKey } from './fixture-key.ts';
 import { API } from './app.ts';
@@ -328,31 +327,12 @@ const preflighted = (routes: Record<string, Handler>) => Object.fromEntries(
     req.method === 'OPTIONS' ? new Response(null, { status: 204, headers: CORS }) : handle(req)]),
 );
 
-// The built site, as `exact.mjs serve` states a static host should: the file
-// at the path, else shell.html (the client draws the route, or its notfound).
-const SITE = process.env.SITE;
-async function site(req: Request): Promise<Response> {
-  const path = decodeURIComponent(new URL(req.url).pathname);
-  if (path.includes('..')) return new Response('Not found', { status: 404 });
-  const file = Bun.file(`${SITE}${path.endsWith('/') ? `${path}index.html` : path}`);
-  const found = (await file.exists()) && !path.endsWith('/');
-  const callback = path.startsWith('/.exact/auth/');
-  const headers: Record<string, string> = {
-    'cache-control': callback || !found ? 'no-store' : 'no-cache',
-    ...(callback ? { 'referrer-policy': 'no-referrer' } : {}),
-    // The callback page has no extension.
-    ...(callback && !path.endsWith('.js') ? { 'content-type': 'text/html; charset=utf-8' } : {}),
-  };
-  return new Response(found ? file : Bun.file(`${SITE}/shell.html`), { headers: found ? headers : { ...headers, 'content-type': 'text/html; charset=utf-8' } });
-}
-
 Bun.serve({
-  hostname: SITE ? '0.0.0.0' : hostname,
-  port: Number(SITE ? (process.env.PORT ?? 8080) : port),
+  hostname,
+  port: Number(port),
   routes: {
     '/health': () => new Response('ok'),
     ...preflighted(UPSTREAM ? live : fixtures),
   },
-  ...(SITE ? { fetch: site } : {}),
 });
-console.log(`server.ts: ${API} → ${UPSTREAM ?? 'fixtures/'}${SITE ? `, and the site in ${SITE}` : ''}`);
+console.log(`server.ts: ${API} → ${UPSTREAM ?? 'fixtures/'}`);
