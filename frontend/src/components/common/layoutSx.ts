@@ -33,6 +33,9 @@ export const phoneBarTitleSx = { fontWeight: 700, fontSize: 17 } as const;
 /** Bold weight for top-level page titles (`h5` headings that name the page: Settings, Notifications, batch uploader steps). */
 export const pageTitleSx = { fontWeight: 700 } as const;
 
+/** Bold weight for `h6` headings that title a panel or card (batch editor panel, empty drop zone, landing feature cards). */
+export const panelTitleSx = { fontWeight: 700 } as const;
+
 /** Pill-ish corner radius shared by the header action buttons (nav links, "Log in", "Add observation"). */
 export const pillButtonSx = { borderRadius: 2 } as const;
 

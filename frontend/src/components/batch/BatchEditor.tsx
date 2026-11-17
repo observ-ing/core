@@ -19,7 +19,7 @@ import { KingdomSelect } from "../common/KingdomSelect";
 import { RankSelect } from "../common/RankSelect";
 import { CenteredSpinner } from "../common/CenteredSpinner";
 import { TimeZoneSelect } from "../common/TimeZoneSelect";
-import { coverImageSx, thumbnailFrameSx, touchTarget } from "../common/layoutSx";
+import { coverImageSx, panelTitleSx, thumbnailFrameSx, touchTarget } from "../common/layoutSx";
 import { VisualId } from "../identification/VisualId";
 import type { AncestorSelection } from "../identification/VisualIdCards";
 import type { SpeciesSuggestion } from "../../services/api";
@@ -217,7 +217,7 @@ function EditorFields({
   return (
     <Stack spacing={2}>
       <Box>
-        <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
+        <Typography variant="h6" component="h2" sx={panelTitleSx}>
           Editing {plural(selected.length, "observation")}
         </Typography>
         {!single && (
@@ -400,7 +400,7 @@ export function BatchEditor({
     >
       {selected.length === 0 ? (
         <Stack spacing={1.25}>
-          <Typography variant="h6" component="h2" sx={{ fontWeight: 700 }}>
+          <Typography variant="h6" component="h2" sx={panelTitleSx}>
             Nothing selected
           </Typography>
           <Typography variant="body2" sx={{ color: "text.secondary" }}>

@@ -78,7 +78,7 @@ import { BatchEditor } from "./BatchEditor";
 import { SkippedFilesDialog } from "./SkippedFilesDialog";
 import { PhoneBatch } from "./phone/PhoneBatch";
 import { PhoneLocationStep } from "./phone/PhoneLocationStep";
-import { pageTitleSx, touchTarget } from "../common/layoutSx";
+import { pageTitleSx, panelTitleSx, touchTarget } from "../common/layoutSx";
 
 /** Observations sent at once. Each request carries its photos, so keep it low. */
 const UPLOAD_CONCURRENCY = 3;
@@ -897,7 +897,7 @@ export function BatchUploadPage() {
         {cards.length === 0 ? (
           <Box sx={[dropZoneSx, { minHeight: 360 }]}>
             <FileUploadIcon fontSize="large" />
-            <Typography variant="h6" component="h2" sx={{ color: "text.primary", fontWeight: 700 }}>
+            <Typography variant="h6" component="h2" sx={{ ...panelTitleSx, color: "text.primary" }}>
               Drag photos here
             </Typography>
             <Typography sx={{ maxWidth: 480 }}>
