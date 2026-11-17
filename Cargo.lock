@@ -3055,6 +3055,7 @@ dependencies = [
  "gcp-metadata",
  "getrandom 0.3.4",
  "hickory-resolver",
+ "image",
  "inaturalist",
  "inaturalist-oauth",
  "jacquard-common",
