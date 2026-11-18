@@ -341,6 +341,41 @@ jobs:
           path: ${{ runner.temp }}/observing-exact-sim.zip
           retention-days: 14
 
+  # Publishes main's native test builds to the exact-latest prerelease, at
+  # fixed URLs the site's Account tab links to.
+  exact-publish:
+    runs-on: ubuntu-latest
+    needs: [exact-android, exact-ios]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    concurrency:
+      group: exact-publish
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: exact-android-apk
+          path: android
+      - uses: actions/download-artifact@v4
+        with:
+          name: exact-ios-simulator-app
+          path: ios
+      - run: |
+          mv android/app-release.apk observing-exact.apk
+          mv ios/observing-exact-sim.zip observing-exact-sim.zip
+          notes="Test builds of the Exact app (next.observ.ing) from ${GITHUB_SHA}. The APK is signed with a throwaway key: uninstall the previous build before installing this one. The iOS build runs only in Xcode's Simulator: unzip it and run xcrun simctl install booted with the unzipped .app."
+          if gh release view exact-latest >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/exact-latest" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit exact-latest --notes "$notes"
+          else
+            gh release create exact-latest --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Exact app (latest main)" --notes "$notes"
+          fi
+          gh release upload exact-latest observing-exact.apk observing-exact-sim.zip --clobber
+
   exact-deploy:
     runs-on: ubuntu-latest
     needs: [exact-test]
@@ -365,7 +400,7 @@ jobs:
             exact/target
           key: exact-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
       - run: exact/deploy/setup-exact.sh
-      - run: WEB_ORIGIN=https://next.observ.ing exact/deploy/stage.sh exact-site
+      - run: WEB_ORIGIN=https://next.observ.ing DOWNLOADS=https://github.com/${{ github.repository }}/releases/download/exact-latest exact/deploy/stage.sh exact-site
 
       - uses: docker/setup-buildx-action@v3
 

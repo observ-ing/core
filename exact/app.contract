@@ -258,6 +258,10 @@ shape Account
   avatar: string
   error: string
 
+shape Downloads
+  android: string
+  ios: string
+
 shape Reply
   ok: bool
   error: string
@@ -370,6 +374,7 @@ component App
   mutation located as shape GeolocationPosition then arrivedHere
   mutation created as shape Created refreshes feed, home then afterCreate
   resource inat = loadInat(account.did) as shape InatState else empty()
+  resource downloads = loadDownloads() as shape Downloads else empty()
   resource personIds = loadProfileIds(profileTab == "identifications" ? profileDid : "", profileIdPages) as shape ProfileIds else empty()
   resource crosspost = crosspostStatus(detail.mine ? detail.uri : "") as shape Crosspost else empty()
   mutation inatLinked as shape Reply refreshes inat
@@ -1356,6 +1361,16 @@ component App
                       section
                         button press=signIn disabled=(handleDraft.trim() == "" or pending(signedIn)) testId="sign-in"
                           text (pending(signedIn) ? "Signing In…" : "Sign In")
+                    if downloads.android != ""
+                      section testId="downloads"
+                        header
+                          text "Get the App"
+                        button press=openExternal(downloads.android) testId="download-android"
+                          text "Download for Android"
+                        button press=openExternal(downloads.ios) testId="download-ios"
+                          text "Download for iOS Simulator"
+                        footer
+                          text "Test builds of the latest version. On Android, uninstall the previous build before installing a new one. The iOS build runs only in Xcode’s Simulator." testId="downloads-note"
       dialog id="withdraw" role="alertdialog" aria-label="Withdraw your identification?"
         text "It’s removed from this observation and from your account."
         button press=withdraw destructive=true commandfor="withdraw" command="close" testId="withdraw-confirm"
