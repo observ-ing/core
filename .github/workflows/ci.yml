@@ -259,6 +259,50 @@ jobs:
       - run: bun exact.mjs test
         working-directory: exact
 
+  exact-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-37.2 build-tools;37.0.0 ndk;27.1.12297006'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/src/exact
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/hermes-lean-sys
+            ~/.cache/exact
+            exact/target
+          key: exact-android-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      - run: exact/deploy/setup-exact.sh android
+      - run: bun "$HOME/src/exact/scripts/exact.mjs" setup --check --platform android
+      - name: Build release APK
+        working-directory: exact
+        env:
+          EXACT_UPDATE_TRUST: production
+          OBSERVING_API: https://observ.ing
+          OBSERVING_AUTH_ORIGIN: https://observ.ing
+          OBSERVING_WEB_ORIGIN: https://next.observ.ing
+          # A release build needs the Maps key set; until the secret exists the
+          # placeholder lets it build, and the map shows Google's key error.
+          OBSERVING_MAPS_ANDROID_KEY: ${{ secrets.MAPS_ANDROID_KEY || 'unset' }}
+        run: bun exact.mjs android --release --no-install --json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-android-apk
+          path: exact/target/android/app/outputs/apk/release/app-release.apk
+          retention-days: 14
+
   exact-deploy:
     runs-on: ubuntu-latest
     needs: [exact-test]
