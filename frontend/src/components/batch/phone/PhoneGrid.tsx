@@ -33,6 +33,7 @@ import {
   overlayBadgeSx,
   pageTitleSx,
   phoneBarTitleSx,
+  phoneHeaderSx,
   touchTarget,
   tallRowMinHeight,
   touchTargetLarge,
@@ -294,7 +295,7 @@ export function PhoneGrid({
         </AppBar>
       )}
 
-      <Box sx={{ flexShrink: 0, px: 2, pt: 2, pb: 1.5 }}>
+      <Box sx={phoneHeaderSx}>
         {selecting ? (
           <Typography variant="body2" sx={{ color: "text.secondary" }}>
             Check more to add them. {plural(pickedPhotos, "photo")} in the selection.
