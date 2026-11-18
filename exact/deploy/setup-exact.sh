@@ -2,9 +2,10 @@
 # Check out the Exact this app builds against (EXACT_REV), apply the fixes that
 # haven't landed upstream yet (deploy/exact-patches), install what a web build
 # needs, and point the app's generated files and packages at that checkout.
-#   [EXACT=<checkout, default ~/src/exact>] exact/deploy/setup-exact.sh [android]
-# With `android`, also add the Rust target and Hermes bundle an APK links; the
-# Android SDK, NDK and JDK are the caller's (see the exact-android CI job).
+#   [EXACT=<checkout, default ~/src/exact>] exact/deploy/setup-exact.sh [android|ios]
+# With `android` or `ios`, also add the Rust target and Hermes bundle that
+# platform's build links (`ios`: the simulator). The Android SDK, NDK and JDK,
+# and Xcode, are the caller's (see the exact-android and exact-ios CI jobs).
 # CI runs it before every build. Locally it moves your checkout to EXACT_REV.
 set -eu
 platform=${1:-web}
@@ -25,12 +26,18 @@ for patch in "$app"/deploy/exact-patches/*.patch; do
 done
 
 bun "$EXACT/scripts/exact.mjs" setup --platform web
-if [ "$platform" = android ]; then
+case "$platform" in
+  android) triple=aarch64-linux-android ;;
+  ios) triple=aarch64-apple-ios-sim ;;
+  web) triple= ;;
+  *) echo "setup-exact.sh: unknown platform $platform" >&2; exit 2 ;;
+esac
+if [ -n "$triple" ]; then
   pin=$(sed -n 's/^channel = "\(.*\)"$/\1/p' "$EXACT/rust-toolchain.toml")
-  rustup target add aarch64-linux-android --toolchain "$pin"
+  rustup target add "$triple" --toolchain "$pin"
   (cd "$EXACT" && cargo +"$pin" run --locked \
     --manifest-path vendor/ibex/crates/hermes-lean-sys-installer/Cargo.toml -- \
-    --target aarch64-linux-android)
+    --target "$triple")
 fi
 cd "$app"
 EXACT="$EXACT" bun exact.mjs update
