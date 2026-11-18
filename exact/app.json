@@ -12,7 +12,8 @@
   "deploy": {
     "store": {
       "web": "0",
-      "linux": "0"
+      "linux": "0",
+      "ios": "0"
     }
   },
   "$schema": "../../../../src/exact/scripts/app.schema.json",
