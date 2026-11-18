@@ -37,6 +37,11 @@
         "tiles": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
         "attribution": "© OpenStreetMap contributors",
         "maxZoom": 19
+      },
+      "android": {
+        "apiKey": {
+          "env": "OBSERVING_MAPS_ANDROID_KEY"
+        }
       }
     }
   },

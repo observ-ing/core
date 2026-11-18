@@ -2,9 +2,12 @@
 # Check out the Exact this app builds against (EXACT_REV), apply the fixes that
 # haven't landed upstream yet (deploy/exact-patches), install what a web build
 # needs, and point the app's generated files and packages at that checkout.
-#   [EXACT=<checkout, default ~/src/exact>] exact/deploy/setup-exact.sh
+#   [EXACT=<checkout, default ~/src/exact>] exact/deploy/setup-exact.sh [android]
+# With `android`, also add the Rust target and Hermes bundle an APK links; the
+# Android SDK, NDK and JDK are the caller's (see the exact-android CI job).
 # CI runs it before every build. Locally it moves your checkout to EXACT_REV.
 set -eu
+platform=${1:-web}
 app=$(cd "$(dirname "$0")/.." && pwd)
 EXACT=${EXACT:-$HOME/src/exact}
 rev=$(cat "$app/EXACT_REV")
@@ -22,6 +25,13 @@ for patch in "$app"/deploy/exact-patches/*.patch; do
 done
 
 bun "$EXACT/scripts/exact.mjs" setup --platform web
+if [ "$platform" = android ]; then
+  pin=$(sed -n 's/^channel = "\(.*\)"$/\1/p' "$EXACT/rust-toolchain.toml")
+  rustup target add aarch64-linux-android --toolchain "$pin"
+  (cd "$EXACT" && cargo +"$pin" run --locked \
+    --manifest-path vendor/ibex/crates/hermes-lean-sys-installer/Cargo.toml -- \
+    --target aarch64-linux-android)
+fi
 cd "$app"
 EXACT="$EXACT" bun exact.mjs update
 # package.json names the @exact packages by a path from the main author's
