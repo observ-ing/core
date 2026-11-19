@@ -236,6 +236,209 @@ jobs:
             --max-instances=3 \
             --min-instances=0
 
+  # Exact app (exact/), served at next.observ.ing
+  exact-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/src/exact
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/hermes-lean-sys
+            ~/.cache/exact
+            ~/.cache/ms-playwright
+            exact/target
+          key: exact-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      - run: exact/deploy/setup-exact.sh
+      - run: bun exact.mjs test
+        working-directory: exact
+
+  exact-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platforms;android-37.2 build-tools;37.0.0 ndk;27.1.12297006'
+      - uses: gradle/actions/setup-gradle@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/src/exact
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/hermes-lean-sys
+            ~/.cache/exact
+            exact/target
+          key: exact-android-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      - run: exact/deploy/setup-exact.sh android
+      - run: bun "$HOME/src/exact/scripts/exact.mjs" setup --check --platform android
+      - name: Build release APK
+        working-directory: exact
+        env:
+          EXACT_UPDATE_TRUST: production
+          OBSERVING_API: https://observ.ing
+          OBSERVING_AUTH_ORIGIN: https://observ.ing
+          OBSERVING_WEB_ORIGIN: https://next.observ.ing
+          # A release build needs the Maps key set; until the secret exists the
+          # placeholder lets it build, and the map shows Google's key error.
+          OBSERVING_MAPS_ANDROID_KEY: ${{ secrets.MAPS_ANDROID_KEY || 'unset' }}
+        run: bun exact.mjs android --release --no-install --json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-android-apk
+          path: exact/target/android/app/outputs/apk/release/app-release.apk
+          retention-days: 14
+
+  exact-ios:
+    # Exact's Swift host needs Xcode 27.1+; GitHub has it only on this
+    # public-preview image so far.
+    runs-on: xcode-27
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/src/exact
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/hermes-lean-sys
+            ~/.cache/exact
+            exact/target
+          key: exact-ios-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      - run: exact/deploy/setup-exact.sh ios
+      - run: bun "$HOME/src/exact/scripts/exact.mjs" setup --check --platform ios
+      - name: Build release simulator app
+        working-directory: exact
+        env:
+          OBSERVING_API: https://observ.ing
+          OBSERVING_AUTH_ORIGIN: https://observ.ing
+          OBSERVING_WEB_ORIGIN: https://next.observ.ing
+        run: |
+          bun exact.mjs ios --release --no-install --json > ios.json
+          cat ios.json
+          app=$(bun -e 'console.log((await Bun.file("ios.json").json()).path)')
+          ditto -c -k --keepParent "$app" "$RUNNER_TEMP/observing-exact-sim.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: exact-ios-simulator-app
+          path: ${{ runner.temp }}/observing-exact-sim.zip
+          retention-days: 14
+
+  # Publishes main's native test builds to the exact-latest prerelease, at
+  # fixed URLs the site's Account tab links to.
+  exact-publish:
+    runs-on: ubuntu-latest
+    needs: [exact-android, exact-ios]
+    if: github.event_name == 'push'
+    permissions:
+      contents: write
+    concurrency:
+      group: exact-publish
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: exact-android-apk
+          path: android
+      - uses: actions/download-artifact@v4
+        with:
+          name: exact-ios-simulator-app
+          path: ios
+      - run: |
+          mv android/app-release.apk observing-exact.apk
+          mv ios/observing-exact-sim.zip observing-exact-sim.zip
+          notes="Test builds of the Exact app (next.observ.ing) from ${GITHUB_SHA}. The APK is signed with a throwaway key: uninstall the previous build before installing this one. The iOS build runs only in Xcode's Simulator: unzip it and run xcrun simctl install booted with the unzipped .app."
+          if gh release view exact-latest >/dev/null 2>&1; then
+            gh api -X PATCH "repos/$GH_REPO/git/refs/tags/exact-latest" -f sha="$GITHUB_SHA" -F force=true
+            gh release edit exact-latest --notes "$notes"
+          else
+            gh release create exact-latest --target "$GITHUB_SHA" --prerelease --latest=false \
+              --title "Exact app (latest main)" --notes "$notes"
+          fi
+          gh release upload exact-latest observing-exact.apk observing-exact-sim.zip --clobber
+
+  exact-deploy:
+    runs-on: ubuntu-latest
+    needs: [exact-test]
+    if: github.event_name == 'push'
+    env:
+      REGISTRY: us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/observing
+      REGION: us-central1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.2'
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            ~/src/exact
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/hermes-lean-sys
+            ~/.cache/exact
+            ~/.cache/ms-playwright
+            exact/target
+          key: exact-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
+      - run: exact/deploy/setup-exact.sh
+      - run: WEB_ORIGIN=https://next.observ.ing DOWNLOADS=https://github.com/${{ github.repository }}/releases/download/exact-latest exact/deploy/stage.sh exact-site
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: google-github-actions/auth@v2
+        id: gcp-auth
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          token_format: access_token
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - uses: docker/login-action@v3
+        with:
+          registry: us-central1-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.gcp-auth.outputs.access_token }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: exact-site
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.REGISTRY }}/observing-exact:${{ github.sha }},${{ env.REGISTRY }}/observing-exact:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy observing-exact \
+            --image=$REGISTRY/observing-exact:${{ github.sha }} \
+            --region=$REGION \
+            --platform=managed \
+            --allow-unauthenticated \
+            --port=8080 \
+            --memory=128Mi \
+            --cpu=1 \
+            --max-instances=3 \
+            --min-instances=0
+
   # Rust jobs
   rust-lockfile:
     runs-on: ubuntu-latest
@@ -258,6 +461,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
+        env:
+          RUSTUP_TOOLCHAIN: 1.85.0
 
   rust-clippy:
     runs-on: ubuntu-latest
@@ -609,7 +814,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|GCP_PROJECT_ID=$PROJECT_ID|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://localhost,capacitor://localhost|APP_REDIRECT_URIS=https://observing-exact-997474541328.us-central1.run.app/.exact/auth/callback" \
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|GCP_PROJECT_ID=$PROJECT_ID|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://next.observ.ing,https://localhost,capacitor://localhost|APP_REDIRECT_URIS=https://next.observ.ing/.exact/auth/callback,https://observing-exact-997474541328.us-central1.run.app/.exact/auth/callback" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INAT_CLIENT_ID=INAT_CLIENT_ID:latest,INAT_CLIENT_SECRET=INAT_CLIENT_SECRET:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT

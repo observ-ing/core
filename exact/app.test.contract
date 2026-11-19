@@ -1,0 +1,599 @@
+// Against fixtures/api.json, recorded from observ.ing by record.ts.
+test "the feed pushes an observation with its identifications, map and links"
+  epoch "2026-11-09T23:00:00Z"
+  time-zone "America/Los_Angeles"
+  clock data
+  expect text "obs-title-3mzvx3lfxlr22" == "Unidentified"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect text "detail-title" == "Common Loon"
+  expect text "detail-sci" == "Gavia immer"
+  expect text "detail-lineage" == "Animalia › Chordata › Aves › Gaviiformes › Gaviidae › Gavia"
+  expect text "detail-observer" == "Ken-ichi Ueda (@kueda.net)"
+  expect tree has "detail-map"
+  expect tree has "ident-0"
+  expect tree has "external-iNaturalist"
+  expect tree missing "data-quality"
+
+test "an unidentified observation shows what it lacks"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  expect text "detail-title" == "Unidentified"
+  expect text "needs-id" == "Needs an identification"
+  expect tree has "data-quality"
+  expect tree missing "detail-photo"
+
+test "a photo opens full size and closes"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-photo"
+  clock settle
+  expect tree has "lightbox-photo"
+  tap "photo-close"
+  clock settle
+  expect text "detail-title" == "Common Loon"
+
+test "Show More reads the next page by its cursor"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "more"
+  clock data
+  expect text "obs-title-3mzubsjar4b22" == "Elegant Tern"
+  expect text "obs-title-3mzvx3lfxlr22" == "Unidentified"
+
+test "a kingdom filter narrows the feed"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "toggle-filters"
+  type "filter-kingdom" "Plantae"
+  clock data
+  expect text "obs-title-3mytlct22dw22" == "spotted coralroot"
+  expect tree missing "obs-3mzucjhpluy22"
+  tap "clear-filters"
+  clock data
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "the observer's profile shows their counts and observations"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-observer-link"
+  clock data
+  clock settle
+  expect text "profile-title" == "Ken-ichi Ueda"
+  expect text "profile-handle" == "@kueda.net"
+  expect text "stat-observations" == "959"
+  expect text "pobs-title-3mzucjhpluy22" == "Common Loon"
+
+test "a species page shows its classification and can filter Explore"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-taxon"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Common Loon"
+  expect text "taxon-sci" == "Gavia immer"
+  expect text "taxon-status" == "LC (IUCN)"
+  expect tree has "ancestor-Gaviidae"
+  expect text "taxon-count" == "1 Observation"
+  expect tree missing "more-taxon"
+  tap "taxon-explore"
+  clock data
+  clock settle
+  expect text "filter-taxon" == "Gavia immer"
+  // The appview's taxon filter matches the submitter's own scientific name only
+  // (observing-db feeds.rs), and this observation was named by identification.
+  expect text "feed-empty" == "No observations match these filters."
+  tap "clear-filters"
+  clock data
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "taxon search finds a genus and lists what it includes"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "open-search"
+  clock settle
+  type "search" "gavia"
+  clock data
+  expect text "found-0-name" == "Loons"
+  tap "found-0"
+  clock data
+  clock settle
+  expect text "taxon-title" == "Loons"
+  expect text "taxon-rank" == "Genus"
+  expect tree has "child-0"
+
+// Sign-in starts on /account: Exact's web host finds the drive's auth fixture
+// (?authFixture=, added to the launch URL) in the page's current URL, which a
+// tab switch replaces.
+test "the home feed asks a signed-out person to sign in"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "tab-home"
+  clock data
+  expect text "home-signed-out" == "Sign in to see your home feed."
+  tap "home-sign-in"
+  clock settle
+  expect tree has "handle"
+
+test "signing in shows the account and the home feed; signing out ends both"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect text "account-name" == "Test Naturalist"
+  expect text "account-handle" == "@naturalist.test"
+  tap "tab-home"
+  clock data
+  expect text "home-title-3mzucjhpluy22" == "Common Loon"
+  tap "tab-account"
+  tap "sign-out"
+  clock data
+  expect tree has "handle"
+  tap "tab-home"
+  clock data
+  expect text "home-signed-out" == "Sign in to see your home feed."
+
+test "a session survives a relaunch"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "@naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  reload
+  clock data
+  tap "tab-account"
+  expect text "account-name" == "Test Naturalist"
+
+test "declining on the server's page signs nothing in"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "decline.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect tree has "handle"
+  expect tree missing "account-name"
+  expect text "handle" == "decline.test"
+
+// Phase 3: writes against server.ts's fake appview, as naturalist.test.
+test "signed out, Like opens Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "like"
+  clock settle
+  expect tree has "handle"
+
+test "a like counts, and unliking takes it back"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect text "like-count" == "0 likes"
+  tap "like"
+  clock data
+  expect text "like-count" == "1 like"
+  tap "like"
+  clock data
+  expect text "like-count" == "0 likes"
+
+test "a comment is posted and the field clears"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  type "comment-draft" "Calling across the bay at dusk."
+  tap "post-comment"
+  clock data
+  expect text "comment-0" == "Calling across the bay at dusk."
+  expect text "comment-draft" == ""
+
+test "an identification is suggested from search, then withdrawn"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "ident-1"
+  tap "suggest-id"
+  clock settle
+  type "identify-search" "gavia"
+  clock data
+  tap "identify-0"
+  clock data
+  clock settle
+  expect tree has "ident-1"
+  tap "withdraw-id"
+  clock settle
+  tap "withdraw-confirm"
+  clock data
+  expect tree missing "ident-1"
+  expect tree missing "withdraw-id"
+
+test "notifications open their observation and can all be marked read"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-notifications"
+  clock data
+  expect text "note-text-2" == "Another Naturalist commented on your observation"
+  expect tree has "unread-2"
+  tap "mark-all-read"
+  clock data
+  expect tree missing "unread-2"
+  expect tree missing "mark-all-read"
+  tap "note-1"
+  clock data
+  clock settle
+  expect text "detail-title" == "Common Loon"
+
+test "your own observation can be deleted after asking"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect tree missing "delete-observation"
+  back
+  clock settle
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  tap "delete-observation"
+  clock settle
+  tap "delete-confirm"
+  clock data
+  clock settle
+  expect tree missing "delete-observation"
+  expect tree has "toggle-filters"
+
+test "the default license is saved"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  type "default-license" "https://creativecommons.org/licenses/by-nc/4.0/"
+  clock data
+  expect state prefs.license == "https://creativecommons.org/licenses/by-nc/4.0/"
+  reload
+  clock data
+  expect state prefs.license == "https://creativecommons.org/licenses/by-nc/4.0/"
+
+// Phase 4: a new observation, as naturalist.test.
+test "signed out, New Observation opens Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "new-observation"
+  clock settle
+  expect tree has "handle"
+
+test "a photo's EXIF fills in when and where, the model suggests, and it saves"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  time-zone "America/Los_Angeles"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  expect disabled "new-save"
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  expect tree has "new-photo-0"
+  expect text "new-date" == "2026-05-04"
+  expect text "new-time" == "08:30"
+  expect text "new-date-note" == "From the photo."
+  expect text "new-place" == "37.7700, -122.2800 (±12 m)"
+  expect enabled "new-save"
+  tap "suggestion-0"
+  expect text "new-taxon" == "Eastern Newt · Notophthalmus viridescens"
+  type "new-notes" "Under a log by the creek."
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-title" == "Notophthalmus viridescens"
+  // Taken 08:30 in May (daylight time), shown in November (standard time): still 8:30.
+  expect text "detail-date" == "May 4, 2026 at 8:30 AM"
+  expect text "detail-remarks" == "Under a log by the creek."
+  expect tree has "detail-photo"
+  expect tree has "delete-observation"
+
+test "without a photo, a place on the map is enough to save"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  expect disabled "new-save"
+  expect text "new-place-note" == "A place is required."
+  tap "new-place-on-map"
+  expect tree has "new-map"
+  expect enabled "new-save"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-title" == "Unidentified"
+  expect text "needs-id" == "Needs an identification"
+
+test "the sheet shows a picked photo's preview, date, place and suggestions"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "new-observation"
+  clock settle
+  tap "new-add-photos"
+  pick "new-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  expect tree has "suggestion-1"
+
+// Phase 5: batch upload, the upload queue, Live ID.
+test "a batch uploads one observation per placed photo"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  tap "batch-add"
+  pick "batch-photos" "assets/photos/oak.png"
+  clock data
+  expect text "batch-missing" == "1 photo has no place and won’t upload."
+  expect text "batch-upload" == "Upload 1"
+  tap "batch-use-0"
+  expect text "batch-title-0" == "Eastern Newt · Notophthalmus viridescens"
+  tap "batch-remove-1"
+  expect tree missing "batch-missing"
+  tap "batch-upload"
+  clock data
+  clock settle
+  expect text "sent-note" == "1 observation uploaded."
+  expect tree missing "pending"
+
+test "offline, a batch waits in the queue, survives a relaunch and uploads later"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-batch"
+  clock settle
+  tap "batch-add"
+  pick "batch-photos" "fixtures/photo-with-exif.jpg"
+  clock data
+  fail fetch "http://127.0.0.1:8787/api/occurrences"
+  tap "batch-upload"
+  clock data
+  clock settle
+  expect text "queued-0" == "Unidentified"
+  expect text "queued-status-0" == "Waiting"
+  expect text "send-note" == "You’re offline. These upload when you’re back."
+  reload
+  clock data
+  expect text "queued-0" == "Unidentified"
+  pass fetch "http://127.0.0.1:8787/api/occurrences"
+  tap "send-now"
+  clock data
+  expect text "sent-note" == "1 observation uploaded."
+  expect tree missing "pending"
+
+// Live ID's camera is a held device request under Exact's test driver, which a
+// test can't answer, so only the way in is tested here.
+test "signed out, Live ID and Batch Upload open Account instead"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-live"
+  clock settle
+  expect tree has "handle"
+  tap "tab-home"
+  tap "home-batch"
+  clock settle
+  expect tree has "handle"
+
+// Phase 6: iNaturalist, against server.ts's fake (it approves at once).
+test "an iNaturalist account links, sets cross-posting, and unlinks after asking"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  expect text "inat-note" == "Post your observations to iNaturalist too."
+  tap "inat-link"
+  authorize
+  clock data
+  expect text "inat-login" == "@naturalist_on_inat"
+  expect disabled "inat-require-photos"
+  tap "inat-crosspost"
+  clock data
+  expect state inat.crosspost == true
+  expect enabled "inat-require-photos"
+  tap "inat-unlink"
+  clock settle
+  tap "unlink-confirm"
+  clock data
+  expect tree has "inat-link"
+  expect tree missing "inat-login"
+
+test "with cross-posting on, a new observation goes to iNaturalist too"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "inat-link"
+  authorize
+  clock data
+  tap "inat-crosspost"
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  expect state newCrosspost == true
+  tap "new-place-on-map"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "crosspost-status" == "Posting to iNaturalist…"
+
+test "one of your observations can be posted to iNaturalist"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "inat-link"
+  authorize
+  clock data
+  tap "tab-explore"
+  clock data
+  tap "obs-3mzvx3lfxlr22"
+  clock data
+  clock settle
+  expect text "crosspost-status" == "Not on iNaturalist yet."
+  tap "crosspost-post"
+  clock data
+  expect text "crosspost-status" == "Posting to iNaturalist…"
+  expect tree missing "crosspost-post"
+
+// Phase 7: polish.
+test "the welcome card shows on a first visit until it's dismissed, then never again"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree has "welcome"
+  tap "welcome-dismiss"
+  expect tree missing "welcome"
+  reload
+  clock data
+  expect tree missing "welcome"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "the welcome card's Sign In opens Account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "welcome-sign-in"
+  clock settle
+  expect tree has "handle"
+
+test "offline, a banner says so, and Try Again recovers"
+  fail fetch "http://127.0.0.1:8787/api/feeds/explore"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree has "offline-banner"
+  pass fetch "http://127.0.0.1:8787/api/feeds/explore"
+  tap "offline-retry"
+  clock data
+  expect tree missing "offline-banner"
+  expect text "obs-title-3mzucjhpluy22" == "Common Loon"
+
+test "a profile lists the person's identifications too"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  tap "obs-3mzucjhpluy22"
+  clock data
+  clock settle
+  tap "detail-observer-link"
+  clock data
+  clock settle
+  tap "profile-tab-identifications"
+  clock data
+  expect text "pid-name-0" == "Baccharis pilularis"
+  expect tree missing "pobs-3mzucjhpluy22"
+  tap "profile-tab-observations"
+  clock data
+  expect text "pobs-title-3mzucjhpluy22" == "Common Loon"

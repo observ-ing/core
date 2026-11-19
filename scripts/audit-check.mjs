@@ -16,12 +16,19 @@
  *   Reason:   This app uses BrowserRouter only — no server-side rendering or
  *             React Server Components — so the server-side CSRF bypass is not
  *             reachable. Re-evaluate once react-router 8.3.0 is available on npm.
+ *
+ * GHSA-fc5q-39xc-vjpf  Picomatch ReDoS through repeated extglobs
+ *   Affected: picomatch <=4.0.7
+ *   Fix:      None published as of 2026-11-18
+ *   Reason:   Picomatch is a transitive development-only dependency and is not
+ *             shipped with the application. Re-evaluate once a fix is available.
  */
 
 import { createInterface } from "node:readline";
 
 const ACKNOWLEDGED = new Set([
   "GHSA-qwww-vcr4-c8h2", // React Router RSC CSRF bypass; not applicable (BrowserRouter only)
+  "GHSA-fc5q-39xc-vjpf", // Picomatch ReDoS; dev-only dependency, not shipped with the application
 ]);
 
 let raw = "";

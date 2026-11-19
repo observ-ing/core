@@ -1,0 +1,1785 @@
+// Observ.ing on Exact. Explore (filters, paging), an observation (photos, map,
+// identifications, comments, data quality), a person's profile, a taxon page and
+// taxon search; signing in with an atproto handle, and the signed-in home feed.
+// app.ts reads the appview through server.ts, which proxies a real one or
+// answers from fixtures/.
+
+use MapMarker, MapCamera from "@exact/maps"
+use getCurrentPosition, GeolocationPosition from "@exact/geolocation"
+use getUserMedia, stopTrack, MediaStream, MediaStreamTrack from "@exact/media-capture"
+use takePhoto, Photo as CameraPhoto from "@exact/camera"
+
+routes nav
+  tab explore "/"
+    observation "/observation/:did/:rkey"
+      photo "/observation/:did/:rkey/photo/:index"
+      identify "/observation/:did/:rkey/identify"
+    profile "/profile/:did"
+    taxon "/taxon/:kingdom/:name"
+    search "/search"
+    new "/new"
+    batch "/batch"
+    live "/live"
+  tab home "/home"
+  tab notifications "/notifications"
+  tab account "/account"
+
+shape Observation
+  did: string
+  rkey: string
+  commonName: string
+  scientificName: string
+  rank: string
+  kingdom: string
+  lineage: string
+  observer: string
+  observerDid: string
+  handle: string
+  observedAt: number
+  observedOffset: number
+  photo: string
+  license: string
+  place: string
+  identifications: number
+  likes: number
+  remarks: string
+  needsId: bool
+
+shape Feed
+  items: Observation[]
+  more: bool
+
+shape Photo
+  index: number
+  url: string
+  thumb: string
+  license: string
+
+shape IdRow
+  uri: string
+  who: string
+  whoDid: string
+  scientificName: string
+  rank: string
+  kingdom: string
+  at: number
+  mine: bool
+
+shape CommentRow
+  uri: string
+  who: string
+  whoDid: string
+  body: string
+  at: number
+
+shape LinkRow
+  url: string
+  label: string
+
+shape Detail
+  uri: string
+  cid: string
+  liked: bool
+  mine: bool
+  did: string
+  rkey: string
+  found: bool
+  obs: Observation
+  photos: Photo[]
+  latitude: number
+  longitude: number
+  hasLocation: bool
+  uncertainty: string
+  eventRemarks: string
+  taxonKingdom: string
+  taxonName: string
+  issues: string[]
+  identifications: IdRow[]
+  comments: CommentRow[]
+  links: LinkRow[]
+
+shape ProfilePage
+  did: string
+  found: bool
+  name: string
+  handle: string
+  avatar: string
+  observations: number
+  identifications: number
+  species: number
+  items: Observation[]
+  more: bool
+
+shape TaxonRow
+  kingdom: string
+  name: string
+  scientificName: string
+  commonName: string
+  rank: string
+  photo: string
+
+shape Crumb
+  kingdom: string
+  name: string
+  scientificName: string
+  rank: string
+
+shape Media
+  index: number
+  url: string
+  credit: string
+
+shape TaxonPage
+  kingdom: string
+  name: string
+  found: bool
+  scientificName: string
+  commonName: string
+  rank: string
+  photo: string
+  status: string
+  extinct: bool
+  description: string
+  descriptionSource: string
+  observationCount: number
+  descendants: number
+  ancestors: Crumb[]
+  children: TaxonRow[]
+  media: Media[]
+  gbifUrl: string
+  wikidataUrl: string
+  items: Observation[]
+  more: bool
+
+shape PhotoFact
+  path: string
+  thumb: string
+  takenAt: string
+  hasPlace: bool
+  latitude: number
+  longitude: number
+  uncertainty: number
+
+shape Suggestion
+  scientificName: string
+  commonName: string
+  rank: string
+  kingdom: string
+  confidence: number
+  inRange: bool
+
+shape Created
+  ok: bool
+  error: string
+  did: string
+  rkey: string
+
+shape ProfileId
+  uri: string
+  scientificName: string
+  rank: string
+  at: number
+  did: string
+  rkey: string
+
+shape ProfileIds
+  items: ProfileId[]
+  more: bool
+
+shape InatState
+  enabled: bool
+  linked: bool
+  login: string
+  crosspost: bool
+  requirePhotos: bool
+
+shape Crosspost
+  uri: string
+  status: string
+  error: string
+  url: string
+
+shape QueueItem
+  id: string
+  title: string
+  thumb: string
+  status: string
+  error: string
+  photos: number
+
+shape SendResult
+  sent: number
+  failed: number
+  waiting: number
+  offline: bool
+  error: string
+
+shape BatchGuess
+  path: string
+  scientificName: string
+  rank: string
+  kingdom: string
+  label: string
+  confidence: number
+
+shape Enqueued
+  ok: bool
+  error: string
+  queued: number
+  skipped: number
+
+shape NoteRow
+  id: number
+  kind: string
+  who: string
+  whoDid: string
+  avatar: string
+  read: bool
+  at: number
+  did: string
+  rkey: string
+  text: string
+
+shape NotesPage
+  items: NoteRow[]
+  more: bool
+
+shape Count
+  count: number
+
+shape Prefs
+  license: string
+
+shape Account
+  signedIn: bool
+  did: string
+  handle: string
+  name: string
+  avatar: string
+  error: string
+
+shape Downloads
+  android: string
+  ios: string
+
+shape Reply
+  ok: bool
+  error: string
+
+shape Choice
+  value: string
+  label: string
+
+shape Time
+  epochAtZero: number
+  utcOffset: number
+
+// A species reads by its common name, else its scientific name; neither is "Unidentified".
+fn titleOf(o: Observation): string = o.commonName != "" ? o.commonName : (o.scientificName != "" ? o.scientificName : "Unidentified")
+fn taxonTitle(common: string, scientific: string): string = common != "" ? common : scientific
+fn countOf(n: number, one: string, many: string): string = `${formatNumber(n, "decimal")} ${n == 1 ? one : many}`
+fn capitalized(s: string): string = s == "" ? "" : `${s.slice(0, 1).toUpperCase()}${s.slice(1)}`
+// A batch photo's chosen species is "path|name|rank|kingdom|label"; its label, or "".
+fn chosenLabel(taxa: string[], path: string): string = match first(taxa.filter(t => t.startsWith(`${path}|`))) { case some(t) => (match t.split("|").at(4) { case some(l) => l, case none => "" }), case none => "" }
+fn problem(code: string, what: string): string = code == "offline" ? "Can’t reach observ.ing. Check your connection and try again." : `Couldn’t load ${what}. Try again.`
+
+// A panel on a content screen (the welcome, the filters).
+style Card
+  padding=16 border-radius=12
+  background-color="-exact-secondary-background"
+
+component App
+  // Explore's filters and how many pages each list shows.
+  state kingdom = ""
+  state taxon = ""
+  state quality = ""
+  state startDate = ""
+  state endDate = ""
+  state showFilters = false
+  state feedPages = 1
+  state profilePages = 1
+  state taxonPages = 1
+  state query = ""
+  state handleDraft = ""
+  state homePages = 1
+  state commentDraft = ""
+  state idQuery = ""
+  state notePages = 1
+  // The new observation being made: what the person set; the photo fills in the rest.
+  state newPhotos = []
+  state newDate = ""
+  state newTime = ""
+  state newPlaced = false
+  state newLat = 0
+  state newLng = 0
+  state newUncertainty = 0
+  state newTaxonQuery = ""
+  state newTaxonName = ""
+  state newTaxonRank = ""
+  state newTaxonKingdom = ""
+  state newTaxonLabel = ""
+  state newNotes = ""
+  state newLicense = ""
+  // Batch upload: the picked photos and each one's chosen species; a place for those without GPS.
+  state batchPhotos: string[] = []
+  state batchTaxa: string[] = []
+  state batchHere = false
+  state batchLat = 0
+  state batchLng = 0
+  state batchUncertainty = 0
+  // Live ID: the camera's track and its latest frame.
+  state liveTrack = ""
+  // The welcome card at the top of Explore, until it's dismissed or someone signs in.
+  state welcomed = false persist
+  state profileTab = "observations"
+  state profileIdPages = 1
+  // Whether this new observation (or batch) also goes to iNaturalist: your preference until you change it here.
+  state newCrosspostTouched = false
+  state newCrosspostOn = false
+  state batchCrosspostTouched = false
+  state batchCrosspostOn = false
+  state livePath = ""
+
+  // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
+  derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive obsRkey = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify").at(-1) { case some(x) => x.params.rkey, case none => "" }
+  derive profileDid = match stack(nav).filter(x => x.name == "profile").at(-1) { case some(x) => x.params.did, case none => "" }
+  derive taxonKingdom = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.kingdom, case none => "" }
+  derive taxonName = match stack(nav).filter(x => x.name == "taxon").at(-1) { case some(x) => x.params.name, case none => "" }
+
+  resource feed = loadFeed(kingdom, taxon, quality, startDate, endDate, feedPages) as shape Feed else empty()
+  resource detail = loadObservation(obsDid, obsRkey) as shape Detail else empty()
+  resource person = loadProfile(profileDid, profilePages) as shape ProfilePage else empty()
+  resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonPages) as shape TaxonPage else empty()
+  resource found = searchTaxa(query) as shape TaxonRow[] else empty()
+  resource account = session() as shape Account else empty()
+  resource home = loadHome(account.did, homePages) as shape Feed else empty()
+  // Signing in or out changes what every screen may show (likes, the home feed).
+  mutation signedIn as shape Reply refreshes account, feed, detail, person, taxonPage then afterSignIn
+  mutation signedOut as shape Reply refreshes account, feed, detail, person, taxonPage
+  resource notes = loadNotifications(account.did, notePages) as shape NotesPage else empty()
+  resource unread = unreadCount(account.did) as shape Count else empty()
+  resource prefs = loadPreferences(account.did) as shape Prefs else empty()
+  resource idFound = searchTaxa(idQuery) as shape TaxonRow[] else empty()
+  mutation liked as shape Reply refreshes detail
+  mutation commented as shape Reply refreshes detail then afterComment
+  mutation identified as shape Reply refreshes detail, feed, home then afterIdentify
+  mutation unidentified as shape Reply refreshes detail, feed, home
+  mutation removed as shape Reply refreshes feed, home, person, taxonPage then afterRemove
+  mutation marked as shape Reply refreshes notes, unread
+  mutation licensed as shape Reply refreshes prefs
+  resource newFacts = describePhotos(newPhotos) as shape PhotoFact[] else empty()
+  resource newSuggestions = suggestSpecies(firstPhoto, newLatShown, newLngShown, newHasPlace) as shape Suggestion[] else empty()
+  resource newFound = searchTaxa(newTaxonQuery) as shape TaxonRow[] else empty()
+  mutation located as shape GeolocationPosition then arrivedHere
+  mutation created as shape Created refreshes feed, home then afterCreate
+  resource inat = loadInat(account.did) as shape InatState else empty()
+  resource downloads = loadDownloads() as shape Downloads else empty()
+  resource personIds = loadProfileIds(profileTab == "identifications" ? profileDid : "", profileIdPages) as shape ProfileIds else empty()
+  resource crosspost = crosspostStatus(detail.mine ? detail.uri : "") as shape Crosspost else empty()
+  mutation inatLinked as shape Reply refreshes inat
+  mutation inatUnlinked as shape Reply refreshes inat
+  mutation crosspostPrefs as shape Reply refreshes inat
+  mutation crossposted as shape Reply refreshes crosspost
+  resource queue = loadQueue() as shape QueueItem[] else empty()
+  mutation sent as shape SendResult refreshes queue, feed, home, person
+  mutation requeued as shape Reply refreshes queue
+  mutation dropped as shape Reply refreshes queue
+  resource batchFacts = describePhotos(batchPhotos) as shape PhotoFact[] else empty()
+  resource batchGuesses = batchSuggestions(batchPhotos) as shape BatchGuess[] else empty()
+  mutation enqueued as shape Enqueued refreshes queue then afterEnqueue
+  mutation locatedBatch as shape GeolocationPosition then batchArrived
+  resource liveGuesses = liveSuggest(livePath) as shape Suggestion[] else empty()
+  mutation cameraOpened as shape MediaStream then cameraArmed
+  mutation cameraStopped as shape MediaStreamTrack
+  mutation shot as shape CameraPhoto then shotTaken
+  // Uploads go out on their own while there's something waiting; a live camera looks every few seconds.
+  task flush mount
+    every(20000, flushQueue)
+  task liveLoop mount
+    every(4000, liveTick)
+  resource time = exactTime() as shape Time
+  derive now = time.epochAtZero
+  derive offset = time.utcOffset
+
+  derive feedError = pending(feed) ? "" : match failure(feed) { case some(f) => problem(f.code, "the feed"), case none => "" }
+  derive detailError = pending(detail) ? "" : match failure(detail) { case some(f) => problem(f.code, "this observation"), case none => "" }
+  derive personError = pending(person) ? "" : match failure(person) { case some(f) => problem(f.code, "this profile"), case none => "" }
+  derive taxonError = pending(taxonPage) ? "" : match failure(taxonPage) { case some(f) => problem(f.code, "this taxon"), case none => "" }
+
+  derive homeError = pending(home) ? "" : match failure(home) { case some(f) => problem(f.code, "your home feed"), case none => "" }
+  derive signInError = match signedIn { case some(r) => r.error, case none => "" }
+  derive signInOk = match signedIn { case some(r) => r.ok, case none => false }
+  derive signInProblem = pending(signedIn) ? "" : (signInError != "" ? signInError : account.error)
+  derive likeError = match liked { case some(r) => r.error, case none => "" }
+  derive commentError = match commented { case some(r) => r.error, case none => "" }
+  derive commentOk = match commented { case some(r) => r.ok, case none => false }
+  derive identifyError = match identified { case some(r) => r.error, case none => "" }
+  derive identifyOk = match identified { case some(r) => r.ok, case none => false }
+  derive withdrawError = match unidentified { case some(r) => r.error, case none => "" }
+  derive removeError = match removed { case some(r) => r.error, case none => "" }
+  derive removeOk = match removed { case some(r) => r.ok, case none => false }
+  derive licenseError = match licensed { case some(r) => r.error, case none => "" }
+  derive myIdentification = match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.uri, case none => "" }
+  derive notesError = pending(notes) ? "" : match failure(notes) { case some(f) => problem(f.code, "your notifications"), case none => "" }
+  derive licenses = [Choice(value="https://creativecommons.org/publicdomain/zero/1.0/", label="CC0 (Public Domain)"), Choice(value="https://creativecommons.org/licenses/by/4.0/", label="CC BY (Attribution)"), Choice(value="https://creativecommons.org/licenses/by-nc/4.0/", label="CC BY-NC (Attribution, Non-Commercial)"), Choice(value="https://creativecommons.org/licenses/by-sa/4.0/", label="CC BY-SA (Attribution, Share-Alike)"), Choice(value="https://creativecommons.org/licenses/by-nc-sa/4.0/", label="CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)")]
+  derive firstPhoto = match first(newPhotos) { case some(p) => p, case none => "" }
+  derive photoTakenAt = match first(newFacts) { case some(f) => f.takenAt, case none => "" }
+  derive photoPlace = first(newFacts.filter(f => f.hasPlace))
+  derive photoHasPlace = match photoPlace { case some(f) => true, case none => false }
+  // The photo's "YYYY-MM-DDTHH:mm" until the person sets the day or the time.
+  derive newDayShown = newDate != "" ? newDate : photoTakenAt.slice(0, 10)
+  derive newTimeShown = newTime != "" ? newTime : photoTakenAt.slice(11, 16)
+  derive newDateShown = newDayShown == "" ? "" : `${newDayShown}T${newTimeShown != "" ? newTimeShown : "12:00"}`
+  derive newHasPlace = newPlaced or photoHasPlace
+  derive newLatShown = newPlaced ? newLat : match photoPlace { case some(f) => f.latitude, case none => 0 }
+  derive newLngShown = newPlaced ? newLng : match photoPlace { case some(f) => f.longitude, case none => 0 }
+  derive newUncertaintyShown = newPlaced ? newUncertainty : match photoPlace { case some(f) => f.uncertainty, case none => 0 }
+  derive newLicenseShown = newLicense != "" ? newLicense : prefs.license
+  derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
+  derive createError = match created { case some(r) => r.error, case none => "" }
+  derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
+  derive newCrosspost = inat.linked and (newCrosspostTouched ? newCrosspostOn : inat.crosspost)
+  derive batchCrosspost = inat.linked and (batchCrosspostTouched ? batchCrosspostOn : inat.crosspost)
+  derive inatError = pending(inatLinked) ? "" : match inatLinked { case some(r) => r.error, case none => "" }
+  derive crosspostError = match crossposted { case some(r) => r.error, case none => "" }
+  derive crosspostShown = crosspost.uri == detail.uri ? crosspost : Crosspost(uri=detail.uri, status="", error="", url="")
+  // Offline: whichever read the person is looking at failed for want of a connection.
+  derive offline = (match failure(feed) { case some(f) => f.code == "offline", case none => false }) or (match failure(home) { case some(f) => f.code == "offline", case none => false }) or (match failure(detail) { case some(f) => f.code == "offline", case none => false }) or (match failure(notes) { case some(f) => f.code == "offline", case none => false })
+  derive queueWaiting = queue.filter(q => q.status == "waiting").length
+  derive sendNote = pending(sent) ? "" : match sent { case some(r) => (r.error != "" ? r.error : (r.offline ? "You’re offline. These upload when you’re back." : (r.sent > 0 ? `${countOf(r.sent, "observation", "observations")} uploaded.` : ""))), case none => "" }
+  derive batchMissing = batchFacts.filter(f => not f.hasPlace).length
+  derive batchReady = batchFacts.length - (batchHere ? 0 : batchMissing)
+  derive batchError = match enqueued { case some(r) => r.error, case none => "" }
+  derive batchLocateError = pending(locatedBatch) ? "" : match failure(locatedBatch) { case some(f) => "Your location isn’t available.", case none => "" }
+  derive cameraError = pending(cameraOpened) ? "" : match failure(cameraOpened) { case some(f) => (f.code == "NotAllowedError" ? "The camera is off for observ.ing. Turn it on in Settings." : "The camera couldn’t start."), case none => "" }
+  derive qualityList = quality == "" ? [] : quality.split(",")
+  derive filterCount = (kingdom != "" ? 1 : 0) + (taxon != "" ? 1 : 0) + (startDate != "" ? 1 : 0) + (endDate != "" ? 1 : 0) + qualityList.length
+  derive kingdoms = [Choice(value="Animalia", label="Animals"), Choice(value="Plantae", label="Plants"), Choice(value="Fungi", label="Fungi"), Choice(value="Bacteria", label="Bacteria"), Choice(value="Archaea", label="Archaea"), Choice(value="Protozoa", label="Protozoa"), Choice(value="Chromista", label="Chromista")]
+  derive criteria = [Choice(value="HAS_DATE", label="Has date"), Choice(value="HAS_LOCATION", label="Has location"), Choice(value="PRECISE_LOCATION", label="Precise location"), Choice(value="HAS_MEDIA", label="Has photo or sound"), Choice(value="HAS_CONSENSUS_ID", label="Community ID")]
+
+  action back
+    if top(nav).name == "live"
+      stopCamera()
+    nav = back(nav)
+  action follow(url: string)
+    // Beside a wide window's list, a row replaces the detail it shows instead of stacking another.
+    if url.startsWith("/profile/")
+      profilePages = 1
+    if url.startsWith("/taxon/")
+      taxonPages = 1
+    // ("/observation/<did>/<rkey>" only: a photo under it is pushed.)
+    nav = top(nav).name == "observation" and url.startsWith("/observation/") and url.split("/").length == 4 ? replace(nav, url) : go(nav, url)
+  action openSearch
+    nav = push(nav, "/search")
+  action openExternal(url: string)
+    openURL(url)
+
+  action reloadFeed
+    refresh feed
+  action moreFeed
+    feedPages = feedPages + 1
+  action toggleFilters
+    showFilters = not showFilters
+  action setKingdom(v: string)
+    kingdom = v
+    feedPages = 1
+  action setStart(v: string)
+    startDate = v
+    feedPages = 1
+  action setEnd(v: string)
+    endDate = v
+    feedPages = 1
+  action toggleQuality(id: string, on: bool)
+    quality = (on ? qualityList.filter(x => x != id).concat([id]) : qualityList.filter(x => x != id)).join(",")
+    feedPages = 1
+  action clearTaxon
+    taxon = ""
+    feedPages = 1
+  action clearFilters
+    kingdom = ""
+    taxon = ""
+    quality = ""
+    startDate = ""
+    endDate = ""
+    feedPages = 1
+  // A taxon page's "Show in Explore": the feed filtered to it.
+  action exploreTaxon(name: string, k: string)
+    taxon = name
+    kingdom = k
+    feedPages = 1
+    showFilters = true
+    nav = open(nav, "/")
+
+  action reloadDetail
+    refresh detail
+  action reloadPerson
+    refresh person
+  action morePerson
+    profilePages = profilePages + 1
+  action reloadTaxon
+    refresh taxonPage
+  action moreTaxon
+    taxonPages = taxonPages + 1
+  action search(v: string)
+    query = v
+
+  action pick(name: string)
+    nav = select(nav, name)
+  action goAccount
+    nav = select(nav, "account")
+  action editHandle(v: string)
+    handleDraft = v
+  action signIn
+    if handleDraft.trim() != "" and not pending(signedIn)
+      send signedIn = signIn(handleDraft)
+  // A decline answers no error to show, and isn't a sign-in: keep what was typed.
+  action afterSignIn
+    if signInOk
+      handleDraft = ""
+  action signOut
+    if not pending(signedOut)
+      send signedOut = signOut()
+  action reloadHome
+    refresh home
+  action moreHome
+    homePages = homePages + 1
+
+  // A write needs a session: signed out, each one opens Account instead.
+  action toggleLike
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      if not pending(liked)
+        send liked = setLiked(detail.uri, detail.cid, not detail.liked)
+  action editComment(v: string)
+    commentDraft = v
+  action postComment
+    if commentDraft.trim() != "" and not pending(commented)
+      send commented = addComment(detail.uri, detail.cid, commentDraft)
+  action afterComment
+    if commentOk
+      commentDraft = ""
+  action openIdentify
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      idQuery = ""
+      nav = push(nav, path("identify", detail.did, detail.rkey))
+  action searchId(v: string)
+    idQuery = v
+  action pickId(scientificName: string, rank: string, kingdom: string)
+    if not pending(identified)
+      send identified = addIdentification(detail.uri, detail.cid, scientificName, rank, kingdom)
+  action afterIdentify
+    if identifyOk and top(nav).name == "identify"
+      nav = back(nav)
+  action withdraw
+    if myIdentification != ""
+      send unidentified = removeIdentification(myIdentification)
+  action deleteObservation
+    send removed = removeObservation(detail.uri)
+  action afterRemove
+    if removeOk and top(nav).name == "observation"
+      nav = back(nav)
+  // A link's own press runs instead of following it: open the observation here.
+  action readNote(id: number, read: bool, url: string)
+    if not read
+      send marked = markRead(id)
+    nav = go(nav, url)
+  action markAllRead
+    send marked = markRead(0)
+  action moreNotes
+    notePages = notePages + 1
+  action pickLicense(v: string)
+    send licensed = setLicense(v)
+
+  action dismissWelcome
+    welcomed = true
+  action welcomeSignIn
+    welcomed = true
+    nav = select(nav, "account")
+  action retryAll
+    refresh feed
+    refresh home
+    refresh detail
+    refresh notes
+  action showProfileTab(tab: string)
+    profileTab = tab
+    profileIdPages = 1
+  action moreProfileIds
+    profileIdPages = profileIdPages + 1
+
+  // --- iNaturalist
+  action startInatLink
+    if not pending(inatLinked)
+      send inatLinked = linkInat()
+  action unlinkInat
+    send inatUnlinked = unlinkInat()
+  action toggleCrosspost(on: bool)
+    send crosspostPrefs = setCrosspost(on, inat.requirePhotos)
+  action toggleRequirePhotos(on: bool)
+    send crosspostPrefs = setCrosspost(inat.crosspost, on)
+  action postToInat
+    if not pending(crossposted)
+      send crossposted = crosspostNow(detail.uri)
+  action setNewCrosspost(on: bool)
+    newCrosspostTouched = true
+    newCrosspostOn = on
+  action setBatchCrosspost(on: bool)
+    batchCrosspostTouched = true
+    batchCrosspostOn = on
+
+  // --- The upload queue
+  action flushQueue
+    if account.signedIn and queueWaiting > 0 and not pending(sent)
+      send sent = sendQueue()
+  action sendNow
+    if not pending(sent)
+      send sent = sendQueue()
+  action retryItem(id: string)
+    send requeued = retryQueued(id)
+  action discardItem(id: string)
+    send dropped = discardQueued(id)
+
+  // --- Batch upload
+  action openBatch
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      batchPhotos = []
+      batchTaxa = []
+      batchHere = false
+      batchCrosspostTouched = false
+      nav = push(nav, "/batch")
+  action chooseBatch
+    showPicker("batch-photos")
+  action addBatch(files: Picked[])
+    batchPhotos = batchPhotos.concat(files.map(f => f.path))
+  action removeBatch(path: string)
+    batchPhotos = batchPhotos.filter(p => p != path)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`))
+  action useGuess(path: string, name: string, rank: string, kingdom: string, label: string)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`)).concat([`${path}|${name}|${rank}|${kingdom}|${label}`])
+  action clearGuess(path: string)
+    batchTaxa = batchTaxa.filter(t => not t.startsWith(`${path}|`))
+  action batchUseLocation
+    if not pending(locatedBatch)
+      send locatedBatch = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
+  action batchArrived
+    match locatedBatch
+      case some(p)
+        batchLat = p.coords.latitude
+        batchLng = p.coords.longitude
+        batchUncertainty = round(p.coords.accuracy)
+        batchHere = true
+      case none
+        batchHere = batchHere
+  action uploadBatch
+    if batchReady > 0 and not pending(enqueued)
+      send enqueued = enqueueBatch(batchPhotos, batchTaxa, batchLat, batchLng, batchUncertainty, batchHere, prefs.license, batchCrosspost)
+  // Queued: leave the batch and start sending.
+  action afterEnqueue
+    match enqueued
+      case some(r)
+        if r.ok and top(nav).name == "batch"
+          batchPhotos = []
+          batchTaxa = []
+          nav = back(nav)
+          send sent = sendQueue()
+      case none
+        batchPhotos = batchPhotos
+
+  // --- Live ID
+  action openLive
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      livePath = ""
+      nav = push(nav, "/live")
+      send cameraOpened = getUserMedia(video=true)
+  action cameraArmed
+    match cameraOpened
+      case some(s)
+        liveTrack = match s.tracks.at(0) { case some(t) => t.id, case none => "" }
+      case none
+        liveTrack = ""
+  action liveTick
+    if top(nav).name == "live" and liveTrack != "" and not pending(shot)
+      send shot = takePhoto(track=liveTrack)
+  action shotTaken
+    match shot
+      case some(p)
+        livePath = p.path
+      case none
+        livePath = livePath
+  action stopCamera
+    if liveTrack != ""
+      send cameraStopped = stopTrack(track=liveTrack)
+      liveTrack = ""
+  // The live frame becomes a new observation's photo, with the species picked.
+  action useLiveGuess(scientificName: string, rank: string, kingdom: string, label: string)
+    if livePath != ""
+      stopCamera()
+      newPhotos = [livePath]
+      newDate = ""
+      newTime = ""
+      newPlaced = false
+      newNotes = ""
+      newLicense = ""
+      newTaxonQuery = ""
+      newTaxonName = scientificName
+      newTaxonRank = rank
+      newTaxonKingdom = kingdom
+      newTaxonLabel = label
+      nav = replace(nav, "/new")
+
+  action openNew
+    if not account.signedIn
+      nav = select(nav, "account")
+    else
+      newPhotos = []
+      newDate = ""
+      newTime = ""
+      newPlaced = false
+      newUncertainty = 0
+      newTaxonQuery = ""
+      newTaxonName = ""
+      newTaxonRank = ""
+      newTaxonKingdom = ""
+      newTaxonLabel = ""
+      newNotes = ""
+      newLicense = ""
+      newCrosspostTouched = false
+      nav = push(nav, "/new")
+  action choosePhotos
+    showPicker("new-photos")
+  action addPhotos(files: Picked[])
+    newPhotos = newPhotos.concat(files.map(f => f.path))
+  action removePhoto(path: string)
+    newPhotos = newPhotos.filter(p => p != path)
+  action setNewDate(v: string)
+    newDate = v
+  action setNewTime(v: string)
+    newTime = v
+  action useMyLocation
+    if not pending(located)
+      send located = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
+  action arrivedHere
+    match located
+      case some(p)
+        newLat = p.coords.latitude
+        newLng = p.coords.longitude
+        newUncertainty = round(p.coords.accuracy)
+        newPlaced = true
+      case none
+        newPlaced = newPlaced
+  // With nowhere yet, the pin starts on a view of the world.
+  action placeOnMap
+    newLat = 20
+    newLng = 0
+    newUncertainty = 0
+    newPlaced = true
+  action movedMap(camera: MapCamera)
+    if newHasPlace
+      newLat = camera.latitude
+      newLng = camera.longitude
+      newPlaced = true
+  action searchNewTaxon(v: string)
+    newTaxonQuery = v
+  action pickTaxon(scientificName: string, rank: string, kingdom: string, label: string)
+    newTaxonName = scientificName
+    newTaxonRank = rank
+    newTaxonKingdom = kingdom
+    newTaxonLabel = label
+    newTaxonQuery = ""
+  action clearNewTaxon
+    newTaxonName = ""
+    newTaxonRank = ""
+    newTaxonKingdom = ""
+    newTaxonLabel = ""
+  action editNotes(v: string)
+    newNotes = v
+  action pickNewLicense(v: string)
+    newLicense = v
+  action saveNew
+    if canSave
+      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown, newCrosspost)
+  // Saved: close the sheet and open the new observation.
+  action afterCreate
+    match created
+      case some(r)
+        if r.ok and top(nav).name == "new"
+          let closed = back(nav)
+          nav = go(closed, path("observation", r.did, r.rkey))
+          newPhotos = []
+      case none
+        newPhotos = newPhotos
+
+  view
+    main navigationKey=`${top(nav).id}` navigationBack="back" navigate=follow testId="app"
+      width="100%" height="100%" display="flex" flex-direction="column"
+      if offline
+        row role="status" gap=8 align-items="center" flex-wrap="wrap" padding="8px 16px" background-color="-exact-secondary-background" testId="offline-banner"
+          image "symbol:alert" color="-exact-system-orange"
+          text "You’re offline. What’s here was loaded earlier." flex=1 min-width=0
+          button press=retryAll testId="offline-retry"
+            text "Try Again"
+      column flex=1 min-height=0 position="relative"
+        for t in nav.tabs key=t.name
+          column role="tabpanel" id=`panel-${t.name}` position="absolute" inset=0
+            for e in t.stack key=e.id
+              if e.name == "explore"
+                column navigationKey=`${e.id}` navigationScroll="feed" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
+                    text "Explore" role="heading" aria-level=1 flex=1
+                    button press=openNew aria-label="New observation" testId="new-observation"
+                      image "symbol:add"
+                    button press=openSearch aria-label="Search taxa" testId="open-search"
+                      image "symbol:search"
+                    button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
+                      image "symbol:filter"
+                  // A content screen is a scroll of cards, not a grouped list (those are for
+                  // forms): the photos in a grid that fills the width, two across on a phone.
+                  scroll id="feed" flex=1 min-height=0 overflow-x="hidden" testId="feed"
+                    column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                      if not welcomed and not account.signedIn and not pending(account)
+                        column class=Card gap=8 testId="welcome"
+                          text "Welcome to observ.ing" role="heading" aria-level=2 font="-exact-title2"
+                          text "Share what you see in nature. Your observations live in your own atproto account, so they go with you to any app." color="-exact-secondary-label"
+                          text "Open source, Darwin Core records for science, and yours to export." font="-exact-footnote" color="-exact-secondary-label"
+                          row gap=8 flex-wrap="wrap" padding-top=4
+                            button press=welcomeSignIn buttonStyle="filled" testId="welcome-sign-in"
+                              text "Sign In"
+                            button press=dismissWelcome testId="welcome-dismiss"
+                              text "Just Browse"
+                      if showFilters
+                        column class=Card gap=12 testId="filters"
+                          text "Filters" role="heading" aria-level=2 font="-exact-headline"
+                          if taxon != ""
+                            row align-items="center" gap=8 flex-wrap="wrap"
+                              text "Taxon" flex="1 1 8rem"
+                              text taxon font-style="italic" min-width=0 color="-exact-secondary-label" testId="filter-taxon"
+                              button press=clearTaxon aria-label="Clear taxon" testId="clear-taxon"
+                                image "symbol:close"
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "Kingdom" flex="1 1 8rem"
+                            select value=kingdom change=setKingdom aria-label="Kingdom" testId="filter-kingdom"
+                              option "All kingdoms" value=""
+                              for k in kingdoms key=k.value
+                                option k.label value=k.value
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "From" flex="1 1 8rem"
+                            input type="date" value=startDate change=setStart aria-label="Observed from" testId="filter-start"
+                          row align-items="center" gap=8 flex-wrap="wrap"
+                            text "To" flex="1 1 8rem"
+                            input type="date" value=endDate change=setEnd aria-label="Observed until" testId="filter-end"
+                          for c in criteria key=c.value
+                            row align-items="center" gap=8 flex-wrap="wrap"
+                              text c.label flex="1 1 8rem"
+                              input type="checkbox" checked=qualityList.includes(c.value) change=toggleQuality(c.value) aria-label=c.label testId=`quality-${c.value}`
+                          if filterCount > 0
+                            row
+                              button press=clearFilters testId="clear-filters"
+                                text "Clear All Filters"
+                      if feed.items.length == 0
+                        if pending(feed)
+                          row justify-content="center" padding=24
+                            progress aria-label="Loading" testId="feed-loading"
+                        else
+                          column gap=12 padding=24 align-items="center"
+                            text (feedError != "" ? feedError : (filterCount > 0 ? "No observations match these filters." : "No observations yet.")) text-align="center" testId="feed-empty"
+                            button press=reloadFeed testId="retry"
+                              text "Try Again"
+                      else
+                        if feedError != ""
+                          row align-items="center" gap=8
+                            text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
+                            button press=reloadFeed testId="retry-feed"
+                              text "Try Again"
+                        ObservationGrid(items=feed.items, now=now, prefix="obs", showObserver=true)
+                        if feed.more
+                          row justify-content="center"
+                            button press=moreFeed disabled=pending(feed) testId="more"
+                              text (pending(feed) ? "Loading…" : "Show More")
+
+              if e.name == "observation"
+                column navigationKey=`${e.id}` navigationScroll=`detail-${e.id}` position="absolute" inset=0
+                  if detail.found and detail.did == e.params.did and detail.rkey == e.params.rkey
+                    header display="flex" align-items="center" padding="8px 16px"
+                      text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
+                    ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal,
+                      signedIn=account.signedIn, toggleLike=toggleLike, likeBusy=pending(liked), likeError=likeError,
+                      openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError,
+                      commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError,
+                      inatLinked=inat.linked, crosspost=crosspostShown, postToInat=postToInat, crosspostBusy=pending(crossposted), crosspostError=crosspostError)
+                  else
+                    header display="flex" align-items="center" padding="8px 16px"
+                      text "Observation" role="heading" aria-level=2
+                    Waiting(id=`detail-${e.id}`, busy=pending(detail), error=detailError, retry=reloadDetail, testPrefix="detail")
+
+              if e.name == "photo"
+                column navigationKey=`${e.id}` navigationPresentation="modal" position="absolute" inset=0
+                  header display="flex" align-items="center" justify-content="space-between" padding="8px 16px"
+                    button id="back" press=back aria-label="Close" testId="photo-close"
+                      image "symbol:close"
+                    text (detail.found ? titleOf(detail.obs) : "Photo") role="heading" aria-level=2
+                  column flex=1 min-height=0 justify-content="center" align-items="center" padding=16 gap=8
+                    for p in detail.photos.filter(x => x.index.toString() == e.params.index and detail.did == e.params.did and detail.rkey == e.params.rkey) key=p.index
+                      image p.url width="100%" flex=1 min-height=0 object-fit="contain" aria-label=`Photo of ${titleOf(detail.obs)}` testId="lightbox-photo"
+                      if p.license != ""
+                        text `Photo: ${p.license}` font="-exact-footnote" color="-exact-secondary-label" text-align="center"
+
+              if e.name == "profile"
+                column navigationKey=`${e.id}` navigationScroll=`profile-${e.id}` position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text (person.found and person.did == e.params.did ? person.name : "Profile") role="heading" aria-level=2 testId="profile-title"
+                  if person.found and person.did == e.params.did
+                    scroll id=`profile-${e.id}` flex=1 min-height=0 overflow-x="hidden"
+                      column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                        column class=Card gap=12
+                          row gap=12 align-items="center" flex-wrap="wrap"
+                            if person.avatar != ""
+                              image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
+                            column flex="1 1 10rem" min-width=0 gap=2
+                              text person.name font="-exact-title2"
+                              if person.handle != ""
+                                text person.handle color="-exact-secondary-label" testId="profile-handle"
+                          row flex-wrap="wrap" justify-content="space-around"
+                            Stat(value=person.observations, label="Observations", testId="stat-observations")
+                            Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
+                            Stat(value=person.species, label="Species", testId="stat-species")
+                        row role="radiogroup" aria-label="Show" gap=8 flex-wrap="wrap"
+                          button role="radio" aria-checked=(profileTab == "observations") press=showProfileTab("observations") flex=1 flex-basis="8rem" testId="profile-tab-observations"
+                            text "Observations"
+                          button role="radio" aria-checked=(profileTab == "identifications") press=showProfileTab("identifications") flex=1 flex-basis="8rem" aria-label="Identifications" testId="profile-tab-identifications"
+                            text "IDs"
+                        if profileTab == "identifications"
+                          if personIds.items.length == 0
+                            text (pending(personIds) ? "Loading…" : "No identifications yet.") color="-exact-secondary-label" text-align="center" padding=24
+                          else
+                            column class=Card padding="4px 16px"
+                              for i, n in personIds.items key=i.uri
+                                CardLink(href=path("observation", i.did, i.rkey), testId=`pid-${n}`)
+                                  column flex=1 min-width=0 gap=2
+                                    text i.scientificName font-style="italic" testId=`pid-name-${n}`
+                                    text `${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+                          if personIds.more
+                            row justify-content="center"
+                              button press=moreProfileIds disabled=pending(personIds) testId="more-profile-ids"
+                                text (pending(personIds) ? "Loading…" : "Show More")
+                        if profileTab == "observations"
+                          if person.items.length > 0
+                            ObservationGrid(items=person.items, now=now, prefix="pobs", showObserver=false)
+                          else
+                            text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label" text-align="center" padding=24
+                          if person.more
+                            row justify-content="center"
+                              button press=morePerson disabled=pending(person) testId="more-profile"
+                                text (pending(person) ? "Loading…" : "Show More")
+                  else
+                    Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
+
+              if e.name == "taxon"
+                column navigationKey=`${e.id}` navigationScroll=`taxon-${e.id}` position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
+                  if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
+                    TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon)
+                  else
+                    Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
+
+              if e.name == "search"
+                column navigationKey=`${e.id}` navigationScroll="search-results" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Search Taxa" role="heading" aria-level=2 flex=1
+                    input type="search" value=query input=search placeholder="Species, genus, family…" aria-label="Search taxa" testId="search" width="100%"
+                  list id="search-results" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      for t, n in found key=`${t.kingdom}/${t.name}`
+                        TaxonLinkRow(t=t, testId=`found-${n}`)
+                      if found.length == 0
+                        row
+                          text (query.trim().length < 2 ? "Type at least two letters." : (pending(found) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label" testId="search-empty"
+
+              if e.name == "home"
+                column navigationKey=`${e.id}` navigationScroll="home-feed" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
+                    text "Home" role="heading" aria-level=1 flex=1
+                    button press=openLive aria-label="Live ID" testId="home-live"
+                      image "symbol:camera"
+                    button press=openBatch aria-label="Batch upload" testId="home-batch"
+                      image "symbol:layers"
+                    button press=openNew aria-label="New observation" testId="home-new-observation"
+                      image "symbol:add"
+                  // A content screen, as Explore: the photos in a grid on the page, the upload
+                  // queue a card above them. A grouped list's rows would make each photo a row.
+                  scroll id="home-feed" flex=1 min-height=0 overflow-x="hidden" testId="home-scroll"
+                    column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                      if queue.length > 0
+                        column class=Card gap=12 testId="pending"
+                          text "Waiting to Upload" role="heading" aria-level=2 font="-exact-headline"
+                          for q, n in queue key=q.id
+                            row gap=12 align-items="center" flex-wrap="wrap"
+                              if q.thumb != ""
+                                image q.thumb width=40 height=40 object-fit="cover" border-radius=6 aria-label=q.title
+                              column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                                text q.title testId=`queued-${n}`
+                                text (q.status == "failed" ? `Refused: ${q.error}` : (pending(sent) ? "Uploading…" : "Waiting")) font="-exact-footnote"
+                                  color=(q.status == "failed" ? "-exact-system-red" : "-exact-secondary-label") testId=`queued-status-${n}`
+                              if q.status == "failed"
+                                button press=retryItem(q.id) testId=`queued-retry-${n}`
+                                  text "Retry"
+                              button press=discardItem(q.id) destructive=true testId=`queued-discard-${n}`
+                                text "Discard"
+                          row gap=12 align-items="center" flex-wrap="wrap"
+                            button press=sendNow disabled=(pending(sent) or queueWaiting == 0) testId="send-now"
+                              text (pending(sent) ? "Uploading…" : "Upload Now")
+                            text sendNote font="-exact-footnote" color="-exact-secondary-label" flex="1 1 12rem" min-width=0 testId="send-note"
+                      if queue.length == 0 and sendNote != ""
+                        column class=Card
+                          text sendNote testId="sent-note"
+                      if not account.signedIn
+                        column gap=12 padding=24 align-items="center"
+                          text (pending(account) ? "Loading…" : "Sign in to see your home feed.") text-align="center" testId="home-signed-out"
+                          if not pending(account)
+                            button press=goAccount buttonStyle="filled" testId="home-sign-in"
+                              text "Sign In"
+                      else
+                        if home.items.length == 0
+                          if pending(home)
+                            row justify-content="center" padding=24
+                              progress aria-label="Loading" testId="home-loading"
+                          else
+                            column gap=12 padding=24 align-items="center"
+                              text (homeError != "" ? homeError : "Nothing here yet.") text-align="center" testId="home-empty"
+                              if homeError != ""
+                                button press=reloadHome testId="retry-home"
+                                  text "Try Again"
+                        else
+                          ObservationGrid(items=home.items, now=now, prefix="home", showObserver=true)
+                          if home.more
+                            row justify-content="center"
+                              button press=moreHome disabled=pending(home) testId="more-home"
+                                text (pending(home) ? "Loading…" : "Show More")
+
+              if e.name == "batch"
+                column navigationKey=`${e.id}` navigationScroll="batch-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Batch Upload" role="heading" aria-level=2 flex=1
+                    button press=uploadBatch buttonStyle="bordered-prominent" disabled=(batchReady == 0 or pending(enqueued) or pending(batchFacts)) testId="batch-upload"
+                      text (pending(enqueued) ? "Preparing…" : `Upload ${batchReady}`)
+                  list id="batch-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if batchError != "" and not pending(enqueued)
+                      section
+                        row
+                          text batchError color="-exact-system-red" flex=1 min-width=0 testId="batch-error"
+                    section
+                      row
+                        button press=chooseBatch testId="batch-add"
+                          text (batchPhotos.length > 0 ? "Add More Photos" : "Add Photos")
+                        input type="file" accept="image/*" multiple=true id="batch-photos" testId="batch-photos" display="none" change=addBatch
+                      if inat.linked
+                        row
+                          text "Also post them to iNaturalist" flex=1 min-width=0
+                          input type="checkbox" checked=batchCrosspost change=setBatchCrosspost aria-label="Also post them to iNaturalist" testId="batch-crosspost"
+                      footer
+                        text (pending(batchFacts) ? "Reading your photos…" : "Each photo becomes its own observation, dated and placed from the photo.")
+                    if batchFacts.length > 0
+                      section
+                        for f, n in batchFacts key=f.path
+                          row gap=12 align-items="center" flex-wrap="wrap" padding-top=6 padding-bottom=6 delete=removeBatch(f.path)
+                            if f.thumb != ""
+                              image f.thumb width=56 height=56 object-fit="cover" border-radius=8 aria-label=`Photo ${n + 1}`
+                            column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                              text (chosenLabel(batchTaxa, f.path) != "" ? chosenLabel(batchTaxa, f.path) : "Unidentified") testId=`batch-title-${n}`
+                              text `${f.takenAt != "" ? f.takenAt.replaceAll("T", " ") : "No date"} · ${f.hasPlace ? "placed" : (batchHere ? "at your location" : "no place")}`
+                                font="-exact-footnote" color="-exact-secondary-label" testId=`batch-facts-${n}`
+                              if chosenLabel(batchTaxa, f.path) == ""
+                                for g in batchGuesses.filter(x => x.path == f.path and x.scientificName != "") key=g.path
+                                  button press=useGuess(f.path, g.scientificName, g.rank, g.kingdom, g.label) testId=`batch-use-${n}`
+                                    text `Use ${g.label} (${g.confidence}%)`
+                              else
+                                button press=clearGuess(f.path) testId=`batch-clear-${n}`
+                                  text "Change to Unidentified"
+                            button press=removeBatch(f.path) aria-label=`Remove photo ${n + 1}` testId=`batch-remove-${n}`
+                              image "symbol:close"
+                    if batchMissing > 0
+                      section
+                        row
+                          text (batchHere ? `${countOf(batchMissing, "photo without a place goes", "photos without a place go")} at your location.` : `${countOf(batchMissing, "photo has", "photos have")} no place and won’t upload.`) flex=1 min-width=0 testId="batch-missing"
+                        if not batchHere
+                          row
+                            button press=batchUseLocation disabled=pending(locatedBatch) testId="batch-locate"
+                              text (pending(locatedBatch) ? "Finding You…" : "Place Them at My Location")
+                        footer
+                          text batchLocateError
+
+              if e.name == "live"
+                column navigationKey=`${e.id}` position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "Live ID" role="heading" aria-level=2 flex=1
+                  column flex=1 min-height=0 position="relative" background-color="-exact-secondary-background"
+                    if liveTrack != ""
+                      exact-camera srcObject=liveTrack object-fit="cover" width="100%" height="100%" aria-label="Camera" testId="live-camera"
+                    else
+                      column flex=1 justify-content="center" align-items="center" padding=24
+                        text (cameraError != "" ? cameraError : "Opening the camera…") text-align="center" testId="live-status"
+                  column padding=16 gap=8
+                    for g, n in liveGuesses key=g.scientificName
+                      row gap=8 align-items="center" flex-wrap="wrap"
+                        column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                          text (g.commonName != "" ? `${g.commonName} · ${g.scientificName}` : g.scientificName) testId=`live-name-${n}`
+                          text `${g.confidence}%${g.inRange ? "" : " · out of range"}` font="-exact-footnote" color="-exact-secondary-label"
+                        button press=useLiveGuess(g.scientificName, g.rank, g.kingdom, (g.commonName != "" ? `${g.commonName} · ${g.scientificName}` : g.scientificName)) testId=`live-use-${n}`
+                          text "Use"
+                    if liveGuesses.length == 0
+                      text (livePath == "" ? "Point the camera at what you see." : (pending(liveGuesses) ? "Looking…" : "Nothing recognised yet.")) color="-exact-secondary-label" testId="live-hint"
+
+              if e.name == "new"
+                // A pushed screen, not a sheet: Exact's web sheet grows with its content instead
+                // of scrolling, which would put Save off a short window. Back cancels.
+                column navigationKey=`${e.id}` navigationScroll="new-form" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    text "New Observation" role="heading" aria-level=2 flex=1
+                    button press=saveNew buttonStyle="bordered-prominent" disabled=(not canSave) testId="new-save"
+                      text (pending(created) ? "Saving…" : "Save")
+                  list id="new-form" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if createError != "" and not pending(created)
+                      section
+                        row
+                          text createError color="-exact-system-red" flex=1 min-width=0 testId="new-error"
+                    section
+                      header
+                        text "Photos"
+                      if newFacts.length > 0
+                        row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
+                          for f, n in newFacts key=f.path
+                            button press=removePhoto(f.path) aria-label=`Remove photo ${n + 1}` appearance="none" testId=`new-photo-${n}`
+                              if f.thumb != ""
+                                image f.thumb width=72 height=72 object-fit="cover" border-radius=8
+                              else
+                                column width=72 height=72 border-radius=8 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
+                                  image "symbol:photo" color="-exact-secondary-label"
+                      row
+                        button press=choosePhotos testId="new-add-photos"
+                          text (newPhotos.length > 0 ? "Add More Photos" : "Add Photos")
+                        input type="file" accept="image/*" multiple=true id="new-photos" testId="new-photos" display="none" change=addPhotos
+                      footer
+                        text (pending(newFacts) ? "Reading your photos…" : (newPhotos.length > 0 ? "Tap a photo to remove it." : "The first photo’s date and place fill in below.")) testId="new-photos-note"
+                    section
+                      header
+                        text "Species"
+                      if newTaxonName != ""
+                        row
+                          column flex=1 min-width=0 gap=2
+                            text newTaxonLabel testId="new-taxon"
+                            text capitalized(newTaxonRank) font="-exact-footnote" color="-exact-secondary-label"
+                          button press=clearNewTaxon aria-label="Change species" testId="new-taxon-clear"
+                            image "symbol:close"
+                      else
+                        for sg, n in newSuggestions key=sg.scientificName
+                          row press=pickTaxon(sg.scientificName, sg.rank, sg.kingdom, (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName))
+                            role="button" tabindex=0 flex-wrap="wrap" gap=8 testId=`suggestion-${n}`
+                            text (sg.commonName != "" ? `${sg.commonName} · ${sg.scientificName}` : sg.scientificName) color="-exact-link" flex=1 min-width=0
+                            text (sg.inRange ? `${sg.confidence}%` : `${sg.confidence}% · out of range`) color="-exact-secondary-label"
+                        row
+                          input type="search" value=newTaxonQuery input=searchNewTaxon placeholder="Search for a species" aria-label="Search for a species"
+                            flex=1 min-width=0 testId="new-taxon-search"
+                        for t, n in newFound key=`${t.kingdom}/${t.name}`
+                          row press=pickTaxon(t.scientificName, t.rank, t.kingdom, (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName))
+                            role="button" tabindex=0 testId=`new-found-${n}`
+                            text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) color="-exact-link" flex=1 min-width=0
+                      footer
+                        text (newTaxonName != "" ? "" : (pending(newSuggestions) ? "Looking at your photo…" : (newSuggestions.length > 0 ? "Suggestions from your first photo." : "Leave it empty if you don’t know: others can identify it.")))
+                    section
+                      header
+                        text "When"
+                      row flex-wrap="wrap" gap=8
+                        text "Day" flex=1
+                        input type="date" value=newDayShown change=setNewDate aria-label="Day observed" testId="new-date"
+                      row flex-wrap="wrap" gap=8
+                        text "Time" flex=1
+                        input type="time" value=newTimeShown change=setNewTime aria-label="Time observed" testId="new-time"
+                      footer
+                        text (newDate == "" and newTime == "" and photoTakenAt != "" ? "From the photo." : "") testId="new-date-note"
+                    section
+                      header
+                        text "Where"
+                      if newHasPlace
+                        exact-map latitude=newLatShown longitude=newLngShown zoomLevel=some(newPlaced and newLat == 20 and newLng == 0 ? 2 : 14)
+                          markers=some([MapMarker(id="new", latitude=newLatShown, longitude=newLngShown, title=none)]) moveend=movedMap
+                          height=220 width="100%" border-radius=10 testId="new-map" aria-label="Map: drag to place the observation"
+                        row flex-wrap="wrap" gap=8
+                          text "Location" flex=1
+                          text `${newLatShown.toFixed(4)}, ${newLngShown.toFixed(4)}${newUncertaintyShown > 0 ? ` (±${newUncertaintyShown} m)` : ""}` color="-exact-secondary-label" testId="new-place"
+                      row
+                        button press=useMyLocation disabled=pending(located) testId="new-locate"
+                          text (pending(located) ? "Finding You…" : "Use My Location")
+                      if not newHasPlace
+                        row
+                          button press=placeOnMap testId="new-place-on-map"
+                            text "Place on a Map"
+                      footer
+                        text (locateError != "" ? locateError : (newPlaced ? "Move the map to put the pin where you saw it." : (photoHasPlace ? "From the photo. Move the map to change it." : "A place is required."))) testId="new-place-note"
+                    section
+                      header
+                        text "Notes"
+                      row
+                        textarea value=newNotes input=editNotes placeholder="What you noticed" aria-label="Notes" flex=1 min-width=0 testId="new-notes"
+                    if inat.linked
+                      section
+                        row
+                          text "Also post to iNaturalist" flex=1 min-width=0
+                          input type="checkbox" checked=newCrosspost change=setNewCrosspost aria-label="Also post to iNaturalist" testId="new-crosspost"
+                    section
+                      header
+                        text "License"
+                      row flex-wrap="wrap" gap=8
+                        text "Photos and record" flex=1
+                        select value=newLicenseShown change=pickNewLicense aria-label="License" testId="new-license"
+                          option "None" value=""
+                          for l in licenses key=l.value
+                            option l.label value=l.value
+
+              if e.name == "identify"
+                column navigationKey=`${e.id}` navigationPresentation="modal" navigationScroll="identify-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" gap=8 padding="8px 16px"
+                    button id="back" press=back aria-label="Cancel" testId="identify-cancel"
+                      image "symbol:close"
+                    text "Suggest an Identification" role="heading" aria-level=2 flex=1
+                    input type="search" value=idQuery input=searchId placeholder="Species, genus, family…" aria-label="Search taxa to identify"
+                      testId="identify-search" width="100%"
+                  list id="identify-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    section
+                      for t, n in idFound key=`${t.kingdom}/${t.name}`
+                        button press=pickId(t.scientificName, t.rank, t.kingdom) disabled=pending(identified) testId=`identify-${n}`
+                          text (t.commonName != "" ? `${t.commonName} · ${t.scientificName}` : t.scientificName) flex=1 min-width=0
+                      if idFound.length == 0
+                        row
+                          text (idQuery.trim().length < 2 ? "Type at least two letters." : (pending(idFound) ? "Searching…" : "No taxa found.")) color="-exact-secondary-label"
+                      footer
+                        text (identifyError != "" ? identifyError : (pending(identified) ? "Saving your identification…" : "Your identification is saved to your own account.")) testId="identify-note"
+
+              if e.name == "notifications"
+                column navigationKey=`${e.id}` navigationScroll="notes-list" position="absolute" inset=0
+                  header display="flex" flex-wrap="wrap" align-items="center" padding="8px 16px"
+                    text "Notifications" role="heading" aria-level=1 flex=1
+                    if account.signedIn and unread.count > 0
+                      button press=markAllRead disabled=pending(marked) testId="mark-all-read"
+                        text "Mark All Read"
+                  list id="notes-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if not account.signedIn
+                      section
+                        row
+                          column flex=1 gap=12 padding=12 align-items="center"
+                            text "Sign in to see who identified, commented on or liked your observations." text-align="center" testId="notes-signed-out"
+                            button press=goAccount buttonStyle="filled" testId="notes-sign-in"
+                              text "Sign In"
+                    else
+                      section
+                        for n in notes.items key=n.id
+                          link href=path("observation", n.did, n.rkey) press=readNote(n.id, n.read, path("observation", n.did, n.rkey)) testId=`note-${n.id}`
+                            row gap=12 align-items="center" flex=1 min-width=0
+                              if not n.read
+                                view width=10 height=10 border-radius=5 background-color="-exact-system-blue" aria-label="Unread" testId=`unread-${n.id}`
+                              column flex=1 min-width=0 gap=2
+                                text n.text testId=`note-text-${n.id}`
+                                text formatDay(n.at, now, offset, "day") font="-exact-footnote" color="-exact-secondary-label"
+                            image "symbol:forward-chevron"
+                        if notes.items.length == 0
+                          row
+                            text (pending(notes) ? "Loading…" : (notesError != "" ? notesError : "Nothing yet.")) color="-exact-secondary-label" testId="notes-empty"
+                      if notes.more
+                        section
+                          button press=moreNotes disabled=pending(notes) testId="more-notes"
+                            text (pending(notes) ? "Loading…" : "Show More")
+
+              if e.name == "account"
+                column navigationKey=`${e.id}` navigationScroll="account-list" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Account" role="heading" aria-level=1 flex=1
+                  list id="account-list" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+                    if account.signedIn
+                      section
+                        link href=path("profile", account.did) testId="account-profile"
+                          row gap=12 align-items="center" flex=1 min-width=0
+                            if account.avatar != ""
+                              image account.avatar width=48 height=48 border-radius=24 object-fit="cover" aria-label=`${account.name}’s avatar`
+                            column flex=1 min-width=0 gap=2
+                              text account.name font="-exact-headline" testId="account-name"
+                              text account.handle color="-exact-secondary-label" testId="account-handle"
+                          image "symbol:forward-chevron"
+                      section
+                        header
+                          text "Preferences"
+                        row
+                          text "Default license" flex=1
+                          select value=prefs.license change=pickLicense disabled=pending(licensed) aria-label="Default license for new observations" testId="default-license"
+                            option "None" value=""
+                            for l in licenses key=l.value
+                              option l.label value=l.value
+                        footer
+                          text (licenseError != "" ? licenseError : "New observations get this license unless you choose another.") testId="license-note"
+                      if inat.enabled
+                        section testId="inat"
+                          header
+                            text "iNaturalist"
+                          if inat.linked
+                            row flex-wrap="wrap" gap=8
+                              text "Linked account" flex=1
+                              text `@${inat.login}` color="-exact-secondary-label" testId="inat-login"
+                            row
+                              text "Post new observations to iNaturalist" flex=1 min-width=0
+                              input type="checkbox" checked=inat.crosspost change=toggleCrosspost disabled=pending(crosspostPrefs)
+                                aria-label="Post new observations to iNaturalist" testId="inat-crosspost"
+                            row
+                              text "Only ones with photos" flex=1 min-width=0
+                              input type="checkbox" checked=inat.requirePhotos change=toggleRequirePhotos disabled=(not inat.crosspost or pending(crosspostPrefs))
+                                aria-label="Only post ones with photos" testId="inat-require-photos"
+                            row
+                              button commandfor="unlink-inat" command="show-modal" destructive=true testId="inat-unlink"
+                                text "Unlink iNaturalist"
+                          else
+                            row
+                              button press=startInatLink disabled=pending(inatLinked) testId="inat-link"
+                                text (pending(inatLinked) ? "Linking…" : "Link iNaturalist Account")
+                          footer
+                            text (inatError != "" ? inatError : (inat.linked ? "Cross-posts go to your iNaturalist account, linked back to here." : "Post your observations to iNaturalist too.")) testId="inat-note"
+                      section
+                        button press=signOut destructive=true disabled=pending(signedOut) testId="sign-out"
+                          text "Sign Out"
+                    else
+                      section
+                        header
+                          text "Your atproto handle"
+                        row
+                          input value=handleDraft input=editHandle submit=signIn placeholder="alice.bsky.social" aria-label="Handle"
+                            autocapitalize="none" autocomplete="username" enterkeyhint="go" flex=1 min-width=0 testId="handle"
+                        footer
+                          text (signInProblem != "" ? signInProblem : "You’ll finish signing in on your account’s own page, then come back here.") testId="sign-in-note"
+                      section
+                        button press=signIn disabled=(handleDraft.trim() == "" or pending(signedIn)) testId="sign-in"
+                          text (pending(signedIn) ? "Signing In…" : "Sign In")
+                    if downloads.android != ""
+                      section testId="downloads"
+                        header
+                          text "Get the App"
+                        button press=openExternal(downloads.android) testId="download-android"
+                          text "Download for Android"
+                        button press=openExternal(downloads.ios) testId="download-ios"
+                          text "Download for iOS Simulator"
+                        footer
+                          text "Test builds of the latest version. On Android, uninstall the previous build before installing a new one. The iOS build runs only in Xcode’s Simulator." testId="downloads-note"
+      dialog id="withdraw" role="alertdialog" aria-label="Withdraw your identification?"
+        text "It’s removed from this observation and from your account."
+        button press=withdraw destructive=true commandfor="withdraw" command="close" testId="withdraw-confirm"
+          text "Withdraw"
+        button commandfor="withdraw" command="close"
+          text "Cancel"
+      dialog id="unlink-inat" role="alertdialog" aria-label="Unlink iNaturalist?"
+        text "New observations stop going to iNaturalist. What’s already there stays."
+        button press=unlinkInat destructive=true commandfor="unlink-inat" command="close" testId="unlink-confirm"
+          text "Unlink"
+        button commandfor="unlink-inat" command="close"
+          text "Cancel"
+      dialog id="delete-observation" role="alertdialog" aria-label="Delete this observation?"
+        text "It’s deleted from your account, with its photos. This can’t be undone."
+        button press=deleteObservation destructive=true commandfor="delete-observation" command="close" testId="delete-confirm"
+          text "Delete"
+        button commandfor="delete-observation" command="close"
+          text "Cancel"
+      row role="tablist"
+        button role="tab" aria-controls="panel-explore" aria-selected=(nav.tab == "explore") press=pick("explore") testId="tab-explore" flex=1
+          image "symbol:feeds"
+          text "Explore"
+        button role="tab" aria-controls="panel-home" aria-selected=(nav.tab == "home") press=pick("home") testId="tab-home" flex=1
+          image "symbol:home"
+          text "Home"
+        button role="tab" aria-controls="panel-notifications" aria-selected=(nav.tab == "notifications") press=pick("notifications") testId="tab-notifications" flex=1
+          image "symbol:notifications"
+          text (unread.count > 0 ? `Notifications (${unread.count})` : "Notifications")
+        button role="tab" aria-controls="panel-account" aria-selected=(nav.tab == "account") press=pick("account") testId="tab-account" flex=1
+          image "symbol:person"
+          text (account.signedIn ? "You" : "Sign In")
+
+
+// Observations as a grid of cards that fills the width: two across on a phone,
+// more on a wide window. Each card opens its observation.
+component ObservationGrid
+  props
+    items: Observation[]
+    now: number
+    prefix: string
+    showObserver: bool
+  view
+    view display="grid" grid-template-columns="repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr))" width="100%" padding-top=2 padding-bottom=6 box-sizing="border-box" testId=`${prefix}-grid`
+      for o in items key=`${o.did}/${o.rkey}`
+        ObservationCard(o=o, now=now, prefix=prefix, showObserver=showObserver)
+
+// An observation as a card: the photo square across the card's width, its
+// names and who saw it when under it. The whole card opens it.
+component ObservationCard
+  props
+    o: Observation
+    now: number
+    prefix: string
+    showObserver: bool
+  view
+    link href=path("observation", o.did, o.rkey) testId=`${prefix}-${o.rkey}` display="flex" flex-direction="column" gap=6 min-width=0 padding=6 box-sizing="border-box" border-radius=16
+      if o.photo != ""
+        image o.photo alt="" width="100%" aspect-ratio=1 object-fit="cover" border-radius=12 background-color="-exact-secondary-fill"
+      else
+        column width="100%" aspect-ratio=1 border-radius=12 background-color="-exact-secondary-fill" justify-content="center" align-items="center"
+          image "symbol:photo" color="-exact-secondary-label"
+      column gap=2 min-width=0
+        // A name with no common name is the scientific one, italic as observ.ing sets it.
+        text titleOf(o) font="-exact-headline" font-style=(o.commonName == "" and o.scientificName != "" ? "italic" : "normal")
+          line-clamp=1 testId=`${prefix}-title-${o.rkey}`
+        if o.commonName != "" and o.scientificName != ""
+          text o.scientificName font-style="italic" color="-exact-secondary-label" line-clamp=1
+        // A long name gives way, never the date.
+        row min-width=0
+          if showObserver
+            text o.observer font="-exact-footnote" color="-exact-secondary-label" white-space="nowrap" overflow="hidden" text-overflow="ellipsis" flex="0 1 auto" min-width=0
+            text ` · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` font="-exact-footnote" color="-exact-secondary-label" flex-shrink=0 white-space="pre"
+          else
+            text formatDay(o.observedAt, now, o.observedOffset, "day") font="-exact-footnote" color="-exact-secondary-label" line-clamp=1
+
+// A row in a card that opens another screen: its content, then a chevron. Its
+// hover wash reaches 8 px into the card's padding on each side.
+component CardLink
+  props
+    href: string
+    testId: string
+  slot
+  view
+    link href=href testId=testId display="flex" align-items="center" gap=12 min-width=0 padding="10px 8px" margin="0 -8px" border-radius=8 color="-exact-label"
+      children
+      image "symbol:forward-chevron" color="-exact-tertiary-label"
+
+// A taxon as a CardLink: its picture, name and rank.
+component TaxonCardLink
+  props
+    t: TaxonRow
+    testId: string
+  view
+    CardLink(href=path("taxon", t.kingdom, t.name), testId=testId)
+      if t.photo != ""
+        image t.photo width=40 height=40 object-fit="cover" border-radius=6 aria-label=t.scientificName
+      column flex=1 min-width=0 gap=2
+        text taxonTitle(t.commonName, t.scientificName) testId=`${testId}-name`
+        text (t.commonName != "" ? `${capitalized(t.rank)} · ${t.scientificName}` : capitalized(t.rank)) font="-exact-footnote" color="-exact-secondary-label"
+
+component TaxonLinkRow
+  props
+    t: TaxonRow
+    testId: string
+  view
+    link href=path("taxon", t.kingdom, t.name) testId=testId
+      row gap=12 align-items="center" flex=1 min-width=0
+        if t.photo != ""
+          image t.photo width=40 height=40 object-fit="cover" border-radius=6 aria-label=t.scientificName
+        column flex=1 min-width=0 gap=2
+          text taxonTitle(t.commonName, t.scientificName) testId=`${testId}-name`
+          text (t.commonName != "" ? `${capitalized(t.rank)} · ${t.scientificName}` : capitalized(t.rank)) font="-exact-footnote" color="-exact-secondary-label"
+      image "symbol:forward-chevron"
+
+component Stat
+  props
+    value: number
+    label: string
+    testId: string
+  view
+    column flex=1 flex-basis="7rem" min-width=0 align-items="center" gap=2 padding=8
+      text formatNumber(value, "decimal") font="-exact-title3" testId=testId
+      text label font="-exact-footnote" color="-exact-secondary-label" text-align="center"
+
+// A screen whose data has not arrived: a spinner, or why not and Try Again.
+component Waiting
+  props
+    id: string
+    busy: bool
+    error: string
+    retry: action
+    testPrefix: string
+  view
+    column id=id flex=1 justify-content="center" align-items="center" gap=12 padding=24
+      if error != ""
+        text error text-align="center" testId=`${testPrefix}-error`
+        button press=retry testId=`${testPrefix}-retry`
+          text "Try Again"
+      else
+        progress aria-label="Loading" testId=`${testPrefix}-loading`
+
+// One observation: its photos, names, data quality, facts, map, identifications, comments and links.
+component ObservationDetail
+  props
+    d: Detail
+    now: number
+    offset: number
+    scrollId: string
+    openExternal: action
+    signedIn: bool
+    toggleLike: action
+    likeBusy: bool
+    likeError: string
+    openIdentify: action
+    withdrawError: string
+    removeError: string
+    commentDraft: string
+    editComment: action
+    postComment: action
+    commentBusy: bool
+    commentError: string
+    inatLinked: bool
+    crosspost: Crosspost
+    postToInat: action
+    crosspostBusy: bool
+    crosspostError: string
+  view
+    list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
+      if d.photos.length > 0
+        section
+          for p in d.photos.slice(0, 1) key=p.index
+            link href=path("photo", d.did, d.rkey, p.index.toString()) testId="detail-photo"
+              image p.url width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=`Photo of ${titleOf(d.obs)}`
+          if d.photos.length > 1
+            row gap=8 flex-wrap="wrap"
+              for p in d.photos.slice(1) key=p.index
+                link href=path("photo", d.did, d.rkey, p.index.toString()) testId=`detail-photo-${p.index}`
+                  image p.thumb width=72 height=72 object-fit="cover" border-radius=8 aria-label=`Photo ${p.index + 1} of ${titleOf(d.obs)}`
+          footer
+            text (d.photos.length > 1 ? `${d.photos.length} photos` : match first(d.photos) { case some(p) => (p.license != "" ? `Photo ${p.license}` : ""), case none => "" })
+      section
+        if d.taxonName != ""
+          link href=path("taxon", d.taxonKingdom, d.taxonName) testId="detail-taxon"
+            column flex=1 min-width=0 gap=2
+              text titleOf(d.obs) font="-exact-title2"
+              if d.obs.scientificName != "" and d.obs.commonName != ""
+                text d.obs.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci"
+              if d.obs.rank != ""
+                text capitalized(d.obs.rank) font="-exact-footnote" color="-exact-secondary-label"
+            image "symbol:forward-chevron"
+        else
+          row
+            text titleOf(d.obs) font="-exact-title2"
+        if d.obs.needsId
+          row gap=8
+            image "symbol:alert" color="-exact-system-orange"
+            text "Needs an identification" flex=1 min-width=0 testId="needs-id"
+      section
+        header
+          text "Observation"
+        row
+          text "Observed" flex=1
+          text formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time") color="-exact-secondary-label" testId="detail-date"
+        link href=path("profile", d.obs.observerDid) testId="detail-observer-link"
+          text "By" flex=1
+          text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) color="-exact-secondary-label" testId="detail-observer"
+          image "symbol:forward-chevron"
+        if d.obs.place != ""
+          row
+            text "Location" flex=1
+            text d.obs.place color="-exact-secondary-label" testId="detail-place"
+        row
+          text "Likes" flex=1
+          text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label" testId="like-count"
+          button press=toggleLike disabled=likeBusy aria-label=(d.liked ? "Unlike" : "Like") aria-pressed=d.liked testId="like"
+            image (d.liked ? "symbol:heart-fill" : "symbol:heart")
+        if likeError != ""
+          row
+            text likeError color="-exact-system-red" flex=1 min-width=0 testId="like-error"
+      if d.hasLocation
+        section
+          exact-map latitude=d.latitude longitude=d.longitude zoomLevel=some(12)
+            markers=some([MapMarker(id="here", latitude=d.latitude, longitude=d.longitude, title=some(titleOf(d.obs)))])
+            height=220 width="100%" border-radius=10 testId="detail-map" aria-label=`Map: observed at ${d.obs.place}`
+      if d.issues.length > 0
+        section testId="data-quality"
+          header
+            text "Data Quality"
+          for i in d.issues key=i
+            row
+              image "symbol:alert" color="-exact-system-orange"
+              text i flex=1 min-width=0
+      if d.obs.lineage != ""
+        section
+          header
+            text "Taxonomy"
+          row padding-top=8 padding-bottom=8
+            text d.obs.lineage flex=1 min-width=0 testId="detail-lineage"
+      section testId="identifications"
+        header
+          text countOf(d.identifications.length, "Identification", "Identifications")
+        for i, n in d.identifications key=i.uri
+          if i.kingdom != ""
+            link href=path("taxon", i.kingdom, i.scientificName) testId=`ident-${n}`
+              IdText(i=i, now=now, offset=offset)
+              image "symbol:forward-chevron"
+          else
+            row testId=`ident-${n}`
+              IdText(i=i, now=now, offset=offset)
+        if d.identifications.length == 0
+          row
+            text "No identifications yet." color="-exact-secondary-label"
+        row
+          button press=openIdentify testId="suggest-id"
+            text (signedIn ? "Suggest an Identification" : "Sign In to Suggest an Identification")
+        if d.identifications.filter(i => i.mine).length > 0
+          row
+            button commandfor="withdraw" command="show-modal" destructive=true testId="withdraw-id"
+              text "Withdraw Your Identification"
+        if withdrawError != ""
+          row
+            text withdrawError color="-exact-system-red" flex=1 min-width=0 testId="withdraw-error"
+      section testId="comments"
+        header
+          text countOf(d.comments.length, "Comment", "Comments")
+        for c, n in d.comments key=c.uri
+          row padding-top=8 padding-bottom=8
+            column flex=1 min-width=0 gap=4
+              text `${c.who} · ${formatDay(c.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+              text c.body testId=`comment-${n}`
+        if d.comments.length == 0
+          row
+            text "No comments yet." color="-exact-secondary-label"
+        if signedIn
+          row
+            textarea value=commentDraft input=editComment placeholder="Add a comment" aria-label="Comment" flex=1 min-width=0 testId="comment-draft"
+          row
+            button press=postComment disabled=(commentDraft.trim() == "" or commentBusy) testId="post-comment"
+              text (commentBusy ? "Posting…" : "Post Comment")
+          if commentError != ""
+            row
+              text commentError color="-exact-system-red" flex=1 min-width=0 testId="comment-error"
+      if d.obs.remarks != "" or d.eventRemarks != ""
+        section
+          header
+            text "Remarks"
+          if d.obs.remarks != ""
+            row padding-top=8 padding-bottom=8
+              text d.obs.remarks flex=1 min-width=0 testId="detail-remarks"
+          if d.eventRemarks != ""
+            row padding-top=8 padding-bottom=8
+              text d.eventRemarks flex=1 min-width=0 color="-exact-secondary-label" testId="detail-event-remarks"
+      if d.links.length > 0
+        section
+          header
+            text "Elsewhere"
+          for l in d.links key=l.url
+            row
+              button press=openExternal(l.url) testId=`external-${l.label}`
+                text `View on ${l.label}`
+      if d.mine and inatLinked
+        section testId="crosspost"
+          header
+            text "iNaturalist"
+          row
+            text (crosspost.status == "synced" ? "Posted to iNaturalist." : (crosspost.status == "pending" ? "Posting to iNaturalist…" : (crosspost.status == "failed" ? `Couldn’t post: ${crosspost.error}` : "Not on iNaturalist yet.")))
+              color=(crosspost.status == "failed" ? "-exact-system-red" : "-exact-label") flex=1 min-width=0 testId="crosspost-status"
+          if crosspost.url != ""
+            row
+              button press=openExternal(crosspost.url) testId="crosspost-view"
+                text "View on iNaturalist"
+          if crosspost.status == "" or crosspost.status == "failed"
+            row
+              button press=postToInat disabled=crosspostBusy testId="crosspost-post"
+                text (crosspostBusy ? "Posting…" : (crosspost.status == "failed" ? "Try Posting Again" : "Post to iNaturalist"))
+          if crosspostError != ""
+            row
+              text crosspostError color="-exact-system-red" flex=1 min-width=0 testId="crosspost-error"
+      if d.mine
+        section
+          button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"
+            text "Delete Observation"
+          if removeError != ""
+            row
+              text removeError color="-exact-system-red" flex=1 min-width=0 testId="delete-error"
+
+component IdText
+  props
+    i: IdRow
+    now: number
+    offset: number
+  view
+    column flex=1 min-width=0 gap=2 padding-top=4 padding-bottom=4
+      text i.scientificName font-style="italic"
+      text `${i.who} · ${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+
+// A taxon: its picture, names, place in the tree, what it includes, its observations and pictures.
+component TaxonDetail
+  props
+    t: TaxonPage
+    now: number
+    offset: number
+    scrollId: string
+    busy: bool
+    more: action
+    openExternal: action
+    explore: action
+  view
+    scroll id=scrollId flex=1 min-height=0 overflow-x="hidden"
+      column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+        // The picture beside its names on a wide window, above them on a phone.
+        row class=Card gap=16 flex-wrap="wrap" align-items="center"
+          if t.photo != ""
+            image t.photo flex="1 1 16rem" min-width=0 max-width="min(100%, 28rem)" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=t.scientificName testId="taxon-photo"
+          column flex="1 1 14rem" min-width=0 gap=8
+            column gap=2
+              text taxonTitle(t.commonName, t.scientificName) font="-exact-title2"
+              if t.commonName != ""
+                text t.scientificName font-style="italic" color="-exact-secondary-label" testId="taxon-sci"
+              text capitalized(t.rank) font="-exact-footnote" color="-exact-secondary-label" testId="taxon-rank"
+            if t.status != ""
+              row gap=8 flex-wrap="wrap"
+                text "Conservation status"
+                text t.status color="-exact-secondary-label" testId="taxon-status"
+            if t.extinct
+              text "Extinct" color="-exact-system-red"
+            row gap=8 flex-wrap="wrap"
+              button press=explore(t.scientificName, t.kingdom) testId="taxon-explore"
+                text "Show in Explore"
+              if t.gbifUrl != ""
+                button press=openExternal(t.gbifUrl) testId="taxon-gbif"
+                  text "View on GBIF"
+              if t.wikidataUrl != ""
+                button press=openExternal(t.wikidataUrl) testId="taxon-wikidata"
+                  text "View on Wikidata"
+        if t.description != ""
+          column class=Card gap=8
+            text "About" role="heading" aria-level=2 font="-exact-headline"
+            text t.description testId="taxon-description"
+            if t.descriptionSource != ""
+              text `Source: ${t.descriptionSource}` font="-exact-footnote" color="-exact-secondary-label"
+        // Where it sits, and what it includes: two cards side by side when there's room.
+        if t.ancestors.length > 0 or t.children.length > 0
+          row gap=16 flex-wrap="wrap" align-items="flex-start"
+            if t.ancestors.length > 0
+              column class=Card padding="12px 16px 4px" flex="1 1 18rem" min-width=0 testId="taxon-ancestors"
+                text "Classification" role="heading" aria-level=2 font="-exact-headline"
+                for a in t.ancestors key=`${a.kingdom}/${a.name}`
+                  CardLink(href=path("taxon", a.kingdom, a.name), testId=`ancestor-${a.name}`)
+                    row flex=1 min-width=0 gap="0 12px" flex-wrap="wrap"
+                      text capitalized(a.rank) color="-exact-secondary-label" flex="0 0 5.5rem"
+                      text a.scientificName flex="1 1 8rem" min-width=0
+            if t.children.length > 0
+              column class=Card padding="12px 16px 4px" flex="1 1 18rem" min-width=0 testId="taxon-children"
+                text (t.descendants > 0 ? `Includes · ${formatNumber(t.descendants, "compact")} taxa` : "Includes") role="heading" aria-level=2 font="-exact-headline"
+                for c, n in t.children.slice(0, 50) key=`${c.kingdom}/${c.name}`
+                  TaxonCardLink(t=c, testId=`child-${n}`)
+        text countOf(t.observationCount, "Observation", "Observations") role="heading" aria-level=2 font="-exact-title3" font-weight=600 testId="taxon-count"
+        if t.items.length > 0
+          ObservationGrid(items=t.items, now=now, prefix="tobs", showObserver=true)
+        else
+          text "No observations yet." color="-exact-secondary-label"
+        if t.more
+          row justify-content="center"
+            button press=more disabled=busy testId="more-taxon"
+              text (busy ? "Loading…" : "Show More")
+        if t.media.length > 0
+          column class=Card gap=8
+            text "Pictures" role="heading" aria-level=2 font="-exact-headline"
+            row gap=8 flex-wrap="wrap"
+              for m in t.media key=m.index
+                image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
