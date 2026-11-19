@@ -1564,164 +1564,151 @@ component ObservationDetail
     crosspostBusy: bool
     crosspostError: string
   view
-    list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-      if d.photos.length > 0
-        section
-          for p in d.photos.slice(0, 1) key=p.index
-            link href=path("photo", d.did, d.rkey, p.index.toString()) testId="detail-photo"
-              image p.url width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=`Photo of ${titleOf(d.obs)}`
-          if d.photos.length > 1
-            row gap=8 flex-wrap="wrap"
-              for p in d.photos.slice(1) key=p.index
-                link href=path("photo", d.did, d.rkey, p.index.toString()) testId=`detail-photo-${p.index}`
-                  image p.thumb width=72 height=72 object-fit="cover" border-radius=8 aria-label=`Photo ${p.index + 1} of ${titleOf(d.obs)}`
-          footer
-            text (d.photos.length > 1 ? `${d.photos.length} photos` : match first(d.photos) { case some(p) => (p.license != "" ? `Photo ${p.license}` : ""), case none => "" })
-      section
-        if d.taxonName != ""
-          link href=path("taxon", d.taxonKingdom, d.taxonName) testId="detail-taxon"
-            column flex=1 min-width=0 gap=2
-              text titleOf(d.obs) font="-exact-title2"
-              if d.obs.scientificName != "" and d.obs.commonName != ""
-                text d.obs.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci"
-              if d.obs.rank != ""
-                text capitalized(d.obs.rank) font="-exact-footnote" color="-exact-secondary-label"
-            image "symbol:forward-chevron"
-        else
-          row
-            text titleOf(d.obs) font="-exact-title2"
-        if d.obs.needsId
-          row gap=8
-            image "symbol:alert" color="-exact-system-orange"
-            text "Needs an identification" flex=1 min-width=0 testId="needs-id"
-      section
-        header
-          text "Observation"
-        row
-          text "Observed" flex=1
-          text formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time") color="-exact-secondary-label" testId="detail-date"
-        link href=path("profile", d.obs.observerDid) testId="detail-observer-link"
-          text "By" flex=1
-          text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) color="-exact-secondary-label" testId="detail-observer"
-          image "symbol:forward-chevron"
-        if d.obs.place != ""
-          row
-            text "Location" flex=1
-            text d.obs.place color="-exact-secondary-label" testId="detail-place"
-        row
-          text "Likes" flex=1
-          text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label" testId="like-count"
-          button press=toggleLike disabled=likeBusy aria-label=(d.liked ? "Unlike" : "Like") aria-pressed=d.liked testId="like"
-            image (d.liked ? "symbol:heart-fill" : "symbol:heart")
-        if likeError != ""
-          row
-            text likeError color="-exact-system-red" flex=1 min-width=0 testId="like-error"
-      if d.hasLocation
-        section
-          exact-map latitude=d.latitude longitude=d.longitude zoomLevel=some(12)
-            markers=some([MapMarker(id="here", latitude=d.latitude, longitude=d.longitude, title=some(titleOf(d.obs)))])
-            height=220 width="100%" border-radius=10 testId="detail-map" aria-label=`Map: observed at ${d.obs.place}`
-      if d.issues.length > 0
-        section testId="data-quality"
-          header
-            text "Data Quality"
-          for i in d.issues key=i
-            row
-              image "symbol:alert" color="-exact-system-orange"
-              text i flex=1 min-width=0
-      if d.obs.lineage != ""
-        section
-          header
-            text "Taxonomy"
-          row padding-top=8 padding-bottom=8
-            text d.obs.lineage flex=1 min-width=0 testId="detail-lineage"
-      section testId="identifications"
-        header
-          text countOf(d.identifications.length, "Identification", "Identifications")
-        for i, n in d.identifications key=i.uri
-          if i.kingdom != ""
-            link href=path("taxon", i.kingdom, i.scientificName) testId=`ident-${n}`
-              IdText(i=i, now=now, offset=offset)
-              image "symbol:forward-chevron"
-          else
-            row testId=`ident-${n}`
-              IdText(i=i, now=now, offset=offset)
-        if d.identifications.length == 0
-          row
-            text "No identifications yet." color="-exact-secondary-label"
-        row
-          button press=openIdentify testId="suggest-id"
-            text (signedIn ? "Suggest an Identification" : "Sign In to Suggest an Identification")
-        if d.identifications.filter(i => i.mine).length > 0
-          row
-            button commandfor="withdraw" command="show-modal" destructive=true testId="withdraw-id"
-              text "Withdraw Your Identification"
-        if withdrawError != ""
-          row
-            text withdrawError color="-exact-system-red" flex=1 min-width=0 testId="withdraw-error"
-      section testId="comments"
-        header
-          text countOf(d.comments.length, "Comment", "Comments")
-        for c, n in d.comments key=c.uri
-          row padding-top=8 padding-bottom=8
-            column flex=1 min-width=0 gap=4
-              text `${c.who} · ${formatDay(c.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
-              text c.body testId=`comment-${n}`
-        if d.comments.length == 0
-          row
-            text "No comments yet." color="-exact-secondary-label"
-        if signedIn
-          row
-            textarea value=commentDraft input=editComment placeholder="Add a comment" aria-label="Comment" flex=1 min-width=0 testId="comment-draft"
-          row
-            button press=postComment disabled=(commentDraft.trim() == "" or commentBusy) testId="post-comment"
-              text (commentBusy ? "Posting…" : "Post Comment")
-          if commentError != ""
-            row
-              text commentError color="-exact-system-red" flex=1 min-width=0 testId="comment-error"
-      if d.obs.remarks != "" or d.eventRemarks != ""
-        section
-          header
-            text "Remarks"
-          if d.obs.remarks != ""
-            row padding-top=8 padding-bottom=8
-              text d.obs.remarks flex=1 min-width=0 testId="detail-remarks"
-          if d.eventRemarks != ""
-            row padding-top=8 padding-bottom=8
-              text d.eventRemarks flex=1 min-width=0 color="-exact-secondary-label" testId="detail-event-remarks"
-      if d.links.length > 0
-        section
-          header
-            text "Elsewhere"
-          for l in d.links key=l.url
-            row
-              button press=openExternal(l.url) testId=`external-${l.label}`
-                text `View on ${l.label}`
-      if d.mine and inatLinked
-        section testId="crosspost"
-          header
-            text "iNaturalist"
-          row
-            text (crosspost.status == "synced" ? "Posted to iNaturalist." : (crosspost.status == "pending" ? "Posting to iNaturalist…" : (crosspost.status == "failed" ? `Couldn’t post: ${crosspost.error}` : "Not on iNaturalist yet.")))
-              color=(crosspost.status == "failed" ? "-exact-system-red" : "-exact-label") flex=1 min-width=0 testId="crosspost-status"
-          if crosspost.url != ""
-            row
-              button press=openExternal(crosspost.url) testId="crosspost-view"
-                text "View on iNaturalist"
-          if crosspost.status == "" or crosspost.status == "failed"
-            row
-              button press=postToInat disabled=crosspostBusy testId="crosspost-post"
-                text (crosspostBusy ? "Posting…" : (crosspost.status == "failed" ? "Try Posting Again" : "Post to iNaturalist"))
-          if crosspostError != ""
-            row
-              text crosspostError color="-exact-system-red" flex=1 min-width=0 testId="crosspost-error"
-      if d.mine
-        section
-          button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"
-            text "Delete Observation"
-          if removeError != ""
-            row
-              text removeError color="-exact-system-red" flex=1 min-width=0 testId="delete-error"
+    // A content screen, as Explore and the taxon page: cards on a scroll, in two rows
+    // of a main and a side column. Wide: the photos beside the name and facts, then the
+    // conversation (identifications, comments) beside the map and the rest. A phone
+    // stacks them in that order: photo, name, facts, conversation, map.
+    scroll id=scrollId flex=1 min-height=0 overflow-x="hidden"
+      column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+        row gap=16 flex-wrap="wrap" align-items="flex-start"
+          column flex="3 1 26rem" min-width=0 gap=16
+            if d.photos.length > 0
+              column gap=8
+                for p in d.photos.slice(0, 1) key=p.index
+                  link href=path("photo", d.did, d.rkey, p.index.toString()) testId="detail-photo" display="block" border-radius=12
+                    image p.url width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=12 background-color="-exact-secondary-fill" aria-label=`Photo of ${titleOf(d.obs)}`
+                if d.photos.length > 1
+                  row gap=8 flex-wrap="wrap"
+                    for p in d.photos.slice(1) key=p.index
+                      link href=path("photo", d.did, d.rkey, p.index.toString()) testId=`detail-photo-${p.index}` border-radius=8
+                        image p.thumb width="4.5rem" height="4.5rem" object-fit="cover" border-radius=8 background-color="-exact-secondary-fill" aria-label=`Photo ${p.index + 1} of ${titleOf(d.obs)}`
+                text (d.photos.length > 1 ? `${d.photos.length} photos` : match first(d.photos) { case some(p) => (p.license != "" ? `Photo ${p.license}` : ""), case none => "" }) overflow-wrap="break-word"
+                  font="-exact-footnote" color="-exact-secondary-label"
+          column flex="2 1 18rem" min-width=0 gap=16
+            column class=Card gap=8
+              if d.taxonName != ""
+                CardLink(href=path("taxon", d.taxonKingdom, d.taxonName), testId="detail-taxon")
+                  column flex=1 min-width=0 gap=2
+                    text titleOf(d.obs) font="-exact-title2" hyphens="auto" font-style=(d.obs.commonName == "" and d.obs.scientificName != "" ? "italic" : "normal") overflow-wrap="break-word"
+                    if d.obs.scientificName != "" and d.obs.commonName != ""
+                      text d.obs.scientificName font-style="italic" color="-exact-secondary-label" testId="detail-sci" overflow-wrap="break-word"
+                    if d.obs.rank != ""
+                      text capitalized(d.obs.rank) font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="break-word"
+              else
+                text titleOf(d.obs) font="-exact-title2" hyphens="auto" overflow-wrap="break-word"
+              if d.obs.needsId
+                row gap=8 align-items="center"
+                  image "symbol:alert" color="-exact-system-orange"
+                  text "Needs an identification" flex=1 min-width=0 testId="needs-id" overflow-wrap="break-word"
+              row gap=8 align-items="center" flex-wrap="wrap"
+                button press=toggleLike disabled=likeBusy aria-label=(d.liked ? "Unlike" : "Like") aria-pressed=d.liked testId="like"
+                  image (d.liked ? "symbol:heart-fill" : "symbol:heart")
+                text countOf(d.obs.likes, "like", "likes") color="-exact-secondary-label" testId="like-count" overflow-wrap="break-word"
+              if likeError != ""
+                text likeError color="-exact-system-red" testId="like-error" overflow-wrap="break-word"
+            column class=Card padding="12px 16px" gap=4
+              Fact(label="Observed")
+                text formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time") testId="detail-date" overflow-wrap="break-word"
+              CardLink(href=path("profile", d.obs.observerDid), testId="detail-observer-link")
+                Fact(label="By")
+                  text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) testId="detail-observer" overflow-wrap="break-word"
+              if d.obs.place != ""
+                Fact(label="Location")
+                  text d.obs.place testId="detail-place" overflow-wrap="break-word"
+        row gap=16 flex-wrap="wrap" align-items="flex-start"
+          column flex="3 1 26rem" min-width=0 gap=16
+            column class=Card padding="12px 16px" gap=4 testId="identifications"
+              text countOf(d.identifications.length, "Identification", "Identifications") role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+              for i, n in d.identifications key=i.uri
+                if i.kingdom != ""
+                  CardLink(href=path("taxon", i.kingdom, i.scientificName), testId=`ident-${n}`)
+                    IdText(i=i, now=now, offset=offset)
+                else
+                  row padding="10px 0" testId=`ident-${n}`
+                    IdText(i=i, now=now, offset=offset)
+              if d.identifications.length == 0
+                text "No identifications yet." color="-exact-secondary-label" padding="6px 0" overflow-wrap="break-word"
+              row gap=8 flex-wrap="wrap" padding-top=4
+                button press=openIdentify testId="suggest-id"
+                  text (signedIn ? "Suggest an Identification" : "Sign In to Suggest an Identification")
+                if d.identifications.filter(i => i.mine).length > 0
+                  button commandfor="withdraw" command="show-modal" destructive=true testId="withdraw-id"
+                    text "Withdraw Yours"
+              if withdrawError != ""
+                text withdrawError color="-exact-system-red" testId="withdraw-error" overflow-wrap="break-word"
+            column class=Card gap=12 testId="comments"
+              text countOf(d.comments.length, "Comment", "Comments") role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+              for c, n in d.comments key=c.uri
+                column gap=4
+                  text `${c.who} · ${formatDay(c.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="break-word"
+                  text c.body testId=`comment-${n}` overflow-wrap="break-word"
+              if d.comments.length == 0
+                text "No comments yet." color="-exact-secondary-label" overflow-wrap="break-word"
+              if signedIn
+                textarea value=commentDraft input=editComment placeholder="Add a comment" aria-label="Comment" min-width=0 testId="comment-draft"
+                row
+                  button press=postComment disabled=(commentDraft.trim() == "" or commentBusy) testId="post-comment"
+                    text (commentBusy ? "Posting…" : "Post Comment")
+                if commentError != ""
+                  text commentError color="-exact-system-red" testId="comment-error" overflow-wrap="break-word"
+            if d.obs.remarks != "" or d.eventRemarks != ""
+              column class=Card gap=8
+                text "Remarks" role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+                if d.obs.remarks != ""
+                  text d.obs.remarks testId="detail-remarks" overflow-wrap="break-word"
+                if d.eventRemarks != ""
+                  text d.eventRemarks color="-exact-secondary-label" testId="detail-event-remarks" overflow-wrap="break-word"
+          column flex="2 1 18rem" min-width=0 gap=16
+            if d.hasLocation
+              exact-map latitude=d.latitude longitude=d.longitude zoomLevel=some(12)
+                markers=some([MapMarker(id="here", latitude=d.latitude, longitude=d.longitude, title=some(titleOf(d.obs)))])
+                height=240 width="100%" border-radius=12 testId="detail-map" aria-label=`Map: observed at ${d.obs.place}`
+            if d.issues.length > 0
+              column class=Card gap=8 testId="data-quality"
+                text "Data Quality" role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+                for i in d.issues key=i
+                  row gap=8 align-items="center"
+                    image "symbol:alert" color="-exact-system-orange"
+                    text i flex=1 min-width=0 overflow-wrap="break-word"
+            if d.obs.lineage != ""
+              column class=Card gap=8
+                text "Taxonomy" role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+                text d.obs.lineage testId="detail-lineage" overflow-wrap="break-word"
+            if d.mine and inatLinked
+              column class=Card gap=8 testId="crosspost"
+                text "iNaturalist" role="heading" aria-level=2 font="-exact-headline" hyphens="auto" overflow-wrap="break-word"
+                text (crosspost.status == "synced" ? "Posted to iNaturalist." : (crosspost.status == "pending" ? "Posting to iNaturalist…" : (crosspost.status == "failed" ? `Couldn’t post: ${crosspost.error}` : "Not on iNaturalist yet."))) overflow-wrap="break-word"
+                  color=(crosspost.status == "failed" ? "-exact-system-red" : "-exact-label") testId="crosspost-status"
+                row gap=8 flex-wrap="wrap"
+                  if crosspost.url != ""
+                    button press=openExternal(crosspost.url) testId="crosspost-view"
+                      text "View on iNaturalist"
+                  if crosspost.status == "" or crosspost.status == "failed"
+                    button press=postToInat disabled=crosspostBusy testId="crosspost-post"
+                      text (crosspostBusy ? "Posting…" : (crosspost.status == "failed" ? "Try Posting Again" : "Post to iNaturalist"))
+                if crosspostError != ""
+                  text crosspostError color="-exact-system-red" testId="crosspost-error" overflow-wrap="break-word"
+            if d.links.length > 0 or d.mine
+              row gap=8 flex-wrap="wrap"
+                for l in d.links key=l.url
+                  button press=openExternal(l.url) testId=`external-${l.label}`
+                    text `View on ${l.label}`
+                if d.mine
+                  button commandfor="delete-observation" command="show-modal" destructive=true testId="delete-observation"
+                    text "Delete Observation"
+              if removeError != ""
+                text removeError color="-exact-system-red" testId="delete-error" overflow-wrap="break-word"
+
+// A fact in a card: its label, then its value beside it (under it when the text is large).
+component Fact
+  props
+    label: string
+  slot
+  view
+    row flex=1 min-width=0 gap="2px 12px" flex-wrap="wrap" padding="10px 0" align-items="baseline"
+      text label color="-exact-secondary-label" flex="0 0 6rem" overflow-wrap="break-word"
+      column flex="1 1 10rem" min-width=0
+        children
 
 component IdText
   props
