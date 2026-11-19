@@ -930,53 +930,48 @@ component App
                   header display="flex" align-items="center" padding="8px 16px"
                     text (person.found and person.did == e.params.did ? person.name : "Profile") role="heading" aria-level=2 testId="profile-title"
                   if person.found and person.did == e.params.did
-                    list id=`profile-${e.id}` appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-                      section
-                        row gap=12 align-items="center" padding-top=8 padding-bottom=8
-                          if person.avatar != ""
-                            image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
-                          column flex=1 min-width=0 gap=2
-                            text person.name font="-exact-title2"
-                            if person.handle != ""
-                              text person.handle color="-exact-secondary-label" testId="profile-handle"
-                        row flex-wrap="wrap" justify-content="space-around"
-                          Stat(value=person.observations, label="Observations", testId="stat-observations")
-                          Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
-                          Stat(value=person.species, label="Species", testId="stat-species")
-                      section
+                    scroll id=`profile-${e.id}` flex=1 min-height=0 overflow-x="hidden"
+                      column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                        column class=Card gap=12
+                          row gap=12 align-items="center" flex-wrap="wrap"
+                            if person.avatar != ""
+                              image person.avatar width=56 height=56 border-radius=28 object-fit="cover" aria-label=`${person.name}’s avatar`
+                            column flex="1 1 10rem" min-width=0 gap=2
+                              text person.name font="-exact-title2"
+                              if person.handle != ""
+                                text person.handle color="-exact-secondary-label" testId="profile-handle"
+                          row flex-wrap="wrap" justify-content="space-around"
+                            Stat(value=person.observations, label="Observations", testId="stat-observations")
+                            Stat(value=person.identifications, label="Identifications", testId="stat-identifications")
+                            Stat(value=person.species, label="Species", testId="stat-species")
                         row role="radiogroup" aria-label="Show" gap=8 flex-wrap="wrap"
                           button role="radio" aria-checked=(profileTab == "observations") press=showProfileTab("observations") flex=1 flex-basis="8rem" testId="profile-tab-observations"
                             text "Observations"
                           button role="radio" aria-checked=(profileTab == "identifications") press=showProfileTab("identifications") flex=1 flex-basis="8rem" aria-label="Identifications" testId="profile-tab-identifications"
                             text "IDs"
-                      if profileTab == "identifications"
-                        section
-                          for i, n in personIds.items key=i.uri
-                            link href=path("observation", i.did, i.rkey) testId=`pid-${n}`
-                              column flex=1 min-width=0 gap=2
-                                text i.scientificName font-style="italic" testId=`pid-name-${n}`
-                                text `${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
-                              image "symbol:forward-chevron"
+                        if profileTab == "identifications"
                           if personIds.items.length == 0
-                            row
-                              text (pending(personIds) ? "Loading…" : "No identifications yet.") color="-exact-secondary-label"
-                        if personIds.more
-                          section
-                            button press=moreProfileIds disabled=pending(personIds) testId="more-profile-ids"
-                              text (pending(personIds) ? "Loading…" : "Show More")
-                      if profileTab == "observations"
-                        section
-                          header
-                            text "Observations"
+                            text (pending(personIds) ? "Loading…" : "No identifications yet.") color="-exact-secondary-label" text-align="center" padding=24
+                          else
+                            column class=Card padding="4px 16px"
+                              for i, n in personIds.items key=i.uri
+                                CardLink(href=path("observation", i.did, i.rkey), testId=`pid-${n}`)
+                                  column flex=1 min-width=0 gap=2
+                                    text i.scientificName font-style="italic" testId=`pid-name-${n}`
+                                    text `${capitalized(i.rank)}${i.rank != "" ? " · " : ""}${formatDay(i.at, now, offset, "day")}` font="-exact-footnote" color="-exact-secondary-label"
+                          if personIds.more
+                            row justify-content="center"
+                              button press=moreProfileIds disabled=pending(personIds) testId="more-profile-ids"
+                                text (pending(personIds) ? "Loading…" : "Show More")
+                        if profileTab == "observations"
                           if person.items.length > 0
                             ObservationGrid(items=person.items, now=now, prefix="pobs", showObserver=false)
                           else
-                            row
-                              text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label"
-                        if person.more
-                          section
-                            button press=morePerson disabled=pending(person) testId="more-profile"
-                              text (pending(person) ? "Loading…" : "Show More")
+                            text (pending(person) ? "Loading…" : "No observations yet.") color="-exact-secondary-label" text-align="center" padding=24
+                          if person.more
+                            row justify-content="center"
+                              button press=morePerson disabled=pending(person) testId="more-profile"
+                                text (pending(person) ? "Loading…" : "Show More")
                   else
                     Waiting(id=`profile-${e.id}`, busy=pending(person), error=personError, retry=reloadPerson, testPrefix="profile")
 
@@ -1012,57 +1007,56 @@ component App
                       image "symbol:layers"
                     button press=openNew aria-label="New observation" testId="home-new-observation"
                       image "symbol:add"
-                  list id="home-feed" appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-                    if queue.length > 0
-                      section testId="pending"
-                        header
-                          text "Waiting to Upload"
-                        for q, n in queue key=q.id
-                          row gap=12 align-items="center" flex-wrap="wrap" delete=discardItem(q.id)
-                            if q.thumb != ""
-                              image q.thumb width=40 height=40 object-fit="cover" border-radius=6 aria-label=q.title
-                            column flex=1 min-width=0 gap=2 flex-basis="10rem"
-                              text q.title testId=`queued-${n}`
-                              text (q.status == "failed" ? `Refused: ${q.error}` : (pending(sent) ? "Uploading…" : "Waiting")) font="-exact-footnote"
-                                color=(q.status == "failed" ? "-exact-system-red" : "-exact-secondary-label") testId=`queued-status-${n}`
-                            if q.status == "failed"
-                              button press=retryItem(q.id) testId=`queued-retry-${n}`
-                                text "Retry"
+                  // A content screen, as Explore: the photos in a grid on the page, the upload
+                  // queue a card above them. A grouped list's rows would make each photo a row.
+                  scroll id="home-feed" flex=1 min-height=0 overflow-x="hidden" testId="home-scroll"
+                    column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+                      if queue.length > 0
+                        column class=Card gap=12 testId="pending"
+                          text "Waiting to Upload" role="heading" aria-level=2 font="-exact-headline"
+                          for q, n in queue key=q.id
+                            row gap=12 align-items="center" flex-wrap="wrap"
+                              if q.thumb != ""
+                                image q.thumb width=40 height=40 object-fit="cover" border-radius=6 aria-label=q.title
+                              column flex=1 min-width=0 gap=2 flex-basis="10rem"
+                                text q.title testId=`queued-${n}`
+                                text (q.status == "failed" ? `Refused: ${q.error}` : (pending(sent) ? "Uploading…" : "Waiting")) font="-exact-footnote"
+                                  color=(q.status == "failed" ? "-exact-system-red" : "-exact-secondary-label") testId=`queued-status-${n}`
+                              if q.status == "failed"
+                                button press=retryItem(q.id) testId=`queued-retry-${n}`
+                                  text "Retry"
                               button press=discardItem(q.id) destructive=true testId=`queued-discard-${n}`
                                 text "Discard"
-                        row
-                          button press=sendNow disabled=(pending(sent) or queueWaiting == 0) testId="send-now"
-                            text (pending(sent) ? "Uploading…" : "Upload Now")
-                        footer
-                          text sendNote testId="send-note"
-                    if queue.length == 0 and sendNote != ""
-                      section
-                        row
-                          text sendNote flex=1 min-width=0 testId="sent-note"
-                    if not account.signedIn
-                      section
-                        row
-                          column flex=1 gap=12 padding=12 align-items="center"
-                            text (pending(account) ? "Loading…" : "Sign in to see your home feed.") text-align="center" testId="home-signed-out"
-                            if not pending(account)
-                              button press=goAccount buttonStyle="filled" testId="home-sign-in"
-                                text "Sign In"
-                    else
-                      if home.items.length == 0
-                        section
-                          row
-                            column flex=1 gap=12 padding=12 align-items="center"
-                              text (pending(home) ? "Loading…" : (homeError != "" ? homeError : "Nothing here yet.")) text-align="center" testId="home-empty"
+                          row gap=12 align-items="center" flex-wrap="wrap"
+                            button press=sendNow disabled=(pending(sent) or queueWaiting == 0) testId="send-now"
+                              text (pending(sent) ? "Uploading…" : "Upload Now")
+                            text sendNote font="-exact-footnote" color="-exact-secondary-label" flex="1 1 12rem" min-width=0 testId="send-note"
+                      if queue.length == 0 and sendNote != ""
+                        column class=Card
+                          text sendNote testId="sent-note"
+                      if not account.signedIn
+                        column gap=12 padding=24 align-items="center"
+                          text (pending(account) ? "Loading…" : "Sign in to see your home feed.") text-align="center" testId="home-signed-out"
+                          if not pending(account)
+                            button press=goAccount buttonStyle="filled" testId="home-sign-in"
+                              text "Sign In"
+                      else
+                        if home.items.length == 0
+                          if pending(home)
+                            row justify-content="center" padding=24
+                              progress aria-label="Loading" testId="home-loading"
+                          else
+                            column gap=12 padding=24 align-items="center"
+                              text (homeError != "" ? homeError : "Nothing here yet.") text-align="center" testId="home-empty"
                               if homeError != ""
                                 button press=reloadHome testId="retry-home"
                                   text "Try Again"
-                      else
-                        section
+                        else
                           ObservationGrid(items=home.items, now=now, prefix="home", showObserver=true)
-                      if home.more
-                        section
-                          button press=moreHome disabled=pending(home) testId="more-home"
-                            text (pending(home) ? "Loading…" : "Show More")
+                          if home.more
+                            row justify-content="center"
+                              button press=moreHome disabled=pending(home) testId="more-home"
+                                text (pending(home) ? "Loading…" : "Show More")
 
               if e.name == "batch"
                 column navigationKey=`${e.id}` navigationScroll="batch-list" position="absolute" inset=0
@@ -1432,10 +1426,35 @@ component ObservationCard
         // A long name gives way, never the date.
         row min-width=0
           if showObserver
-            text o.observer font="-exact-footnote" color="-exact-secondary-label" line-clamp=1 text-overflow="ellipsis" flex="0 1 auto" min-width=0
+            text o.observer font="-exact-footnote" color="-exact-secondary-label" white-space="nowrap" overflow="hidden" text-overflow="ellipsis" flex="0 1 auto" min-width=0
             text ` · ${formatDay(o.observedAt, now, o.observedOffset, "day")}` font="-exact-footnote" color="-exact-secondary-label" flex-shrink=0 white-space="pre"
           else
             text formatDay(o.observedAt, now, o.observedOffset, "day") font="-exact-footnote" color="-exact-secondary-label" line-clamp=1
+
+// A row in a card that opens another screen: its content, then a chevron. Its
+// hover wash reaches 8 px into the card's padding on each side.
+component CardLink
+  props
+    href: string
+    testId: string
+  slot
+  view
+    link href=href testId=testId display="flex" align-items="center" gap=12 min-width=0 padding="10px 8px" margin="0 -8px" border-radius=8 color="-exact-label"
+      children
+      image "symbol:forward-chevron" color="-exact-tertiary-label"
+
+// A taxon as a CardLink: its picture, name and rank.
+component TaxonCardLink
+  props
+    t: TaxonRow
+    testId: string
+  view
+    CardLink(href=path("taxon", t.kingdom, t.name), testId=testId)
+      if t.photo != ""
+        image t.photo width=40 height=40 object-fit="cover" border-radius=6 aria-label=t.scientificName
+      column flex=1 min-width=0 gap=2
+        text taxonTitle(t.commonName, t.scientificName) testId=`${testId}-name`
+        text (t.commonName != "" ? `${capitalized(t.rank)} · ${t.scientificName}` : capitalized(t.rank)) font="-exact-footnote" color="-exact-secondary-label"
 
 component TaxonLinkRow
   props
@@ -1685,77 +1704,67 @@ component TaxonDetail
     openExternal: action
     explore: action
   view
-    list id=scrollId appearance="auto" listStyle="inset-grouped" flex=1 min-height=0
-      section
-        if t.photo != ""
-          image t.photo width="100%" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=t.scientificName testId="taxon-photo"
-        row
-          column flex=1 min-width=0 gap=2
-            text taxonTitle(t.commonName, t.scientificName) font="-exact-title2"
-            if t.commonName != ""
-              text t.scientificName font-style="italic" color="-exact-secondary-label" testId="taxon-sci"
-            text capitalized(t.rank) font="-exact-footnote" color="-exact-secondary-label" testId="taxon-rank"
-        if t.status != ""
-          row
-            text "Conservation status" flex=1
-            text t.status color="-exact-secondary-label" testId="taxon-status"
-        if t.extinct
-          row
-            text "Extinct" color="-exact-system-red"
-        row
-          button press=explore(t.scientificName, t.kingdom) testId="taxon-explore"
-            text "Show in Explore"
-      if t.ancestors.length > 0
-        section testId="taxon-ancestors"
-          header
-            text "Classification"
-          for a in t.ancestors key=`${a.kingdom}/${a.name}`
-            link href=path("taxon", a.kingdom, a.name) testId=`ancestor-${a.name}`
-              text capitalized(a.rank) color="-exact-secondary-label" width=88
-              text a.scientificName flex=1 min-width=0
-              image "symbol:forward-chevron"
-      if t.description != ""
-        section
-          header
-            text "About"
-          row padding-top=8 padding-bottom=8
-            text t.description flex=1 min-width=0 testId="taxon-description"
-          footer
-            text (t.descriptionSource != "" ? `Source: ${t.descriptionSource}` : "")
-      if t.children.length > 0
-        section testId="taxon-children"
-          header
-            text (t.descendants > 0 ? `Includes · ${formatNumber(t.descendants, "compact")} taxa` : "Includes")
-          for c, n in t.children.slice(0, 50) key=`${c.kingdom}/${c.name}`
-            TaxonLinkRow(t=c, testId=`child-${n}`)
-      section
-        header
-          text countOf(t.observationCount, "Observation", "Observations") testId="taxon-count"
+    scroll id=scrollId flex=1 min-height=0 overflow-x="hidden"
+      column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
+        // The picture beside its names on a wide window, above them on a phone.
+        row class=Card gap=16 flex-wrap="wrap" align-items="center"
+          if t.photo != ""
+            image t.photo flex="1 1 16rem" min-width=0 max-width="min(100%, 28rem)" aspect-ratio="4 / 3" object-fit="cover" border-radius=10 aria-label=t.scientificName testId="taxon-photo"
+          column flex="1 1 14rem" min-width=0 gap=8
+            column gap=2
+              text taxonTitle(t.commonName, t.scientificName) font="-exact-title2"
+              if t.commonName != ""
+                text t.scientificName font-style="italic" color="-exact-secondary-label" testId="taxon-sci"
+              text capitalized(t.rank) font="-exact-footnote" color="-exact-secondary-label" testId="taxon-rank"
+            if t.status != ""
+              row gap=8 flex-wrap="wrap"
+                text "Conservation status"
+                text t.status color="-exact-secondary-label" testId="taxon-status"
+            if t.extinct
+              text "Extinct" color="-exact-system-red"
+            row gap=8 flex-wrap="wrap"
+              button press=explore(t.scientificName, t.kingdom) testId="taxon-explore"
+                text "Show in Explore"
+              if t.gbifUrl != ""
+                button press=openExternal(t.gbifUrl) testId="taxon-gbif"
+                  text "View on GBIF"
+              if t.wikidataUrl != ""
+                button press=openExternal(t.wikidataUrl) testId="taxon-wikidata"
+                  text "View on Wikidata"
+        if t.description != ""
+          column class=Card gap=8
+            text "About" role="heading" aria-level=2 font="-exact-headline"
+            text t.description testId="taxon-description"
+            if t.descriptionSource != ""
+              text `Source: ${t.descriptionSource}` font="-exact-footnote" color="-exact-secondary-label"
+        // Where it sits, and what it includes: two cards side by side when there's room.
+        if t.ancestors.length > 0 or t.children.length > 0
+          row gap=16 flex-wrap="wrap" align-items="flex-start"
+            if t.ancestors.length > 0
+              column class=Card padding="12px 16px 4px" flex="1 1 18rem" min-width=0 testId="taxon-ancestors"
+                text "Classification" role="heading" aria-level=2 font="-exact-headline"
+                for a in t.ancestors key=`${a.kingdom}/${a.name}`
+                  CardLink(href=path("taxon", a.kingdom, a.name), testId=`ancestor-${a.name}`)
+                    row flex=1 min-width=0 gap="0 12px" flex-wrap="wrap"
+                      text capitalized(a.rank) color="-exact-secondary-label" flex="0 0 5.5rem"
+                      text a.scientificName flex="1 1 8rem" min-width=0
+            if t.children.length > 0
+              column class=Card padding="12px 16px 4px" flex="1 1 18rem" min-width=0 testId="taxon-children"
+                text (t.descendants > 0 ? `Includes · ${formatNumber(t.descendants, "compact")} taxa` : "Includes") role="heading" aria-level=2 font="-exact-headline"
+                for c, n in t.children.slice(0, 50) key=`${c.kingdom}/${c.name}`
+                  TaxonCardLink(t=c, testId=`child-${n}`)
+        text countOf(t.observationCount, "Observation", "Observations") role="heading" aria-level=2 font="-exact-title3" font-weight=600 testId="taxon-count"
         if t.items.length > 0
           ObservationGrid(items=t.items, now=now, prefix="tobs", showObserver=true)
         else
-          row
-            text "No observations yet." color="-exact-secondary-label"
-      if t.more
-        section
-          button press=more disabled=busy testId="more-taxon"
-            text (busy ? "Loading…" : "Show More")
-      if t.media.length > 0
-        section
-          header
-            text "Pictures"
-          row gap=8 flex-wrap="wrap" padding-top=8 padding-bottom=8
-            for m in t.media key=m.index
-              image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
-      if t.gbifUrl != "" or t.wikidataUrl != ""
-        section
-          header
-            text "Elsewhere"
-          if t.gbifUrl != ""
-            row
-              button press=openExternal(t.gbifUrl) testId="taxon-gbif"
-                text "View on GBIF"
-          if t.wikidataUrl != ""
-            row
-              button press=openExternal(t.wikidataUrl) testId="taxon-wikidata"
-                text "View on Wikidata"
+          text "No observations yet." color="-exact-secondary-label"
+        if t.more
+          row justify-content="center"
+            button press=more disabled=busy testId="more-taxon"
+              text (busy ? "Loading…" : "Show More")
+        if t.media.length > 0
+          column class=Card gap=8
+            text "Pictures" role="heading" aria-level=2 font="-exact-headline"
+            row gap=8 flex-wrap="wrap"
+              for m in t.media key=m.index
+                image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
