@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Autocomplete, Box, Chip, Stack, Typography } from "@mui/material";
+import { Autocomplete, Box, Stack, Typography } from "@mui/material";
 import type { TaxaResult } from "../../services/types";
 import { ConservationStatus } from "./ConservationStatus";
 import { renderAutocompleteInput } from "./autocompleteInput";
@@ -7,7 +7,7 @@ import { shouldItalicizeTaxonName } from "./TaxonLink";
 import { buildTaxonUrl } from "../../lib/taxonSlug";
 import { ExternalLinkIconButton } from "./ExternalLinkIconButton";
 import { TaxonThumbnail } from "./TaxonThumbnail";
-import { labelChipSx } from "./chipSx";
+import { MatchedSynonym } from "./MatchedSynonym";
 
 export function taxonUrlFor(option: TaxaResult): string | null {
   return buildTaxonUrl(option.scientificName, option.kingdom, option.rank, option.taxonId);
@@ -133,26 +133,14 @@ export function TaxaAutocompleteView({
                   >
                     {option.scientificName}
                   </Typography>
-                  {option.isSynonym && (
-                    <Chip label="synonym" size="small" variant="outlined" sx={labelChipSx} />
-                  )}
                   {option.conservationStatus && (
                     <ConservationStatus status={option.conservationStatus} size="small" />
                   )}
                 </Stack>
-                {option.isSynonym && option.acceptedName && (
+                {option.commonName && (
                   <Typography
                     variant="caption"
-                    sx={{
-                      color: "text.disabled",
-                    }}
-                  >
-                    → {option.acceptedName}
-                  </Typography>
-                )}
-                {option.commonName && !option.isSynonym && (
-                  <Typography
-                    variant="caption"
+                    component="div"
                     sx={{
                       color: "text.disabled",
                     }}
@@ -160,6 +148,12 @@ export function TaxaAutocompleteView({
                     {option.commonName}
                   </Typography>
                 )}
+                <MatchedSynonym
+                  taxon={option}
+                  variant="caption"
+                  component="div"
+                  sx={{ color: "text.disabled" }}
+                />
               </Box>
               {taxonUrl && (
                 <ExternalLinkIconButton

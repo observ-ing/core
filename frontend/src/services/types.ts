@@ -45,12 +45,8 @@ export type TaxonDetail = GeneratedTaxonDetail & {
   observationCount?: number;
 };
 
-// TaxaResult: extends with synonym resolution fields
-import type { TaxaResult as GeneratedTaxaResult } from "../bindings/TaxaResult";
-export type TaxaResult = GeneratedTaxaResult & {
-  isSynonym?: boolean;
-  acceptedName?: string;
-};
+import type { TaxaResult } from "../bindings/TaxaResult";
+export type { TaxaResult };
 
 export interface TaxaSearchResponse {
   results: TaxaResult[];

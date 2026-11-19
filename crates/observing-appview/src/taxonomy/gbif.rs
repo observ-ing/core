@@ -808,7 +808,10 @@ impl GbifClient {
     /// Otherwise the accepted taxon takes the synonym's place, unless an
     /// earlier synonym already brought it in, in which case this one is
     /// dropped too, so no taxon is listed twice. A synonym whose accepted
-    /// taxon GBIF can't return stays as it is.
+    /// taxon GBIF can't return stays as it is. When a taxon's best-matching
+    /// synonym matches the query better than its own names do, that synonym
+    /// becomes its `matched_synonym`, so a search for "Eriobotrya japonica"
+    /// can say why *Rhaphiolepis bibas* came back.
     ///
     /// GBIF's relevance order counts matches in authorship and descriptions,
     /// so "mallard" puts a snail described by Mallard & Robin first. Results
@@ -828,19 +831,30 @@ impl GbifClient {
             .filter(|item| item.accepted_key.is_none())
             .filter_map(|item| item.key)
             .collect();
-        // Best match among the synonyms dropped in favour of each accepted
-        // taxon, by the accepted taxon's key.
-        let mut dropped_synonym_match: HashMap<u64, NameMatch> = HashMap::new();
+        // Best-matching synonym of each accepted taxon, by the accepted
+        // taxon's key, whether it was dropped or replaced. GBIF's order
+        // breaks ties.
+        let mut best_synonym: HashMap<u64, (NameMatch, &str)> = HashMap::new();
         let mut slots: Vec<(&NameUsageSearchResult, Option<i32>, NameMatch)> = Vec::new();
         for item in &data {
             let item_match = NameMatch::of(query, search_result_names(item));
+            if let Some(accepted) = item.accepted_key {
+                let name = item
+                    .canonical_name
+                    .as_deref()
+                    .or(item.scientific_name.as_deref())
+                    .unwrap_or("");
+                best_synonym
+                    .entry(accepted as u64)
+                    .and_modify(|best| {
+                        if item_match < best.0 {
+                            *best = (item_match, name);
+                        }
+                    })
+                    .or_insert((item_match, name));
+            }
             match item.accepted_key {
-                Some(accepted) if !listed.insert(accepted) => {
-                    dropped_synonym_match
-                        .entry(accepted as u64)
-                        .and_modify(|m| *m = (*m).min(item_match))
-                        .or_insert(item_match);
-                }
+                Some(accepted) if !listed.insert(accepted) => {}
                 accepted => slots.push((item, accepted, item_match)),
             }
         }
@@ -859,14 +873,11 @@ impl GbifClient {
                     None => None,
                 };
                 match accepted_usage {
-                    Some(usage) => {
-                        let usage_match = NameMatch::of(query, name_usage_names(&usage));
-                        (
-                            self.gbif_to_taxon(&usage),
-                            Some(usage.key as u64),
-                            item_match.min(usage_match),
-                        )
-                    }
+                    Some(usage) => (
+                        self.gbif_to_taxon(&usage),
+                        Some(usage.key as u64),
+                        NameMatch::of(query, name_usage_names(&usage)),
+                    ),
                     None => (
                         self.search_result_to_taxon(item),
                         item.key.map(|k| k as u64),
@@ -878,10 +889,19 @@ impl GbifClient {
             .await
             .into_iter()
             .map(|(taxon, key, own_match)| {
-                let name_match = key
-                    .and_then(|k| dropped_synonym_match.get(&k))
-                    .map_or(own_match, |m| own_match.min(*m));
-                (taxon, key, name_match)
+                let synonym = key.and_then(|k| best_synonym.get(&k));
+                let name_match = synonym.map_or(own_match, |(m, _)| own_match.min(*m));
+                let matched_synonym = synonym
+                    .filter(|(m, _)| *m < own_match)
+                    .map(|(_, name)| name.to_string());
+                (
+                    TaxonResult {
+                        matched_synonym,
+                        ..taxon
+                    },
+                    key,
+                    name_match,
+                )
             })
             .collect();
         ranked.sort_by_key(|(taxon, _, name_match)| {
@@ -955,6 +975,7 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            matched_synonym: None,
         }
     }
 
@@ -995,6 +1016,7 @@ impl GbifClient {
             species: item.species.clone(),
             source: "gbif".to_string(),
             conservation_status: None,
+            matched_synonym: None,
         }
     }
 
@@ -1065,6 +1087,7 @@ impl GbifClient {
             species: classification_by_rank.get("SPECIES").cloned(),
             source: "gbif".to_string(),
             conservation_status,
+            matched_synonym: None,
         }
     }
 }
@@ -2185,6 +2208,97 @@ mod tests {
             .expect("search succeeds");
 
         assert_eq!(names(&results), vec!["Ardea thula"]);
+    }
+
+    // ---------- naming the synonym that matched ----------
+
+    fn matched_synonyms(results: &[(TaxonResult, Option<u64>)]) -> Vec<Option<&str>> {
+        results
+            .iter()
+            .map(|(t, _)| t.matched_synonym.as_deref())
+            .collect()
+    }
+
+    /// A search for a synonym's name lists the accepted taxon, which would
+    /// look like a miss without the synonym to say why it's there.
+    #[tokio::test]
+    async fn search_names_the_synonym_an_accepted_taxon_replaced() {
+        let server = MockServer::start().await;
+        mount_search(
+            &server,
+            vec![search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873))],
+        )
+        .await;
+        mount_snowy_egret_usage(&server, 1).await;
+
+        let client = GbifClient::with_base_url(&server.uri());
+        let results = client
+            .search_backbone_taxa("ardea thula", 10)
+            .await
+            .expect("search succeeds");
+
+        assert_eq!(names(&results), vec!["Egretta thula"]);
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// The same goes for a synonym dropped because its accepted taxon is
+    /// already in the results.
+    #[tokio::test]
+    async fn search_names_a_dropped_synonym_that_matched() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "ardea",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// Of several matching synonyms, the one that matches best is named.
+    #[tokio::test]
+    async fn search_names_the_best_matching_synonym() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(9693910, "Leucophoyx thula", "SPECIES", Some(2480873)),
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "ardea thula",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![Some("Ardea thula")]);
+    }
+
+    /// A taxon that matches the query as well by its own names needs no
+    /// synonym to explain it.
+    #[tokio::test]
+    async fn search_names_no_synonym_when_the_taxon_matches_as_well() {
+        let results = search_with_synonyms(
+            vec![
+                search_hit(4352342, "Ardea thula", "SPECIES", Some(2480873)),
+                search_hit(2480873, "Egretta thula", "SPECIES", None),
+            ],
+            "thula",
+        )
+        .await;
+
+        assert_eq!(matched_synonyms(&results), vec![None]);
+    }
+
+    async fn search_with_synonyms(
+        hits: Vec<serde_json::Value>,
+        query: &str,
+    ) -> Vec<(TaxonResult, Option<u64>)> {
+        let server = MockServer::start().await;
+        mount_search(&server, hits).await;
+        GbifClient::with_base_url(&server.uri())
+            .search_backbone_taxa(query, 10)
+            .await
+            .expect("search succeeds")
     }
 
     // ---------- ranking search results (#1026) ----------
