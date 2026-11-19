@@ -46,7 +46,7 @@ observing-tasks = { path = "../observing-tasks" }
 # native-tls (not rustls) to match sqlx's TLS stack and sidestep rustls 0.23's
 # manual-CryptoProvider requirement.
 tokio-tungstenite = { version = "0.28", default-features = false, features = ["connect", "native-tls"] }
-futures-util = "0.3"
+futures-util = { workspace = true }
 # Decode the two concatenated CBOR objects (header + body) of a firehose frame.
 ciborium = "0.2"
 
