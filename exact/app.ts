@@ -30,6 +30,9 @@ const NATIVE_CALLBACK = 'ing.observ.exactspike:/oauth';
 // A deployed site's own callback page needs a grant; a loopback dev page's
 // doesn't, so the dev loop's origin stands in when no site is named.
 const WEB = import.meta.env.OBSERVING_WEB_ORIGIN ?? 'http://127.0.0.1:8765';
+// Where the site links its native test builds (CI's exact-latest release);
+// unset in native and dev builds, which then show no download links.
+const DOWNLOADS = import.meta.env.OBSERVING_DOWNLOADS ?? '';
 export const grants = [
   `net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`,
   `auth.callback ${WEB}/.exact/auth/callback`,
@@ -767,6 +770,10 @@ const sources: Sources = {
   // --- iNaturalist -----------------------------------------------------------
   // Whether this appview cross-posts at all, the linked account, and the
   // person's cross-post preferences.
+  loadDownloads: async () => ({
+    android: DOWNLOADS ? `${DOWNLOADS}/observing-exact.apk` : '',
+    ios: DOWNLOADS ? `${DOWNLOADS}/observing-exact-sim.zip` : '',
+  }),
   loadInat: async ([did], store) => {
     const off = { enabled: false, linked: false, login: '', crosspost: false, requirePhotos: false };
     if (!did) return off;
