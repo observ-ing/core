@@ -426,6 +426,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: EmbarkStudios/cargo-deny-action@v2
+        env:
+          RUSTUP_TOOLCHAIN: 1.85.0
 
   rust-clippy:
     runs-on: ubuntu-latest
