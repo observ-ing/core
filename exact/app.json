@@ -19,11 +19,11 @@
   "$schema": "../../../../src/exact/scripts/app.schema.json",
   "name": "Observ.ing",
   "short_name": "Observ.ing",
-  "id": "ing.observ.exactspike",
+  "id": "ing.observ.exact",
   "start_url": "/",
   "display": "standalone",
   "app": {
-    "id": "ing.observ.exactspike",
+    "id": "ing.observ.exact",
     "name": "Observ.ing"
   },
   "commands": {

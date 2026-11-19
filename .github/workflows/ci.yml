@@ -236,7 +236,7 @@ jobs:
             --max-instances=3 \
             --min-instances=0
 
-  # Exact app (exact/), served at next.observ.ing
+  # Exact app (exact/), served at exact.observ.ing
   exact-test:
     runs-on: ubuntu-latest
     steps:
@@ -292,7 +292,7 @@ jobs:
           EXACT_UPDATE_TRUST: production
           OBSERVING_API: https://observ.ing
           OBSERVING_AUTH_ORIGIN: https://observ.ing
-          OBSERVING_WEB_ORIGIN: https://next.observ.ing
+          OBSERVING_WEB_ORIGIN: https://exact.observ.ing
           # A release build needs the Maps key set; until the secret exists the
           # placeholder lets it build, and the map shows Google's key error.
           OBSERVING_MAPS_ANDROID_KEY: ${{ secrets.MAPS_ANDROID_KEY || 'unset' }}
@@ -329,7 +329,7 @@ jobs:
         env:
           OBSERVING_API: https://observ.ing
           OBSERVING_AUTH_ORIGIN: https://observ.ing
-          OBSERVING_WEB_ORIGIN: https://next.observ.ing
+          OBSERVING_WEB_ORIGIN: https://exact.observ.ing
         run: |
           bun exact.mjs ios --release --no-install --json > ios.json
           cat ios.json
@@ -366,7 +366,7 @@ jobs:
       - run: |
           mv android/app-release.apk observing-exact.apk
           mv ios/observing-exact-sim.zip observing-exact-sim.zip
-          notes="Test builds of the Exact app (next.observ.ing) from ${GITHUB_SHA}. The APK is signed with a throwaway key: uninstall the previous build before installing this one. The iOS build runs only in Xcode's Simulator: unzip it and run xcrun simctl install booted with the unzipped .app."
+          notes="Test builds of the Exact app (exact.observ.ing) from ${GITHUB_SHA}. The APK is signed with a throwaway key: uninstall the previous build before installing this one. The iOS build runs only in Xcode's Simulator: unzip it and run xcrun simctl install booted with the unzipped .app."
           if gh release view exact-latest >/dev/null 2>&1; then
             gh api -X PATCH "repos/$GH_REPO/git/refs/tags/exact-latest" -f sha="$GITHUB_SHA" -F force=true
             gh release edit exact-latest --notes "$notes"
@@ -400,7 +400,7 @@ jobs:
             exact/target
           key: exact-${{ runner.os }}-${{ hashFiles('exact/EXACT_REV', 'exact/deploy/exact-patches/*') }}
       - run: exact/deploy/setup-exact.sh
-      - run: WEB_ORIGIN=https://next.observ.ing DOWNLOADS=https://github.com/${{ github.repository }}/releases/download/exact-latest exact/deploy/stage.sh exact-site
+      - run: WEB_ORIGIN=https://exact.observ.ing DOWNLOADS=https://github.com/${{ github.repository }}/releases/download/exact-latest exact/deploy/stage.sh exact-site
 
       - uses: docker/setup-buildx-action@v3
 
@@ -814,7 +814,7 @@ jobs:
             --region=$REGION \
             --allow-unauthenticated \
             --add-cloudsql-instances=$PROJECT_ID:$REGION:observing-db \
-            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|GCP_PROJECT_ID=$PROJECT_ID|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://next.observ.ing,https://localhost,capacitor://localhost|APP_REDIRECT_URIS=https://next.observ.ing/.exact/auth/callback,ing.observ.exactspike:/oauth,https://observing-exact-997474541328.us-central1.run.app/.exact/auth/callback" \
+            --set-env-vars="^|^DB_HOST=/cloudsql/$PROJECT_ID:$REGION:observing-db|DB_NAME=observing|DB_USER=appview_runtime|PUBLIC_URL=$PUBLIC_URL|SPECIES_ID_SERVICE_URL=${{ steps.urls.outputs.species_id }}|SPECIES_ID_LIVE_SERVICE_URL=${{ steps.urls.outputs.species_id_live }}|INGESTER_URL=$INGESTER_URL|GCP_PROJECT_ID=$PROJECT_ID|HIDDEN_DIDS=did:plc:jh6n3ntljfhhtr4jbvrm3k5b|ADMIN_DIDS=did:plc:vozr2os4b4sxrxr6opde5js5|CORS_ORIGINS=https://observ.ing,https://exact.observ.ing,https://localhost,capacitor://localhost|APP_REDIRECT_URIS=https://exact.observ.ing/.exact/auth/callback,ing.observ.exact:/oauth,https://observing-exact-997474541328.us-central1.run.app/.exact/auth/callback" \
             --set-secrets=DB_PASSWORD=observing-db-appview-password:latest,INAT_CLIENT_ID=INAT_CLIENT_ID:latest,INAT_CLIENT_SECRET=INAT_CLIENT_SECRET:latest \
             --format='value(status.url)')
           echo "url=$URL" >> $GITHUB_OUTPUT

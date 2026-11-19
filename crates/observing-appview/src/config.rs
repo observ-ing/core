@@ -215,7 +215,7 @@ fn app_redirect_uris(var: Option<&str>, production: bool) -> Vec<String> {
         None if production => Vec::new(),
         None => vec![
             "http://127.0.0.1:8765/.exact/auth/callback".to_string(),
-            "ing.observ.exactspike:/oauth".to_string(),
+            "ing.observ.exact:/oauth".to_string(),
         ],
     }
 }
@@ -239,7 +239,7 @@ mod tests {
             app_redirect_uris(None, false),
             vec![
                 "http://127.0.0.1:8765/.exact/auth/callback".to_string(),
-                "ing.observ.exactspike:/oauth".to_string(),
+                "ing.observ.exact:/oauth".to_string(),
             ]
         );
         assert!(app_redirect_uris(None, true).is_empty());

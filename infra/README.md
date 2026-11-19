@@ -26,7 +26,7 @@ The deploy steps themselves stay in `.github/workflows/ci.yml`, because GitHub o
 | [tap-ingester](#tap-ingester) | Cloud Run service | Consumes the AT Protocol firehose and writes records | 1 vCPU / 512 MiB | 1–1 | Instance-based (always on) | `ingester_runtime` |
 | [observing-species-id](#observing-species-id) | Cloud Run service | BioCLIP ViT-H/14 species ID for uploads | 2 vCPU / 8 GiB | 0–10* | Request-based | — |
 | [observing-species-id-live](#observing-species-id-live) | Cloud Run service | BioCLIP ViT-L/14 species ID for the live camera | 2 vCPU / 4 GiB | 0–10* | Request-based | — |
-| [observing-exact](#observing-exact) | Cloud Run service | Serves the Exact app's web build at next.observ.ing | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
+| [observing-exact](#observing-exact) | Cloud Run service | Serves the Exact app's web build at exact.observ.ing | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
 | [storybook](#storybook) | Cloud Run service | Component library for development | 1 vCPU / 128 MiB | 0–3 | Request-based | — |
 | [observing-worker](#observing-worker) | Cloud Run service (private) | Runs every background task (taxon resolution, iNaturalist cross-posts), called by Cloud Tasks | 1 vCPU / 512 MiB | 0–1 | Request-based | `appview_runtime` + `ingester_runtime` |
 | [observing-migrate](#observing-migrate) | Cloud Run job | Runs migrations before each deploy | Default | — | — | `postgres` |
@@ -45,7 +45,7 @@ The public API at `https://observ.ing`. It serves the REST API, OAuth, the media
 - **Database.** Each instance opens a pool of up to 50 connections (`PoolConfig::service()` in `crates/observing-bootstrap/src/db.rs`). At 20 instances that could exceed Cloud SQL's connection limit, so lower the pool or the max instances before traffic grows. Over 30 days the whole `observing` database peaked at 35 connections.
 - **Calls out to.** observing-species-id and observing-species-id-live (URLs set at deploy), and tap-ingester at `https://ingester.observ.ing` for the admin stats tables.
 - **Secrets.** `observing-db-appview-password`, `INAT_CLIENT_ID`, `INAT_CLIENT_SECRET`.
-- **App sign-in callbacks (`APP_REDIRECT_URIS`).** The exact URLs an app may get a sign-in code back at (`/oauth/app/login`). Production allows the Exact app at `https://next.observ.ing`, its Android and iOS builds (`ing.observ.exactspike:/oauth`, their URL scheme; PKCE keeps another app that claims the scheme from using a code), and, until that project is shut down, its earlier deploy in the `observing-exact-spike` project. Without the variable, production allows none.
+- **App sign-in callbacks (`APP_REDIRECT_URIS`).** The exact URLs an app may get a sign-in code back at (`/oauth/app/login`). Production allows the Exact app at `https://exact.observ.ing`, its Android and iOS builds (`ing.observ.exact:/oauth`, their URL scheme; PKCE keeps another app that claims the scheme from using a code), and, until that project is shut down, its earlier deploy in the `observing-exact-spike` project. Without the variable, production allows none.
 
 ## tap-ingester
 
@@ -79,9 +79,9 @@ The same binary as observing-species-id, built with the smaller, faster ViT-L/14
 
 ## observing-exact
 
-The Exact app in [`exact/`](../exact/), at `https://next.observ.ing`, beside the existing frontend. It is static: `exact/deploy/site.ts` serves the web build (any path without a file gets `shell.html`, which draws the route), and the page calls `https://observ.ing` directly, so the appview's `CORS_ORIGINS` names it, and `APP_REDIRECT_URIS` names its `/.exact/auth/callback` for sign-in. The `exact-deploy` CI job builds it against the Exact commit in `exact/EXACT_REV` and pushes the image to the `observing` repository.
+The Exact app in [`exact/`](../exact/), at `https://exact.observ.ing`, beside the existing frontend. It is static: `exact/deploy/site.ts` serves the web build (any path without a file gets `shell.html`, which draws the route), and the page calls `https://observ.ing` directly, so the appview's `CORS_ORIGINS` names it, and `APP_REDIRECT_URIS` names its `/.exact/auth/callback` for sign-in. The `exact-deploy` CI job builds it against the Exact commit in `exact/EXACT_REV` and pushes the image to the `observing` repository.
 
-- **Domain.** `next.observ.ing` is a Cloud Run domain mapping to this service, with its DNS record at the registrar. Neither is in CI.
+- **Domain.** `exact.observ.ing` is a Cloud Run domain mapping to this service, with its DNS record at the registrar. Neither is in CI.
 
 ## storybook
 

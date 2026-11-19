@@ -472,8 +472,8 @@ mod app_link_tests {
     #[test]
     fn the_app_gets_the_code_and_state() {
         assert_eq!(
-            app_callback_url("ing.observ.exactspike:/oauth", &params(Some("c1"), None)),
-            "ing.observ.exactspike:/oauth?code=c1&state=s1"
+            app_callback_url("ing.observ.exact:/oauth", &params(Some("c1"), None)),
+            "ing.observ.exact:/oauth?code=c1&state=s1"
         );
     }
 
@@ -488,10 +488,10 @@ mod app_link_tests {
         );
         assert_eq!(
             app_callback_url(
-                "ing.observ.exactspike:/oauth",
+                "ing.observ.exact:/oauth",
                 &params(None, Some("invalid_scope"))
             ),
-            "ing.observ.exactspike:/oauth?error=server_error&state=s1"
+            "ing.observ.exact:/oauth?error=server_error&state=s1"
         );
     }
 

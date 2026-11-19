@@ -1,6 +1,6 @@
 #!/bin/sh
 # Deploy the site by hand to a Cloud Run service (CI's exact-deploy job deploys
-# next.observ.ing from main). Builds here and pushes, so the project needs no
+# exact.observ.ing from main). Builds here and pushes, so the project needs no
 # Cloud Build.
 #   PROJECT=<gcp project> WEB_ORIGIN=<the URL it will be served at> \
 #     [REGION=us-central1] [SERVICE=observing-exact] [APPVIEW=https://observ.ing] exact/deploy/deploy.sh
