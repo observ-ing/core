@@ -128,7 +128,9 @@ as `observing-exact` in the `observ-ing` project: `deploy/site.ts` serving the
 static build. The page calls `https://observ.ing` directly and signs in
 there, which needs the appview's `CORS_ORIGINS` to name
 `https://next.observ.ing` and its `APP_REDIRECT_URIS` to name
-`https://next.observ.ing/.exact/auth/callback` (both set in `ci.yml`).
+`https://next.observ.ing/.exact/auth/callback` (both set in `ci.yml`). The
+Android and iOS builds sign in at the same appview and get the code back at
+`ing.observ.exactspike:/oauth`, which `APP_REDIRECT_URIS` names too.
 
 `PROJECT=<project> WEB_ORIGIN=<url> deploy/deploy.sh` deploys a build by hand,
 for example a preview in another project; that origin needs the same two
