@@ -23,6 +23,7 @@ routes nav
   tab home "/home"
   tab notifications "/notifications"
   tab account "/account"
+    app "/app"
 
 shape Observation
   did: string
@@ -470,6 +471,8 @@ component App
       taxonPages = 1
     // ("/observation/<did>/<rkey>" only: a photo under it is pushed.)
     nav = top(nav).name == "observation" and url.startsWith("/observation/") and url.split("/").length == 4 ? replace(nav, url) : go(nav, url)
+  action openApp
+    nav = go(nav, "/app")
   action openSearch
     nav = push(nav, "/search")
   action openExternal(url: string)
@@ -853,6 +856,9 @@ component App
                               text "Sign In"
                             button press=dismissWelcome testId="welcome-dismiss"
                               text "Just Browse"
+                            if downloads.android != ""
+                              button press=openApp testId="welcome-app"
+                                text "Get the App"
                       if showFilters
                         column class=Card gap=12 testId="filters"
                           text "Filters" role="heading" aria-level=2 font="-exact-headline"
@@ -1295,6 +1301,31 @@ component App
                           button press=moreNotes disabled=pending(notes) testId="more-notes"
                             text (pending(notes) ? "Loading…" : "Show More")
 
+              if e.name == "app"
+                column navigationKey=`${e.id}` navigationScroll="app-page" position="absolute" inset=0
+                  header display="flex" align-items="center" padding="8px 16px"
+                    text "Get the App" role="heading" aria-level=1 flex=1
+                  scroll id="app-page" flex=1 min-height=0 overflow-x="hidden" testId="app-page"
+                    column gap=16 padding=16 width="100%" max-width="40rem" margin="0 auto" box-sizing="border-box"
+                      text "Observ.ing runs as an app too. These are test builds of the latest version, rebuilt with every change, and they use the same account as this site." color="-exact-secondary-label" testId="app-intro"
+                      if downloads.android == ""
+                        column class=Card
+                          text "Downloads are on observ.ing’s website." testId="app-unavailable"
+                      else
+                        column class=Card gap=8 testId="app-android"
+                          text "Android" role="heading" aria-level=2 font="-exact-headline"
+                          text "For Android phones. Open the download, and allow your browser to install apps if it asks."
+                          text "Each build is signed separately, so uninstall the previous one before installing a new one. The map doesn’t show yet." font="-exact-footnote" color="-exact-secondary-label"
+                          row padding-top=4
+                            button press=openExternal(downloads.android) buttonStyle="filled" testId="download-android"
+                              text "Download for Android"
+                        column class=Card gap=8 testId="app-ios"
+                          text "iOS Simulator" role="heading" aria-level=2 font="-exact-headline"
+                          text "For developers with Xcode 27.1 or later. It runs only in Xcode’s Simulator: there’s no iPhone build yet."
+                          text "Unzip the download, open a simulator, then run xcrun simctl install booted with the unzipped app." font="-exact-footnote" color="-exact-secondary-label"
+                          row padding-top=4
+                            button press=openExternal(downloads.ios) testId="download-ios"
+                              text "Download for iOS Simulator"
               if e.name == "account"
                 column navigationKey=`${e.id}` navigationScroll="account-list" position="absolute" inset=0
                   header display="flex" align-items="center" padding="8px 16px"
@@ -1363,14 +1394,9 @@ component App
                           text (pending(signedIn) ? "Signing In…" : "Sign In")
                     if downloads.android != ""
                       section testId="downloads"
-                        header
-                          text "Get the App"
-                        button press=openExternal(downloads.android) testId="download-android"
-                          text "Download for Android"
-                        button press=openExternal(downloads.ios) testId="download-ios"
-                          text "Download for iOS Simulator"
-                        footer
-                          text "Test builds of the latest version. On Android, uninstall the previous build before installing a new one. The iOS build runs only in Xcode’s Simulator." testId="downloads-note"
+                        link href=path("app") testId="account-app"
+                          text "Get the App" flex=1
+                          image "symbol:forward-chevron"
       dialog id="withdraw" role="alertdialog" aria-label="Withdraw your identification?"
         text "It’s removed from this observation and from your account."
         button press=withdraw destructive=true commandfor="withdraw" command="close" testId="withdraw-confirm"
