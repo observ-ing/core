@@ -13,7 +13,6 @@ export function NotFound() {
           variant="h1"
           sx={{
             fontSize: "4rem",
-            fontWeight: 700,
             background: (theme) =>
               `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.primary.dark})`,
             backgroundClip: "text",
