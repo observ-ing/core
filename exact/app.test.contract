@@ -597,3 +597,10 @@ test "a profile lists the person's identifications too"
   tap "profile-tab-observations"
   clock data
   expect text "pobs-title-3mzucjhpluy22" == "Common Loon"
+
+test "the app page opens signed out"
+  at "/app"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree has "app-intro"
+  expect tree missing "account-name"
