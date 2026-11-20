@@ -667,8 +667,8 @@ mod app_sign_in_tests {
     #[test]
     fn the_app_callback_carries_the_code_and_the_apps_state() {
         assert_eq!(
-            app_callback_url(&app("ing.observ.exactspike:/oauth"), &[("code", "abc")]),
-            "ing.observ.exactspike:/oauth?code=abc&state=app+state%2Fwith%3Dchars"
+            app_callback_url(&app("ing.observ.exact:/oauth"), &[("code", "abc")]),
+            "ing.observ.exact:/oauth?code=abc&state=app+state%2Fwith%3Dchars"
         );
         assert_eq!(
             app_callback_url(
@@ -688,7 +688,7 @@ mod app_sign_in_tests {
 
     #[test]
     fn the_sign_in_cookie_round_trips_and_is_scoped_to_oauth() {
-        let login = app("ing.observ.exactspike:/oauth");
+        let login = app("ing.observ.exact:/oauth");
         let set = app_login_cookie(&login, true);
         assert!(set.contains("; HttpOnly; Path=/oauth; Max-Age=600; SameSite=Lax; Secure"));
         let pair = set.split(';').next().unwrap();

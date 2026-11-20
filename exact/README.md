@@ -3,7 +3,7 @@
 observ.ing rebuilt in [Exact](https://github.com/expo/exact), Expo's
 cross-platform runtime (Contract views, TypeScript data, native
 UIKit/AppKit/Android/Linux hosts, a small DOM runtime on the web). Its web
-build is served at https://next.observ.ing, beside the existing frontend,
+build is served at https://exact.observ.ing, beside the existing frontend,
 against the same appview.
 
 - **Explore**: the feed, paged by the appview's cursor, with filters (kingdom,
@@ -123,12 +123,14 @@ cookies, so signed-in endpoints would need token auth.
 ## Deployed
 
 CI (`exact-deploy`, on every push to main) builds the site for
-`https://next.observ.ing` with `deploy/stage.sh` and deploys it to Cloud Run
+`https://exact.observ.ing` with `deploy/stage.sh` and deploys it to Cloud Run
 as `observing-exact` in the `observ-ing` project: `deploy/site.ts` serving the
 static build. The page calls `https://observ.ing` directly and signs in
 there, which needs the appview's `CORS_ORIGINS` to name
-`https://next.observ.ing` and its `APP_REDIRECT_URIS` to name
-`https://next.observ.ing/.exact/auth/callback` (both set in `ci.yml`).
+`https://exact.observ.ing` and its `APP_REDIRECT_URIS` to name
+`https://exact.observ.ing/.exact/auth/callback` (both set in `ci.yml`). The
+Android and iOS builds sign in at the same appview and get the code back at
+`ing.observ.exact:/oauth`, which `APP_REDIRECT_URIS` names too.
 
 `PROJECT=<project> WEB_ORIGIN=<url> deploy/deploy.sh` deploys a build by hand,
 for example a preview in another project; that origin needs the same two

@@ -58,7 +58,7 @@ const random = () => Buffer.from(crypto.getRandomValues(new Uint8Array(24))).toS
 const bearer = (req: Request) => req.headers.get('authorization')?.replace(/^Bearer /, '') ?? '';
 const signedIn = (req: Request) => sessions.has(bearer(req));
 // Where the appview may send a code: the web host's callback page, or the native app's scheme.
-const allowedRedirect = (uri: string) => /^http:\/\/127\.0\.0\.1:\d+\/\.exact\/auth\/callback$/.test(uri) || uri === 'ing.observ.exactspike:/oauth';
+const allowedRedirect = (uri: string) => /^http:\/\/127\.0\.0\.1:\d+\/\.exact\/auth\/callback$/.test(uri) || uri === 'ing.observ.exact:/oauth';
 
 // What the fake person has done, laid over the recorded observations.
 type Detail = { occurrence: { uri: string; observer: unknown; likeCount?: number; viewerHasLiked?: boolean; identificationCount: number };

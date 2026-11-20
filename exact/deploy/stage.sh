@@ -1,6 +1,6 @@
 #!/bin/sh
 # Build the site for one origin and stage its Docker context (deploy/Dockerfile).
-#   WEB_ORIGIN=https://next.observ.ing [APPVIEW=https://observ.ing] [DOWNLOADS=<url>] exact/deploy/stage.sh <out dir>
+#   WEB_ORIGIN=https://exact.observ.ing [APPVIEW=https://observ.ing] [DOWNLOADS=<url>] exact/deploy/stage.sh <out dir>
 # The site calls APPVIEW directly and signs in there; WEB_ORIGIN is where it is
 # served, which Exact needs to grant its sign-in callback page. The appview has
 # to name WEB_ORIGIN in CORS_ORIGINS and <WEB_ORIGIN>/.exact/auth/callback in
