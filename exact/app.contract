@@ -339,6 +339,8 @@ component App
   state liveTrack = ""
   // The welcome card at the top of Explore, until it's dismissed or someone signs in.
   state welcomed = false persist
+  // The appearance the person picked; setScheme keeps it across launches, this shows it.
+  state theme = "system" persist
   state profileTab = "observations"
   state profileIdPages = 1
   // Whether this new observation (or batch) also goes to iNaturalist: your preference until you change it here.
@@ -605,6 +607,9 @@ component App
     send marked = markRead(0)
   action moreNotes
     notePages = notePages + 1
+  action pickTheme(v: string)
+    theme = v
+    setScheme(v)
   action pickLicense(v: string)
     send licensed = setLicense(v)
 
@@ -1447,6 +1452,17 @@ component App
                       section
                         button press=signIn disabled=(handleDraft.trim() == "" or pending(signedIn)) testId="sign-in"
                           text (pending(signedIn) ? "Signing In…" : "Sign In")
+                    section testId="appearance"
+                      header
+                        text "Appearance"
+                      row flex-wrap="wrap" gap=8
+                        text "Theme" flex=1
+                        select value=theme change=pickTheme aria-label="Theme" testId="theme"
+                          option "System" value="system"
+                          option "Light" value="light"
+                          option "Dark" value="dark"
+                      footer
+                        text (theme == "system" ? "Follows your device’s light or dark setting." : "")
                     if downloads.android != ""
                       section testId="downloads"
                         link href=path("app") testId="account-app"

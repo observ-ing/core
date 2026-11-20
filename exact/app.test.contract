@@ -342,6 +342,19 @@ test "your own observation can be edited"
   expect text "detail-title" == "Gavia"
   expect text "detail-remarks" == "A loon, seen from the pier."
 
+test "the theme can be set, and it's kept"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect state theme == "system"
+  type "theme" "dark"
+  expect state theme == "dark"
+  reload
+  clock data
+  expect state theme == "dark"
+  type "theme" "system"
+  expect state theme == "system"
+
 test "the default license is saved"
   at "/account"
   epoch "2026-11-09T23:00:00Z"
