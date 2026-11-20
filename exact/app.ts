@@ -25,6 +25,8 @@ export const API = import.meta.env.OBSERVING_API ?? 'http://127.0.0.1:8787';
 // OAuth client redirects back to its own origin. The dev server stands in
 // for one in tests; a live build names the appview APPVIEW proxies.
 const AUTH = import.meta.env.OBSERVING_AUTH_ORIGIN ?? 'http://127.0.0.1:8787';
+// A taxon's pictures on Wikimedia Commons, by its category there.
+const COMMONS = 'https://commons.wikimedia.org';
 // The session token the appview issued, kept in the platform's secret store.
 const SESSION = 'observing.session';
 // A native app's sign-in callback (its URL scheme); the web uses its own page's.
@@ -33,7 +35,7 @@ const NATIVE_CALLBACK = 'ing.observ.exact:/oauth';
 // unset in native and dev builds, which then show no download links.
 const DOWNLOADS = import.meta.env.OBSERVING_DOWNLOADS ?? '';
 export const grants = [
-  `net.fetch ${API}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`,
+  `net.fetch ${API}`, `net.fetch ${COMMONS}`, `auth.session ${AUTH}`, `auth.callback ${NATIVE_CALLBACK}`, `secret.keep ${SESSION}`,
   `auth.callback ${WEB}/.exact/auth/callback`,
   // Photos for a new observation: the picked copies, and the JPEGs made from them for preview and upload.
   'fs.read app:/tmp/picked', 'fs.read app:/tmp/upload', 'fs.write app:/tmp/upload',
@@ -454,13 +456,18 @@ const sources: Sources = {
 
   loadTaxon: async ([kingdom, taxonName, wanted], store) => {
     const none = { kingdom, name: taxonName, found: false, scientificName: '', commonName: '', rank: '', photo: '', status: '',
-      extinct: false, description: '', descriptionSource: '', observationCount: 0, descendants: 0, ancestors: [], children: [],
+      extinct: false, descriptions: [], references: [], referenceCount: 0, observationCount: 0, descendants: 0, ancestors: [], children: [],
       media: [], gbifUrl: '', wikidataUrl: '', items: [], more: false };
     if (!kingdom || !taxonName) return none;
     const base = `/api/taxa/${encodeURIComponent(kingdom)}/${encodeURIComponent(taxonName)}`;
     const t = await get<TaxonDetailWithCount>(base, store);
     const { occurrences, more } = await readPages(`${base}/occurrences`, wanted, store);
-    const description = t.descriptions?.find((d) => d.description.trim() !== '');
+    // Its own description first, then the sources' (two at most, each once).
+    const texts = [
+      ...(t.description ? [{ text: stripTags(t.description), source: '' }] : []),
+      ...(t.descriptions ?? []).map((d) => ({ text: stripTags(d.description), source: d.source ?? '' })),
+    ].filter((d, i, all) => d.text !== '' && all.findIndex((e) => e.text === d.text) === i).slice(0, 2);
+    const references = t.references ?? [];
     return {
       kingdom, name: taxonName, found: true,
       scientificName: t.scientificName,
@@ -469,8 +476,11 @@ const sources: Sources = {
       photo: t.photoUrl ?? '',
       status: t.conservationStatus ? `${t.conservationStatus.category} (${t.conservationStatus.source})` : '',
       extinct: t.extinct ?? false,
-      description: stripTags(t.description ?? description?.description ?? ''),
-      descriptionSource: t.description ? '' : (description?.source ?? ''),
+      descriptions: texts,
+      // Five, each linked to its page or DOI when it names one.
+      references: references.slice(0, 5).map((r, index) => ({ index, citation: stripTags(r.citation),
+        url: r.link ?? (r.doi ? `https://doi.org/${r.doi}` : '') })),
+      referenceCount: references.length,
       observationCount: Number(t.observationCount),
       descendants: t.numDescendants ?? 0,
       ancestors: t.ancestors.map((a) => ({ ...taxonRoute(a.id), scientificName: a.name, rank: a.rank })),
@@ -482,6 +492,28 @@ const sources: Sources = {
       items: occurrences.map(toObservation),
       more,
     };
+  },
+
+  // Pictures of a taxon on Wikimedia Commons: the files in its category, each
+  // with who made it and its license. None when it has no category there.
+  commonsPictures: async ([scientificName]) => {
+    if (!scientificName) return [];
+    const q = new URLSearchParams({ action: 'query', generator: 'categorymembers', gcmtitle: `Category:${scientificName}`,
+      gcmtype: 'file', gcmlimit: '12', prop: 'imageinfo', iiprop: 'url|extmetadata', iiurlwidth: '400', format: 'json', origin: '*' });
+    const response = await fetch(`${COMMONS}/w/api.php?${q}`, { exactTimeout: 15000 });
+    if (!response.ok) throw new ApiError(response.status, `Wikimedia Commons answered ${response.status}.`);
+    type Info = { thumburl?: string; descriptionurl?: string; extmetadata?: Record<string, { value?: string }> };
+    const body = (await response.json()) as { query?: { pages?: Record<string, { index?: number; imageinfo?: Info[] }> } };
+    return Object.values(body.query?.pages ?? {})
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+      .flatMap((page) => {
+        const info = page.imageinfo?.[0];
+        if (!info?.thumburl) return [];
+        const meta = info.extmetadata ?? {};
+        const credit = [stripTags(meta.Artist?.value ?? ''), meta.LicenseShortName?.value ?? ''].filter(Boolean).join(' · ');
+        return [{ url: info.thumburl, page: info.descriptionurl ?? '', credit }];
+      })
+      .map((p, index) => ({ index, ...p }));
   },
 
   searchTaxa: async ([query], store) => {

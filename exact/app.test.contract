@@ -77,6 +77,7 @@ test "the observer's profile shows their counts and observations"
 
 test "a species page shows its classification and can filter Explore"
   epoch "2026-11-09T23:00:00Z"
+  answer fetch "https://commons.wikimedia.org/w/api.php" with 200 {"query":{"pages":{"1":{"index":1,"imageinfo":[{"thumburl":"http://127.0.0.1:8787/media/thumb/did:plc:fixture/bafycommons1","descriptionurl":"https://commons.wikimedia.org/wiki/File:Loon.jpg","extmetadata":{"Artist":{"value":"<a href=\"https://example.org\">A. Photographer</a>"},"LicenseShortName":{"value":"CC BY-SA 4.0"}}}]}}}}
   clock data
   tap "obs-3mzucjhpluy22"
   clock data
@@ -90,6 +91,16 @@ test "a species page shows its classification and can filter Explore"
   expect tree has "ancestor-Gaviidae"
   expect text "taxon-count" == "1 Observation"
   expect tree missing "more-taxon"
+  // About: two descriptions, each with its source; References: five of ten.
+  expect text "taxon-description-source-0" == "Source: The Clements Checklist"
+  expect tree has "taxon-description-1"
+  expect tree has "reference-4"
+  expect tree missing "reference-5"
+  // Wikimedia Commons' pictures load only when asked for.
+  expect tree missing "commons-0"
+  tap "commons-show"
+  clock data
+  expect text "commons-credit-0" == "A. Photographer · CC BY-SA 4.0"
   tap "taxon-explore"
   clock data
   clock settle

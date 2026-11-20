@@ -135,6 +135,21 @@ shape Media
   url: string
   credit: string
 
+shape Description
+  text: string
+  source: string
+
+shape Reference
+  index: number
+  citation: string
+  url: string
+
+shape CommonsPicture
+  index: number
+  url: string
+  page: string
+  credit: string
+
 shape TaxonPage
   kingdom: string
   name: string
@@ -145,8 +160,9 @@ shape TaxonPage
   photo: string
   status: string
   extinct: bool
-  description: string
-  descriptionSource: string
+  descriptions: Description[]
+  references: Reference[]
+  referenceCount: number
   observationCount: number
   descendants: number
   ancestors: Crumb[]
@@ -347,6 +363,8 @@ component App
   state batchCrosspostTouched = false
   state batchCrosspostOn = false
   state livePath = ""
+  // The taxon whose Wikimedia Commons pictures were asked for.
+  state commonsFor = ""
 
   // Each kind of screen reads the topmost entry of its kind; a covered one reads again when it is back on top.
   derive obsDid = match stack(nav).filter(x => x.name == "observation" or x.name == "photo" or x.name == "identify" or x.name == "edit").at(-1) { case some(x) => x.params.did, case none => "" }
@@ -359,6 +377,7 @@ component App
   resource detail = loadObservation(obsDid, obsRkey) as shape Detail else empty()
   resource person = loadProfile(profileDid, profilePages) as shape ProfilePage else empty()
   resource taxonPage = loadTaxon(taxonKingdom, taxonName, taxonPages) as shape TaxonPage else empty()
+  resource commons = commonsPictures(commonsFor) as shape CommonsPicture[] else empty()
   resource found = searchTaxa(query) as shape TaxonRow[] else empty()
   resource account = session() as shape Account else empty()
   resource home = loadHome(account.did, homePages) as shape Feed else empty()
@@ -535,6 +554,8 @@ component App
     refresh taxonPage
   action moreTaxon
     taxonPages = taxonPages + 1
+  action showCommons(name: string)
+    commonsFor = name
   action search(v: string)
     query = v
 
@@ -1033,7 +1054,9 @@ component App
                   header display="flex" align-items="center" padding="8px 16px"
                     text (taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name ? taxonTitle(taxonPage.commonName, taxonPage.scientificName) : e.params.name) role="heading" aria-level=2 testId="taxon-title"
                   if taxonPage.found and taxonPage.kingdom == e.params.kingdom and taxonPage.name == e.params.name
-                    TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon)
+                    TaxonDetail(t=taxonPage, now=now, offset=offset, scrollId=`taxon-${e.id}`, busy=pending(taxonPage), more=moreTaxon, openExternal=openExternal, explore=exploreTaxon,
+                      commons=(commonsFor == taxonPage.scientificName ? commons : []), commonsAsked=(commonsFor != "" and commonsFor == taxonPage.scientificName),
+                      commonsBusy=pending(commons), commonsFailed=(match failure(commons) { case some(f) => true, case none => false }), showCommons=showCommons)
                   else
                     Waiting(id=`taxon-${e.id}`, busy=pending(taxonPage), error=taxonError, retry=reloadTaxon, testPrefix="taxon")
 
@@ -1789,6 +1812,11 @@ component TaxonDetail
     more: action
     openExternal: action
     explore: action
+    commons: CommonsPicture[]
+    commonsAsked: bool
+    commonsBusy: bool
+    commonsFailed: bool
+    showCommons: action
   view
     scroll id=scrollId flex=1 min-height=0 overflow-x="hidden"
       column gap=16 padding=16 width="100%" max-width="75rem" margin="0 auto" box-sizing="border-box"
@@ -1817,12 +1845,14 @@ component TaxonDetail
               if t.wikidataUrl != ""
                 button press=openExternal(t.wikidataUrl) testId="taxon-wikidata"
                   text "View on Wikidata"
-        if t.description != ""
-          column class=Card gap=8
+        if t.descriptions.length > 0
+          column class=Card gap=12
             text "About" role="heading" aria-level=2 font="-exact-headline"
-            text t.description testId="taxon-description"
-            if t.descriptionSource != ""
-              text `Source: ${t.descriptionSource}` font="-exact-footnote" color="-exact-secondary-label"
+            for d, n in t.descriptions key=n
+              column gap=4
+                text d.text testId=`taxon-description-${n}`
+                if d.source != ""
+                  text `Source: ${d.source}` font="-exact-footnote" color="-exact-secondary-label" testId=`taxon-description-source-${n}`
         // Where it sits, and what it includes: two cards side by side when there's room.
         if t.ancestors.length > 0 or t.children.length > 0
           row gap=16 flex-wrap="wrap" align-items="flex-start"
@@ -1848,9 +1878,41 @@ component TaxonDetail
           row justify-content="center"
             button press=more disabled=busy testId="more-taxon"
               text (busy ? "Loading…" : "Show More")
-        if t.media.length > 0
-          column class=Card gap=8
+        if t.found
+          column class=Card gap=8 testId="taxon-pictures"
             text "Pictures" role="heading" aria-level=2 font="-exact-headline"
-            row gap=8 flex-wrap="wrap"
-              for m in t.media key=m.index
-                image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
+            if t.media.length > 0
+              row gap=8 flex-wrap="wrap"
+                for m in t.media key=m.index
+                  image m.url width=96 height=96 object-fit="cover" border-radius=8 aria-label=(m.credit != "" ? m.credit : `Picture of ${t.scientificName}`)
+            // Wikimedia Commons' pictures load when asked for: a dozen files from another site.
+            if commonsAsked and commons.length > 0
+              text "From Wikimedia Commons" font="-exact-subheadline" color="-exact-secondary-label"
+              row gap=8 flex-wrap="wrap"
+                for c, n in commons key=c.index
+                  button press=openExternal(c.page) appearance="none" aria-label=(c.credit != "" ? `Picture by ${c.credit}, on Wikimedia Commons` : `Picture of ${t.scientificName}, on Wikimedia Commons`) testId=`commons-${n}`
+                    column width=96 gap=2
+                      image c.url width=96 height=96 object-fit="cover" border-radius=8
+                      if c.credit != ""
+                        text c.credit font="-exact-caption2" color="-exact-secondary-label" overflow-wrap="break-word" testId=`commons-credit-${n}`
+            else
+              if commonsAsked and commonsBusy
+                progress aria-label="Loading pictures" testId="commons-loading"
+              else
+                if commonsAsked
+                  text (commonsFailed ? "Couldn’t reach Wikimedia Commons. Try again later." : "No pictures on Wikimedia Commons.") color="-exact-secondary-label" testId="commons-empty"
+                else
+                  row
+                    button press=showCommons(t.scientificName) testId="commons-show"
+                      text "Show Pictures from Wikimedia Commons"
+              if not commonsAsked and t.media.length == 0
+                text "No pictures here yet." color="-exact-secondary-label"
+        if t.references.length > 0
+          column class=Card padding="12px 16px" gap=8 testId="taxon-references"
+            text (t.referenceCount > t.references.length ? `References · ${t.references.length} of ${t.referenceCount}` : "References") role="heading" aria-level=2 font="-exact-headline"
+            for r in t.references key=r.index
+              if r.url != ""
+                button press=openExternal(r.url) appearance="none" text-align="start" testId=`reference-${r.index}`
+                  text r.citation font="-exact-footnote" color="-exact-link" overflow-wrap="break-word"
+              else
+                text r.citation font="-exact-footnote" color="-exact-secondary-label" overflow-wrap="break-word" testId=`reference-${r.index}`
