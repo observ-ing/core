@@ -192,3 +192,6 @@ export const touchTargetLarge = 48;
 
 /** Minimum height for tall tappable rows and phone app bars (64px: two lines of text plus padding). */
 export const tallRowMinHeight = 64;
+
+/** Fixed header block above a phone batch screen's scrolling list: title, status line, filters. */
+export const phoneHeaderSx = { flexShrink: 0, px: 2, pt: 2, pb: 1.5 } as const;
