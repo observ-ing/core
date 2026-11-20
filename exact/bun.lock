@@ -5,20 +5,20 @@
     "": {
       "name": "observing-exact",
       "dependencies": {
-        "@exact/camera": "file:../../../../../../../src/exact/packages/camera",
-        "@exact/geolocation": "file:../../../../../../../src/exact/packages/geolocation",
-        "@exact/maps": "file:../../../../../../../src/exact/packages/maps",
-        "@exact/media-capture": "file:../../../../../../../src/exact/packages/media-capture",
+        "@exact/camera": "file:.exact/checkout/packages/camera",
+        "@exact/geolocation": "file:.exact/checkout/packages/geolocation",
+        "@exact/maps": "file:.exact/checkout/packages/maps",
+        "@exact/media-capture": "file:.exact/checkout/packages/media-capture",
       },
     },
   },
   "packages": {
-    "@exact/camera": ["@exact/camera@file:../../../../../../../src/exact/packages/camera", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
+    "@exact/camera": ["@exact/camera@file:.exact/checkout/packages/camera", { "peerDependencies": { "@exact/media-capture": "1.0.0" }, "optionalPeers": ["@exact/media-capture"] }],
 
-    "@exact/geolocation": ["@exact/geolocation@file:../../../../../../../src/exact/packages/geolocation", {}],
+    "@exact/geolocation": ["@exact/geolocation@file:.exact/checkout/packages/geolocation", {}],
 
-    "@exact/maps": ["@exact/maps@file:../../../../../../../src/exact/packages/maps", {}],
+    "@exact/maps": ["@exact/maps@file:.exact/checkout/packages/maps", {}],
 
-    "@exact/media-capture": ["@exact/media-capture@file:../../../../../../../src/exact/packages/media-capture", {}],
+    "@exact/media-capture": ["@exact/media-capture@file:.exact/checkout/packages/media-capture", {}],
   }
 }

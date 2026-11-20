@@ -41,8 +41,8 @@ if [ -n "$triple" ]; then
 fi
 cd "$app"
 EXACT="$EXACT" bun exact.mjs update
-# package.json names the @exact packages by a path from the main author's
-# checkout; where that path doesn't exist (CI), name them in $EXACT instead.
+# package.json names the @exact packages in .exact/checkout, the link `update`
+# makes to $EXACT; if a path there doesn't exist, name them in $EXACT instead.
 EXACT="$EXACT" bun -e '
 const file = "package.json";
 const pkg = await Bun.file(file).json();

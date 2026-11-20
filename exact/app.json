@@ -16,7 +16,7 @@
       "ios": "0"
     }
   },
-  "$schema": "../../../../src/exact/scripts/app.schema.json",
+  "$schema": ".exact/checkout/scripts/app.schema.json",
   "name": "Observ.ing",
   "short_name": "Observ.ing",
   "id": "ing.observ.exact",

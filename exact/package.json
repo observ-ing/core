@@ -6,9 +6,9 @@
     "start": "bun exact.mjs serve dist"
   },
   "dependencies": {
-    "@exact/maps": "file:../../../../../../../src/exact/packages/maps",
-    "@exact/geolocation": "file:../../../../../../../src/exact/packages/geolocation",
-    "@exact/camera": "file:../../../../../../../src/exact/packages/camera",
-    "@exact/media-capture": "file:../../../../../../../src/exact/packages/media-capture"
+    "@exact/maps": "file:.exact/checkout/packages/maps",
+    "@exact/geolocation": "file:.exact/checkout/packages/geolocation",
+    "@exact/camera": "file:.exact/checkout/packages/camera",
+    "@exact/media-capture": "file:.exact/checkout/packages/media-capture"
   }
 }
