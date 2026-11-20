@@ -101,6 +101,27 @@ test "a species page shows its classification and can filter Explore"
   clock data
   expect text "obs-title-3mzucjhpluy22" == "Common Loon"
 
+test "Explore shows a table of records, kept across launches"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  expect tree missing "obs-table"
+  tap "toggle-view"
+  expect tree has "obs-table"
+  expect tree missing "obs-3mzucjhpluy22"
+  expect text "trow-date-3mzucjhpluy22" == "2026-11-07"
+  expect text "trow-quality-3mzucjhpluy22" == "—"
+  reload
+  clock data
+  expect tree has "obs-table"
+  tap "trow-3mzucjhpluy22"
+  clock data
+  clock settle
+  expect text "detail-title" == "Common Loon"
+  back
+  clock settle
+  tap "toggle-view"
+  expect tree has "obs-3mzucjhpluy22"
+
 test "taxon search finds a genus and lists what it includes"
   epoch "2026-11-09T23:00:00Z"
   clock data

@@ -46,6 +46,19 @@ shape Observation
   likes: number
   remarks: string
   needsId: bool
+  // Explore's table: the rest of the taxonomy, and each value as the table shows it ("—" for none).
+  phylum: string
+  taxonClass: string
+  order: string
+  family: string
+  genus: string
+  eventDay: string
+  postedDay: string
+  latText: string
+  lngText: string
+  uncertaintyText: string
+  quantity: string
+  issues: string
 
 shape Feed
   items: Observation[]
@@ -302,6 +315,8 @@ component App
   state startDate = ""
   state endDate = ""
   state showFilters = false
+  // Explore as photos ("grid") or as a table of records; kept across launches.
+  state exploreView = "grid" persist
   state feedPages = 1
   state profilePages = 1
   state taxonPages = 1
@@ -493,6 +508,8 @@ component App
     refresh feed
   action moreFeed
     feedPages = feedPages + 1
+  action toggleExploreView
+    exploreView = exploreView == "table" ? "grid" : "table"
   action toggleFilters
     showFilters = not showFilters
   action setKingdom(v: string)
@@ -882,6 +899,8 @@ component App
                       image "symbol:add"
                     button press=openSearch aria-label="Search taxa" testId="open-search"
                       image "symbol:search"
+                    button press=toggleExploreView aria-label=(exploreView == "table" ? "Show as Grid" : "Show as Table") testId="toggle-view"
+                      image (exploreView == "table" ? "symbol:feeds" : "symbol:list")
                     button press=toggleFilters aria-label=(showFilters ? "Hide filters" : "Filters") aria-expanded=showFilters testId="toggle-filters"
                       image "symbol:filter"
                   // A content screen is a scroll of cards, not a grouped list (those are for
@@ -945,7 +964,10 @@ component App
                             text feedError color="-exact-system-red" flex=1 min-width=0 testId="feed-error"
                             button press=reloadFeed testId="retry-feed"
                               text "Try Again"
-                        ObservationGrid(items=feed.items, now=now, prefix="obs", showObserver=true)
+                        if exploreView == "table"
+                          ObservationTable(items=feed.items)
+                        else
+                          ObservationGrid(items=feed.items, now=now, prefix="obs", showObserver=true)
                         if feed.more
                           row justify-content="center"
                             button press=moreFeed disabled=pending(feed) testId="more"
@@ -1500,6 +1522,104 @@ component ObservationGrid
 
 // An observation as a card: the photo square across the card's width, its
 // names and who saw it when under it. The whole card opens it.
+// Observations as a table of their records, one row each, as wide as its
+// columns: it scrolls sideways on a narrow window. A row's name opens it.
+component ObservationTable
+  props
+    items: Observation[]
+  view
+    scroll overflow-x="auto" overflow-y="hidden" width="100%" testId="obs-table"
+      table aria-label="Observations" font="-exact-footnote" border-spacing=0 white-space="nowrap"
+        thead
+          tr
+            th scope="col"
+              text ""
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Scientific name"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Common name"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Rank"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Kingdom"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Phylum"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Class"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Order"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Family"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Genus"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Observer"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Date"
+            th scope="col" text-align="end" padding="6px 8px"
+              text "Lat"
+            th scope="col" text-align="end" padding="6px 8px"
+              text "Lng"
+            th scope="col" text-align="end" padding="6px 8px"
+              text "± m"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Qty"
+            th scope="col" text-align="end" padding="6px 8px"
+              text "IDs"
+            th scope="col" text-align="end" padding="6px 8px"
+              text "Likes"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Quality"
+            th scope="col" text-align="start" padding="6px 8px"
+              text "Posted"
+        tbody
+          for o in items key=`${o.did}/${o.rkey}`
+            tr
+              td border-top="1px solid -exact-separator" padding=4
+                if o.photo != ""
+                  image o.photo alt="" width=36 height=36 object-fit="cover" border-radius=4 display="block"
+                else
+                  column width=36 height=36 border-radius=4 background-color="-exact-secondary-fill"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                link href=path("observation", o.did, o.rkey) aria-label=`View observation of ${titleOf(o)}` testId=`trow-${o.rkey}`
+                  text (o.scientificName != "" ? o.scientificName : "Unknown") font-style=(o.scientificName != "" ? "italic" : "normal") font-weight=500
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text (o.commonName != "" ? o.commonName : "—")
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text (o.rank != "" ? o.rank : "—") color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text (o.kingdom != "" ? o.kingdom : "—") color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.phylum color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.taxonClass color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.order color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.family color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.genus color="-exact-secondary-label" font-style="italic"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.observer
+              td border-top="1px solid -exact-separator" padding="6px 8px" testId=`trow-date-${o.rkey}`
+                text o.eventDay
+              td border-top="1px solid -exact-separator" padding="6px 8px" text-align="end"
+                text o.latText font-variant-numeric="tabular-nums"
+              td border-top="1px solid -exact-separator" padding="6px 8px" text-align="end"
+                text o.lngText font-variant-numeric="tabular-nums"
+              td border-top="1px solid -exact-separator" padding="6px 8px" text-align="end"
+                text o.uncertaintyText font-variant-numeric="tabular-nums"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.quantity
+              td border-top="1px solid -exact-separator" padding="6px 8px" text-align="end"
+                text formatNumber(o.identifications, "decimal") font-variant-numeric="tabular-nums"
+              td border-top="1px solid -exact-separator" padding="6px 8px" text-align="end"
+                text formatNumber(o.likes, "decimal") font-variant-numeric="tabular-nums"
+              td border-top="1px solid -exact-separator" padding="6px 8px" testId=`trow-quality-${o.rkey}`
+                text (o.issues != "" ? o.issues : "—") color="-exact-secondary-label"
+              td border-top="1px solid -exact-separator" padding="6px 8px"
+                text o.postedDay color="-exact-secondary-label"
+
 component ObservationCard
   props
     o: Observation
