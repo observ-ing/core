@@ -361,7 +361,9 @@ test "your own observation can be edited"
   expect text "new-date" == "2026-11-09"
   expect text "new-place" == "37.7664, -122.2807 (±50 m)"
   expect tree missing "new-crosspost"
+  expect text "new-quantity" == ""
   expect enabled "edit-save"
+  type "new-quantity" "2"
   type "new-taxon-search" "gavia"
   clock data
   tap "new-found-0"
@@ -373,6 +375,7 @@ test "your own observation can be edited"
   expect tree missing "edit-save"
   expect text "detail-title" == "Gavia"
   expect text "detail-remarks" == "A loon, seen from the pier."
+  expect text "detail-quantity" == "2 (individuals)"
 
 test "the theme can be set, and it's kept"
   at "/account"
@@ -468,6 +471,33 @@ test "without a photo, a place on the map is enough to save"
   clock settle
   expect text "detail-title" == "Unidentified"
   expect text "needs-id" == "Needs an identification"
+
+test "a new observation can span several days and count what was seen"
+  at "/account"
+  epoch "2026-11-09T23:00:00Z"
+  clock data
+  type "handle" "naturalist.test"
+  tap "sign-in"
+  authorize
+  clock data
+  tap "tab-home"
+  clock data
+  tap "home-new-observation"
+  clock settle
+  tap "new-place-on-map"
+  type "new-date" "2026-05-01"
+  type "new-end-date" "2026-04-30"
+  expect text "new-date-note" == "The last day can’t be before the first."
+  expect disabled "new-save"
+  type "new-end-date" "2026-05-03"
+  expect text "new-date-note" == "Over several days: the time isn’t kept."
+  type "new-quantity" "12"
+  type "new-quantity-type" "percent-cover"
+  tap "new-save"
+  clock data
+  clock settle
+  expect text "detail-date" == "May 1, 2026 – May 3, 2026"
+  expect text "detail-quantity" == "12 (percent cover)"
 
 test "the sheet shows a picked photo's preview, date, place and suggestions"
   at "/account"

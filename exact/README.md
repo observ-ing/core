@@ -25,8 +25,9 @@ against the same appview.
   previews; the first photo's EXIF fills in the day, time and place (`exif.ts`,
   no dependency; HEIC goes through the appview's `/api/media/heic-to-jpeg`);
   species suggestions from the appview's model (`/api/species-id`) or a taxon
-  search; a map pin you can move, Use My Location (`@exact/geolocation`), or a
-  pin placed on a world map; notes; the license, defaulting to your
+  search; a last day, for one seen over several days; a map pin you can move,
+  Use My Location (`@exact/geolocation`), or a pin placed on a world map; how
+  many (individuals or percent cover); notes; the license, defaulting to your
   preference. Photos are shrunk to the person's server's upload limit
   (`storage.fs.compressImage`) and sent as JPEGs. It's a pushed screen, not a
   sheet: Exact's web sheet grows with its content instead of scrolling.

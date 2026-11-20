@@ -83,13 +83,12 @@ function overlay(d: Detail, viewer: boolean): Detail {
 }
 type CreateBody = { latitude?: number; longitude?: number; coordinateUncertaintyInMeters?: number; eventDate?: string;
   images?: { data: string; mimeType: string }[]; license?: string; scientificName?: string; taxonRank?: string; kingdom?: string;
-  occurrenceRemarks?: string };
+  occurrenceRemarks?: string; organismQuantity?: string; organismQuantityType?: string };
 const createdOnes = new Map<string, CreateBody>();
 let lastCreate: CreateBody | null = null;
 // Edits to recorded observations: the request, laid over the record as the
 // appview's ingester would, with a new CID.
-type UpdateBody = CreateBody & { uri: string; retainedBlobCids?: string[]; eventRemarks?: string; organismQuantity?: string;
-  externalRecords?: unknown[] };
+type UpdateBody = CreateBody & { uri: string; retainedBlobCids?: string[]; eventRemarks?: string; externalRecords?: unknown[] };
 const edits = new Map<string, UpdateBody>();
 let lastUpdate: UpdateBody | null = null;
 function edited(d: Detail, r: UpdateBody): Detail {
@@ -97,6 +96,7 @@ function edited(d: Detail, r: UpdateBody): Detail {
   const images = ((o.images ?? []) as { url: string }[]).filter((img) => r.retainedBlobCids?.includes(img.url.split('/').at(-1) ?? ''))
     .concat((r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafyedit${i}`, license: r.license })) as never[]);
   return { ...d, occurrence: { ...o, cid: `bafyedited${edits.size}`, eventDate: r.eventDate, occurrenceRemarks: r.occurrenceRemarks,
+    organismQuantity: r.organismQuantity, organismQuantityType: r.organismQuantityType,
     location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters }, images,
     ...(r.scientificName ? { effectiveTaxonomy: { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } } : {}) } };
 }
@@ -108,7 +108,7 @@ function createdDetail(uri: string, r: CreateBody) {
       uri, cid: 'bafyfixture', observer: PERSON, identificationCount: 0,
       effectiveTaxonomy: r.scientificName ? { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } : undefined,
       eventDate: r.eventDate, location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters },
-      occurrenceRemarks: r.occurrenceRemarks,
+      occurrenceRemarks: r.occurrenceRemarks, organismQuantity: r.organismQuantity, organismQuantityType: r.organismQuantityType,
       images: (r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafynew${i}`, license: r.license })),
       externalRecords: [], createdAt: new Date().toISOString(), likeCount: 0,
       qualityIssues: r.scientificName ? [] : ['NO_CONSENSUS_ID'],
@@ -214,7 +214,8 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     const problem =
       typeof r.latitude !== 'number' || typeof r.longitude !== 'number' ? 'latitude and longitude are required'
       : (r.images ?? []).some((i) => i.mimeType !== 'image/jpeg' || !isJpeg(i.data)) ? 'every image must be a JPEG'
-      : r.eventDate && Number.isNaN(Date.parse(r.eventDate)) ? 'eventDate must be a date'
+      // A date or an interval of them, as the appview takes.
+      : r.eventDate && r.eventDate.split('/').some((d) => Number.isNaN(Date.parse(d))) ? 'eventDate must be a date'
       : '';
     if (problem) return Response.json({ error: problem }, { status: 400, headers: CORS });
     const rkey = `new${createdOnes.size + 1}`;

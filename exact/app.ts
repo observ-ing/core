@@ -306,6 +306,23 @@ function formDate(s: string | null | undefined): { day: string; time: string } {
   const two = (n: number) => String(n).padStart(2, '0');
   return { day: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, time: `${two(d.getHours())}:${two(d.getMinutes())}` };
 }
+// An interval's last day as the form shows it ("" for one day or instant), and
+// both of its days as instants at UTC midnight (0 for one day).
+function eventRange(s: string | null | undefined): { endDay: string; observedFrom: number; observedUntil: number } {
+  const [start, end] = s ? s.split('/') : [];
+  const endDay = end ? formDate(end).day : '';
+  const from = formDate(start).day;
+  if (!endDay || !from) return { endDay: '', observedFrom: 0, observedUntil: 0 };
+  return { endDay, observedFrom: Date.parse(from), observedUntil: Date.parse(endDay) };
+}
+// What a form's day, time and last day send: an interval of days, or an instant
+// in this device's zone.
+function eventDateOf(dateTime: string, endDay: string): string {
+  if (!dateTime) return '';
+  return endDay ? `${dateTime.slice(0, 10)}/${endDay}` : new Date(dateTime).toISOString();
+}
+const quantityLabel = (o: Occurrence) =>
+  o.organismQuantity ? `${o.organismQuantity}${o.organismQuantityType ? ` (${o.organismQuantityType.replace(/-/g, ' ')})` : ''}` : '';
 // The form's "YYYY-MM-DDTHH:mm" for an event date, as the form builds it from day and time.
 function formDateTime(s: string | null | undefined): string {
   const { day, time } = formDate(s);
@@ -424,7 +441,7 @@ const sources: Sources = {
       did, rkey, found: false, obs: toObservation({ uri: `at://${did}//${rkey}`, cid: '', observer: { did }, identificationCount: 0,
         images: [], externalRecords: [], createdAt: '', qualityIssues: [] }),
       photos: [], latitude: 0, longitude: 0, hasLocation: false, uncertainty: '', uncertaintyMeters: 0, day: '', time: '',
-      eventRemarks: '', taxonKingdom: '', taxonName: '',
+      endDay: '', observedFrom: 0, observedUntil: 0, quantity: '', quantityType: '', quantityLabel: '', eventRemarks: '', taxonKingdom: '', taxonName: '',
       issues: [], identifications: [], comments: [], links: [], uri: '', cid: '', liked: false, mine: false,
     };
     if (!did || !rkey) return empty;
@@ -449,6 +466,10 @@ const sources: Sources = {
       uncertaintyMeters: o.location?.uncertaintyMeters ?? 0,
       // What the edit form starts from.
       ...formDate(o.eventDate),
+      ...eventRange(o.eventDate),
+      quantity: o.organismQuantity ?? '',
+      quantityType: o.organismQuantityType ?? '',
+      quantityLabel: quantityLabel(o),
       eventRemarks: o.eventRemarks ?? '',
       taxonKingdom: route?.kingdom ?? '',
       taxonName: route?.name ?? '',
@@ -718,7 +739,7 @@ const sources: Sources = {
   },
 
   createObservation: async (
-    [paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license, crosspost], store, storage,
+    [paths, scientificName, rank, kingdom, eventDate, endDate, latitude, longitude, uncertainty, quantity, quantityType, notes, license, crosspost], store, storage,
   ) => {
     const fail = (error: string) => ({ ok: false, error, did: '', rkey: '' });
     if (!kept(store)) return fail('Sign in first.');
@@ -736,8 +757,8 @@ const sources: Sources = {
         latitude,
         longitude,
         ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
-        // The form's local date and time, as an instant in this device's zone.
-        ...(eventDate ? { eventDate: new Date(eventDate).toISOString() } : {}),
+        ...(eventDate ? { eventDate: eventDateOf(eventDate, endDate) } : {}),
+        ...(quantity.trim() ? { organismQuantity: quantity.trim(), ...(quantityType ? { organismQuantityType: quantityType } : {}) } : {}),
         images,
         ...(license ? { license } : {}),
         ...(scientificName ? { scientificName, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
@@ -769,10 +790,10 @@ const sources: Sources = {
   },
 
   // An edit of your own observation. The form names what it shows; whatever it
-  // doesn't (quantity, links, event remarks) is sent back as the record has it,
+  // doesn't (links, event remarks) is sent back as the record has it,
   // since the appview clears what an edit omits.
   updateObservation: async (
-    [uri, keptPhotos, paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license], store, storage,
+    [uri, keptPhotos, paths, scientificName, rank, kingdom, eventDate, endDate, latitude, longitude, uncertainty, quantity, quantityType, notes, license], store, storage,
   ) => {
     const fail = (error: string) => ({ ok: false, error });
     if (!kept(store)) return fail('Sign in first.');
@@ -790,8 +811,9 @@ const sources: Sources = {
       // A photo's URL ends in its blob CID.
       const retainedBlobCids = o.images.filter((_, i) => keptPhotos.includes(i)).map((img) => img.url.split('/').at(-1) ?? '');
       // Unchanged in the form, the date keeps what the record says (a date with
-      // no time, an interval); changed, it's the form's local time.
-      const date = eventDate === formDateTime(o.eventDate) ? o.eventDate ?? '' : eventDate ? new Date(eventDate).toISOString() : '';
+      // no time, an interval's exact ends); changed, it's what the form says.
+      const unchanged = eventDate === formDateTime(o.eventDate) && endDate === eventRange(o.eventDate).endDay;
+      const date = unchanged ? o.eventDate ?? '' : eventDateOf(eventDate, endDate);
       // A new name only: sending the one shown would add your identification to it.
       const renamed = scientificName && scientificName !== (o.effectiveTaxonomy?.scientificName ?? '');
       request = {
@@ -800,7 +822,7 @@ const sources: Sources = {
         longitude,
         ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
         ...(date ? { eventDate: date } : {}),
-        ...(o.organismQuantity ? { organismQuantity: o.organismQuantity, ...(o.organismQuantityType ? { organismQuantityType: o.organismQuantityType } : {}) } : {}),
+        ...(quantity.trim() ? { organismQuantity: quantity.trim(), ...(quantityType ? { organismQuantityType: quantityType } : {}) } : {}),
         ...(o.externalRecords.length > 0 ? { externalRecords: o.externalRecords.map((r) => ({ uri: r.uri, ...(r.service ? { service: r.service } : {}) })) } : {}),
         ...(o.eventRemarks ? { eventRemarks: o.eventRemarks } : {}),
         ...(notes.trim() ? { occurrenceRemarks: notes.trim() } : {}),

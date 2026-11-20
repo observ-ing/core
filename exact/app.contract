@@ -109,6 +109,15 @@ shape Detail
   // The event date as the edit form starts from it, in this device's zone.
   day: string
   time: string
+  // An observation over several days: its last day ("" for one day), and both days
+  // as instants at UTC midnight, to name at offset 0 (0 for one day).
+  endDay: string
+  observedFrom: number
+  observedUntil: number
+  quantity: string
+  quantityType: string
+  // The quantity as the page shows it: "3 (individuals)".
+  quantityLabel: string
   eventRemarks: string
   taxonKingdom: string
   taxonName: string
@@ -357,6 +366,9 @@ component App
   state newTaxonLabel = ""
   state newNotes = ""
   state newLicense = ""
+  state newEndDate = ""
+  state newQuantity = ""
+  state newQuantityType = "individuals"
   // Editing your own observation reuses the new one's form; these are the photos it keeps, by index.
   state editKept: number[] = []
   // Batch upload: the picked photos and each one's chosen species; a place for those without GPS.
@@ -483,8 +495,9 @@ component App
   derive newLicenseShown = newLicense != "" ? newLicense : prefs.license
   derive locateError = pending(located) ? "" : match failure(located) { case some(f) => "Your location isn’t available. Place the pin on a map instead.", case none => "" }
   derive createError = match created { case some(r) => r.error, case none => "" }
-  derive canSave = newHasPlace and not pending(created) and not pending(newFacts)
-  derive canUpdate = newHasPlace and not pending(updated) and not pending(newFacts)
+  derive endBeforeStart = newEndDate != "" and newEndDate < newDayShown
+  derive canSave = newHasPlace and not endBeforeStart and not pending(created) and not pending(newFacts)
+  derive canUpdate = newHasPlace and not endBeforeStart and not pending(updated) and not pending(newFacts)
   derive updateError = match updated { case some(r) => r.error, case none => "" }
   derive keptPhotos = detail.photos.filter(p => editKept.includes(p.index))
   derive newCrosspost = inat.linked and (newCrosspostTouched ? newCrosspostOn : inat.crosspost)
@@ -784,6 +797,9 @@ component App
       newPlaced = false
       newNotes = ""
       newLicense = ""
+      newEndDate = ""
+      newQuantity = ""
+      newQuantityType = "individuals"
       newTaxonQuery = ""
       newTaxonName = scientificName
       newTaxonRank = rank
@@ -807,6 +823,9 @@ component App
       newTaxonLabel = ""
       newNotes = ""
       newLicense = ""
+      newEndDate = ""
+      newQuantity = ""
+      newQuantityType = "individuals"
       newCrosspostTouched = false
       nav = push(nav, "/new")
   action choosePhotos
@@ -819,6 +838,12 @@ component App
     newDate = v
   action setNewTime(v: string)
     newTime = v
+  action setNewEndDate(v: string)
+    newEndDate = v
+  action editQuantity(v: string)
+    newQuantity = v
+  action pickQuantityType(v: string)
+    newQuantityType = v
   action useMyLocation
     if not pending(located)
       send located = getCurrentPosition(enableHighAccuracy=true, timeout=15000)
@@ -861,7 +886,7 @@ component App
     newLicense = v
   action saveNew
     if canSave
-      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown, newCrosspost)
+      send created = createObservation(newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newNotes, newLicenseShown, newCrosspost)
   // Your own observation's form, filled in with what it says now.
   action openEdit
     newPhotos = []
@@ -878,13 +903,16 @@ component App
     newTaxonLabel = detail.obs.commonName != "" ? `${detail.obs.commonName} · ${detail.obs.scientificName}` : detail.obs.scientificName
     newNotes = detail.obs.remarks
     newLicense = ""
+    newEndDate = detail.endDay
+    newQuantity = detail.quantity
+    newQuantityType = detail.quantityType != "" ? detail.quantityType : "individuals"
     editKept = detail.photos.map(p => p.index)
     nav = push(nav, path("edit", detail.did, detail.rkey))
   action dropKept(index: number)
     editKept = editKept.filter(i => i != index)
   action saveEdit
     if canUpdate
-      send updated = updateObservation(detail.uri, editKept, newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newLatShown, newLngShown, newUncertaintyShown, newNotes, newLicenseShown)
+      send updated = updateObservation(detail.uri, editKept, newPhotos, newTaxonName, newTaxonRank, newTaxonKingdom, newDateShown, newEndDate, newLatShown, newLngShown, newUncertaintyShown, newQuantity, newQuantityType, newNotes, newLicenseShown)
   action afterUpdate
     match updated
       case some(r)
@@ -1312,8 +1340,12 @@ component App
                       row flex-wrap="wrap" gap=8
                         text "Time" flex=1
                         input type="time" value=newTimeShown change=setNewTime aria-label="Time observed" testId="new-time"
+                      row flex-wrap="wrap" gap=8
+                        text "Last day (optional)" flex=1
+                        input type="date" value=newEndDate change=setNewEndDate aria-label="Last day observed" testId="new-end-date"
                       footer
-                        text (newDate == "" and newTime == "" and photoTakenAt != "" ? "From the photo." : "") testId="new-date-note"
+                        text (endBeforeStart ? "The last day can’t be before the first." : (newEndDate != "" ? "Over several days: the time isn’t kept." : (newDate == "" and newTime == "" and photoTakenAt != "" ? "From the photo." : "")))
+                          color=(endBeforeStart ? "-exact-system-red" : "-exact-secondary-label") testId="new-date-note"
                     section
                       header
                         text "Where"
@@ -1333,6 +1365,15 @@ component App
                             text "Place on a Map"
                       footer
                         text (locateError != "" ? locateError : (newPlaced ? "Move the map to put the pin where you saw it." : (photoHasPlace ? "From the photo. Move the map to change it." : "A place is required."))) testId="new-place-note"
+                    section
+                      header
+                        text "Quantity"
+                      row flex-wrap="wrap" gap=8
+                        input type="text" value=newQuantity input=editQuantity placeholder="e.g. 1, 12, or 10–100" aria-label="Quantity"
+                          flex="1 1 8rem" min-width=0 testId="new-quantity"
+                        select value=newQuantityType change=pickQuantityType aria-label="Quantity type" testId="new-quantity-type"
+                          option "Individuals" value="individuals"
+                          option "Percent cover" value="percent-cover"
                     section
                       header
                         text "Notes"
@@ -1823,13 +1864,17 @@ component ObservationDetail
                 text likeError color="-exact-system-red" testId="like-error" overflow-wrap="break-word"
             column class=Card padding="12px 16px" gap=4
               Fact(label="Observed")
-                text formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time") testId="detail-date" overflow-wrap="break-word"
+                text (d.observedUntil > 0 ? `${formatDay(d.observedFrom, now, 0, "day")} – ${formatDay(d.observedUntil, now, 0, "day")}` : formatDay(d.obs.observedAt, now, d.obs.observedOffset, "day-time"))
+                  testId="detail-date" overflow-wrap="break-word"
               CardLink(href=path("profile", d.obs.observerDid), testId="detail-observer-link")
                 Fact(label="By")
                   text (d.obs.handle != "" ? `${d.obs.observer} (${d.obs.handle})` : d.obs.observer) testId="detail-observer" overflow-wrap="break-word"
               if d.obs.place != ""
                 Fact(label="Location")
                   text d.obs.place testId="detail-place" overflow-wrap="break-word"
+              if d.quantityLabel != ""
+                Fact(label="Quantity")
+                  text d.quantityLabel testId="detail-quantity" overflow-wrap="break-word"
         row gap=16 flex-wrap="wrap" align-items="flex-start"
           column flex="3 1 26rem" min-width=0 gap=16
             column class=Card padding="12px 16px" gap=4 testId="identifications"
