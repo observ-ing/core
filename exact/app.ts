@@ -310,6 +310,25 @@ function formDateTime(s: string | null | undefined): string {
   return day ? `${day}T${time || '12:00'}` : '';
 }
 
+// Explore's table: short words for a record's problems, and dates as
+// YYYY-MM-DD (a reduced date, "1971" or "1906-06", as it is; an interval as
+// "start – end"). A missing value is an em dash.
+const ISSUE_SHORT: Record<string, string> = {
+  MISSING_DATE: 'No date',
+  MISSING_LOCATION: 'No location',
+  MISSING_MEDIA: 'No media',
+  COORDINATES_IMPRECISE: 'Imprecise coords',
+  NO_CONSENSUS_ID: 'No community ID',
+};
+const dash = (v: string | null | undefined) => (v ? v : '—');
+function dayOf(part: string): string {
+  const p = part.trim();
+  if (p.length <= 10) return p;
+  const ms = Date.parse(p);
+  return Number.isFinite(ms) ? new Date(ms).toISOString().slice(0, 10) : p;
+}
+const dayCell = (value: string | null | undefined) => (value ? value.split('/').map(dayOf).join(' – ') : '—');
+
 function toObservation(o: Occurrence): Observation {
   const { did, rkey } = parts(o.uri);
   const tax = o.effectiveTaxonomy;
@@ -339,6 +358,19 @@ function toObservation(o: Occurrence): Observation {
     likes: o.likeCount ?? 0,
     remarks: o.occurrenceRemarks ?? '',
     needsId: o.qualityIssues.includes('NO_CONSENSUS_ID'),
+    // The table's columns.
+    phylum: dash(tax?.phylum),
+    taxonClass: dash(tax?.class),
+    order: dash(tax?.order),
+    family: dash(tax?.family),
+    genus: dash(tax?.genus),
+    eventDay: dayCell(o.eventDate),
+    postedDay: dayCell(o.createdAt),
+    latText: loc ? loc.latitude.toFixed(5) : '—',
+    lngText: loc ? loc.longitude.toFixed(5) : '—',
+    uncertaintyText: loc?.uncertaintyMeters != null ? String(Math.round(loc.uncertaintyMeters)) : '—',
+    quantity: o.organismQuantity != null ? [o.organismQuantity, o.organismQuantityType].filter(Boolean).join(' ') : '—',
+    issues: o.qualityIssues.map((i) => ISSUE_SHORT[i] ?? i).join(', '),
   };
 }
 
