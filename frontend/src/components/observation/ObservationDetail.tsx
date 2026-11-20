@@ -196,10 +196,7 @@ export function ObservationDetail() {
               taxonId={taxonomy?.taxonId}
             />
           ) : (
-            <Typography
-              variant="h5"
-              sx={{ fontWeight: 600, fontStyle: "italic", color: "text.secondary" }}
-            >
+            <Typography variant="h5" sx={{ fontStyle: "italic", color: "text.secondary" }}>
               Unidentified
             </Typography>
           )}

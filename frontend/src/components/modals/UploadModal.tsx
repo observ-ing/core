@@ -606,7 +606,7 @@ export function UploadModal() {
   return (
     <>
       <ModalOverlay open={isOpen} onClose={handleRequestClose}>
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+        <Typography variant="h5" sx={{ mb: 2 }}>
           {isEditMode ? "Edit Observation" : "New Observation"}
         </Typography>
         <form onSubmit={handleSubmit}>
