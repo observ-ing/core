@@ -10,6 +10,7 @@ import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest
 import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
 import { readExif } from './exif.ts';
 import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
+import { WEB } from './web-origin.ts';
 
 // Exact's host functions for a browser sign-in (as @exact/oauth declares them).
 declare function openAuthSession(url: string, options: { callback: string; state: string; ephemeral?: boolean }): Promise<string>;
@@ -27,9 +28,6 @@ const AUTH = import.meta.env.OBSERVING_AUTH_ORIGIN ?? 'http://127.0.0.1:8787';
 const SESSION = 'observing.session';
 // A native app's sign-in callback (its URL scheme); the web uses its own page's.
 const NATIVE_CALLBACK = 'ing.observ.exact:/oauth';
-// A deployed site's own callback page needs a grant; a loopback dev page's
-// doesn't, so the dev loop's origin stands in when no site is named.
-const WEB = import.meta.env.OBSERVING_WEB_ORIGIN ?? 'http://127.0.0.1:8765';
 // Where the site links its native test builds (CI's exact-latest release);
 // unset in native and dev builds, which then show no download links.
 const DOWNLOADS = import.meta.env.OBSERVING_DOWNLOADS ?? '';
