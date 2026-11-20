@@ -86,6 +86,20 @@ type CreateBody = { latitude?: number; longitude?: number; coordinateUncertainty
   occurrenceRemarks?: string };
 const createdOnes = new Map<string, CreateBody>();
 let lastCreate: CreateBody | null = null;
+// Edits to recorded observations: the request, laid over the record as the
+// appview's ingester would, with a new CID.
+type UpdateBody = CreateBody & { uri: string; retainedBlobCids?: string[]; eventRemarks?: string; organismQuantity?: string;
+  externalRecords?: unknown[] };
+const edits = new Map<string, UpdateBody>();
+let lastUpdate: UpdateBody | null = null;
+function edited(d: Detail, r: UpdateBody): Detail {
+  const o = d.occurrence as Record<string, unknown> & Detail['occurrence'];
+  const images = ((o.images ?? []) as { url: string }[]).filter((img) => r.retainedBlobCids?.includes(img.url.split('/').at(-1) ?? ''))
+    .concat((r.images ?? []).map((_, i) => ({ url: `/media/blob/${PERSON.did}/bafyedit${i}`, license: r.license })) as never[]);
+  return { ...d, occurrence: { ...o, cid: `bafyedited${edits.size}`, eventDate: r.eventDate, occurrenceRemarks: r.occurrenceRemarks,
+    location: { latitude: r.latitude, longitude: r.longitude, uncertaintyMeters: r.coordinateUncertaintyInMeters }, images,
+    ...(r.scientificName ? { effectiveTaxonomy: { scientificName: r.scientificName, rank: r.taxonRank, kingdom: r.kingdom } } : {}) } };
+}
 const isJpeg = (base64: string) => { try { const b = Buffer.from(base64, 'base64'); return b[0] === 0xff && b[1] === 0xd8; } catch { return false; } };
 // A made observation, answered the way the appview answers a recorded one.
 function createdDetail(uri: string, r: CreateBody) {
@@ -186,6 +200,16 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
   // every photo is a JPEG, so the tests see what the app really sent.
   '/api/occurrences': async (req) => {
     if (!signedIn(req)) return unauthorized();
+    if (req.method === 'PUT') {
+      const r = (await req.json()) as UpdateBody;
+      if (!r.uri?.endsWith(`/${OWN}`)) return Response.json({ error: 'You can only edit your own records' }, { status: 403, headers: CORS });
+      if ((r.images ?? []).some((i) => i.mimeType !== 'image/jpeg' || !isJpeg(i.data))) {
+        return Response.json({ error: 'every image must be a JPEG' }, { status: 400, headers: CORS });
+      }
+      lastUpdate = r;
+      edits.set(r.uri, r);
+      return Response.json({ uri: r.uri, cid: `bafyedited${edits.size}` }, { headers: CORS });
+    }
     const r = (await req.json()) as CreateBody;
     const problem =
       typeof r.latitude !== 'number' || typeof r.longitude !== 'number' ? 'latitude and longitude are required'
@@ -201,6 +225,7 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     return Response.json({ success: true, uri, cid: 'bafyfixture' }, { headers: CORS });
   },
   // What the test made last, for a test to read back (`request GET "/__fixture/last-create"`).
+  '/__fixture/last-update': () => Response.json(lastUpdate ? { ...lastUpdate, images: (lastUpdate.images ?? []).length } : null, { headers: CORS }),
   '/__fixture/last-create': () => Response.json(lastCreate ? { ...lastCreate, images: (lastCreate.images ?? []).length } : null, { headers: CORS }),
   '/api/occurrences/*': (req) => {
     const uri = decodeURIComponent(new URL(req.url).pathname.slice('/api/occurrences/'.length));
@@ -215,7 +240,9 @@ const fixtures: Record<string, (req: Request & { params: Record<string, string> 
     if (deleted.has(uri)) return Response.json({ error: 'Occurrence not found' }, { status: 404, headers: CORS });
     const key = fixtureKey(new URL(req.url));
     if (!(key in RECORDED)) return Response.json({ error: `No fixture for ${key}` }, { status: 404, headers: CORS });
-    return Response.json(overlay(RECORDED[key] as Detail, signedIn(req)), { headers: CORS });
+    const edit = edits.get(uri);
+    const d = edit ? edited(RECORDED[key] as Detail, edit) : RECORDED[key] as Detail;
+    return Response.json(overlay(d, signedIn(req)), { headers: CORS });
   },
   '/api/notifications': (req) => signedIn(req)
     ? Response.json({ notifications: NOTIFICATIONS.map((n) => ({ ...n, read: read.has(n.id) })) }, { headers: CORS })

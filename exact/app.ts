@@ -7,6 +7,7 @@ import type { Profile } from './bindings/Profile.ts';
 import type { TaxaResult } from './bindings/TaxaResult.ts';
 import type { TaxonDetailWithCount } from './bindings/TaxonDetailWithCount.ts';
 import type { CreateOccurrenceRequest } from './bindings/CreateOccurrenceRequest.ts';
+import type { UpdateOccurrenceRequest } from './bindings/UpdateOccurrenceRequest.ts';
 import type { SpeciesSuggestion } from './bindings/SpeciesSuggestion.ts';
 import { readExif } from './exif.ts';
 import { discard, enqueue, readQueue, retry, sendWaiting } from './queue.ts';
@@ -292,6 +293,23 @@ const instant = (s: string | null | undefined, fallback = 0) => {
   return Number.isFinite(ms) ? ms : fallback;
 };
 
+// An event date as the form shows it, in this device's zone: its day and its
+// time ("" for a date with no time). An interval reads by its start.
+function formDate(s: string | null | undefined): { day: string; time: string } {
+  const start = s ? s.split('/')[0] ?? s : '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start)) return { day: start, time: '' };
+  const ms = Date.parse(start);
+  if (!Number.isFinite(ms)) return { day: '', time: '' };
+  const d = new Date(ms);
+  const two = (n: number) => String(n).padStart(2, '0');
+  return { day: `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`, time: `${two(d.getHours())}:${two(d.getMinutes())}` };
+}
+// The form's "YYYY-MM-DDTHH:mm" for an event date, as the form builds it from day and time.
+function formDateTime(s: string | null | undefined): string {
+  const { day, time } = formDate(s);
+  return day ? `${day}T${time || '12:00'}` : '';
+}
+
 function toObservation(o: Occurrence): Observation {
   const { did, rkey } = parts(o.uri);
   const tax = o.effectiveTaxonomy;
@@ -371,7 +389,8 @@ const sources: Sources = {
     const empty = {
       did, rkey, found: false, obs: toObservation({ uri: `at://${did}//${rkey}`, cid: '', observer: { did }, identificationCount: 0,
         images: [], externalRecords: [], createdAt: '', qualityIssues: [] }),
-      photos: [], latitude: 0, longitude: 0, hasLocation: false, uncertainty: '', eventRemarks: '', taxonKingdom: '', taxonName: '',
+      photos: [], latitude: 0, longitude: 0, hasLocation: false, uncertainty: '', uncertaintyMeters: 0, day: '', time: '',
+      eventRemarks: '', taxonKingdom: '', taxonName: '',
       issues: [], identifications: [], comments: [], links: [], uri: '', cid: '', liked: false, mine: false,
     };
     if (!did || !rkey) return empty;
@@ -393,6 +412,9 @@ const sources: Sources = {
       longitude: o.location?.longitude ?? 0,
       hasLocation: !!o.location,
       uncertainty: o.location?.uncertaintyMeters != null ? `±${o.location.uncertaintyMeters} m` : '',
+      uncertaintyMeters: o.location?.uncertaintyMeters ?? 0,
+      // What the edit form starts from.
+      ...formDate(o.eventDate),
       eventRemarks: o.eventRemarks ?? '',
       taxonKingdom: route?.kingdom ?? '',
       taxonName: route?.name ?? '',
@@ -680,6 +702,77 @@ const sources: Sources = {
     const created = (await response.json()) as { uri: string };
     pages.clear();
     return { ok: true, error: '', ...parts(created.uri) };
+  },
+
+  // An edit of your own observation. The form names what it shows; whatever it
+  // doesn't (quantity, links, event remarks) is sent back as the record has it,
+  // since the appview clears what an edit omits.
+  updateObservation: async (
+    [uri, keptPhotos, paths, scientificName, rank, kingdom, eventDate, latitude, longitude, uncertainty, notes, license], store, storage,
+  ) => {
+    const fail = (error: string) => ({ ok: false, error });
+    if (!kept(store)) return fail('Sign in first.');
+    const path = `/api/occurrences/${encodeURIComponent(uri)}`;
+    let request: UpdateOccurrenceRequest;
+    try {
+      const o = (await get<OccurrenceDetailResponse>(path, store)).occurrence;
+      const limit = paths.length === 0 ? 0 : await get<{ maxImageBytes: number }>('/api/user/upload-limit', store).then(
+        (l) => l.maxImageBytes, () => 1_000_000);
+      const images = [];
+      for (const p of paths) {
+        const bytes = await shrunk(await asJpeg(p, store, storage), 'upload', 4000, limit, storage);
+        images.push({ data: toBase64(bytes), mimeType: 'image/jpeg' });
+      }
+      // A photo's URL ends in its blob CID.
+      const retainedBlobCids = o.images.filter((_, i) => keptPhotos.includes(i)).map((img) => img.url.split('/').at(-1) ?? '');
+      // Unchanged in the form, the date keeps what the record says (a date with
+      // no time, an interval); changed, it's the form's local time.
+      const date = eventDate === formDateTime(o.eventDate) ? o.eventDate ?? '' : eventDate ? new Date(eventDate).toISOString() : '';
+      // A new name only: sending the one shown would add your identification to it.
+      const renamed = scientificName && scientificName !== (o.effectiveTaxonomy?.scientificName ?? '');
+      request = {
+        uri,
+        latitude,
+        longitude,
+        ...(uncertainty > 0 ? { coordinateUncertaintyInMeters: Math.round(uncertainty) } : {}),
+        ...(date ? { eventDate: date } : {}),
+        ...(o.organismQuantity ? { organismQuantity: o.organismQuantity, ...(o.organismQuantityType ? { organismQuantityType: o.organismQuantityType } : {}) } : {}),
+        ...(o.externalRecords.length > 0 ? { externalRecords: o.externalRecords.map((r) => ({ uri: r.uri, ...(r.service ? { service: r.service } : {}) })) } : {}),
+        ...(o.eventRemarks ? { eventRemarks: o.eventRemarks } : {}),
+        ...(notes.trim() ? { occurrenceRemarks: notes.trim() } : {}),
+        retainedBlobCids,
+        ...(images.length > 0 ? { images, ...(license ? { license } : {}) } : {}),
+        ...(renamed ? { scientificName, ...(rank ? { taxonRank: rank } : {}), ...(kingdom ? { kingdom } : {}) } : {}),
+      };
+    } catch (e) {
+      return fail(e instanceof ApiError ? 'Couldn’t load this observation. Try again.' : (e as Error).message || 'A photo couldn’t be prepared. Try another.');
+    }
+    let response: Response;
+    try {
+      response = await fetch(`${API}/api/occurrences`, {
+        method: 'PUT',
+        headers: { ...authHeaders(store), 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+        exactTimeout: 120000,
+      });
+    } catch {
+      return fail('Can’t reach observ.ing. Check your connection and try again.');
+    }
+    if (response.status === 401) return fail('Your session ended. Sign in again.');
+    if (!response.ok) {
+      const message = await response.json().then((b: { error?: string }) => b.error ?? '', () => '');
+      return fail(message || `The changes weren’t saved (${response.status}). Try again.`);
+    }
+    // The appview indexes the edit from the firehose: wait (a little) until it
+    // answers with the new record, so the observation reloads showing it.
+    const { cid } = (await response.json()) as { cid: string };
+    pages.clear();
+    for (let i = 0; i < 20; i++) {
+      const now = await get<OccurrenceDetailResponse>(path, store).then((d) => d.occurrence.cid, () => '');
+      if (now === cid) break;
+      await new Promise((r) => setTimeout(r, 500));
+    }
+    return { ok: true, error: '' };
   },
 
   // --- The upload queue ------------------------------------------------------
