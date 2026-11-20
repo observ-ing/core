@@ -23,7 +23,7 @@ import { KingdomSelect } from "../../common/KingdomSelect";
 import { MatchedSynonym } from "../../common/MatchedSynonym";
 import { RankSelect } from "../../common/RankSelect";
 import { SearchAdornment, searchFieldSx } from "../../common/SearchField";
-import { shouldItalicizeTaxonName } from "../../common/TaxonLink";
+import { taxonNameFontStyle } from "../../common/TaxonLink";
 import { TaxonThumbnail } from "../../common/TaxonThumbnail";
 import {
   coverImageSx,
@@ -150,9 +150,7 @@ export function PhoneTaxonStep({ observations, onChoose, onBack }: PhoneTaxonSte
                         noWrap
                         sx={{
                           fontWeight: 600,
-                          fontStyle: shouldItalicizeTaxonName(taxon.scientificName, taxon.rank)
-                            ? "italic"
-                            : "normal",
+                          fontStyle: taxonNameFontStyle(taxon.scientificName, taxon.rank),
                         }}
                       >
                         {taxon.scientificName}
