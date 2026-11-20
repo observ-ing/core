@@ -373,6 +373,7 @@ component App
   mutation commented as shape Reply refreshes detail then afterComment
   mutation identified as shape Reply refreshes detail, feed, home then afterIdentify
   mutation unidentified as shape Reply refreshes detail, feed, home
+  mutation agreed as shape Reply refreshes detail, feed, home
   mutation removed as shape Reply refreshes feed, home, person, taxonPage then afterRemove
   mutation marked as shape Reply refreshes notes, unread
   mutation licensed as shape Reply refreshes prefs
@@ -426,10 +427,13 @@ component App
   derive identifyError = match identified { case some(r) => r.error, case none => "" }
   derive identifyOk = match identified { case some(r) => r.ok, case none => false }
   derive withdrawError = match unidentified { case some(r) => r.error, case none => "" }
+  derive agreeError = match agreed { case some(r) => r.error, case none => "" }
   derive removeError = match removed { case some(r) => r.error, case none => "" }
   derive removeOk = match removed { case some(r) => r.ok, case none => false }
   derive licenseError = match licensed { case some(r) => r.error, case none => "" }
   derive myIdentification = match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.uri, case none => "" }
+  // Agree adds the shown name as your own identification: offered unless yours already is it.
+  derive canAgree = detail.obs.scientificName != "" and (match detail.identifications.filter(i => i.mine).at(-1) { case some(i) => i.scientificName != detail.obs.scientificName, case none => true })
   derive notesError = pending(notes) ? "" : match failure(notes) { case some(f) => problem(f.code, "your notifications"), case none => "" }
   derive licenses = [Choice(value="https://creativecommons.org/publicdomain/zero/1.0/", label="CC0 (Public Domain)"), Choice(value="https://creativecommons.org/licenses/by/4.0/", label="CC BY (Attribution)"), Choice(value="https://creativecommons.org/licenses/by-nc/4.0/", label="CC BY-NC (Attribution, Non-Commercial)"), Choice(value="https://creativecommons.org/licenses/by-sa/4.0/", label="CC BY-SA (Attribution, Share-Alike)"), Choice(value="https://creativecommons.org/licenses/by-nc-sa/4.0/", label="CC BY-NC-SA (Attribution, Non-Commercial, Share-Alike)")]
   derive firstPhoto = match first(newPhotos) { case some(p) => p, case none => "" }
@@ -588,6 +592,11 @@ component App
   action afterIdentify
     if identifyOk and top(nav).name == "identify"
       nav = back(nav)
+  action agree
+    if not account.signedIn
+      nav = select(nav, "account")
+    else if not pending(agreed)
+      send agreed = addIdentification(detail.uri, detail.cid, detail.obs.scientificName, detail.obs.rank, detail.obs.kingdom)
   action withdraw
     if myIdentification != ""
       send unidentified = removeIdentification(myIdentification)
@@ -958,7 +967,7 @@ component App
                       text titleOf(detail.obs) role="heading" aria-level=2 testId="detail-title"
                     ObservationDetail(d=detail, now=now, offset=offset, scrollId=`detail-${e.id}`, openExternal=openExternal,
                       signedIn=account.signedIn, toggleLike=toggleLike, likeBusy=pending(liked), likeError=likeError,
-                      openIdentify=openIdentify, withdrawError=withdrawError, removeError=removeError, edit=openEdit,
+                      openIdentify=openIdentify, canAgree=canAgree, agree=agree, agreeBusy=pending(agreed), agreeError=agreeError, withdrawError=withdrawError, removeError=removeError, edit=openEdit,
                       commentDraft=commentDraft, editComment=editComment, postComment=postComment, commentBusy=pending(commented), commentError=commentError,
                       inatLinked=inat.linked, crosspost=crosspostShown, postToInat=postToInat, crosspostBusy=pending(crossposted), crosspostError=crosspostError)
                   else
@@ -1606,6 +1615,10 @@ component ObservationDetail
     likeBusy: bool
     likeError: string
     openIdentify: action
+    canAgree: bool
+    agree: action
+    agreeBusy: bool
+    agreeError: string
     withdrawError: string
     removeError: string
     edit: action
@@ -1685,11 +1698,16 @@ component ObservationDetail
               if d.identifications.length == 0
                 text "No identifications yet." color="-exact-secondary-label" padding="6px 0" overflow-wrap="break-word"
               row gap=8 flex-wrap="wrap" padding-top=4
+                if canAgree
+                  button press=agree disabled=agreeBusy testId="agree-id"
+                    text (agreeBusy ? "Agreeing…" : "Agree")
                 button press=openIdentify testId="suggest-id"
                   text (signedIn ? "Suggest an Identification" : "Sign In to Suggest an Identification")
                 if d.identifications.filter(i => i.mine).length > 0
                   button commandfor="withdraw" command="show-modal" destructive=true testId="withdraw-id"
                     text "Withdraw Yours"
+              if agreeError != ""
+                text agreeError color="-exact-system-red" testId="agree-error" overflow-wrap="break-word"
               if withdrawError != ""
                 text withdrawError color="-exact-system-red" testId="withdraw-error" overflow-wrap="break-word"
             column class=Card gap=12 testId="comments"
